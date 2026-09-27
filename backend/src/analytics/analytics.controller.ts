@@ -78,6 +78,16 @@ export class AnalyticsController {
         return this.analyticsService.getValuationAnalytics();
     }
 
+    @Get('auctions/first-offers')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getAuctionFirstOfferAnalytics(@Query('days') days?: string) {
+        const parsed = days ? parseInt(days, 10) : 30;
+        return this.analyticsService.getAuctionFirstOfferAnalytics(
+            Number.isFinite(parsed) ? parsed : 30,
+        );
+    }
+
     @Get('events')
     @UseGuards(SessionAuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)

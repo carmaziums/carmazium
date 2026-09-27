@@ -3,16 +3,13 @@ import {
     NotFoundException,
     BadRequestException,
     ForbiddenException,
-    forwardRef,
-    Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuctionsService } from '../auctions/auctions.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
-import { calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import { calculateFirstOfferFloor, calculateMinimumAuctionBid } from '../auctions/auction-pricing';
 import {
     assertDealerPermission,
     resolveBusinessBuyerId,
@@ -20,17 +17,43 @@ import {
 } from '../dealers/dealer-access';
 
 const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const ANTI_SNIPE_WINDOW_MS = 3 * 60 * 1000;
 
 @Injectable()
 export class BidsService {
     constructor(
         private readonly prisma: PrismaService,
-        @Inject(forwardRef(() => AuctionsService))
-        private readonly auctionsService: AuctionsService,
-        @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
         private readonly notificationsService: NotificationsService,
     ) { }
+
+    private auctionRunKey(auction: { id: string; startTime?: Date | string | null }): string {
+        const raw = auction?.startTime;
+        const parsed = raw ? new Date(raw) : null;
+        const runStart = parsed && Number.isFinite(parsed.getTime())
+            ? parsed.toISOString()
+            : 'unknown';
+        return `${auction.id}:${runStart}`;
+    }
+
+    private trackAuctionEvent(
+        type: string,
+        payload: Record<string, unknown>,
+        userId?: string,
+    ): void {
+        const analyticsEvent = (this.prisma as any).analyticsEvent;
+        if (!analyticsEvent?.create) return;
+
+        analyticsEvent.create({
+            data: {
+                type,
+                payload,
+                userId: userId ?? null,
+            },
+        }).catch(() => {
+            // Analytics must never block a bid or cancellation.
+        });
+    }
 
     async create(bidderId: string, createBidDto: CreateBidDto): Promise<Bid> {
         const listing = await this.prisma.listing.findUnique({
@@ -83,84 +106,218 @@ export class BidsService {
             throw new BadRequestException('You cannot bid on your own auction');
         }
 
-        const minIncrement = Number(auction.minIncrement);
-        // Enforce the 70% market-value floor server-side as well. This protects
-        // legacy auctions whose stored startingBid may pre-date the new rule.
-        const marketValue = Number(listing.price);
-        if (!Number.isFinite(marketValue) || marketValue <= 0) {
-            throw new BadRequestException('This auction does not have a valid Estimated Market Value');
-        }
-        const marketValueFloor = calculatePlatformOpeningBid(marketValue);
-        const startingBid = Math.max(Number(auction.startingBid), marketValueFloor);
+        // Serialize the critical bid-validation + insert path per listing.
+        //
+        // Without this lock, two dealers can both read "no active bids" at the
+        // same time and both pass the first-offer floor before either insert is
+        // visible to the other. PostgreSQL transaction-scoped advisory locks
+        // make one bidder wait, then force the second bidder to re-read the
+        // current highest bid and obey the normal increment rule.
+        const placement = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createBidDto.listingId}, 0))`;
 
-        const highestBid = await this.prisma.bid.findFirst({
-            where: { listingId: createBidDto.listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
-            orderBy: { amount: 'desc' },
-        });
-
-        if (highestBid) {
-            const minAllowed = Number(highestBid.amount) + minIncrement;
-            if (createBidDto.amount < minAllowed) {
-                throw new BadRequestException(
-                    `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
-                );
-            }
-        } else {
-            if (createBidDto.amount < startingBid) {
-                throw new BadRequestException(
-                    `Bid must be at least the starting bid of £${startingBid.toLocaleString()}`,
-                );
-            }
-        }
-
-        const bid = await this.prisma.bid.create({
-            data: {
-                listingId: createBidDto.listingId,
-                bidderId: businessBidderId,
-                amount: createBidDto.amount,
-            },
-        });
-
-        // BIN auto-cancel: if new bid amount >= BIN price AND there's a pending BIN request, clear it
-        if (
-            auction.buyItNowPrice &&
-            (auction as any).buyItNowPendingBuyerId &&
-            createBidDto.amount >= Number(auction.buyItNowPrice)
-        ) {
-            const pendingBuyerId = (auction as any).buyItNowPendingBuyerId as string;
-            await this.prisma.auction.update({
-                where: { id: auction.id },
-                data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+            // Re-read inside the lock. The auction may have been cancelled,
+            // activated, or repriced after the initial request validation.
+            const lockedListing = await tx.listing.findUnique({
+                where: { id: createBidDto.listingId },
+                include: { auction: true },
             });
+
+            if (!lockedListing || lockedListing.deletedAt) {
+                throw new NotFoundException('Listing not found');
+            }
+            if (lockedListing.type !== 'AUCTION') {
+                throw new BadRequestException('This listing is not an auction');
+            }
+
+            const lockedAuction = lockedListing.auction;
+            if (!lockedAuction) {
+                throw new BadRequestException('No auction has been created for this listing');
+            }
+            if (lockedAuction.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction is not currently active');
+            }
+            if (lockedListing.status !== 'ACTIVE') {
+                throw new BadRequestException('This vehicle is not currently available for auction bidding');
+            }
+
+            const bidReceivedAt = new Date();
+            if (bidReceivedAt.getTime() >= lockedAuction.endTime.getTime()) {
+                throw new BadRequestException('This auction has ended and is no longer accepting bids');
+            }
+
+            if (lockedListing.sellerId === businessBidderId) {
+                throw new BadRequestException('You cannot bid on your own auction');
+            }
+
+            const minIncrement = Number(lockedAuction.minIncrement);
+            const startingBid = Number(lockedAuction.startingBid);
+            const reservePrice = Number(lockedAuction.reservePrice);
+
+            const highestBid = await tx.bid.findFirst({
+                where: {
+                    listingId: createBidDto.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            });
+
+            let minAllowed: number;
+            try {
+                minAllowed = calculateMinimumAuctionBid({
+                    startingBid,
+                    reservePrice,
+                    minIncrement,
+                    highestActiveBid: highestBid ? Number(highestBid.amount) : null,
+                });
+            } catch {
+                throw new BadRequestException('This auction does not have valid bidding prices');
+            }
+
+            if (createBidDto.amount < minAllowed) {
+                if (highestBid) {
+                    throw new BadRequestException(
+                        `Bid must be at least £${minAllowed.toLocaleString()} (current: £${Number(highestBid.amount).toLocaleString()} + £${minIncrement.toLocaleString()} increment)`,
+                    );
+                }
+
+                const referencePrice = Math.min(startingBid, reservePrice);
+                throw new BadRequestException(
+                    `First offer must be at least £${minAllowed.toLocaleString()} (30% below the lower of the £${startingBid.toLocaleString()} starting bid and £${reservePrice.toLocaleString()} reserve; reference £${referencePrice.toLocaleString()})`,
+                );
+            }
+
+            const bid = await tx.bid.create({
+                data: {
+                    listingId: createBidDto.listingId,
+                    bidderId: businessBidderId,
+                    amount: createBidDto.amount,
+                },
+            });
+
+            let pendingBuyerId: string | null = null;
+            if (
+                (lockedAuction as any).buyItNowPendingBuyerId &&
+                createBidDto.amount >= reservePrice
+            ) {
+                // Once reserve is met, normal auction bidding has priority and
+                // any outstanding Buy It Now request is no longer actionable.
+                // This matches reserve-correction behaviour and prevents stale
+                // BIN confirmation prompts when a bid reaches reserve below BIN.
+                pendingBuyerId = (lockedAuction as any).buyItNowPendingBuyerId as string;
+            }
+
+            // Anti-snipe extension is part of the same locked transaction as the
+            // bid itself. This prevents the lifecycle closer from ending the
+            // auction in the tiny gap between bid commit and end-time extension.
+            const bidPlacedAt = bid.timestamp instanceof Date ? bid.timestamp : new Date(bid.timestamp);
+            const timeLeft = lockedAuction.endTime.getTime() - bidPlacedAt.getTime();
+            const shouldExtend = timeLeft > 0 && timeLeft <= ANTI_SNIPE_WINDOW_MS;
+            const newEndTime = shouldExtend
+                ? new Date(lockedAuction.endTime.getTime() + ANTI_SNIPE_WINDOW_MS)
+                : null;
+
+            if (pendingBuyerId || newEndTime) {
+                await tx.auction.update({
+                    where: { id: lockedAuction.id },
+                    data: {
+                        ...(pendingBuyerId && {
+                            buyItNowPendingBuyerId: null,
+                            buyItNowPendingAt: null,
+                        }),
+                        ...(newEndTime && { endTime: newEndTime }),
+                    },
+                });
+            }
+
+            return {
+                bid,
+                highestBid,
+                lockedListing,
+                lockedAuction,
+                reservePrice,
+                pendingBuyerId,
+                newEndTime,
+            };
+        });
+
+        const {
+            bid,
+            highestBid,
+            lockedListing,
+            lockedAuction,
+            reservePrice,
+            pendingBuyerId,
+            newEndTime,
+        } = placement;
+
+        const bidAmount = Number(bid.amount);
+        const startingBid = Number(lockedAuction.startingBid);
+        const isFirstOffer = !highestBid;
+        const firstOfferFloor = isFirstOffer
+            ? calculateFirstOfferFloor(startingBid, reservePrice)
+            : null;
+        const percentBelowReserve = reservePrice > 0
+            ? Math.max(0, Math.round(((reservePrice - bidAmount) / reservePrice) * 1000) / 10)
+            : 0;
+        const percentBelowStartingBid = startingBid > 0
+            ? Math.max(0, Math.round(((startingBid - bidAmount) / startingBid) * 1000) / 10)
+            : 0;
+
+        this.trackAuctionEvent('auction_bid_placed', {
+            auction_id: lockedAuction.id,
+            auction_run_key: this.auctionRunKey(lockedAuction),
+            listing_id: lockedListing.id,
+            bid_id: bid.id,
+            registration: lockedListing.vrm ?? null,
+            vehicle: [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title,
+            amount: bidAmount,
+            previous_highest_bid: highestBid ? Number(highestBid.amount) : null,
+            starting_bid: startingBid,
+            reserve_price: reservePrice,
+            min_increment: Number(lockedAuction.minIncrement),
+            first_offer_floor: firstOfferFloor,
+            is_first_offer: isFirstOffer,
+            below_starting_bid: bidAmount < startingBid,
+            below_reserve: bidAmount < reservePrice,
+            reserve_met_after: bidAmount >= reservePrice,
+            percent_below_reserve: percentBelowReserve,
+            percent_below_starting_bid: percentBelowStartingBid,
+            market_value: Number(lockedListing.price) || null,
+            anti_snipe_extended: Boolean(newEndTime),
+            new_end_time: newEndTime?.toISOString() ?? null,
+        }, businessBidderId);
+
+        if (pendingBuyerId) {
             this.notificationsService.create({
                 userId: pendingBuyerId,
                 type: 'AUCTION_ENDED',
                 title: 'Buy It Now request cancelled',
-                message: `A new bid cancelled your Buy It Now request on ${listing.make} ${listing.model}.`,
+                message: `A new bid cancelled your Buy It Now request on ${lockedListing.make} ${lockedListing.model}.`,
                 entityType: 'AUCTION',
-                entityId: auction.id,
-                link: `/auctions/live/${auction.id}`,
+                entityId: lockedAuction.id,
+                link: `/auctions/live/${lockedAuction.id}`,
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 
         // Every new highest bid below reserve is a real provisional offer.
         // Notify the seller immediately so they can accept the current highest
         // offer or simply leave the auction running for more competition.
-        const bidAmount = Number(bid.amount);
-        const reservePrice = Number(auction.reservePrice);
-        if (listing.sellerId && bidAmount < reservePrice) {
-            const vehicle = [listing.year, listing.make, listing.model].filter(Boolean).join(' ') || listing.title;
+        if (lockedListing.sellerId && bidAmount < reservePrice) {
+            const vehicle = [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title;
             this.notificationsService.create({
-                userId: listing.sellerId,
+                userId: lockedListing.sellerId,
                 type: 'AUCTION_OFFER_RECEIVED',
                 title: 'New auction offer received',
                 message: `Highest offer: £${bidAmount.toLocaleString('en-GB')} on ${vehicle}. Your reserve is £${reservePrice.toLocaleString('en-GB')}. Accept it now or keep the auction running.`,
                 entityType: 'AUCTION',
-                entityId: auction.id,
+                entityId: lockedAuction.id,
                 actionType: 'ACCEPT_OR_WAIT',
-                link: `/auctions/live/${auction.id}?sellerOffer=${bid.id}`,
+                link: `/auctions/live/${lockedAuction.id}?sellerOffer=${bid.id}`,
                 data: {
-                    listingId: listing.id,
+                    listingId: lockedListing.id,
                     bidId: bid.id,
                     amount: bidAmount,
                     reservePrice,
@@ -175,28 +332,26 @@ export class BidsService {
                 userId:     highestBid.bidderId,
                 type:       'OUTBID',
                 title:      "You've been outbid",
-                message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${listing.make} ${listing.model}. Bid again to stay in the lead.`,
+                message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${lockedListing.make} ${lockedListing.model}. Bid again to stay in the lead.`,
                 entityType: 'AUCTION',
-                entityId:   auction.id,
-                link:       `/auctions/live/${auction.id}`,
+                entityId:   lockedAuction.id,
+                link:       `/auctions/live/${lockedAuction.id}`,
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
-
-        // Anti-snipe: extend auction if bid placed in the final window
-        const updatedAuction = await this.auctionsService.maybeExtend(auction.id, bid.timestamp);
 
         const initials = `${bidder?.firstName?.[0] ?? '?'}${bidder?.lastName?.[0] ?? ''}`.toUpperCase();
 
         // Broadcast to all viewers of this auction via WebSocket
-        this.auctionGateway.broadcastBid(auction.id, {
+        this.auctionGateway.broadcastBid(lockedAuction.id, {
             bidId: bid.id,
-            auctionId: auction.id,
+            auctionId: lockedAuction.id,
             listingId: bid.listingId,
             amount: Number(bid.amount),
             bidderInitials: initials,
             bidderId: businessBidderId,
             timestamp: bid.timestamp.toISOString(),
-            newEndTime: updatedAuction?.endTime?.toISOString(),
+            newEndTime: newEndTime?.toISOString(),
+            buyItNowCancelled: Boolean(pendingBuyerId),
         });
 
         return bid;
@@ -212,39 +367,207 @@ export class BidsService {
             );
         }
         const businessBidderId = await resolveBusinessBuyerId(this.prisma, bidderId);
-        const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
 
-        if (!bid || bid.bidderId !== businessBidderId) {
+        // Lightweight lookup only to identify the listing lock. Ownership and
+        // cancel eligibility are revalidated after the lock is acquired.
+        const lookup = await this.prisma.bid.findUnique({
+            where: { id: bidId },
+            select: { listingId: true },
+        });
+        if (!lookup) {
             throw new ForbiddenException('Not your bid');
         }
 
-        if (bid.archivedAt) {
-            throw new BadRequestException('This bid belongs to a previous auction and can no longer be cancelled');
-        }
+        const result = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        if (bid.cancelledAt || bid.deletedAt) {
-            throw new BadRequestException('Bid already cancelled');
-        }
+            const bid = await tx.bid.findUnique({ where: { id: bidId } });
+            if (!bid || bid.bidderId !== businessBidderId) {
+                throw new ForbiddenException('Not your bid');
+            }
+            if (bid.archivedAt) {
+                throw new BadRequestException('This bid belongs to a previous auction and can no longer be cancelled');
+            }
+            if (bid.cancelledAt || bid.deletedAt) {
+                throw new BadRequestException('Bid already cancelled');
+            }
+            if (Date.now() - bid.createdAt.getTime() > BID_CANCEL_WINDOW_MS) {
+                throw new BadRequestException('Cancel window has expired (24 hours)');
+            }
 
-        if (Date.now() - bid.createdAt.getTime() > BID_CANCEL_WINDOW_MS) {
-            throw new BadRequestException('Cancel window has expired (24 hours)');
-        }
+            const listing = await tx.listing.findUnique({
+                where: { id: bid.listingId },
+                include: { auction: true },
+            });
+            if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
+            }
+            if (listing.status !== 'ACTIVE') {
+                throw new BadRequestException('Cannot cancel a bid after the auction vehicle is no longer active');
+            }
 
-        const listing = await this.prisma.listing.findUnique({
-            where: { id: bid.listingId },
-            include: { auction: true },
+            const cancellationTime = new Date();
+            if (cancellationTime.getTime() >= listing.auction.endTime.getTime()) {
+                throw new BadRequestException(
+                    'This auction has ended. Bids can no longer be cancelled while the result is being finalised',
+                );
+            }
+
+            const beforeHighest = await tx.bid.findFirst({
+                where: {
+                    listingId: bid.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            });
+
+            await tx.bid.update({
+                where: { id: bidId },
+                data: { cancelledAt: cancellationTime },
+            });
+
+            const [afterHighest, activeBidCount] = await Promise.all([
+                tx.bid.findFirst({
+                    where: {
+                        listingId: bid.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                }),
+                tx.bid.count({
+                    where: {
+                        listingId: bid.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                }),
+            ]);
+
+            const reservePrice = Number(listing.auction.reservePrice);
+            const highestActiveBid = afterHighest ? Number(afterHighest.amount) : null;
+            const reserveMet = highestActiveBid !== null && highestActiveBid >= reservePrice;
+            const firstOfferFloor = activeBidCount === 0
+                ? calculateFirstOfferFloor(Number(listing.auction.startingBid), reservePrice)
+                : null;
+            const cancelledWasHighest = beforeHighest?.id === bid.id;
+            const reserveWasMet = beforeHighest
+                ? Number(beforeHighest.amount) >= reservePrice
+                : false;
+
+            return {
+                listing,
+                bid,
+                afterHighest,
+                activeBidCount,
+                highestActiveBid,
+                reserveMet,
+                firstOfferFloor,
+                cancelledWasHighest,
+                reserveWasMet,
+            };
         });
 
-        if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
-        }
+        this.trackAuctionEvent('auction_bid_cancelled', {
+            auction_id: result.listing.auction!.id,
+            auction_run_key: this.auctionRunKey(result.listing.auction!),
+            listing_id: result.listing.id,
+            cancelled_bid_id: bidId,
+            cancelled_amount: Number(result.bid.amount),
+            cancelled_was_highest: result.cancelledWasHighest,
+            reserve_was_met: result.reserveWasMet,
+            reserve_met_after: result.reserveMet,
+            active_bid_count_after: result.activeBidCount,
+            highest_active_bid_after: result.highestActiveBid,
+            highest_active_bid_id_after: result.afterHighest?.id ?? null,
+            first_offer_floor_after: result.firstOfferFloor,
+            starting_bid: Number(result.listing.auction!.startingBid),
+            reserve_price: Number(result.listing.auction!.reservePrice),
+        }, businessBidderId);
 
-        await this.prisma.bid.update({
-            where: { id: bidId },
-            data: { cancelledAt: new Date() },
+        // Tell every connected viewer the canonical position after the
+        // cancellation. This makes zero-bid recovery deterministic across web
+        // and native even if a client missed an earlier bid event.
+        this.auctionGateway.broadcastBidCancelled(result.listing.auction!.id, {
+            auctionId: result.listing.auction!.id,
+            bidId,
+            highestActiveBid: result.highestActiveBid,
+            highestActiveBidId: result.afterHighest?.id ?? null,
+            highestActiveBidderId: result.afterHighest?.bidderId ?? null,
+            activeBidCount: result.activeBidCount,
+            reserveMet: result.reserveMet,
+            firstOfferFloor: result.firstOfferFloor,
         });
 
-        this.auctionGateway.broadcastBidCancelled(listing.auction.id, bidId);
+        if (result.cancelledWasHighest && result.listing.sellerId) {
+            const vehicle = [
+                result.listing.year,
+                result.listing.make,
+                result.listing.model,
+            ].filter(Boolean).join(' ') || result.listing.title;
+
+            if (result.activeBidCount === 0) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Highest auction bid cancelled',
+                    message: `The highest bid on ${vehicle} was cancelled. There are now no active dealer bids. First offers can be made from £${Number(result.firstOfferFloor).toLocaleString('en-GB')}.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'BID_CANCELLED',
+                    link: `/auctions/live/${result.listing.auction!.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: 0,
+                        highestActiveBid: null,
+                        firstOfferFloor: result.firstOfferFloor,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
+            } else if (result.reserveWasMet && !result.reserveMet) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Reserve is no longer met',
+                    message: `The previous highest bid on ${vehicle} was cancelled. The current highest active bid is now £${Number(result.highestActiveBid).toLocaleString('en-GB')}, below your reserve of £${Number(result.listing.auction!.reservePrice).toLocaleString('en-GB')}.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'BID_CANCELLED',
+                    link: result.afterHighest?.id
+                        ? `/auctions/live/${result.listing.auction!.id}?sellerOffer=${result.afterHighest.id}`
+                        : `/auctions/live/${result.listing.auction!.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: result.activeBidCount,
+                        highestActiveBid: result.highestActiveBid,
+                        highestActiveBidId: result.afterHighest?.id ?? null,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
+            } else if (!result.reserveMet && result.afterHighest) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Highest auction offer changed',
+                    message: `The previous highest offer on ${vehicle} was cancelled. The current highest active offer is now £${Number(result.highestActiveBid).toLocaleString('en-GB')} against your £${Number(result.listing.auction!.reservePrice).toLocaleString('en-GB')} reserve. You can accept the current offer or keep the auction running.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'ACCEPT_OR_WAIT',
+                    link: `/auctions/live/${result.listing.auction!.id}?sellerOffer=${result.afterHighest.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: result.activeBidCount,
+                        highestActiveBid: result.highestActiveBid,
+                        highestActiveBidId: result.afterHighest.id,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
+            }
+        }
     }
 
     async findMyActiveAuctionPositions(bidderId: string): Promise<any[]> {

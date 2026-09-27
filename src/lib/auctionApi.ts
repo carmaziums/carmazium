@@ -164,6 +164,7 @@ export interface BidBroadcastPayload {
     bidderId: string;
     timestamp: string;
     newEndTime?: string;
+    buyItNowCancelled?: boolean;
 }
 
 export interface AuctionEndPayload {
@@ -286,8 +287,9 @@ export function getBidCount(auction: Auction): number {
 
 export function isAntiSnipeActive(auction: Auction): boolean {
     if (auction.status !== 'ACTIVE') return false;
-    const tenMinutes = 10 * 60 * 1000;
-    return new Date(auction.endTime).getTime() - Date.now() <= tenMinutes;
+    const antiSnipeWindow = 3 * 60 * 1000;
+    const remaining = new Date(auction.endTime).getTime() - Date.now();
+    return remaining > 0 && remaining <= antiSnipeWindow;
 }
 
 // ─── Buy It Now & Cancel Bid API Functions ────────────────────────────────────
@@ -325,4 +327,4 @@ export async function updateAuctionDigest(auctionId: string, data: UpdateAuction
 
 // Socket events consumed by live auction page (no API function needed — socket.on() directly):
 // 'bin:pending' → { auctionId: string; buyerId: string }
-// 'bid:cancelled' → { auctionId: string; bidId: string }
+// 'bid:cancelled' → canonical post-cancellation bid position (leader/count/reserve state)

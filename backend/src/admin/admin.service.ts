@@ -958,7 +958,16 @@ export class AdminService {
     /** Lightweight list of every dealer, for the "assign winner" dropdown. */
     async getAllDealersForAssignment() {
         return this.prisma.user.findMany({
-            where: { role: 'DEALER', deletedAt: null },
+            where: {
+                role: 'DEALER',
+                deletedAt: null,
+                dealerProfile: {
+                    is: {
+                        isVerified: true,
+                        deletedAt: null,
+                    },
+                },
+            },
             select: {
                 id: true,
                 firstName: true,

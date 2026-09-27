@@ -837,7 +837,7 @@ export class EmailService {
                 <p style="margin: 0; font-size: 28px; font-weight: 800; color: #ed1c24;">£${winningAmount.toLocaleString('en-GB')}</p>
             </div>
             <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                Contact the seller through the auction page to arrange collection or delivery. A chat room has been automatically created for you.
+                To continue, pay the £125 CarMazium buyer fee from the auction page. Once payment is confirmed, the seller&apos;s contact details and auction chat will unlock so you can arrange inspection, collection or delivery.
             </p>
             <div style="text-align: center; margin: 36px 0 24px;">
                 <a href="${this.frontendUrl}/auctions/live/${auctionId}" target="_blank"
@@ -864,7 +864,7 @@ export class EmailService {
                 <p style="margin: 0; font-size: 28px; font-weight: 800; color: #4ade80;">£${winningAmount.toLocaleString('en-GB')}</p>
             </div>
             <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                A chat room has been created so you can coordinate handover with the buyer. Once the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.
+                The winning dealer must first pay the £125 CarMazium buyer fee. Once that payment is confirmed, seller contact and auction chat will unlock so you can coordinate inspection and handover. After the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.
             </p>
             <div style="text-align: center; margin: 36px 0 24px;">
                 <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"

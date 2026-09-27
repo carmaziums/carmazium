@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { BidsService } from './bids.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuctionsService } from '../auctions/auctions.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -14,6 +13,7 @@ describe('BidsService — incremental bidding', () => {
     const auctionListing = {
         id: 'listing-1',
         type: 'AUCTION',
+        status: 'ACTIVE',
         deletedAt: null,
         price: 10000,
         sellerId: 'seller-1',
@@ -23,6 +23,8 @@ describe('BidsService — incremental bidding', () => {
             startingBid: 5000,
             minIncrement: 100,
             reservePrice: 9000,
+            startTime: new Date('2026-09-27T10:00:00.000Z'),
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
         },
     };
 
@@ -46,7 +48,10 @@ describe('BidsService — incremental bidding', () => {
                 })),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $queryRaw: jest.fn(),
+            auction: { update: jest.fn() },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
         notificationsService = { create: jest.fn().mockResolvedValue(null) };
 
@@ -54,10 +59,6 @@ describe('BidsService — incremental bidding', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
-                {
-                    provide: AuctionsService,
-                    useValue: { maybeExtend: jest.fn().mockResolvedValue(null) },
-                },
                 {
                     provide: AuctionGateway,
                     useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() },
@@ -112,24 +113,270 @@ describe('BidsService — incremental bidding', () => {
         expect(result.id).toBe('bid-B');
     });
 
-    it('rejects the first bid if it is below the auction starting bid', async () => {
+    it('allows the first real dealer offer below the displayed starting bid', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
         prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-first-offer',
+            amount: 4500,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
 
-        await expect(
-            service.create('bidder-A', { listingId: 'listing-1', amount: 4500 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+        const result = await service.create('bidder-A', {
+            listingId: 'listing-1',
+            amount: 4500,
+        } as any);
+
+        expect(result.id).toBe('bid-first-offer');
+        expect(prisma.bid.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                bidderId: 'bidder-A',
+                amount: 4500,
+            },
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_bid_placed',
+                userId: 'bidder-A',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    auction_run_key: 'auction-1:2026-09-27T10:00:00.000Z',
+                    bid_id: 'bid-first-offer',
+                    amount: 4500,
+                    is_first_offer: true,
+                    first_offer_floor: 3500,
+                    starting_bid: 5000,
+                    reserve_price: 9000,
+                    percent_below_reserve: 50,
+                    percent_below_starting_bid: 10,
+                }),
+            }),
+        });
     });
 
-    it('enforces the 70% market-value floor even on a legacy auction with a lower stored starting bid', async () => {
+    it('rejects a first offer more than 30% below the lower of starting bid and reserve', async () => {
         prisma.listing.findUnique.mockResolvedValue(auctionListing);
         prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
         prisma.bid.findFirst.mockResolvedValue(null);
 
         await expect(
-            service.create('bidder-A', { listingId: 'listing-1', amount: 6900 } as any),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/starting bid/i) });
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3499 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/first offer must be at least £3,500/i) });
+    });
+
+    it('uses a lowered reserve instead of the higher starting bid when there are no real bids', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                startingBid: 5000,
+                reservePrice: 4000,
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-low-reserve',
+            amount: 2800,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await expect(
+            service.create('bidder-A', { listingId: 'listing-1', amount: 2799 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/first offer must be at least £2,800/i) });
+
+        const result = await service.create('bidder-A', {
+            listingId: 'listing-1',
+            amount: 2800,
+        } as any);
+
+        expect(result.id).toBe('bid-low-reserve');
+    });
+
+    it('returns to normal increment bidding after the first real bid exists', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue({ id: 'bid-A', amount: 4500 });
+
+        await expect(
+            service.create('bidder-B', { listingId: 'listing-1', amount: 4599 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/at least £4,600/i) });
+    });
+
+    it('places validation and bid creation inside a transaction-scoped auction lock', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-locked',
+            amount: 3500,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.bid.findFirst).toHaveBeenCalledTimes(1);
+        expect(prisma.bid.create).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+            prisma.bid.findFirst.mock.invocationCallOrder[0],
+        );
+        expect(prisma.bid.findFirst.mock.invocationCallOrder[0]).toBeLessThan(
+            prisma.bid.create.mock.invocationCallOrder[0],
+        );
+    });
+
+    it('forces a simultaneous second first-offer attempt onto the normal increment rule', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockImplementation(({ where }: any) => Promise.resolve({
+            role: 'DEALER',
+            firstName: where.id === 'bidder-A' ? 'Alice' : 'Bob',
+            lastName: 'Dealer',
+        }));
+
+        const storedBids: any[] = [];
+        prisma.bid.findFirst.mockImplementation(async () => {
+            return storedBids.length
+                ? [...storedBids].sort((a, b) => Number(b.amount) - Number(a.amount))[0]
+                : null;
+        });
+        prisma.bid.create.mockImplementation(async ({ data }: any) => {
+            const bid = {
+                id: `bid-${storedBids.length + 1}`,
+                ...data,
+                timestamp: new Date(),
+            };
+            storedBids.push(bid);
+            return bid;
+        });
+
+        // Unit-test mutex emulates the PostgreSQL per-listing advisory lock:
+        // only one interactive transaction can evaluate/create at a time.
+        let lockTail = Promise.resolve();
+        prisma.$transaction.mockImplementation(async (callback: any) => {
+            const previous = lockTail;
+            let release!: () => void;
+            lockTail = new Promise<void>((resolve) => { release = resolve; });
+            await previous;
+            try {
+                return await callback(prisma);
+            } finally {
+                release();
+            }
+        });
+
+        const results = await Promise.allSettled([
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any),
+            service.create('bidder-B', { listingId: 'listing-1', amount: 3500 } as any),
+        ]);
+
+        expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+        expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+        expect(storedBids).toHaveLength(1);
+        expect((results.find((result) => result.status === 'rejected') as PromiseRejectedResult).reason.message)
+            .toMatch(/at least £3,600/i);
+    });
+
+    it('rejects a bid that reaches the locked backend after the auction deadline', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                endTime: new Date(Date.now() - 1000),
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await expect(
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.create).not.toHaveBeenCalled();
+    });
+
+    it('extends the end time inside the same locked transaction for an anti-snipe bid', async () => {
+        const endTime = new Date(Date.now() + 2 * 60 * 1000);
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                endTime,
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        const timestamp = new Date();
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-anti-snipe',
+            amount: 3500,
+            timestamp,
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                endTime: new Date(endTime.getTime() + 3 * 60 * 1000),
+            }),
+        });
+    });
+
+    it('clears a pending Buy It Now request when a bid reaches reserve even below the BIN price', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                reservePrice: 9000,
+                buyItNowPrice: 12000,
+                buyItNowPendingBuyerId: 'bin-buyer',
+                buyItNowPendingAt: new Date(),
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-reserve',
+            amount: 9000,
+            timestamp: new Date(),
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 9000 } as any);
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'bin-buyer',
+                title: 'Buy It Now request cancelled',
+            }),
+        );
+        expect((service as any).auctionGateway.broadcastBid).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                bidId: 'bid-reserve',
+                buyItNowCancelled: true,
+            }),
+        );
     });
 
     it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
@@ -266,6 +513,8 @@ describe('BidsService — incremental bidding', () => {
 describe('BidsService — cancelBid', () => {
     let service: BidsService;
     let prisma: any;
+    let auctionGateway: any;
+    let notificationsService: any;
 
     beforeEach(async () => {
         prisma = {
@@ -287,24 +536,27 @@ describe('BidsService — cancelBid', () => {
                 })),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $queryRaw: jest.fn(),
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
+        auctionGateway = {
+            broadcastBid: jest.fn(),
+            broadcastBidCancelled: jest.fn(),
+        };
+        notificationsService = { create: jest.fn().mockResolvedValue(null) };
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
                 {
-                    provide: AuctionsService,
-                    useValue: { maybeExtend: jest.fn().mockResolvedValue(null) },
-                },
-                {
                     provide: AuctionGateway,
-                    useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() },
+                    useValue: auctionGateway,
                 },
                 {
                     provide: NotificationsService,
-                    useValue: { create: jest.fn().mockResolvedValue(null) },
+                    useValue: notificationsService,
                 },
             ],
         }).compile();
@@ -361,18 +613,265 @@ describe('BidsService — cancelBid', () => {
         // Listing with ACTIVE auction
         prisma.listing.findUnique.mockResolvedValue({
             id: 'listing-1',
-            auction: { id: 'auction-1', status: 'ACTIVE' },
+            title: 'Test vehicle',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
+                startingBid: 7000,
+                reservePrice: 6000,
+            },
         });
+        prisma.bid.findFirst
+            .mockResolvedValueOnce(mockBid)
+            .mockResolvedValueOnce(null);
+        prisma.bid.count.mockResolvedValue(0);
         prisma.bid.update.mockResolvedValue({ ...mockBid, cancelledAt: new Date() });
 
         await expect(
             (service as any).cancelBid('bid-1', 'owner-user'),
         ).resolves.toBeUndefined();
 
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(prisma.bid.update).toHaveBeenCalledWith({
             where: { id: 'bid-1' },
             data: { cancelledAt: expect.any(Date) },
         });
+        expect(auctionGateway.broadcastBidCancelled).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                auctionId: 'auction-1',
+                bidId: 'bid-1',
+                highestActiveBid: null,
+                highestActiveBidId: null,
+                highestActiveBidderId: null,
+                activeBidCount: 0,
+                reserveMet: false,
+            }),
+        );
+    });
+
+    it('returns to the 30% zero-bid floor when the final active bid is cancelled', async () => {
+        const mockBid = {
+            id: 'bid-only',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 7000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        prisma.bid.findUnique.mockResolvedValue(mockBid);
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            title: 'BMW M3',
+            year: 2022,
+            make: 'BMW',
+            model: 'M3',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
+                startingBid: 7000,
+                reservePrice: 6000,
+            },
+        });
+        prisma.bid.findFirst
+            .mockResolvedValueOnce(mockBid)
+            .mockResolvedValueOnce(null);
+        prisma.bid.count.mockResolvedValue(0);
+
+        await service.cancelBid('bid-only', 'owner-user');
+
+        expect(auctionGateway.broadcastBidCancelled).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                activeBidCount: 0,
+                highestActiveBid: null,
+                firstOfferFloor: 4200,
+                reserveMet: false,
+            }),
+        );
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                title: 'Highest auction bid cancelled',
+                message: expect.stringMatching(/first offers can be made from £4,200/i),
+            }),
+        );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_bid_cancelled',
+                userId: 'owner-user',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    cancelled_bid_id: 'bid-only',
+                    active_bid_count_after: 0,
+                    first_offer_floor_after: 4200,
+                    reserve_met_after: false,
+                }),
+            }),
+        });
+    });
+
+    it('drops reserve-met state to the next real bid when the highest bid is cancelled', async () => {
+        const cancelledBid = {
+            id: 'bid-high',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 10000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        const nextBid = {
+            id: 'bid-next',
+            bidderId: 'dealer-2',
+            listingId: 'listing-1',
+            amount: 8500,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        prisma.bid.findUnique.mockResolvedValue(cancelledBid);
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            title: 'BMW M3',
+            year: 2022,
+            make: 'BMW',
+            model: 'M3',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
+                startingBid: 7000,
+                reservePrice: 9000,
+            },
+        });
+        prisma.bid.findFirst
+            .mockResolvedValueOnce(cancelledBid)
+            .mockResolvedValueOnce(nextBid);
+        prisma.bid.count.mockResolvedValue(1);
+
+        await service.cancelBid('bid-high', 'owner-user');
+
+        expect(auctionGateway.broadcastBidCancelled).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                highestActiveBid: 8500,
+                highestActiveBidId: 'bid-next',
+                highestActiveBidderId: 'dealer-2',
+                activeBidCount: 1,
+                reserveMet: false,
+                firstOfferFloor: null,
+            }),
+        );
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                title: 'Reserve is no longer met',
+                data: expect.objectContaining({
+                    highestActiveBid: 8500,
+                    highestActiveBidId: 'bid-next',
+                    reserveMet: false,
+                }),
+            }),
+        );
+    });
+
+    it('does not change the current leader when a lower historical bid is cancelled', async () => {
+        const lowerBid = {
+            id: 'bid-lower',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 7000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        const highestBid = {
+            id: 'bid-high',
+            bidderId: 'dealer-2',
+            listingId: 'listing-1',
+            amount: 9500,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        prisma.bid.findUnique.mockResolvedValue(lowerBid);
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
+                startingBid: 7000,
+                reservePrice: 9000,
+            },
+        });
+        prisma.bid.findFirst
+            .mockResolvedValueOnce(highestBid)
+            .mockResolvedValueOnce(highestBid);
+        prisma.bid.count.mockResolvedValue(1);
+
+        await service.cancelBid('bid-lower', 'owner-user');
+
+        expect(auctionGateway.broadcastBidCancelled).toHaveBeenCalledWith(
+            'auction-1',
+            expect.objectContaining({
+                highestActiveBid: 9500,
+                highestActiveBidId: 'bid-high',
+                activeBidCount: 1,
+                reserveMet: true,
+            }),
+        );
+        expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling a bid after the auction deadline even before lifecycle finalisation', async () => {
+        const bid = {
+            id: 'bid-ended',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 7000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        prisma.bid.findUnique.mockResolvedValue(bid);
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() - 1000),
+                startingBid: 7000,
+                reservePrice: 9000,
+            },
+        });
+
+        await expect(service.cancelBid('bid-ended', 'owner-user'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBidCancelled).not.toHaveBeenCalled();
     });
 
     it('rejects cancelling a bid archived from a previous auction run', async () => {
@@ -451,7 +950,6 @@ describe('BidsService — current auction positions', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
-                { provide: AuctionsService, useValue: { maybeExtend: jest.fn().mockResolvedValue(null) } },
                 { provide: AuctionGateway, useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() } },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
             ],

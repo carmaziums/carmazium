@@ -674,6 +674,277 @@ export class AnalyticsService {
         };
     }
 
+    // ─── Admin: Auction First-Offer Analytics ──────────────────────────────────
+
+    /**
+     * Measures the new zero-bid opening-offer rule from first-party server events.
+     *
+     * Tracking intentionally starts when this feature is deployed. Historical
+     * auctions are not reconstructed or guessed because the exact first-offer
+     * floor, reserve at bid time and cancellation sequence were not previously
+     * retained as immutable analytics facts.
+     */
+    async getAuctionFirstOfferAnalytics(days = 30) {
+        const safeDays = Math.min(365, Math.max(1, Math.trunc(Number(days) || 30)));
+
+        const [summaryRaw, recentRaw] = await Promise.all([
+            this.prisma.$queryRawUnsafe<Array<{
+                first_offers: string;
+                unique_auctions: string;
+                competition_auctions: string;
+                first_offer_cancellations: string;
+                seller_accepted_sales: string;
+                reserve_met_sales: string;
+                buy_it_now_sales: string;
+                admin_assigned_sales: string;
+                unsold_auctions: string;
+                pending_auctions: string;
+                zero_bid_unsold: string;
+                zero_bid_reserve_corrections: string;
+                avg_first_offer: string | null;
+                avg_reserve_at_first_offer: string | null;
+                avg_percent_below_reserve: string | null;
+                avg_percent_below_starting: string | null;
+            }>>(`
+                WITH first_offers AS (
+                    SELECT
+                        e.id,
+                        e."createdAt",
+                        e.payload,
+                        e.payload->>'auction_id' AS auction_id,
+                        COALESCE(NULLIF(e.payload->>'auction_run_key', ''), e.payload->>'auction_id') AS auction_run_key,
+                        e.payload->>'bid_id' AS bid_id,
+                        e."userId" AS first_bidder_id,
+                        NULLIF(e.payload->>'amount', '')::NUMERIC AS amount,
+                        NULLIF(e.payload->>'reserve_price', '')::NUMERIC AS reserve_price,
+                        NULLIF(e.payload->>'percent_below_reserve', '')::NUMERIC AS percent_below_reserve,
+                        NULLIF(e.payload->>'percent_below_starting_bid', '')::NUMERIC AS percent_below_starting
+                    FROM analytics_events e
+                    WHERE e.type = 'auction_bid_placed'
+                      AND LOWER(COALESCE(e.payload->>'is_first_offer', 'false')) = 'true'
+                      AND e."createdAt" >= now() - interval '${safeDays} days'
+                ),
+                cohort AS (
+                    SELECT
+                        f.*,
+                        EXISTS (
+                            SELECT 1
+                            FROM analytics_events b
+                            WHERE b.type = 'auction_bid_placed'
+                              AND COALESCE(NULLIF(b.payload->>'auction_run_key', ''), b.payload->>'auction_id') = f.auction_run_key
+                              AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
+                              AND (f.first_bidder_id IS NULL OR b."userId" IS DISTINCT FROM f.first_bidder_id)
+                              AND b."createdAt" > f."createdAt"
+                        ) AS had_competition,
+                        EXISTS (
+                            SELECT 1
+                            FROM analytics_events c
+                            WHERE c.type = 'auction_bid_cancelled'
+                              AND c.payload->>'cancelled_bid_id' = f.bid_id
+                              AND c."createdAt" >= f."createdAt"
+                        ) AS first_offer_cancelled,
+                        (
+                            SELECT o.payload->>'outcome'
+                            FROM analytics_events o
+                            WHERE o.type = 'auction_outcome'
+                              AND COALESCE(NULLIF(o.payload->>'auction_run_key', ''), o.payload->>'auction_id') = f.auction_run_key
+                              AND o."createdAt" >= f."createdAt"
+                            ORDER BY o."createdAt" DESC
+                            LIMIT 1
+                        ) AS outcome
+                    FROM first_offers f
+                )
+                SELECT
+                    COUNT(*)::TEXT AS first_offers,
+                    COUNT(DISTINCT auction_run_key)::TEXT AS unique_auctions,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE had_competition)::TEXT AS competition_auctions,
+                    COUNT(*) FILTER (WHERE first_offer_cancelled)::TEXT AS first_offer_cancellations,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'SELLER_ACCEPTED_BELOW_RESERVE')::TEXT AS seller_accepted_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'RESERVE_MET_SALE')::TEXT AS reserve_met_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'BUY_IT_NOW_SALE')::TEXT AS buy_it_now_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome = 'ADMIN_ASSIGNED_SALE')::TEXT AS admin_assigned_sales,
+                    COUNT(DISTINCT auction_run_key) FILTER (
+                        WHERE outcome IN (
+                            'BELOW_RESERVE_UNSOLD',
+                            'SELLER_EARLY_CLOSE_UNSOLD',
+                            'NO_BIDS_UNSOLD',
+                            'WIN_REVERTED_UNPAID',
+                            'BUYER_REFUSED_AFTER_INSPECTION'
+                        )
+                    )::TEXT AS unsold_auctions,
+                    COUNT(DISTINCT auction_run_key) FILTER (WHERE outcome IS NULL)::TEXT AS pending_auctions,
+                    (
+                        SELECT COUNT(*)::TEXT
+                        FROM analytics_events o
+                        WHERE o.type = 'auction_outcome'
+                          AND o.payload->>'outcome' = 'NO_BIDS_UNSOLD'
+                          AND o."createdAt" >= now() - interval '${safeDays} days'
+                    ) AS zero_bid_unsold,
+                    (
+                        SELECT COUNT(*)::TEXT
+                        FROM analytics_events r
+                        WHERE r.type = 'auction_reserve_corrected'
+                          AND COALESCE(r.payload->>'active_bid_count', '0') = '0'
+                          AND r."createdAt" >= now() - interval '${safeDays} days'
+                    ) AS zero_bid_reserve_corrections,
+                    AVG(amount)::TEXT AS avg_first_offer,
+                    AVG(reserve_price)::TEXT AS avg_reserve_at_first_offer,
+                    AVG(percent_below_reserve)::TEXT AS avg_percent_below_reserve,
+                    AVG(percent_below_starting)::TEXT AS avg_percent_below_starting
+                FROM cohort
+            `),
+            this.prisma.$queryRawUnsafe<Array<{
+                id: string;
+                created_at: Date;
+                auction_id: string | null;
+                listing_id: string | null;
+                bid_id: string | null;
+                registration: string | null;
+                vehicle: string | null;
+                amount: string | null;
+                starting_bid: string | null;
+                reserve_price: string | null;
+                first_offer_floor: string | null;
+                percent_below_reserve: string | null;
+                percent_below_starting: string | null;
+                subsequent_bid_count: string;
+                first_offer_cancelled: boolean;
+                outcome: string | null;
+                outcome_at: Date | null;
+            }>>(`
+                SELECT
+                    f.id,
+                    f."createdAt" AS created_at,
+                    f.payload->>'auction_id' AS auction_id,
+                    f.payload->>'listing_id' AS listing_id,
+                    f.payload->>'bid_id' AS bid_id,
+                    NULLIF(f.payload->>'registration', '') AS registration,
+                    NULLIF(f.payload->>'vehicle', '') AS vehicle,
+                    NULLIF(f.payload->>'amount', '') AS amount,
+                    NULLIF(f.payload->>'starting_bid', '') AS starting_bid,
+                    NULLIF(f.payload->>'reserve_price', '') AS reserve_price,
+                    NULLIF(f.payload->>'first_offer_floor', '') AS first_offer_floor,
+                    NULLIF(f.payload->>'percent_below_reserve', '') AS percent_below_reserve,
+                    NULLIF(f.payload->>'percent_below_starting_bid', '') AS percent_below_starting,
+                    (
+                        SELECT COUNT(*)::TEXT
+                        FROM analytics_events b
+                        WHERE b.type = 'auction_bid_placed'
+                          AND COALESCE(NULLIF(b.payload->>'auction_run_key', ''), b.payload->>'auction_id')
+                              = COALESCE(NULLIF(f.payload->>'auction_run_key', ''), f.payload->>'auction_id')
+                          AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
+                          AND b."createdAt" > f."createdAt"
+                    ) AS subsequent_bid_count,
+                    EXISTS (
+                        SELECT 1
+                        FROM analytics_events c
+                        WHERE c.type = 'auction_bid_cancelled'
+                          AND c.payload->>'cancelled_bid_id' = f.payload->>'bid_id'
+                          AND c."createdAt" >= f."createdAt"
+                    ) AS first_offer_cancelled,
+                    outcome.payload->>'outcome' AS outcome,
+                    outcome."createdAt" AS outcome_at
+                FROM analytics_events f
+                LEFT JOIN LATERAL (
+                    SELECT o.payload, o."createdAt"
+                    FROM analytics_events o
+                    WHERE o.type = 'auction_outcome'
+                      AND COALESCE(NULLIF(o.payload->>'auction_run_key', ''), o.payload->>'auction_id')
+                          = COALESCE(NULLIF(f.payload->>'auction_run_key', ''), f.payload->>'auction_id')
+                      AND o."createdAt" >= f."createdAt"
+                    ORDER BY o."createdAt" DESC
+                    LIMIT 1
+                ) outcome ON TRUE
+                WHERE f.type = 'auction_bid_placed'
+                  AND LOWER(COALESCE(f.payload->>'is_first_offer', 'false')) = 'true'
+                  AND f."createdAt" >= now() - interval '${safeDays} days'
+                ORDER BY f."createdAt" DESC
+                LIMIT 100
+            `),
+        ]);
+
+        const summary = summaryRaw[0] ?? {
+            first_offers: '0',
+            unique_auctions: '0',
+            competition_auctions: '0',
+            first_offer_cancellations: '0',
+            seller_accepted_sales: '0',
+            reserve_met_sales: '0',
+            buy_it_now_sales: '0',
+            admin_assigned_sales: '0',
+            unsold_auctions: '0',
+            pending_auctions: '0',
+            zero_bid_unsold: '0',
+            zero_bid_reserve_corrections: '0',
+            avg_first_offer: null,
+            avg_reserve_at_first_offer: null,
+            avg_percent_below_reserve: null,
+            avg_percent_below_starting: null,
+        };
+
+        const uniqueAuctions = Number(summary.unique_auctions ?? 0);
+        const competitionAuctions = Number(summary.competition_auctions ?? 0);
+        const sellerAcceptedSales = Number(summary.seller_accepted_sales ?? 0);
+        const reserveMetSales = Number(summary.reserve_met_sales ?? 0);
+        const buyItNowSales = Number(summary.buy_it_now_sales ?? 0);
+        const adminAssignedSales = Number(summary.admin_assigned_sales ?? 0);
+        const completedSales = sellerAcceptedSales + reserveMetSales + buyItNowSales + adminAssignedSales;
+
+        const asNumber = (value: string | null | undefined) => {
+            if (value == null || value === '') return null;
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        };
+        const rate = (numerator: number, denominator: number) =>
+            denominator > 0 ? Math.round((numerator / denominator) * 1000) / 10 : 0;
+
+        return {
+            generatedAt: new Date().toISOString(),
+            windowDays: safeDays,
+            trackingNote: 'Server-side tracking starts with the first-offer feature deployment; historical auctions are not reconstructed.',
+            summary: {
+                firstOffers: Number(summary.first_offers ?? 0),
+                uniqueAuctions,
+                competitionAuctions,
+                competitionRate: rate(competitionAuctions, uniqueAuctions),
+                firstOfferCancellations: Number(summary.first_offer_cancellations ?? 0),
+                sellerAcceptedSales,
+                reserveMetSales,
+                buyItNowSales,
+                adminAssignedSales,
+                completedSales,
+                saleRate: rate(completedSales, uniqueAuctions),
+                unsoldAuctions: Number(summary.unsold_auctions ?? 0),
+                pendingAuctions: Number(summary.pending_auctions ?? 0),
+                zeroBidUnsold: Number(summary.zero_bid_unsold ?? 0),
+                zeroBidReserveCorrections: Number(summary.zero_bid_reserve_corrections ?? 0),
+                averageFirstOffer: asNumber(summary.avg_first_offer),
+                averageReserveAtFirstOffer: asNumber(summary.avg_reserve_at_first_offer),
+                averagePercentBelowReserve: asNumber(summary.avg_percent_below_reserve),
+                averagePercentBelowStartingBid: asNumber(summary.avg_percent_below_starting),
+            },
+            recent: recentRaw.map((row) => ({
+                id: row.id,
+                createdAt: row.created_at,
+                auctionId: row.auction_id,
+                listingId: row.listing_id,
+                bidId: row.bid_id,
+                registration: row.registration,
+                vehicle: row.vehicle,
+                amount: asNumber(row.amount),
+                startingBid: asNumber(row.starting_bid),
+                reservePrice: asNumber(row.reserve_price),
+                firstOfferFloor: asNumber(row.first_offer_floor),
+                percentBelowReserve: asNumber(row.percent_below_reserve),
+                percentBelowStartingBid: asNumber(row.percent_below_starting),
+                subsequentBidCount: Number(row.subsequent_bid_count ?? 0),
+                firstOfferCancelled: Boolean(row.first_offer_cancelled),
+                outcome: row.outcome,
+                outcomeAt: row.outcome_at,
+            })),
+        };
+    }
+
     // ─── Admin: Paginated Events ──────────────────────────────────────────────
 
     async getEvents(page = 1, limit = 50, type?: string) {

@@ -25,7 +25,7 @@ import {
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
 import { getStripeConnectStatus, alsoAuction, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
-import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
+import { getAuctionFirstOfferFloor, getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -578,7 +578,7 @@ function SellerAuctionsPage() {
                                             </label>
                                             <div className="flex items-center gap-2 h-11 px-3 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg text-[var(--text-muted)] text-sm">
                                                 <Clock size={14} className="text-primary shrink-0" />
-                                                <span>24 hours · Open bidding</span>
+                                                <span>24 hours · Verified dealer bidding</span>
                                                 {(formStartImmediately || formStartTime) && (
                                                     <span className="ml-auto text-xs text-[var(--text-secondary)] shrink-0">
                                                         ends {addHours(formStartImmediately ? new Date().toISOString() : new Date(formStartTime).toISOString(), 24)}
@@ -754,8 +754,18 @@ function SellerAuctionsPage() {
                                             ) : null}
                                         </div>
 
-                                        <div className="flex items-center justify-between mt-2">
-                                            <span className="font-mono font-bold text-lg">£{getCurrentBid(auction).toLocaleString()}</span>
+                                        <div className="flex items-start justify-between mt-2 gap-3">
+                                            <div>
+                                                <span className="font-mono font-bold text-lg">£{getCurrentBid(auction).toLocaleString()}</span>
+                                                <p className="text-[10px] uppercase tracking-widest font-bold text-[var(--text-muted)]">
+                                                    {getBidCount(auction) === 0 ? "Starting bid" : "Current bid"}
+                                                </p>
+                                                {auction.status === "ACTIVE" && getBidCount(auction) === 0 && (
+                                                    <p className="text-[10px] font-black text-amber-400 mt-0.5">
+                                                        First offer from £{getAuctionFirstOfferFloor(Number(auction.startingBid), Number(auction.reservePrice)).toLocaleString()}
+                                                    </p>
+                                                )}
+                                            </div>
                                             <span className="text-sm text-[var(--text-muted)]">{getBidCount(auction)} bid{getBidCount(auction) === 1 ? '' : 's'}</span>
                                         </div>
 
@@ -926,8 +936,16 @@ function SellerAuctionsPage() {
                                                 </td>
 
                                                 {/* Current bid */}
-                                                <td className="px-6 py-4 text-right font-mono font-bold">
-                                                    £{getCurrentBid(auction).toLocaleString()}
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="font-mono font-bold">£{getCurrentBid(auction).toLocaleString()}</div>
+                                                    <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--text-muted)]">
+                                                        {getBidCount(auction) === 0 ? "starting bid" : "current bid"}
+                                                    </div>
+                                                    {auction.status === "ACTIVE" && getBidCount(auction) === 0 && (
+                                                        <div className="text-[10px] font-black text-amber-400">
+                                                            first offer £{getAuctionFirstOfferFloor(Number(auction.startingBid), Number(auction.reservePrice)).toLocaleString()}
+                                                        </div>
+                                                    )}
                                                 </td>
 
                                                 {/* Bids */}

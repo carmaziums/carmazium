@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { HandoverDocumentsService } from './handover-documents.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -23,6 +23,8 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         id: 'auction-1',
         listingId: 'listing-1',
         status: 'ACTIVE',
+        startTime: new Date(Date.now() - 60 * 60 * 1000),
+        endTime: new Date(Date.now() + 60 * 60 * 1000),
         reservePrice: 20000,
         startingBid: 10000,
         winningBidAmount: null,
@@ -33,6 +35,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         listing: {
             id: 'listing-1',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             make: 'BMW',
             model: 'M3',
             year: 2022,
@@ -55,6 +58,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 findFirst: jest.fn().mockResolvedValue(null),
                 findUnique: jest.fn(),
                 findMany: jest.fn(),
+                count: jest.fn().mockResolvedValue(0),
             },
             listing: {
                 findUnique: jest.fn(),
@@ -63,13 +67,28 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             sale: { create: jest.fn(), deleteMany: jest.fn() },
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
-            user: { findUnique: jest.fn().mockResolvedValue(null) },
+            user: {
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: where.id,
+                    role: 'DEALER',
+                    deletedAt: null,
+                })),
+            },
             dealerProfile: {
-                findUnique: jest.fn().mockResolvedValue(null),
+                findUnique: jest.fn().mockImplementation(({ where }: any) => Promise.resolve({
+                    id: `dealer-${where.userId}`,
+                    userId: where.userId,
+                    isVerified: true,
+                })),
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $transaction: jest.fn(),
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (arg: any) => {
+                if (typeof arg === 'function') return arg(prisma);
+                return Promise.all(arg);
+            }),
         };
 
         notificationsService = {
@@ -141,6 +160,18 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('triggerBuyItNow: rejects after the auction deadline even before lifecycle finalisation', async () => {
+        const auction = makeActiveAuction({ endTime: new Date(Date.now() - 1000) });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'buyer-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
+    });
+
     it('triggerBuyItNow: throws BadRequestException when buyItNowPrice is null', async () => {
         const auction = makeActiveAuction({ buyItNowPrice: null });
         prisma.auction.findUnique.mockResolvedValue(auction);
@@ -184,6 +215,44 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         );
     });
 
+    it('triggerBuyItNow: blocks non-dealer and unverified accounts before any auction mutation', async () => {
+        prisma.user.findUnique.mockResolvedValueOnce({ role: 'BUYER' });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'retail-buyer'),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        prisma.user.findUnique.mockResolvedValueOnce({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValueOnce({
+            id: 'dealer-unverified',
+            userId: 'dealer-unverified',
+            isVerified: false,
+        });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'dealer-unverified'),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('triggerBuyItNow: blocks the seller dealership from buying its own auction', async () => {
+        const auction = makeActiveAuction();
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValue({
+            id: 'dealer-seller',
+            userId: 'seller-1',
+            isVerified: true,
+        });
+
+        await expect(
+            service.triggerBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/own auction/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     // ── confirmBuyItNow ───────────────────────────────────────────────────────
 
     it('confirmBuyItNow: throws BadRequestException when buyItNowPendingBuyerId is null', async () => {
@@ -204,8 +273,6 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue(null);
-        prisma.$transaction.mockResolvedValue([]);
-
         await service.confirmBuyItNow('auction-1', 'seller-1');
 
         expect(prisma.$transaction).toHaveBeenCalled();
@@ -213,6 +280,41 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             'auction-1',
             expect.objectContaining({ auctionId: 'auction-1', winnerId: 'buyer-1' }),
         );
+    });
+
+    it('confirmBuyItNow: rejects after the auction deadline before lifecycle finalisation', async () => {
+        const auction = makeActiveAuction({
+            endTime: new Date(Date.now() - 1000),
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: new Date(),
+            buyItNowPrice: 25000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.confirmBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
+    });
+
+    it('confirmBuyItNow: refuses a stale confirmation when a locked bid has already met reserve', async () => {
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: new Date(),
+            buyItNowPrice: 25000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue({ id: 'bid-reserve', amount: 20000 });
+        prisma.bid.count.mockResolvedValue(1);
+
+        await expect(
+            service.confirmBuyItNow('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/reserve is met/i) });
+
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
     });
 
     // ── declineBuyItNow ───────────────────────────────────────────────────────
@@ -325,7 +427,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         await expect(
             service.triggerBuyItNow('auction-1', 'finance-1'),
-        ).rejects.toThrow(/does not allow this auction purchase action/i);
+        ).rejects.toThrow(/does not allow auction purchase commitments/i);
 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
@@ -347,8 +449,6 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 isVerified: true,
             },
         });
-        prisma.$transaction.mockResolvedValue([]);
-
         await service.confirmBuyItNow('auction-1', 'admin-staff-1');
 
         expect(prisma.sale.create).toHaveBeenCalledWith({
@@ -374,6 +474,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue({ amount: 18000 });
+        prisma.bid.count.mockResolvedValue(3);
         prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 17500 });
 
         await service.adminCorrectReservePrice('auction-1', 17500, 'Seller entered the wrong reserve');
@@ -386,14 +487,95 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 buyItNowPendingAt: null,
             }),
         });
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 17500);
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_reserve_corrected',
+                payload: expect.objectContaining({
+                    old_reserve: 20000,
+                    new_reserve: 17500,
+                    active_bid_count: 3,
+                    reserve_met_after: true,
+                }),
+            }),
+        });
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
                 userId: 'seller-1',
                 type: 'AUCTION_UPDATED',
                 actionType: 'PRICE_CORRECTED',
+                message: expect.stringMatching(/current highest bid of £18,000 now meets the reserve/i),
+                data: expect.objectContaining({
+                    oldReserve: 20000,
+                    newReserve: 17500,
+                    topBidAmount: 18000,
+                    reserveMet: true,
+                }),
             }),
         );
+    });
+
+    it('adminCorrectReservePrice: recalculates the zero-bid first-offer floor after lowering reserve', async () => {
+        const auction = makeActiveAuction({
+            reservePrice: 9000,
+            startingBid: 7000,
+            buyItNowPrice: 12000,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.auction.update.mockResolvedValue({ ...auction, reservePrice: 6000 });
+
+        await service.adminCorrectReservePrice('auction-1', 6000, 'Seller requested a lower reserve');
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(notificationsService.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userId: 'seller-1',
+                message: expect.stringMatching(/first offers can now be made from £4,200/i),
+                data: expect.objectContaining({
+                    oldReserve: 9000,
+                    newReserve: 6000,
+                    topBidAmount: null,
+                    firstOfferFloor: 4200,
+                    startingBid: 7000,
+                    reserveMet: false,
+                }),
+            }),
+        );
+        expect(auctionGateway.broadcastPriceUpdated).toHaveBeenCalledWith('auction-1', 6000);
+    });
+
+    it('adminCorrectReservePrice: revalidates auction state after acquiring the bid lock', async () => {
+        const auction = makeActiveAuction({ reservePrice: 9000, startingBid: 7000 });
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ listingId: 'listing-1', deletedAt: null })
+            .mockResolvedValueOnce({ ...auction, status: 'ENDED' });
+
+        await expect(
+            service.adminCorrectReservePrice('auction-1', 6000),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
+    });
+
+    it('adminCorrectReservePrice: refuses a live reserve change after the auction deadline', async () => {
+        const auction = makeActiveAuction({
+            reservePrice: 9000,
+            startingBid: 7000,
+            endTime: new Date(Date.now() - 1000),
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.adminCorrectReservePrice('auction-1', 6000),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastPriceUpdated).not.toHaveBeenCalled();
     });
 
     it('adminCorrectReservePrice: refuses to raise a reserve above the top bid after reserve was already met', async () => {
@@ -428,7 +610,11 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
-            $transaction: jest.fn(),
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+            $transaction: jest.fn(async (arg: any) =>
+                typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
+            ),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -477,10 +663,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 bids: [],
@@ -506,7 +694,9 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             service.acceptBid('auction-1', 'bid-old', 'seller-1'),
         ).rejects.toMatchObject({ message: expect.stringMatching(/current highest bid/i) });
 
-        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('does not let the seller use the legacy close-now path after reserve is met', async () => {
@@ -514,27 +704,54 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
-                bids: [],
+                bids: [{
+                    id: 'bid-current',
+                    listingId: 'listing-1',
+                    bidderId: 'dealer-1',
+                    amount: 10000,
+                }],
             },
-        });
-        prisma.bid.findFirst.mockResolvedValue({
-            id: 'bid-current',
-            listingId: 'listing-1',
-            bidderId: 'dealer-1',
-            amount: 10000,
         });
 
         await expect(
             service.sellerClose('auction-1', 'seller-1'),
         ).rejects.toMatchObject({ message: expect.stringMatching(/reserve has been met/i) });
 
-        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let the seller close an expired auction before lifecycle finalisation', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            endTime: new Date(Date.now() - 1000),
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                price: 10000,
+                linkedListingId: null,
+                bids: [],
+            },
+        });
+
+        await expect(
+            service.sellerClose('auction-1', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('rejects early acceptance once the current highest bid has met the reserve', async () => {
@@ -542,10 +759,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 year: 2020,
@@ -572,7 +791,38 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             service.acceptBid('auction-1', 'bid-current', 'seller-1'),
         ).rejects.toMatchObject({ message: expect.stringMatching(/reserve has been met/i) });
 
-        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects accepting a below-reserve offer after the auction deadline before cron finalises it', async () => {
+        const auction = {
+            id: 'auction-1',
+            listingId: 'listing-1',
+            status: 'ACTIVE',
+            endTime: new Date(Date.now() - 1000),
+            reservePrice: 10000,
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                status: 'ACTIVE',
+                price: 10000,
+                linkedListingId: null,
+                year: 2020,
+                make: 'Test',
+                model: 'Car',
+                bids: [],
+            },
+        };
+        prisma.auction.findUnique.mockResolvedValue(auction);
+
+        await expect(
+            service.acceptBid('auction-1', 'bid-current', 'seller-1'),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.findUnique).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
@@ -580,10 +830,12 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1',
             listingId: 'listing-1',
             status: 'ACTIVE',
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
             reservePrice: 10000,
             listing: {
                 id: 'listing-1',
                 sellerId: 'seller-1',
+                status: 'ACTIVE',
                 price: 10000,
                 linkedListingId: null,
                 year: 2020,
@@ -605,13 +857,51 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findUnique.mockResolvedValue(bid);
         prisma.bid.findFirst.mockResolvedValue(bid);
-        prisma.$transaction.mockResolvedValue([]);
-
         await expect(
             service.acceptBid('auction-1', 'bid-current', 'seller-1'),
         ).resolves.toBeUndefined();
 
-        expect(prisma.$transaction).toHaveBeenCalled();
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                status: 'ENDED',
+                winnerId: 'dealer-1',
+                winningBidAmount: 8200,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(prisma.auction.update.mock.calls[0][0].data).not.toHaveProperty('buyerFeePaid', true);
+        expect(prisma.sale.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                sellerId: 'seller-1',
+                buyerId: 'dealer-1',
+                soldPrice: 8200,
+            },
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_offer_accepted',
+                userId: 'seller-1',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    amount: 8200,
+                    outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+                }),
+            }),
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+                }),
+            }),
+        });
+        expect((service as any).chatService.findOrCreateRoom).not.toHaveBeenCalled();
     });
 });
 
@@ -685,6 +975,7 @@ describe('AuctionsService — create', () => {
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
@@ -1036,6 +1327,8 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 count: jest.fn().mockResolvedValue(742),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
+            $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (arg: any) =>
                 typeof arg === 'function' ? arg(prisma) : Promise.all(arg)
             ),
@@ -1126,6 +1419,135 @@ describe('AuctionsService — final lifecycle consistency', () => {
         expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
             'auction-1',
             expect.objectContaining({ reserveMet: false, winnerId: null }),
+        );
+    });
+
+    it('does not close an auction when a committed anti-snipe extension moved the end time into the future', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-anti-snipe',
+            listingId: 'listing-1',
+            deletedAt: null,
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            endTime: new Date(Date.now() + 2 * 60 * 1000),
+            listing: {
+                id: 'listing-1',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 10500 }],
+            },
+        });
+
+        await service.closeAuction('auction-anti-snipe');
+
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
+    });
+
+    it('ends below-reserve bidding with no accidental winner or sale', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-below-reserve',
+            listingId: 'listing-1',
+            deletedAt: null,
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            endTime: new Date(Date.now() - 1000),
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 7000 }],
+            },
+        });
+
+        await service.closeAuction('auction-below-reserve');
+
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-below-reserve' },
+            data: expect.objectContaining({
+                status: 'ENDED',
+                winnerId: null,
+                winningBidAmount: null,
+            }),
+        });
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
+            'auction-below-reserve',
+            expect.objectContaining({
+                winnerId: null,
+                winningBidAmount: null,
+                reserveMet: false,
+            }),
+        );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-below-reserve',
+                    outcome: 'BELOW_RESERVE_UNSOLD',
+                    highest_bid_amount: 7000,
+                }),
+            }),
+        });
+    });
+
+    it('creates the normal winner and sale when the final real bid meets reserve', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-winner',
+            listingId: 'listing-1',
+            deletedAt: null,
+            status: 'ACTIVE',
+            reservePrice: 10000,
+            endTime: new Date(Date.now() - 1000),
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 10100 }],
+            },
+        });
+
+        await service.closeAuction('auction-winner');
+
+        expect(prisma.sale.create).toHaveBeenCalledWith({
+            data: {
+                listingId: 'listing-1',
+                sellerId: 'seller-1',
+                buyerId: 'dealer-1',
+                soldPrice: 10100,
+            },
+        });
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-winner' },
+            data: expect.objectContaining({
+                status: 'ENDED',
+                winnerId: 'dealer-1',
+                winningBidAmount: 10100,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            }),
+        });
+        expect(prisma.auction.update.mock.calls[0][0].data).not.toHaveProperty('buyerFeePaid', true);
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
+            'auction-winner',
+            expect.objectContaining({
+                winnerId: 'dealer-1',
+                winningBidAmount: 10100,
+                reserveMet: true,
+            }),
         );
     });
 

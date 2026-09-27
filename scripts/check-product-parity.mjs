@@ -1287,17 +1287,47 @@ if (!feeRateMatch) {
   ok('TradeXchange service fee rate = 9% / provider share = 91%');
 }
 
+const backendAuctionPricing = read('backend/src/auctions/auction-pricing.ts');
 const webAuctionPricing = read('src/lib/auctionPricing.ts');
 const mobileAuctionPricing = read('carmazium app/carmazium app/src/lib/auctionPricing.ts');
 for (const constant of [
   'AUCTION_OPENING_BID_RATIO',
   'AUCTION_RESERVE_GUIDE_LOW_RATIO',
   'AUCTION_RESERVE_GUIDE_HIGH_RATIO',
+  'AUCTION_FIRST_OFFER_RATIO',
 ]) {
   same(constant, {
+    backend: numberConst(backendAuctionPricing, constant),
     web: numberConst(webAuctionPricing, constant),
     mobile: numberConst(mobileAuctionPricing, constant),
   });
+}
+
+// Auction first-offer live-state regression guard. Socket.IO room events are
+// not replayed after a connection drop, so both clients must canonical-resync
+// on every successful connect. The web socket must also stay mounted when the
+// local winning flag changes during normal bidding.
+const webLiveAuction = read('src/app/auctions/live/[id]/page.tsx');
+const mobileLiveAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+
+if (
+  !webLiveAuction.includes('syncCanonicalAuctionState()') ||
+  !webLiveAuction.includes('socket.on("connect", () => {') ||
+  webLiveAuction.includes('[auction?.id, businessUserId, isWinning]')
+) {
+  fail('Web live auction can miss canonical bid state or reconnect during winner-state changes');
+} else {
+  ok('Web live auction preserves one socket and canonical-resyncs after reconnect');
+}
+
+if (
+  !mobileLiveAuction.includes("socket.on('connect', () => {") ||
+  !mobileLiveAuction.includes('loadAuctionRef.current({ silent: true });') ||
+  mobileLiveAuction.includes("socket.on('reconnect', () => {")
+) {
+  fail('Native live auction can miss canonical state after reconnect');
+} else {
+  ok('Native live auction canonical-resyncs after every successful connect');
 }
 
 const webApi = read('src/lib/apiClient.ts');
