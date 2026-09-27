@@ -519,6 +519,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(auctionGateway.broadcastBinPending).toHaveBeenCalledWith(
             'auction-1',
             'owner-1',
+            expect.any(String),
         );
     });
 
