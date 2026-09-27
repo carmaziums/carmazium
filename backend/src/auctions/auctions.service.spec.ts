@@ -583,14 +583,13 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
                 sellerId: 'seller-1',
                 price: 10000,
                 linkedListingId: null,
-                bids: [],
+                bids: [{
+                    id: 'bid-current',
+                    listingId: 'listing-1',
+                    bidderId: 'dealer-1',
+                    amount: 10000,
+                }],
             },
-        });
-        prisma.bid.findFirst.mockResolvedValue({
-            id: 'bid-current',
-            listingId: 'listing-1',
-            bidderId: 'dealer-1',
-            amount: 10000,
         });
 
         await expect(
