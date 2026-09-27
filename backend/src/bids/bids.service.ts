@@ -11,7 +11,10 @@ import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
-import { calculateFirstOfferFloor } from '../auctions/auction-pricing';
+import {
+    calculateBuyItNowResponseDeadline,
+    calculateFirstOfferFloor,
+} from '../auctions/auction-pricing';
 import { randomUUID } from 'crypto';
 import {
     assertDealerPermission,
@@ -151,6 +154,7 @@ export class BidsService {
             bid_deleted_at: Date | string | null;
             bid_cancelled_at: Date | string | null;
             bid_archived_at: Date | string | null;
+            buy_it_now_pending_at: Date | string | null;
             new_end_time: Date | string | null;
         };
 
@@ -187,7 +191,8 @@ export class BidsService {
                     a."startingBid" AS starting_bid,
                     a."reservePrice" AS reserve_price,
                     a."minIncrement" AS min_increment,
-                    a."buyItNowPendingBuyerId" AS buy_it_now_pending_buyer_id
+                    a."buyItNowPendingBuyerId" AS buy_it_now_pending_buyer_id,
+                    a."buyItNowPendingAt" AS buy_it_now_pending_at
                 FROM "listings" l
                 LEFT JOIN "auctions" a
                     ON a."listingId" = l.id
@@ -437,6 +442,17 @@ export class BidsService {
 
         const pendingBuyerId = row.pending_buyer_to_cancel;
         const newEndTime = row.new_end_time ? toDate(row.new_end_time) : null;
+        const pendingAt = row.buy_it_now_pending_at
+            ? toDate(row.buy_it_now_pending_at)
+            : null;
+        const effectiveEndTime = newEndTime ?? toDate(row.end_time);
+        const buyItNowResponseDeadline = (
+            row.buy_it_now_pending_buyer_id
+            && !pendingBuyerId
+            && pendingAt
+        )
+            ? calculateBuyItNowResponseDeadline(pendingAt, effectiveEndTime).toISOString()
+            : undefined;
 
         const bidAmount = Number(bid.amount);
         const isFirstOffer = !highestBid;
@@ -534,6 +550,7 @@ export class BidsService {
                 timestamp: bid.timestamp.toISOString(),
                 newEndTime: newEndTime?.toISOString(),
                 buyItNowCancelled: Boolean(pendingBuyerId),
+                buyItNowResponseDeadline,
             });
         } catch (error) {
             this.logger.warn(
