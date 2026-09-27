@@ -11,6 +11,7 @@ import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminAuctions, getAllDealers, assignAuctionWinner, correctAuctionPrice } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
+import { getAuctionFirstOfferFloor } from "@/lib/auctionPricing"
 
 const STATUS_STYLES: Record<string, string> = {
     SCHEDULED: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -138,6 +139,23 @@ export default function AdminAuctionsPage() {
         ? (assignTarget.buyItNowPrice != null ? Number(assignTarget.buyItNowPrice) : Number(assignTarget.reservePrice))
         : 0
     const selectedDealer = dealers.find(d => d.id === selectedDealerId)
+
+    const correctionBidCount = priceTarget?.listing?._count?.bids ?? 0
+    const correctionTopBid = priceTarget?.listing?.bids?.[0]?.amount != null
+        ? Number(priceTarget.listing.bids[0].amount)
+        : null
+    const correctionStartingBid = priceTarget ? Number(priceTarget.startingBid) : 0
+    const correctionReserveValue = Number(correctedReserve)
+    const correctionFirstOfferFloor = priceTarget
+        && correctionBidCount === 0
+        && Number.isFinite(correctionReserveValue)
+        && correctionReserveValue > 0
+        ? getAuctionFirstOfferFloor(correctionStartingBid, correctionReserveValue)
+        : 0
+    const correctionWouldMeetReserve = correctionTopBid != null
+        && Number.isFinite(correctionReserveValue)
+        && correctionReserveValue > 0
+        && correctionTopBid >= correctionReserveValue
 
     if (authLoading || (user && !profile) || (loading && auctions.length === 0)) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
@@ -307,18 +325,22 @@ export default function AdminAuctionsPage() {
                         </div>
 
                         <p className="text-sm font-bold text-[var(--text-primary)]">{priceTarget.listing?.title}</p>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                            <div className="rounded-xl bg-[var(--bg-input)] p-3">
+                                <p className="text-[var(--text-muted)]">Starting bid</p>
+                                <p className="mt-1 font-black">{formatPrice(Number(priceTarget.startingBid))}</p>
+                            </div>
                             <div className="rounded-xl bg-[var(--bg-input)] p-3">
                                 <p className="text-[var(--text-muted)]">Current reserve</p>
                                 <p className="mt-1 font-black">{formatPrice(Number(priceTarget.reservePrice))}</p>
                             </div>
                             <div className="rounded-xl bg-[var(--bg-input)] p-3">
-                                <p className="text-[var(--text-muted)]">Top bid</p>
-                                <p className="mt-1 font-black">{priceTarget.listing?.bids?.[0]?.amount ? formatPrice(Number(priceTarget.listing.bids[0].amount)) : "—"}</p>
+                                <p className="text-[var(--text-muted)]">Top real bid</p>
+                                <p className="mt-1 font-black">{correctionTopBid != null ? formatPrice(correctionTopBid) : "—"}</p>
                             </div>
                             <div className="rounded-xl bg-[var(--bg-input)] p-3">
-                                <p className="text-[var(--text-muted)]">Bids</p>
-                                <p className="mt-1 font-black">{priceTarget.listing?._count?.bids ?? 0}</p>
+                                <p className="text-[var(--text-muted)]">Real bids</p>
+                                <p className="mt-1 font-black">{correctionBidCount}</p>
                             </div>
                         </div>
 
@@ -345,10 +367,44 @@ export default function AdminAuctionsPage() {
                             />
                         </div>
 
+                        {Number.isFinite(correctionReserveValue) && correctionReserveValue > 0 && (
+                            <div className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3">
+                                {correctionBidCount === 0 ? (
+                                    <>
+                                        <p className="text-xs font-black uppercase tracking-wide text-blue-300">Zero-bid first-offer effect</p>
+                                        <p className="mt-1 text-xs leading-5 text-blue-100">
+                                            There are no active dealer bids. After this correction the starting bid remains
+                                            {" "}<strong>{formatPrice(correctionStartingBid)}</strong> as a guide, while dealers may make the first real offer from
+                                            {" "}<strong>{formatPrice(correctionFirstOfferFloor)}</strong>.
+                                        </p>
+                                        <p className="mt-1 text-[10px] text-blue-300/80">
+                                            First-offer floor = 70% of the lower of the starting bid and corrected reserve.
+                                        </p>
+                                    </>
+                                ) : correctionWouldMeetReserve ? (
+                                    <>
+                                        <p className="text-xs font-black uppercase tracking-wide text-emerald-300">Reserve will be met</p>
+                                        <p className="mt-1 text-xs leading-5 text-emerald-100">
+                                            The current highest real bid of <strong>{formatPrice(Number(correctionTopBid))}</strong> will meet the corrected reserve.
+                                            Existing bids stay unchanged and the auction continues normally.
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs font-black uppercase tracking-wide text-blue-300">Existing bidding continues</p>
+                                        <p className="mt-1 text-xs leading-5 text-blue-100">
+                                            This auction already has real dealer bids. The 30% first-offer rule no longer applies.
+                                            Existing bids stay unchanged and bidding continues from the current highest bid plus the normal increment.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        )}
+
                         <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
                             <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-400" />
                             <p className="text-xs text-amber-200">
-                                Existing bids are never changed. If the reserve has already been met, it cannot be raised above the current highest bid. The seller will be notified of the correction.
+                                Existing bids are never changed. If the reserve has already been met, it cannot be raised above the current highest bid. The seller is notified with the old reserve, new reserve and the bidding effect. Dealers currently viewing the auction are refreshed in real time after the correction commits.
                             </p>
                         </div>
 
