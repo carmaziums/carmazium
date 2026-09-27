@@ -3,11 +3,8 @@ import {
     NotFoundException,
     BadRequestException,
     ForbiddenException,
-    forwardRef,
-    Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuctionsService } from '../auctions/auctions.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
@@ -20,14 +17,12 @@ import {
 } from '../dealers/dealer-access';
 
 const BID_CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const ANTI_SNIPE_WINDOW_MS = 3 * 60 * 1000;
 
 @Injectable()
 export class BidsService {
     constructor(
         private readonly prisma: PrismaService,
-        @Inject(forwardRef(() => AuctionsService))
-        private readonly auctionsService: AuctionsService,
-        @Inject(forwardRef(() => AuctionGateway))
         private readonly auctionGateway: AuctionGateway,
         private readonly notificationsService: NotificationsService,
     ) { }
@@ -114,6 +109,12 @@ export class BidsService {
             if (lockedAuction.status !== 'ACTIVE') {
                 throw new BadRequestException('This auction is not currently active');
             }
+
+            const bidReceivedAt = new Date();
+            if (bidReceivedAt.getTime() >= lockedAuction.endTime.getTime()) {
+                throw new BadRequestException('This auction has ended and is no longer accepting bids');
+            }
+
             if (lockedListing.sellerId === businessBidderId) {
                 throw new BadRequestException('You cannot bid on your own auction');
             }
@@ -172,9 +173,28 @@ export class BidsService {
                 createBidDto.amount >= Number(lockedAuction.buyItNowPrice)
             ) {
                 pendingBuyerId = (lockedAuction as any).buyItNowPendingBuyerId as string;
+            }
+
+            // Anti-snipe extension is part of the same locked transaction as the
+            // bid itself. This prevents the lifecycle closer from ending the
+            // auction in the tiny gap between bid commit and end-time extension.
+            const bidPlacedAt = bid.timestamp instanceof Date ? bid.timestamp : new Date(bid.timestamp);
+            const timeLeft = lockedAuction.endTime.getTime() - bidPlacedAt.getTime();
+            const shouldExtend = timeLeft > 0 && timeLeft <= ANTI_SNIPE_WINDOW_MS;
+            const newEndTime = shouldExtend
+                ? new Date(lockedAuction.endTime.getTime() + ANTI_SNIPE_WINDOW_MS)
+                : null;
+
+            if (pendingBuyerId || newEndTime) {
                 await tx.auction.update({
                     where: { id: lockedAuction.id },
-                    data: { buyItNowPendingBuyerId: null, buyItNowPendingAt: null },
+                    data: {
+                        ...(pendingBuyerId && {
+                            buyItNowPendingBuyerId: null,
+                            buyItNowPendingAt: null,
+                        }),
+                        ...(newEndTime && { endTime: newEndTime }),
+                    },
                 });
             }
 
@@ -185,6 +205,7 @@ export class BidsService {
                 lockedAuction,
                 reservePrice,
                 pendingBuyerId,
+                newEndTime,
             };
         });
 
@@ -195,6 +216,7 @@ export class BidsService {
             lockedAuction,
             reservePrice,
             pendingBuyerId,
+            newEndTime,
         } = placement;
 
         if (pendingBuyerId) {
@@ -247,9 +269,6 @@ export class BidsService {
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 
-        // Anti-snipe: extend auction if bid placed in the final window
-        const updatedAuction = await this.auctionsService.maybeExtend(lockedAuction.id, bid.timestamp);
-
         const initials = `${bidder?.firstName?.[0] ?? '?'}${bidder?.lastName?.[0] ?? ''}`.toUpperCase();
 
         // Broadcast to all viewers of this auction via WebSocket
@@ -261,7 +280,7 @@ export class BidsService {
             bidderInitials: initials,
             bidderId: businessBidderId,
             timestamp: bid.timestamp.toISOString(),
-            newEndTime: updatedAuction?.endTime?.toISOString(),
+            newEndTime: newEndTime?.toISOString(),
         });
 
         return bid;
