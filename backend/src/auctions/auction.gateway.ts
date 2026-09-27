@@ -182,8 +182,16 @@ export class AuctionGateway implements OnGatewayInit, OnGatewayConnection, OnGat
     }
 
     // Called by AuctionsService.triggerBuyItNow() — notifies all viewers a BIN request is pending
-    broadcastBinPending(auctionId: string, buyerId: string): void {
-        this.server.to(`auction:${auctionId}`).emit('bin:pending', { auctionId, buyerId });
+    broadcastBinPending(
+        auctionId: string,
+        buyerId: string,
+        responseDeadline: string,
+    ): void {
+        this.server.to(`auction:${auctionId}`).emit('bin:pending', {
+            auctionId,
+            buyerId,
+            responseDeadline,
+        });
     }
 
     // Called by BidsService.cancelBid() after the cancellation commits.
