@@ -199,10 +199,13 @@ export class BidsService {
 
             let pendingBuyerId: string | null = null;
             if (
-                lockedAuction.buyItNowPrice &&
                 (lockedAuction as any).buyItNowPendingBuyerId &&
-                createBidDto.amount >= Number(lockedAuction.buyItNowPrice)
+                createBidDto.amount >= reservePrice
             ) {
+                // Once reserve is met, normal auction bidding has priority and
+                // any outstanding Buy It Now request is no longer actionable.
+                // This matches reserve-correction behaviour and prevents stale
+                // BIN confirmation prompts when a bid reaches reserve below BIN.
                 pendingBuyerId = (lockedAuction as any).buyItNowPendingBuyerId as string;
             }
 
@@ -348,6 +351,7 @@ export class BidsService {
             bidderId: businessBidderId,
             timestamp: bid.timestamp.toISOString(),
             newEndTime: newEndTime?.toISOString(),
+            buyItNowCancelled: Boolean(pendingBuyerId),
         });
 
         return bid;
