@@ -2555,7 +2555,11 @@ export class AuctionsService {
         });
 
         if (!requested.created) {
-            return;
+            return {
+                created: false,
+                pendingAt: requested.pendingAt.toISOString(),
+                responseDeadline: requested.responseDeadline.toISOString(),
+            };
         }
 
         if (requested.auction.listing.sellerId) {
@@ -2817,8 +2821,10 @@ export class AuctionsService {
     }
 
     /**
-     * Lazily clears expired BIN pending state. Called at the top of findOne() and findBySlug()
-     * return paths. Fire-and-forget DB update if 24h has elapsed.
+     * Lazily clears expired BIN pending state on read. The canonical deadline is
+     * server-owned: the earlier of request + 24 hours or auction endTime.
+     * Fire-and-forget DB cleanup keeps the response fast while returning the
+     * canonical cleared state immediately.
      */
     private clearExpiredBin(auction: any): any {
         if (!auction.buyItNowPendingAt || !auction.buyItNowPendingBuyerId) {
