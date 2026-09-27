@@ -23,6 +23,9 @@ export interface BidBroadcastPayload {
     timestamp: string;
     newEndTime?: string;
     buyItNowCancelled?: boolean;
+    // Recalculated by the backend when anti-sniping extends endTime while a
+    // BIN request remains pending. Clients display this value directly.
+    buyItNowResponseDeadline?: string;
 }
 
 export interface AuctionEndPayload {
