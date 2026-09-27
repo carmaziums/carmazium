@@ -24,6 +24,10 @@ describe('AdminService listing approval readiness', () => {
             Array.isArray(arg) ? Promise.all(arg) : arg(prisma),
         );
 
+        const auctionsService = {
+            adminCorrectReservePrice: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+        };
+
         const service = new AdminService(
             prisma,
             {} as any,
@@ -31,11 +35,11 @@ describe('AdminService listing approval readiness', () => {
             { sendNotification: jest.fn() } as any,
             { create: jest.fn().mockResolvedValue(null) } as any,
             { incrementListings: jest.fn() } as any,
-            {} as any,
+            auctionsService as any,
             { deleteProof: jest.fn(), hydrateMany: jest.fn(async (r: any) => r) } as any,
         );
 
-        return { service, prisma };
+        return { service, prisma, auctionsService };
     };
 
     const completeFields = {
@@ -198,6 +202,32 @@ describe('AdminService listing approval readiness', () => {
                 buyItNowPendingAt: null,
             },
         });
+    });
+
+    it('handles an ACTIVE auction reserve-only correction without a no-op Listing update', async () => {
+        const listing = {
+            ...validLinkedAuction,
+            status: 'ACTIVE',
+            auction: {
+                ...validLinkedAuction.auction,
+                status: 'ACTIVE',
+                reservePrice: 8500,
+                startingBid: 6650,
+                minIncrement: 100,
+                buyItNowPrice: null,
+            },
+        };
+        const { service, prisma, auctionsService } = makeService(listing);
+
+        const result = await service.updateListing('auction-listing-1', { reservePrice: 8000 } as any);
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(auctionsService.adminCorrectReservePrice).toHaveBeenCalledWith(
+            'auction-1',
+            8000,
+            'Corrected by CarMazium admin from the listing editor.',
+        );
+        expect(result).toBe(listing);
     });
 
     it('force-deletes an open auction and its listing as one lifecycle operation', async () => {
