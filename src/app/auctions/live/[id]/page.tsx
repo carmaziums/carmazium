@@ -81,6 +81,16 @@ function formatCancelCountdown(ms: number): string {
     return `${minutes}m`
 }
 
+function formatBinCountdown(ms: number): string {
+    if (ms <= 0) return "Expired"
+    const totalSeconds = Math.ceil(ms / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+    return `${minutes}m ${seconds}s`
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function LiveAuctionPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -195,6 +205,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
     // Buy It Now state
     const [binPending, setBinPending] = React.useState(false)
+    const [binResponseDeadline, setBinResponseDeadline] = React.useState<string | null>(null)
+    const [binNowTick, setBinNowTick] = React.useState(() => Date.now())
     const [showBinModal, setShowBinModal] = React.useState(false)
     const [binLoading, setBinLoading] = React.useState(false)
     // Cancel bid state — map of bidId -> expiresAt (epoch ms), since a 24h window
@@ -209,6 +221,21 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         setAcceptingBid(null)
         setShowBinModal(false)
     }, [auctionClockExpired])
+
+    React.useEffect(() => {
+        if (!binPending || !binResponseDeadline) return
+        const tick = () => {
+            const now = Date.now()
+            setBinNowTick(now)
+            if (now >= new Date(binResponseDeadline).getTime()) {
+                setBinPending(false)
+                setBinResponseDeadline(null)
+            }
+        }
+        tick()
+        const id = window.setInterval(tick, 1000)
+        return () => window.clearInterval(id)
+    }, [binPending, binResponseDeadline])
 
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
@@ -240,6 +267,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 })))
                 setAntiSnipeActive(new Date(data.endTime).getTime() - Date.now() <= 3 * 60 * 1000)
                 setBinPending(!!data.buyItNowPendingBuyerId)
+                setBinResponseDeadline(data.buyItNowResponseDeadline ?? null)
                 // Rehydrate cancel eligibility from real bid data (survives refresh/navigation)
                 if (businessUserId) {
                     const now = Date.now()
@@ -312,6 +340,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     isWinningRef.current = nextWinning
                     setIsWinning(nextWinning)
                     setBinPending(!!fresh.buyItNowPendingBuyerId)
+                    setBinResponseDeadline(fresh.buyItNowResponseDeadline ?? null)
 
                     if (businessUserId) {
                         const now = Date.now()
@@ -382,7 +411,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             // immediately instead of waiting for a later refetch.
             if (payload.buyItNowCancelled) {
                 setBinPending(false)
+                setBinResponseDeadline(null)
             } else {
+                if (payload.buyItNowResponseDeadline) {
+                    setBinResponseDeadline(payload.buyItNowResponseDeadline)
+                }
                 setAuction(p => {
                     if (p?.reservePrice && Number(payload.amount) >= Number(p.reservePrice)) {
                         setBinPending(false)
@@ -392,8 +425,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             }
         })
 
-        socket.on("bin:pending", ({ auctionId: evtId }: { auctionId: string; buyerId: string }) => {
-            if (evtId === auction.id) setBinPending(true)
+        socket.on("bin:pending", ({ auctionId: evtId, responseDeadline }: { auctionId: string; buyerId: string; responseDeadline: string }) => {
+            if (evtId === auction.id) {
+                setBinPending(true)
+                setBinResponseDeadline(responseDeadline)
+            }
         })
 
         socket.on("bid:cancelled", (payload: {
@@ -436,6 +472,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
             setEndedPayload(payload)
             setAuction(p => p ? { ...p, status: "ENDED", winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p)
+            setBinPending(false)
+            setBinResponseDeadline(null)
             // Refresh notifications — backend creates AUCTION_WON / AUCTION_ENDED notifications
             triggerNotificationRefresh()
         })
@@ -581,8 +619,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         }
         setBinLoading(true)
         try {
-            await triggerBuyItNow(auction.id)
+            const result = await triggerBuyItNow(auction.id)
             setBinPending(true)
+            setBinResponseDeadline(result.responseDeadline)
             setShowBinModal(false)
         } catch {
             // BIN trigger failed — modal stays open, no action needed
@@ -648,20 +687,22 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ── Seller BIN Confirm / Decline ──────────────────────────────────────────
     const handleBinConfirm = React.useCallback(async () => {
         if (!auction) return
-        if (endTime && Date.now() >= endTime.getTime()) {
+        if (binResponseDeadline && Date.now() >= new Date(binResponseDeadline).getTime()) {
             setBinPending(false)
+            setBinResponseDeadline(null)
             return
         }
         setBinLoading(true)
         try {
             await confirmBuyItNow(auction.id)
             setBinPending(false)
+            setBinResponseDeadline(null)
         } catch {
             // Auction room will update via socket auction:ended event
         } finally {
             setBinLoading(false)
         }
-    }, [auction, endTime])
+    }, [auction, binResponseDeadline])
 
     const handleBinDecline = React.useCallback(async () => {
         if (!auction) return
@@ -669,8 +710,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         try {
             await declineBuyItNow(auction.id)
             setBinPending(false)
+            setBinResponseDeadline(null)
         } catch {
             setBinPending(false)
+            setBinResponseDeadline(null)
         } finally {
             setBinLoading(false)
         }
@@ -848,7 +891,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 <span className="font-mono text-[var(--text-primary)]">
                                     £{Number(auction?.buyItNowPrice).toLocaleString('en-GB')}
                                 </span>
-                                ? The seller must accept within 24 hours.
+                                ? The seller can respond for up to 24 hours, but never after this auction closes.
                             </p>
                             <div className="flex gap-3">
                                 <button
@@ -2088,7 +2131,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     {/* BIN pending banner */}
                     {binPending && !isSeller && (
                         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
-                            Buy It Now pending — awaiting seller confirmation
+                            <p>Buy It Now pending — awaiting seller confirmation</p>
+                            {binResponseDeadline && (
+                                <p className="mt-1 text-xs font-mono text-amber-200">
+                                    Response time left: {formatBinCountdown(new Date(binResponseDeadline).getTime() - binNowTick)}
+                                </p>
+                            )}
                         </div>
                     )}
                     {binPending && canManageSellerAuction && (
@@ -2097,6 +2145,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             <p className="text-xs text-amber-300/80">
                                 A buyer has requested to purchase this vehicle at the Buy It Now price. Accept to end the auction now, or decline to continue bidding.
                             </p>
+                            {binResponseDeadline && (
+                                <p className="text-xs font-mono font-bold text-amber-200">
+                                    Respond within {formatBinCountdown(new Date(binResponseDeadline).getTime() - binNowTick)}
+                                </p>
+                            )}
                             <div className="flex gap-2">
                                 <button
                                     onClick={handleBinConfirm}
