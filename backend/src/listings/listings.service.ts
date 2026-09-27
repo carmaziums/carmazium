@@ -174,6 +174,7 @@ export class ListingsService {
             seats: true,
             features: true,
             isImported: true,
+            updatedAt: true,
             sale: {
                 select: {
                     soldPrice: true,
@@ -276,6 +277,7 @@ export class ListingsService {
                     ...common,
                     price: Number(row.auction.winningBidAmount),
                     kind: 'AUCTION_RESULT',
+                    observedAt: row.auction.updatedAt,
                 });
                 continue;
             }
@@ -290,6 +292,7 @@ export class ListingsService {
                     ...common,
                     price: Number(acceptedOffer.finalAmount ?? acceptedOffer.amount),
                     kind: 'ACCEPTED_OFFER',
+                    observedAt: acceptedOffer.updatedAt,
                 });
                 continue;
             }
@@ -299,6 +302,7 @@ export class ListingsService {
                     ...common,
                     price: Number(row.sale.soldPrice),
                     kind: 'SALE',
+                    observedAt: row.sale.createdAt,
                 });
                 continue;
             }
@@ -310,6 +314,7 @@ export class ListingsService {
                     ...common,
                     price: Number(row.price),
                     kind: 'ACTIVE_ASK',
+                    observedAt: row.updatedAt,
                 });
             }
         }
