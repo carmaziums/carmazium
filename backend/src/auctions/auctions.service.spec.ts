@@ -166,7 +166,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         await expect(
             service.triggerBuyItNow('auction-1', 'buyer-1'),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+        ).rejects.toMatchObject({ message: expect.stringMatching(/expired/i) });
 
         expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
@@ -199,7 +199,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         prisma.bid.findFirst.mockResolvedValue(null); // No bids yet — reserve not met
         prisma.auction.update.mockResolvedValue({ ...auction, buyItNowPendingBuyerId: 'buyer-1', buyItNowPendingAt: new Date() });
 
-        await service.triggerBuyItNow('auction-1', 'buyer-1');
+        const result = await service.triggerBuyItNow('auction-1', 'buyer-1');
 
         expect(prisma.auction.update).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -210,8 +210,19 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 }),
             }),
         );
+        expect(new Date(result.responseDeadline).getTime()).toBe(auction.endTime.getTime());
         expect(notificationsService.create).toHaveBeenCalledWith(
-            expect.objectContaining({ userId: 'seller-1', type: 'AUCTION_ENDED' }),
+            expect.objectContaining({
+                userId: 'seller-1',
+                type: 'AUCTION_ENDED',
+                data: { responseDeadline: result.responseDeadline },
+                message: expect.stringMatching(/earlier of 24 hours or auction close/i),
+            }),
+        );
+        expect(auctionGateway.broadcastBinPending).toHaveBeenCalledWith(
+            'auction-1',
+            'buyer-1',
+            result.responseDeadline,
         );
     });
 
@@ -345,11 +356,11 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
     // ── findOne lazy BIN expiry ───────────────────────────────────────────────
 
-    it('findOne: returns cleared pending fields when buyItNowPendingAt + 24h has elapsed', async () => {
-        const expiredAt = new Date(Date.now() - 25 * 60 * 60 * 1000); // 25h ago
+    it('findOne: expires BIN at auction close even when 24 hours from request has not elapsed', async () => {
         const auction = makeActiveAuction({
+            endTime: new Date(Date.now() - 1000),
             buyItNowPendingBuyerId: 'buyer-1',
-            buyItNowPendingAt: expiredAt,
+            buyItNowPendingAt: new Date(Date.now() - 5 * 60 * 1000),
         });
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue(null);
@@ -357,9 +368,24 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         const result = await service.findOne('auction-1');
 
-        // Returned auction should have cleared pending fields
         expect(result.buyItNowPendingBuyerId).toBeNull();
         expect(result.buyItNowPendingAt).toBeNull();
+        expect(result.buyItNowResponseDeadline).toBeNull();
+    });
+
+    it('findOne: exposes the canonical server-owned BIN response deadline while pending', async () => {
+        const pendingAt = new Date(Date.now() - 5 * 60 * 1000);
+        const auction = makeActiveAuction({
+            endTime: new Date(Date.now() + 45 * 60 * 1000),
+            buyItNowPendingBuyerId: 'buyer-1',
+            buyItNowPendingAt: pendingAt,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        const result = await service.findOne('auction-1');
+
+        expect(result.buyItNowResponseDeadline).toBe(auction.endTime.toISOString());
     });
 
     // ── bids.service auto-cancel on bid >= BIN price (integration note) ───────
@@ -458,6 +484,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(auctionGateway.broadcastBinPending).toHaveBeenCalledWith(
             'auction-1',
             'buyer-new',
+            expect.any(String),
         );
     });
 
