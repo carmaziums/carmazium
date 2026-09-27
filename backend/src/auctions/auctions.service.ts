@@ -1917,7 +1917,6 @@ export class AuctionsService {
                 sellerBonusReleased: false,
                 handoverSubmittedAt: null,
             },
-            where: { id: auctionId },
             data: {
                 // Exactly one of these is set. A private upload leaves the
                 // legacy column null so nothing public is ever recorded for it.
