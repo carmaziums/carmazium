@@ -2070,6 +2070,7 @@ export class AuctionsService {
                         select: {
                             id: true,
                             sellerId: true,
+                            status: true,
                             linkedListingId: true,
                         },
                     },
@@ -2080,6 +2081,14 @@ export class AuctionsService {
             }
             if (auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Only ACTIVE auctions can have a winner assigned');
+            }
+            if (auction.listing.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction vehicle is no longer active');
+            }
+            if (Date.now() >= auction.endTime.getTime()) {
+                throw new BadRequestException(
+                    'This auction has ended and is being finalised. A winner can no longer be assigned from the live-auction flow',
+                );
             }
             if (auction.listing.sellerId !== sellerId) {
                 throw new BadRequestException('Auction seller changed while assigning the winner');
@@ -2179,6 +2188,7 @@ export class AuctionsService {
                         select: {
                             id: true,
                             sellerId: true,
+                            status: true,
                             make: true,
                             model: true,
                         },
@@ -2190,6 +2200,9 @@ export class AuctionsService {
             }
             if (auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Auction is not ACTIVE');
+            }
+            if (auction.listing.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction vehicle is no longer active');
             }
             if (Date.now() >= auction.endTime.getTime()) {
                 throw new BadRequestException('This auction has ended and is no longer accepting Buy It Now requests');
@@ -2284,6 +2297,9 @@ export class AuctionsService {
             }
             if (auction.status !== 'ACTIVE') {
                 throw new BadRequestException('Auction is not ACTIVE');
+            }
+            if (auction.listing.status !== 'ACTIVE') {
+                throw new BadRequestException('This auction vehicle is no longer active');
             }
             if (Date.now() >= auction.endTime.getTime()) {
                 throw new BadRequestException('This auction has ended and the Buy It Now request can no longer be confirmed');
