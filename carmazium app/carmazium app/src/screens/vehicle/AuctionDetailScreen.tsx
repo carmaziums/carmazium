@@ -482,6 +482,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           setAntiSnipeToast(true);
           setTimeout(() => setAntiSnipeToast(false), 4000);
         }
+        if (payload.buyItNowCancelled) {
+          setBinPendingBuyerId(null);
+        }
         setBidError(null);
       });
 
