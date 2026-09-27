@@ -569,9 +569,11 @@ describe('BidsService — cancelBid', () => {
             id: 'listing-1',
             title: 'Test vehicle',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             auction: {
                 id: 'auction-1',
                 status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
                 startingBid: 7000,
                 reservePrice: 6000,
             },
@@ -625,9 +627,11 @@ describe('BidsService — cancelBid', () => {
             make: 'BMW',
             model: 'M3',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             auction: {
                 id: 'auction-1',
                 status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
                 startingBid: 7000,
                 reservePrice: 6000,
             },
@@ -699,9 +703,11 @@ describe('BidsService — cancelBid', () => {
             make: 'BMW',
             model: 'M3',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             auction: {
                 id: 'auction-1',
                 status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
                 startingBid: 7000,
                 reservePrice: 9000,
             },
@@ -762,9 +768,11 @@ describe('BidsService — cancelBid', () => {
         prisma.listing.findUnique.mockResolvedValue({
             id: 'listing-1',
             sellerId: 'seller-1',
+            status: 'ACTIVE',
             auction: {
                 id: 'auction-1',
                 status: 'ACTIVE',
+                endTime: new Date(Date.now() + 60 * 60 * 1000),
                 startingBid: 7000,
                 reservePrice: 9000,
             },
@@ -786,6 +794,38 @@ describe('BidsService — cancelBid', () => {
             }),
         );
         expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects cancelling a bid after the auction deadline even before lifecycle finalisation', async () => {
+        const bid = {
+            id: 'bid-ended',
+            bidderId: 'owner-user',
+            listingId: 'listing-1',
+            amount: 7000,
+            cancelledAt: null,
+            deletedAt: null,
+            archivedAt: null,
+            createdAt: new Date(),
+        };
+        prisma.bid.findUnique.mockResolvedValue(bid);
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1',
+            sellerId: 'seller-1',
+            status: 'ACTIVE',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                endTime: new Date(Date.now() - 1000),
+                startingBid: 7000,
+                reservePrice: 9000,
+            },
+        });
+
+        await expect(service.cancelBid('bid-ended', 'owner-user'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBidCancelled).not.toHaveBeenCalled();
     });
 
     it('rejects cancelling a bid archived from a previous auction run', async () => {
