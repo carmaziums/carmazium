@@ -395,6 +395,58 @@ describe('ListingsService', () => {
             expect(prisma.$transaction).toHaveBeenCalled();
         });
 
+        it('rejects initial auction creation when Buy It Now is below reserve', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+
+            await expect(
+                service.create(
+                    makeAuctionListing({
+                        auctionStartTime: new Date(Date.now() + 60_000).toISOString(),
+                        auctionReservePrice: 9000,
+                        auctionMinIncrement: 100,
+                        auctionBuyItNowPrice: 8500,
+                    }) as any,
+                    sellerId,
+                ),
+            ).rejects.toMatchObject({
+                message: 'Buy It Now price must be equal to or higher than the reserve price.',
+            });
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+
+        it('allows initial auction Buy It Now to equal reserve', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.create.mockResolvedValue({
+                id: 'listing-new',
+                title: 'BMW M3 Auction',
+                sellerId,
+                type: 'AUCTION',
+                status: 'DRAFT',
+            });
+            prisma.auction.create.mockResolvedValue({ id: 'auction-new' });
+
+            await service.create(
+                makeAuctionListing({
+                    auctionStartTime: new Date(Date.now() + 60_000).toISOString(),
+                    auctionReservePrice: 9000,
+                    auctionMinIncrement: 100,
+                    auctionBuyItNowPrice: 9000,
+                }) as any,
+                sellerId,
+            );
+
+            expect(prisma.auction.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        reservePrice: 9000,
+                        buyItNowPrice: 9000,
+                    }),
+                }),
+            );
+        });
+
         it('keeps an intentional AUCTION draft as DRAFT when no schedule is supplied', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.create.mockResolvedValue({
@@ -1600,6 +1652,22 @@ describe('ListingsService', () => {
 
             expect(result).toBeDefined();
             expect(prisma.listing.create).toHaveBeenCalled();
+        });
+
+        it('rejects linked auction creation when Buy It Now is below reserve before claiming the retail source', async () => {
+            await expect(
+                service.alsoAuction('listing-1', 'seller-1', {
+                    startTime: new Date(Date.now() + 60_000).toISOString(),
+                    reservePrice: 9000,
+                    minIncrement: 100,
+                    buyItNowPrice: 8500,
+                }),
+            ).rejects.toMatchObject({
+                message: 'Buy It Now price must be equal to or higher than the reserve price.',
+            });
+
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+            expect(prisma.listing.create).not.toHaveBeenCalled();
         });
 
         it('atomically claims the active retail source before creating the linked auction', async () => {
