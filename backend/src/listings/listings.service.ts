@@ -497,7 +497,51 @@ export class ListingsService {
             select,
         });
 
-        return this.parseFrozenValuationBase(recentVehicleBase, dto);
+        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
+        if (!recent) return null;
+
+        // Give this new journey its own immutable copy. The cross-journey
+        // vehicle cache may expire after 24h, but the journey itself must never
+        // change value once the customer has received its base.
+        if (recentVehicleBase?.id !== dto.valuationId) {
+            const serializableBase = JSON.parse(
+                JSON.stringify(recent),
+            ) as VehicleValuationResult;
+
+            try {
+                await this.prisma.analyticsEvent.create({
+                    data: {
+                        id: dto.valuationId,
+                        type: 'valuation_base_snapshot',
+                        sessionId: this.valuationIdentityKey(dto),
+                        payload: {
+                            valuation_id: dto.valuationId,
+                            identity: this.valuationIdentity(dto),
+                            baseValuation: serializableBase,
+                            lockedAt: new Date().toISOString(),
+                            reusedFromSnapshotId: recentVehicleBase?.id ?? null,
+                        } as any,
+                    },
+                });
+            } catch (error: any) {
+                if (error?.code === 'P2002') {
+                    const winner = await this.prisma.analyticsEvent.findUnique({
+                        where: { id: dto.valuationId },
+                        select,
+                    });
+                    const frozenWinner = this.parseFrozenValuationBase(winner, dto);
+                    if (frozenWinner) return frozenWinner;
+                } else {
+                    // The already-frozen identity base is still safe to return;
+                    // persistence of the alias must not make valuation unavailable.
+                    this.logger.warn(
+                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
+                    );
+                }
+            }
+        }
+
+        return recent;
     }
 
     private async freezeValuationBase(
