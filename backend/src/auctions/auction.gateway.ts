@@ -22,6 +22,7 @@ export interface BidBroadcastPayload {
     bidderId: string;
     timestamp: string;
     newEndTime?: string;
+    buyItNowCancelled?: boolean;
 }
 
 export interface AuctionEndPayload {
