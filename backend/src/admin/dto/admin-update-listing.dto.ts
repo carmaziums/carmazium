@@ -417,12 +417,12 @@ export class AdminUpdateListingDto {
     @IsOptional()
     minIncrement?: number;
 
-    @ApiProperty({ required: false, description: 'Set to null to clear an existing Buy It Now price' })
+    @ApiProperty({ required: false, description: 'Set to null to clear an existing Buy It Now price. When set it must be equal to or higher than reservePrice.' })
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
     @IsOptional()
-    buyItNowPrice?: number;
+    buyItNowPrice?: number | null;
 
     @ApiProperty({ required: false, description: 'ISO datetime — endTime is always recalculated as startTime + 24h' })
     @IsDateString()

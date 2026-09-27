@@ -226,7 +226,7 @@ export class CreateListingDto {
     @IsOptional()
     auctionMinIncrement?: number;
 
-    @ApiProperty({ description: 'Optional initial Buy It Now price in GBP. AUCTION only.', required: false })
+    @ApiProperty({ description: 'Optional initial Buy It Now price in GBP. AUCTION only; when set it must be equal to or higher than auctionReservePrice.', required: false })
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()

@@ -37,7 +37,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { DealersService } from '../dealers/dealers.service';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
-import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from '../auctions/auction-pricing';
+import {
+    AUCTION_DURATION_MS,
+    BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
+    buyItNowViolatesReserve,
+    calculatePlatformOpeningBid,
+} from '../auctions/auction-pricing';
 import { canRevealListingContact } from '../core/listing-contact-visibility';
 import {
     downloadExternalImage,
@@ -1449,6 +1454,13 @@ export class ListingsService {
                 throw new BadRequestException(
                     'A valid Estimated Market Value is required before this vehicle can be auctioned',
                 );
+            }
+
+            if (buyItNowViolatesReserve(
+                createListingDto.auctionReservePrice,
+                createListingDto.auctionBuyItNowPrice,
+            )) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
             }
 
             initialAuctionCreate = {
@@ -2895,6 +2907,9 @@ export class ListingsService {
                 throw new BadRequestException(
                     `Reserve price (£${dto.reservePrice.toLocaleString('en-GB')}) cannot exceed the retail listing price (£${sourceValue.toLocaleString('en-GB')}). Lower the reserve or raise the retail price first.`,
                 );
+            }
+            if (buyItNowViolatesReserve(dto.reservePrice, dto.buyItNowPrice)) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
             }
 
             const platformStartingBid = calculatePlatformOpeningBid(sourceValue);

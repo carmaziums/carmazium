@@ -81,6 +81,7 @@ interface AuctionItem {
   reservePrice: number;
   startingBid: number;
   minIncrement: number;
+  buyItNowPrice?: number | null;
   winnerId?: string | null;
   winningBidAmount?: number | null;
   handoverProofUrl?: string | null;
@@ -655,6 +656,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       setEditError('Enter a valid minimum increment.');
       return;
     }
+    if (item.buyItNowPrice != null && reserve > Number(item.buyItNowPrice)) {
+      setEditError('Buy It Now price must be equal to or higher than the reserve price.');
+      return;
+    }
 
     setEditSaving(true);
     setEditError(null);
@@ -844,6 +849,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
     if (isNaN(reserve) || reserve <= 0) { setCreateError('Enter a valid reserve price.'); return; }
     if (starting <= 0) { setCreateError('This vehicle needs a valid Estimated Market Value before it can be auctioned.'); return; }
+    if (bin != null && (isNaN(bin) || bin <= 0)) {
+      setCreateError('Enter a valid Buy It Now price above £0, or leave it blank.');
+      return;
+    }
+    if (bin != null && bin < reserve) {
+      setCreateError('Buy It Now price must be equal to or higher than the reserve price.');
+      return;
+    }
 
     setCreateSubmitting(true);
     setCreateError(null);
@@ -1803,7 +1816,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>BUY IT NOW PRICE (£)</Text>
                 <Text style={styles.formHint}>
-                  Buyers can purchase immediately at this price before the reserve is met. Leave blank to disable.
+                  Buyers can purchase immediately at this price before the reserve is met. Leave blank to disable. If set, it must be equal to or higher than the reserve price.
                 </Text>
                 <View style={styles.formInputRow}>
                   <Text style={styles.formCurrency}>£</Text>

@@ -26,6 +26,7 @@ describe('AdminService listing approval readiness', () => {
 
         const auctionsService = {
             adminCorrectReservePrice: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+            adminUpdateScheduledAuction: jest.fn().mockResolvedValue({ id: 'auction-1' }),
         };
 
         const service = new AdminService(
@@ -202,6 +203,62 @@ describe('AdminService listing approval readiness', () => {
                 buyItNowPendingAt: null,
             },
         });
+    });
+
+    it('rejects invalid SCHEDULED reserve/BIN pricing before writing other listing fields', async () => {
+        const listing = {
+            ...validLinkedAuction,
+            auction: {
+                ...validLinkedAuction.auction,
+                reservePrice: 9000,
+                buyItNowPrice: 12000,
+                startingBid: 7000,
+                minIncrement: 100,
+            },
+        };
+        const { service, prisma, auctionsService } = makeService(listing);
+
+        await expect(
+            service.updateListing('auction-listing-1', {
+                title: 'Corrected vehicle title',
+                reservePrice: 12500,
+            } as any),
+        ).rejects.toMatchObject({
+            message: 'Buy It Now price must be equal to or higher than the reserve price.',
+        });
+
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+        expect(auctionsService.adminUpdateScheduledAuction).not.toHaveBeenCalled();
+    });
+
+    it('routes SCHEDULED auction pricing edits through the locked auction-domain editor', async () => {
+        const listing = {
+            ...validLinkedAuction,
+            auction: {
+                ...validLinkedAuction.auction,
+                reservePrice: 9000,
+                buyItNowPrice: 12000,
+                startingBid: 7000,
+                minIncrement: 100,
+            },
+        };
+        const { service, prisma, auctionsService } = makeService(listing);
+
+        await service.updateListing('auction-listing-1', {
+            reservePrice: 10000,
+            buyItNowPrice: 13000,
+            minIncrement: 250,
+        } as any);
+
+        expect(auctionsService.adminUpdateScheduledAuction).toHaveBeenCalledWith(
+            'auction-1',
+            {
+                reservePrice: 10000,
+                buyItNowPrice: 13000,
+                minIncrement: 250,
+            },
+        );
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('handles an ACTIVE auction reserve-only correction without a no-op Listing update', async () => {

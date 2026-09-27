@@ -20,6 +20,8 @@ import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } from '@prisma/client';
 import {
     AUCTION_DURATION_MS,
+    BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
+    buyItNowViolatesReserve,
     calculateBuyItNowResponseDeadline,
     calculateFirstOfferFloor,
     calculatePlatformOpeningBid,
@@ -304,6 +306,13 @@ export class AuctionsService {
         }
 
         const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+
+        if (buyItNowViolatesReserve(
+            createAuctionDto.reservePrice,
+            createAuctionDto.buyItNowPrice,
+        )) {
+            throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+        }
 
         const listing = await this.prisma.listing.findUnique({
             where: { id: createAuctionDto.listingId },
@@ -808,42 +817,82 @@ export class AuctionsService {
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
         const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
-        const auction = await this.findOne(id);
-
-        if (auction.listing.sellerId !== sellerId) {
-            throw new ForbiddenException('You do not own this auction');
-        }
-
-        if (auction.status !== 'SCHEDULED') {
-            throw new BadRequestException('Only SCHEDULED auctions can be updated');
-        }
-
-        const startTime = updateAuctionDto.startTime
-            ? new Date(updateAuctionDto.startTime)
-            : auction.startTime;
-
-        if (
-            Number.isNaN(startTime.getTime())
-            || startTime.getTime() < Date.now() - 60 * 1000
-        ) {
-            throw new BadRequestException('Start time cannot be in the past');
-        }
-
-        const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
-        const platformStartingBid = calculatePlatformOpeningBid(Number(auction.listing.price));
-
-        return this.prisma.auction.update({
+        const lookup = await this.prisma.auction.findUnique({
             where: { id },
-            data: {
-                startTime,
-                endTime,
-                ...(updateAuctionDto.reservePrice !== undefined && { reservePrice: updateAuctionDto.reservePrice }),
-                // Keep scheduled auctions aligned with the same server-owned
-                // 70%-of-market-value opening rule as newly created auctions.
-                startingBid: platformStartingBid,
-                ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
-                ...(updateAuctionDto.buyItNowPrice !== undefined && { buyItNowPrice: updateAuctionDto.buyItNowPrice }),
-            },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            // Scheduled pricing edits share the same per-listing lock as bidding,
+            // BIN, reserve correction and finalisation. This prevents two valid
+            // partial edits (for example reserve-only and BIN-only) racing into
+            // an invalid final pair.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            sellerId: true,
+                            price: true,
+                        },
+                    },
+                },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.listing.sellerId !== sellerId) {
+                throw new ForbiddenException('You do not own this auction');
+            }
+            if (auction.status !== 'SCHEDULED') {
+                throw new BadRequestException('Only SCHEDULED auctions can be updated');
+            }
+
+            const startTime = updateAuctionDto.startTime
+                ? new Date(updateAuctionDto.startTime)
+                : auction.startTime;
+
+            if (
+                Number.isNaN(startTime.getTime())
+                || startTime.getTime() < Date.now() - 60 * 1000
+            ) {
+                throw new BadRequestException('Start time cannot be in the past');
+            }
+
+            const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+            const platformStartingBid = calculatePlatformOpeningBid(Number(auction.listing.price));
+            const nextReservePrice = updateAuctionDto.reservePrice !== undefined
+                ? updateAuctionDto.reservePrice
+                : Number(auction.reservePrice);
+            const nextBuyItNowPrice = updateAuctionDto.buyItNowPrice !== undefined
+                ? updateAuctionDto.buyItNowPrice
+                : auction.buyItNowPrice == null
+                    ? null
+                    : Number(auction.buyItNowPrice);
+
+            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+            }
+
+            return tx.auction.update({
+                where: { id },
+                data: {
+                    startTime,
+                    endTime,
+                    ...(updateAuctionDto.reservePrice !== undefined && { reservePrice: updateAuctionDto.reservePrice }),
+                    // Keep scheduled auctions aligned with the same server-owned
+                    // 70%-of-market-value opening rule as newly created auctions.
+                    startingBid: platformStartingBid,
+                    ...(updateAuctionDto.minIncrement !== undefined && { minIncrement: updateAuctionDto.minIncrement }),
+                    ...(updateAuctionDto.buyItNowPrice !== undefined && { buyItNowPrice: updateAuctionDto.buyItNowPrice }),
+                },
+            });
         });
     }
 
@@ -1211,6 +1260,85 @@ export class AuctionsService {
     }
 
     /**
+     * Admin-only editor for a SCHEDULED auction.
+     *
+     * The admin listing editor used to update the Auction row directly, which
+     * meant a reserve-only edit and BIN-only edit could validate against stale
+     * state and race each other. Keep the canonical pricing pair under the same
+     * per-listing advisory lock used by seller edits and live auction mutations.
+     */
+    async adminUpdateScheduledAuction(
+        auctionId: string,
+        updates: {
+            reservePrice?: number;
+            startingBid?: number;
+            minIncrement?: number;
+            buyItNowPrice?: number | null;
+            startTime?: Date | string;
+        },
+    ): Promise<Auction> {
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'SCHEDULED') {
+                throw new BadRequestException('Only SCHEDULED auctions can be edited in the admin schedule editor');
+            }
+
+            const nextReservePrice = updates.reservePrice !== undefined
+                ? updates.reservePrice
+                : Number(auction.reservePrice);
+            const nextBuyItNowPrice = updates.buyItNowPrice !== undefined
+                ? updates.buyItNowPrice
+                : auction.buyItNowPrice == null
+                    ? null
+                    : Number(auction.buyItNowPrice);
+
+            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+            }
+
+            const data: Prisma.AuctionUpdateInput = {};
+            if (updates.reservePrice !== undefined) data.reservePrice = updates.reservePrice;
+            if (updates.startingBid !== undefined) data.startingBid = updates.startingBid;
+            if (updates.minIncrement !== undefined) data.minIncrement = updates.minIncrement;
+            if (updates.buyItNowPrice !== undefined) data.buyItNowPrice = updates.buyItNowPrice;
+
+            if (updates.startTime !== undefined) {
+                const startTime = updates.startTime instanceof Date
+                    ? updates.startTime
+                    : new Date(updates.startTime);
+                if (
+                    Number.isNaN(startTime.getTime())
+                    || startTime.getTime() < Date.now() - 60 * 1000
+                ) {
+                    throw new BadRequestException('Start time cannot be in the past');
+                }
+                data.startTime = startTime;
+                data.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+            }
+
+            return tx.auction.update({
+                where: { id: auctionId },
+                data,
+            });
+        });
+    }
+
+    /**
      * Admin correction for an auction reserve entered incorrectly by the seller.
      *
      * Safety rules:
@@ -1381,7 +1509,7 @@ export class AuctionsService {
                     'This auction has ended. Its reserve can no longer be changed while the result is being finalised',
                 );
             case 'ABOVE_BIN':
-                throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
             case 'RESERVE_ALREADY_MET':
                 throw new BadRequestException(
                     'The reserve has already been met. It cannot be raised above the current highest bid.',
