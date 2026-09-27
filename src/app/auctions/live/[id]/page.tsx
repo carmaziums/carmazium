@@ -204,6 +204,12 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [cancellingBidId, setCancellingBidId] = React.useState<string | null>(null)
     const [cancelError, setCancelError] = React.useState<string | null>(null)
 
+    React.useEffect(() => {
+        if (!auctionClockExpired) return
+        setAcceptingBid(null)
+        setShowBinModal(false)
+    }, [auctionClockExpired])
+
     const feedRef = React.useRef<HTMLDivElement>(null)
     const socketRef = React.useRef<Socket | null>(null)
 
@@ -567,7 +573,32 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                 next.delete(bidId)
                 return next
             })
-            setBidHistory(prev => prev.filter(b => b.bidId !== bidId))
+            setBidHistory(prev => {
+                const next = prev.filter(b => b.bidId !== bidId)
+                const nextHighest = next[0] ?? null
+                setCurrentBid(nextHighest?.amount ?? 0)
+                setIsWinning(!!businessUserId && nextHighest?.bidderId === businessUserId)
+                return next
+            })
+
+            // Do not depend on the websocket echo to repair our own screen.
+            // A successful HTTP cancellation must recover correctly even when
+            // the socket is temporarily disconnected.
+            getAuction(auction.id)
+                .then(fresh => {
+                    setAuction(fresh)
+                    const bids = fresh.listing.bids ?? []
+                    setBidHistory(bids.map(b => ({
+                        initials: `${b.bidder?.firstName?.[0] ?? "?"}${b.bidder?.lastName?.[0] ?? ""}`.toUpperCase(),
+                        amount: Number(b.amount),
+                        time: new Date(b.timestamp).toLocaleTimeString("en-GB"),
+                        bidId: b.id,
+                        bidderId: b.bidderId,
+                    })))
+                    setCurrentBid(bids[0] ? Number(bids[0].amount) : 0)
+                    setIsWinning(!!businessUserId && bids[0]?.bidderId === businessUserId)
+                })
+                .catch(() => { /* local recalculation above is already safe */ })
         } catch (err: any) {
             setCancelError(err.message ?? "Failed to cancel bid. Please try again.")
         } finally {
