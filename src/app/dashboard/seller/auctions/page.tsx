@@ -259,15 +259,30 @@ function SellerAuctionsPage() {
             }
         }
 
+        const reservePrice = Number(formReservePrice)
+        const buyItNowPrice = formBinPrice.trim() ? Number(formBinPrice) : null
+        if (!Number.isFinite(reservePrice) || reservePrice <= 0) {
+            setFormError("Enter a valid reserve price above £0.")
+            return
+        }
+        if (buyItNowPrice !== null && (!Number.isFinite(buyItNowPrice) || buyItNowPrice <= 0)) {
+            setFormError("Enter a valid Buy It Now price above £0, or leave it blank.")
+            return
+        }
+        if (buyItNowPrice !== null && buyItNowPrice < reservePrice) {
+            setFormError("Buy It Now price must be equal to or higher than the reserve price.")
+            return
+        }
+
         setSubmitting(true)
         try {
             const dto: CreateAuctionRequest = {
                 listingId: formListingId,
                 startTime: resolvedStartTime,
-                reservePrice: Number(formReservePrice),
+                reservePrice,
                 startingBid: Number(formStartingBid),
                 minIncrement: Number(formMinIncrement) || 100,
-                ...(formBinPrice ? { buyItNowPrice: Number(formBinPrice) } : {}),
+                ...(buyItNowPrice !== null ? { buyItNowPrice } : {}),
             }
             if (selectedAuctionListing?.status === 'ACTIVE' && selectedAuctionListing.type === 'CLASSIFIED') {
                 // Keep the live retail listing intact and create a linked auction
@@ -660,9 +675,12 @@ function SellerAuctionsPage() {
                                                 step={1}
                                                 placeholder="Leave blank to disable BIN"
                                                 value={formBinPrice}
-                                                onChange={e => setFormBinPrice(e.target.value)}
+                                                onChange={e => { setFormBinPrice(e.target.value); setFormError(null) }}
                                                 className="bg-[var(--bg-input)] border-[var(--border-default)] h-11 rounded-lg"
                                             />
+                                            <p className="mt-1.5 text-[10px] text-[var(--text-muted)]">
+                                                Optional. If set, Buy It Now must be equal to or higher than the reserve price.
+                                            </p>
                                         </div>
                                     </div>
 
