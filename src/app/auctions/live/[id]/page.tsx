@@ -741,7 +741,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             <p className="text-[var(--text-muted)] text-sm">{loadError ?? "Auction not found."}</p>
             <div className="flex items-center gap-3">
                 <button
-                    onClick={loadAuction}
+                    onClick={() => { void loadAuction() }}
                     className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-colors"
                 >
                     <RefreshCw size={13} /> Try Again
