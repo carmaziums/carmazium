@@ -137,4 +137,23 @@ export class VehicleValuationDto {
     @IsUUID()
     @IsOptional()
     excludeListingId?: string;
+
+    /**
+     * Stable client-generated ID for one valuation journey. When supplied, the
+     * backend freezes the first successful market base against this ID and
+     * reuses it for every later request in the same journey.
+     */
+    @IsUUID()
+    @IsOptional()
+    valuationId?: string;
+
+    /**
+     * Registration is not used to calculate the market base; it is stored only
+     * as part of the valuation identity guard so one journey cannot drift onto
+     * a different vehicle.
+     */
+    @IsString()
+    @IsOptional()
+    @MaxLength(12)
+    registration?: string;
 }

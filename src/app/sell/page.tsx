@@ -194,6 +194,8 @@ function QuickValuationForm() {
                     model: manualResolvedModel,
                     year,
                     mileage: mileageNumber,
+                    valuationId,
+                    registration: cleanVrm,
                 })
 
                 const hasFigures = valuationHasFigures(valuation)
@@ -298,6 +300,8 @@ function QuickValuationForm() {
                 model: resolvedModel,
                 year: vehicle.year,
                 mileage: mileageNumber,
+                valuationId,
+                registration: cleanVrm,
             })
 
             const hasFigures = valuationHasFigures(valuation)
@@ -454,7 +458,11 @@ function QuickValuationForm() {
                             <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Model</span>
                             <input
                                 value={model}
-                                onChange={(event) => setModel(event.target.value)}
+                                onChange={(event) => {
+                                    setModel(event.target.value)
+                                    setResult(null)
+                                    valuationJourneyIdRef.current = null
+                                }}
                                 autoComplete="off"
                                 placeholder="e.g. Corsa"
                                 aria-label="Vehicle model"
@@ -468,7 +476,11 @@ function QuickValuationForm() {
                                 <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Make</span>
                                 <input
                                     value={manualMake}
-                                    onChange={(event) => setManualMake(event.target.value)}
+                                    onChange={(event) => {
+                                        setManualMake(event.target.value)
+                                        setResult(null)
+                                        valuationJourneyIdRef.current = null
+                                    }}
                                     autoComplete="off"
                                     placeholder="e.g. Vauxhall"
                                     aria-label="Vehicle make"
@@ -479,7 +491,11 @@ function QuickValuationForm() {
                                 <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Model</span>
                                 <input
                                     value={manualModel}
-                                    onChange={(event) => setManualModel(event.target.value)}
+                                    onChange={(event) => {
+                                        setManualModel(event.target.value)
+                                        setResult(null)
+                                        valuationJourneyIdRef.current = null
+                                    }}
                                     autoComplete="off"
                                     placeholder="e.g. Corsa"
                                     aria-label="Manual vehicle model"
@@ -490,7 +506,11 @@ function QuickValuationForm() {
                                 <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Year</span>
                                 <input
                                     value={manualYear}
-                                    onChange={(event) => setManualYear(event.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                                    onChange={(event) => {
+                                        setManualYear(event.target.value.replace(/[^\d]/g, "").slice(0, 4))
+                                        setResult(null)
+                                        valuationJourneyIdRef.current = null
+                                    }}
                                     inputMode="numeric"
                                     autoComplete="off"
                                     placeholder="2016"
