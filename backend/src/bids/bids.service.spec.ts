@@ -22,6 +22,7 @@ describe('BidsService — incremental bidding', () => {
             startingBid: 5000,
             minIncrement: 100,
             reservePrice: 9000,
+            startTime: new Date('2026-09-27T10:00:00.000Z'),
             endTime: new Date(Date.now() + 60 * 60 * 1000),
         },
     };
@@ -142,6 +143,7 @@ describe('BidsService — incremental bidding', () => {
                 userId: 'bidder-A',
                 payload: expect.objectContaining({
                     auction_id: 'auction-1',
+                    auction_run_key: 'auction-1:2026-09-27T10:00:00.000Z',
                     bid_id: 'bid-first-offer',
                     amount: 4500,
                     is_first_offer: true,
