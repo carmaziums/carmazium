@@ -27,6 +27,15 @@ export class BidsService {
         private readonly notificationsService: NotificationsService,
     ) { }
 
+    private auctionRunKey(auction: { id: string; startTime?: Date | string | null }): string {
+        const raw = auction?.startTime;
+        const parsed = raw ? new Date(raw) : null;
+        const runStart = parsed && Number.isFinite(parsed.getTime())
+            ? parsed.toISOString()
+            : 'unknown';
+        return `${auction.id}:${runStart}`;
+    }
+
     private trackAuctionEvent(
         type: string,
         payload: Record<string, unknown>,
@@ -253,6 +262,7 @@ export class BidsService {
 
         this.trackAuctionEvent('auction_bid_placed', {
             auction_id: lockedAuction.id,
+            auction_run_key: this.auctionRunKey(lockedAuction),
             listing_id: lockedListing.id,
             bid_id: bid.id,
             registration: lockedListing.vrm ?? null,
@@ -447,6 +457,7 @@ export class BidsService {
 
         this.trackAuctionEvent('auction_bid_cancelled', {
             auction_id: result.listing.auction!.id,
+            auction_run_key: this.auctionRunKey(result.listing.auction!),
             listing_id: result.listing.id,
             cancelled_bid_id: bidId,
             cancelled_amount: Number(result.bid.amount),
