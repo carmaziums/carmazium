@@ -9,7 +9,7 @@ import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
-import { calculateMinimumAuctionBid } from '../auctions/auction-pricing';
+import { calculateFirstOfferFloor, calculateMinimumAuctionBid } from '../auctions/auction-pricing';
 import {
     assertDealerPermission,
     resolveBusinessBuyerId,
@@ -296,39 +296,161 @@ export class BidsService {
             );
         }
         const businessBidderId = await resolveBusinessBuyerId(this.prisma, bidderId);
-        const bid = await this.prisma.bid.findUnique({ where: { id: bidId } });
 
-        if (!bid || bid.bidderId !== businessBidderId) {
+        // Lightweight lookup only to identify the listing lock. Ownership and
+        // cancel eligibility are revalidated after the lock is acquired.
+        const lookup = await this.prisma.bid.findUnique({
+            where: { id: bidId },
+            select: { listingId: true },
+        });
+        if (!lookup) {
             throw new ForbiddenException('Not your bid');
         }
 
-        if (bid.archivedAt) {
-            throw new BadRequestException('This bid belongs to a previous auction and can no longer be cancelled');
-        }
+        const result = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
 
-        if (bid.cancelledAt || bid.deletedAt) {
-            throw new BadRequestException('Bid already cancelled');
-        }
+            const bid = await tx.bid.findUnique({ where: { id: bidId } });
+            if (!bid || bid.bidderId !== businessBidderId) {
+                throw new ForbiddenException('Not your bid');
+            }
+            if (bid.archivedAt) {
+                throw new BadRequestException('This bid belongs to a previous auction and can no longer be cancelled');
+            }
+            if (bid.cancelledAt || bid.deletedAt) {
+                throw new BadRequestException('Bid already cancelled');
+            }
+            if (Date.now() - bid.createdAt.getTime() > BID_CANCEL_WINDOW_MS) {
+                throw new BadRequestException('Cancel window has expired (24 hours)');
+            }
 
-        if (Date.now() - bid.createdAt.getTime() > BID_CANCEL_WINDOW_MS) {
-            throw new BadRequestException('Cancel window has expired (24 hours)');
-        }
+            const listing = await tx.listing.findUnique({
+                where: { id: bid.listingId },
+                include: { auction: true },
+            });
+            if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
+            }
 
-        const listing = await this.prisma.listing.findUnique({
-            where: { id: bid.listingId },
-            include: { auction: true },
+            const beforeHighest = await tx.bid.findFirst({
+                where: {
+                    listingId: bid.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+            });
+
+            await tx.bid.update({
+                where: { id: bidId },
+                data: { cancelledAt: new Date() },
+            });
+
+            const [afterHighest, activeBidCount] = await Promise.all([
+                tx.bid.findFirst({
+                    where: {
+                        listingId: bid.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                    orderBy: { amount: 'desc' },
+                }),
+                tx.bid.count({
+                    where: {
+                        listingId: bid.listingId,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                }),
+            ]);
+
+            const reservePrice = Number(listing.auction.reservePrice);
+            const highestActiveBid = afterHighest ? Number(afterHighest.amount) : null;
+            const reserveMet = highestActiveBid !== null && highestActiveBid >= reservePrice;
+            const firstOfferFloor = activeBidCount === 0
+                ? calculateFirstOfferFloor(Number(listing.auction.startingBid), reservePrice)
+                : null;
+            const cancelledWasHighest = beforeHighest?.id === bid.id;
+            const reserveWasMet = beforeHighest
+                ? Number(beforeHighest.amount) >= reservePrice
+                : false;
+
+            return {
+                listing,
+                bid,
+                afterHighest,
+                activeBidCount,
+                highestActiveBid,
+                reserveMet,
+                firstOfferFloor,
+                cancelledWasHighest,
+                reserveWasMet,
+            };
         });
 
-        if (!listing?.auction || listing.auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Cannot cancel a bid on an auction that is not ACTIVE');
-        }
-
-        await this.prisma.bid.update({
-            where: { id: bidId },
-            data: { cancelledAt: new Date() },
+        // Tell every connected viewer the canonical position after the
+        // cancellation. This makes zero-bid recovery deterministic across web
+        // and native even if a client missed an earlier bid event.
+        this.auctionGateway.broadcastBidCancelled(result.listing.auction!.id, {
+            auctionId: result.listing.auction!.id,
+            bidId,
+            highestActiveBid: result.highestActiveBid,
+            highestActiveBidId: result.afterHighest?.id ?? null,
+            activeBidCount: result.activeBidCount,
+            reserveMet: result.reserveMet,
+            firstOfferFloor: result.firstOfferFloor,
         });
 
-        this.auctionGateway.broadcastBidCancelled(listing.auction.id, bidId);
+        if (result.cancelledWasHighest && result.listing.sellerId) {
+            const vehicle = [
+                result.listing.year,
+                result.listing.make,
+                result.listing.model,
+            ].filter(Boolean).join(' ') || result.listing.title;
+
+            if (result.activeBidCount === 0) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Highest auction bid cancelled',
+                    message: `The highest bid on ${vehicle} was cancelled. There are now no active dealer bids. First offers can be made from £${Number(result.firstOfferFloor).toLocaleString('en-GB')}.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'BID_CANCELLED',
+                    link: `/auctions/live/${result.listing.auction!.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: 0,
+                        highestActiveBid: null,
+                        firstOfferFloor: result.firstOfferFloor,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
+            } else if (result.reserveWasMet && !result.reserveMet) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Reserve is no longer met',
+                    message: `The previous highest bid on ${vehicle} was cancelled. The current highest active bid is now £${Number(result.highestActiveBid).toLocaleString('en-GB')}, below your reserve of £${Number(result.listing.auction!.reservePrice).toLocaleString('en-GB')}.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'BID_CANCELLED',
+                    link: result.afterHighest?.id
+                        ? `/auctions/live/${result.listing.auction!.id}?sellerOffer=${result.afterHighest.id}`
+                        : `/auctions/live/${result.listing.auction!.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: result.activeBidCount,
+                        highestActiveBid: result.highestActiveBid,
+                        highestActiveBidId: result.afterHighest?.id ?? null,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
+            }
+        }
     }
 
     async findMyActiveAuctionPositions(bidderId: string): Promise<any[]> {
