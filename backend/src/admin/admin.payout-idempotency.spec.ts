@@ -290,23 +290,119 @@ describe('AdminService — seller bonus payout idempotency', () => {
         ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('keeps retained payout claims visible in the pending-payout queue', async () => {
-        const { service, prisma } = makeHarness();
-        prisma.auction.findMany.mockResolvedValue([]);
+    it('keeps only currently eligible unpaid bonuses in the pending-payout queue', async () => {
+        const { service, prisma, auctionsService } = makeHarness();
+        const valid = makeAuction({
+            id: 'auction-valid',
+            sellerBonusReleased: true,
+            sellerBonusReleasedAt: new Date(),
+        });
+        const grandfatheredCancelled = makeAuction({
+            id: 'auction-legacy-cancelled',
+            sellerBonusReleased: true,
+            sellerBonusReleasedAt: new Date(),
+        });
+        prisma.auction.findMany.mockResolvedValue([valid, grandfatheredCancelled]);
+        auctionsService.assertHandoverBusinessRules.mockImplementation(
+            async (auctionId: string) => {
+                if (auctionId === 'auction-legacy-cancelled') {
+                    throw new BadRequestException('Handover is only available for a valid ended auction');
+                }
+            },
+        );
 
-        await service.getPendingPayouts();
+        await expect(service.getPendingPayouts()).resolves.toEqual([valid]);
 
         expect(prisma.auction.findMany).toHaveBeenCalledWith(
             expect.objectContaining({
                 where: expect.objectContaining({
+                    deletedAt: null,
+                    status: 'ENDED',
+                    winnerId: { not: null },
+                    buyerFeePaid: true,
+                    buyerFeeTransactionId: { not: null },
+                    buyerRefusedAt: null,
+                    handoverSubmittedAt: { not: null },
                     sellerBonusReleased: true,
+                    sellerBonusReleasedAt: { not: null },
                     manualPayoutConfirmedAt: null,
-                    OR: [
-                        { stripePayoutTransferId: null },
-                        { stripePayoutTransferId: { startsWith: 'claim:seller-bonus:' } },
+                    AND: [
+                        {
+                            OR: [
+                                { handoverProofPath: { not: null } },
+                                { handoverProofUrl: { not: null } },
+                            ],
+                        },
+                        {
+                            OR: [
+                                { stripePayoutTransferId: null },
+                                { stripePayoutTransferId: { startsWith: 'claim:seller-bonus:' } },
+                            ],
+                        },
                     ],
                 }),
             }),
         );
+        expect(auctionsService.assertHandoverBusinessRules).toHaveBeenCalledTimes(2);
+        expect(auctionsService.assertHandoverBusinessRules).toHaveBeenCalledWith(
+            'auction-valid',
+            { requireProof: true, requireApproved: true },
+        );
+    });
+
+    it('blocks payout-setup reminders when the approved legacy row is no longer payout-eligible', async () => {
+        const {
+            service,
+            prisma,
+            auctionsService,
+            notificationsService,
+            emailService,
+        } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({
+            sellerBonusReleased: true,
+            listing: {
+                sellerId: 'seller-1',
+                title: 'BMW M3',
+                seller: {
+                    id: 'seller-1',
+                    email: 'seller@example.com',
+                    firstName: 'Sam',
+                    stripeConnectAccountId: null,
+                    stripeConnectOnboardingComplete: false,
+                },
+            },
+        }));
+        auctionsService.assertHandoverBusinessRules.mockRejectedValueOnce(
+            new BadRequestException('This auction was cancelled and is not payout-eligible'),
+        );
+
+        await expect(
+            service.sendStripePayoutSetupReminder('auction-1'),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(notificationsService.create).not.toHaveBeenCalled();
+        expect(emailService.sendStripePayoutSetupReminderEmail).not.toHaveBeenCalled();
+    });
+
+    it('blocks Stripe retry before seller/payout handling when lifecycle eligibility has been lost', async () => {
+        const {
+            service,
+            prisma,
+            auctionsService,
+            paymentsService,
+        } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({
+            sellerBonusReleased: true,
+        }));
+        auctionsService.assertHandoverBusinessRules.mockRejectedValueOnce(
+            new BadRequestException('The £125 auction buyer fee payment record is invalid or incomplete'),
+        );
+
+        await expect(
+            service.retryPayout('auction-1'),
+        ).rejects.toBeInstanceOf(BadRequestException);
+
+        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+        expect(paymentsService.issueSellerPayout).not.toHaveBeenCalled();
     });
 });
