@@ -194,6 +194,8 @@ function QuickValuationForm() {
                     model: manualResolvedModel,
                     year,
                     mileage: mileageNumber,
+                    valuationId,
+                    registration: cleanVrm,
                 })
 
                 const hasFigures = valuationHasFigures(valuation)
@@ -298,6 +300,8 @@ function QuickValuationForm() {
                 model: resolvedModel,
                 year: vehicle.year,
                 mileage: mileageNumber,
+                valuationId,
+                registration: cleanVrm,
             })
 
             const hasFigures = valuationHasFigures(valuation)
