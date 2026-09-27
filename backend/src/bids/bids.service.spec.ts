@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { BidsService } from './bids.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuctionsService } from '../auctions/auctions.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -23,6 +22,7 @@ describe('BidsService — incremental bidding', () => {
             startingBid: 5000,
             minIncrement: 100,
             reservePrice: 9000,
+            endTime: new Date(Date.now() + 60 * 60 * 1000),
         },
     };
 
@@ -56,10 +56,6 @@ describe('BidsService — incremental bidding', () => {
             providers: [
                 BidsService,
                 { provide: PrismaService, useValue: prisma },
-                {
-                    provide: AuctionsService,
-                    useValue: { maybeExtend: jest.fn().mockResolvedValue(null) },
-                },
                 {
                     provide: AuctionGateway,
                     useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() },
@@ -267,6 +263,54 @@ describe('BidsService — incremental bidding', () => {
         expect(storedBids).toHaveLength(1);
         expect((results.find((result) => result.status === 'rejected') as PromiseRejectedResult).reason.message)
             .toMatch(/at least £3,600/i);
+    });
+
+    it('rejects a bid that reaches the locked backend after the auction deadline', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                endTime: new Date(Date.now() - 1000),
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        await expect(
+            service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any),
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+
+        expect(prisma.bid.create).not.toHaveBeenCalled();
+    });
+
+    it('extends the end time inside the same locked transaction for an anti-snipe bid', async () => {
+        const endTime = new Date(Date.now() + 2 * 60 * 1000);
+        prisma.listing.findUnique.mockResolvedValue({
+            ...auctionListing,
+            auction: {
+                ...auctionListing.auction,
+                endTime,
+            },
+        });
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER', firstName: 'Test', lastName: 'User' });
+        prisma.bid.findFirst.mockResolvedValue(null);
+        const timestamp = new Date();
+        prisma.bid.create.mockResolvedValue({
+            id: 'bid-anti-snipe',
+            amount: 3500,
+            timestamp,
+            listingId: 'listing-1',
+            bidderId: 'bidder-A',
+        });
+
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: { id: 'auction-1' },
+            data: expect.objectContaining({
+                endTime: new Date(endTime.getTime() + 3 * 60 * 1000),
+            }),
+        });
     });
 
     it('notifies the seller when the new highest bid is below reserve and can be accepted', async () => {
