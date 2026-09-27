@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AuctionsService } from './auctions.service';
 import { HandoverDocumentsService } from './handover-documents.service';
 import { PrismaService } from '../prisma/prisma.service';
