@@ -1733,7 +1733,7 @@ export class AuctionsService {
                 userId: winnerId,
                 type: 'AUCTION_WON',
                 title: 'You won the auction!',
-                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Contact the seller to arrange collection.`,
+                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Pay the £125 CarMazium buyer fee to unlock the seller's contact details and auction chat.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
                 link: `/dashboard/dealer/auctions/won`,
@@ -1745,39 +1745,18 @@ export class AuctionsService {
                     userId: listing.sellerId,
                     type: 'AUCTION_ENDED',
                     title: 'Your auction has ended',
-                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}.`,
+                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}. The winning dealer must pay the £125 CarMazium buyer fee before seller contact and auction chat are unlocked.`,
                     entityType: 'AUCTION',
                     entityId: auction.id,
                     link: `/dashboard/seller/auctions`,
                 });
             }
 
-            // Auto-create chat room between winner and seller.
-            //
-            // Delegated to ChatService rather than writing chatRoom directly.
-            // This used to upsert on an `initiatorId_participantId` compound key
-            // that no longer exists, and omitted `context` and `conversationKey`,
-            // which are now required — so closing an auction threw here and the
-            // winner and seller never got their room. Hand-rolling the row is
-            // what let it drift out of step with the chat schema in the first
-            // place; findOrCreateRoom derives the context and canonical key from
-            // the listing, so there is one implementation to keep correct.
-            //
-            // Non-fatal on purpose: the auction is already won and the money
-            // path must not fail because a convenience chat room could not be
-            // opened. Either party can still start the conversation by hand.
-            if (listing.sellerId && listing.sellerId !== winnerId) {
-                try {
-                    await this.chatService.findOrCreateRoom(winnerId, {
-                        participantId: listing.sellerId,
-                        listingId: auction.listingId,
-                    });
-                } catch (e: any) {
-                    this.logger.error(
-                        `Auction ${auction.id}: could not open winner/seller chat room — ${e?.message}`,
-                    );
-                }
-            }
+            // Auction chat is intentionally not created here. ChatService enforces
+            // buyerFeePaid for auction conversations; the winner must first pay
+            // CarMazium's £125 buyer fee. After payment, web/native can create
+            // or open the canonical winner/seller room without exposing seller
+            // contact before the platform fee is confirmed.
 
             // Email winner and seller
             const [buyer, seller] = await Promise.all([
