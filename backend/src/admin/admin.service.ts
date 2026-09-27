@@ -13,11 +13,7 @@ import { AuctionsService } from '../auctions/auctions.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
-import {
-    AUCTION_DURATION_MS,
-    BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
-    buyItNowViolatesReserve,
-} from '../auctions/auction-pricing';
+import { AUCTION_DURATION_MS } from '../auctions/auction-pricing';
 
 @Injectable()
 export class AdminService {
@@ -562,30 +558,16 @@ export class AdminService {
         // reserve through the dedicated correction path so bid-integrity checks,
         // seller notification and the live socket refresh all happen.
         if (hasAuctionFields && listing.auction && listing.auction.status === 'SCHEDULED') {
-            const nextReservePrice = dto.reservePrice !== undefined
-                ? dto.reservePrice
-                : Number(listing.auction.reservePrice);
-            const nextBuyItNowPrice = dto.buyItNowPrice !== undefined
-                ? dto.buyItNowPrice
-                : listing.auction.buyItNowPrice == null
-                    ? null
-                    : Number(listing.auction.buyItNowPrice);
-
-            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
-                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
-            }
-
-            const auctionData: Record<string, unknown> = {};
-            if (dto.reservePrice !== undefined) auctionData.reservePrice = dto.reservePrice;
-            if (dto.startingBid !== undefined) auctionData.startingBid = dto.startingBid;
-            if (dto.minIncrement !== undefined) auctionData.minIncrement = dto.minIncrement;
-            if (dto.buyItNowPrice !== undefined) auctionData.buyItNowPrice = dto.buyItNowPrice;
-            if (dto.startTime !== undefined) {
-                const startTime = new Date(dto.startTime);
-                auctionData.startTime = startTime;
-                auctionData.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
-            }
-            await this.prisma.auction.update({ where: { id: listing.auction.id }, data: auctionData });
+            await this.auctionsService.adminUpdateScheduledAuction(
+                listing.auction.id,
+                {
+                    ...(dto.reservePrice !== undefined && { reservePrice: dto.reservePrice }),
+                    ...(dto.startingBid !== undefined && { startingBid: dto.startingBid }),
+                    ...(dto.minIncrement !== undefined && { minIncrement: dto.minIncrement }),
+                    ...(dto.buyItNowPrice !== undefined && { buyItNowPrice: dto.buyItNowPrice }),
+                    ...(dto.startTime !== undefined && { startTime: dto.startTime }),
+                },
+            );
         } else if (
             dto.reservePrice !== undefined
             && listing.auction
