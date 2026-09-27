@@ -1260,6 +1260,85 @@ export class AuctionsService {
     }
 
     /**
+     * Admin-only editor for a SCHEDULED auction.
+     *
+     * The admin listing editor used to update the Auction row directly, which
+     * meant a reserve-only edit and BIN-only edit could validate against stale
+     * state and race each other. Keep the canonical pricing pair under the same
+     * per-listing advisory lock used by seller edits and live auction mutations.
+     */
+    async adminUpdateScheduledAuction(
+        auctionId: string,
+        updates: {
+            reservePrice?: number;
+            startingBid?: number;
+            minIncrement?: number;
+            buyItNowPrice?: number | null;
+            startTime?: Date | string;
+        },
+    ): Promise<Auction> {
+        const lookup = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        return this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+            });
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'SCHEDULED') {
+                throw new BadRequestException('Only SCHEDULED auctions can be edited in the admin schedule editor');
+            }
+
+            const nextReservePrice = updates.reservePrice !== undefined
+                ? updates.reservePrice
+                : Number(auction.reservePrice);
+            const nextBuyItNowPrice = updates.buyItNowPrice !== undefined
+                ? updates.buyItNowPrice
+                : auction.buyItNowPrice == null
+                    ? null
+                    : Number(auction.buyItNowPrice);
+
+            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+                throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
+            }
+
+            const data: Prisma.AuctionUpdateInput = {};
+            if (updates.reservePrice !== undefined) data.reservePrice = updates.reservePrice;
+            if (updates.startingBid !== undefined) data.startingBid = updates.startingBid;
+            if (updates.minIncrement !== undefined) data.minIncrement = updates.minIncrement;
+            if (updates.buyItNowPrice !== undefined) data.buyItNowPrice = updates.buyItNowPrice;
+
+            if (updates.startTime !== undefined) {
+                const startTime = updates.startTime instanceof Date
+                    ? updates.startTime
+                    : new Date(updates.startTime);
+                if (
+                    Number.isNaN(startTime.getTime())
+                    || startTime.getTime() < Date.now() - 60 * 1000
+                ) {
+                    throw new BadRequestException('Start time cannot be in the past');
+                }
+                data.startTime = startTime;
+                data.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+            }
+
+            return tx.auction.update({
+                where: { id: auctionId },
+                data,
+            });
+        });
+    }
+
+    /**
      * Admin correction for an auction reserve entered incorrectly by the seller.
      *
      * Safety rules:
