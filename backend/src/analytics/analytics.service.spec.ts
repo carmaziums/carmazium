@@ -219,3 +219,119 @@ describe('AnalyticsService live valuation analytics', () => {
         });
     });
 });
+
+
+describe('AnalyticsService auction first-offer analytics', () => {
+    it('returns first-offer conversion, competition and audit rows without reconstructing history', async () => {
+        const prisma = {
+            $queryRawUnsafe: jest
+                .fn()
+                .mockResolvedValueOnce([{
+                    first_offers: '8',
+                    unique_auctions: '6',
+                    competition_auctions: '4',
+                    first_offer_cancellations: '2',
+                    seller_accepted_sales: '2',
+                    reserve_met_sales: '1',
+                    unsold_auctions: '1',
+                    pending_auctions: '2',
+                    zero_bid_unsold: '5',
+                    zero_bid_reserve_corrections: '3',
+                    avg_first_offer: '5200.5',
+                    avg_reserve_at_first_offer: '7000',
+                    avg_percent_below_reserve: '25.7',
+                    avg_percent_below_starting: '12.4',
+                }])
+                .mockResolvedValueOnce([{
+                    id: 'event-first-1',
+                    created_at: new Date('2026-09-27T10:00:00.000Z'),
+                    auction_id: 'auction-1',
+                    listing_id: 'listing-1',
+                    bid_id: 'bid-1',
+                    registration: 'AB12CDE',
+                    vehicle: '2022 BMW M3',
+                    amount: '4900',
+                    starting_bid: '7000',
+                    reserve_price: '7000',
+                    first_offer_floor: '4900',
+                    percent_below_reserve: '30',
+                    percent_below_starting: '30',
+                    subsequent_bid_count: '3',
+                    first_offer_cancelled: false,
+                    outcome: 'RESERVE_MET_SALE',
+                    outcome_at: new Date('2026-09-27T12:00:00.000Z'),
+                }]),
+        };
+
+        const service = new AnalyticsService(prisma as any);
+        const result = await service.getAuctionFirstOfferAnalytics(30);
+
+        expect(result.windowDays).toBe(30);
+        expect(result.summary).toEqual(expect.objectContaining({
+            firstOffers: 8,
+            uniqueAuctions: 6,
+            competitionAuctions: 4,
+            competitionRate: 66.7,
+            firstOfferCancellations: 2,
+            sellerAcceptedSales: 2,
+            reserveMetSales: 1,
+            completedSales: 3,
+            saleRate: 50,
+            unsoldAuctions: 1,
+            pendingAuctions: 2,
+            zeroBidUnsold: 5,
+            zeroBidReserveCorrections: 3,
+            averageFirstOffer: 5200.5,
+            averageReserveAtFirstOffer: 7000,
+            averagePercentBelowReserve: 25.7,
+            averagePercentBelowStartingBid: 12.4,
+        }));
+        expect(result.recent[0]).toEqual(expect.objectContaining({
+            auctionId: 'auction-1',
+            listingId: 'listing-1',
+            bidId: 'bid-1',
+            registration: 'AB12CDE',
+            vehicle: '2022 BMW M3',
+            amount: 4900,
+            startingBid: 7000,
+            reservePrice: 7000,
+            firstOfferFloor: 4900,
+            percentBelowReserve: 30,
+            percentBelowStartingBid: 30,
+            subsequentBidCount: 3,
+            firstOfferCancelled: false,
+            outcome: 'RESERVE_MET_SALE',
+        }));
+        expect(result.trackingNote).toMatch(/historical auctions are not reconstructed/i);
+        expect(prisma.$queryRawUnsafe).toHaveBeenCalledTimes(2);
+    });
+
+    it('clamps the reporting window to a safe range', async () => {
+        const prisma = {
+            $queryRawUnsafe: jest
+                .fn()
+                .mockResolvedValueOnce([{
+                    first_offers: '0',
+                    unique_auctions: '0',
+                    competition_auctions: '0',
+                    first_offer_cancellations: '0',
+                    seller_accepted_sales: '0',
+                    reserve_met_sales: '0',
+                    unsold_auctions: '0',
+                    pending_auctions: '0',
+                    zero_bid_unsold: '0',
+                    zero_bid_reserve_corrections: '0',
+                    avg_first_offer: null,
+                    avg_reserve_at_first_offer: null,
+                    avg_percent_below_reserve: null,
+                    avg_percent_below_starting: null,
+                }])
+                .mockResolvedValueOnce([]),
+        };
+
+        const service = new AnalyticsService(prisma as any);
+        const result = await service.getAuctionFirstOfferAnalytics(99999);
+
+        expect(result.windowDays).toBe(365);
+    });
+});
