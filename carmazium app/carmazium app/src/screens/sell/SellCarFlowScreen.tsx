@@ -74,6 +74,16 @@ interface DvlaData {
   }>;
 }
 
+function createValuationJourneyId(): string {
+  // This is a correlation key, not an authentication secret. Keep UUID-v4
+  // shape so the shared backend DTO validates web and native consistently.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
 interface DamageEntry {
   id: string;
   zone: string;
@@ -703,6 +713,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(null);
   const [valuation, setValuation] = useState<VehicleValuation | null>(null);
   const valuationBaseKeyRef = useRef<string | null>(null);
+  const valuationJourneyIdRef = useRef<string | null>(null);
+  const valuationJourneyBaseKeyRef = useRef<string | null>(null);
   const [valuationLoading, setValuationLoading] = useState(false);
   const [valuationError, setValuationError] = useState<string | null>(null);
   const valuationRequestId = useRef(0);
@@ -772,14 +784,25 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setValuationLoading(true);
     setValuationError(null);
 
-    // One market request establishes the base. Specification changes below are
-    // applied locally and never re-run the market search.
+    // One market request establishes the base. The backend freezes it
+    // against this journey ID, so retries/re-renders cannot pick up a different
+    // set of live-market adverts.
+    if (
+      !valuationJourneyIdRef.current
+      || valuationJourneyBaseKeyRef.current !== baseKey
+    ) {
+      valuationJourneyIdRef.current = createValuationJourneyId();
+      valuationJourneyBaseKeyRef.current = baseKey;
+    }
+
     getVehicleValuation({
       make: make.trim(),
       model: model.trim(),
       year: yearNumber,
       mileage: mileageNumber,
       excludeListingId: editListingId || undefined,
+      valuationId: valuationJourneyIdRef.current,
+      registration: vrm.replace(/\s/g, '').toUpperCase() || undefined,
     })
       .then(result => {
         if (cancelled || valuationRequestId.current !== requestId) return;
