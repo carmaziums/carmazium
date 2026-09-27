@@ -441,17 +441,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       socket.on('connect', () => {
         setConnected(true);
         socket.emit('auction:join', { auctionId });
-      });
-      socket.on('disconnect', () => setConnected(false));
-      socket.on('reconnect', () => {
-        socket.emit('auction:join', { auctionId });
-        // `auction:join` only re-subscribes to the room — the gateway replays
-        // nothing (`auction.gateway.ts:65-75`). Any bid, cancellation or
-        // `auction:ended` that fired while the socket was down is simply lost,
-        // which could leave this screen showing ACTIVE with a frozen 00:00:00
-        // timer indefinitely. Refetch the real state (AUC-017, OQ-17).
+        // "connect" fires after the initial connection and successful
+        // reconnections. The gateway does not replay room events, so always
+        // re-read canonical auction state after joining.
         loadAuctionRef.current({ silent: true });
       });
+      socket.on('disconnect', () => setConnected(false));
 
       socket.on('auction:viewers', (d: { count: number }) => setWatchers(d.count));
 
