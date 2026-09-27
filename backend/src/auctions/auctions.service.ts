@@ -54,6 +54,25 @@ export class AuctionsService {
         private readonly paymentsService: PaymentsService,
     ) { }
 
+    private trackAuctionEvent(
+        type: string,
+        payload: Record<string, unknown>,
+        userId?: string,
+    ): void {
+        const analyticsEvent = (this.prisma as any).analyticsEvent;
+        if (!analyticsEvent?.create) return;
+
+        analyticsEvent.create({
+            data: {
+                type,
+                payload,
+                userId: userId ?? null,
+            },
+        }).catch(() => {
+            // Analytics must never fail an auction state transition.
+        });
+    }
+
     private async resolveSellerBusinessId(
         userId: string,
         permission: Extract<DealerPermission, 'VIEW_INVENTORY' | 'MANAGE_INVENTORY'>,
@@ -954,6 +973,34 @@ export class AuctionsService {
         // signal consumed by the web/native end banners. Here the seller has
         // explicitly accepted a below-reserve offer, so there is a valid winner
         // even though the numerical reserve itself was not reached.
+        const acceptedReserve = Number(accepted.auction.reservePrice);
+        const acceptedStartingBid = Number(accepted.auction.startingBid);
+        this.trackAuctionEvent('auction_offer_accepted', {
+            auction_id: auctionId,
+            listing_id: accepted.auction.listingId,
+            winner_id: accepted.winnerId,
+            amount: accepted.winningAmount,
+            reserve_price: acceptedReserve,
+            starting_bid: acceptedStartingBid,
+            percent_below_reserve: acceptedReserve > 0
+                ? Math.max(0, Math.round(((acceptedReserve - accepted.winningAmount) / acceptedReserve) * 1000) / 10)
+                : 0,
+            percent_below_starting_bid: acceptedStartingBid > 0
+                ? Math.max(0, Math.round(((acceptedStartingBid - accepted.winningAmount) / acceptedStartingBid) * 1000) / 10)
+                : 0,
+            outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+        }, businessSellerId);
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auctionId,
+            listing_id: accepted.auction.listingId,
+            outcome: 'SELLER_ACCEPTED_BELOW_RESERVE',
+            winner_id: accepted.winnerId,
+            winning_amount: accepted.winningAmount,
+            reserve_price: acceptedReserve,
+            starting_bid: acceptedStartingBid,
+            had_real_bids: true,
+        });
+
         const endPayload: AuctionEndPayload = {
             auctionId,
             winnerId: accepted.winnerId,
@@ -1108,6 +1155,19 @@ export class AuctionsService {
                 },
             }).catch(() => null);
         }
+
+        this.trackAuctionEvent('auction_reserve_corrected', {
+            auction_id: auctionId,
+            listing_id: lookup.listingId,
+            old_reserve: correction.oldReserve,
+            new_reserve: reservePrice,
+            starting_bid: correction.startingBid,
+            top_bid_amount: correction.topBidAmount,
+            active_bid_count: correction.topBidAmount === null ? 0 : 1,
+            reserve_met_after: correction.reserveWillBeMet,
+            first_offer_floor_after: correction.firstOfferFloor,
+            reason: reason?.trim() || null,
+        });
 
         // Live viewers already listen for this event and refetch the canonical
         // auction. Because the correction committed before this broadcast, web
@@ -1662,6 +1722,8 @@ export class AuctionsService {
                     winnerId: topBid.bidderId,
                     winningAmount: Number(topBid.amount),
                     saleCompleted: true,
+                    outcomeType: 'RESERVE_MET_SALE' as const,
+                    highestBidAmount: Number(topBid.amount),
                 };
             }
 
@@ -1698,10 +1760,29 @@ export class AuctionsService {
                 winnerId: null,
                 winningAmount: null,
                 saleCompleted: false,
+                outcomeType: sellerEarlyClose
+                    ? 'SELLER_EARLY_CLOSE_UNSOLD' as const
+                    : topBid
+                        ? 'BELOW_RESERVE_UNSOLD' as const
+                        : 'NO_BIDS_UNSOLD' as const,
+                highestBidAmount: topBid ? Number(topBid.amount) : null,
             };
         });
 
         if (!outcome) return;
+
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auctionId,
+            listing_id: outcome.auction.listingId,
+            outcome: outcome.outcomeType,
+            winner_id: outcome.winnerId,
+            winning_amount: outcome.winningAmount,
+            highest_bid_amount: outcome.highestBidAmount,
+            reserve_price: Number(outcome.auction.reservePrice),
+            starting_bid: Number(outcome.auction.startingBid),
+            had_real_bids: outcome.highestBidAmount !== null,
+            seller_early_close: options?.sellerEarlyClose === true,
+        });
 
         const endPayload: AuctionEndPayload = {
             auctionId,
