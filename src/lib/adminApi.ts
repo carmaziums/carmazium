@@ -1082,6 +1082,8 @@ export interface AuctionFirstOfferAnalytics {
     firstOfferCancellations: number;
     sellerAcceptedSales: number;
     reserveMetSales: number;
+    buyItNowSales: number;
+    adminAssignedSales: number;
     completedSales: number;
     saleRate: number;
     unsoldAuctions: number;
