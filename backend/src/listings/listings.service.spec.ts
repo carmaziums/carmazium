@@ -1333,6 +1333,20 @@ describe('ListingsService', () => {
                     }),
                 }),
             );
+            expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+                data: expect.objectContaining({
+                    id: '33333333-3333-4333-8333-333333333333',
+                    type: 'valuation_base_snapshot',
+                    sessionId: expect.stringMatching(/^valuation-base:[a-f0-9]{64}$/),
+                    payload: expect.objectContaining({
+                        valuation_id: '33333333-3333-4333-8333-333333333333',
+                        reusedFromSnapshotId: '22222222-2222-4222-8222-222222222222',
+                        baseValuation: expect.objectContaining({
+                            auction: expect.objectContaining({ marketValue: 2650 }),
+                        }),
+                    }),
+                }),
+            });
         });
 
         it('returns the winning frozen base when two requests race to create the same journey', async () => {
