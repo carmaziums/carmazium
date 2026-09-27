@@ -37,7 +37,7 @@ export class AlsoAuctionDto {
     @IsOptional()
     minIncrement?: number;
 
-    @ApiProperty({ description: 'Optional Buy It Now price in GBP', required: false })
+    @ApiProperty({ description: 'Optional Buy It Now price in GBP. When set it must be equal to or higher than reservePrice.', required: false })
     @Type(() => Number)
     @IsNumber({ maxDecimalPlaces: 2 })
     @IsPositive()
