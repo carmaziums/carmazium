@@ -245,8 +245,11 @@ export class AuctionsController {
     @ApiResponse({ status: 400, description: 'Auction not ACTIVE, no BIN price set, or reserve already met' })
     @ApiResponse({ status: 409, description: 'Another dealership already has an unexpired BIN request awaiting seller response' })
     async binTrigger(@Param('id') id: string, @CurrentUser() user: any) {
-        await this.auctionsService.triggerBuyItNow(id, user.id);
-        return new StandardResponse({ triggered: true });
+        const result = await this.auctionsService.triggerBuyItNow(id, user.id);
+        return new StandardResponse({
+            triggered: true,
+            ...result,
+        });
     }
 
     @Post(':id/bin-confirm')
