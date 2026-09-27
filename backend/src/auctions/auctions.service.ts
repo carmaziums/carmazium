@@ -17,7 +17,7 @@ import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
 import { Auction, Prisma, ServiceType, ServiceJobStatus, InspectionOutcome } from '@prisma/client';
-import { AUCTION_DURATION_MS, calculatePlatformOpeningBid } from './auction-pricing';
+import { AUCTION_DURATION_MS, calculateFirstOfferFloor, calculatePlatformOpeningBid } from './auction-pricing';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { PaymentsService } from '../payments/payments.service';
 import {
@@ -941,81 +941,133 @@ export class AuctionsService {
         reservePrice: number,
         reason?: string,
     ): Promise<Auction> {
-        const auction = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            include: {
-                listing: {
-                    select: {
-                        id: true,
-                        title: true,
-                        sellerId: true,
-                    },
-                },
-            },
-        });
-
-        if (!auction || auction.deletedAt) {
-            throw new NotFoundException('Auction not found');
-        }
-        if (auction.status !== 'SCHEDULED' && auction.status !== 'ACTIVE') {
-            throw new BadRequestException('Only SCHEDULED or ACTIVE auctions can have their reserve corrected');
-        }
         if (!Number.isFinite(reservePrice) || reservePrice <= 0) {
             throw new BadRequestException('Reserve price must be greater than £0');
         }
-        if (auction.buyItNowPrice != null && reservePrice > Number(auction.buyItNowPrice)) {
-            throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
-        }
 
-        const topBid = await this.prisma.bid.findFirst({
-            where: {
-                listingId: auction.listingId,
-                deletedAt: null,
-                cancelledAt: null,
-                archivedAt: null,
-            },
-            orderBy: { amount: 'desc' },
-            select: { amount: true },
-        });
-
-        const oldReserve = Number(auction.reservePrice);
-        const topBidAmount = topBid ? Number(topBid.amount) : null;
-        const reserveWasMet = topBidAmount !== null && topBidAmount >= oldReserve;
-        const reserveWillBeMet = topBidAmount !== null && topBidAmount >= reservePrice;
-
-        if (auction.status === 'ACTIVE' && reserveWasMet && !reserveWillBeMet) {
-            throw new BadRequestException(
-                'The reserve has already been met. It cannot be raised above the current highest bid.',
-            );
-        }
-
-        const updated = await this.prisma.auction.update({
+        // Read only the listing key up front. The actual validation and update
+        // are repeated inside the same per-listing advisory lock used by bid
+        // placement, so a dealer's first offer cannot race an admin reserve
+        // correction and be validated against stale pricing.
+        const lookup = await this.prisma.auction.findUnique({
             where: { id: auctionId },
-            data: {
-                reservePrice,
-                ...(reserveWillBeMet && {
-                    buyItNowPendingBuyerId: null,
-                    buyItNowPendingAt: null,
-                }),
-            },
+            select: { listingId: true, deletedAt: true },
+        });
+        if (!lookup || lookup.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+
+        const correction = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: {
+                    listing: {
+                        select: {
+                            id: true,
+                            title: true,
+                            sellerId: true,
+                        },
+                    },
+                },
+            });
+
+            if (!auction || auction.deletedAt) {
+                throw new NotFoundException('Auction not found');
+            }
+            if (auction.status !== 'SCHEDULED' && auction.status !== 'ACTIVE') {
+                throw new BadRequestException('Only SCHEDULED or ACTIVE auctions can have their reserve corrected');
+            }
+            if (auction.buyItNowPrice != null && reservePrice > Number(auction.buyItNowPrice)) {
+                throw new BadRequestException('Reserve price cannot be higher than the Buy It Now price');
+            }
+
+            const topBid = await tx.bid.findFirst({
+                where: {
+                    listingId: auction.listingId,
+                    deletedAt: null,
+                    cancelledAt: null,
+                    archivedAt: null,
+                },
+                orderBy: { amount: 'desc' },
+                select: { amount: true },
+            });
+
+            const oldReserve = Number(auction.reservePrice);
+            const topBidAmount = topBid ? Number(topBid.amount) : null;
+            const reserveWasMet = topBidAmount !== null && topBidAmount >= oldReserve;
+            const reserveWillBeMet = topBidAmount !== null && topBidAmount >= reservePrice;
+
+            if (auction.status === 'ACTIVE' && reserveWasMet && !reserveWillBeMet) {
+                throw new BadRequestException(
+                    'The reserve has already been met. It cannot be raised above the current highest bid.',
+                );
+            }
+
+            const updated = await tx.auction.update({
+                where: { id: auctionId },
+                data: {
+                    reservePrice,
+                    ...(reserveWillBeMet && {
+                        buyItNowPendingBuyerId: null,
+                        buyItNowPendingAt: null,
+                    }),
+                },
+            });
+
+            const firstOfferFloor = topBidAmount === null
+                ? calculateFirstOfferFloor(Number(auction.startingBid), reservePrice)
+                : null;
+
+            return {
+                updated,
+                listingTitle: auction.listing.title,
+                sellerId: auction.listing.sellerId,
+                startingBid: Number(auction.startingBid),
+                minIncrement: Number(auction.minIncrement),
+                oldReserve,
+                topBidAmount,
+                reserveWillBeMet,
+                firstOfferFloor,
+            };
         });
 
-        if (auction.listing.sellerId) {
+        if (correction.sellerId) {
             const reasonText = reason?.trim() ? ` Reason: ${reason.trim()}` : '';
-            const notification = await this.notificationsService.create({
-                userId: auction.listing.sellerId,
+            const pricingText = correction.topBidAmount === null
+                ? ` There are currently no active dealer bids. The starting bid remains £${correction.startingBid.toLocaleString('en-GB')} as a guide, and first offers can now be made from £${Number(correction.firstOfferFloor).toLocaleString('en-GB')}.`
+                : correction.reserveWillBeMet
+                    ? ` The current highest bid of £${correction.topBidAmount.toLocaleString('en-GB')} now meets the reserve. Existing bids remain unchanged and the auction continues normally.`
+                    : ` The current highest bid remains £${correction.topBidAmount.toLocaleString('en-GB')}. Existing bids are unchanged; the next minimum bid remains the current highest bid plus the £${correction.minIncrement.toLocaleString('en-GB')} increment.`;
+
+            await this.notificationsService.create({
+                userId: correction.sellerId,
                 type: 'AUCTION_UPDATED',
                 title: 'Auction reserve corrected',
-                message: `CarMazium corrected the reserve for "${auction.listing.title}" from £${oldReserve.toLocaleString('en-GB')} to £${reservePrice.toLocaleString('en-GB')}.${reasonText}`,
+                message: `CarMazium corrected the reserve for "${correction.listingTitle}" from £${correction.oldReserve.toLocaleString('en-GB')} to £${reservePrice.toLocaleString('en-GB')}.${pricingText}${reasonText}`,
                 link: '/dashboard/seller/auctions',
                 entityType: 'Auction',
                 entityId: auctionId,
                 actionType: 'PRICE_CORRECTED',
+                data: {
+                    oldReserve: correction.oldReserve,
+                    newReserve: reservePrice,
+                    topBidAmount: correction.topBidAmount,
+                    firstOfferFloor: correction.firstOfferFloor,
+                    startingBid: correction.startingBid,
+                    reserveMet: correction.reserveWillBeMet,
+                    reason: reason?.trim() || null,
+                },
             }).catch(() => null);
         }
 
+        // Live viewers already listen for this event and refetch the canonical
+        // auction. Because the correction committed before this broadcast, web
+        // and native recompute the first-offer floor from the new reserve without
+        // ever observing a half-written price state.
         this.auctionGateway.broadcastPriceUpdated(auctionId, reservePrice);
-        return updated;
+        return correction.updated;
     }
 
     /**
