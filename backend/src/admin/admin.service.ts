@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { UserRole } from '@prisma/client';
@@ -21,6 +21,8 @@ import {
 
 @Injectable()
 export class AdminService {
+    private readonly logger = new Logger(AdminService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly paymentsService: PaymentsService,
