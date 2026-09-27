@@ -546,7 +546,14 @@ describe('BidsService — cancelBid', () => {
         // Listing with ACTIVE auction
         prisma.listing.findUnique.mockResolvedValue({
             id: 'listing-1',
-            auction: { id: 'auction-1', status: 'ACTIVE' },
+            title: 'Test vehicle',
+            sellerId: 'seller-1',
+            auction: {
+                id: 'auction-1',
+                status: 'ACTIVE',
+                startingBid: 7000,
+                reservePrice: 6000,
+            },
         });
         prisma.bid.findFirst
             .mockResolvedValueOnce(mockBid)
