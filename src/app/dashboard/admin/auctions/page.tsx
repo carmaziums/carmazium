@@ -107,6 +107,10 @@ export default function AdminAuctionsPage() {
             setPriceError("Enter a valid reserve price above £0.")
             return
         }
+        if (priceTarget.buyItNowPrice != null && reserve > Number(priceTarget.buyItNowPrice)) {
+            setPriceError("Buy It Now price must be equal to or higher than the reserve price.")
+            return
+        }
         setSavingPrice(true)
         setPriceError(null)
         try {
@@ -333,6 +337,10 @@ export default function AdminAuctionsPage() {
                             <div className="rounded-xl bg-[var(--bg-input)] p-3">
                                 <p className="text-[var(--text-muted)]">Current reserve</p>
                                 <p className="mt-1 font-black">{formatPrice(Number(priceTarget.reservePrice))}</p>
+                            </div>
+                            <div className="rounded-xl bg-[var(--bg-input)] p-3">
+                                <p className="text-[var(--text-muted)]">Buy It Now</p>
+                                <p className="mt-1 font-black">{priceTarget.buyItNowPrice != null ? formatPrice(Number(priceTarget.buyItNowPrice)) : "—"}</p>
                             </div>
                             <div className="rounded-xl bg-[var(--bg-input)] p-3">
                                 <p className="text-[var(--text-muted)]">Top real bid</p>
