@@ -4,6 +4,25 @@ export const AUCTION_RESERVE_GUIDE_HIGH_RATIO = 1.00;
 export const AUCTION_FIRST_OFFER_RATIO = 0.70;
 export const AUCTION_DURATION_HOURS = 24;
 export const AUCTION_DURATION_MS = AUCTION_DURATION_HOURS * 60 * 60 * 1000;
+export const BUY_IT_NOW_RESPONSE_WINDOW_HOURS = 24;
+export const BUY_IT_NOW_RESPONSE_WINDOW_MS = BUY_IT_NOW_RESPONSE_WINDOW_HOURS * 60 * 60 * 1000;
+
+export function calculateBuyItNowResponseDeadline(
+    pendingAt: Date | string,
+    auctionEndTime: Date | string,
+): Date {
+    const pendingMs = new Date(pendingAt).getTime();
+    const auctionEndMs = new Date(auctionEndTime).getTime();
+    if (!Number.isFinite(pendingMs) || !Number.isFinite(auctionEndMs)) {
+        throw new Error('Buy It Now response deadline requires valid timestamps');
+    }
+
+    // A BIN request can never silently extend a 24-hour auction. The seller
+    // gets up to 24 hours to respond, but never beyond the canonical auction
+    // deadline (including any anti-snipe extension already persisted in endTime).
+    return new Date(Math.min(pendingMs + BUY_IT_NOW_RESPONSE_WINDOW_MS, auctionEndMs));
+}
+
 
 export function calculatePlatformOpeningBid(marketValue: number): number {
     if (!Number.isFinite(marketValue) || marketValue <= 0) {
