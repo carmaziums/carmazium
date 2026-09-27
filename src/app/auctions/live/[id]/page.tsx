@@ -472,6 +472,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         socket.on("auction:ended", (payload: AuctionEndPayload) => {
             setEndedPayload(payload)
             setAuction(p => p ? { ...p, status: "ENDED", winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p)
+            setBinPending(false)
+            setBinResponseDeadline(null)
             // Refresh notifications — backend creates AUCTION_WON / AUCTION_ENDED notifications
             triggerNotificationRefresh()
         })
