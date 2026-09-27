@@ -166,7 +166,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         await expect(
             service.triggerBuyItNow('auction-1', 'buyer-1'),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/expired/i) });
+        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
 
         expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
@@ -304,7 +304,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
 
         await expect(
             service.confirmBuyItNow('auction-1', 'seller-1'),
-        ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
+        ).rejects.toMatchObject({ message: expect.stringMatching(/expired/i) });
 
         expect(prisma.sale.create).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
@@ -421,13 +421,16 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         prisma.auction.findUnique.mockResolvedValue(auction);
         prisma.bid.findFirst.mockResolvedValue(null);
 
-        await service.triggerBuyItNow('auction-1', 'buyer-old');
+        const result = await service.triggerBuyItNow('auction-1', 'buyer-old');
 
         expect(prisma.$queryRaw).toHaveBeenCalled();
         expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(notificationsService.create).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
         expect(auction.buyItNowPendingAt).toBe(pendingAt);
+        expect(result.created).toBe(false);
+        expect(result.pendingAt).toBe(pendingAt.toISOString());
+        expect(result.responseDeadline).toBe(auction.endTime.toISOString());
     });
 
     it('triggerBuyItNow: treats authorised staff retries as the same dealership identity', async () => {
@@ -449,8 +452,10 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
             },
         });
 
-        await service.triggerBuyItNow('auction-1', 'sales-2');
+        const result = await service.triggerBuyItNow('auction-1', 'sales-2');
 
+        expect(result.created).toBe(false);
+        expect(result.responseDeadline).toBe(auction.endTime.toISOString());
         expect(prisma.auction.update).not.toHaveBeenCalled();
         expect(notificationsService.create).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
