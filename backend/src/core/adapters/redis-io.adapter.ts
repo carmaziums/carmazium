@@ -52,9 +52,13 @@ export class RedisIoAdapter extends IoAdapter {
     }
 
     /**
-     * Close Redis connections. Call this on graceful shutdown (e.g. SIGTERM) to avoid connection leaks.
+     * Close only the optional Redis pub/sub connections.
+     *
+     * Do not override IoAdapter.close(server): Nest uses that inherited hook
+     * during app.close() to terminate the Socket.IO server itself. Keeping
+     * Redis cleanup separate lets the normal websocket drain complete first.
      */
-    async close(): Promise<void> {
+    async closeRedisConnections(): Promise<void> {
         if (this.pubClient) {
             await this.pubClient.quit();
             this.pubClient = null;
