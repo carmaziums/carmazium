@@ -31,11 +31,15 @@ import {
     Sparkles,
     Zap,
     Radio,
+    Settings2,
+    X,
+    LayoutGrid,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminStats, getPendingHandovers, type AdminStats } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
+import { apiClient } from "@/lib/apiClient"
 
 type ToolLink = {
     href: string
@@ -54,6 +58,233 @@ type ToolGroup = {
     tileClass: string
     accentClass: string
 }
+
+type AdminDashboardCardId =
+    | "users"
+    | "listings"
+    | "activeListings"
+    | "sold"
+    | "auctions"
+    | "activeAuctions"
+    | "endedAuctions"
+    | "bids"
+    | "revenue"
+    | "pendingHandovers"
+    | "transactions"
+    | "hpi"
+    | "dealerKyc"
+    | "messages"
+    | "analytics"
+    | "services"
+    | "cancellations"
+    | "blog"
+
+type AdminDashboardCardDefinition = {
+    id: AdminDashboardCardId
+    label: string
+    href: string
+    description: string
+    icon: React.ComponentType<{ size?: number; className?: string }>
+    cardClass: string
+    iconClass: string
+    glowClass: string
+}
+
+const DEFAULT_ADMIN_CARD_IDS: AdminDashboardCardId[] = [
+    "users",
+    "listings",
+    "sold",
+    "auctions",
+    "bids",
+    "revenue",
+]
+
+const adminDashboardCardCatalog: AdminDashboardCardDefinition[] = [
+    {
+        id: "users",
+        label: "Users",
+        href: "/dashboard/admin/users",
+        description: "All platform accounts",
+        icon: Users,
+        cardClass: "from-cyan-500/16 via-sky-500/8 to-transparent border-cyan-300/30 dark:border-cyan-500/20",
+        iconClass: "from-cyan-400 to-blue-600 shadow-[0_8px_18px_rgba(6,182,212,0.30)]",
+        glowClass: "bg-cyan-400/20",
+    },
+    {
+        id: "listings",
+        label: "Listings",
+        href: "/dashboard/admin/listings",
+        description: "All marketplace listings",
+        icon: Car,
+        cardClass: "from-blue-500/16 via-indigo-500/8 to-transparent border-blue-300/30 dark:border-blue-500/20",
+        iconClass: "from-blue-500 to-indigo-600 shadow-[0_8px_18px_rgba(59,130,246,0.30)]",
+        glowClass: "bg-blue-400/20",
+    },
+    {
+        id: "activeListings",
+        label: "Active listings",
+        href: "/dashboard/admin/listings",
+        description: "Vehicles currently live",
+        icon: Radio,
+        cardClass: "from-sky-500/16 via-cyan-500/8 to-transparent border-sky-300/30 dark:border-sky-500/20",
+        iconClass: "from-sky-400 to-cyan-600 shadow-[0_8px_18px_rgba(14,165,233,0.30)]",
+        glowClass: "bg-sky-400/20",
+    },
+    {
+        id: "sold",
+        label: "Sold",
+        href: "/dashboard/admin/listings",
+        description: "Completed vehicle sales",
+        icon: CheckCircle2,
+        cardClass: "from-emerald-500/16 via-teal-500/8 to-transparent border-emerald-300/30 dark:border-emerald-500/20",
+        iconClass: "from-emerald-400 to-teal-600 shadow-[0_8px_18px_rgba(16,185,129,0.30)]",
+        glowClass: "bg-emerald-400/20",
+    },
+    {
+        id: "auctions",
+        label: "Auctions",
+        href: "/dashboard/admin/auctions",
+        description: "All auction records",
+        icon: Gavel,
+        cardClass: "from-violet-500/16 via-purple-500/8 to-transparent border-violet-300/30 dark:border-violet-500/20",
+        iconClass: "from-violet-500 to-purple-700 shadow-[0_8px_18px_rgba(139,92,246,0.30)]",
+        glowClass: "bg-violet-400/20",
+    },
+    {
+        id: "activeAuctions",
+        label: "Active auctions",
+        href: "/dashboard/admin/auctions",
+        description: "Auctions running now",
+        icon: Activity,
+        cardClass: "from-purple-500/16 via-indigo-500/8 to-transparent border-purple-300/30 dark:border-purple-500/20",
+        iconClass: "from-purple-500 to-indigo-600 shadow-[0_8px_18px_rgba(168,85,247,0.30)]",
+        glowClass: "bg-purple-400/20",
+    },
+    {
+        id: "endedAuctions",
+        label: "Ended auctions",
+        href: "/dashboard/admin/auctions",
+        description: "Completed auction runs",
+        icon: Gavel,
+        cardClass: "from-slate-500/16 via-gray-500/8 to-transparent border-slate-300/30 dark:border-slate-500/20",
+        iconClass: "from-slate-500 to-gray-700 shadow-[0_8px_18px_rgba(100,116,139,0.28)]",
+        glowClass: "bg-slate-400/20",
+    },
+    {
+        id: "bids",
+        label: "Bids",
+        href: "/dashboard/admin/auctions",
+        description: "All auction bid activity",
+        icon: Activity,
+        cardClass: "from-fuchsia-500/16 via-pink-500/8 to-transparent border-fuchsia-300/30 dark:border-fuchsia-500/20",
+        iconClass: "from-fuchsia-500 to-pink-600 shadow-[0_8px_18px_rgba(217,70,239,0.30)]",
+        glowClass: "bg-fuchsia-400/20",
+    },
+    {
+        id: "revenue",
+        label: "Revenue",
+        href: "/dashboard/admin/transactions",
+        description: "Retained platform revenue",
+        icon: DollarSign,
+        cardClass: "from-amber-500/18 via-orange-500/8 to-transparent border-amber-300/35 dark:border-amber-500/20",
+        iconClass: "from-amber-400 to-orange-600 shadow-[0_8px_18px_rgba(245,158,11,0.30)]",
+        glowClass: "bg-amber-400/20",
+    },
+    {
+        id: "pendingHandovers",
+        label: "Handovers",
+        href: "/dashboard/admin/handovers",
+        description: "Proofs awaiting admin review",
+        icon: Handshake,
+        cardClass: "from-orange-500/16 via-amber-500/8 to-transparent border-orange-300/30 dark:border-orange-500/20",
+        iconClass: "from-orange-400 to-amber-600 shadow-[0_8px_18px_rgba(249,115,22,0.30)]",
+        glowClass: "bg-orange-400/20",
+    },
+    {
+        id: "transactions",
+        label: "Transactions",
+        href: "/dashboard/admin/transactions",
+        description: "Payments, fees and refunds",
+        icon: Receipt,
+        cardClass: "from-emerald-500/16 via-cyan-500/8 to-transparent border-emerald-300/30 dark:border-emerald-500/20",
+        iconClass: "from-emerald-500 to-cyan-600 shadow-[0_8px_18px_rgba(16,185,129,0.30)]",
+        glowClass: "bg-emerald-400/20",
+    },
+    {
+        id: "hpi",
+        label: "HPI reports",
+        href: "/dashboard/admin/hpi",
+        description: "Prepare and upload reports",
+        icon: ShieldCheck,
+        cardClass: "from-violet-500/16 via-fuchsia-500/8 to-transparent border-violet-300/30 dark:border-violet-500/20",
+        iconClass: "from-violet-500 to-fuchsia-600 shadow-[0_8px_18px_rgba(139,92,246,0.30)]",
+        glowClass: "bg-violet-400/20",
+    },
+    {
+        id: "dealerKyc",
+        label: "Dealer KYC",
+        href: "/dashboard/admin/dealer-verification",
+        description: "Review dealer verification",
+        icon: Shield,
+        cardClass: "from-blue-500/16 via-cyan-500/8 to-transparent border-blue-300/30 dark:border-blue-500/20",
+        iconClass: "from-blue-500 to-cyan-600 shadow-[0_8px_18px_rgba(59,130,246,0.30)]",
+        glowClass: "bg-blue-400/20",
+    },
+    {
+        id: "messages",
+        label: "Messages",
+        href: "/dashboard/admin/messages",
+        description: "Admin support and conversations",
+        icon: MessageSquare,
+        cardClass: "from-rose-500/16 via-pink-500/8 to-transparent border-rose-300/30 dark:border-rose-500/20",
+        iconClass: "from-rose-500 to-pink-600 shadow-[0_8px_18px_rgba(244,63,94,0.30)]",
+        glowClass: "bg-rose-400/20",
+    },
+    {
+        id: "analytics",
+        label: "Analytics",
+        href: "/dashboard/admin/analytics",
+        description: "Platform and valuation insights",
+        icon: TrendingUp,
+        cardClass: "from-cyan-500/16 via-emerald-500/8 to-transparent border-cyan-300/30 dark:border-cyan-500/20",
+        iconClass: "from-cyan-500 to-emerald-600 shadow-[0_8px_18px_rgba(6,182,212,0.30)]",
+        glowClass: "bg-cyan-400/20",
+    },
+    {
+        id: "services",
+        label: "Trade services",
+        href: "/dashboard/admin/services",
+        description: "Providers, jobs and leads",
+        icon: Briefcase,
+        cardClass: "from-indigo-500/16 via-blue-500/8 to-transparent border-indigo-300/30 dark:border-indigo-500/20",
+        iconClass: "from-indigo-500 to-blue-600 shadow-[0_8px_18px_rgba(99,102,241,0.30)]",
+        glowClass: "bg-indigo-400/20",
+    },
+    {
+        id: "cancellations",
+        label: "Cancellations",
+        href: "/dashboard/admin/cancellations",
+        description: "Review sale cancellations",
+        icon: AlertTriangle,
+        cardClass: "from-red-500/16 via-rose-500/8 to-transparent border-red-300/30 dark:border-red-500/20",
+        iconClass: "from-red-500 to-rose-600 shadow-[0_8px_18px_rgba(239,68,68,0.30)]",
+        glowClass: "bg-red-400/20",
+    },
+    {
+        id: "blog",
+        label: "Blog",
+        href: "/dashboard/admin/blog",
+        description: "Manage CarMazium articles",
+        icon: Newspaper,
+        cardClass: "from-amber-500/16 via-yellow-500/8 to-transparent border-amber-300/30 dark:border-amber-500/20",
+        iconClass: "from-amber-500 to-yellow-600 shadow-[0_8px_18px_rgba(245,158,11,0.30)]",
+        glowClass: "bg-amber-400/20",
+    },
+]
+
+const ADMIN_CARD_IDS = new Set<AdminDashboardCardId>(
+    adminDashboardCardCatalog.map(card => card.id),
+)
 
 const toolGroups: ToolGroup[] = [
     {
@@ -119,12 +350,17 @@ const toolGroups: ToolGroup[] = [
 ]
 
 export default function AdminDashboard() {
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading, refreshProfile } = useAuth()
     const router = useRouter()
     const [stats, setStats] = React.useState<AdminStats | null>(null)
     const [pendingHandovers, setPendingHandovers] = React.useState(0)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [visibleCardIds, setVisibleCardIds] = React.useState<AdminDashboardCardId[]>(DEFAULT_ADMIN_CARD_IDS)
+    const [draftCardIds, setDraftCardIds] = React.useState<AdminDashboardCardId[]>(DEFAULT_ADMIN_CARD_IDS)
+    const [cardEditorOpen, setCardEditorOpen] = React.useState(false)
+    const [savingCards, setSavingCards] = React.useState(false)
+    const [cardSaveError, setCardSaveError] = React.useState<string | null>(null)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -132,6 +368,66 @@ export default function AdminDashboard() {
             if (profile?.role !== 'ADMIN') { router.replace('/dashboard'); return }
         }
     }, [user, profile, authLoading, router])
+
+    React.useEffect(() => {
+        if (profile?.role !== "ADMIN") return
+
+        const saved = profile.preferences?.adminDashboardCardIds
+        if (!Array.isArray(saved)) {
+            setVisibleCardIds(DEFAULT_ADMIN_CARD_IDS)
+            setDraftCardIds(DEFAULT_ADMIN_CARD_IDS)
+            return
+        }
+
+        const valid = Array.from(new Set(
+            saved.filter((id): id is AdminDashboardCardId =>
+                typeof id === "string" && ADMIN_CARD_IDS.has(id as AdminDashboardCardId),
+            ),
+        ))
+        setVisibleCardIds(valid)
+        setDraftCardIds(valid)
+    }, [profile?.id, profile?.preferences])
+
+    const toggleDraftCard = (id: AdminDashboardCardId) => {
+        setDraftCardIds(current =>
+            current.includes(id)
+                ? current.filter(cardId => cardId !== id)
+                : [...current, id],
+        )
+    }
+
+    const openCardEditor = () => {
+        setDraftCardIds(visibleCardIds)
+        setCardSaveError(null)
+        setCardEditorOpen(true)
+    }
+
+    const saveCardPreferences = async () => {
+        try {
+            setSavingCards(true)
+            setCardSaveError(null)
+            await apiClient('/users/me', {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    preferences: {
+                        adminDashboardCardIds: draftCardIds,
+                    },
+                }),
+            })
+            setVisibleCardIds(draftCardIds)
+            setCardEditorOpen(false)
+            await refreshProfile()
+        } catch (err: any) {
+            setCardSaveError(err?.message || 'Could not save dashboard cards.')
+        } finally {
+            setSavingCards(false)
+        }
+    }
+
+    const resetCardPreferences = () => {
+        setDraftCardIds(DEFAULT_ADMIN_CARD_IDS)
+        setCardSaveError(null)
+    }
 
     const fetchStats = async () => {
         try {
@@ -166,62 +462,40 @@ export default function AdminDashboard() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "Admin")
 
-    const kpiCards = [
-        {
-            label: "Users",
-            href: "/dashboard/admin/users",
-            value: stats?.totalUsers?.toLocaleString() ?? "0",
-            icon: Users,
-            cardClass: "from-cyan-500/16 via-sky-500/8 to-transparent border-cyan-300/30 dark:border-cyan-500/20",
-            iconClass: "from-cyan-400 to-blue-600 shadow-[0_8px_18px_rgba(6,182,212,0.30)]",
-            glowClass: "bg-cyan-400/20",
-        },
-        {
-            label: "Listings",
-            href: "/dashboard/admin/listings",
-            value: stats?.totalListings?.toLocaleString() ?? "0",
-            icon: Car,
-            cardClass: "from-blue-500/16 via-indigo-500/8 to-transparent border-blue-300/30 dark:border-blue-500/20",
-            iconClass: "from-blue-500 to-indigo-600 shadow-[0_8px_18px_rgba(59,130,246,0.30)]",
-            glowClass: "bg-blue-400/20",
-        },
-        {
-            label: "Sold",
-            href: "/dashboard/admin/listings",
-            value: stats?.soldListings?.toLocaleString() ?? "0",
-            icon: CheckCircle2,
-            cardClass: "from-emerald-500/16 via-teal-500/8 to-transparent border-emerald-300/30 dark:border-emerald-500/20",
-            iconClass: "from-emerald-400 to-teal-600 shadow-[0_8px_18px_rgba(16,185,129,0.30)]",
-            glowClass: "bg-emerald-400/20",
-        },
-        {
-            label: "Auctions",
-            href: "/dashboard/admin/auctions",
-            value: stats?.totalAuctions?.toLocaleString() ?? "0",
-            icon: Gavel,
-            cardClass: "from-violet-500/16 via-purple-500/8 to-transparent border-violet-300/30 dark:border-violet-500/20",
-            iconClass: "from-violet-500 to-purple-700 shadow-[0_8px_18px_rgba(139,92,246,0.30)]",
-            glowClass: "bg-violet-400/20",
-        },
-        {
-            label: "Bids",
-            href: "/dashboard/admin/auctions",
-            value: stats?.totalBids?.toLocaleString() ?? "0",
-            icon: Activity,
-            cardClass: "from-fuchsia-500/16 via-pink-500/8 to-transparent border-fuchsia-300/30 dark:border-fuchsia-500/20",
-            iconClass: "from-fuchsia-500 to-pink-600 shadow-[0_8px_18px_rgba(217,70,239,0.30)]",
-            glowClass: "bg-fuchsia-400/20",
-        },
-        {
-            label: "Revenue",
-            href: "/dashboard/admin/transactions",
-            value: formatPrice(stats?.totalRevenue ?? 0),
-            icon: DollarSign,
-            cardClass: "from-amber-500/18 via-orange-500/8 to-transparent border-amber-300/35 dark:border-amber-500/20",
-            iconClass: "from-amber-400 to-orange-600 shadow-[0_8px_18px_rgba(245,158,11,0.30)]",
-            glowClass: "bg-amber-400/20",
-        },
-    ]
+    const getCardValue = (id: AdminDashboardCardId) => {
+        switch (id) {
+            case "users":
+                return stats?.totalUsers?.toLocaleString() ?? "0"
+            case "listings":
+                return stats?.totalListings?.toLocaleString() ?? "0"
+            case "activeListings":
+                return stats?.activeListings?.toLocaleString() ?? "0"
+            case "sold":
+                return stats?.soldListings?.toLocaleString() ?? "0"
+            case "auctions":
+                return stats?.totalAuctions?.toLocaleString() ?? "0"
+            case "activeAuctions":
+                return stats?.activeAuctions?.toLocaleString() ?? "0"
+            case "endedAuctions":
+                return stats?.endedAuctions?.toLocaleString() ?? "0"
+            case "bids":
+                return stats?.totalBids?.toLocaleString() ?? "0"
+            case "revenue":
+                return formatPrice(stats?.totalRevenue ?? 0)
+            case "pendingHandovers":
+                return pendingHandovers.toLocaleString()
+            default:
+                return "Open"
+        }
+    }
+
+    const kpiCards = visibleCardIds
+        .map(id => adminDashboardCardCatalog.find(card => card.id === id))
+        .filter((card): card is AdminDashboardCardDefinition => Boolean(card))
+        .map(card => ({
+            ...card,
+            value: getCardValue(card.id),
+        }))
 
     const quickActions = [
         {
@@ -360,13 +634,31 @@ export default function AdminDashboard() {
                                     <Activity size={14} /> Live platform data
                                 </div>
                                 <h2 className="font-black text-xl sm:text-2xl text-[var(--text-primary)]">At a glance</h2>
-                                <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">Real-time totals across the marketplace.</p>
+                                <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">
+                                    Choose the cards that are most useful to you.
+                                </p>
                             </div>
-                            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-300 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1.5">
-                                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" /> Online
-                            </div>
+                            <button
+                                type="button"
+                                onClick={openCardEditor}
+                                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-xs font-bold text-[var(--text-secondary)] shadow-sm transition-all hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                                <Settings2 size={15} />
+                                Customize cards
+                            </button>
                         </div>
 
+                        {kpiCards.length === 0 ? (
+                            <button
+                                type="button"
+                                onClick={openCardEditor}
+                                className="w-full rounded-[22px] border border-dashed border-[var(--border-default)] bg-[var(--bg-card)] p-8 text-center transition-colors hover:border-primary/40"
+                            >
+                                <LayoutGrid size={24} className="mx-auto text-[var(--text-muted)]" />
+                                <p className="mt-3 font-black text-[var(--text-primary)]">No cards selected</p>
+                                <p className="mt-1 text-xs text-[var(--text-muted)]">Tap here to add the admin shortcuts and metrics you want.</p>
+                            </button>
+                        ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
                             {kpiCards.map((card) => {
                                 const Icon = card.icon
@@ -394,6 +686,7 @@ export default function AdminDashboard() {
                                 )
                             })}
                         </div>
+                        )}
                     </section>
 
                     <section>
@@ -491,6 +784,113 @@ export default function AdminDashboard() {
                     </section>
                 </main>
             </div>
+
+            {cardEditorOpen && (
+                <div
+                    className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-card-editor-title"
+                    onMouseDown={(event) => {
+                        if (event.currentTarget === event.target && !savingCards) {
+                            setCardEditorOpen(false)
+                        }
+                    }}
+                >
+                    <div className="w-full max-w-3xl rounded-t-[28px] border border-[var(--border-default)] bg-[var(--bg-dropdown)] shadow-2xl sm:rounded-[28px]">
+                        <div className="flex items-start justify-between gap-4 border-b border-[var(--border-default)] p-5 sm:p-6">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Admin dashboard</p>
+                                <h2 id="admin-card-editor-title" className="mt-1 text-xl font-black text-[var(--text-primary)]">
+                                    Customize cards
+                                </h2>
+                                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                                    Add the metrics and shortcuts you use. Remove anything you do not need.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => !savingCards && setCardEditorOpen(false)}
+                                className="rounded-xl border border-[var(--border-default)] p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                aria-label="Close card editor"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="max-h-[60vh] overflow-y-auto p-4 sm:p-6">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {adminDashboardCardCatalog.map(card => {
+                                    const selected = draftCardIds.includes(card.id)
+                                    const Icon = card.icon
+                                    return (
+                                        <button
+                                            key={card.id}
+                                            type="button"
+                                            onClick={() => toggleDraftCard(card.id)}
+                                            aria-pressed={selected}
+                                            className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${selected
+                                                ? "border-primary/50 bg-primary/10 shadow-[0_8px_22px_rgba(239,68,68,0.10)]"
+                                                : "border-[var(--border-default)] bg-[var(--bg-card)] hover:border-primary/25"
+                                            }`}
+                                        >
+                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.iconClass} text-white`}>
+                                                <Icon size={18} />
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-black text-[var(--text-primary)]">{card.label}</span>
+                                                <span className="mt-0.5 block truncate text-[11px] text-[var(--text-muted)]">{card.description}</span>
+                                            </span>
+                                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-black ${selected
+                                                ? "border-primary bg-primary text-white"
+                                                : "border-[var(--border-default)] text-transparent"
+                                            }`}>
+                                                ✓
+                                            </span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+
+                            {cardSaveError && (
+                                <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-300">
+                                    {cardSaveError}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-3 border-t border-[var(--border-default)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                            <button
+                                type="button"
+                                onClick={resetCardPreferences}
+                                disabled={savingCards}
+                                className="rounded-xl px-4 py-2.5 text-sm font-bold text-[var(--text-muted)] hover:bg-[var(--bg-card)] disabled:opacity-50"
+                            >
+                                Reset default
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setCardEditorOpen(false)}
+                                    disabled={savingCards}
+                                    className="flex-1 rounded-xl border border-[var(--border-default)] px-4 py-2.5 text-sm font-bold text-[var(--text-secondary)] sm:flex-none disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={saveCardPreferences}
+                                    disabled={savingCards}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-white shadow-[0_10px_24px_rgba(239,68,68,0.22)] sm:flex-none disabled:opacity-50"
+                                >
+                                    {savingCards ? <Loader2 size={16} className="animate-spin" /> : <Settings2 size={16} />}
+                                    Save cards
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
