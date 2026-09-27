@@ -33,6 +33,7 @@ import {
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { TRADE_EXCHANGE_ROLES, canAccessTradeStock } from "@/lib/tradeAccess"
 import { useAuth } from "@/context/AuthContext"
+import { getAuctionFirstOfferFloor } from "@/lib/auctionPricing"
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
 
@@ -193,6 +194,9 @@ function formatStartsIn(startTime: string): string {
 function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const currentBid = getCurrentBid(auction)
     const bidCount = getBidCount(auction)
+    const firstOfferFloor = bidCount === 0
+        ? getAuctionFirstOfferFloor(Number(auction.startingBid), Number(auction.reservePrice))
+        : 0
     const antiSnipe = isAntiSnipeActive(auction)
     const isActive = auction.status === "ACTIVE"
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
@@ -311,6 +315,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             <p className="text-2xl font-black text-[var(--text-primary)] font-mono mt-0.5">
                                 £{currentBid.toLocaleString()}
                             </p>
+                            {isActive && bidCount === 0 && firstOfferFloor > 0 && (
+                                <p className="text-[10px] font-black text-amber-400 mt-1">
+                                    First offer from £{firstOfferFloor.toLocaleString()}
+                                </p>
+                            )}
                         </div>
                         <div className="text-right">
                             {isActive ? (
