@@ -47,6 +47,7 @@ describe('BidsService — incremental bidding', () => {
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             auction: { update: jest.fn() },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
@@ -134,6 +135,23 @@ describe('BidsService — incremental bidding', () => {
                 bidderId: 'bidder-A',
                 amount: 4500,
             },
+        });
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_bid_placed',
+                userId: 'bidder-A',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    bid_id: 'bid-first-offer',
+                    amount: 4500,
+                    is_first_offer: true,
+                    first_offer_floor: 3500,
+                    starting_bid: 5000,
+                    reserve_price: 9000,
+                    percent_below_reserve: 50,
+                    percent_below_starting_bid: 10,
+                }),
+            }),
         });
     });
 
@@ -470,6 +488,7 @@ describe('BidsService — cancelBid', () => {
                 })),
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
             $transaction: jest.fn(async (callback: any) => callback(prisma)),
         };
@@ -634,6 +653,19 @@ describe('BidsService — cancelBid', () => {
                 message: expect.stringMatching(/first offers can be made from £4,200/i),
             }),
         );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_bid_cancelled',
+                userId: 'owner-user',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-1',
+                    cancelled_bid_id: 'bid-only',
+                    active_bid_count_after: 0,
+                    first_offer_floor_after: 4200,
+                    reserve_met_after: false,
+                }),
+            }),
+        });
     });
 
     it('drops reserve-met state to the next real bid when the highest bid is cancelled', async () => {
