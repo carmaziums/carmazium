@@ -240,10 +240,10 @@ export class BidsService {
                 userId:     highestBid.bidderId,
                 type:       'OUTBID',
                 title:      "You've been outbid",
-                message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${listing.make} ${listing.model}. Bid again to stay in the lead.`,
+                message:    `A new bid of £${createBidDto.amount.toLocaleString()} was placed on ${lockedListing.make} ${lockedListing.model}. Bid again to stay in the lead.`,
                 entityType: 'AUCTION',
-                entityId:   auction.id,
-                link:       `/auctions/live/${auction.id}`,
+                entityId:   lockedAuction.id,
+                link:       `/auctions/live/${lockedAuction.id}`,
             }).catch(() => { /* notification failure must not fail the bid */ });
         }
 
