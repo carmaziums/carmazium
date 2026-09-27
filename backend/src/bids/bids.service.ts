@@ -399,6 +399,7 @@ export class BidsService {
             bidId,
             highestActiveBid: result.highestActiveBid,
             highestActiveBidId: result.afterHighest?.id ?? null,
+            highestActiveBidderId: result.afterHighest?.bidderId ?? null,
             activeBidCount: result.activeBidCount,
             reserveMet: result.reserveMet,
             firstOfferFloor: result.firstOfferFloor,
