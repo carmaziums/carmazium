@@ -712,6 +712,7 @@ export class AnalyticsService {
                         e."createdAt",
                         e.payload,
                         e.payload->>'auction_id' AS auction_id,
+                        COALESCE(NULLIF(e.payload->>'auction_run_key', ''), e.payload->>'auction_id') AS auction_run_key,
                         e.payload->>'bid_id' AS bid_id,
                         NULLIF(e.payload->>'amount', '')::NUMERIC AS amount,
                         NULLIF(e.payload->>'reserve_price', '')::NUMERIC AS reserve_price,
@@ -729,7 +730,7 @@ export class AnalyticsService {
                             SELECT 1
                             FROM analytics_events b
                             WHERE b.type = 'auction_bid_placed'
-                              AND b.payload->>'auction_id' = f.auction_id
+                              AND COALESCE(NULLIF(b.payload->>'auction_run_key', ''), b.payload->>'auction_id') = f.auction_run_key
                               AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
                               AND b."createdAt" > f."createdAt"
                         ) AS had_competition,
@@ -744,7 +745,7 @@ export class AnalyticsService {
                             SELECT o.payload->>'outcome'
                             FROM analytics_events o
                             WHERE o.type = 'auction_outcome'
-                              AND o.payload->>'auction_id' = f.auction_id
+                              AND COALESCE(NULLIF(o.payload->>'auction_run_key', ''), o.payload->>'auction_id') = f.auction_run_key
                               AND o."createdAt" >= f."createdAt"
                             ORDER BY o."createdAt" DESC
                             LIMIT 1
@@ -827,7 +828,8 @@ export class AnalyticsService {
                         SELECT COUNT(*)::TEXT
                         FROM analytics_events b
                         WHERE b.type = 'auction_bid_placed'
-                          AND b.payload->>'auction_id' = f.payload->>'auction_id'
+                          AND COALESCE(NULLIF(b.payload->>'auction_run_key', ''), b.payload->>'auction_id')
+                              = COALESCE(NULLIF(f.payload->>'auction_run_key', ''), f.payload->>'auction_id')
                           AND LOWER(COALESCE(b.payload->>'is_first_offer', 'false')) = 'false'
                           AND b."createdAt" > f."createdAt"
                     ) AS subsequent_bid_count,
@@ -845,7 +847,8 @@ export class AnalyticsService {
                     SELECT o.payload, o."createdAt"
                     FROM analytics_events o
                     WHERE o.type = 'auction_outcome'
-                      AND o.payload->>'auction_id' = f.payload->>'auction_id'
+                      AND COALESCE(NULLIF(o.payload->>'auction_run_key', ''), o.payload->>'auction_id')
+                          = COALESCE(NULLIF(f.payload->>'auction_run_key', ''), f.payload->>'auction_id')
                       AND o."createdAt" >= f."createdAt"
                     ORDER BY o."createdAt" DESC
                     LIMIT 1
