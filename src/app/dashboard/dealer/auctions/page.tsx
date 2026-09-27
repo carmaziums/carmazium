@@ -109,8 +109,13 @@ export default function DealerAuctionsPageWrapper() {
 
 function DealerAuctionsPage() {
     const { user, profile, loading: authLoading } = useAuth()
-    const { hasPermission } = useDealerAccess()
-    const canManageInventory = hasPermission("MANAGE_INVENTORY")
+    const {
+        loading: dealerAccessLoading,
+        hasPermission,
+    } = useDealerAccess()
+    const isDealerStaff = !!profile?.dealerStaffMemberships?.length
+    const canManageInventory = !isDealerStaff
+        || (!dealerAccessLoading && hasPermission("MANAGE_INVENTORY"))
     const searchParams = useSearchParams()
     const preselectedListingId = searchParams.get("listingId") ?? ""
     const [auctions, setAuctions] = React.useState<Auction[]>([])
@@ -1036,6 +1041,11 @@ function DealerAuctionsPage() {
                                                     <p className="text-sm font-bold">Handover proof submitted</p>
                                                     <p className="text-xs text-emerald-400/70">Your £100 bonus is pending verification — we&apos;ll notify you once released.</p>
                                                 </div>
+                                            </div>
+                                        ) : isDealerStaff && dealerAccessLoading ? (
+                                            <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-[var(--text-muted)]">
+                                                <Loader2 size={15} className="shrink-0 animate-spin" />
+                                                <p className="text-xs font-semibold">Checking dealership handover permission…</p>
                                             </div>
                                         ) : !canManageInventory ? (
                                             <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300">
