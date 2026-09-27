@@ -450,6 +450,24 @@ export class BidsService {
                         reserveMet: false,
                     },
                 }).catch(() => {});
+            } else if (!result.reserveMet && result.afterHighest) {
+                this.notificationsService.create({
+                    userId: result.listing.sellerId,
+                    type: 'AUCTION_UPDATED',
+                    title: 'Highest auction offer changed',
+                    message: `The previous highest offer on ${vehicle} was cancelled. The current highest active offer is now £${Number(result.highestActiveBid).toLocaleString('en-GB')} against your £${Number(result.listing.auction!.reservePrice).toLocaleString('en-GB')} reserve. You can accept the current offer or keep the auction running.`,
+                    entityType: 'AUCTION',
+                    entityId: result.listing.auction!.id,
+                    actionType: 'ACCEPT_OR_WAIT',
+                    link: `/auctions/live/${result.listing.auction!.id}?sellerOffer=${result.afterHighest.id}`,
+                    data: {
+                        cancelledBidId: bidId,
+                        activeBidCount: result.activeBidCount,
+                        highestActiveBid: result.highestActiveBid,
+                        highestActiveBidId: result.afterHighest.id,
+                        reserveMet: false,
+                    },
+                }).catch(() => {});
             }
         }
     }
