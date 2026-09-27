@@ -26,6 +26,7 @@ describe('AdminService listing approval readiness', () => {
 
         const auctionsService = {
             adminCorrectReservePrice: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+            adminUpdateScheduledAuction: jest.fn().mockResolvedValue({ id: 'auction-1' }),
         };
 
         const service = new AdminService(
@@ -204,7 +205,7 @@ describe('AdminService listing approval readiness', () => {
         });
     });
 
-    it('rejects a scheduled admin reserve edit that would move reserve above the existing Buy It Now price', async () => {
+    it('routes SCHEDULED auction pricing edits through the locked auction-domain editor', async () => {
         const listing = {
             ...validLinkedAuction,
             auction: {
@@ -215,65 +216,23 @@ describe('AdminService listing approval readiness', () => {
                 minIncrement: 100,
             },
         };
-        const { service, prisma } = makeService(listing);
-
-        await expect(
-            service.updateListing('auction-listing-1', { reservePrice: 12500 } as any),
-        ).rejects.toMatchObject({
-            message: 'Buy It Now price must be equal to or higher than the reserve price.',
-        });
-
-        expect(prisma.auction.update).not.toHaveBeenCalled();
-    });
-
-    it('rejects a scheduled admin BIN edit that would move Buy It Now below the existing reserve', async () => {
-        const listing = {
-            ...validLinkedAuction,
-            auction: {
-                ...validLinkedAuction.auction,
-                reservePrice: 9000,
-                buyItNowPrice: 12000,
-                startingBid: 7000,
-                minIncrement: 100,
-            },
-        };
-        const { service, prisma } = makeService(listing);
-
-        await expect(
-            service.updateListing('auction-listing-1', { buyItNowPrice: 8500 } as any),
-        ).rejects.toMatchObject({
-            message: 'Buy It Now price must be equal to or higher than the reserve price.',
-        });
-
-        expect(prisma.auction.update).not.toHaveBeenCalled();
-    });
-
-    it('allows a scheduled admin edit when Buy It Now equals reserve', async () => {
-        const listing = {
-            ...validLinkedAuction,
-            auction: {
-                ...validLinkedAuction.auction,
-                reservePrice: 9000,
-                buyItNowPrice: 12000,
-                startingBid: 7000,
-                minIncrement: 100,
-            },
-        };
-        const { service, prisma } = makeService(listing);
-        prisma.auction.update.mockResolvedValue({ id: 'auction-1' });
+        const { service, prisma, auctionsService } = makeService(listing);
 
         await service.updateListing('auction-listing-1', {
             reservePrice: 10000,
-            buyItNowPrice: 10000,
+            buyItNowPrice: 13000,
+            minIncrement: 250,
         } as any);
 
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-1' },
-            data: expect.objectContaining({
+        expect(auctionsService.adminUpdateScheduledAuction).toHaveBeenCalledWith(
+            'auction-1',
+            {
                 reservePrice: 10000,
-                buyItNowPrice: 10000,
-            }),
-        });
+                buyItNowPrice: 13000,
+                minIncrement: 250,
+            },
+        );
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('handles an ACTIVE auction reserve-only correction without a no-op Listing update', async () => {
