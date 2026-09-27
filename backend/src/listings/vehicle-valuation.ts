@@ -46,6 +46,8 @@ export interface VehicleValuationComparable {
     features?: string[] | null;
     isImported?: boolean | null;
     kind: ValuationEvidenceKind;
+    /** When this market observation was recorded. Current adverts may omit it. */
+    observedAt?: string | Date | null;
 }
 
 export interface VehicleValuationResult {
@@ -149,6 +151,188 @@ function roundMoney(value: number): number {
 
 function normalizeText(value?: string | null): string {
     return (value ?? '').trim().toUpperCase();
+}
+
+const MARKET_LOOKBACK_DAYS = 28;
+const DEFAULT_YEAR_LOG_SLOPE = -Math.log(0.92);
+const DEFAULT_MILEAGE_LOG_SLOPE_PER_1000 = Math.log(0.996);
+
+interface MarketDepreciationCurve {
+    yearLogSlope: number;
+    mileageLogSlopePerThousand: number;
+    learnedFromMarket: boolean;
+    sampleSize: number;
+}
+
+function sourceEvidenceWeight(kind: ValuationEvidenceKind): number {
+    return kind === 'ACCEPTED_OFFER' ? 0.95
+        : kind === 'AUCTION_RESULT' ? 0.85
+            : kind === 'SALE' ? 0.75
+                : 0.25;
+}
+
+function observationAgeDays(value?: string | Date | null): number | null {
+    if (!value) return null;
+    const observed = value instanceof Date ? value : new Date(value);
+    const timestamp = observed.getTime();
+    if (!Number.isFinite(timestamp)) return null;
+    return Math.max(0, (Date.now() - timestamp) / 86_400_000);
+}
+
+function isFreshMarketComparable(comparable: VehicleValuationComparable): boolean {
+    // An advert that is still ACTIVE is a current market observation even if
+    // the advert itself was first published more than 28 days ago.
+    if (comparable.kind === 'ACTIVE_ASK') return true;
+    const ageDays = observationAgeDays(comparable.observedAt);
+    // Older callers/tests do not carry timestamps; treat them as usable rather
+    // than silently throwing away otherwise valid evidence.
+    return ageDays == null || ageDays <= MARKET_LOOKBACK_DAYS;
+}
+
+function recencyWeight(comparable: VehicleValuationComparable): number {
+    if (comparable.kind === 'ACTIVE_ASK') return 1;
+    const ageDays = observationAgeDays(comparable.observedAt);
+    if (ageDays == null) return 1;
+
+    // Auto Trader discloses a 28-day history and that newer observations carry
+    // more influence. Their exact weighting coefficients are proprietary, so
+    // CarMazium uses a transparent 14-day exponential half-life.
+    return clamp(Math.exp(-Math.LN2 * ageDays / 14), 0.10, 1);
+}
+
+function numericMedian(values: number[]): number {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0
+        ? (sorted[middle - 1] + sorted[middle]) / 2
+        : sorted[middle];
+}
+
+function curveTrainingPrice(comparable: VehicleValuationComparable): number {
+    let value = comparable.price;
+    if (comparable.kind === 'ACTIVE_ASK') value *= 0.96;
+    if (comparable.kind === 'AUCTION_RESULT') value *= 1.10;
+
+    // Put historical observations onto a neutral vehicle-profile basis before
+    // learning age/mileage depreciation. Specification and condition are
+    // applied separately after the stable market base is established.
+    value /= Math.max(0.20, vehicleProfileFactor(comparable));
+    return value;
+}
+
+function fitMarketDepreciationCurve(
+    input: VehicleValuationInput,
+    comparables: VehicleValuationComparable[],
+): MarketDepreciationCurve {
+    const fallback: MarketDepreciationCurve = {
+        yearLogSlope: DEFAULT_YEAR_LOG_SLOPE,
+        mileageLogSlopePerThousand: DEFAULT_MILEAGE_LOG_SLOPE_PER_1000,
+        learnedFromMarket: false,
+        sampleSize: 0,
+    };
+
+    const eligible = comparables.filter((row) =>
+        Number.isFinite(row.price)
+        && row.price >= 750
+        && Number.isFinite(row.year)
+        && row.mileage != null
+        && Number.isFinite(row.mileage)
+        && !row.isImported
+        && !normalizeText(row.writeOffCategory || 'NONE').startsWith('CAT_'),
+    );
+
+    const fresh = eligible.filter(isFreshMarketComparable);
+    let training = fresh.length >= 5 ? fresh : eligible;
+    if (training.length < 5) return { ...fallback, sampleSize: training.length };
+
+    // Remove obvious price contamination before fitting. This protects the
+    // slope from a monthly-finance amount, mis-keyed price or special vehicle.
+    const medianPrice = numericMedian(training.map(curveTrainingPrice));
+    training = training.filter((row) => {
+        const price = curveTrainingPrice(row);
+        return price >= medianPrice * 0.55 && price <= medianPrice * 1.75;
+    });
+    if (training.length < 5) return { ...fallback, sampleSize: training.length };
+
+    const years = training.map((row) => row.year ?? input.year);
+    const mileages = training.map((row) => row.mileage ?? input.mileage);
+    const yearSpread = Math.max(...years) - Math.min(...years);
+    const mileageSpread = Math.max(...mileages) - Math.min(...mileages);
+    if (yearSpread < 1 || mileageSpread < 10_000) {
+        return { ...fallback, sampleSize: training.length };
+    }
+
+    const rows = training.map((row) => {
+        const xYear = (row.year ?? input.year) - input.year;
+        const xMileage10k = ((row.mileage ?? input.mileage) - input.mileage) / 10_000;
+        const y = Math.log(Math.max(750, curveTrainingPrice(row)));
+        const weight = sourceEvidenceWeight(row.kind) * recencyWeight(row);
+        return { xYear, xMileage10k, y, weight };
+    });
+
+    const totalWeight = rows.reduce((sum, row) => sum + row.weight, 0);
+    if (totalWeight <= 0) return { ...fallback, sampleSize: training.length };
+
+    const meanYear = rows.reduce((sum, row) => sum + row.xYear * row.weight, 0) / totalWeight;
+    const meanMileage = rows.reduce((sum, row) => sum + row.xMileage10k * row.weight, 0) / totalWeight;
+    const meanY = rows.reduce((sum, row) => sum + row.y * row.weight, 0) / totalWeight;
+
+    let sYearYear = 0;
+    let sMileageMileage = 0;
+    let sYearMileage = 0;
+    let sYearY = 0;
+    let sMileageY = 0;
+
+    for (const row of rows) {
+        const xYear = row.xYear - meanYear;
+        const xMileage = row.xMileage10k - meanMileage;
+        const y = row.y - meanY;
+        sYearYear += row.weight * xYear * xYear;
+        sMileageMileage += row.weight * xMileage * xMileage;
+        sYearMileage += row.weight * xYear * xMileage;
+        sYearY += row.weight * xYear * y;
+        sMileageY += row.weight * xMileage * y;
+    }
+
+    const determinant = sYearYear * sMileageMileage - sYearMileage * sYearMileage;
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-6) {
+        return { ...fallback, sampleSize: training.length };
+    }
+
+    const rawYearSlope =
+        (sYearY * sMileageMileage - sMileageY * sYearMileage) / determinant;
+    const rawMileageSlopePer10k =
+        (sMileageY * sYearYear - sYearY * sYearMileage) / determinant;
+
+    if (!Number.isFinite(rawYearSlope) || !Number.isFinite(rawMileageSlopePer10k)) {
+        return { ...fallback, sampleSize: training.length };
+    }
+
+    // Enforce economically sensible monotonic depreciation. The fitted market
+    // decides the rate inside these guardrails; the constraints only prevent a
+    // sparse/noisy sample claiming that an extra year or extra mileage raises
+    // an otherwise-equivalent vehicle's value.
+    const fittedYear = clamp(rawYearSlope, Math.log(1.015), Math.log(1.22));
+    const fittedMileagePerThousand = clamp(
+        rawMileageSlopePer10k / 10,
+        Math.log(0.985),
+        Math.log(0.9995),
+    );
+
+    // Shrink small samples toward conservative defaults. With 12+ credible
+    // observations the live market supplies most of the slope.
+    const marketShare = clamp((training.length - 4) / 8, 0.20, 0.85);
+
+    return {
+        yearLogSlope:
+            DEFAULT_YEAR_LOG_SLOPE * (1 - marketShare) + fittedYear * marketShare,
+        mileageLogSlopePerThousand:
+            DEFAULT_MILEAGE_LOG_SLOPE_PER_1000 * (1 - marketShare)
+            + fittedMileagePerThousand * marketShare,
+        learnedFromMarket: true,
+        sampleSize: training.length,
+    };
 }
 
 function transmissionFamily(value?: string | null): 'MANUAL' | 'AUTO' | null {
@@ -429,28 +613,31 @@ export function applyVehicleSpecificationAdjustments(
 function normalizeComparable(
     input: VehicleValuationInput,
     comparable: VehicleValuationComparable,
+    curve: MarketDepreciationCurve,
 ): { value: number; weight: number } | null {
     if (!Number.isFinite(comparable.price) || comparable.price < 250) return null;
 
     const compYear = comparable.year ?? input.year;
     const compMileage = comparable.mileage ?? input.mileage;
 
-    // Normalise a nearby comparable to the target vehicle's age and mileage.
-    // Newer comparable -> reduce it to target-year terms; older -> increase.
-    const yearFactor = Math.pow(0.92, compYear - input.year);
-    const mileageDeltaThousands = (input.mileage - compMileage) / 1000;
-    const mileageFactor = clamp(1 - mileageDeltaThousands * 0.004, 0.78, 1.22);
+    // Normalise a nearby comparable onto the target age/mileage using the
+    // depreciation curve learned from the current market. Only when the sample
+    // is too sparse do we fall back to conservative default slopes.
+    const yearDelta = compYear - input.year;
+    const mileageDeltaThousands = (compMileage - input.mileage) / 1000;
+    const yearFactor = Math.exp(-curve.yearLogSlope * yearDelta);
+    const mileageFactor = clamp(
+        Math.exp(-curve.mileageLogSlopePerThousand * mileageDeltaThousands),
+        0.72,
+        1.22,
+    );
 
     let value = comparable.price * yearFactor * mileageFactor;
     // Negotiated offers and auction outcomes are directly observed agreed/bid
     // prices. A Sale row is still strong evidence, but some legacy "mark sold"
     // paths recorded the advert asking price when no explicit sold price was
     // supplied, so it is weighted slightly below negotiated outcomes.
-    let weight =
-        comparable.kind === 'ACCEPTED_OFFER' ? 0.95 :
-        comparable.kind === 'AUCTION_RESULT' ? 0.85 :
-        comparable.kind === 'SALE' ? 0.75 :
-        0.25;
+    let weight = sourceEvidenceWeight(comparable.kind) * recencyWeight(comparable);
 
     // Live adverts are asking prices, not achieved prices. Apply a small
     // conservative adjustment so an optimistic seller advert does not become
@@ -554,24 +741,41 @@ export function calculateVehicleValuation(
 ): VehicleValuationResult {
     const fallbackResult = fallbackMid(input);
     const fallback = fallbackResult.value;
-    const normalized = comparables
-        .map((row) => normalizeComparable(input, row))
+
+    // Prefer the same 28-day market horizon disclosed by Auto Trader. If a
+    // sparse CarMazium segment has fewer than four fresh signals, retain older
+    // evidence as a low-weight safety net rather than returning no valuation.
+    const freshComparables = comparables.filter(isFreshMarketComparable);
+    const modellingComparables = freshComparables.length >= 4
+        ? freshComparables
+        : comparables;
+    const marketCurve = fitMarketDepreciationCurve(input, modellingComparables);
+
+    const normalized = modellingComparables
+        .map((row) => normalizeComparable(input, row, marketCurve))
         .filter((row): row is { value: number; weight: number } => !!row);
 
-    // Remove extreme outliers only when enough evidence exists to identify them.
+    // Robust log-distance outlier filtering. This reacts to the actual spread
+    // of the market instead of allowing a fixed 50%-180% band to define it.
     let usable = normalized;
     if (normalized.length >= 5) {
         const median = weightedQuantile(normalized, 0.5);
+        const deviations = normalized.map((row) => ({
+            value: Math.abs(Math.log(row.value / Math.max(1, median))),
+            weight: row.weight,
+        }));
+        const mad = weightedQuantile(deviations, 0.5);
+        const logLimit = clamp(Math.max(0.18, mad * 3.5), 0.18, 0.55);
         usable = normalized.filter((row) =>
-            row.value >= median * 0.50 && row.value <= median * 1.80,
+            Math.abs(Math.log(row.value / Math.max(1, median))) <= logLimit,
         );
     }
 
     const evidence = {
-        completedSales: comparables.filter((row) => row.kind === 'SALE').length,
-        acceptedOffers: comparables.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
-        auctionResults: comparables.filter((row) => row.kind === 'AUCTION_RESULT').length,
-        activeAsks: comparables.filter((row) => row.kind === 'ACTIVE_ASK').length,
+        completedSales: modellingComparables.filter((row) => row.kind === 'SALE').length,
+        acceptedOffers: modellingComparables.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
+        auctionResults: modellingComparables.filter((row) => row.kind === 'AUCTION_RESULT').length,
+        activeAsks: modellingComparables.filter((row) => row.kind === 'ACTIVE_ASK').length,
     };
 
     const strongEvidence = evidence.completedSales + evidence.acceptedOffers + evidence.auctionResults;
@@ -617,7 +821,8 @@ export function calculateVehicleValuation(
             0.25 +
             Math.min(0.42, strongEvidence * 0.08) +
             Math.min(0.18, activeEvidence * 0.025) +
-            Math.min(0.08, totalWeight * 0.01),
+            Math.min(0.08, totalWeight * 0.01) +
+            (marketCurve.learnedFromMarket ? 0.05 : 0),
             0.25,
             0.90,
         );
@@ -640,8 +845,8 @@ export function calculateVehicleValuation(
             : source === 'CARMAZIUM_MODEL'
                 ? 'Exact-model market evidence is limited, so this LOW-confidence guide uses vehicle age and mileage and a conservative make-level depreciation model. It is a starting point rather than a guaranteed sale price.'
                 : strongEvidence > 0
-                    ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
-                    : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
+                    ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}. Age and mileage are normalised using ${marketCurve.learnedFromMarket ? 'a depreciation curve fitted to current market evidence' : 'a conservative fallback depreciation curve'}.`
+                    : `Based on ${usable.length} similar live CarMazium asking prices. Age and mileage are normalised using ${marketCurve.learnedFromMarket ? 'a depreciation curve fitted to current market evidence' : 'a conservative fallback depreciation curve'}; completed-sale evidence for this exact vehicle is still limited.`;
 
     // Retail should show the stronger end of the observed asking market.
     // Sellers can still choose their own figure, but the platform does not
