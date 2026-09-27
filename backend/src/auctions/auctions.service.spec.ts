@@ -404,6 +404,34 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         expect(auction.buyItNowPendingAt).toBe(pendingAt);
     });
 
+    it('triggerBuyItNow: treats authorised staff retries as the same dealership identity', async () => {
+        const pendingAt = new Date(Date.now() - 5 * 60 * 1000);
+        const auction = makeActiveAuction({
+            buyItNowPendingBuyerId: 'owner-1',
+            buyItNowPendingAt: pendingAt,
+        });
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.user.findUnique.mockResolvedValue({ role: 'DEALER' });
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: {
+                id: 'dealer-1',
+                userId: 'owner-1',
+                isVerified: true,
+            },
+        });
+
+        await service.triggerBuyItNow('auction-1', 'sales-2');
+
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastBinPending).not.toHaveBeenCalled();
+        expect(auction.buyItNowPendingBuyerId).toBe('owner-1');
+        expect(auction.buyItNowPendingAt).toBe(pendingAt);
+    });
+
     it('triggerBuyItNow: allows a new dealership after the existing pending request has expired', async () => {
         const auction = makeActiveAuction({
             buyItNowPendingBuyerId: 'buyer-old',
