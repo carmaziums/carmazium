@@ -1309,65 +1309,171 @@ export class AuctionsService {
             startTime?: Date | string;
         },
     ): Promise<Auction> {
-        const lookup = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            select: { listingId: true, deletedAt: true },
-        });
-        if (!lookup || lookup.deletedAt) {
+        const hasReserve = updates.reservePrice !== undefined;
+        const hasStartingBid = updates.startingBid !== undefined;
+        const hasMinIncrement = updates.minIncrement !== undefined;
+        const hasBuyItNow = updates.buyItNowPrice !== undefined;
+        const hasStartTime = updates.startTime !== undefined;
+
+        if (hasReserve && (!Number.isFinite(updates.reservePrice) || Number(updates.reservePrice) <= 0)) {
+            throw new BadRequestException('Reserve price must be greater than £0');
+        }
+        if (hasStartingBid && (!Number.isFinite(updates.startingBid) || Number(updates.startingBid) <= 0)) {
+            throw new BadRequestException('Starting bid must be greater than £0');
+        }
+        if (hasMinIncrement && (!Number.isFinite(updates.minIncrement) || Number(updates.minIncrement) <= 0)) {
+            throw new BadRequestException('Minimum increment must be greater than £0');
+        }
+        if (
+            hasBuyItNow
+            && updates.buyItNowPrice !== null
+            && (!Number.isFinite(updates.buyItNowPrice) || Number(updates.buyItNowPrice) <= 0)
+        ) {
+            throw new BadRequestException('Buy It Now price must be greater than £0 when enabled');
+        }
+
+        const nextStartTime = hasStartTime
+            ? (updates.startTime instanceof Date ? updates.startTime : new Date(updates.startTime as string))
+            : null;
+
+        if (
+            nextStartTime
+            && (
+                Number.isNaN(nextStartTime.getTime())
+                || nextStartTime.getTime() < Date.now() - 60 * 1000
+            )
+        ) {
+            throw new BadRequestException('Start time cannot be in the past');
+        }
+
+        type AtomicScheduledUpdateRow = {
+            id: string;
+            decision_code: 'OK' | 'NOT_FOUND' | 'INVALID_STATUS' | 'START_IN_PAST' | 'ABOVE_BIN';
+            updated_count: number;
+        };
+
+        /*
+         * IMPORTANT: keep scheduled auction edits off Prisma interactive
+         * transactions. Production uses a pooled connection and the old
+         * interactive transaction could fail before the UPDATE reached
+         * PostgreSQL, surfacing as a generic 500 in the admin editor.
+         *
+         * One SQL statement owns the advisory lock, reads canonical state,
+         * validates the resultant reserve/BIN pair, and performs the update.
+         */
+        const rows = await this.prisma.$queryRaw<AtomicScheduledUpdateRow[]>`
+            WITH target AS MATERIALIZED (
+                SELECT
+                    a.id,
+                    a."listingId",
+                    a.status::text AS auction_status,
+                    a."deletedAt" AS deleted_at,
+                    a."reservePrice" AS current_reserve,
+                    a."startingBid" AS current_starting_bid,
+                    a."minIncrement" AS current_min_increment,
+                    a."buyItNowPrice" AS current_bin,
+                    a."startTime" AS current_start_time
+                FROM "auctions" a
+                WHERE a.id = ${auctionId}
+            ),
+            lock_row AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(t."listingId", 0)) AS locked
+                FROM target t
+            ),
+            snapshot AS MATERIALIZED (
+                SELECT
+                    t.*,
+                    CASE
+                        WHEN ${hasReserve}::boolean THEN ${updates.reservePrice ?? null}::numeric
+                        ELSE t.current_reserve
+                    END AS next_reserve,
+                    CASE
+                        WHEN ${hasStartingBid}::boolean THEN ${updates.startingBid ?? null}::numeric
+                        ELSE t.current_starting_bid
+                    END AS next_starting_bid,
+                    CASE
+                        WHEN ${hasMinIncrement}::boolean THEN ${updates.minIncrement ?? null}::numeric
+                        ELSE t.current_min_increment
+                    END AS next_min_increment,
+                    CASE
+                        WHEN ${hasBuyItNow}::boolean THEN ${updates.buyItNowPrice ?? null}::numeric
+                        ELSE t.current_bin
+                    END AS next_bin,
+                    CASE
+                        WHEN ${hasStartTime}::boolean THEN ${nextStartTime}::timestamptz
+                        ELSE t.current_start_time
+                    END AS next_start_time
+                FROM target t
+                CROSS JOIN lock_row
+            ),
+            decision AS MATERIALIZED (
+                SELECT
+                    s.*,
+                    CASE
+                        WHEN s.deleted_at IS NOT NULL THEN 'NOT_FOUND'
+                        WHEN s.auction_status <> 'SCHEDULED' THEN 'INVALID_STATUS'
+                        WHEN ${hasStartTime}::boolean
+                             AND s.next_start_time < NOW() - INTERVAL '1 minute' THEN 'START_IN_PAST'
+                        WHEN s.next_bin IS NOT NULL AND s.next_bin < s.next_reserve THEN 'ABOVE_BIN'
+                        ELSE 'OK'
+                    END AS decision_code
+                FROM snapshot s
+            ),
+            updated AS (
+                UPDATE "auctions" a
+                SET
+                    "reservePrice" = d.next_reserve,
+                    "startingBid" = d.next_starting_bid,
+                    "minIncrement" = d.next_min_increment,
+                    "buyItNowPrice" = d.next_bin,
+                    "startTime" = d.next_start_time,
+                    "endTime" = CASE
+                        WHEN ${hasStartTime}::boolean
+                            THEN d.next_start_time + INTERVAL '24 hours'
+                        ELSE a."endTime"
+                    END,
+                    "updatedAt" = NOW()
+                FROM decision d
+                WHERE a.id = d.id
+                  AND d.decision_code = 'OK'
+                RETURNING a.id
+            )
+            SELECT
+                d.id,
+                d.decision_code,
+                (SELECT COUNT(*)::int FROM updated) AS updated_count
+            FROM decision d
+        `;
+
+        const row = rows[0];
+        if (!row) {
             throw new NotFoundException('Auction not found');
         }
 
-        return this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
-
-            const auction = await tx.auction.findUnique({
-                where: { id: auctionId },
-            });
-            if (!auction || auction.deletedAt) {
+        switch (row.decision_code) {
+            case 'NOT_FOUND':
                 throw new NotFoundException('Auction not found');
-            }
-            if (auction.status !== 'SCHEDULED') {
+            case 'INVALID_STATUS':
                 throw new BadRequestException('Only SCHEDULED auctions can be edited in the admin schedule editor');
-            }
-
-            const nextReservePrice = updates.reservePrice !== undefined
-                ? updates.reservePrice
-                : Number(auction.reservePrice);
-            const nextBuyItNowPrice = updates.buyItNowPrice !== undefined
-                ? updates.buyItNowPrice
-                : auction.buyItNowPrice == null
-                    ? null
-                    : Number(auction.buyItNowPrice);
-
-            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+            case 'START_IN_PAST':
+                throw new BadRequestException('Start time cannot be in the past');
+            case 'ABOVE_BIN':
                 throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
-            }
+            case 'OK':
+                break;
+        }
 
-            const data: Prisma.AuctionUpdateInput = {};
-            if (updates.reservePrice !== undefined) data.reservePrice = updates.reservePrice;
-            if (updates.startingBid !== undefined) data.startingBid = updates.startingBid;
-            if (updates.minIncrement !== undefined) data.minIncrement = updates.minIncrement;
-            if (updates.buyItNowPrice !== undefined) data.buyItNowPrice = updates.buyItNowPrice;
+        if (Number(row.updated_count) !== 1) {
+            throw new ConflictException(
+                'The scheduled auction changed while the admin edit was being applied. Refresh and try again.',
+            );
+        }
 
-            if (updates.startTime !== undefined) {
-                const startTime = updates.startTime instanceof Date
-                    ? updates.startTime
-                    : new Date(updates.startTime);
-                if (
-                    Number.isNaN(startTime.getTime())
-                    || startTime.getTime() < Date.now() - 60 * 1000
-                ) {
-                    throw new BadRequestException('Start time cannot be in the past');
-                }
-                data.startTime = startTime;
-                data.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
-            }
-
-            return tx.auction.update({
-                where: { id: auctionId },
-                data,
-            });
-        });
+        const updated = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!updated || updated.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+        return updated;
     }
 
     /**
