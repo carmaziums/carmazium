@@ -9,34 +9,65 @@ interface CountdownTimerProps {
     minimal?: boolean
 }
 
+type CountdownParts = {
+    days: number
+    hours: number
+    minutes: number
+    seconds: number
+}
+
+const ZERO_TIME: CountdownParts = {
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+}
+
+function getTimeLeft(targetTime: number, now: number): CountdownParts {
+    const distance = targetTime - now
+
+    if (!Number.isFinite(targetTime) || distance <= 0) {
+        return ZERO_TIME
+    }
+
+    return {
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((distance % (1000 * 60)) / 1000),
+    }
+}
+
 export function CountdownTimer({ targetDate, size = "md", minimal = false }: CountdownTimerProps) {
-    const [timeLeft, setTimeLeft] = React.useState({
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0
-    })
+    const targetTime = targetDate.getTime()
+    const [timeLeft, setTimeLeft] = React.useState<CountdownParts>(ZERO_TIME)
 
     React.useEffect(() => {
-        const interval = setInterval(() => {
-            const now = new Date().getTime()
-            const distance = targetDate.getTime() - now
+        // Depend on the primitive timestamp, not the Date object's identity.
+        // Auction cards are allowed to re-render every second; a newly-created
+        // Date object with the same deadline must not restart this timer before
+        // its first tick.
+        const update = () => {
+            const next = getTimeLeft(targetTime, Date.now())
+            setTimeLeft(next)
+            return next.days === 0
+                && next.hours === 0
+                && next.minutes === 0
+                && next.seconds === 0
+        }
 
-            if (distance < 0) {
-                clearInterval(interval)
-                setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 })
-            } else {
-                setTimeLeft({
-                    days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-                    hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                    minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-                    seconds: Math.floor((distance % (1000 * 60)) / 1000)
-                })
+        // Calculate immediately on mount/deadline change so live cards never
+        // spend their first second incorrectly displaying 00:00:00.
+        if (update()) return
+
+        const interval = window.setInterval(() => {
+            if (update()) {
+                window.clearInterval(interval)
             }
         }, 1000)
 
-        return () => clearInterval(interval)
-    }, [targetDate])
+        return () => window.clearInterval(interval)
+    }, [targetTime])
 
     const pad = (n: number) => n.toString().padStart(2, '0')
 
