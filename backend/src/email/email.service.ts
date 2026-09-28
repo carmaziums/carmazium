@@ -822,7 +822,14 @@ export class EmailService {
 
     // ─── Auction Emails ──────────────────────────────────────────────
 
-    async sendAuctionWonEmail(buyerEmail: string, buyerName: string, vehicleTitle: string, winningAmount: number, auctionId: string) {
+    async sendAuctionWonEmail(
+        buyerEmail: string,
+        buyerName: string,
+        vehicleTitle: string,
+        winningAmount: number,
+        auctionId: string,
+        buyerFeeWaived = false,
+    ) {
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
                 You Won the Auction! 🏆
@@ -837,7 +844,9 @@ export class EmailService {
                 <p style="margin: 0; font-size: 28px; font-weight: 800; color: #ed1c24;">£${winningAmount.toLocaleString('en-GB')}</p>
             </div>
             <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                To continue, pay the £125 CarMazium buyer fee from the auction page. Once payment is confirmed, the seller&apos;s contact details and auction chat will unlock so you can arrange inspection, collection or delivery.
+                ${buyerFeeWaived
+                    ? 'Your active Free Purchase Grant covered the £125 CarMazium buyer fee. The seller&apos;s contact details and auction chat are already unlocked so you can arrange inspection, collection or delivery.'
+                    : 'To continue, pay the £125 CarMazium buyer fee from the auction page. Once payment is confirmed, the seller&apos;s contact details and auction chat will unlock so you can arrange inspection, collection or delivery.'}
             </p>
             <div style="text-align: center; margin: 36px 0 24px;">
                 <a href="${this.frontendUrl}/auctions/live/${auctionId}" target="_blank"
@@ -849,7 +858,14 @@ export class EmailService {
         return this.sendBrandedEmail({ to: buyerEmail, subject: `You won the auction for "${vehicleTitle}" — CarMazium 🏆`, bodyHtml });
     }
 
-    async sendAuctionEndedSellerEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, winningAmount: number, auctionId: string) {
+    async sendAuctionEndedSellerEmail(
+        sellerEmail: string,
+        sellerName: string,
+        vehicleTitle: string,
+        winningAmount: number,
+        auctionId: string,
+        buyerFeeWaived = false,
+    ) {
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
                 Your Auction Has Ended — Let&apos;s Reach More Buyers
@@ -864,7 +880,9 @@ export class EmailService {
                 <p style="margin: 0; font-size: 28px; font-weight: 800; color: #4ade80;">£${winningAmount.toLocaleString('en-GB')}</p>
             </div>
             <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                The winning dealer must first pay the £125 CarMazium buyer fee. Once that payment is confirmed, seller contact and auction chat will unlock so you can coordinate inspection and handover. After the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.
+                ${buyerFeeWaived
+                    ? 'CarMazium covered the winning dealer&apos;s buyer fee under an admin Free Purchase Grant, so seller contact and auction chat are already unlocked. After the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.'
+                    : 'The winning dealer must first pay the £125 CarMazium buyer fee. Once that payment is confirmed, seller contact and auction chat will unlock so you can coordinate inspection and handover. After the vehicle has been handed over, submit your proof via your auction dashboard to release your £100 seller bonus.'}
             </p>
             <div style="text-align: center; margin: 36px 0 24px;">
                 <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
