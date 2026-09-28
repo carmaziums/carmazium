@@ -468,6 +468,7 @@ export default function AuctionsBrowsePage() {
     const [error, setError] = React.useState<string | null>(null)
     const [search, setSearch] = React.useState("")
     const [lastRefresh, setLastRefresh] = React.useState(Date.now())
+    const [clockNow, setClockNow] = React.useState(Date.now())
 
     const { user, profile, loading: authLoading } = useAuth()
     const canTrade = canAccessTradeStock(profile)
@@ -518,7 +519,21 @@ export default function AuctionsBrowsePage() {
 
     React.useEffect(() => { load() }, [load])
 
-    const sourceAuctions = activeTab === "live" ? liveAuctions : scheduledAuctions
+    // A card must disappear from Live at the canonical deadline even before
+    // the next network refresh. The backend independently applies the same
+    // endTime boundary, so stale ACTIVE database state can never keep a car
+    // visible after 00:00:00.
+    React.useEffect(() => {
+        const timer = window.setInterval(() => setClockNow(Date.now()), 1000)
+        return () => window.clearInterval(timer)
+    }, [])
+
+    const visibleLiveAuctions = React.useMemo(
+        () => liveAuctions.filter(auction => new Date(auction.endTime).getTime() > clockNow),
+        [liveAuctions, clockNow],
+    )
+
+    const sourceAuctions = activeTab === "live" ? visibleLiveAuctions : scheduledAuctions
 
     const handleDetectLocation = async () => {
         if (!navigator?.geolocation) return
@@ -708,7 +723,7 @@ export default function AuctionsBrowsePage() {
                         >
                             <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                             <span className="text-xs font-bold text-red-400 uppercase tracking-widest">
-                                {liveAuctions.length > 0 ? `${liveAuctions.length} Auction${liveAuctions.length !== 1 ? "s" : ""} Live Now` : "Carmazium Live Auctions"}
+                                {visibleLiveAuctions.length > 0 ? `${visibleLiveAuctions.length} Auction${visibleLiveAuctions.length !== 1 ? "s" : ""} Live Now` : "Carmazium Live Auctions"}
                             </span>
                         </motion.div>
 
@@ -741,7 +756,7 @@ export default function AuctionsBrowsePage() {
                             className="flex flex-wrap items-center gap-x-8 gap-y-3"
                         >
                             {[
-                                { icon: Flame, label: `${liveAuctions.length} Live`, color: "text-red-400" },
+                                { icon: Flame, label: `${visibleLiveAuctions.length} Live`, color: "text-red-400" },
                                 { icon: Calendar, label: `${scheduledAuctions.length} Upcoming`, color: "text-slate-400" },
                                 { icon: Timer, label: "24-Hour Auctions", color: "text-slate-400" },
                                 { icon: Zap, label: "Anti-Snipe Rule", color: "text-amber-400" },
@@ -840,7 +855,7 @@ export default function AuctionsBrowsePage() {
                                     {tab === "live" ? <Flame size={11} className={activeTab === tab ? "text-red-400" : ""} /> : <Calendar size={11} />}
                                     {tab}
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab ? "bg-primary/30 text-red-300" : "bg-[var(--bg-card)] text-[var(--text-muted)]"}`}>
-                                        {tab === "live" ? liveAuctions.length : scheduledAuctions.length}
+                                        {tab === "live" ? visibleLiveAuctions.length : scheduledAuctions.length}
                                     </span>
                                 </span>
                             </button>
