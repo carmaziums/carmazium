@@ -108,6 +108,25 @@ export class AuctionsService {
         return actor.ownerUserId;
     }
 
+    /**
+     * Generic auction/buyer responses must never expose handover evidence.
+     *
+     * Handover documents can contain signatures, names and addresses. Only the
+     * seller/dealership inventory-management view and the admin review queue
+     * may receive a short-lived signed URL. Every other auction response keeps
+     * lifecycle metadata such as handoverSubmittedAt but strips both the
+     * private storage key and any legacy public proof URL.
+     */
+    private redactHandoverEvidence<T extends Record<string, any>>(auction: T): T {
+        const safe: Record<string, any> = {
+            ...auction,
+            handoverProofUrl: null,
+            handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+        };
+        delete safe.handoverProofPath;
+        return safe as T;
+    }
+
     private isStructurallyValidHandoverProof(auction: any): boolean {
         const privatePath = typeof auction?.handoverProofPath === 'string'
             ? auction.handoverProofPath.trim()
@@ -546,7 +565,7 @@ export class AuctionsService {
     }
 
     async findAllActive(): Promise<any[]> {
-        return this.prisma.auction.findMany({
+        const data = await this.prisma.auction.findMany({
             // listing.status filter is defense-in-depth — the activation cron
             // already only flips SCHEDULED -> ACTIVE for approved listings.
             // Status alone is not enough: if lifecycle finalisation is
@@ -582,8 +601,8 @@ export class AuctionsService {
             },
             orderBy: { endTime: 'asc' },
         });
+        return data.map((auction: any) => this.redactHandoverEvidence(auction));
     }
-
     async findAllScheduled(page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
         const skip = (page - 1) * limit;
         // Only surface auctions whose listing has cleared admin review — a
@@ -615,9 +634,10 @@ export class AuctionsService {
             }),
             this.prisma.auction.count({ where }),
         ]);
-        // Private proof keys become short-lived signed URLs; the key itself
-        // never leaves the server.
-        return { data: await this.handoverDocuments.hydrateMany(data), total };
+        return {
+            data: data.map((auction: any) => this.redactHandoverEvidence(auction)),
+            total,
+        };
     }
 
     /**
@@ -681,7 +701,7 @@ export class AuctionsService {
             (auction.listing as any).seller = this.gateSellerContactDetails(seller, canSeeContactDetails);
         }
 
-        return this.clearExpiredBin(auction);
+        return this.redactHandoverEvidence(this.clearExpiredBin(auction));
     }
 
     async findMyAuctions(userId: string, page = 1, limit = 20): Promise<{ data: any[]; total: number }> {
@@ -852,7 +872,10 @@ export class AuctionsService {
             return auction;
         });
 
-        return { data: gated, total };
+        return {
+            data: gated.map((auction: any) => this.redactHandoverEvidence(auction)),
+            total,
+        };
     }
 
     async update(id: string, updateAuctionDto: UpdateAuctionDto, userId: string): Promise<Auction> {
