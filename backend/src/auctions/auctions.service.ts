@@ -2098,9 +2098,15 @@ export class AuctionsService {
             if (auction.buyerRefusedById !== buyerId || !auction.buyerRefusalInspectionJobId) {
                 throw new ForbiddenException('This auction was already refused by a different buyer.');
             }
+            const priorFeeTransaction = auction.buyerFeeTransactionId
+                ? await this.prisma.transaction.findUnique({
+                      where: { id: auction.buyerFeeTransactionId },
+                      select: { amount: true, description: true },
+                  })
+                : null;
             return {
                 refused: true,
-                refundedAmount: 125,
+                refundedAmount: isAdminGrantedFreePurchaseTransaction(priorFeeTransaction) ? 0 : 125,
                 inspectionJobId: auction.buyerRefusalInspectionJobId,
             };
         }
@@ -2121,8 +2127,9 @@ export class AuctionsService {
             );
         }
 
+        let refundedAmount = 0;
         try {
-            await this.paymentsService.issueFullRefundForAuctionInspection(auction.id);
+            refundedAmount = await this.paymentsService.issueFullRefundForAuctionInspection(auction.id);
         } catch (error: any) {
             const message = error?.message || 'Unknown Stripe refund error';
             await this.prisma.auction.update({
@@ -2208,7 +2215,9 @@ export class AuctionsService {
             userId: buyerId,
             type: 'SYSTEM',
             title: 'Vehicle refused after inspection',
-            message: `Your refusal of "${auction.listing.title}" was accepted because the linked inspection recorded faults. Your £125 buyer fee has been refunded.`,
+            message: refundedAmount > 0
+                ? `Your refusal of "${auction.listing.title}" was accepted because the linked inspection recorded faults. Your £125 buyer fee has been refunded.`
+                : `Your refusal of "${auction.listing.title}" was accepted because the linked inspection recorded faults. No buyer-fee refund was needed because your Free Purchase Grant covered the fee.`,
             entityType: 'AUCTION',
             entityId: auction.id,
             link: '/dashboard/dealer/auctions/won',
@@ -2235,7 +2244,7 @@ export class AuctionsService {
             reserveMet: false,
         });
 
-        return { refused: true, refundedAmount: 125, inspectionJobId: inspection.id };
+        return { refused: true, refundedAmount, inspectionJobId: inspection.id };
     }
 
     async remove(id: string, userId: string): Promise<Auction> {
