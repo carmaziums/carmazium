@@ -40,6 +40,22 @@ export function Header() {
     const [isSellMenuOpen, setIsSellMenuOpen] = React.useState(false)
     const [isTradeMenuOpen, setIsTradeMenuOpen] = React.useState(false)
     const [activeLink, setActiveLink] = React.useState("")
+    const desktopMenuCloseTimer = React.useRef<number | null>(null)
+
+    const cancelDesktopMenuClose = React.useCallback(() => {
+        if (desktopMenuCloseTimer.current !== null) {
+            window.clearTimeout(desktopMenuCloseTimer.current)
+            desktopMenuCloseTimer.current = null
+        }
+    }, [])
+
+    const scheduleDesktopMenuClose = React.useCallback((closeMenu: () => void) => {
+        cancelDesktopMenuClose()
+        desktopMenuCloseTimer.current = window.setTimeout(() => {
+            closeMenu()
+            desktopMenuCloseTimer.current = null
+        }, 300)
+    }, [cancelDesktopMenuClose])
 
     const pathname = usePathname()
     const router = useRouter()
@@ -53,6 +69,14 @@ export function Header() {
         setIsTradeMenuOpen(false)
         setIsMobileMenuOpen(false)
     }, [pathname])
+
+    React.useEffect(() => {
+        return () => {
+            if (desktopMenuCloseTimer.current !== null) {
+                window.clearTimeout(desktopMenuCloseTimer.current)
+            }
+        }
+    }, [])
 
     const buyCarsActive =
         activeLink === "/search"
@@ -135,11 +159,12 @@ export function Header() {
                                     key={link.name}
                                     className="relative"
                                     onMouseEnter={() => {
+                                        cancelDesktopMenuClose()
                                         setIsBuyMenuOpen(true)
                                         setIsSellMenuOpen(false)
                                         setIsTradeMenuOpen(false)
                                     }}
-                                    onMouseLeave={() => setIsBuyMenuOpen(false)}
+                                    onMouseLeave={() => scheduleDesktopMenuClose(() => setIsBuyMenuOpen(false))}
                                 >
                                     <button
                                         type="button"
@@ -221,11 +246,12 @@ export function Header() {
                                     key={link.name}
                                     className="relative"
                                     onMouseEnter={() => {
+                                        cancelDesktopMenuClose()
                                         setIsSellMenuOpen(true)
                                         setIsBuyMenuOpen(false)
                                         setIsTradeMenuOpen(false)
                                     }}
-                                    onMouseLeave={() => setIsSellMenuOpen(false)}
+                                    onMouseLeave={() => scheduleDesktopMenuClose(() => setIsSellMenuOpen(false))}
                                 >
                                     <button
                                         type="button"
@@ -300,11 +326,12 @@ export function Header() {
                                     key={link.name}
                                     className="relative"
                                     onMouseEnter={() => {
+                                        cancelDesktopMenuClose()
                                         setIsTradeMenuOpen(true)
                                         setIsBuyMenuOpen(false)
                                         setIsSellMenuOpen(false)
                                     }}
-                                    onMouseLeave={() => setIsTradeMenuOpen(false)}
+                                    onMouseLeave={() => scheduleDesktopMenuClose(() => setIsTradeMenuOpen(false))}
                                 >
                                     <button
                                         type="button"
