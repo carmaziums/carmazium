@@ -7,6 +7,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import { isAdminGrantedFreePurchaseTransaction } from '../free-listings/free-purchase-grant.constants';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -1456,14 +1457,19 @@ export class PaymentsService {
      * Issue a partial Stripe refund of £100 to the auction buyer (platform keeps £25).
      * Called by admin when denying a handover proof.
      */
-    async issueRefundForAuction(auctionId: string): Promise<void> {
+    async issueRefundForAuction(auctionId: string): Promise<number> {
         const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
-        if (!auction?.buyerFeeTransactionId) return;
+        if (!auction?.buyerFeeTransactionId) return 0;
 
         const transaction = await this.prisma.transaction.findUnique({
             where: { id: auction.buyerFeeTransactionId },
         });
-        if (!transaction?.stripePaymentId) return;
+
+        // A Free Purchase Grant records a legitimate £0 COMMISSION. There is
+        // no Stripe charge to refund when handover proof is denied; keep the
+        // completed waiver in place so the seller may submit corrected proof.
+        if (isAdminGrantedFreePurchaseTransaction(transaction)) return 0;
+        if (!transaction?.stripePaymentId) return 0;
 
         const stripe = await this.getStripe();
 
@@ -1494,6 +1500,7 @@ export class PaymentsService {
             where: { id: auction.buyerFeeTransactionId },
             data: { status: 'REFUNDED' as any },
         });
+        return 100;
     }
 
     /**
@@ -1501,7 +1508,7 @@ export class PaymentsService {
      * records FAULTS_FOUND. The idempotency key makes a retry safe if Stripe
      * succeeds but the subsequent auction-state transaction has to be retried.
      */
-    async issueFullRefundForAuctionInspection(auctionId: string): Promise<void> {
+    async issueFullRefundForAuctionInspection(auctionId: string): Promise<number> {
         return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-inspection-refusal');
     }
 
@@ -1510,14 +1517,14 @@ export class PaymentsService {
      * Kept separate from inspection refusal so Stripe idempotency keys and
      * operational audit trails state why the refund happened.
      */
-    async issueFullRefundForAuctionCancellation(auctionId: string): Promise<void> {
+    async issueFullRefundForAuctionCancellation(auctionId: string): Promise<number> {
         return this.issueFullAuctionBuyerFeeRefund(auctionId, 'auction-sale-cancellation');
     }
 
     private async issueFullAuctionBuyerFeeRefund(
         auctionId: string,
         idempotencyPrefix: string,
-    ): Promise<void> {
+    ): Promise<number> {
         const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
         if (!auction?.buyerFeeTransactionId) {
             throw new BadRequestException('No paid auction buyer fee is recorded');
@@ -1526,6 +1533,20 @@ export class PaymentsService {
         const transaction = await this.prisma.transaction.findUnique({
             where: { id: auction.buyerFeeTransactionId },
         });
+
+        // The purchase grant covered the fee at £0, so cancellation/refusal
+        // closes the audit transaction without attempting an impossible Stripe
+        // refund. Returning 0 lets callers accurately report what was refunded.
+        if (isAdminGrantedFreePurchaseTransaction(transaction)) {
+            if (transaction?.status !== ('REFUNDED' as any)) {
+                await this.prisma.transaction.update({
+                    where: { id: transaction!.id },
+                    data: { status: 'REFUNDED' as any },
+                });
+            }
+            return 0;
+        }
+
         if (!transaction?.stripePaymentId) {
             throw new BadRequestException('Buyer fee payment reference is missing');
         }
@@ -1576,6 +1597,7 @@ export class PaymentsService {
                 data: { status: 'REFUNDED' as any },
             });
         }
+        return 125;
     }
 
     /**
