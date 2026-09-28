@@ -6,6 +6,7 @@ import {
     ArrowLeft,
     CalendarClock,
     CheckCircle2,
+    CreditCard,
     Gift,
     Infinity as InfinityIcon,
     Loader2,
@@ -22,11 +23,16 @@ import { useAuth } from "@/context/AuthContext"
 import {
     getAdminFreeListingUsers,
     grantAdminFreeListing,
+    grantAdminFreePurchases,
     revokeAdminFreeListing,
+    revokeAdminFreePurchases,
     type AdminFreeListingUser,
     type FreeListingDurationUnit,
     type FreeListingGrant,
+    type FreePurchaseGrant,
 } from "@/lib/adminApi"
+
+type GrantKind = "LISTING" | "PURCHASE"
 
 function userDisplayName(user: AdminFreeListingUser) {
     const full = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
@@ -44,7 +50,11 @@ function formatDate(value: string | null) {
     })
 }
 
-function GrantBadge({ grant }: { grant: FreeListingGrant | null }) {
+function GrantBadge({
+    grant,
+}: {
+    grant: Pick<FreeListingGrant | FreePurchaseGrant, "status" | "expiresAt"> | null
+}) {
     if (!grant) {
         return <span className="rounded-full bg-[var(--bg-input)] px-2.5 py-1 text-xs font-bold text-[var(--text-muted)]">No grant</span>
     }
@@ -74,7 +84,7 @@ export default function AdminFreeListingsPage() {
     const [appliedSearch, setAppliedSearch] = React.useState("")
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
-    const [selected, setSelected] = React.useState<AdminFreeListingUser | null>(null)
+    const [selected, setSelected] = React.useState<{ row: AdminFreeListingUser; kind: GrantKind } | null>(null)
     const [durationUnit, setDurationUnit] = React.useState<FreeListingDurationUnit>("DAYS")
     const [durationValue, setDurationValue] = React.useState("1")
     const [error, setError] = React.useState<string | null>(null)
@@ -112,8 +122,8 @@ export default function AdminFreeListingsPage() {
         setAppliedSearch(search.trim())
     }
 
-    const openGrant = (row: AdminFreeListingUser) => {
-        setSelected(row)
+    const openGrant = (row: AdminFreeListingUser, kind: GrantKind) => {
+        setSelected({ row, kind })
         setDurationUnit("DAYS")
         setDurationValue("1")
         setError(null)
@@ -128,38 +138,72 @@ export default function AdminFreeListingsPage() {
             return
         }
 
+        const { row, kind } = selected
         try {
             setSaving(true)
             setError(null)
-            const grant = await grantAdminFreeListing(selected.id, durationUnit, numericValue)
-            setRows(current => current.map(row => row.id === selected.id ? { ...row, freeListingGrant: grant } : row))
-            setSuccess(
-                durationUnit === "FOREVER"
-                    ? `Forever-free BASIC retail listings granted to ${userDisplayName(selected)}.`
-                    : `One free BASIC retail listing granted to ${userDisplayName(selected)}.`
-            )
+
+            if (kind === "LISTING") {
+                const grant = await grantAdminFreeListing(row.id, durationUnit, numericValue)
+                setRows(current => current.map(item =>
+                    item.id === row.id ? { ...item, freeListingGrant: grant } : item
+                ))
+                setSuccess(
+                    durationUnit === "FOREVER"
+                        ? `Forever-free BASIC retail listings granted to ${userDisplayName(row)}.`
+                        : `One free BASIC retail listing granted to ${userDisplayName(row)}.`
+                )
+            } else {
+                const grant = await grantAdminFreePurchases(row.id, durationUnit, numericValue)
+                setRows(current => current.map(item =>
+                    item.id === row.id ? { ...item, freePurchaseGrant: grant } : item
+                ))
+                setSuccess(
+                    durationUnit === "FOREVER"
+                        ? `Fee-free auction purchases granted to ${userDisplayName(row)} until revoked.`
+                        : `Fee-free auction purchases granted to ${userDisplayName(row)} for the selected period.`
+                )
+            }
+
             setSelected(null)
         } catch (err: any) {
-            setError(err?.message || "Unable to grant the free listing.")
+            setError(err?.message || (kind === "LISTING"
+                ? "Unable to grant the free listing."
+                : "Unable to grant fee-free purchases."))
         } finally {
             setSaving(false)
         }
     }
 
-    const handleRevoke = async (row: AdminFreeListingUser) => {
-        const forever = row.freeListingGrant?.status === "ACTIVE" && row.freeListingGrant.expiresAt === null
-        const message = forever
-            ? `Revoke forever-free BASIC retail listings for ${userDisplayName(row)}?`
-            : `Revoke the unused free listing for ${userDisplayName(row)}?`
+    const handleRevoke = async (row: AdminFreeListingUser, kind: GrantKind) => {
+        const grant = kind === "LISTING" ? row.freeListingGrant : row.freePurchaseGrant
+        const forever = grant?.status === "ACTIVE" && grant.expiresAt === null
+        const message = kind === "LISTING"
+            ? (forever
+                ? `Revoke forever-free BASIC retail listings for ${userDisplayName(row)}?`
+                : `Revoke the unused free listing for ${userDisplayName(row)}?`)
+            : `Revoke fee-free auction purchases for ${userDisplayName(row)}? New auction wins after revocation will require the normal £125 buyer fee.`
+
         if (!window.confirm(message)) return
+
         try {
             setSaving(true)
             setError(null)
-            const grant = await revokeAdminFreeListing(row.id)
-            setRows(current => current.map(item => item.id === row.id ? { ...item, freeListingGrant: grant } : item))
-            setSuccess(`Free listing entitlement revoked for ${userDisplayName(row)}.`)
+            if (kind === "LISTING") {
+                const updated = await revokeAdminFreeListing(row.id)
+                setRows(current => current.map(item =>
+                    item.id === row.id ? { ...item, freeListingGrant: updated } : item
+                ))
+                setSuccess(`Free listing entitlement revoked for ${userDisplayName(row)}.`)
+            } else {
+                const updated = await revokeAdminFreePurchases(row.id)
+                setRows(current => current.map(item =>
+                    item.id === row.id ? { ...item, freePurchaseGrant: updated } : item
+                ))
+                setSuccess(`Free purchase entitlement revoked for ${userDisplayName(row)}.`)
+            }
         } catch (err: any) {
-            setError(err?.message || "Unable to revoke the free listing.")
+            setError(err?.message || "Unable to revoke the grant.")
         } finally {
             setSaving(false)
         }
@@ -173,6 +217,9 @@ export default function AdminFreeListingsPage() {
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
         : (user.email?.split("@")[0] || "Admin")
+
+    const selectedRow = selected?.row ?? null
+    const isPurchaseGrant = selected?.kind === "PURCHASE"
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -188,22 +235,32 @@ export default function AdminFreeListingsPage() {
                         >
                             <ArrowLeft size={16} /> Back to Admin Dashboard
                         </button>
-                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+
+                        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
                             <div>
                                 <div className="flex items-center gap-3">
                                     <div className="rounded-xl bg-emerald-500/15 p-3 text-emerald-600 dark:text-emerald-300">
                                         <Gift size={24} />
                                     </div>
                                     <div>
-                                        <h1 className="text-2xl md:text-3xl font-black font-heading uppercase text-[var(--text-primary)]">Free Listing Grants</h1>
-                                        <p className="text-sm text-[var(--text-muted)]">Grant one complimentary BASIC retail listing, or make BASIC retail listings free forever.</p>
+                                        <h1 className="text-2xl md:text-3xl font-black font-heading uppercase text-[var(--text-primary)]">
+                                            Free Listing & Purchase Grants
+                                        </h1>
+                                        <p className="text-sm text-[var(--text-muted)]">
+                                            Give registered users complimentary BASIC listings or waive the £125 auction buyer fee for a chosen period.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 max-w-md">
+
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 max-w-xl">
                                 <div className="flex gap-2">
                                     <ShieldCheck size={18} className="shrink-0 mt-0.5" />
-                                    <p><strong>Timed grants cover one BASIC retail listing. Forever grants cover unlimited BASIC retail listings until revoked.</strong> Auctions are already free. STANDARD and PREMIUM upgrades keep their normal fee.</p>
+                                    <div className="space-y-1.5">
+                                        <p><strong>Listing grants:</strong> timed grants cover one BASIC retail listing; forever grants cover unlimited BASIC listings until revoked.</p>
+                                        <p><strong>Purchase grants:</strong> every auction won while the grant is active gets a £0 buyer fee. The entitlement is not consumed per purchase.</p>
+                                        <p><strong>Important:</strong> an eligible £100 seller handover bonus is still paid by CarMazium even when the buyer fee is waived.</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -248,7 +305,9 @@ export default function AdminFreeListingsPage() {
                         <div className="p-5 border-b border-[var(--border-default)] flex items-center justify-between">
                             <div>
                                 <h2 className="font-bold text-[var(--text-primary)]">Registered Users</h2>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Grant, replace or revoke one-time and forever-free BASIC retail listing entitlements.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Listing and purchase entitlements are managed independently and can each have their own duration.
+                                </p>
                             </div>
                             {loading && <Loader2 className="animate-spin text-primary" size={20} />}
                         </div>
@@ -258,10 +317,12 @@ export default function AdminFreeListingsPage() {
                         ) : (
                             <div className="divide-y divide-[var(--border-default)]">
                                 {rows.map(row => {
-                                    const grant = row.freeListingGrant
+                                    const listingGrant = row.freeListingGrant
+                                    const purchaseGrant = row.freePurchaseGrant
+
                                     return (
-                                        <div key={row.id} className="p-5 flex flex-col xl:flex-row xl:items-center gap-4">
-                                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                                        <div key={row.id} className="p-5">
+                                            <div className="flex items-start gap-3 min-w-0">
                                                 <div className="h-10 w-10 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-muted)] shrink-0">
                                                     <UserRound size={19} />
                                                 </div>
@@ -275,51 +336,106 @@ export default function AdminFreeListingsPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="xl:w-[360px] rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-3">
-                                                <div className="flex items-center justify-between gap-3 mb-1">
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Free listing</span>
-                                                    <GrantBadge grant={grant} />
-                                                </div>
-                                                {grant ? (
-                                                    <div className="text-xs text-[var(--text-muted)] space-y-1">
-                                                        {grant.status === "ACTIVE" && grant.expiresAt === null && (
-                                                            <p className="flex items-center gap-1.5"><InfinityIcon size={13} /> Unlimited BASIC retail listings — no expiry</p>
-                                                        )}
-                                                        {grant.status === "ACTIVE" && grant.expiresAt !== null && (
-                                                            <p className="flex items-center gap-1.5"><CalendarClock size={13} /> One free listing expires: {formatDate(grant.expiresAt)}</p>
-                                                        )}
-                                                        {grant.status === "USED" && (
-                                                            <p className="flex items-center gap-1.5"><CheckCircle2 size={13} /> Used: {formatDate(grant.usedAt)}</p>
-                                                        )}
-                                                        {grant.status === "EXPIRED" && <p>Expired: {formatDate(grant.expiresAt)}</p>}
-                                                        {grant.status === "REVOKED" && <p>Revoked: {formatDate(grant.revokedAt)}</p>}
+                                            <div className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                                <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-4">
+                                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                                                            <Gift size={14} /> Free listing
+                                                        </span>
+                                                        <GrantBadge grant={listingGrant} />
                                                     </div>
-                                                ) : (
-                                                    <p className="text-xs text-[var(--text-muted)]">No complimentary retail listing assigned.</p>
-                                                )}
-                                            </div>
 
-                                            <div className="flex gap-2 xl:justify-end">
-                                                <Button
-                                                    type="button"
-                                                    onClick={() => openGrant(row)}
-                                                    disabled={Boolean(row.deletedAt) || saving}
-                                                    className="flex-1 xl:flex-none"
-                                                >
-                                                    <Gift size={15} className="mr-2" />
-                                                    {grant?.status === "ACTIVE" ? "Replace Grant" : "Grant Free Listing"}
-                                                </Button>
-                                                {grant?.status === "ACTIVE" && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={() => handleRevoke(row)}
-                                                        disabled={saving}
-                                                        className="text-red-600 border-red-500/30 hover:bg-red-500/10"
-                                                    >
-                                                        <XCircle size={15} className="mr-2" /> Revoke
-                                                    </Button>
-                                                )}
+                                                    {listingGrant ? (
+                                                        <div className="text-xs text-[var(--text-muted)] space-y-1 min-h-10">
+                                                            {listingGrant.status === "ACTIVE" && listingGrant.expiresAt === null && (
+                                                                <p className="flex items-center gap-1.5"><InfinityIcon size={13} /> Unlimited BASIC retail listings — no expiry</p>
+                                                            )}
+                                                            {listingGrant.status === "ACTIVE" && listingGrant.expiresAt !== null && (
+                                                                <p className="flex items-center gap-1.5"><CalendarClock size={13} /> One free listing expires: {formatDate(listingGrant.expiresAt)}</p>
+                                                            )}
+                                                            {listingGrant.status === "USED" && (
+                                                                <p className="flex items-center gap-1.5"><CheckCircle2 size={13} /> Used: {formatDate(listingGrant.usedAt)}</p>
+                                                            )}
+                                                            {listingGrant.status === "EXPIRED" && <p>Expired: {formatDate(listingGrant.expiresAt)}</p>}
+                                                            {listingGrant.status === "REVOKED" && <p>Revoked: {formatDate(listingGrant.revokedAt)}</p>}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-[var(--text-muted)] min-h-10">No complimentary retail listing assigned.</p>
+                                                    )}
+
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => openGrant(row, "LISTING")}
+                                                            disabled={Boolean(row.deletedAt) || saving}
+                                                            className="flex-1"
+                                                        >
+                                                            <Gift size={15} className="mr-2" />
+                                                            {listingGrant?.status === "ACTIVE" ? "Replace Listing Grant" : "Grant Free Listing"}
+                                                        </Button>
+                                                        {listingGrant?.status === "ACTIVE" && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={() => handleRevoke(row, "LISTING")}
+                                                                disabled={saving}
+                                                                className="text-red-600 border-red-500/30 hover:bg-red-500/10"
+                                                            >
+                                                                <XCircle size={15} className="mr-2" /> Revoke
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] p-4">
+                                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                                                            <CreditCard size={14} /> Free purchases
+                                                        </span>
+                                                        <GrantBadge grant={purchaseGrant} />
+                                                    </div>
+
+                                                    {purchaseGrant ? (
+                                                        <div className="text-xs text-[var(--text-muted)] space-y-1 min-h-10">
+                                                            {purchaseGrant.status === "ACTIVE" && purchaseGrant.expiresAt === null && (
+                                                                <p className="flex items-center gap-1.5"><InfinityIcon size={13} /> £125 buyer fee waived on every auction win — no expiry</p>
+                                                            )}
+                                                            {purchaseGrant.status === "ACTIVE" && purchaseGrant.expiresAt !== null && (
+                                                                <p className="flex items-center gap-1.5"><CalendarClock size={13} /> Fee-free auction wins until: {formatDate(purchaseGrant.expiresAt)}</p>
+                                                            )}
+                                                            {purchaseGrant.status === "EXPIRED" && <p>Expired: {formatDate(purchaseGrant.expiresAt)}</p>}
+                                                            {purchaseGrant.status === "REVOKED" && <p>Revoked: {formatDate(purchaseGrant.revokedAt)}</p>}
+                                                            {purchaseGrant.useCount > 0 && (
+                                                                <p className="flex items-center gap-1.5"><CheckCircle2 size={13} /> Covered {purchaseGrant.useCount} purchase{purchaseGrant.useCount === 1 ? "" : "s"}{purchaseGrant.lastUsedAt ? ` · last ${formatDate(purchaseGrant.lastUsedAt)}` : ""}</p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-[var(--text-muted)] min-h-10">Normal £125 auction buyer fee applies.</p>
+                                                    )}
+
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            onClick={() => openGrant(row, "PURCHASE")}
+                                                            disabled={Boolean(row.deletedAt) || saving}
+                                                            className="flex-1"
+                                                        >
+                                                            <CreditCard size={15} className="mr-2" />
+                                                            {purchaseGrant?.status === "ACTIVE" ? "Replace Purchase Grant" : "Grant Free Purchases"}
+                                                        </Button>
+                                                        {purchaseGrant?.status === "ACTIVE" && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={() => handleRevoke(row, "PURCHASE")}
+                                                                disabled={saving}
+                                                                className="text-red-600 border-red-500/30 hover:bg-red-500/10"
+                                                            >
+                                                                <XCircle size={15} className="mr-2" /> Revoke
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     )
@@ -336,25 +452,31 @@ export default function AdminFreeListingsPage() {
                 </main>
             </div>
 
-            {selected && (
+            {selected && selectedRow && (
                 <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onMouseDown={() => !saving && setSelected(null)}>
                     <div className="w-full max-w-lg rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] shadow-2xl p-6" onMouseDown={event => event.stopPropagation()}>
                         <div className="flex items-start justify-between gap-4 mb-5">
                             <div>
                                 <div className="flex items-center gap-2 text-primary mb-1">
-                                    <Gift size={19} />
+                                    {isPurchaseGrant ? <CreditCard size={19} /> : <Gift size={19} />}
                                     <span className="text-xs font-black uppercase tracking-widest">
-                                        {durationUnit === "FOREVER" ? "Forever Free BASIC Listings" : "One Free Listing"}
+                                        {isPurchaseGrant
+                                            ? (durationUnit === "FOREVER" ? "Forever Fee-Free Purchases" : "Fee-Free Auction Purchases")
+                                            : (durationUnit === "FOREVER" ? "Forever Free BASIC Listings" : "One Free Listing")}
                                     </span>
                                 </div>
-                                <h2 className="text-xl font-bold text-[var(--text-primary)]">{userDisplayName(selected)}</h2>
-                                <p className="text-sm text-[var(--text-muted)]">{selected.email}</p>
+                                <h2 className="text-xl font-bold text-[var(--text-primary)]">{userDisplayName(selectedRow)}</h2>
+                                <p className="text-sm text-[var(--text-muted)]">{selectedRow.email}</p>
                             </div>
                             <button type="button" onClick={() => !saving && setSelected(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"><XCircle size={21} /></button>
                         </div>
 
                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 mb-5 text-sm text-[var(--text-muted)]">
-                            {durationUnit === "FOREVER" ? (
+                            {isPurchaseGrant ? (
+                                <>
+                                    Every auction this account <strong className="text-[var(--text-primary)]">wins while the grant is active will have the £125 CarMazium buyer fee waived</strong>. The grant is reusable and is not consumed after one purchase. Seller contact and auction chat unlock automatically. Any eligible £100 seller handover bonus remains funded by CarMazium.
+                                </>
+                            ) : durationUnit === "FOREVER" ? (
                                 <>
                                     The user can submit <strong className="text-[var(--text-primary)]">unlimited BASIC retail vehicle listings without paying the £1 listing fee</strong>. This entitlement does not get consumed and remains active until an admin revokes it. STANDARD and PREMIUM upgrades keep their normal fee.
                                 </>
@@ -397,8 +519,14 @@ export default function AdminFreeListingsPage() {
                             <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
                                 <Button type="button" variant="outline" disabled={saving} onClick={() => setSelected(null)} className="sm:flex-1">Cancel</Button>
                                 <Button type="button" disabled={saving} onClick={handleGrant} className="sm:flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
-                                    {saving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Gift size={16} className="mr-2" />}
-                                    {durationUnit === "FOREVER" ? "Grant Forever Free" : "Grant 1 Free Listing"}
+                                    {saving
+                                        ? <Loader2 size={16} className="mr-2 animate-spin" />
+                                        : isPurchaseGrant
+                                            ? <CreditCard size={16} className="mr-2" />
+                                            : <Gift size={16} className="mr-2" />}
+                                    {isPurchaseGrant
+                                        ? (durationUnit === "FOREVER" ? "Grant Until Revoked" : "Grant Free Purchases")
+                                        : (durationUnit === "FOREVER" ? "Grant Forever Free" : "Grant 1 Free Listing")}
                                 </Button>
                             </div>
                         </div>
