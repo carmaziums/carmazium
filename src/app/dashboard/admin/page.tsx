@@ -313,7 +313,7 @@ const toolGroups: ToolGroup[] = [
         tools: [
             { href: "/dashboard/admin/transactions", title: "Transactions", description: "View the complete payment ledger.", icon: Receipt },
             { href: "/dashboard/admin/hpi", title: "HPI Reports", description: "Prepare, upload and replace HPI reports.", icon: ShieldCheck },
-            { href: "/dashboard/admin/free-listings", title: "Free Listing Grants", description: "Give eligible users a free BASIC listing.", icon: Gift },
+            { href: "/dashboard/admin/free-listings", title: "Free Grants", description: "Grant free BASIC listings or fee-free auction purchases.", icon: Gift },
         ],
     },
     {
