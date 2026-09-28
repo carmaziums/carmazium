@@ -333,6 +333,43 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         expect(result.data[0].handoverProofIsPrivate).toBe(true);
     });
 
+    it('redacts private and legacy handover evidence from the generic auction detail response', async () => {
+        const { service, prisma, handoverDocuments } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({
+            handoverProofPath: 'auction-1/private-proof.jpg',
+            handoverProofUrl: 'https://legacy.example/storage/v1/object/public/listings/handover/auction-1/proof.jpg',
+        }));
+
+        const result = await service.findOne('auction-1');
+
+        expect(result.handoverSubmittedAt).toBeTruthy();
+        expect(result.handoverProofPath).toBeUndefined();
+        expect(result.handoverProofUrl).toBeNull();
+        expect(result.handoverProofIsPrivate).toBe(true);
+        expect(handoverDocuments.hydrateProof).not.toHaveBeenCalled();
+        expect(handoverDocuments.hydrateMany).not.toHaveBeenCalled();
+    });
+
+    it('redacts handover evidence from scheduled trade browsing instead of signing it', async () => {
+        const { service, prisma, handoverDocuments } = makeHarness();
+        prisma.auction.findMany.mockResolvedValue([
+            makeAuction({
+                status: 'SCHEDULED',
+                handoverProofPath: 'auction-1/private-proof.jpg',
+                handoverProofUrl: null,
+            }),
+        ]);
+        prisma.auction.count.mockResolvedValue(1);
+
+        const result = await service.findAllScheduled(1, 20);
+
+        expect(result.total).toBe(1);
+        expect(result.data[0].handoverProofPath).toBeUndefined();
+        expect(result.data[0].handoverProofUrl).toBeNull();
+        expect(result.data[0].handoverProofIsPrivate).toBe(true);
+        expect(handoverDocuments.hydrateMany).not.toHaveBeenCalled();
+    });
+
     it('revalidates submission and writes proof only after the complete fee/winner/seller gate passes', async () => {
         const { service, prisma, notificationsService } = makeHarness();
         const preSubmission = makeAuction({
