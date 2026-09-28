@@ -130,15 +130,15 @@ function SignupForm() {
             id: "BUYER" as SignupRole,
             icon: Car,
             label: "Personal Account",
-            sub: "Buy and sell vehicles as an individual",
+            sub: "Buy and sell vehicles as an individual. Auction bidding is for verified motor traders only.",
             active: "bg-blue-500/20 text-blue-400",
             hover: "group-hover:bg-blue-500/20 group-hover:text-blue-400",
         },
         {
             id: "DEALER" as SignupRole,
             icon: Building2,
-            label: "Partner Account",
-            sub: "One business login — add Dealer, Delivery, Inspection, Finance and Warranty services",
+            label: "Dealer / Sole Trader / Partner Account",
+            sub: "For motor dealers, sole traders and automotive businesses. Buy, sell and bid on vehicles, or add Delivery, Inspection, Finance and Warranty services.",
             active: "bg-primary/20 text-primary",
             hover: "group-hover:bg-primary/20 group-hover:text-primary",
         },
@@ -155,7 +155,7 @@ function SignupForm() {
 
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold mb-2 font-heading">Create Account</h1>
-                    <p className="text-gray-300">Personal account or one Partner Account for your business</p>
+                    <p className="text-gray-300">Choose Personal Account, or Dealer / Sole Trader / Partner Account for motor trade and business use</p>
                 </div>
 
                 {error && <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">{error}</div>}
@@ -261,7 +261,7 @@ function SignupForm() {
                     By creating or continuing with an account, you acknowledge the <Link href="/privacy-policy" className="font-semibold text-white underline underline-offset-2">Privacy Policy</Link> and agree to the <Link href="/terms" className="font-semibold text-white underline underline-offset-2">Terms & Conditions</Link>.
                 </p>
                 <div className="mt-8 text-center text-sm text-gray-300">Already have an account? <Link href="/auth/login" className="text-primary font-bold hover:text-red-400">Log In</Link></div>
-                <div className="mt-4 text-center text-xs text-gray-400">Businesses use one <span className="text-white font-semibold">Partner Account</span> and add services from the Partner Dashboard.</div>
+                <div className="mt-4 text-center text-xs text-gray-400">Motor dealers, sole traders and automotive service businesses use one <span className="text-white font-semibold">Partner Account</span> and add services from the Partner Dashboard.</div>
             </div>
         </div>
     )
