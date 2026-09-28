@@ -1105,57 +1105,63 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
     });
 
     it('does not let the seller use the legacy close-now path after reserve is met', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
-            id: 'auction-1',
-            listingId: 'listing-1',
-            status: 'ACTIVE',
-            endTime: new Date(Date.now() + 60 * 60 * 1000),
-            reservePrice: 10000,
-            listing: {
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                status: 'ACTIVE',
-                price: 10000,
-                linkedListingId: null,
-                bids: [{
-                    id: 'bid-current',
-                    listingId: 'listing-1',
-                    bidderId: 'dealer-1',
-                    amount: 10000,
-                }],
-            },
-        });
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-1',
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 10000,
+            starting_bid: 7000,
+            start_time: new Date(Date.now() - 60 * 60 * 1000),
+            end_time: new Date(Date.now() + 60 * 60 * 1000),
+            top_bid_id: 'bid-current',
+            top_bidder_id: 'dealer-1',
+            top_bid_amount: 10000,
+            reserve_met: true,
+            linked_listing_id: null,
+            decision_code: 'RESERVE_MET',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: null,
+            updated_count: 0,
+        }]);
 
         await expect(
             service.sellerClose('auction-1', 'seller-1'),
         ).rejects.toMatchObject({ message: expect.stringMatching(/reserve has been met/i) });
 
-        expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('does not let the seller close an expired auction before lifecycle finalisation', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
-            id: 'auction-1',
-            listingId: 'listing-1',
-            status: 'ACTIVE',
-            endTime: new Date(Date.now() - 1000),
-            reservePrice: 10000,
-            listing: {
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                status: 'ACTIVE',
-                price: 10000,
-                linkedListingId: null,
-                bids: [],
-            },
-        });
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-1',
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 10000,
+            starting_bid: 7000,
+            start_time: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            end_time: new Date(Date.now() - 1000),
+            top_bid_id: null,
+            top_bidder_id: null,
+            top_bid_amount: null,
+            reserve_met: false,
+            linked_listing_id: null,
+            decision_code: 'ENDED',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: null,
+            updated_count: 0,
+        }]);
 
         await expect(
             service.sellerClose('auction-1', 'seller-1'),
         ).rejects.toMatchObject({ message: expect.stringMatching(/auction has ended/i) });
 
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
