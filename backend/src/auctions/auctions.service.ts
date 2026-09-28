@@ -7,6 +7,7 @@ import {
     forwardRef,
     Inject,
     Logger,
+    Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -28,6 +29,8 @@ import {
 } from './auction-pricing';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { PaymentsService } from '../payments/payments.service';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
+import { isAdminGrantedFreePurchaseTransaction } from '../free-listings/free-purchase-grant.constants';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -61,6 +64,8 @@ export class AuctionsService {
         private readonly chatService: ChatService,
         private readonly handoverDocuments: HandoverDocumentsService,
         private readonly paymentsService: PaymentsService,
+        @Optional()
+        private readonly freeListingGrantsService?: FreeListingGrantsService,
     ) { }
 
     private auctionRunKey(auction: { id: string; startTime?: Date | string | null }): string {
@@ -141,10 +146,11 @@ export class AuctionsService {
     /**
      * Authoritative backend gate for the seller-handover / £100 bonus lifecycle.
      *
-     * This intentionally validates the £125 fee transaction itself instead of
+     * This intentionally validates the buyer-fee transaction itself instead of
      * trusting buyerFeePaid alone: an old/corrupt boolean must never unlock a
-     * seller payout. Cancellation/refusal state is checked here too so every
-     * caller uses the same business rule.
+     * seller payout. A normal £125 payment and an admin-granted £0 purchase
+     * waiver are both valid, auditable fee states. Cancellation/refusal state
+     * is checked here too so every caller uses the same business rule.
      */
     async assertHandoverBusinessRules(
         auctionId: string,
@@ -198,12 +204,16 @@ export class AuctionsService {
             throw new BadRequestException('Seller and auction winner cannot be the same account');
         }
         if (!auction.buyerFeePaid || !auction.buyerFeeTransactionId) {
-            throw new BadRequestException('The £125 auction buyer fee must be paid before handover');
+            throw new BadRequestException(
+                'The auction buyer fee must be paid or covered by an active admin grant before handover',
+            );
         }
 
         const feeTransaction: any = await this.prisma.transaction.findUnique({
             where: { id: auction.buyerFeeTransactionId },
         });
+        const isPaidBuyerFee = Number(feeTransaction?.amount) === 125;
+        const isAdminWaiver = isAdminGrantedFreePurchaseTransaction(feeTransaction);
         const validFeeTransaction = Boolean(
             feeTransaction
             && !feeTransaction.deletedAt
@@ -211,10 +221,12 @@ export class AuctionsService {
             && feeTransaction.type === 'COMMISSION'
             && feeTransaction.listingId === auction.listingId
             && feeTransaction.userId === auction.winnerId
-            && Number(feeTransaction.amount) === 125,
+            && (isPaidBuyerFee || isAdminWaiver),
         );
         if (!validFeeTransaction) {
-            throw new BadRequestException('The £125 auction buyer fee payment record is invalid or incomplete');
+            throw new BadRequestException(
+                'The auction buyer fee payment or admin-waiver record is invalid or incomplete',
+            );
         }
 
         if (auction.buyerRefusedAt) {
@@ -2706,12 +2718,31 @@ export class AuctionsService {
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
 
         if (reserveMet && winnerId && winningAmount !== null) {
+            // An admin Free Purchase Grant is applied at the moment the auction
+            // becomes a completed win. That keeps web and mobile on the existing
+            // buyerFeePaid lifecycle: no Stripe checkout is created, but seller
+            // contact/chat and the handover flow unlock exactly as they do after
+            // a normal £125 fee payment.
+            let buyerFeeWaived = false;
+            if (this.freeListingGrantsService) {
+                try {
+                    buyerFeeWaived = await this.freeListingGrantsService
+                        .applyPurchaseGrantToAuctionIfEligible(auction.id, winnerId);
+                } catch (error: any) {
+                    this.logger.error(
+                        `Could not apply free purchase grant for auction ${auction.id}: ${error?.message || error}`,
+                    );
+                }
+            }
+
             // Notify winner — persisted + push delivered via notificationsService.create()
             await this.notificationsService.create({
                 userId: winnerId,
                 type: 'AUCTION_WON',
                 title: 'You won the auction!',
-                message: `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Pay the £125 CarMazium buyer fee to unlock the seller's contact details and auction chat.`,
+                message: buyerFeeWaived
+                    ? `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Your Free Purchase Grant covered the £125 CarMazium buyer fee, so seller contact details and auction chat are unlocked.`
+                    : `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Pay the £125 CarMazium buyer fee to unlock the seller's contact details and auction chat.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
                 link: `/dashboard/dealer/auctions/won`,
@@ -2723,18 +2754,18 @@ export class AuctionsService {
                     userId: listing.sellerId,
                     type: 'AUCTION_ENDED',
                     title: 'Your auction has ended',
-                    message: `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}. The winning dealer must pay the £125 CarMazium buyer fee before seller contact and auction chat are unlocked.`,
+                    message: buyerFeeWaived
+                        ? `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}. CarMazium covered the winning dealer's buyer fee under an admin grant, so seller contact and auction chat are already unlocked. Your £100 seller bonus remains eligible after approved handover.`
+                        : `Your auction for ${vehicle} has ended. Winning bid: £${winningAmount.toLocaleString()}. The winning dealer must pay the £125 CarMazium buyer fee before seller contact and auction chat are unlocked.`,
                     entityType: 'AUCTION',
                     entityId: auction.id,
                     link: `/dashboard/seller/auctions`,
                 });
             }
 
-            // Auction chat is intentionally not created here. ChatService enforces
-            // buyerFeePaid for auction conversations; the winner must first pay
-            // CarMazium's £125 buyer fee. After payment, web/native can create
-            // or open the canonical winner/seller room without exposing seller
-            // contact before the platform fee is confirmed.
+            // Without a grant, auction chat remains fee-gated until Stripe
+            // confirms the normal £125 buyer fee. A granted purchase already
+            // has buyerFeePaid=true via the £0 audit transaction above.
 
             // Email winner and seller
             const [buyer, seller] = await Promise.all([
@@ -2747,10 +2778,24 @@ export class AuctionsService {
             // email has no dedicated toggle in NotificationSettingsScreen.tsx,
             // so it stays ungated like before.
             if (buyer?.email && await this.notificationsService.shouldSendEmail(winnerId, 'AUCTION_WON')) {
-                this.emailService.sendAuctionWonEmail(buyer.email, buyer.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
+                this.emailService.sendAuctionWonEmail(
+                    buyer.email,
+                    buyer.firstName || 'there',
+                    vehicle || listing.title,
+                    winningAmount,
+                    auction.id,
+                    buyerFeeWaived,
+                ).catch(console.error);
             }
             if (seller?.email) {
-                this.emailService.sendAuctionEndedSellerEmail(seller.email, seller.firstName || 'there', vehicle || listing.title, winningAmount, auction.id).catch(console.error);
+                this.emailService.sendAuctionEndedSellerEmail(
+                    seller.email,
+                    seller.firstName || 'there',
+                    vehicle || listing.title,
+                    winningAmount,
+                    auction.id,
+                    buyerFeeWaived,
+                ).catch(console.error);
             }
         } else {
             // No winner — give the seller a clear next step instead of simply
