@@ -350,6 +350,23 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         expect(handoverDocuments.hydrateMany).not.toHaveBeenCalled();
     });
 
+    it('redacts handover evidence from the live trade browse response', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findMany.mockResolvedValue([
+            makeAuction({
+                status: 'ACTIVE',
+                handoverProofPath: 'auction-1/private-proof.jpg',
+                handoverProofUrl: 'https://legacy.example/storage/v1/object/public/listings/handover/auction-1/proof.jpg',
+            }),
+        ]);
+
+        const result = await service.findAllActive();
+
+        expect(result[0].handoverProofPath).toBeUndefined();
+        expect(result[0].handoverProofUrl).toBeNull();
+        expect(result[0].handoverProofIsPrivate).toBe(true);
+    });
+
     it('redacts handover evidence from scheduled trade browsing instead of signing it', async () => {
         const { service, prisma, handoverDocuments } = makeHarness();
         prisma.auction.findMany.mockResolvedValue([
