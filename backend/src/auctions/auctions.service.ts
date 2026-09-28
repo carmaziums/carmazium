@@ -549,7 +549,15 @@ export class AuctionsService {
         return this.prisma.auction.findMany({
             // listing.status filter is defense-in-depth — the activation cron
             // already only flips SCHEDULED -> ACTIVE for approved listings.
-            where: { status: 'ACTIVE', deletedAt: null, listing: { status: 'ACTIVE' } },
+            // Status alone is not enough: if lifecycle finalisation is
+            // delayed for any reason, an expired row must never be advertised
+            // as live. The canonical deadline is an independent read boundary.
+            where: {
+                status: 'ACTIVE',
+                endTime: { gt: new Date() },
+                deletedAt: null,
+                listing: { status: 'ACTIVE', deletedAt: null },
+            },
             include: {
                 listing: {
                     include: {
@@ -1309,65 +1317,171 @@ export class AuctionsService {
             startTime?: Date | string;
         },
     ): Promise<Auction> {
-        const lookup = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            select: { listingId: true, deletedAt: true },
-        });
-        if (!lookup || lookup.deletedAt) {
+        const hasReserve = updates.reservePrice !== undefined;
+        const hasStartingBid = updates.startingBid !== undefined;
+        const hasMinIncrement = updates.minIncrement !== undefined;
+        const hasBuyItNow = updates.buyItNowPrice !== undefined;
+        const hasStartTime = updates.startTime !== undefined;
+
+        if (hasReserve && (!Number.isFinite(updates.reservePrice) || Number(updates.reservePrice) <= 0)) {
+            throw new BadRequestException('Reserve price must be greater than £0');
+        }
+        if (hasStartingBid && (!Number.isFinite(updates.startingBid) || Number(updates.startingBid) <= 0)) {
+            throw new BadRequestException('Starting bid must be greater than £0');
+        }
+        if (hasMinIncrement && (!Number.isFinite(updates.minIncrement) || Number(updates.minIncrement) <= 0)) {
+            throw new BadRequestException('Minimum increment must be greater than £0');
+        }
+        if (
+            hasBuyItNow
+            && updates.buyItNowPrice !== null
+            && (!Number.isFinite(updates.buyItNowPrice) || Number(updates.buyItNowPrice) <= 0)
+        ) {
+            throw new BadRequestException('Buy It Now price must be greater than £0 when enabled');
+        }
+
+        const nextStartTime = hasStartTime
+            ? (updates.startTime instanceof Date ? updates.startTime : new Date(updates.startTime as string))
+            : null;
+
+        if (
+            nextStartTime
+            && (
+                Number.isNaN(nextStartTime.getTime())
+                || nextStartTime.getTime() < Date.now() - 60 * 1000
+            )
+        ) {
+            throw new BadRequestException('Start time cannot be in the past');
+        }
+
+        type AtomicScheduledUpdateRow = {
+            id: string;
+            decision_code: 'OK' | 'NOT_FOUND' | 'INVALID_STATUS' | 'START_IN_PAST' | 'ABOVE_BIN';
+            updated_count: number;
+        };
+
+        /*
+         * IMPORTANT: keep scheduled auction edits off Prisma interactive
+         * transactions. Production uses a pooled connection and the old
+         * interactive transaction could fail before the UPDATE reached
+         * PostgreSQL, surfacing as a generic 500 in the admin editor.
+         *
+         * One SQL statement owns the advisory lock, reads canonical state,
+         * validates the resultant reserve/BIN pair, and performs the update.
+         */
+        const rows = await this.prisma.$queryRaw<AtomicScheduledUpdateRow[]>`
+            WITH target AS MATERIALIZED (
+                SELECT
+                    a.id,
+                    a."listingId",
+                    a.status::text AS auction_status,
+                    a."deletedAt" AS deleted_at,
+                    a."reservePrice" AS current_reserve,
+                    a."startingBid" AS current_starting_bid,
+                    a."minIncrement" AS current_min_increment,
+                    a."buyItNowPrice" AS current_bin,
+                    a."startTime" AS current_start_time
+                FROM "auctions" a
+                WHERE a.id = ${auctionId}
+            ),
+            lock_row AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(t."listingId", 0)) AS locked
+                FROM target t
+            ),
+            snapshot AS MATERIALIZED (
+                SELECT
+                    t.*,
+                    CASE
+                        WHEN ${hasReserve}::boolean THEN ${updates.reservePrice ?? null}::numeric
+                        ELSE t.current_reserve
+                    END AS next_reserve,
+                    CASE
+                        WHEN ${hasStartingBid}::boolean THEN ${updates.startingBid ?? null}::numeric
+                        ELSE t.current_starting_bid
+                    END AS next_starting_bid,
+                    CASE
+                        WHEN ${hasMinIncrement}::boolean THEN ${updates.minIncrement ?? null}::numeric
+                        ELSE t.current_min_increment
+                    END AS next_min_increment,
+                    CASE
+                        WHEN ${hasBuyItNow}::boolean THEN ${updates.buyItNowPrice ?? null}::numeric
+                        ELSE t.current_bin
+                    END AS next_bin,
+                    CASE
+                        WHEN ${hasStartTime}::boolean THEN ${nextStartTime}::timestamptz
+                        ELSE t.current_start_time
+                    END AS next_start_time
+                FROM target t
+                CROSS JOIN lock_row
+            ),
+            decision AS MATERIALIZED (
+                SELECT
+                    s.*,
+                    CASE
+                        WHEN s.deleted_at IS NOT NULL THEN 'NOT_FOUND'
+                        WHEN s.auction_status <> 'SCHEDULED' THEN 'INVALID_STATUS'
+                        WHEN ${hasStartTime}::boolean
+                             AND s.next_start_time < NOW() - INTERVAL '1 minute' THEN 'START_IN_PAST'
+                        WHEN s.next_bin IS NOT NULL AND s.next_bin < s.next_reserve THEN 'ABOVE_BIN'
+                        ELSE 'OK'
+                    END AS decision_code
+                FROM snapshot s
+            ),
+            updated AS (
+                UPDATE "auctions" a
+                SET
+                    "reservePrice" = d.next_reserve,
+                    "startingBid" = d.next_starting_bid,
+                    "minIncrement" = d.next_min_increment,
+                    "buyItNowPrice" = d.next_bin,
+                    "startTime" = d.next_start_time,
+                    "endTime" = CASE
+                        WHEN ${hasStartTime}::boolean
+                            THEN d.next_start_time + INTERVAL '24 hours'
+                        ELSE a."endTime"
+                    END,
+                    "updatedAt" = NOW()
+                FROM decision d
+                WHERE a.id = d.id
+                  AND d.decision_code = 'OK'
+                RETURNING a.id
+            )
+            SELECT
+                d.id,
+                d.decision_code,
+                (SELECT COUNT(*)::int FROM updated) AS updated_count
+            FROM decision d
+        `;
+
+        const row = rows[0];
+        if (!row) {
             throw new NotFoundException('Auction not found');
         }
 
-        return this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
-
-            const auction = await tx.auction.findUnique({
-                where: { id: auctionId },
-            });
-            if (!auction || auction.deletedAt) {
+        switch (row.decision_code) {
+            case 'NOT_FOUND':
                 throw new NotFoundException('Auction not found');
-            }
-            if (auction.status !== 'SCHEDULED') {
+            case 'INVALID_STATUS':
                 throw new BadRequestException('Only SCHEDULED auctions can be edited in the admin schedule editor');
-            }
-
-            const nextReservePrice = updates.reservePrice !== undefined
-                ? updates.reservePrice
-                : Number(auction.reservePrice);
-            const nextBuyItNowPrice = updates.buyItNowPrice !== undefined
-                ? updates.buyItNowPrice
-                : auction.buyItNowPrice == null
-                    ? null
-                    : Number(auction.buyItNowPrice);
-
-            if (buyItNowViolatesReserve(nextReservePrice, nextBuyItNowPrice)) {
+            case 'START_IN_PAST':
+                throw new BadRequestException('Start time cannot be in the past');
+            case 'ABOVE_BIN':
                 throw new BadRequestException(BUY_IT_NOW_BELOW_RESERVE_MESSAGE);
-            }
+            case 'OK':
+                break;
+        }
 
-            const data: Prisma.AuctionUpdateInput = {};
-            if (updates.reservePrice !== undefined) data.reservePrice = updates.reservePrice;
-            if (updates.startingBid !== undefined) data.startingBid = updates.startingBid;
-            if (updates.minIncrement !== undefined) data.minIncrement = updates.minIncrement;
-            if (updates.buyItNowPrice !== undefined) data.buyItNowPrice = updates.buyItNowPrice;
+        if (Number(row.updated_count) !== 1) {
+            throw new ConflictException(
+                'The scheduled auction changed while the admin edit was being applied. Refresh and try again.',
+            );
+        }
 
-            if (updates.startTime !== undefined) {
-                const startTime = updates.startTime instanceof Date
-                    ? updates.startTime
-                    : new Date(updates.startTime);
-                if (
-                    Number.isNaN(startTime.getTime())
-                    || startTime.getTime() < Date.now() - 60 * 1000
-                ) {
-                    throw new BadRequestException('Start time cannot be in the past');
-                }
-                data.startTime = startTime;
-                data.endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
-            }
-
-            return tx.auction.update({
-                where: { id: auctionId },
-                data,
-            });
-        });
+        const updated = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+        if (!updated || updated.deletedAt) {
+            throw new NotFoundException('Auction not found');
+        }
+        return updated;
     }
 
     /**
@@ -2251,191 +2365,334 @@ export class AuctionsService {
         auctionId: string,
         options?: { sellerEarlyClose?: boolean; sellerId?: string },
     ): Promise<void> {
-        const lookup = await this.prisma.auction.findUnique({
-            where: { id: auctionId },
-            select: { listingId: true, deletedAt: true },
-        });
-        if (!lookup || lookup.deletedAt) return;
+        const sellerEarlyClose = options?.sellerEarlyClose === true;
+        const requestedSellerId = options?.sellerId ?? null;
 
-        const outcome = await this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+        type AtomicAuctionCloseRow = {
+            auction_id: string;
+            listing_id: string;
+            seller_id: string | null;
+            reserve_price: unknown;
+            starting_bid: unknown;
+            start_time: Date | string;
+            end_time: Date | string;
+            top_bid_id: string | null;
+            top_bidder_id: string | null;
+            top_bid_amount: unknown | null;
+            reserve_met: boolean;
+            linked_listing_id: string | null;
+            decision_code:
+                | 'OK'
+                | 'NOT_FOUND'
+                | 'NOT_ACTIVE'
+                | 'LISTING_INACTIVE'
+                | 'NOT_OWNER'
+                | 'ENDED'
+                | 'NOT_DUE'
+                | 'RESERVE_MET';
+            winner_id: string | null;
+            winning_amount: unknown | null;
+            sale_completed: boolean;
+            outcome_type:
+                | 'RESERVE_MET_SALE'
+                | 'SELLER_EARLY_CLOSE_UNSOLD'
+                | 'BELOW_RESERVE_UNSOLD'
+                | 'NO_BIDS_UNSOLD'
+                | null;
+            updated_count: number;
+        };
 
-            const auction = await tx.auction.findUnique({
-                where: { id: auctionId },
-                include: {
-                    listing: {
-                        include: {
-                            bids: {
-                                where: { deletedAt: null, cancelledAt: null, archivedAt: null },
-                                orderBy: { amount: 'desc' },
-                                take: 1,
-                                include: { bidder: { select: { id: true, firstName: true } } },
-                            },
-                        },
-                    },
-                },
-            });
+        /*
+         * Timed auction finalisation is deliberately a single PostgreSQL
+         * statement. The former Prisma interactive transaction could fail on
+         * the pooled production connection before any write reached Postgres,
+         * leaving auctions stuck ACTIVE after endTime.
+         *
+         * This statement shares the exact advisory lock used by bidding,
+         * cancellation and reserve correction, so a last-second bid/anti-snipe
+         * extension is serialised against closing. It atomically updates the
+         * Auction, Listing, linked retail listing, Sale and SellerProfile.
+         */
+        const rows = await this.prisma.$queryRaw<AtomicAuctionCloseRow[]>`
+            WITH target AS MATERIALIZED (
+                SELECT
+                    a.id AS auction_id,
+                    a."listingId" AS listing_id,
+                    a.status::text AS auction_status,
+                    a."deletedAt" AS auction_deleted_at,
+                    a."reservePrice" AS reserve_price,
+                    a."startingBid" AS starting_bid,
+                    a."startTime" AS start_time,
+                    a."endTime" AS end_time,
+                    l.status::text AS listing_status,
+                    l."deletedAt" AS listing_deleted_at,
+                    l."sellerId" AS seller_id,
+                    l."linkedListingId" AS linked_listing_id
+                FROM "auctions" a
+                JOIN "listings" l ON l.id = a."listingId"
+                WHERE a.id = ${auctionId}
+            ),
+            lock_row AS MATERIALIZED (
+                SELECT pg_advisory_xact_lock(hashtextextended(t.listing_id, 0)) AS locked
+                FROM target t
+            ),
+            snapshot AS MATERIALIZED (
+                SELECT
+                    t.*,
+                    top_bid.id AS top_bid_id,
+                    top_bid."bidderId" AS top_bidder_id,
+                    top_bid.amount AS top_bid_amount,
+                    (
+                        top_bid.id IS NOT NULL
+                        AND top_bid.amount >= t.reserve_price
+                    ) AS reserve_met
+                FROM target t
+                CROSS JOIN lock_row
+                LEFT JOIN LATERAL (
+                    SELECT b.id, b."bidderId", b.amount
+                    FROM "bids" b
+                    WHERE b."listingId" = t.listing_id
+                      AND b."deletedAt" IS NULL
+                      AND b."cancelledAt" IS NULL
+                      AND b."archivedAt" IS NULL
+                    ORDER BY b.amount DESC, b."timestamp" DESC
+                    LIMIT 1
+                ) top_bid ON TRUE
+            ),
+            decision AS MATERIALIZED (
+                SELECT
+                    s.*,
+                    CASE
+                        WHEN s.auction_deleted_at IS NOT NULL OR s.listing_deleted_at IS NOT NULL THEN 'NOT_FOUND'
+                        WHEN s.auction_status <> 'ACTIVE' THEN 'NOT_ACTIVE'
+                        WHEN s.listing_status <> 'ACTIVE' THEN 'LISTING_INACTIVE'
+                        WHEN ${sellerEarlyClose}::boolean
+                             AND (s.seller_id IS NULL OR s.seller_id <> ${requestedSellerId}) THEN 'NOT_OWNER'
+                        WHEN ${sellerEarlyClose}::boolean
+                             AND NOW() >= s.end_time THEN 'ENDED'
+                        WHEN NOT ${sellerEarlyClose}::boolean
+                             AND NOW() < s.end_time THEN 'NOT_DUE'
+                        WHEN ${sellerEarlyClose}::boolean
+                             AND s.reserve_met THEN 'RESERVE_MET'
+                        ELSE 'OK'
+                    END AS decision_code
+                FROM snapshot s
+            ),
+            outcome AS MATERIALIZED (
+                SELECT
+                    d.*,
+                    (
+                        d.decision_code = 'OK'
+                        AND NOT ${sellerEarlyClose}::boolean
+                        AND d.reserve_met
+                    ) AS sale_completed,
+                    CASE
+                        WHEN d.decision_code <> 'OK' THEN NULL
+                        WHEN NOT ${sellerEarlyClose}::boolean AND d.reserve_met THEN d.top_bidder_id
+                        ELSE NULL
+                    END AS winner_id,
+                    CASE
+                        WHEN d.decision_code = 'OK'
+                             AND NOT ${sellerEarlyClose}::boolean
+                             AND d.reserve_met THEN d.top_bid_amount
+                        ELSE NULL
+                    END AS winning_amount,
+                    CASE
+                        WHEN d.decision_code <> 'OK' THEN NULL
+                        WHEN NOT ${sellerEarlyClose}::boolean AND d.reserve_met
+                            THEN 'RESERVE_MET_SALE'
+                        WHEN ${sellerEarlyClose}::boolean
+                            THEN 'SELLER_EARLY_CLOSE_UNSOLD'
+                        WHEN d.top_bid_id IS NOT NULL
+                            THEN 'BELOW_RESERVE_UNSOLD'
+                        ELSE 'NO_BIDS_UNSOLD'
+                    END AS outcome_type
+                FROM decision d
+            ),
+            auction_updated AS (
+                UPDATE "auctions" a
+                SET
+                    status = 'ENDED',
+                    "winnerId" = o.winner_id,
+                    "winningBidAmount" = o.winning_amount,
+                    "wonAt" = CASE WHEN o.sale_completed THEN NOW() ELSE NULL END,
+                    "buyItNowPendingBuyerId" = NULL,
+                    "buyItNowPendingAt" = NULL,
+                    "updatedAt" = NOW()
+                FROM outcome o
+                WHERE a.id = o.auction_id
+                  AND o.decision_code = 'OK'
+                RETURNING a.id
+            ),
+            listing_updated AS (
+                UPDATE "listings" l
+                SET
+                    status = CASE WHEN o.sale_completed THEN 'SOLD'::listing_status ELSE 'DRAFT'::listing_status END,
+                    type = CASE
+                        WHEN o.sale_completed THEN l.type
+                        WHEN o.linked_listing_id IS NOT NULL THEN 'AUCTION'::listing_type
+                        ELSE 'CLASSIFIED'::listing_type
+                    END,
+                    "linkedListingId" = CASE
+                        WHEN o.sale_completed OR o.linked_listing_id IS NOT NULL THEN l."linkedListingId"
+                        ELSE NULL
+                    END,
+                    "updatedAt" = NOW()
+                FROM outcome o
+                WHERE l.id = o.listing_id
+                  AND o.decision_code = 'OK'
+                RETURNING l.id
+            ),
+            linked_listing_updated AS (
+                UPDATE "listings" l
+                SET
+                    status = 'SOLD'::listing_status,
+                    "updatedAt" = NOW()
+                FROM outcome o
+                WHERE o.decision_code = 'OK'
+                  AND o.sale_completed
+                  AND o.linked_listing_id IS NOT NULL
+                  AND l.id = o.linked_listing_id
+                RETURNING l.id
+            ),
+            sale_created AS (
+                INSERT INTO "sales" (
+                    id,
+                    "listingId",
+                    "sellerId",
+                    "buyerId",
+                    "soldPrice",
+                    "updatedAt"
+                )
+                SELECT
+                    gen_random_uuid()::text,
+                    o.listing_id,
+                    o.seller_id,
+                    o.winner_id,
+                    o.winning_amount,
+                    NOW()
+                FROM outcome o
+                WHERE o.decision_code = 'OK'
+                  AND o.sale_completed
+                  AND o.seller_id IS NOT NULL
+                  AND o.winner_id IS NOT NULL
+                  AND o.winning_amount IS NOT NULL
+                ON CONFLICT ("listingId") DO NOTHING
+                RETURNING id
+            ),
+            seller_profile_updated AS (
+                INSERT INTO "seller_profiles" (
+                    id,
+                    "userId",
+                    "totalSales",
+                    "updatedAt"
+                )
+                SELECT
+                    gen_random_uuid()::text,
+                    o.seller_id,
+                    1,
+                    NOW()
+                FROM outcome o
+                WHERE o.decision_code = 'OK'
+                  AND o.sale_completed
+                  AND o.seller_id IS NOT NULL
+                ON CONFLICT ("userId") DO UPDATE
+                SET
+                    "totalSales" = "seller_profiles"."totalSales" + 1,
+                    "updatedAt" = NOW()
+                RETURNING id
+            )
+            SELECT
+                o.auction_id,
+                o.listing_id,
+                o.seller_id,
+                o.reserve_price,
+                o.starting_bid,
+                o.start_time,
+                o.end_time,
+                o.top_bid_id,
+                o.top_bidder_id,
+                o.top_bid_amount,
+                o.reserve_met,
+                o.linked_listing_id,
+                o.decision_code,
+                o.winner_id,
+                o.winning_amount,
+                o.sale_completed,
+                o.outcome_type,
+                (SELECT COUNT(*)::int FROM auction_updated) AS updated_count
+            FROM outcome o
+        `;
 
-            if (!auction || auction.deletedAt || auction.status !== 'ACTIVE') {
-                return null;
-            }
+        const row = rows[0];
+        if (!row) return;
 
-            const sellerEarlyClose = options?.sellerEarlyClose === true;
-            if (sellerEarlyClose) {
-                if (!options?.sellerId || auction.listing.sellerId !== options.sellerId) {
-                    throw new ForbiddenException('You do not own this auction');
-                }
-                if (auction.listing.status !== 'ACTIVE') {
+        switch (row.decision_code) {
+            case 'NOT_FOUND':
+            case 'NOT_ACTIVE':
+            case 'NOT_DUE':
+                return;
+            case 'LISTING_INACTIVE':
+                if (sellerEarlyClose) {
                     throw new BadRequestException('This auction vehicle is no longer active');
                 }
-                if (Date.now() >= auction.endTime.getTime()) {
-                    throw new BadRequestException(
-                        'This auction has ended and is being finalised. It can no longer be closed early',
-                    );
-                }
-            } else {
-                // A lifecycle close that lost a race to an anti-snipe extension
-                // must stand down. The scheduler will see the new end time on
-                // its next pass instead of ending a still-live auction.
-                const currentEndTime = new Date(auction.endTime);
-                if (currentEndTime.getTime() > Date.now()) {
-                    return null;
-                }
-            }
-
-            const topBid = auction.listing.bids[0] ?? null;
-            const reserveMet = !!topBid && Number(topBid.amount) >= Number(auction.reservePrice);
-
-            if (sellerEarlyClose && reserveMet) {
+                return;
+            case 'NOT_OWNER':
+                throw new ForbiddenException('You do not own this auction');
+            case 'ENDED':
+                throw new BadRequestException(
+                    'This auction has ended and is being finalised. It can no longer be closed early',
+                );
+            case 'RESERVE_MET':
                 throw new BadRequestException(
                     'The reserve has been met. The auction must continue normally until it ends.',
                 );
-            }
+            case 'OK':
+                break;
+        }
 
-            // Seller early-close is explicitly a no-sale route. Normal expiry
-            // awards a winner only when the highest real bid meets reserve.
-            if (!sellerEarlyClose && reserveMet && topBid) {
-                const sellerId = auction.listing.sellerId;
-                const linkedListingId = (auction.listing as any).linkedListingId as string | null;
-                const wonAt = new Date();
+        if (Number(row.updated_count) !== 1 || !row.outcome_type) {
+            throw new ConflictException(
+                'The auction changed while it was being finalised. Refresh and try again.',
+            );
+        }
 
-                await tx.auction.update({
-                    where: { id: auctionId },
-                    data: {
-                        status: 'ENDED',
-                        winnerId: topBid.bidderId,
-                        winningBidAmount: topBid.amount,
-                        wonAt,
-                        buyItNowPendingBuyerId: null,
-                        buyItNowPendingAt: null,
-                    },
-                });
-                await tx.listing.update({
-                    where: { id: auction.listingId },
-                    data: { status: 'SOLD' },
-                });
-                if (linkedListingId) {
-                    await tx.listing.update({
-                        where: { id: linkedListingId },
-                        data: { status: 'SOLD' },
-                    });
-                }
-                if (sellerId) {
-                    await tx.sale.create({
-                        data: {
-                            listingId: auction.listingId,
-                            sellerId,
-                            buyerId: topBid.bidderId,
-                            soldPrice: topBid.amount,
-                        },
-                    });
-                    await tx.sellerProfile.upsert({
-                        where: { userId: sellerId },
-                        create: { userId: sellerId, totalSales: 1 },
-                        update: { totalSales: { increment: 1 } },
-                    });
-                }
-
-                return {
-                    auction,
-                    winnerId: topBid.bidderId,
-                    winningAmount: Number(topBid.amount),
-                    saleCompleted: true,
-                    outcomeType: 'RESERVE_MET_SALE' as const,
-                    highestBidAmount: Number(topBid.amount),
-                };
-            }
-
-            // No winner — either the timed auction expired below reserve or the
-            // seller deliberately closed a below-reserve auction without sale.
-            const classifiedId = (auction.listing as any).linkedListingId as string | null;
-
-            await tx.auction.update({
-                where: { id: auctionId },
-                data: {
-                    status: 'ENDED',
-                    winnerId: null,
-                    winningBidAmount: null,
-                    buyItNowPendingBuyerId: null,
-                    buyItNowPendingAt: null,
-                },
-            });
-            await tx.listing.update({
-                where: { id: auction.listingId },
-                data: classifiedId
-                    ? {
-                        status: 'DRAFT',
-                        type: 'AUCTION',
-                    } as any
-                    : {
-                        status: 'DRAFT',
-                        type: 'CLASSIFIED',
-                        linkedListingId: null,
-                    } as any,
-            });
-
-            return {
-                auction,
-                winnerId: null,
-                winningAmount: null,
-                saleCompleted: false,
-                outcomeType: sellerEarlyClose
-                    ? 'SELLER_EARLY_CLOSE_UNSOLD' as const
-                    : topBid
-                        ? 'BELOW_RESERVE_UNSOLD' as const
-                        : 'NO_BIDS_UNSOLD' as const,
-                highestBidAmount: topBid ? Number(topBid.amount) : null,
-            };
+        const auction = await this.prisma.auction.findUnique({
+            where: { id: auctionId },
+            include: { listing: true },
         });
+        if (!auction) return;
 
-        if (!outcome) return;
+        const winningAmount = row.winning_amount == null ? null : Number(row.winning_amount);
+        const highestBidAmount = row.top_bid_amount == null ? null : Number(row.top_bid_amount);
+        const saleCompleted = Boolean(row.sale_completed);
 
         this.trackAuctionEvent('auction_outcome', {
             auction_id: auctionId,
-            auction_run_key: this.auctionRunKey(outcome.auction),
-            listing_id: outcome.auction.listingId,
-            outcome: outcome.outcomeType,
-            winner_id: outcome.winnerId,
-            winning_amount: outcome.winningAmount,
-            highest_bid_amount: outcome.highestBidAmount,
-            reserve_price: Number(outcome.auction.reservePrice),
-            starting_bid: Number(outcome.auction.startingBid),
-            had_real_bids: outcome.highestBidAmount !== null,
-            seller_early_close: options?.sellerEarlyClose === true,
+            auction_run_key: this.auctionRunKey(auction),
+            listing_id: auction.listingId,
+            outcome: row.outcome_type,
+            winner_id: row.winner_id,
+            winning_amount: winningAmount,
+            highest_bid_amount: highestBidAmount,
+            reserve_price: Number(row.reserve_price),
+            starting_bid: Number(row.starting_bid),
+            had_real_bids: highestBidAmount !== null,
+            seller_early_close: sellerEarlyClose,
         });
 
         const endPayload: AuctionEndPayload = {
             auctionId,
-            winnerId: outcome.winnerId,
-            winningBidAmount: outcome.winningAmount,
-            reserveMet: outcome.saleCompleted,
+            winnerId: row.winner_id,
+            winningBidAmount: winningAmount,
+            reserveMet: saleCompleted,
         };
         this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
         await this.notifyAuctionEnd(
-            outcome.auction,
-            outcome.winnerId,
-            outcome.winningAmount,
-            outcome.saleCompleted,
+            auction,
+            row.winner_id,
+            winningAmount,
+            saleCompleted,
         );
     }
 
