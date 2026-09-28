@@ -554,6 +554,20 @@ if (
   ok('Every mobile auction fee path reuses the same payment and preserves 72-hour guidance');
 }
 
+// Auction seller handover UI must not claim the buyer paid £125 or that
+// CarMazium retained £25 when an admin Free Purchase Grant can cover the fee
+// at £0. Web already shows only the seller's £100 reward; native must match.
+if (
+  !mobileAuctionsScreen.includes('YOUR BONUS') ||
+  !mobileAuctionsScreen.includes('AFTER HANDOVER VERIFIED') ||
+  mobileAuctionsScreen.includes('BUYER PAID') ||
+  mobileAuctionsScreen.includes('PLATFORM FEE')
+) {
+  fail('Native seller handover fee summary drifted from Free Purchase Grant semantics');
+} else {
+  ok('Web and native seller handover UI show the seller reward without inventing a buyer/platform fee split');
+}
+
 // Block 8 — the £100 auction seller reward must be settled exactly once.
 // Approval, Stripe retry and manual fallback share an atomic DB claim; Stripe
 // receives one stable idempotency key for the auction.
