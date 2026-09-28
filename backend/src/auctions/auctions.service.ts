@@ -549,7 +549,15 @@ export class AuctionsService {
         return this.prisma.auction.findMany({
             // listing.status filter is defense-in-depth — the activation cron
             // already only flips SCHEDULED -> ACTIVE for approved listings.
-            where: { status: 'ACTIVE', deletedAt: null, listing: { status: 'ACTIVE' } },
+            // Status alone is not enough: if lifecycle finalisation is
+            // delayed for any reason, an expired row must never be advertised
+            // as live. The canonical deadline is an independent read boundary.
+            where: {
+                status: 'ACTIVE',
+                endTime: { gt: new Date() },
+                deletedAt: null,
+                listing: { status: 'ACTIVE', deletedAt: null },
+            },
             include: {
                 listing: {
                     include: {
