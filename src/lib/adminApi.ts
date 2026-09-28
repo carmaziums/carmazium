@@ -671,9 +671,10 @@ export async function sendAdminScheduledBroadcastNow(id: string): Promise<AdminB
   return result.data;
 }
 
-// ─── Admin Free Listing Grants ────────────────────────────────────────────────
+// ─── Admin Free Listing & Purchase Grants ─────────────────────────────────────
 
 export type FreeListingGrantStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+export type FreePurchaseGrantStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 export type FreeListingDurationUnit = 'HOURS' | 'DAYS' | 'MONTHS' | 'FOREVER';
 
 export interface FreeListingGrant {
@@ -687,6 +688,17 @@ export interface FreeListingGrant {
   status: FreeListingGrantStatus;
 }
 
+export interface FreePurchaseGrant {
+  id: string;
+  grantedAt: string;
+  grantedById: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  useCount: number;
+  status: FreePurchaseGrantStatus;
+}
+
 export interface AdminFreeListingUser {
   id: string;
   email: string;
@@ -696,6 +708,7 @@ export interface AdminFreeListingUser {
   createdAt: string;
   deletedAt: string | null;
   freeListingGrant: FreeListingGrant | null;
+  freePurchaseGrant: FreePurchaseGrant | null;
 }
 
 export interface AdminFreeListingUsersResponse {
@@ -728,6 +741,25 @@ export async function grantAdminFreeListing(
 
 export async function revokeAdminFreeListing(userId: string): Promise<FreeListingGrant | null> {
   const result = await apiClient<{ data: FreeListingGrant | null }>(`/admin/free-listings/users/${userId}`, {
+    method: 'DELETE',
+  });
+  return result.data;
+}
+
+export async function grantAdminFreePurchases(
+  userId: string,
+  durationUnit: FreeListingDurationUnit,
+  durationValue?: number,
+): Promise<FreePurchaseGrant> {
+  const result = await apiClient<{ data: FreePurchaseGrant }>(`/admin/free-listings/users/${userId}/purchases`, {
+    method: 'POST',
+    body: JSON.stringify({ durationUnit, durationValue }),
+  });
+  return result.data;
+}
+
+export async function revokeAdminFreePurchases(userId: string): Promise<FreePurchaseGrant | null> {
+  const result = await apiClient<{ data: FreePurchaseGrant | null }>(`/admin/free-listings/users/${userId}/purchases`, {
     method: 'DELETE',
   });
   return result.data;
