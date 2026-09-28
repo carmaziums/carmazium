@@ -39,6 +39,7 @@ function makeFee(overrides: Record<string, any> = {}) {
         type: 'COMMISSION',
         status: 'COMPLETED',
         deletedAt: null,
+        description: null,
         ...overrides,
     };
 }
@@ -100,6 +101,20 @@ function makeHarness() {
 describe('AuctionsService handover and seller-bonus eligibility', () => {
     it('accepts a valid ended auction with a real winner and exact completed £125 buyer fee', async () => {
         const { service } = makeHarness();
+
+        await expect(service.assertHandoverBusinessRules('auction-1', {
+            expectedSellerId: 'seller-1',
+            requireProof: true,
+            requireUnapproved: true,
+        })).resolves.toEqual(expect.objectContaining({ id: 'auction-1' }));
+    });
+
+    it('accepts an admin-granted £0 purchase waiver as a valid buyer-fee record', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.transaction.findUnique.mockResolvedValue(makeFee({
+            amount: 0,
+            description: 'Admin-granted free auction purchase (grant-1)',
+        }));
 
         await expect(service.assertHandoverBusinessRules('auction-1', {
             expectedSellerId: 'seller-1',
