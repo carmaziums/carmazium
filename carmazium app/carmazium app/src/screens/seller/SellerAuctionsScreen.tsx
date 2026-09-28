@@ -1093,21 +1093,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {/* Handover proof upload for ENDED auctions with a winner */}
         {isEnded ? (
           <View style={styles.handoverSection}>
-            {/* Fee breakdown — matches web's three-stat grid on the seller
-                auctions page (fixed flat fees, not a % of the winning bid). */}
+            {/* Seller-only payout summary. Do not show a fixed buyer/platform
+                fee breakdown here: an admin Free Purchase Grant can legitimately
+                cover the £125 buyer fee at £0 while the seller's £100 bonus
+                remains eligible after approved handover. This mirrors web. */}
             {!item.sellerBonusReleased && (
               <View style={styles.handoverFeeRow}>
                 <View style={styles.handoverFeeCell}>
                   <Text style={styles.handoverFeeLabel}>YOUR BONUS</Text>
                   <Text style={[styles.handoverFeeValue, { color: Colors.lightGreen_4ade80 }]}>£100</Text>
-                </View>
-                <View style={styles.handoverFeeCell}>
-                  <Text style={styles.handoverFeeLabel}>PLATFORM FEE</Text>
-                  <Text style={styles.handoverFeeValue}>£25</Text>
-                </View>
-                <View style={styles.handoverFeeCell}>
-                  <Text style={styles.handoverFeeLabel}>BUYER PAID</Text>
-                  <Text style={styles.handoverFeeValue}>£125</Text>
+                  <Text style={styles.handoverFeeLabel}>AFTER HANDOVER VERIFIED</Text>
                 </View>
               </View>
             )}
