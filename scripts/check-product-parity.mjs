@@ -1337,6 +1337,23 @@ if (
   ok('Native live auction reconnects durably and canonical-resyncs during outages');
 }
 
+// Shared web auction countdown regression guard. The Live grid intentionally
+// re-renders once per second so it can remove cards at the canonical deadline.
+// CountdownTimer must therefore key its effect to the primitive timestamp and
+// calculate immediately; depending on Date object identity can reset the timer
+// on every parent render and leave cards stuck at 00:00:00.
+const webCountdownTimer = read('src/components/features/CountdownTimer.tsx');
+if (
+  !webCountdownTimer.includes('const targetTime = targetDate.getTime()') ||
+  !webCountdownTimer.includes('if (update()) return') ||
+  !webCountdownTimer.includes('}, [targetTime])') ||
+  webCountdownTimer.includes('}, [targetDate])')
+) {
+  fail('Web auction countdown can reset on parent re-renders and display a false 00:00:00');
+} else {
+  ok('Web auction countdown uses a stable deadline timestamp and calculates immediately');
+}
+
 const webApi = read('src/lib/apiClient.ts');
 const mobileApi = read('carmazium app/carmazium app/src/lib/apiClient.ts');
 const apiUrl = /https:\/\/carmazium-[a-z0-9-]+\.fly\.dev/;
