@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { ADMIN_FREE_PURCHASE_TRANSACTION_PREFIX } from './free-purchase-grant.constants';
 
 export type FreeListingDurationUnit = 'HOURS' | 'DAYS' | 'MONTHS' | 'FOREVER';
 
@@ -16,6 +17,17 @@ export interface FreeListingGrantView {
     status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
 }
 
+export interface FreePurchaseGrantView {
+    id: string;
+    grantedAt: string;
+    grantedById: string;
+    expiresAt: string | null;
+    revokedAt: string | null;
+    lastUsedAt: string | null;
+    useCount: number;
+    status: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+}
+
 interface FreeListingGrantRow {
     id: string;
     userId: string;
@@ -24,6 +36,18 @@ interface FreeListingGrantRow {
     usedAt: Date | null;
     usedListingId: string | null;
     revokedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+interface FreePurchaseGrantRow {
+    id: string;
+    userId: string;
+    grantedById: string;
+    expiresAt: Date | null;
+    revokedAt: Date | null;
+    lastUsedAt: Date | null;
+    useCount: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -45,6 +69,12 @@ export class FreeListingGrantsService {
         return 'ACTIVE';
     }
 
+    private purchaseStatus(grant: FreePurchaseGrantRow): FreePurchaseGrantView['status'] {
+        if (grant.revokedAt) return 'REVOKED';
+        if (grant.expiresAt && grant.expiresAt.getTime() <= Date.now()) return 'EXPIRED';
+        return 'ACTIVE';
+    }
+
     private toView(grant: FreeListingGrantRow | null): FreeListingGrantView | null {
         if (!grant) return null;
         return {
@@ -56,6 +86,20 @@ export class FreeListingGrantsService {
             usedListingId: grant.usedListingId,
             revokedAt: grant.revokedAt?.toISOString() ?? null,
             status: this.status(grant),
+        };
+    }
+
+    private toPurchaseView(grant: FreePurchaseGrantRow | null): FreePurchaseGrantView | null {
+        if (!grant) return null;
+        return {
+            id: grant.id,
+            grantedAt: grant.createdAt.toISOString(),
+            grantedById: grant.grantedById,
+            expiresAt: grant.expiresAt?.toISOString() ?? null,
+            revokedAt: grant.revokedAt?.toISOString() ?? null,
+            lastUsedAt: grant.lastUsedAt?.toISOString() ?? null,
+            useCount: Number(grant.useCount || 0),
+            status: this.purchaseStatus(grant),
         };
     }
 
@@ -77,12 +121,35 @@ export class FreeListingGrantsService {
         return expiresAt;
     }
 
+    private async assertGrantableUser(userId: string, benefit: string): Promise<void> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, deletedAt: true },
+        });
+        if (!user) throw new NotFoundException('User not found');
+        if (user.deletedAt) {
+            throw new BadRequestException(`A banned user cannot be granted ${benefit}`);
+        }
+    }
+
     private async findGrantByUser(userId: string): Promise<FreeListingGrantRow | null> {
         const rows = await this.prisma.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
             SELECT
                 "id", "userId", "grantedById", "expiresAt", "usedAt",
                 "usedListingId", "revokedAt", "createdAt", "updatedAt"
             FROM "admin_free_listing_grants"
+            WHERE "userId" = ${userId}
+            LIMIT 1
+        `);
+        return rows[0] ?? null;
+    }
+
+    private async findPurchaseGrantByUser(userId: string): Promise<FreePurchaseGrantRow | null> {
+        const rows = await this.prisma.$queryRaw<FreePurchaseGrantRow[]>(Prisma.sql`
+            SELECT
+                "id", "userId", "grantedById", "expiresAt", "revokedAt",
+                "lastUsedAt", "useCount", "createdAt", "updatedAt"
+            FROM "admin_free_purchase_grants"
             WHERE "userId" = ${userId}
             LIMIT 1
         `);
@@ -123,21 +190,32 @@ export class FreeListingGrantsService {
         ]);
 
         const userIds = users.map((user) => user.id);
-        const grants = userIds.length
-            ? await this.prisma.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
-                  SELECT
-                      "id", "userId", "grantedById", "expiresAt", "usedAt",
-                      "usedListingId", "revokedAt", "createdAt", "updatedAt"
-                  FROM "admin_free_listing_grants"
-                  WHERE "userId" IN (${Prisma.join(userIds)})
-              `)
-            : [];
-        const grantsByUser = new Map(grants.map((grant) => [grant.userId, grant]));
+        const [listingGrants, purchaseGrants] = userIds.length
+            ? await Promise.all([
+                  this.prisma.$queryRaw<FreeListingGrantRow[]>(Prisma.sql`
+                      SELECT
+                          "id", "userId", "grantedById", "expiresAt", "usedAt",
+                          "usedListingId", "revokedAt", "createdAt", "updatedAt"
+                      FROM "admin_free_listing_grants"
+                      WHERE "userId" IN (${Prisma.join(userIds)})
+                  `),
+                  this.prisma.$queryRaw<FreePurchaseGrantRow[]>(Prisma.sql`
+                      SELECT
+                          "id", "userId", "grantedById", "expiresAt", "revokedAt",
+                          "lastUsedAt", "useCount", "createdAt", "updatedAt"
+                      FROM "admin_free_purchase_grants"
+                      WHERE "userId" IN (${Prisma.join(userIds)})
+                  `),
+              ])
+            : [[], []];
+        const listingGrantsByUser = new Map(listingGrants.map((grant) => [grant.userId, grant]));
+        const purchaseGrantsByUser = new Map(purchaseGrants.map((grant) => [grant.userId, grant]));
 
         return {
             data: users.map((user) => ({
                 ...user,
-                freeListingGrant: this.toView(grantsByUser.get(user.id) ?? null),
+                freeListingGrant: this.toView(listingGrantsByUser.get(user.id) ?? null),
+                freePurchaseGrant: this.toPurchaseView(purchaseGrantsByUser.get(user.id) ?? null),
             })),
             total,
             page: safePage,
@@ -151,12 +229,7 @@ export class FreeListingGrantsService {
         durationUnit: FreeListingDurationUnit,
         durationValue?: number,
     ): Promise<FreeListingGrantView> {
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { id: true, deletedAt: true },
-        });
-        if (!user) throw new NotFoundException('User not found');
-        if (user.deletedAt) throw new BadRequestException('A banned user cannot be granted a free listing');
+        await this.assertGrantableUser(userId, 'a free listing');
 
         const expiresAt = this.calculateExpiry(durationUnit, durationValue);
         const id = randomUUID();
@@ -199,6 +272,56 @@ export class FreeListingGrantsService {
         `);
 
         return this.toView(await this.findGrantByUser(userId));
+    }
+
+    async grantFreePurchases(
+        userId: string,
+        adminId: string,
+        durationUnit: FreeListingDurationUnit,
+        durationValue?: number,
+    ): Promise<FreePurchaseGrantView> {
+        await this.assertGrantableUser(userId, 'fee-free auction purchases');
+
+        const expiresAt = this.calculateExpiry(durationUnit, durationValue);
+        const id = randomUUID();
+
+        await this.prisma.$executeRaw(Prisma.sql`
+            INSERT INTO "admin_free_purchase_grants" (
+                "id", "userId", "grantedById", "expiresAt", "revokedAt",
+                "lastUsedAt", "useCount", "createdAt", "updatedAt"
+            ) VALUES (
+                ${id}, ${userId}, ${adminId}, ${expiresAt}, NULL,
+                NULL, 0, NOW(), NOW()
+            )
+            ON CONFLICT ("userId") DO UPDATE SET
+                "id" = EXCLUDED."id",
+                "grantedById" = EXCLUDED."grantedById",
+                "expiresAt" = EXCLUDED."expiresAt",
+                "revokedAt" = NULL,
+                "lastUsedAt" = NULL,
+                "useCount" = 0,
+                "createdAt" = NOW(),
+                "updatedAt" = NOW()
+        `);
+
+        const saved = await this.findPurchaseGrantByUser(userId);
+        if (!saved) throw new BadRequestException('Free purchase grant could not be saved');
+        return this.toPurchaseView(saved)!;
+    }
+
+    async revokeFreePurchases(userId: string): Promise<FreePurchaseGrantView | null> {
+        const existing = await this.findPurchaseGrantByUser(userId);
+        if (!existing) return null;
+        if (this.purchaseStatus(existing) !== 'ACTIVE') return this.toPurchaseView(existing);
+
+        await this.prisma.$executeRaw(Prisma.sql`
+            UPDATE "admin_free_purchase_grants"
+            SET "revokedAt" = NOW(), "updatedAt" = NOW()
+            WHERE "userId" = ${userId}
+              AND "revokedAt" IS NULL
+        `);
+
+        return this.toPurchaseView(await this.findPurchaseGrantByUser(userId));
     }
 
     /**
@@ -289,6 +412,116 @@ export class FreeListingGrantsService {
                     description: `Admin-granted free BASIC listing (${grant.id})`,
                 },
             });
+            return true;
+        });
+    }
+
+    /**
+     * Waive CarMazium's £125 auction buyer fee for a winner whose admin grant
+     * was already active when the auction was won.
+     *
+     * Purchase grants are time-window entitlements, not vouchers: every auction
+     * win inside the active window is covered. We still create a normal
+     * COMPLETED COMMISSION transaction at £0 and attach it to the auction so
+     * contact gating, handover validation, seller-bonus review and audit trails
+     * keep using the existing buyerFeePaid/buyerFeeTransactionId lifecycle.
+     */
+    async applyPurchaseGrantToAuctionIfEligible(auctionId: string, userId: string): Promise<boolean> {
+        return this.prisma.$transaction(async (tx) => {
+            const rows = await tx.$queryRaw<FreePurchaseGrantRow[]>(Prisma.sql`
+                SELECT
+                    "id", "userId", "grantedById", "expiresAt", "revokedAt",
+                    "lastUsedAt", "useCount", "createdAt", "updatedAt"
+                FROM "admin_free_purchase_grants"
+                WHERE "userId" = ${userId}
+                FOR UPDATE
+            `);
+            const grant = rows[0];
+            if (!grant || this.purchaseStatus(grant) !== 'ACTIVE') return false;
+
+            // Serialize with any fee application against this same auction.
+            await tx.$queryRaw(Prisma.sql`
+                SELECT "id"
+                FROM "auctions"
+                WHERE "id" = ${auctionId}
+                FOR UPDATE
+            `);
+
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                select: {
+                    id: true,
+                    listingId: true,
+                    winnerId: true,
+                    wonAt: true,
+                    status: true,
+                    deletedAt: true,
+                    buyerFeePaid: true,
+                    buyerFeeTransactionId: true,
+                },
+            });
+
+            if (
+                !auction
+                || auction.deletedAt
+                || auction.status !== 'ENDED'
+                || auction.winnerId !== userId
+                || auction.buyerFeePaid
+            ) {
+                return false;
+            }
+
+            // A grant is prospective. Creating/replacing one after a dealer has
+            // already won an auction must not silently waive an existing £125 fee.
+            if (!auction.wonAt || auction.wonAt.getTime() < grant.createdAt.getTime()) {
+                return false;
+            }
+            if (grant.expiresAt && auction.wonAt.getTime() >= grant.expiresAt.getTime()) {
+                return false;
+            }
+
+            const existingFee = await tx.transaction.findFirst({
+                where: {
+                    listingId: auction.listingId,
+                    userId,
+                    type: 'COMMISSION',
+                    status: 'COMPLETED',
+                },
+                select: { id: true },
+            });
+            if (existingFee) return false;
+
+            const transaction = await tx.transaction.create({
+                data: {
+                    userId,
+                    listingId: auction.listingId,
+                    amount: 0,
+                    type: 'COMMISSION',
+                    status: 'COMPLETED',
+                    description: `${ADMIN_FREE_PURCHASE_TRANSACTION_PREFIX}${grant.id})`,
+                },
+                select: { id: true },
+            });
+
+            await tx.auction.update({
+                where: { id: auction.id },
+                data: {
+                    buyerFeePaid: true,
+                    buyerFeeTransactionId: transaction.id,
+                },
+            });
+
+            await tx.$executeRaw(Prisma.sql`
+                UPDATE "admin_free_purchase_grants"
+                SET
+                    "lastUsedAt" = NOW(),
+                    "useCount" = "useCount" + 1,
+                    "updatedAt" = NOW()
+                WHERE "id" = ${grant.id}
+                  AND "revokedAt" IS NULL
+                  AND ("expiresAt" IS NULL OR "expiresAt" > NOW())
+            `);
+
             return true;
         });
     }

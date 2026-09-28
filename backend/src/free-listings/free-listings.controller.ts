@@ -29,7 +29,7 @@ export class AdminFreeListingsController {
     constructor(private readonly grants: FreeListingGrantsService) {}
 
     @Get('users')
-    @ApiOperation({ summary: 'List registered users with their admin-granted free listing entitlement' })
+    @ApiOperation({ summary: 'List registered users with their admin-granted free listing and purchase entitlements' })
     async listUsers(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
@@ -55,6 +55,30 @@ export class AdminFreeListingsController {
     @ApiOperation({ summary: 'Revoke a user free-listing entitlement if it has not been used' })
     async revokeFreeListing(@Param('id') userId: string): Promise<StandardResponse<any>> {
         const grant = await this.grants.revoke(userId);
+        return new StandardResponse(grant);
+    }
+
+    @Post('users/:id/purchases')
+    @ApiOperation({ summary: 'Grant fee-free auction purchases to a registered user for a selected period' })
+    async grantFreePurchases(
+        @Param('id') userId: string,
+        @Body('durationUnit') durationUnit: FreeListingDurationUnit,
+        @Body('durationValue') durationValue: number | undefined,
+        @CurrentUser() admin: any,
+    ): Promise<StandardResponse<any>> {
+        const grant = await this.grants.grantFreePurchases(
+            userId,
+            admin.id,
+            durationUnit,
+            durationValue,
+        );
+        return new StandardResponse(grant);
+    }
+
+    @Delete('users/:id/purchases')
+    @ApiOperation({ summary: 'Revoke a user fee-free auction purchase entitlement' })
+    async revokeFreePurchases(@Param('id') userId: string): Promise<StandardResponse<any>> {
+        const grant = await this.grants.revokeFreePurchases(userId);
         return new StandardResponse(grant);
     }
 }

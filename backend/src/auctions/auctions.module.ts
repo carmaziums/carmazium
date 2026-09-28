@@ -11,6 +11,7 @@ import { ChatModule } from '../chat/chat.module';
 import { TradeAuctionAccessGuard } from './trade-access.guard';
 import { HandoverDocumentsService } from './handover-documents.service';
 import { PaymentsModule } from '../payments/payments.module';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { PaymentsModule } from '../payments/payments.module';
         EmailModule,
         forwardRef(() => ChatModule),
         PaymentsModule,
+        FreeListingsModule,
     ],
     controllers: [AuctionsController],
     providers: [AuctionsService, AuctionGateway, TradeAuctionAccessGuard, HandoverDocumentsService],
