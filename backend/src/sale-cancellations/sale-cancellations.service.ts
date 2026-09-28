@@ -550,8 +550,9 @@ export class SaleCancellationsService {
             !!ctx.auction?.buyerFeeTransactionId &&
             (refundBuyerFeeOverride ?? this.shouldRefundBuyerFee(request));
 
+        let refundedBuyerFeeAmount: number | null = null;
         if (refundBuyerFee && ctx.auction) {
-            await this.payments.issueFullRefundForAuctionCancellation(ctx.auction.id);
+            refundedBuyerFeeAmount = await this.payments.issueFullRefundForAuctionCancellation(ctx.auction.id);
         }
 
         const linkedRetailId = ctx.auction ? ctx.listing.linkedListingId : null;
@@ -651,7 +652,7 @@ export class SaleCancellationsService {
                 where: { id },
                 data: {
                     status: 'APPROVED' as any,
-                    buyerFeeRefunded: refundBuyerFee,
+                    buyerFeeRefunded: refundBuyerFee && (refundedBuyerFeeAmount ?? 0) > 0,
                     sellerBonusRecoveryRequired: paidSellerBonus,
                     adminReviewedById: adminId ?? request.adminReviewedById,
                     adminNote: adminNote?.trim() || request.adminNote,
@@ -665,7 +666,9 @@ export class SaleCancellationsService {
         }
 
         const feeMessage = refundBuyerFee
-            ? ' The £125 auction buyer fee has been refunded in full.'
+            ? (refundedBuyerFeeAmount === 0
+                ? ' No buyer-fee refund was needed because this purchase was covered by an admin Free Purchase Grant.'
+                : ' The £125 auction buyer fee has been refunded in full.')
             : (ctx.auction?.buyerFeePaid ? ' The auction buyer fee was not automatically refunded under this cancellation reason.' : '');
 
         await Promise.all([
