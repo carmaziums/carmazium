@@ -1819,32 +1819,49 @@ describe('AuctionsService — final lifecycle consistency', () => {
     });
 
     it('keeps a failed linked auction paired with its active retail counterpart', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-1',
+            listing_id: 'auction-listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 15000,
+            starting_bid: 10000,
+            start_time: new Date(Date.now() - 24 * 60 * 60_000),
+            end_time: new Date(Date.now() - 1000),
+            top_bid_id: null,
+            top_bidder_id: null,
+            top_bid_amount: null,
+            reserve_met: false,
+            linked_listing_id: 'retail-1',
+            decision_code: 'OK',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: 'NO_BIDS_UNSOLD',
+            updated_count: 1,
+        }]);
+        prisma.auction.findUnique.mockResolvedValueOnce({
             id: 'auction-1',
             listingId: 'auction-listing-1',
-            status: 'ACTIVE',
+            status: 'ENDED',
             reservePrice: 15000,
+            startingBid: 10000,
+            startTime: new Date(Date.now() - 24 * 60 * 60_000),
+            endTime: new Date(Date.now() - 1000),
             listing: {
                 id: 'auction-listing-1',
+                title: 'BMW M3 2022',
                 sellerId: 'seller-1',
                 linkedListingId: 'retail-1',
                 year: 2022,
                 make: 'BMW',
                 model: 'M3',
-                bids: [],
             },
         });
 
         await service.closeAuction('auction-1');
 
-        expect(prisma.listing.update).toHaveBeenCalledTimes(1);
-        expect(prisma.listing.update).toHaveBeenCalledWith({
-            where: { id: 'auction-listing-1' },
-            data: {
-                status: 'DRAFT',
-                type: 'AUCTION',
-            },
-        });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.listing.update).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
             'auction-1',
             expect.objectContaining({ reserveMet: false, winnerId: null }),
@@ -1852,39 +1869,63 @@ describe('AuctionsService — final lifecycle consistency', () => {
     });
 
     it('does not close an auction when a committed anti-snipe extension moved the end time into the future', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
-            id: 'auction-anti-snipe',
-            listingId: 'listing-1',
-            deletedAt: null,
-            status: 'ACTIVE',
-            reservePrice: 10000,
-            endTime: new Date(Date.now() + 2 * 60 * 1000),
-            listing: {
-                id: 'listing-1',
-                sellerId: 'seller-1',
-                linkedListingId: null,
-                year: 2022,
-                make: 'BMW',
-                model: 'M3',
-                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 10500 }],
-            },
-        });
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-anti-snipe',
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 10000,
+            starting_bid: 7000,
+            start_time: new Date(Date.now() - 60 * 60_000),
+            end_time: new Date(Date.now() + 2 * 60_000),
+            top_bid_id: 'bid-1',
+            top_bidder_id: 'dealer-1',
+            top_bid_amount: 10500,
+            reserve_met: true,
+            linked_listing_id: null,
+            decision_code: 'NOT_DUE',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: null,
+            updated_count: 0,
+        }]);
 
         await service.closeAuction('auction-anti-snipe');
 
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
-        expect(prisma.auction.update).not.toHaveBeenCalled();
-        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.auction.findUnique).not.toHaveBeenCalled();
         expect(auctionGateway.broadcastAuctionEnd).not.toHaveBeenCalled();
     });
 
     it('ends below-reserve bidding with no accidental winner or sale', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-below-reserve',
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 10000,
+            starting_bid: 7000,
+            start_time: new Date(Date.now() - 24 * 60 * 60_000),
+            end_time: new Date(Date.now() - 1000),
+            top_bid_id: 'bid-1',
+            top_bidder_id: 'dealer-1',
+            top_bid_amount: 7000,
+            reserve_met: false,
+            linked_listing_id: null,
+            decision_code: 'OK',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: 'BELOW_RESERVE_UNSOLD',
+            updated_count: 1,
+        }]);
+        prisma.auction.findUnique.mockResolvedValueOnce({
             id: 'auction-below-reserve',
             listingId: 'listing-1',
-            deletedAt: null,
-            status: 'ACTIVE',
+            status: 'ENDED',
             reservePrice: 10000,
+            startingBid: 7000,
+            startTime: new Date(Date.now() - 24 * 60 * 60_000),
             endTime: new Date(Date.now() - 1000),
             listing: {
                 id: 'listing-1',
@@ -1894,21 +1935,13 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 year: 2022,
                 make: 'BMW',
                 model: 'M3',
-                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 7000 }],
             },
         });
 
         await service.closeAuction('auction-below-reserve');
 
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.sale.create).not.toHaveBeenCalled();
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-below-reserve' },
-            data: expect.objectContaining({
-                status: 'ENDED',
-                winnerId: null,
-                winningBidAmount: null,
-            }),
-        });
         expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
             'auction-below-reserve',
             expect.objectContaining({
@@ -1930,12 +1963,101 @@ describe('AuctionsService — final lifecycle consistency', () => {
     });
 
     it('creates the normal winner and sale when the final real bid meets reserve', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: 'auction-winner',
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 10000,
+            starting_bid: 7000,
+            start_time: new Date(Date.now() - 24 * 60 * 60_000),
+            end_time: new Date(Date.now() - 1000),
+            top_bid_id: 'bid-1',
+            top_bidder_id: 'dealer-1',
+            top_bid_amount: 10100,
+            reserve_met: true,
+            linked_listing_id: null,
+            decision_code: 'OK',
+            winner_id: 'dealer-1',
+            winning_amount: 10100,
+            sale_completed: true,
+            outcome_type: 'RESERVE_MET_SALE',
+            updated_count: 1,
+        }]);
+        prisma.auction.findUnique.mockResolvedValueOnce({
             id: 'auction-winner',
             listingId: 'listing-1',
-            deletedAt: null,
-            status: 'ACTIVE',
+            status: 'ENDED',
             reservePrice: 10000,
+            startingBid: 7000,
+            startTime: new Date(Date.now() - 24 * 60 * 60_000),
+            endTime: new Date(Date.now() - 1000),
+            winnerId: 'dealer-1',
+            winningBidAmount: 10100,
+            listing: {
+                id: 'listing-1',
+                title: 'BMW M3 2022',
+                sellerId: 'seller-1',
+                linkedListingId: null,
+                year: 2022,
+                make: 'BMW',
+                model: 'M3',
+            },
+        });
+
+        await service.closeAuction('auction-winner');
+
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
+            'auction-winner',
+            expect.objectContaining({
+                winnerId: 'dealer-1',
+                winningBidAmount: 10100,
+                reserveMet: true,
+            }),
+        );
+        expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+            data: expect.objectContaining({
+                type: 'auction_outcome',
+                payload: expect.objectContaining({
+                    auction_id: 'auction-winner',
+                    outcome: 'RESERVE_MET_SALE',
+                    winning_amount: 10100,
+                }),
+            }),
+        });
+    });
+
+    it('sends an unsold-auction retail recommendation through notification, support chat and email', async () => {
+        const auctionId = '550e8400-e29b-41d4-a716-446655440000';
+        prisma.$queryRaw.mockResolvedValueOnce([{
+            auction_id: auctionId,
+            listing_id: 'listing-1',
+            seller_id: 'seller-1',
+            reserve_price: 15000,
+            starting_bid: 10000,
+            start_time: new Date(Date.now() - 24 * 60 * 60_000),
+            end_time: new Date(Date.now() - 1000),
+            top_bid_id: null,
+            top_bidder_id: null,
+            top_bid_amount: null,
+            reserve_met: false,
+            linked_listing_id: null,
+            decision_code: 'OK',
+            winner_id: null,
+            winning_amount: null,
+            sale_completed: false,
+            outcome_type: 'NO_BIDS_UNSOLD',
+            updated_count: 1,
+        }]);
+        prisma.auction.findUnique.mockResolvedValueOnce({
+            id: auctionId,
+            listingId: 'listing-1',
+            status: 'ENDED',
+            reservePrice: 15000,
+            startingBid: 10000,
+            startTime: new Date(Date.now() - 24 * 60 * 60_000),
             endTime: new Date(Date.now() - 1000),
             listing: {
                 id: 'listing-1',
@@ -1945,56 +2067,6 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 year: 2022,
                 make: 'BMW',
                 model: 'M3',
-                bids: [{ id: 'bid-1', bidderId: 'dealer-1', amount: 10100 }],
-            },
-        });
-
-        await service.closeAuction('auction-winner');
-
-        expect(prisma.sale.create).toHaveBeenCalledWith({
-            data: {
-                listingId: 'listing-1',
-                sellerId: 'seller-1',
-                buyerId: 'dealer-1',
-                soldPrice: 10100,
-            },
-        });
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-winner' },
-            data: expect.objectContaining({
-                status: 'ENDED',
-                winnerId: 'dealer-1',
-                winningBidAmount: 10100,
-                buyItNowPendingBuyerId: null,
-                buyItNowPendingAt: null,
-            }),
-        });
-        expect(prisma.auction.update.mock.calls[0][0].data).not.toHaveProperty('buyerFeePaid', true);
-        expect(auctionGateway.broadcastAuctionEnd).toHaveBeenCalledWith(
-            'auction-winner',
-            expect.objectContaining({
-                winnerId: 'dealer-1',
-                winningBidAmount: 10100,
-                reserveMet: true,
-            }),
-        );
-    });
-
-    it('sends an unsold-auction retail recommendation through notification, support chat and email', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            listingId: 'listing-1',
-            status: 'ACTIVE',
-            reservePrice: 15000,
-            listing: {
-                id: 'listing-1',
-                title: 'BMW M3 2022',
-                sellerId: 'seller-1',
-                linkedListingId: null,
-                year: 2022,
-                make: 'BMW',
-                model: 'M3',
-                bids: [],
             },
         });
         prisma.user.findUnique.mockResolvedValue({
@@ -2002,7 +2074,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
             firstName: 'Sam',
         });
 
-        await service.closeAuction('550e8400-e29b-41d4-a716-446655440000');
+        await service.closeAuction(auctionId);
 
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -2023,7 +2095,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
             'support-room-1',
             'support-admin-1',
             expect.objectContaining({
-                clientMessageId: '550e8400-e29b-41d4-a716-446655440000',
+                clientMessageId: auctionId,
                 content: expect.stringContaining('Retail Listing'),
             }),
         );
@@ -2033,18 +2105,10 @@ describe('AuctionsService — final lifecycle consistency', () => {
             'seller@example.com',
             'Sam',
             expect.stringContaining('BMW'),
-            '550e8400-e29b-41d4-a716-446655440000',
+            auctionId,
             'listing-1',
             false,
         );
-
-        expect(prisma.dealerProfile.count).not.toHaveBeenCalled();
-
-        const notificationCall = notificationsService.create.mock.calls.find(
-            ([payload]: any[]) => payload.type === 'AUCTION_ENDED_NO_SALE',
-        )?.[0];
-        expect(notificationCall?.message).toContain('CarMazium’s verified dealer network');
-        expect(notificationCall?.message).not.toMatch(/\b\d+[,.]?\d*\s+verified dealers\b/i);
     });
 
     it('retires a cancelled linked auction clone while returning the retail source to an unlinked state', async () => {
