@@ -2283,19 +2283,12 @@ describe('AuctionsService — final lifecycle consistency', () => {
         expect(prisma.sale.deleteMany).not.toHaveBeenCalled();
     });
 
-    it('adminUpdateScheduledAuction: rejects reserve above existing BIN under the advisory lock', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+    it('adminUpdateScheduledAuction: rejects reserve above existing BIN in the atomic statement', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([{
             id: 'auction-1',
-            listingId: 'listing-1',
-            status: 'SCHEDULED',
-            deletedAt: null,
-            startTime: new Date(Date.now() + 30 * 60_000),
-            endTime: new Date(Date.now() + 24 * 60 * 60_000),
-            reservePrice: 9000,
-            startingBid: 7000,
-            minIncrement: 100,
-            buyItNowPrice: 12000,
-        });
+            decision_code: 'ABOVE_BIN',
+            updated_count: 0,
+        }]);
 
         await expect(
             service.adminUpdateScheduledAuction('auction-1', { reservePrice: 12500 }),
@@ -2303,23 +2296,16 @@ describe('AuctionsService — final lifecycle consistency', () => {
             message: 'Buy It Now price must be equal to or higher than the reserve price.',
         });
 
-        expect(prisma.$queryRaw).toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
-    it('adminUpdateScheduledAuction: rejects BIN below existing reserve under the advisory lock', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+    it('adminUpdateScheduledAuction: rejects BIN below existing reserve in the atomic statement', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([{
             id: 'auction-1',
-            listingId: 'listing-1',
-            status: 'SCHEDULED',
-            deletedAt: null,
-            startTime: new Date(Date.now() + 30 * 60_000),
-            endTime: new Date(Date.now() + 24 * 60 * 60_000),
-            reservePrice: 9000,
-            startingBid: 7000,
-            minIncrement: 100,
-            buyItNowPrice: 12000,
-        });
+            decision_code: 'ABOVE_BIN',
+            updated_count: 0,
+        }]);
 
         await expect(
             service.adminUpdateScheduledAuction('auction-1', { buyItNowPrice: 8500 }),
@@ -2327,38 +2313,37 @@ describe('AuctionsService — final lifecycle consistency', () => {
             message: 'Buy It Now price must be equal to or higher than the reserve price.',
         });
 
-        expect(prisma.$queryRaw).toHaveBeenCalled();
+        expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
-    it('adminUpdateScheduledAuction: accepts BIN equal to reserve and commits both under the lock', async () => {
-        prisma.auction.findUnique.mockResolvedValue({
+    it('adminUpdateScheduledAuction: updates reserve/BIN atomically without an interactive transaction', async () => {
+        prisma.$queryRaw.mockResolvedValueOnce([{
             id: 'auction-1',
-            listingId: 'listing-1',
+            decision_code: 'OK',
+            updated_count: 1,
+        }]);
+        prisma.auction.findUnique.mockResolvedValueOnce({
+            id: 'auction-1',
             status: 'SCHEDULED',
             deletedAt: null,
-            startTime: new Date(Date.now() + 30 * 60_000),
-            endTime: new Date(Date.now() + 24 * 60 * 60_000),
-            reservePrice: 9000,
-            startingBid: 7000,
-            minIncrement: 100,
-            buyItNowPrice: 12000,
-        });
-        prisma.auction.update.mockResolvedValue({ id: 'auction-1', reservePrice: 10000, buyItNowPrice: 10000 });
-
-        await service.adminUpdateScheduledAuction('auction-1', {
             reservePrice: 10000,
             buyItNowPrice: 10000,
         });
 
-        expect(prisma.$queryRaw).toHaveBeenCalled();
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-1' },
-            data: expect.objectContaining({
-                reservePrice: 10000,
-                buyItNowPrice: 10000,
-            }),
+        const result = await service.adminUpdateScheduledAuction('auction-1', {
+            reservePrice: 10000,
+            buyItNowPrice: 10000,
         });
+
+        expect(result).toEqual(expect.objectContaining({
+            id: 'auction-1',
+            reservePrice: 10000,
+            buyItNowPrice: 10000,
+        }));
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.$transaction).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
     it('rejects a scheduled reserve-only edit that would move reserve above the existing Buy It Now price', async () => {
