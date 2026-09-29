@@ -13,12 +13,12 @@ export class HealthController {
     ) { }
 
     /**
-     * Lightweight process liveness probe.
+     * Lightweight process liveness probe used by Fly for routing health.
      *
      * This deliberately performs no outbound/self HTTP call and no database
-     * work. It answers only whether the Nest process is alive and able to
-     * serve HTTP, which is useful for diagnostics without creating a recursive
-     * dependency on the public Fly route.
+     * work. A transient PostgreSQL/session-store slowdown must not make Fly
+     * remove CarMazium's only API machine from routing and turn a dependency
+     * issue into an upstream ECONNRESET/ETIMEDOUT outage.
      */
     @Get('live')
     @ApiOperation({ summary: 'Check API process liveness' })
@@ -31,13 +31,12 @@ export class HealthController {
     }
 
     /**
-     * Readiness probe used by Fly.
+     * Dependency readiness probe retained for explicit operational monitoring.
      *
-     * The old /health implementation pinged the database and then made an HTTP
-     * request back into this same API. Under a deploy or short connection
-     * stall, that self-call could time out and mark the only Fly machine
-     * unhealthy even while the process itself was fine. Readiness now checks
-     * the one dependency every auction request actually needs: PostgreSQL.
+     * This checks PostgreSQL without making a recursive HTTP call back through
+     * the public Fly route. It is intentionally separate from Fly's routing
+     * health check so a short database stall remains observable without taking
+     * the live API process out of service.
      */
     @Get('ready')
     @HealthCheck()

@@ -29,14 +29,13 @@ kill_timeout = 30
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+
+  # CarMazium intentionally runs one API machine until the Socket.IO Redis
+  # adapter has REDIS_URL configured. Keep that single machine permanently
+  # available instead of allowing proxy autostop decisions to participate in
+  # availability of the public API.
+  auto_stop_machines = false
   auto_start_machines = true
-  # NOTE: intentionally 1, not higher — the Socket.IO Redis adapter
-  # (backend/src/core/adapters/redis-io.adapter.ts) needs REDIS_URL set to
-  # sync WebSocket broadcasts (live auction bids) across machines. Without
-  # it, running >1 machine means bidders connected to different machines
-  # miss each other's real-time updates. Raise this again once Upstash
-  # Redis is provisioned and REDIS_URL is set as a Fly secret.
   min_machines_running = 1
   processes = ['app']
 
@@ -44,7 +43,13 @@ kill_timeout = 30
     grace_period = '30s'
     interval = '15s'
     method = 'GET'
-    path = '/health/ready'
+
+    # Routing health must describe the API process, not PostgreSQL. A transient
+    # database/session-store slowdown must not remove CarMazium's only API
+    # machine from Fly Proxy and turn a dependency issue into ECONNRESET /
+    # ETIMEDOUT for every Vercel request. /health/ready remains available for
+    # explicit dependency monitoring.
+    path = '/health/live'
     timeout = '10s'
 
 [[vm]]

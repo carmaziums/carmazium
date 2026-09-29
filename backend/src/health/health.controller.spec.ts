@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { HealthController } from './health.controller';
 
 describe('HealthController reliability probes', () => {
@@ -56,5 +58,14 @@ describe('HealthController reliability probes', () => {
 
         expect(health.check).toHaveBeenCalledTimes(1);
         expect(prisma.pingCheck).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps Fly routing health independent from PostgreSQL readiness', () => {
+        const flyConfig = readFileSync(join(process.cwd(), 'fly.toml'), 'utf8');
+
+        expect(flyConfig).toMatch(/auto_stop_machines\s*=\s*false/);
+        expect(flyConfig).toMatch(/path\s*=\s*['"]\/health\/live['"]/);
+        expect(flyConfig).not.toMatch(/path\s*=\s*['"]\/health\/ready['"]/);
+        expect(flyConfig).toMatch(/min_machines_running\s*=\s*1/);
     });
 });
