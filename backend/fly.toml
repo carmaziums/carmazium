@@ -30,11 +30,12 @@ kill_timeout = 30
   internal_port = 8080
   force_https = true
 
-  # CarMazium intentionally runs one API machine until the Socket.IO Redis
-  # adapter has REDIS_URL configured. Keep that single machine permanently
-  # available instead of allowing proxy autostop decisions to participate in
-  # availability of the public API.
-  auto_stop_machines = false
+  # Keep at least one London API machine running at all times. Fly currently
+  # has stopped spare machine records available for failover/load; retaining
+  # autostop ensures any spare that is temporarily started can return to the
+  # stopped state instead of leaving multiple Socket.IO servers running
+  # indefinitely before REDIS_URL-backed cross-machine broadcasts are enabled.
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
   processes = ['app']
@@ -45,8 +46,8 @@ kill_timeout = 30
     method = 'GET'
 
     # Routing health must describe the API process, not PostgreSQL. A transient
-    # database/session-store slowdown must not remove CarMazium's only API
-    # machine from Fly Proxy and turn a dependency issue into ECONNRESET /
+    # database/session-store slowdown must not remove CarMazium's only running
+    # API machine from Fly Proxy and turn a dependency issue into ECONNRESET /
     # ETIMEDOUT for every Vercel request. /health/ready remains available for
     # explicit dependency monitoring.
     path = '/health/live'
