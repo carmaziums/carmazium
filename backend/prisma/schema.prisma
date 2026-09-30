@@ -795,8 +795,11 @@ model Listing {
   taxDueDate               String? // ISO date string
   markedForExport          Boolean?
   monthOfFirstRegistration String? // e.g. "2015-03"
+  firstUsedDate            String? // DVLA first-use date snapshot
+  dateOfLastV5CIssued      String? // DVLA last V5C issue date snapshot
   wheelplan                String? // e.g. "2 AXLE RIGID BODY"
   typeApproval             String? // e.g. "M1"
+  motHistory               Json? // MOT history snapshot returned during listing lookup
   // Phase 5: Featured boost
   isFeatured               Boolean           @default(false)
   featuredUntil            DateTime?
