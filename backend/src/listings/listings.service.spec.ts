@@ -1461,7 +1461,7 @@ describe('ListingsService', () => {
             } as any);
 
             expect(result.auction.marketValue).toBe(2650);
-            expect(result.source).toBe('BLENDED_MARKET');
+            expect(result.source).toBe('LIVE_UK_MARKET');
         });
     });
 
@@ -1524,7 +1524,7 @@ describe('ListingsService', () => {
             }));
         });
 
-        it('uses all five live attempts before switching sparse evidence to blended mode', async () => {
+        it('uses all five live attempts before accepting a sparse live valuation', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
 
             const sparse = {
@@ -1559,8 +1559,8 @@ describe('ListingsService', () => {
                 liveUkSearchStatus: 'USED',
                 rawLiveUkComparables: 2,
                 liveUkAttempts: 5,
-                blendedMarketAttempts: 1,
-                valuationStrategy: 'BLENDED',
+                blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
             }));
         });
 
@@ -1600,6 +1600,66 @@ describe('ListingsService', () => {
                 liveUkAttempts: 5,
                 blendedMarketAttempts: 0,
                 valuationStrategy: 'LIVE',
+            }));
+        });
+
+        it('enters blended mode only after five empty live attempts and combines recovered live evidence with CarMazium signals', async () => {
+            const internalRows = [0, 1].map((index) => ({
+                id: `internal-blend-${index}`,
+                type: 'CLASSIFIED',
+                status: 'ACTIVE',
+                price: 9000 + index * 500,
+                make: 'FORD',
+                model: 'FOCUS',
+                variant: 'Titanium',
+                year: 2019,
+                mileage: 40000 + index * 2000,
+                fuelType: 'PETROL',
+                transmission: 'MANUAL',
+                writeOffCategory: null,
+                condition: 'GOOD',
+                serviceHistory: 'FULL',
+                owners: 2,
+                isImported: false,
+                sale: null,
+                auction: null,
+                offers: [],
+            }));
+            prisma.listing.findMany.mockResolvedValue(internalRows);
+
+            const recovered = {
+                checkedAt: new Date().toISOString(),
+                rawComparableCount: 1,
+                comparables: [
+                    { price: 9750, year: 2019, mileage: 41000, kind: 'ACTIVE_ASK' },
+                ],
+            };
+
+            const liveSearch = jest
+                .spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(recovered)
+                .mockResolvedValue(null);
+
+            const result = await service.estimateVehicleValue({
+                make: 'FORD',
+                model: 'FOCUS',
+                year: 2019,
+                mileage: 40000,
+            } as any);
+
+            expect(liveSearch).toHaveBeenCalledTimes(6);
+            expect(result.source).toBe('BLENDED_MARKET');
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                carmaziumComparables: 2,
+                liveUkComparables: 1,
+                liveUkAttempts: 5,
+                blendedMarketAttempts: 1,
+                valuationStrategy: 'BLENDED',
             }));
         });
 
