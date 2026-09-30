@@ -100,7 +100,7 @@ export async function searchLiveUkVehicleMarket(
     const client = new OpenAI({
         apiKey: options.apiKey,
         timeout: options.timeoutMs ?? 18_000,
-        maxRetries: 1,
+        maxRetries: 0,
     });
 
     const details = [
