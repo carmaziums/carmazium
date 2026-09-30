@@ -10,6 +10,7 @@ import {
     Max,
     IsArray,
     ArrayMaxSize,
+    IsObject,
     IsUrl,
     IsOptional,
     IsBoolean,
@@ -369,6 +370,26 @@ export class CreateListingDto {
     @IsString()
     @IsOptional()
     typeApproval?: string;
+
+    @ApiProperty({ description: 'First used date from DVLA/MOT lookup', example: '2018-09-01', required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(30)
+    firstUsedDate?: string;
+
+    @ApiProperty({ description: 'Date the latest V5C was issued, from DVLA', example: '2025-04-11', required: false })
+    @IsString()
+    @IsOptional()
+    @MaxLength(30)
+    dateOfLastV5CIssued?: string;
+
+    @ApiProperty({ description: 'MOT history snapshot captured during the registration lookup', type: 'array', required: false })
+    @IsArray()
+    @ArrayMaxSize(100)
+    @IsObject({ each: true })
+    @IsOptional()
+    motHistory?: Record<string, unknown>[];
+
 
     @ApiProperty({ description: 'Badge tier: FREE (auction only), BASIC (£1 retail), STANDARD (£10), or PREMIUM (£25 + boost)', example: 'BASIC', required: false, default: 'BASIC' })
     @IsString()
