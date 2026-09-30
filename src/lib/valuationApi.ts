@@ -1,5 +1,7 @@
 import { apiClient } from './apiClient'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
+
 export interface VehicleValuationRequest {
     make: string
     model: string
@@ -517,11 +519,31 @@ export async function getVehicleValuation(
         if (request.valuationId) params.set('valuationId', request.valuationId)
         if (request.registration) params.set('registration', request.registration)
 
-        const response = await apiClient<{ data: VehicleValuation }>(`/listings/valuation?${params.toString()}`, {
-            method: 'GET',
-            cache: 'no-store',
-        })
-        return response.data
+        // Valuation deliberately has a longer budget than normal reads because
+        // the backend may perform up to five live-market attempts followed by
+        // up to five blended-market attempts before using a fallback. Keep this
+        // as one HTTP request so client retries cannot create duplicate market
+        // searches or exhaust the public valuation throttle.
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 65_000)
+
+        try {
+            const response = await fetch(`${API_URL}/listings/valuation?${params.toString()}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                cache: 'no-store',
+                signal: controller.signal,
+            })
+            if (!response.ok) {
+                const body = await response.text().catch(() => '')
+                throw new Error(body || `Valuation request failed (${response.status})`)
+            }
+            const body = await response.json() as { data?: VehicleValuation }
+            if (!body?.data) throw new Error('Valuation response was empty')
+            return body.data
+        } finally {
+            clearTimeout(timeoutId)
+        }
     } catch {
         // Never strand a seller because an enrichment dependency, deployment,
         // rate-limit or network request failed. Try current CarMazium adverts
