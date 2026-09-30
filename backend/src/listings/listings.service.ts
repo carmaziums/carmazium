@@ -366,7 +366,8 @@ export class ListingsService {
         // parallel and their sanitized comparables are deduplicated. This keeps
         // the five-attempt policy inside a practical customer-facing time budget.
         const liveComparableMap = new Map<string, VehicleValuationComparable>();
-        let latestLiveMarket: LiveUkMarketSearchResult | null = null;
+        let latestLiveMarketCheckedAt: string | undefined;
+        let sawLiveMarketResponse = false;
         let rawLiveUkComparables = 0;
         let liveUkAttempts = 0;
         let blendedMarketAttempts = 0;
@@ -374,7 +375,8 @@ export class ListingsService {
         const mergeLiveMarketResult = (result: LiveUkMarketSearchResult | null) => {
             if (!result) return;
 
-            latestLiveMarket = result;
+            sawLiveMarketResponse = true;
+            latestLiveMarketCheckedAt = result.checkedAt;
             rawLiveUkComparables = Math.max(
                 rawLiveUkComparables,
                 result.rawComparableCount ?? 0,
@@ -437,7 +439,7 @@ export class ListingsService {
             calculatedBase.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: usableLiveComparables.length,
-                checkedAt: latestLiveMarket?.checkedAt,
+                checkedAt: latestLiveMarketCheckedAt,
                 liveUkSearchStatus: 'USED',
                 rawLiveUkComparables: Math.max(
                     rawLiveUkComparables,
@@ -479,7 +481,7 @@ export class ListingsService {
                 calculatedBase.marketEvidence = {
                     carmaziumComparables: carmaziumComparableCount,
                     liveUkComparables: usableLiveComparables.length,
-                    checkedAt: latestLiveMarket?.checkedAt,
+                    checkedAt: latestLiveMarketCheckedAt,
                     liveUkSearchStatus: 'USED',
                     rawLiveUkComparables: Math.max(
                         rawLiveUkComparables,
@@ -502,7 +504,7 @@ export class ListingsService {
                 calculatedBase.marketEvidence = {
                     carmaziumComparables: 0,
                     liveUkComparables: usableLiveComparables.length,
-                    checkedAt: latestLiveMarket?.checkedAt,
+                    checkedAt: latestLiveMarketCheckedAt,
                     liveUkSearchStatus: 'USED',
                     rawLiveUkComparables: Math.max(
                         rawLiveUkComparables,
@@ -522,8 +524,8 @@ export class ListingsService {
                 calculatedBase.marketEvidence = {
                     carmaziumComparables: carmaziumComparableCount,
                     liveUkComparables: 0,
-                    checkedAt: latestLiveMarket?.checkedAt,
-                    liveUkSearchStatus: latestLiveMarket
+                    checkedAt: latestLiveMarketCheckedAt,
+                    liveUkSearchStatus: sawLiveMarketResponse
                         ? 'INSUFFICIENT'
                         : 'UNAVAILABLE',
                     rawLiveUkComparables,
