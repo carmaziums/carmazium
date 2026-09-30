@@ -120,6 +120,15 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
         STATION_WAGON: 'STATION_WAGON',
         MPV: 'MPV',
         VAN: 'VAN',
+        HGV_TRACTOR_UNIT: 'HGV_TRACTOR_UNIT',
+        HGV_BOX: 'HGV_BOX',
+        HGV_CURTAIN_SIDER: 'HGV_CURTAIN_SIDER',
+        HGV_FLATBED: 'HGV_FLATBED',
+        HGV_TIPPER: 'HGV_TIPPER',
+        HGV_DROPSIDE: 'HGV_DROPSIDE',
+        HGV_TANKER: 'HGV_TANKER',
+        HGV_REFRIGERATED: 'HGV_REFRIGERATED',
+        HGV_CAR_TRANSPORTER: 'HGV_CAR_TRANSPORTER',
     };
     return map[body] ?? null;
 };
