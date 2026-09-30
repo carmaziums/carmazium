@@ -1465,8 +1465,8 @@ describe('ListingsService', () => {
         });
     });
 
-    describe('live AI valuation enrichment with resilient fallback', () => {
-        it('runs live UK market research even when CarMazium already has strong internal comparables', async () => {
+    describe('live-first valuation retries with blended fallback', () => {
+        it('prefers a standalone live valuation before blending even when CarMazium has internal comparables', async () => {
             const internalRows = [0, 1, 2, 3].map((index) => ({
                 id: `internal-${index}`,
                 type: 'CLASSIFIED',
@@ -1513,27 +1513,32 @@ describe('ListingsService', () => {
             } as any);
 
             expect(liveSearch).toHaveBeenCalledTimes(1);
-            expect(result.source).toBe('BLENDED_MARKET');
+            expect(result.source).toBe('LIVE_UK_MARKET');
             expect(result.marketEvidence).toEqual(expect.objectContaining({
                 carmaziumComparables: 4,
                 liveUkComparables: 3,
                 liveUkSearchStatus: 'USED',
+                liveUkAttempts: 1,
+                blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
             }));
         });
 
-        it('uses one or two sanitized live comparables instead of dropping the valuation', async () => {
+        it('uses all five live attempts before switching sparse evidence to blended mode', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
+
+            const sparse = {
+                checkedAt: new Date().toISOString(),
+                rawComparableCount: 2,
+                comparables: [
+                    { price: 3495, year: 2012, mileage: 95000, transmission: 'MANUAL', kind: 'ACTIVE_ASK' },
+                    { price: 3995, year: 2012, mileage: 95877, transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
+                ],
+            };
 
             const liveSearch = jest
                 .spyOn(service as any, 'getLiveUkMarketComparables')
-                .mockResolvedValue({
-                    checkedAt: new Date().toISOString(),
-                    rawComparableCount: 2,
-                    comparables: [
-                        { price: 3495, year: 2012, mileage: 95000, transmission: 'MANUAL', kind: 'ACTIVE_ASK' },
-                        { price: 3995, year: 2012, mileage: 95877, transmission: 'AUTOMATIC', kind: 'ACTIVE_ASK' },
-                    ],
-                });
+                .mockResolvedValue(sparse);
 
             const result = await service.estimateVehicleValue({
                 make: 'SKODA',
@@ -1543,8 +1548,8 @@ describe('ListingsService', () => {
                 transmission: 'MANUAL',
             } as any);
 
-            expect(liveSearch).toHaveBeenCalledTimes(1);
-            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(liveSearch).toHaveBeenCalledTimes(5);
+            expect(result.source).toBe('BLENDED_MARKET');
             expect(result.confidence).toBe('LOW');
             expect(result.retail.suggestedAsking).toBeGreaterThan(0);
             expect(result.auction.marketValue).toBeGreaterThan(0);
@@ -1553,10 +1558,52 @@ describe('ListingsService', () => {
                 liveUkComparables: 2,
                 liveUkSearchStatus: 'USED',
                 rawLiveUkComparables: 2,
+                liveUkAttempts: 5,
+                blendedMarketAttempts: 1,
+                valuationStrategy: 'BLENDED',
             }));
         });
 
-        it('still returns a numeric low-confidence guide when live market research is unavailable', async () => {
+        it('can build a standalone live valuation from unique comparables accumulated across five attempts', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+
+            const liveSearch = jest
+                .spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce({
+                    checkedAt: new Date().toISOString(),
+                    rawComparableCount: 1,
+                    comparables: [
+                        { price: 10000, year: 2020, mileage: 30000, kind: 'ACTIVE_ASK' },
+                    ],
+                })
+                .mockResolvedValueOnce({
+                    checkedAt: new Date().toISOString(),
+                    rawComparableCount: 2,
+                    comparables: [
+                        { price: 10500, year: 2020, mileage: 32000, kind: 'ACTIVE_ASK' },
+                        { price: 11000, year: 2021, mileage: 28000, kind: 'ACTIVE_ASK' },
+                    ],
+                })
+                .mockResolvedValue(null);
+
+            const result = await service.estimateVehicleValue({
+                make: 'FORD',
+                model: 'FOCUS',
+                year: 2020,
+                mileage: 30000,
+            } as any);
+
+            expect(liveSearch).toHaveBeenCalledTimes(5);
+            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                liveUkComparables: 3,
+                liveUkAttempts: 5,
+                blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
+            }));
+        });
+
+        it('tries five blended searches after five empty live searches before using another fallback', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
 
             const liveSearch = jest
@@ -1571,7 +1618,7 @@ describe('ListingsService', () => {
                 transmission: 'MANUAL',
             } as any);
 
-            expect(liveSearch).toHaveBeenCalledTimes(1);
+            expect(liveSearch).toHaveBeenCalledTimes(10);
             expect(result.source).toBe('CARMAZIUM_MODEL');
             expect(result.confidence).toBe('LOW');
             expect(result.retail.suggestedAsking).toBeGreaterThan(0);
@@ -1583,6 +1630,9 @@ describe('ListingsService', () => {
                 liveUkComparables: 0,
                 liveUkSearchStatus: 'UNAVAILABLE',
                 rawLiveUkComparables: 0,
+                liveUkAttempts: 5,
+                blendedMarketAttempts: 5,
+                valuationStrategy: 'FALLBACK',
             }));
         });
     });
