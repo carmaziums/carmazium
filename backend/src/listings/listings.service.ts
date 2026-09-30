@@ -422,17 +422,18 @@ export class ListingsService {
         let usableLiveComparables = [...liveComparableMap.values()];
         let calculatedBase: VehicleValuationResult;
 
-        // Three or more independent sanitized live comparables are enough to
-        // publish a live-market valuation without diluting it with CarMazium
-        // marketplace/model evidence.
-        if (usableLiveComparables.length >= 3) {
+        // Prefer live UK evidence whenever the five-attempt live phase found
+        // anything usable. Three or more comparables may allow an early exit;
+        // one or two comparables remain a valid LOW-confidence live valuation
+        // after all five live attempts have been exhausted.
+        if (usableLiveComparables.length > 0) {
             calculatedBase = calculateVehicleValuation(
                 baseValuationInput,
                 usableLiveComparables,
             );
             calculatedBase.source = 'LIVE_UK_MARKET';
             calculatedBase.explanation =
-                `Based on ${usableLiveComparables.length} similar vehicles currently advertised in the UK after ${liveUkAttempts} live-market attempt${liveUkAttempts === 1 ? '' : 's'}.`;
+                `Based on ${usableLiveComparables.length} similar vehicle${usableLiveComparables.length === 1 ? '' : 's'} currently advertised in the UK after ${liveUkAttempts} live-market attempt${liveUkAttempts === 1 ? '' : 's'}.`;
             calculatedBase.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: usableLiveComparables.length,
@@ -447,39 +448,34 @@ export class ListingsService {
                 valuationStrategy: 'LIVE',
             };
         } else {
-            // If the five live attempts found one or two credible adverts, that
-            // sparse evidence can immediately seed the first blended attempt.
-            // If they found none, blended mode gets its own five search attempts
-            // before any internal/model-only fallback is allowed.
-            if (usableLiveComparables.length > 0) {
-                blendedMarketAttempts = 1;
-            } else {
-                await runMarketSearchAttempt('BLENDED');
+            // Only after all five live attempts return no usable current-market
+            // comparables do we enter blended mode. Blended mode gets its own
+            // five attempts to recover live UK evidence which can be combined
+            // with CarMazium marketplace signals when those exist.
+            await runMarketSearchAttempt('BLENDED');
 
-                if (liveComparableMap.size === 0) {
-                    const remainingBlendedAttempts = 5 - blendedMarketAttempts;
-                    if (remainingBlendedAttempts > 0) {
-                        await Promise.all(
-                            Array.from(
-                                { length: remainingBlendedAttempts },
-                                () => runMarketSearchAttempt('BLENDED'),
-                            ),
-                        );
-                    }
+            if (liveComparableMap.size === 0) {
+                const remainingBlendedAttempts = 5 - blendedMarketAttempts;
+                if (remainingBlendedAttempts > 0) {
+                    await Promise.all(
+                        Array.from(
+                            { length: remainingBlendedAttempts },
+                            () => runMarketSearchAttempt('BLENDED'),
+                        ),
+                    );
                 }
-
-                usableLiveComparables = [...liveComparableMap.values()];
             }
 
-            if (usableLiveComparables.length > 0) {
+            usableLiveComparables = [...liveComparableMap.values()];
+
+            if (usableLiveComparables.length > 0 && carmaziumComparableCount > 0) {
                 calculatedBase = calculateVehicleValuation(
                     baseValuationInput,
                     [...comparables, ...usableLiveComparables],
                 );
                 calculatedBase.source = 'BLENDED_MARKET';
-                calculatedBase.explanation = carmaziumComparableCount > 0
-                    ? `Live UK evidence remained too sparse for a standalone valuation after ${liveUkAttempts} attempts, so this value blends ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'} with ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'}.`
-                    : `Live UK evidence remained too sparse for a standalone valuation after ${liveUkAttempts} attempts, so this value blends ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'} with CarMazium's deterministic vehicle model.`;
+                calculatedBase.explanation =
+                    `After five live-market attempts returned no usable result, the blended stage recovered ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'} and combined ${usableLiveComparables.length === 1 ? 'it' : 'them'} with ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'}.`;
                 calculatedBase.marketEvidence = {
                     carmaziumComparables: carmaziumComparableCount,
                     liveUkComparables: usableLiveComparables.length,
@@ -493,10 +489,32 @@ export class ListingsService {
                     blendedMarketAttempts,
                     valuationStrategy: 'BLENDED',
                 };
+            } else if (usableLiveComparables.length > 0) {
+                // There are no CarMazium marketplace signals to blend with, so
+                // do not mislabel a recovered live-only valuation as blended.
+                calculatedBase = calculateVehicleValuation(
+                    baseValuationInput,
+                    usableLiveComparables,
+                );
+                calculatedBase.source = 'LIVE_UK_MARKET';
+                calculatedBase.explanation =
+                    `The initial five live-market attempts returned no usable result, but the blended-stage search recovered ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'}. With no CarMazium market signals available to blend, the result remains a live-market valuation.`;
+                calculatedBase.marketEvidence = {
+                    carmaziumComparables: 0,
+                    liveUkComparables: usableLiveComparables.length,
+                    checkedAt: latestLiveMarket?.checkedAt,
+                    liveUkSearchStatus: 'USED',
+                    rawLiveUkComparables: Math.max(
+                        rawLiveUkComparables,
+                        usableLiveComparables.length,
+                    ),
+                    liveUkAttempts,
+                    blendedMarketAttempts,
+                    valuationStrategy: 'LIVE',
+                };
             } else {
-                // Only after five live attempts and five blended attempts have
-                // failed to produce a usable current-UK-market signal do we
-                // allow the existing CarMazium market/model fallback.
+                // Only after five live attempts AND five blended attempts have
+                // failed do we allow the existing CarMazium market/model fallback.
                 calculatedBase = calculateVehicleValuation(
                     baseValuationInput,
                     comparables,
