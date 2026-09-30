@@ -154,11 +154,10 @@ export class ListingsService {
      * experiment and must not be presented to customers as real market data.
      *
      * The endpoint always returns a numeric guide for valid vehicle input.
-     * CarMazium transaction/listing evidence is combined with a fresh live UK
-     * market check when available. The live search is enrichment, not a
-     * single point of failure: if it times out or is unavailable, the valuation
-     * engine falls back to CarMazium evidence and finally to the conservative
-     * age/mileage/transmission model with LOW confidence.
+     * The engine prioritises fresh UK market evidence. It makes up to five
+     * live-market attempts first, then up to five blended-market attempts, and
+     * only after both stages fail does it fall back to CarMazium evidence and
+     * finally the conservative age/mileage/transmission model with LOW confidence.
      */
     async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
         const make = dto.make.trim();
@@ -357,39 +356,164 @@ export class ListingsService {
 
         const carmaziumComparableCount = comparables.length;
 
-        // Live UK market research is performed only while establishing a new
-        // journey base. Once frozen, later calls never reach this branch.
-        const liveMarket = await this.getLiveUkMarketComparables(baseValuationInput);
-        const usableLiveComparables = liveMarket?.comparables ?? [];
+        // Valuation source priority is deliberate:
+        //   1) live UK market, up to five attempts;
+        //   2) blended market, up to five attempts;
+        //   3) only then CarMazium/internal model fallbacks.
+        //
+        // The first live attempt is run on its own so the common successful path
+        // remains cheap. If it is too sparse, the remaining four attempts run in
+        // parallel and their sanitized comparables are deduplicated. This keeps
+        // the five-attempt policy inside a practical customer-facing time budget.
+        const liveComparableMap = new Map<string, VehicleValuationComparable>();
+        let latestLiveMarket: LiveUkMarketSearchResult | null = null;
+        let rawLiveUkComparables = 0;
+        let liveUkAttempts = 0;
+        let blendedMarketAttempts = 0;
 
-        const calculatedBase = calculateVehicleValuation(
-            baseValuationInput,
-            [...comparables, ...usableLiveComparables],
-        );
+        const mergeLiveMarketResult = (result: LiveUkMarketSearchResult | null) => {
+            if (!result) return;
 
-        // Source/explanation/evidence are properties of the market base itself,
-        // so freeze them BEFORE seller condition/specification adjustments.
-        if (usableLiveComparables.length > 0) {
-            const blended = carmaziumComparableCount > 0;
-            calculatedBase.source = blended ? 'BLENDED_MARKET' : 'LIVE_UK_MARKET';
-            calculatedBase.explanation = blended
-                ? `Based on ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'} plus ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`
-                : `Based on ${usableLiveComparables.length} similar vehicles currently advertised in the UK.`;
+            latestLiveMarket = result;
+            rawLiveUkComparables = Math.max(
+                rawLiveUkComparables,
+                result.rawComparableCount ?? 0,
+            );
+
+            for (const comparable of result.comparables ?? []) {
+                const key = [
+                    Math.round(Number(comparable.price) || 0),
+                    comparable.year ?? '',
+                    comparable.mileage ?? '',
+                    (comparable.variant ?? '').trim().toUpperCase(),
+                    (comparable.fuelType ?? '').trim().toUpperCase(),
+                    (comparable.transmission ?? '').trim().toUpperCase(),
+                ].join('|');
+
+                if (!liveComparableMap.has(key)) {
+                    liveComparableMap.set(key, comparable);
+                }
+            }
+        };
+
+        const runMarketSearchAttempt = async (phase: 'LIVE' | 'BLENDED') => {
+            if (phase === 'LIVE') liveUkAttempts += 1;
+            else blendedMarketAttempts += 1;
+
+            const result = await this.getLiveUkMarketComparables(baseValuationInput);
+            mergeLiveMarketResult(result);
+            return result;
+        };
+
+        await runMarketSearchAttempt('LIVE');
+
+        if (liveComparableMap.size < 3) {
+            const remainingLiveAttempts = 5 - liveUkAttempts;
+            if (remainingLiveAttempts > 0) {
+                await Promise.all(
+                    Array.from(
+                        { length: remainingLiveAttempts },
+                        () => runMarketSearchAttempt('LIVE'),
+                    ),
+                );
+            }
+        }
+
+        let usableLiveComparables = [...liveComparableMap.values()];
+        let calculatedBase: VehicleValuationResult;
+
+        // Three or more independent sanitized live comparables are enough to
+        // publish a live-market valuation without diluting it with CarMazium
+        // marketplace/model evidence.
+        if (usableLiveComparables.length >= 3) {
+            calculatedBase = calculateVehicleValuation(
+                baseValuationInput,
+                usableLiveComparables,
+            );
+            calculatedBase.source = 'LIVE_UK_MARKET';
+            calculatedBase.explanation =
+                `Based on ${usableLiveComparables.length} similar vehicles currently advertised in the UK after ${liveUkAttempts} live-market attempt${liveUkAttempts === 1 ? '' : 's'}.`;
             calculatedBase.marketEvidence = {
                 carmaziumComparables: carmaziumComparableCount,
                 liveUkComparables: usableLiveComparables.length,
-                checkedAt: liveMarket?.checkedAt,
+                checkedAt: latestLiveMarket?.checkedAt,
                 liveUkSearchStatus: 'USED',
-                rawLiveUkComparables: liveMarket?.rawComparableCount ?? usableLiveComparables.length,
+                rawLiveUkComparables: Math.max(
+                    rawLiveUkComparables,
+                    usableLiveComparables.length,
+                ),
+                liveUkAttempts,
+                blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
             };
         } else {
-            calculatedBase.marketEvidence = {
-                carmaziumComparables: carmaziumComparableCount,
-                liveUkComparables: 0,
-                checkedAt: liveMarket?.checkedAt,
-                liveUkSearchStatus: liveMarket ? 'INSUFFICIENT' : 'UNAVAILABLE',
-                rawLiveUkComparables: liveMarket?.rawComparableCount ?? 0,
-            };
+            // If the five live attempts found one or two credible adverts, that
+            // sparse evidence can immediately seed the first blended attempt.
+            // If they found none, blended mode gets its own five search attempts
+            // before any internal/model-only fallback is allowed.
+            if (usableLiveComparables.length > 0) {
+                blendedMarketAttempts = 1;
+            } else {
+                await runMarketSearchAttempt('BLENDED');
+
+                if (liveComparableMap.size === 0) {
+                    const remainingBlendedAttempts = 5 - blendedMarketAttempts;
+                    if (remainingBlendedAttempts > 0) {
+                        await Promise.all(
+                            Array.from(
+                                { length: remainingBlendedAttempts },
+                                () => runMarketSearchAttempt('BLENDED'),
+                            ),
+                        );
+                    }
+                }
+
+                usableLiveComparables = [...liveComparableMap.values()];
+            }
+
+            if (usableLiveComparables.length > 0) {
+                calculatedBase = calculateVehicleValuation(
+                    baseValuationInput,
+                    [...comparables, ...usableLiveComparables],
+                );
+                calculatedBase.source = 'BLENDED_MARKET';
+                calculatedBase.explanation = carmaziumComparableCount > 0
+                    ? `Live UK evidence remained too sparse for a standalone valuation after ${liveUkAttempts} attempts, so this value blends ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'} with ${carmaziumComparableCount} CarMazium market signal${carmaziumComparableCount === 1 ? '' : 's'}.`
+                    : `Live UK evidence remained too sparse for a standalone valuation after ${liveUkAttempts} attempts, so this value blends ${usableLiveComparables.length} current UK advert${usableLiveComparables.length === 1 ? '' : 's'} with CarMazium's deterministic vehicle model.`;
+                calculatedBase.marketEvidence = {
+                    carmaziumComparables: carmaziumComparableCount,
+                    liveUkComparables: usableLiveComparables.length,
+                    checkedAt: latestLiveMarket?.checkedAt,
+                    liveUkSearchStatus: 'USED',
+                    rawLiveUkComparables: Math.max(
+                        rawLiveUkComparables,
+                        usableLiveComparables.length,
+                    ),
+                    liveUkAttempts,
+                    blendedMarketAttempts,
+                    valuationStrategy: 'BLENDED',
+                };
+            } else {
+                // Only after five live attempts and five blended attempts have
+                // failed to produce a usable current-UK-market signal do we
+                // allow the existing CarMazium market/model fallback.
+                calculatedBase = calculateVehicleValuation(
+                    baseValuationInput,
+                    comparables,
+                );
+                calculatedBase.marketEvidence = {
+                    carmaziumComparables: carmaziumComparableCount,
+                    liveUkComparables: 0,
+                    checkedAt: latestLiveMarket?.checkedAt,
+                    liveUkSearchStatus: latestLiveMarket
+                        ? 'INSUFFICIENT'
+                        : 'UNAVAILABLE',
+                    rawLiveUkComparables,
+                    liveUkAttempts,
+                    blendedMarketAttempts,
+                    valuationStrategy: 'FALLBACK',
+                };
+            }
         }
 
         // A concurrent duplicate request can finish a different live search.
@@ -650,7 +774,7 @@ export class ListingsService {
                 model:
                     this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
                     || 'gpt-5.6-luna',
-                timeoutMs: 18_000,
+                timeoutMs: 12_000,
             });
         } catch (error: any) {
             this.logger.warn(
