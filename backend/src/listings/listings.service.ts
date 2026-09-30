@@ -28,6 +28,7 @@ import {
     BodyType,
     ListingType,
     ListingStatus,
+    Prisma,
 } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
@@ -1148,7 +1149,7 @@ export class ListingsService {
                     dateOfLastV5CIssued: dto.dateOfLastV5CIssued ?? null,
                     wheelplan: dto.wheelplan ?? null,
                     typeApproval: dto.typeApproval ?? null,
-                    motHistory: dto.motHistory ?? undefined,
+                    motHistory: dto.motHistory ? (dto.motHistory as Prisma.InputJsonValue) : undefined,
                     badgeTier,
                     isFeatured: false,
                     featuredUntil: null,
@@ -1573,7 +1574,7 @@ export class ListingsService {
                 dateOfLastV5CIssued: createListingDto.dateOfLastV5CIssued ?? null,
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
-                motHistory: createListingDto.motHistory ?? undefined,
+                motHistory: createListingDto.motHistory ? (createListingDto.motHistory as Prisma.InputJsonValue) : undefined,
                 // Retail package tier. PREMIUM receives its included 28-day
                 // Featured Boost only when the listing is approved and goes live,
                 // so draft/review time never consumes the customer's boost.
