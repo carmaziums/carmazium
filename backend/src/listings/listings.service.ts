@@ -1144,8 +1144,11 @@ export class ListingsService {
                     taxDueDate: dto.taxDueDate ?? null,
                     markedForExport: dto.markedForExport ?? null,
                     monthOfFirstRegistration: dto.monthOfFirstRegistration ?? null,
+                    firstUsedDate: dto.firstUsedDate ?? null,
+                    dateOfLastV5CIssued: dto.dateOfLastV5CIssued ?? null,
                     wheelplan: dto.wheelplan ?? null,
                     typeApproval: dto.typeApproval ?? null,
+                    motHistory: dto.motHistory ?? undefined,
                     badgeTier,
                     isFeatured: false,
                     featuredUntil: null,
@@ -1566,8 +1569,11 @@ export class ListingsService {
                 taxDueDate: createListingDto.taxDueDate ?? null,
                 markedForExport: createListingDto.markedForExport ?? null,
                 monthOfFirstRegistration: createListingDto.monthOfFirstRegistration ?? null,
+                firstUsedDate: createListingDto.firstUsedDate ?? null,
+                dateOfLastV5CIssued: createListingDto.dateOfLastV5CIssued ?? null,
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
+                motHistory: createListingDto.motHistory ?? undefined,
                 // Retail package tier. PREMIUM receives its included 28-day
                 // Featured Boost only when the listing is approved and goes live,
                 // so draft/review time never consumes the customer's boost.
@@ -2095,8 +2101,11 @@ export class ListingsService {
         if (updateListingDto.taxDueDate !== undefined) updateData.taxDueDate = updateListingDto.taxDueDate;
         if (updateListingDto.markedForExport !== undefined) updateData.markedForExport = updateListingDto.markedForExport;
         if (updateListingDto.monthOfFirstRegistration !== undefined) updateData.monthOfFirstRegistration = updateListingDto.monthOfFirstRegistration;
+        if (updateListingDto.firstUsedDate !== undefined) updateData.firstUsedDate = updateListingDto.firstUsedDate;
+        if (updateListingDto.dateOfLastV5CIssued !== undefined) updateData.dateOfLastV5CIssued = updateListingDto.dateOfLastV5CIssued;
         if (updateListingDto.wheelplan !== undefined) updateData.wheelplan = updateListingDto.wheelplan;
         if (updateListingDto.typeApproval !== undefined) updateData.typeApproval = updateListingDto.typeApproval;
+        if (updateListingDto.motHistory !== undefined) updateData.motHistory = updateListingDto.motHistory;
         if (updateListingDto.stolenRecovered !== undefined) updateData.stolenRecovered = updateListingDto.stolenRecovered;
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
