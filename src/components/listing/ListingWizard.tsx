@@ -25,7 +25,7 @@ import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
-import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
+import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS, HGV_BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
 import { useAuth } from "@/context/AuthContext"
 import { useAnalytics } from "@/hooks/useAnalytics"
@@ -199,6 +199,12 @@ function getValuationBaseKey(data: Partial<FormData>, excludeListingId?: string 
     ].join('|')
 }
 
+function getBodyTypeKeysForVehicleType(vehicleType: VehicleTypeValue): readonly BodyTypeValue[] {
+    if (vehicleType === 'HGV') return HGV_BODY_TYPE_KEYS
+    if (vehicleType === 'CAR') return BODY_TYPE_KEYS
+    return []
+}
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -208,22 +214,26 @@ function addHours(isoString: string, hours: number): string {
 }
 
 function SelectField({
-    label, value, onChange, options, required = false, error = false
+    id, label, value, onChange, options, required = false, error = false, errorMessage
 }: {
-    label: string; value: string; onChange: (v: string) => void
-    options: { value: string; label: string }[]; required?: boolean; error?: boolean
+    id?: string; label: string; value: string; onChange: (v: string) => void
+    options: { value: string; label: string }[]; required?: boolean; error?: boolean; errorMessage?: string
 }) {
     return (
-        <div className="space-y-2">
+        <div id={id} className="space-y-2 scroll-mt-28">
             <label className="text-sm font-bold uppercase text-[var(--text-muted)]">{label}{required && " *"}</label>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                aria-invalid={error || undefined}
                 className={`w-full h-10 rounded-md border bg-[var(--bg-input)] px-3 text-base md:text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${error ? 'border-red-500' : 'border-[var(--border-default)]'}`}
             >
                 <option value="">Select {label.toLowerCase()}</option>
                 {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
+            {error && errorMessage && (
+                <p className="text-xs font-semibold text-red-400" role="alert">{errorMessage}</p>
+            )}
         </div>
     )
 }
@@ -761,6 +771,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setFormData(prev => ({ ...prev, [key]: val }))
 
     const isAuction = formData.listingType === 'AUCTION'
+    const bodyTypeKeys = getBodyTypeKeysForVehicleType(formData.vehicleType)
     const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
     // The market lookup is intentionally based only on stable vehicle identity.
@@ -1064,7 +1075,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!formData.mileage) missing.push('mileage')
                 if (!formData.fuelType) missing.push('fuel type')
                 if (!formData.transmission) missing.push('transmission')
-                if (!formData.bodyType) missing.push('body type')
+                if (formData.vehicleType !== 'MOTORCYCLE' && !formData.bodyType) missing.push('body type')
                 if (!formData.title || formData.title.length < 5) missing.push('listing title')
                 if (!formData.location) missing.push('location')
                 if (!formData.owners) missing.push('previous keepers')
@@ -1136,6 +1147,34 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const validateStep = (): boolean => getStepValidationError() === null
 
+    const focusFirstTransmissionOrBodyTypeError = (): boolean => {
+        if (currentStep !== 1) return false
+
+        const target = !formData.transmission
+            ? {
+                id: 'transmission-field',
+                message: 'Please select the transmission to continue.',
+            }
+            : formData.vehicleType !== 'MOTORCYCLE' && !formData.bodyType
+                ? {
+                    id: 'body-type-field',
+                    message: formData.vehicleType === 'HGV'
+                        ? 'Please select the HGV body type to continue.'
+                        : 'Please select the body type to continue.',
+                }
+                : null
+
+        if (!target) return false
+
+        window.setTimeout(() => {
+            const element = document.getElementById(target.id)
+            element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            element?.querySelector<HTMLElement>('select, button, input, textarea')?.focus({ preventScroll: true })
+        }, 50)
+        alert(target.message)
+        return true
+    }
+
     const handleNext = () => {
         if (!validateStep()) {
             const validationError = getStepValidationError()
@@ -1148,6 +1187,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
                 validation_error: validationError ?? 'unknown',
             })
+            if (focusFirstTransmissionOrBodyTypeError()) return
             if (currentStep === 1 && !formData.condition) {
                 window.setTimeout(() => {
                     document.getElementById('vehicle-condition-field')?.scrollIntoView({
@@ -2214,7 +2254,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         const active = formData.vehicleType === vt
                                         return (
                                             <button key={vt} type="button"
-                                                onClick={() => set("vehicleType", vt)}
+                                                onClick={() => setFormData(prev => {
+                                                    const allowedBodyTypes = getBodyTypeKeysForVehicleType(vt)
+                                                    const bodyType = prev.bodyType && allowedBodyTypes.includes(prev.bodyType)
+                                                        ? prev.bodyType
+                                                        : ""
+                                                    return { ...prev, vehicleType: vt, bodyType }
+                                                })}
                                                 className={`flex-1 py-3 px-2 sm:px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center justify-center text-center ${active ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"}`}
                                             >
                                                 <span className="whitespace-normal break-words leading-tight">{labels[vt]}</span>
@@ -2288,8 +2334,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 // only exposes auto-fill fields when the match is sufficiently
                                                 // strong; the seller can still review and edit them.
                                                 if (r.variant) set("variant", r.variant)
-                                                if (r.bodyType && BODY_TYPE_KEYS.includes(r.bodyType as any)) {
-                                                    set("bodyType", r.bodyType as BodyTypeValue)
+                                                if (r.bodyType) {
+                                                    const candidateBodyType = r.bodyType as BodyTypeValue
+                                                    setFormData(prev => (
+                                                        getBodyTypeKeysForVehicleType(prev.vehicleType).includes(candidateBodyType)
+                                                            ? { ...prev, bodyType: candidateBodyType }
+                                                            : prev
+                                                    ))
                                                 }
                                                 if (r.driveType && ["FWD", "RWD", "AWD", "4WD"].includes(r.driveType)) {
                                                     set("driveType", r.driveType)
@@ -2735,24 +2786,39 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-[10px] text-[var(--text-secondary)]">All performance figures are optional — check your vehicle handbook or manufacturer spec sheet.</p>
                             </div>
 
-                            {/* Body Type (not for motorcycles) */}
+                            {/* Body Type — cars and HGVs use separate valid choices; motorcycles have no body-type requirement. */}
                             {formData.vehicleType !== 'MOTORCYCLE' && (
-                                <div className="space-y-3">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Body Type *</label>
-                                    <div className="grid grid-cols-3 md:grid-cols-5 gap-2.5">
-                                        {BODY_TYPE_KEYS.map((key) => {
+                                <div
+                                    id="body-type-field"
+                                    className={`space-y-3 scroll-mt-28 ${hasAttemptedNext && !formData.bodyType ? 'rounded-xl border border-red-500/60 bg-red-500/5 p-3' : ''}`}
+                                >
+                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">
+                                        {formData.vehicleType === 'HGV' ? 'HGV Body Type *' : 'Body Type *'}
+                                    </label>
+                                    <div className={`grid gap-2.5 ${formData.vehicleType === 'HGV' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5' : 'grid-cols-3 md:grid-cols-5'}`}>
+                                        {bodyTypeKeys.map((key) => {
                                             const Icon = BODY_TYPE_ICONS[key]
                                             return (
-                                                <button key={key} type="button"
-                                                    onClick={() => set("bodyType", key as BodyTypeValue)}
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    aria-pressed={formData.bodyType === key}
+                                                    onClick={() => set("bodyType", key)}
                                                     className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${formData.bodyType === key ? "border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(237,28,36,0.2)]" : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-white/30"}`}
                                                 >
                                                     <Icon className="w-10 h-5" />
-                                                    <span className="text-[9px] font-bold uppercase tracking-wide">{BODY_TYPE_LABELS[key]}</span>
+                                                    <span className="text-[9px] font-bold uppercase tracking-wide text-center">{BODY_TYPE_LABELS[key]}</span>
                                                 </button>
                                             )
                                         })}
                                     </div>
+                                    {hasAttemptedNext && !formData.bodyType && (
+                                        <p className="text-xs font-semibold text-red-400" role="alert">
+                                            {formData.vehicleType === 'HGV'
+                                                ? 'Select the HGV body type to continue.'
+                                                : 'Select the body type to continue.'}
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
@@ -2964,7 +3030,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 />
 
                                 {/* Transmission */}
-                                <SelectField label="Transmission" required error={hasAttemptedNext && !formData.transmission} value={formData.transmission} onChange={(v) => set("transmission", v)}
+                                <SelectField
+                                    id="transmission-field"
+                                    label="Transmission"
+                                    required
+                                    error={hasAttemptedNext && !formData.transmission}
+                                    errorMessage="Select the transmission to continue."
+                                    value={formData.transmission}
+                                    onChange={(v) => set("transmission", v)}
                                     options={[
                                         { value: "MANUAL", label: "Manual" },
                                         { value: "AUTOMATIC", label: "Automatic" },

@@ -48,7 +48,11 @@ export function getListingSubmissionMissingFields(listing: any): string[] {
     if (listing?.mileage === null || listing?.mileage === undefined) missing.push('mileage');
     if (!listing?.fuelType) missing.push('fuel type');
     if (!listing?.transmission) missing.push('transmission');
-    if (!listing?.bodyType) missing.push('body type');
+    // Motorcycles intentionally do not show a body-type selector. Cars and
+    // HGVs still require a body type before submission.
+    if (listing?.vehicleType !== 'MOTORCYCLE' && !listing?.bodyType) {
+        missing.push('body type');
+    }
     if (!listing?.title || listing.title.trim().length < 5) missing.push('title');
     if (!listing?.location?.trim?.()) missing.push('location');
     if (!listing?.owners?.trim?.()) missing.push('previous keepers');

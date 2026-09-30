@@ -156,6 +156,15 @@ export const BODY_TYPE_ICONS: Record<string, React.FC<IconProps>> = {
     STATION_WAGON: StationWagonIcon,
     MPV: MPVIcon,
     VAN: VanIcon,
+    HGV_TRACTOR_UNIT: PickupTruckIcon,
+    HGV_BOX: VanIcon,
+    HGV_CURTAIN_SIDER: VanIcon,
+    HGV_FLATBED: PickupTruckIcon,
+    HGV_TIPPER: PickupTruckIcon,
+    HGV_DROPSIDE: PickupTruckIcon,
+    HGV_TANKER: VanIcon,
+    HGV_REFRIGERATED: VanIcon,
+    HGV_CAR_TRANSPORTER: PickupTruckIcon,
 }
 
 export const BODY_TYPE_LABELS: Record<string, string> = {
@@ -172,9 +181,30 @@ export const BODY_TYPE_LABELS: Record<string, string> = {
     STATION_WAGON: 'Station Wagon',
     MPV: 'MPV',
     VAN: 'Van',
+    HGV_TRACTOR_UNIT: 'Tractor Unit',
+    HGV_BOX: 'Box',
+    HGV_CURTAIN_SIDER: 'Curtain Sider',
+    HGV_FLATBED: 'Flatbed',
+    HGV_TIPPER: 'Tipper',
+    HGV_DROPSIDE: 'Dropside',
+    HGV_TANKER: 'Tanker',
+    HGV_REFRIGERATED: 'Refrigerated',
+    HGV_CAR_TRANSPORTER: 'Car Transporter',
 }
 
 export const BODY_TYPE_KEYS = [
     'SEDAN', 'SUV', 'HATCHBACK', 'COUPE', 'CONVERTIBLE', 'ESTATE',
     'CROSSOVER', 'SPORTS_CAR', 'MINIVAN', 'PICKUP_TRUCK', 'STATION_WAGON', 'MPV', 'VAN',
+] as const
+
+export const HGV_BODY_TYPE_KEYS = [
+    'HGV_TRACTOR_UNIT',
+    'HGV_BOX',
+    'HGV_CURTAIN_SIDER',
+    'HGV_FLATBED',
+    'HGV_TIPPER',
+    'HGV_DROPSIDE',
+    'HGV_TANKER',
+    'HGV_REFRIGERATED',
+    'HGV_CAR_TRANSPORTER',
 ] as const
