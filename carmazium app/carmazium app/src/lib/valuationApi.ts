@@ -54,6 +54,9 @@ export interface VehicleValuation {
     checkedAt?: string;
     liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
     rawLiveUkComparables?: number;
+    liveUkAttempts?: number;
+    blendedMarketAttempts?: number;
+    valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
   };
 }
 
@@ -342,7 +345,7 @@ export async function getVehicleValuation(
   // longer than the app-wide 10s request budget so useful valuations do not
   // fail merely because current-market evidence takes a few seconds to gather.
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25_000);
+  const timeoutId = setTimeout(() => controller.abort(), 65_000);
 
   try {
     const response = await fetch(`${API_URL}/listings/valuation?${params.toString()}`, {
