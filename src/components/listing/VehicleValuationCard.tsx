@@ -29,8 +29,8 @@ export function VehicleValuationCard({
             <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-center gap-3">
                 <Loader2 size={18} className="animate-spin text-blue-400 shrink-0" />
                 <div>
-                    <p className="text-sm font-bold text-[var(--text-primary)]">Calculating your CarMazium estimate</p>
-                    <p className="text-xs text-[var(--text-muted)]">Checking the vehicle's age and mileage to calculate its current market value.</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">Checking the current UK market</p>
+                    <p className="text-xs text-[var(--text-muted)]">We are checking live market evidence first and will use blended market data only if needed.</p>
                 </div>
             </div>
         )
