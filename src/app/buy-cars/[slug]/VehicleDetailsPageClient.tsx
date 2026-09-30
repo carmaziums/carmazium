@@ -1128,7 +1128,11 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     <div className="space-y-2">
                                         {listing.make && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Make:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.make}</span></div>}
                                         {listing.model && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Model:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.model}</span></div>}
+                                        {listing.variant && <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)] text-sm">Variant / trim:</span><span className="text-[var(--text-primary)] font-semibold text-sm text-right">{listing.variant}</span></div>}
                                         {listing.year && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Year:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.year}</span></div>}
+                                        {listing.driveType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Drive type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.driveType}</span></div>}
+                                        {listing.numberOfKeys !== null && listing.numberOfKeys !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Keys:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.numberOfKeys}</span></div>}
+                                        {listing.serviceHistory && <div className="flex justify-between gap-4"><span className="text-[var(--text-muted)] text-sm">Service history:</span><span className="text-[var(--text-primary)] font-semibold text-sm text-right">{listing.serviceHistory}</span></div>}
                                         {listing.bodyType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Body type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bodyType}</span></div>}
                                         {listing.color && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exterior colour:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.color}</span></div>}
                                         {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Mileage:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
@@ -1155,6 +1159,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         {listing.co2Emissions && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">CO2 emissions:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
                                         {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">ULEZ compliant:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
                                         {listing.euroStandard && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Euro standard:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
+                                        {listing.combinedMpg !== null && listing.combinedMpg !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Combined MPG:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.combinedMpg}</span></div>}
+                                        {listing.extraUrbanMpg !== null && listing.extraUrbanMpg !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Extra-urban MPG:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.extraUrbanMpg}</span></div>}
                                     </div>
                                 </div>
 
@@ -1165,6 +1171,9 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         {listing.transmission && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Gearbox:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.transmission}</span></div>}
                                         {listing.engineSize && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Engine size:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.engineSize} cc</span></div>}
                                         {listing.bhp && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Horsepower:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bhp} bhp</span></div>}
+                                        {listing.torqueNm !== null && listing.torqueNm !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Torque:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.torqueNm} Nm</span></div>}
+                                        {listing.topSpeedMph !== null && listing.topSpeedMph !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Top speed:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.topSpeedMph} mph</span></div>}
+                                        {listing.zeroTo60Mph !== null && listing.zeroTo60Mph !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">0–60 mph:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.zeroTo60Mph}s</span></div>}
                                     </div>
                                 </div>
 
@@ -1186,10 +1195,90 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
                                         {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
                                         {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
+                                        {listing.firstUsedDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">First used:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.firstUsedDate}</span></div>}
+                                        {listing.dateOfLastV5CIssued && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Last V5C issued:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.dateOfLastV5CIssued}</span></div>}
+                                        {listing.typeApproval && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Type approval:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.typeApproval}</span></div>}
+                                        {listing.markedForExport !== null && listing.markedForExport !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Marked for export:</span><span className={"font-semibold text-sm " + (listing.markedForExport ? 'text-amber-400' : 'text-emerald-400')}>{listing.markedForExport ? 'Yes' : 'No'}</span></div>}
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Seller declarations — seller-provided, not independently verified HPI facts. */}
+                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                            <h3 className="text-xl font-bold mb-2 border-l-4 border-blue-500 pl-4">Seller Declarations</h3>
+                            <p className="text-xs text-[var(--text-muted)] mb-6 pl-5">
+                                Seller-provided information. A separate completed HPI report, where available, is the independent vehicle-history check.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3">
+                                {listing.stolenRecovered !== null && listing.stolenRecovered !== undefined && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-[var(--text-muted)] text-sm">Stolen / recovered:</span>
+                                        <span className={"font-semibold text-sm " + (listing.stolenRecovered ? 'text-amber-400' : 'text-[var(--text-primary)]')}>Seller says {listing.stolenRecovered ? 'Yes' : 'No'}</span>
+                                    </div>
+                                )}
+                                {listing.hasOutstandingFinance !== null && listing.hasOutstandingFinance !== undefined && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-[var(--text-muted)] text-sm">Outstanding finance:</span>
+                                        <span className={"font-semibold text-sm " + (listing.hasOutstandingFinance ? 'text-amber-400' : 'text-[var(--text-primary)]')}>Seller says {listing.hasOutstandingFinance ? 'Yes' : 'No'}</span>
+                                    </div>
+                                )}
+                                {listing.isLegalRegisteredKeeper !== null && listing.isLegalRegisteredKeeper !== undefined && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-[var(--text-muted)] text-sm">Registered keeper:</span>
+                                        <span className="text-[var(--text-primary)] font-semibold text-sm">Seller says {listing.isLegalRegisteredKeeper ? 'Yes' : 'No'}</span>
+                                    </div>
+                                )}
+                                {listing.isLegalRegisteredKeeper === false && listing.notOwnerRelationship && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-[var(--text-muted)] text-sm">Authority / relationship:</span>
+                                        <span className="text-[var(--text-primary)] font-semibold text-sm text-right">{listing.notOwnerRelationship}</span>
+                                    </div>
+                                )}
+                                {listing.writeOffCategory && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-[var(--text-muted)] text-sm">Write-off declaration:</span>
+                                        <span className={"font-semibold text-sm " + (listing.writeOffCategory === 'NONE' ? 'text-[var(--text-primary)]' : 'text-amber-400')}>
+                                            {listing.writeOffCategory === 'NONE' ? 'Seller says none' : 'Seller says ' + listing.writeOffCategory.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {Array.isArray(listing.motHistory) && listing.motHistory.length > 0 && (
+                            <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
+                                <h3 className="text-xl font-bold mb-2 border-l-4 border-emerald-500 pl-4">MOT History</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-6 pl-5">
+                                    MOT lookup snapshot captured when the vehicle registration was checked for this listing.
+                                </p>
+                                <div className="space-y-3">
+                                    {listing.motHistory.slice(0, 8).map((test, idx) => {
+                                        const defectCount = Array.isArray(test.defects) ? test.defects.length : 0
+                                        return (
+                                            <div key={test.motTestNumber || test.completedDate + '-' + idx} className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={"text-xs font-black uppercase tracking-wide " + (test.testResult === 'PASSED' ? 'text-emerald-400' : 'text-red-400')}>{test.testResult}</span>
+                                                        <span className="text-sm font-semibold text-[var(--text-primary)]">{test.completedDate}</span>
+                                                    </div>
+                                                    {test.odometerValue && (
+                                                        <span className="text-xs text-[var(--text-muted)]">{Number(test.odometerValue).toLocaleString('en-GB')} {test.odometerUnit || 'mi'}</span>
+                                                    )}
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
+                                                    {test.expiryDate && <span>Expiry: {test.expiryDate}</span>}
+                                                    {defectCount > 0 && <span>{defectCount} recorded defect{defectCount === 1 ? '' : 's'} / advisory item{defectCount === 1 ? '' : 's'}</span>}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                    {listing.motHistory.length > 8 && (
+                                        <p className="text-xs text-[var(--text-muted)]">Showing the 8 most recent of {listing.motHistory.length} MOT records.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Condition & Damage — always shown, even with zero reported damage */}
                         {(() => {
@@ -1537,14 +1626,14 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                             const isOutsideRadius = listing.deliveryMaxMiles && miles != null
                                                 ? miles > listing.deliveryMaxMiles
                                                 : false
-
-                                            const calcDeliveryFeeExVat = (d: number) => {
-                                                if (d <= 10) return 30
-                                                if (d <= 30) return 30 + (d - 10) * 2
-                                                return 70 + (d - 30) * 1.5
-                                            }
-                                            const feeExVat = miles != null ? calcDeliveryFeeExVat(miles) : null
-                                            const feeIncVat = feeExVat != null ? Math.round(feeExVat * 1.2) : null
+                                            const sellerRateRaw = listing.deliveryPricePerMile
+                                            const sellerRate = sellerRateRaw !== null && sellerRateRaw !== undefined
+                                                ? Number(sellerRateRaw)
+                                                : null
+                                            const hasSellerRate = sellerRate !== null && Number.isFinite(sellerRate) && sellerRate >= 0
+                                            const fee = miles != null && hasSellerRate
+                                                ? miles * sellerRate
+                                                : null
 
                                             return isOutsideRadius ? (
                                                 <div className="rounded-xl border border-[var(--border-default)] bg-white/[0.03] p-4 opacity-60 space-y-1 mt-4">
@@ -1559,16 +1648,18 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                     <div className="flex items-center gap-2">
                                                         <Truck size={16} className="text-emerald-400" />
                                                         <span className="text-sm font-semibold text-emerald-300">Delivery available</span>
-                                                        {feeIncVat != null && (
-                                                            <span className="ml-auto text-[var(--text-primary)] font-bold text-sm">£{feeIncVat} <span className="text-[var(--text-muted)] text-[11px] font-normal">inc. VAT</span></span>
+                                                        {fee != null && (
+                                                            <span className="ml-auto text-[var(--text-primary)] font-bold text-sm">£{fee.toFixed(2)}</span>
                                                         )}
                                                     </div>
-                                                    {feeExVat != null ? (
+                                                    {fee != null ? (
                                                         <p className="text-xs text-[var(--text-muted)]">
-                                                            Estimated delivery: £{Math.round(feeExVat)} ex. VAT · {miles != null ? `${Math.round(miles)} miles` : ''} · Request after making an offer
+                                                            Estimated from seller&apos;s £{sellerRate!.toFixed(2)}/mile rate · {miles != null ? Math.round(miles) + ' miles' : ''} · Confirm final delivery cost with the seller
                                                         </p>
+                                                    ) : hasSellerRate ? (
+                                                        <p className="text-xs text-[var(--text-muted)]">Seller delivery rate: £{sellerRate!.toFixed(2)}/mile · Enter your postcode to estimate distance</p>
                                                     ) : (
-                                                        <p className="text-xs text-[var(--text-muted)]">Enter your postcode to see a delivery quote · Request after making an offer</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">Delivery is available; confirm the delivery price with the seller.</p>
                                                     )}
                                                     {listing.deliveryMaxMiles && (
                                                         <p className="text-xs text-[var(--text-muted)]">Max radius: {listing.deliveryMaxMiles} miles</p>

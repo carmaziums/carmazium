@@ -9,6 +9,7 @@ export interface DvlaLookupResult {
     model?: string;
     colour?: string;
     primaryColour?: string;
+    firstUsedDate?: string;
     year?: number;
     engineSize?: number;
     fuelType?: string;

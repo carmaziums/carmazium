@@ -104,7 +104,7 @@ interface FormData {
     wheelplan: string
     typeApproval: string
     motHistory: any[]
-    firstUsedDate?: string
+    firstUsedDate: string
     primaryColour?: string
     dateOfLastV5CIssued: string
     // Step 2 — Media
@@ -180,6 +180,7 @@ const INITIAL_FORM: FormData = {
     motStatus: "", taxStatus: "", motExpiryDate: "", taxDueDate: "",
     markedForExport: null, monthOfFirstRegistration: "",
     wheelplan: "", typeApproval: "", motHistory: [],
+    firstUsedDate: "",
     primaryColour: "",
     dateOfLastV5CIssued: "",
     images: [],
@@ -440,6 +441,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     markedForExport: l.markedForExport ?? null,
                     wheelplan: l.wheelplan || '',
                     typeApproval: l.typeApproval || '',
+                    firstUsedDate: l.firstUsedDate || '',
+                    dateOfLastV5CIssued: l.dateOfLastV5CIssued || '',
+                    motHistory: Array.isArray(l.motHistory) ? l.motHistory : [],
                     images: l.images || [],
                     videoUrls: l.videoUrls || [],
                     priceMin: l.priceMin ? String(l.priceMin) : '',
@@ -467,6 +471,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
                     combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
                     extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
+                    isDepartedSale: l.isDepartedSale ?? false,
+                    departedRelationship: l.departedRelationship || '',
+                    notOwnerRelationship: l.notOwnerRelationship || '',
+                    bannerLabel: l.bannerLabel || '',
                     deliveryAvailable: l.deliveryAvailable ?? false,
                     deliveryPricePerMile: l.deliveryPricePerMile ? String(l.deliveryPricePerMile) : '',
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
@@ -488,6 +496,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         buyItNowPrice: l.auction?.buyItNowPrice ? String(l.auction.buyItNowPrice) : '',
                     })
                 }
+                // Keep the relationship selectors in sync with persisted values so
+                // edit mode shows the seller what was previously submitted.
+                const savedDepartedRelationship = String(l.departedRelationship || '')
+                const knownDepartedRelationship = RELATIONSHIP_OPTIONS.some(option => option.value === savedDepartedRelationship)
+                setDepartedRelSelect(savedDepartedRelationship ? (knownDepartedRelationship ? savedDepartedRelationship : 'Other') : '')
+                setDepartedRelOther(savedDepartedRelationship && !knownDepartedRelationship ? savedDepartedRelationship : '')
+
+                const savedNotOwnerRelationship = String(l.notOwnerRelationship || '')
+                const knownNotOwnerRelationship = NOT_OWNER_RELATIONSHIP_OPTIONS.some(option => option.value === savedNotOwnerRelationship)
+                setNotOwnerRelSelect(savedNotOwnerRelationship ? (knownNotOwnerRelationship ? savedNotOwnerRelationship : 'Other') : '')
+                setNotOwnerRelOther(savedNotOwnerRelationship && !knownNotOwnerRelationship ? savedNotOwnerRelationship : '')
+
                 setSellingMethod('list')
                 setCurrentStep(1)
 
@@ -1367,8 +1387,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 taxDueDate: formData.taxDueDate || undefined,
                 markedForExport: formData.markedForExport ?? undefined,
                 monthOfFirstRegistration: formData.monthOfFirstRegistration || undefined,
+                firstUsedDate: formData.firstUsedDate || undefined,
+                dateOfLastV5CIssued: formData.dateOfLastV5CIssued || undefined,
                 wheelplan: formData.wheelplan || undefined,
                 typeApproval: formData.typeApproval || undefined,
+                motHistory: formData.motHistory.length > 0 ? formData.motHistory : undefined,
                 badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                 status: formData.status,
                 vehicleType: formData.vehicleType as VehicleTypeValue,
@@ -2285,6 +2308,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.monthOfFirstRegistration) set("monthOfFirstRegistration", r.monthOfFirstRegistration)
                                                 if (r.wheelplan) set("wheelplan", r.wheelplan)
                                                 if (r.typeApproval) set("typeApproval", r.typeApproval)
+                                                if (r.firstUsedDate) set("firstUsedDate", r.firstUsedDate)
                                                 if (r.dateOfLastV5CIssued) set("dateOfLastV5CIssued", r.dateOfLastV5CIssued)
                                                 // Auto-infer ULEZ compliance from fuel type + euro standard
                                                 const ft = (r.fuelType || "").toUpperCase()
@@ -4080,7 +4104,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             {formData.taxStatus && <SummaryField label="Tax Status" value={formData.taxStatus} />}
                                             {formData.taxDueDate && <SummaryField label="Tax Due" value={formData.taxDueDate} />}
                                             {formData.monthOfFirstRegistration && <SummaryField label="First Registered" value={formData.monthOfFirstRegistration} />}
+                                            {formData.firstUsedDate && <SummaryField label="First Used" value={formData.firstUsedDate} />}
                                             {formData.dateOfLastV5CIssued && <SummaryField label="Last V5C Issued" value={formData.dateOfLastV5CIssued} />}
+                                            {formData.motHistory.length > 0 && <SummaryField label="MOT History Records" value={String(formData.motHistory.length)} />}
                                             {formData.primaryColour && <SummaryField label="Primary Colour" value={formData.primaryColour} />}
                                             {formData.wheelplan && <SummaryField label="Wheelplan" value={formData.wheelplan} />}
                                             {formData.typeApproval && <SummaryField label="Type Approval" value={formData.typeApproval} />}

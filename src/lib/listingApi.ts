@@ -7,6 +7,20 @@ export type VehicleConditionValue = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CA
 export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D'
 export type VehicleTypeValue = 'CAR' | 'HGV' | 'MOTORCYCLE'
 
+export interface ListingMotHistoryEntry {
+    completedDate: string
+    testResult: 'PASSED' | 'FAILED' | string
+    expiryDate?: string
+    odometerValue?: string
+    odometerUnit?: string
+    motTestNumber?: string
+    defects?: Array<{
+        text: string
+        type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS' | string
+        dangerous?: boolean
+    }>
+}
+
 export interface CreateListingRequest {
     title: string
     price: number
@@ -53,8 +67,11 @@ export interface CreateListingRequest {
     taxDueDate?: string
     markedForExport?: boolean
     monthOfFirstRegistration?: string
+    firstUsedDate?: string
+    dateOfLastV5CIssued?: string
     wheelplan?: string
     typeApproval?: string
+    motHistory?: ListingMotHistoryEntry[]
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
@@ -207,8 +224,11 @@ export interface Listing {
     taxDueDate: string | null
     markedForExport: boolean | null
     monthOfFirstRegistration: string | null
+    firstUsedDate: string | null
+    dateOfLastV5CIssued: string | null
     wheelplan: string | null
     typeApproval: string | null
+    motHistory?: ListingMotHistoryEntry[] | null
     // Extended vehicle details
     variant: string | null
     driveType: string | null
@@ -224,6 +244,9 @@ export interface Listing {
     extraUrbanMpg: number | null
     exteriorGrade: number | null
     writeOffCategory?: 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B' | null
+    stolenRecovered?: boolean | null
+    hasOutstandingFinance?: boolean | null
+    isLegalRegisteredKeeper?: boolean | null
     bannerLabel: string | null
     isDepartedSale?: boolean | null
     departedRelationship?: string | null
