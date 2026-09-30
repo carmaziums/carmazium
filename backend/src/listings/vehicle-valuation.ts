@@ -73,6 +73,9 @@ export interface VehicleValuationResult {
         checkedAt?: string;
         liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
         rawLiveUkComparables?: number;
+        liveUkAttempts?: number;
+        blendedMarketAttempts?: number;
+        valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
     };
     explanation: string;
     retail: {
