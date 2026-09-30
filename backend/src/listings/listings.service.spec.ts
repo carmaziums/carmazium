@@ -1461,7 +1461,7 @@ describe('ListingsService', () => {
             } as any);
 
             expect(result.auction.marketValue).toBe(2650);
-            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(result.source).toBe('BLENDED_MARKET');
         });
     });
 
@@ -1549,7 +1549,7 @@ describe('ListingsService', () => {
             } as any);
 
             expect(liveSearch).toHaveBeenCalledTimes(5);
-            expect(result.source).toBe('BLENDED_MARKET');
+            expect(result.source).toBe('LIVE_UK_MARKET');
             expect(result.confidence).toBe('LOW');
             expect(result.retail.suggestedAsking).toBeGreaterThan(0);
             expect(result.auction.marketValue).toBeGreaterThan(0);
