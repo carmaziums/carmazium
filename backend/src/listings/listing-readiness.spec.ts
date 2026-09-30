@@ -21,6 +21,7 @@ const readyListing = (overrides: Record<string, unknown> = {}) => ({
     owners: '1',
     description: 'Well presented vehicle with full details.',
     condition: 'GOOD',
+    vehicleType: 'CAR',
     stolenRecovered: false,
     hasOutstandingFinance: false,
     isLegalRegisteredKeeper: true,
@@ -49,6 +50,25 @@ describe('listing readiness', () => {
     ])('reports the authoritative missing requirement %s', (overrides, expected) => {
         expect(getListingSubmissionMissingFields(readyListing(overrides)))
             .toContain(expected);
+    });
+
+    it('does not require a hidden body type from motorcycle sellers', () => {
+        expect(getListingSubmissionMissingFields(readyListing({
+            vehicleType: 'MOTORCYCLE',
+            bodyType: null,
+        }))).not.toContain('body type');
+    });
+
+    it('still requires body type for cars and HGVs', () => {
+        expect(getListingSubmissionMissingFields(readyListing({
+            vehicleType: 'CAR',
+            bodyType: null,
+        }))).toContain('body type');
+
+        expect(getListingSubmissionMissingFields(readyListing({
+            vehicleType: 'HGV',
+            bodyType: null,
+        }))).toContain('body type');
     });
 
     it('never requires HPI for retail or auction listing readiness', () => {
