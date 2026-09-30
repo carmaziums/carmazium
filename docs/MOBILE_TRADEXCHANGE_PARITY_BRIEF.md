@@ -100,3 +100,26 @@ Doing (3) before (1) risks building more screens nobody can reach.
   uploads to the public `listings` bucket.
 - Invoke the `/mobile` skill at session start — it is purpose-built for implementing web
   features in this RN app against the same backend.
+
+---
+
+## Existing reference: `MOBILE_PARITY_PROMPTS.md` (repo root, untracked)
+
+A 465-line parity document dated **5 July 2026**. Use it carefully — half is durable, half is
+stale.
+
+**Still valid — carry these constraints:**
+
+- Expo SDK 54, React Navigation 7, StyleSheet, Zustand, `@stripe/stripe-react-native`,
+  `socket.io-client`, `react-native-webview`
+- Auth: Supabase JWT → `Authorization: Bearer` via `src/lib/apiClient.ts`
+- Design tokens in `src/constants/{colors,typography,spacing}.ts`
+- **Do not** introduce NativeWind, TanStack Query, or another state library
+- Web (`src/`) is the reference for feature behaviour
+
+**Stale — do not trust:**
+
+Its gap analysis, priority table and "deploy-blocking" flags predate roughly 500 commits,
+including 84 touching the mobile app. Several gaps it lists have since been built (that is
+precisely the work that turned out to be unreachable). Re-derive any gap list from the current
+tree rather than reading it off that document.
