@@ -471,6 +471,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     zeroTo60Mph: l.zeroTo60Mph ? String(l.zeroTo60Mph) : '',
                     combinedMpg: l.combinedMpg ? String(l.combinedMpg) : '',
                     extraUrbanMpg: l.extraUrbanMpg ? String(l.extraUrbanMpg) : '',
+                    isDepartedSale: l.isDepartedSale ?? false,
+                    departedRelationship: l.departedRelationship || '',
+                    notOwnerRelationship: l.notOwnerRelationship || '',
+                    bannerLabel: l.bannerLabel || '',
                     deliveryAvailable: l.deliveryAvailable ?? false,
                     deliveryPricePerMile: l.deliveryPricePerMile ? String(l.deliveryPricePerMile) : '',
                     deliveryMaxMiles: l.deliveryMaxMiles ? String(l.deliveryMaxMiles) : '',
@@ -492,6 +496,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         buyItNowPrice: l.auction?.buyItNowPrice ? String(l.auction.buyItNowPrice) : '',
                     })
                 }
+                // Keep the relationship selectors in sync with persisted values so
+                // edit mode shows the seller what was previously submitted.
+                const savedDepartedRelationship = String(l.departedRelationship || '')
+                const knownDepartedRelationship = RELATIONSHIP_OPTIONS.some(option => option.value === savedDepartedRelationship)
+                setDepartedRelSelect(savedDepartedRelationship ? (knownDepartedRelationship ? savedDepartedRelationship : 'Other') : '')
+                setDepartedRelOther(savedDepartedRelationship && !knownDepartedRelationship ? savedDepartedRelationship : '')
+
+                const savedNotOwnerRelationship = String(l.notOwnerRelationship || '')
+                const knownNotOwnerRelationship = NOT_OWNER_RELATIONSHIP_OPTIONS.some(option => option.value === savedNotOwnerRelationship)
+                setNotOwnerRelSelect(savedNotOwnerRelationship ? (knownNotOwnerRelationship ? savedNotOwnerRelationship : 'Other') : '')
+                setNotOwnerRelOther(savedNotOwnerRelationship && !knownNotOwnerRelationship ? savedNotOwnerRelationship : '')
+
                 setSellingMethod('list')
                 setCurrentStep(1)
 
