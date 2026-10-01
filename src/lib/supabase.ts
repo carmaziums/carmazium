@@ -70,6 +70,34 @@ export async function getAccessToken(): Promise<string | null> {
     return null;
 }
 
+/**
+ * Force-refresh the current Supabase session and return a new access token.
+ *
+ * Admin mutations use this as a one-time recovery path when the backend rejects
+ * a stale/missing Bearer token. This is deliberately separate from
+ * getAccessToken(): ordinary reads should stay fast and must not force a network
+ * refresh on every request.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        const result = await Promise.race([
+            supabase.auth.refreshSession(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+        ]);
+
+        if (result && 'data' in result) {
+            const token = result.data.session?.access_token;
+            if (token) return token;
+        }
+    } catch (e) {
+        console.warn('refreshAccessToken: refreshSession() failed:', e);
+    }
+
+    return null;
+}
+
 
 /**
  * Check if an error is a network/abort-related error that can be retried
