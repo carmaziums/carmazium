@@ -190,6 +190,11 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
 
     it('makes duplicate seller confirmations idempotent and rejects concurrent state changes', async () => {
         const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+        }));
         await service.confirmSellerFundsReceived('auction-1', 'seller-1');
         expect(prisma.auction.updateMany).not.toHaveBeenCalled();
         prisma.auction.findUnique.mockResolvedValue(makeAuction({
