@@ -14,6 +14,7 @@ import { HandoverDocumentsService } from '../auctions/handover-documents.service
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
+import { classifyHistoricalAuction } from './auction-history-reconciliation';
 import {
     AUCTION_DURATION_MS,
     BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
@@ -911,6 +912,92 @@ export class AdminService {
      * needing attention aren't buried under older-but-more-recently-created
      * scheduled/ended ones), then newest-first within each bucket.
      */
+    /**
+     * Admin-only READ-ONLY historical reconciliation. The pre-6-August winner
+     * records MUST NOT gain wonAt: that would activate today's 72h unpaid-win
+     * expiry against genuine historic sales. Flag anomalies for evidence-led
+     * human reconciliation; never reinstate a pending/failed charge, refund or
+     * manual seller payout automatically.
+     */
+    async getHistoricalAuctionReconciliation() {
+        const rows = await this.prisma.auction.findMany({
+            where: {
+                deletedAt: null,
+                OR: [
+                    { winnerId: { not: null }, wonAt: null },
+                    { sellerBonusReleased: true, buyerFeePaid: false },
+                    { handoverSubmittedAt: { not: null }, buyerFeePaid: false },
+                ],
+            },
+            select: {
+                id: true, listingId: true, createdAt: true, status: true,
+                winnerId: true, wonAt: true, winningBidAmount: true,
+                buyerFeePaid: true, buyerFeeTransactionId: true,
+                handoverSubmittedAt: true, sellerBonusReleased: true,
+                manualPayoutConfirmedAt: true, stripePayoutTransferId: true,
+                listing: {
+                    select: {
+                        title: true,
+                        sale: { select: { buyerId: true, soldPrice: true } },
+                        transactions: {
+                            where: { type: 'COMMISSION', deletedAt: null },
+                            select: {
+                                id: true, userId: true, type: true, status: true,
+                                amount: true, description: true, stripePaymentId: true,
+                            },
+                            orderBy: { createdAt: 'asc' },
+                        },
+                    },
+                },
+            },
+            orderBy: { createdAt: 'asc' },
+        });
+        const classified = rows.map(row => ({
+            row, assessment: classifyHistoricalAuction({
+                ...row, status: row.status,
+                listing: {
+                    title: row.listing.title,
+                    sale: row.listing.sale,
+                    transactions: row.listing.transactions,
+                },
+            }),
+        }));
+        const cases = classified.filter(item => item.assessment.requiresManualReview)
+            .map(({ row, assessment }) => ({
+                auctionId: row.id,
+                listingId: row.listingId,
+                vehicleTitle: row.listing.title,
+                auctionDate: row.createdAt,
+                status: row.status,
+                hasWinner: Boolean(row.winnerId),
+                hasWonAt: Boolean(row.wonAt),
+                legacyWinProtected: assessment.legacyWinProtected,
+                saleMatchesWinningRecord: assessment.saleMatchesWinningRecord,
+                buyerFeePaid: row.buyerFeePaid,
+                hasBuyerFeeTransactionLink: Boolean(row.buyerFeeTransactionId),
+                handoverSubmitted: Boolean(row.handoverSubmittedAt),
+                sellerBonusApproved: row.sellerBonusReleased,
+                manualSellerPayoutRecorded: Boolean(row.manualPayoutConfirmedAt),
+                stripeSellerTransferRecorded: Boolean(
+                    row.stripePayoutTransferId && row.stripePayoutTransferId.startsWith('tr_'),
+                ),
+                reasons: assessment.reviewReasons,
+                transactions: assessment.transactionEvidence,
+            }));
+        return {
+            generatedAt: new Date().toISOString(),
+            readOnly: true,
+            historicalWonAtPolicy: 'Preserve matched pre-2026-08-06 winners without wonAt; never trigger retroactive 72-hour expiry.',
+            protectedLegacyWinCount: classified.filter(x => x.assessment.legacyWinProtected).length,
+            legacyWinMismatchCount: classified.filter(x => x.assessment.legacyWinNoTimestamp &&
+                !x.assessment.legacyWinProtected).length,
+            postFeatureMissingWinCount: classified.filter(x =>
+                x.row.winnerId && !x.row.wonAt && !x.assessment.legacyWinNoTimestamp).length,
+            manualReviewCount: cases.length,
+            cases,
+        };
+    }
+
     async getAllAuctions(page = 1, limit = 20) {
         const skip = (page - 1) * limit;
         const include = {
