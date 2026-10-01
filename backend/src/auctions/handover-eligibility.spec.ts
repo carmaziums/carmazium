@@ -432,6 +432,8 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
                 handoverProofPath: 'auction-1/private-proof.jpg',
                 handoverProofUrl: null,
                 handoverSubmittedAt: new Date('2026-09-27T12:00:00.000Z'),
+                handoverRejectionReason: 'Document contains private review remarks',
+                handoverRejectedAt: new Date('2026-09-27T14:00:00.000Z'),
             }),
         ]);
         prisma.auction.count.mockResolvedValue(1);
@@ -445,6 +447,8 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         expect(result.data[0].handoverProofUrl).toBeNull();
         expect(result.data[0].handoverProofPath).toBeUndefined();
         expect(result.data[0].handoverProofIsPrivate).toBe(true);
+        expect(result.data[0].handoverRejectionReason).toBeNull();
+        expect(result.data[0].handoverRejectedAt).toBeNull();
     });
 
     it('redacts private and legacy handover evidence from the generic auction detail response', async () => {
@@ -452,6 +456,8 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({
             handoverProofPath: 'auction-1/private-proof.jpg',
             handoverProofUrl: 'https://legacy.example/storage/v1/object/public/listings/handover/auction-1/proof.jpg',
+            handoverRejectionReason: 'Private document rejection notes',
+            handoverRejectedAt: new Date('2026-09-27T14:00:00.000Z'),
         }));
 
         const result = await service.findOne('auction-1');
@@ -460,6 +466,8 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         expect(result.handoverProofPath).toBeUndefined();
         expect(result.handoverProofUrl).toBeNull();
         expect(result.handoverProofIsPrivate).toBe(true);
+        expect(result.handoverRejectionReason).toBeNull();
+        expect(result.handoverRejectedAt).toBeNull();
         expect(handoverDocuments.hydrateProof).not.toHaveBeenCalled();
         expect(handoverDocuments.hydrateMany).not.toHaveBeenCalled();
     });
