@@ -127,6 +127,11 @@ export class AuctionsService {
             ...auction,
             handoverProofUrl: null,
             handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+            // Rejection feedback may describe private handover paperwork.
+            // Only the seller's authenticated inventory-management view
+            // should see it, not public auction visitors or winners.
+            handoverRejectionReason: null,
+            handoverRejectedAt: null,
         };
         delete safe.handoverProofPath;
         return safe as T;
@@ -832,6 +837,8 @@ export class AuctionsService {
                 ...auction,
                 handoverProofUrl: null,
                 handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+                handoverRejectionReason: null,
+                handoverRejectedAt: null,
             };
             delete safe.handoverProofPath;
             return safe;
@@ -2432,6 +2439,11 @@ export class AuctionsService {
                 handoverProofUrl: proofPath ? null : proofUrl,
                 handoverProofPath: proofPath || null,
                 handoverSubmittedAt: new Date(),
+                // Any NEW proof (including a correction on a grandfathered
+                // legacy auction) follows Block 1's seller-confirmation rule.
+                sellerFundsConfirmationRequired: true,
+                handoverRejectedAt: null,
+                handoverRejectionReason: null,
             } as any,
         });
 

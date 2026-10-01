@@ -393,9 +393,9 @@ function SellerAuctionsPage() {
         const submittedIds = auctions
             .filter(a => a.handoverProofUrl && !a.sellerBonusReleased)
             .map(a => a.id)
-        if (submittedIds.length > 0) {
-            setHandoverDone(prev => new Set([...prev, ...submittedIds]))
-        }
+        // Server is authoritative: a rejected proof must no longer appear as
+        // submitted merely because it was uploaded earlier in this session.
+        setHandoverDone(new Set(submittedIds))
     }, [auctions])
 
     async function handleFundsConfirmation(auction: Auction) {
@@ -1183,6 +1183,13 @@ function SellerAuctionsPage() {
                                             Request sale cancellation
                                         </button>
 
+                                        {auction.handoverRejectedAt && !isDone && (
+                                            <div role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+                                                <p className="font-bold">Your handover proof needs correction</p>
+                                                <p className="mt-1 whitespace-pre-wrap">{auction.handoverRejectionReason || 'Please upload corrected proof.'}</p>
+                                                <p className="mt-1 text-xs">Your sale and the buyer’s platform fee are unchanged. Upload a corrected proof below.</p>
+                                            </div>
+                                        )}
                                         {isDone ? (
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                                 <CheckCircle size={16} className="shrink-0" />

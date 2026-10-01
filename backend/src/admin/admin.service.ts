@@ -1250,7 +1250,12 @@ export class AdminService {
                 buyerFeePaid: true,
                 buyerFeeTransactionId: auction.buyerFeeTransactionId,
                 buyerRefusedAt: null,
-                handoverSubmittedAt: { not: null },
+                // Match the exact evidence this admin reviewed. A rejected
+                // proof followed by a replacement cannot be approved using a
+                // stale review tab from before the replacement.
+                handoverSubmittedAt: auction.handoverSubmittedAt,
+                handoverProofPath: auction.handoverProofPath,
+                handoverProofUrl: auction.handoverProofUrl,
                 sellerBonusReleased: false,
                 sellerBonusReleasedAt: null,
                 stripePayoutTransferId: null,
@@ -1676,88 +1681,104 @@ export class AdminService {
         throw new ConflictException('Seller bonus payout state changed. Refresh and try again.');
     }
 
-    async denyHandover(auctionId: string) {
+    /**
+     * Reject the handover DOCUMENT for correction, not the vehicle sale.
+     * A missing/unclear photo is never grounds to refund the auction buyer fee.
+     * Inspection refusal and approved sale cancellation have separate flows.
+     */
+    async denyHandover(auctionId: string, reason: string) {
+        const feedback = typeof reason === 'string' ? reason.trim() : '';
+        if (feedback.length < 10 || feedback.length > 500) {
+            throw new BadRequestException('Enter a handover proof rejection reason of 10–500 characters');
+        }
+
         const auction = await this.prisma.auction.findUnique({
             where: { id: auctionId },
             include: { listing: { select: { sellerId: true, title: true } } },
         });
-        if (!auction) throw new NotFoundException('Auction not found');
-        // Idempotency guard — a successful denial clears handoverProofUrl. If it's
-        // already null, either nothing has been submitted yet or this denial ran
-        // already; either way, running the refund path a second time would try to
-        // re-refund an already-refunded Stripe intent and page every admin twice.
-        if (!auction.handoverProofUrl && !(auction as any).handoverProofPath) {
-            return auction;
+        if (!auction || auction.deletedAt) throw new NotFoundException('Auction not found');
+        if (
+            auction.sellerBonusReleased || auction.sellerBonusReleasedAt
+            || auction.stripePayoutTransferId || auction.manualPayoutConfirmedAt
+        ) {
+            throw new ConflictException('This handover has already been approved or entered payout');
+        }
+        if (!auction.handoverProofPath && !auction.handoverProofUrl) {
+            // A second click after successful rejection must not send duplicate
+            // notifications or change buyer money.
+            if (auction.handoverRejectedAt) return auction;
+            throw new BadRequestException('No submitted handover proof is available to reject');
+        }
+        if (auction.status !== 'ENDED' || !auction.winnerId || !auction.handoverSubmittedAt) {
+            throw new BadRequestException('Only an ended auction with a winner and submitted proof can be reviewed');
         }
 
-        // Issue £100 partial Stripe refund to buyer if they paid
-        if (auction.buyerFeePaid && auction.buyerFeeTransactionId) {
-            try {
-                await this.paymentsService.issueRefundForAuction(auctionId);
-            } catch (err: any) {
-                const errMsg = err?.message || 'Unknown Stripe error';
-                console.error(`[Admin] Stripe refund failed for auction ${auctionId}:`, errMsg);
-                // Persist error so admins can see it in the handovers view and refund manually —
-                // previously this failure was only console-logged, so a failed refund left the
-                // buyer's £125 fee unrecovered with no one alerted.
-                await this.prisma.auction.update({
-                    where: { id: auctionId },
-                    data: { stripeRefundError: errMsg },
-                });
-                const admins = await this.prisma.user.findMany({
-                    where: { role: 'ADMIN', deletedAt: null },
-                    select: { id: true },
-                });
-                for (const admin of admins) {
-                    this.notificationsGateway.sendNotification(admin.id, {
-                        type: 'REFUND_FAILED',
-                        title: '⚠️ Refund failed — manual action needed',
-                        message: `Auto-refund of £100 to buyer for "${auction.listing.title}" failed: ${errMsg}. Please refund manually via Stripe.`,
-                        entityType: 'AUCTION',
-                        entityId: auctionId,
-                        link: '/dashboard/admin/handovers',
-                    });
-                }
-            }
-        }
-
-        // Purge the denied proof from whichever bucket holds it: the private
-        // handover bucket for new submissions, the public `listings` bucket for
-        // legacy and mobile ones. Never throws — a denial must complete even
-        // when storage is unreachable, or the seller cannot resubmit.
-        await this.handoverDocuments.deleteProof(
-            (auction as any).handoverProofPath,
-            auction.handoverProofUrl,
-        );
-
-        // Clear both proof columns so the seller can resubmit
-        const updated = await this.prisma.auction.update({
-            where: { id: auctionId },
+        // Claim the exact proof currently under review before deleting objects.
+        // A simultaneous approval or replacement proof cannot be wiped by an
+        // admin holding an outdated page. No refund or transaction update.
+        const rejectedAt = new Date();
+        const claimed = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                deletedAt: null,
+                status: 'ENDED',
+                winnerId: auction.winnerId,
+                buyerRefusedAt: null,
+                handoverSubmittedAt: auction.handoverSubmittedAt,
+                handoverProofPath: auction.handoverProofPath,
+                handoverProofUrl: auction.handoverProofUrl,
+                sellerBonusReleased: false,
+                sellerBonusReleasedAt: null,
+                stripePayoutTransferId: null,
+                manualPayoutConfirmedAt: null,
+            },
             data: {
                 handoverProofUrl: null,
                 handoverProofPath: null,
                 handoverSubmittedAt: null,
-            } as any,
+                handoverRejectedAt: rejectedAt,
+                handoverRejectionReason: feedback,
+            },
         });
+        if (claimed.count !== 1) {
+            throw new ConflictException('Handover state changed during review. Refresh before taking action.');
+        }
+
+        // Never delete evidence before the DB claim succeeds. The helper
+        // handles private and legacy storage and deliberately tolerates outages
+        // so seller resubmission is not blocked by stale object cleanup.
+        await this.handoverDocuments.deleteProof(
+            auction.handoverProofPath,
+            auction.handoverProofUrl,
+        );
 
         const sellerId = auction.listing?.sellerId;
         if (sellerId) {
-            this.notificationsGateway.sendNotification(sellerId, {
+            await this.notificationsService.create({
+                userId: sellerId,
                 type: 'HANDOVER_DENIED',
-                title: 'Handover proof rejected',
-                message: `Your handover proof for "${auction.listing.title}" was not accepted. Please upload a clearer or more appropriate document to receive your £100 bonus.`,
+                title: 'Handover proof needs correction',
+                message: `Your proof for "${auction.listing.title}" needs correction: ${feedback}. Your buyer fee and sale are unchanged. Upload corrected evidence for review.`,
                 entityType: 'AUCTION',
                 entityId: auctionId,
                 link: '/dashboard/seller/auctions',
+            }).catch((err: any) => {
+                this.logger.warn(`Unable to deliver handover correction notification: ${err?.message || err}`);
             });
 
-            const seller = await this.prisma.user.findUnique({ where: { id: sellerId }, select: { email: true, firstName: true } });
+            const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId }, select: { email: true, firstName: true },
+            });
             if (seller?.email) {
-                this.emailService.sendHandoverDeniedEmail(seller.email, seller.firstName || 'there', auction.listing.title).catch(console.error);
+                this.emailService.sendHandoverDeniedEmail(
+                    seller.email, seller.firstName || 'there', auction.listing.title, feedback,
+                ).catch((err: any) => this.logger.warn(
+                    `Unable to email handover correction notice: ${err?.message || err}`,
+                ));
             }
         }
 
-        return updated;
+        return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
 
     async getAllTransactions(page = 1, limit = 20) {
