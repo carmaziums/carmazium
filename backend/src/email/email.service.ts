@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { getAccountOnboardingGuide } from '../core/account-onboarding';
 
 /** Which service actually puts the mail on the wire. */
 type Provider = 'gmail' | 'resend';
@@ -250,113 +251,66 @@ export class EmailService {
      */
     async sendWelcomeEmail(toEmail: string, firstName?: string, role: string = 'BUYER') {
         const name = firstName || 'there';
+        const guide = getAccountOnboardingGuide(role);
 
-        const roleConfigs: Record<string, { greeting: string; tagline: string; features: string[] }> = {
-            DEALER: {
-                greeting: `Welcome aboard, ${name}!`,
-                tagline: 'Your dealership command centre is ready.',
-                features: [
-                    'Manage your full vehicle inventory from one dashboard',
-                    'Receive and respond to buyer leads & offers in real-time',
-                    'Track performance analytics, revenue trends & conversion metrics',
-                    'Configure your dealership profile to maximise buyer reach',
-                ],
-            },
-            SELLER: {
-                greeting: `Hey ${name}, welcome!`,
-                tagline: 'You\'re all set to list and sell vehicles.',
-                features: [
-                    'Create professional listings with AI-powered descriptions',
-                    'Receive offers and counter-offers directly on your dashboard',
-                    'Track listing views, engagement, and buyer interest',
-                    'Secure transactions with verified KYC protection',
-                ],
-            },
-            BUYER: {
-                greeting: `Hey ${name}, welcome!`,
-                tagline: 'Start exploring thousands of verified vehicles.',
-                features: [
-                    'Search and filter from a curated marketplace of quality vehicles',
-                    'Make offers and negotiate prices directly with sellers',
-                    'Get instant vehicle history and HPI checks',
-                    'Save favourites and receive price-drop alerts',
-                ],
-            },
-            FINANCE_PARTNER: {
-                greeting: `Welcome, ${name}!`,
-                tagline: 'Your finance partner dashboard is live.',
-                features: [
-                    'Manage vehicle finance applications from your dashboard',
-                    'Connect directly with buyers looking for financing',
-                    'Track application progress and conversion rates',
-                    'Configure your offerings and approval criteria',
-                ],
-            },
-            INSURANCE_PARTNER: {
-                greeting: `Welcome, ${name}!`,
-                tagline: 'Your insurance partner portal is ready.',
-                features: [
-                    'Manage insurance quote requests from your dashboard',
-                    'Connect with buyers seeking vehicle insurance',
-                    'Track quote-to-policy conversion metrics',
-                    'Configure coverage tiers and pricing rules',
-                ],
-            },
-        };
-
-        const config = roleConfigs[role] || roleConfigs.BUYER;
-
-        const featureListHtml = config.features
+        const featureListHtml = guide.features
             .map(
-                (f) => `
+                (feature) => `
                 <tr>
                     <td width="28" valign="top" style="padding: 6px 0;">
                         <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
                     </td>
-                    <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">${f}</td>
+                    <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">${feature}</td>
                 </tr>`,
             )
             .join('');
 
         const bodyHtml = `
-            <!-- Greeting -->
+            <p style="margin: 0 0 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #ed1c24;">
+                ${guide.accountLabel}
+            </p>
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                ${config.greeting}
+                ${guide.greeting(name)}
             </h1>
-            <p style="margin: 0 0 32px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
-                ${config.tagline}
+            <p style="margin: 0 0 30px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+                ${guide.tagline}
             </p>
 
-            <!-- Divider -->
             <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); margin: 0 0 28px;"></div>
 
-            <!-- What's included -->
             <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b;">
                 What you can do
             </p>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 32px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 28px;">
                 ${featureListHtml}
             </table>
 
-            <!-- CTA Button -->
-            <div style="text-align: center; margin: 36px 0 24px;">
-                <a href="${this.frontendUrl}/dashboard" target="_blank"
-                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
-                    Go to Dashboard →
+            <div style="background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.20); border-radius: 12px; padding: 18px 20px; margin-bottom: 28px;">
+                <p style="margin: 0 0 6px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #93c5fd;">Next step</p>
+                <p style="margin: 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">${guide.nextStep}</p>
+            </div>
+
+            <div style="text-align: center; margin: 32px 0 24px;">
+                <a href="${this.frontendUrl}/auth/registration-complete" target="_blank"
+                   style="display: inline-block; padding: 16px 42px; background: linear-gradient(135deg, #ed1c24, #c41920); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.35);">
+                    Open Getting Started Guide →
                 </a>
             </div>
 
-            <!-- Support note -->
-            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; text-align: center; margin-top: 20px;">
+            <p style="margin: 0 0 18px; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
+                Or go directly to your <a href="${this.frontendUrl}${guide.dashboardPath}" style="color:#93c5fd;text-decoration:none;font-weight:700;">CarMazium dashboard</a>.
+            </p>
+
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 18px; text-align: center;">
                 <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-                    Need help getting started? Simply reply to this email — our team is here for you.
+                    Need help getting started? Reply to this email and the CarMazium team can help.
                 </p>
             </div>
         `;
 
         await this.dispatch({
             to: [toEmail],
-            subject: `Welcome to CarMazium, ${name}! 🚗`,
+            subject: `Welcome to CarMazium — ${guide.accountLabel}`,
             html: this.wrapInBrandTemplate(bodyHtml),
         });
     }
