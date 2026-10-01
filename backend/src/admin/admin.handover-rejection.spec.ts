@@ -36,11 +36,12 @@ describe('AdminService handover evidence rejection', () => {
         const email: any = { sendHandoverDeniedEmail: jest.fn().mockResolvedValue(undefined) };
         const notifications: any = { create: jest.fn().mockResolvedValue({ id: 'notification-1' }) };
         const handoverDocuments: any = { deleteProof: jest.fn().mockResolvedValue(undefined) };
+        const auctions: any = { assertHandoverBusinessRules: jest.fn().mockResolvedValue(initial) };
         const service = new AdminService(
             prisma, payments, email, {} as any, notifications,
-            {} as any, {} as any, handoverDocuments,
+            {} as any, auctions, handoverDocuments,
         );
-        return { service, prisma, payments, email, notifications, handoverDocuments };
+        return { service, prisma, payments, email, notifications, handoverDocuments, auctions };
     };
 
     it('rejects evidence with a specific reason, preserves the fee and sale, and prompts the seller to resubmit', async () => {
@@ -112,6 +113,22 @@ describe('AdminService handover evidence rejection', () => {
         expect(ctx.handoverDocuments.deleteProof).not.toHaveBeenCalled();
         expect(ctx.notifications.create).not.toHaveBeenCalled();
         expect(ctx.payments.issueRefundForAuction).not.toHaveBeenCalled();
+    });
+
+    it('will not approve a different proof uploaded after this admin viewed the original', async () => {
+        const ctx = setup();
+        ctx.prisma.auction.updateMany.mockResolvedValue({ count: 0 });
+        await expect(ctx.service.approveHandover('auction-1'))
+            .rejects.toThrow(/eligibility changed/i);
+        expect(ctx.prisma.auction.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                handoverSubmittedAt: submitted().handoverSubmittedAt,
+                handoverProofPath: 'auction-1/proof-1.jpg',
+                handoverProofUrl: null,
+            }),
+        }));
+        expect(ctx.payments.issueRefundForAuction).not.toHaveBeenCalled();
+        expect(ctx.email.sendHandoverDeniedEmail).not.toHaveBeenCalled();
     });
 
     it('rejects missing or vague reasons and records nothing', async () => {
