@@ -21,6 +21,7 @@ import { Colors } from '../../constants/colors';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
+import { getAuction } from '../../lib/auctionApi';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { haptics } from '../../lib/haptics';
 import { useAuthStore } from '../../store/authStore';
@@ -119,36 +120,19 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
     lotNumber,
     listingTitle,
     listingImage,
-    paymentDeadline,
   } = params;
 
-  // Countdown to the real payment deadline, or nothing at all.
-  //
-  // This used to fall back to "24 hours from whenever this screen mounted" when
-  // no deadline was passed — and the socket win path passed none, so that
-  // fabricated figure was what most winners saw. The real grace period is 72h
-  // from `wonAt` (`auctions.service.ts:23,618-626`), so a winner could be told
-  // they had hours left when they had days, and the number changed every time
-  // they reopened the screen (AUC-022).
-  //
-  // Both callers now pass a real deadline. If one ever does not, show no
-  // countdown rather than inventing one — `null` also leaves payment enabled,
-  // since refusing a payment on a deadline we do not know would be worse than
-  // showing no timer.
-  const getInitialSeconds = (): number | null => {
-    if (!paymentDeadline) return null;
-    return Math.max(0, Math.floor((new Date(paymentDeadline).getTime() - Date.now()) / 1000));
-  };
-
-  const [timeLeft, setTimeLeft] = useState<number | null>(getInitialSeconds);
+  // Verify the deadline with the backend. Route/socket times can be stale.
+  const [verifiedDeadline, setVerifiedDeadline] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   useEffect(() => {
-    if (timeLeft === null) return;
-    const timer = setInterval(
-      () => setTimeLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : prev)),
-      1000,
-    );
+    if (!verifiedDeadline) { setTimeLeft(null); return; }
+    const update = () => setTimeLeft(Math.max(0,
+      Math.ceil((Date.parse(verifiedDeadline) - Date.now()) / 1000)));
+    update();
+    const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, [timeLeft === null]);
+  }, [verifiedDeadline]);
 
   // ── Count-up price animation (JS-driven, updates React state) ─────────────
   const [displayPrice, setDisplayPrice] = useState(0);
@@ -194,6 +178,19 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  useEffect(() => {
+    if (!auctionId) return;
+    let mounted = true;
+    getAuction(auctionId).then(fresh => {
+      if (!mounted) return;
+      if (fresh.buyerFeePaid) { setPaid(true); setVerifiedDeadline(null); }
+      else setVerifiedDeadline(fresh.buyerFeeDeadlineAt ?? null);
+    }).catch(() => {
+      // Never fabricate a countdown. Server remains authority on payment.
+      if (mounted) setVerifiedDeadline(null);
+    });
+    return () => { mounted = false; };
+  }, [auctionId]);
   // Once Stripe has accepted the native charge, confirmation retries must use
   // that exact transaction rather than creating a second £125 PaymentIntent.
   const [pendingConfirmationId, setPendingConfirmationId] = useState<string | null>(null);
@@ -600,7 +597,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             </View>
             <View style={styles.timerRight}>
               <Text style={styles.timerRightText}>or the lot</Text>
-              <Text style={styles.timerRightText}>goes to next bidder</Text>
+              <Text style={styles.timerRightText}>may be cancelled</Text>
             </View>
           </View>
         )}

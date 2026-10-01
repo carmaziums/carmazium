@@ -120,6 +120,8 @@ export interface AuctionDetail {
   // Canonical backend deadline: earlier of request+24h or auction endTime.
   buyItNowResponseDeadline?: string | null;
   buyerFeePaid?: boolean;
+  /** Backend-authoritative 72h deadline, absent for paid or grant-covered fees. */
+  buyerFeeDeadlineAt?: string | null;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
   sellerBonusReleased?: boolean;

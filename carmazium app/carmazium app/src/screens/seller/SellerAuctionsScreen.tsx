@@ -36,6 +36,7 @@ import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
+import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
@@ -58,6 +59,8 @@ interface WonAuctionItem {
   status: AuctionStatus;
   endTime: string;
   winningBidAmount?: number | null;
+  buyerFeePaid?: boolean;
+  buyerFeeDeadlineAt?: string | null;
   listing: {
     id: string;
     title?: string | null;
@@ -1343,6 +1346,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle}</Text>
             <Text style={styles.cardPrice}>Won for {wonFor}</Text>
+            {!item.buyerFeePaid ? (
+              <Text style={styles.cardMeta}>
+                Buyer fee: {formatBuyerFeeRemaining(item.buyerFeeDeadlineAt, Date.now())
+                  || 'due within 72h of recorded win — open for exact time'}
+              </Text>
+            ) : null}
             <Text style={styles.cardMeta} numberOfLines={1}>{sellerName} · Ended {fmtDate(item.endTime)}</Text>
           </View>
           <View style={styles.cardRight}>

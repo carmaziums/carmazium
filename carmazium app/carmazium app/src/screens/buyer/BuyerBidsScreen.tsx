@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
-import { getAuction, AUCTION_PAYMENT_GRACE_MS } from '../../lib/auctionApi';
+import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -61,6 +61,7 @@ interface RawBid {
       winnerId: string | null;
       winningBidAmount: number | string | null;
       wonAt?: string | null;
+      buyerFeeDeadlineAt?: string | null;
       buyerFeePaid?: boolean;
     } | null;
   };
@@ -126,9 +127,7 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
     // Use the backend's authoritative win timestamp so the 72-hour payment
     // deadline matches web and the expiry cron exactly.
-    paymentDeadline: auction?.wonAt
-      ? new Date(new Date(auction.wonAt).getTime() + AUCTION_PAYMENT_GRACE_MS).toISOString()
-      : null,
+    paymentDeadline: auction?.buyerFeeDeadlineAt ?? null,
     bidCount: null,
     listing: {
       id: b.listing.id,
