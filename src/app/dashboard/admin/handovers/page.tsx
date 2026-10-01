@@ -168,6 +168,9 @@ export default function AdminHandoversPage() {
                             <Handshake className="text-amber-400 hidden sm:block" size={28} />
                             Handover Verification
                         </h1>
+                        <Link href="/dashboard/admin/auctions/historical-reconciliation" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-sm font-bold text-amber-300 hover:bg-amber-500/10">
+                            <AlertTriangle size={15} /> Review historical auction anomalies
+                        </Link>
                         <p className="text-[var(--text-muted)] mt-1 text-sm">
                             Review seller-submitted handover evidence. Approve valid proof or reject inadequate proof with specific feedback so the seller can resubmit. Rejection does not refund the buyer.
                         </p>
