@@ -128,10 +128,17 @@ export default function AdminHandoversPage() {
     }
 
     const handleDeny = async (auctionId: string) => {
-        if (!confirm('Deny this handover? A £100 refund will be issued to the buyer (Stripe) and the seller can resubmit proof.')) return
+        const reason = window.prompt('Why is this handover proof inadequate? Give the seller specific instructions. Evidence rejection does NOT refund the buyer or cancel the sale.')
+        if (reason === null) return
+        const feedback = reason.trim()
+        if (feedback.length < 10 || feedback.length > 500) {
+            alert('Please enter a specific reason between 10 and 500 characters.')
+            return
+        }
+        if (!window.confirm('Reject this proof and ask the seller to resubmit? No buyer refund or sale cancellation will be made.')) return
         try {
             setProcessing(auctionId)
-            await denyHandover(auctionId)
+            await denyHandover(auctionId, feedback)
             setHandovers(prev => prev.filter(h => h.id !== auctionId))
         } catch (err: any) {
             alert(err.message || 'Denial failed')
@@ -162,7 +169,7 @@ export default function AdminHandoversPage() {
                             Handover Verification
                         </h1>
                         <p className="text-[var(--text-muted)] mt-1 text-sm">
-                            Review seller-submitted handover proofs. Approve to release the £100 seller bonus, or deny to refund the buyer.
+                            Review seller-submitted handover evidence. Approve valid proof or reject inadequate proof with specific feedback so the seller can resubmit. Rejection does not refund the buyer.
                         </p>
                     </div>
 
@@ -393,7 +400,7 @@ export default function AdminHandoversPage() {
                                             className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center justify-center gap-2"
                                         >
                                             {processing === h.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
-                                            Deny & Refund £100
+                                            Reject Proof
                                         </Button>
                                     </div>
                                 </div>
