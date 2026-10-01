@@ -2049,107 +2049,12 @@ export class AuctionsService {
      * former winner and seller are notified. Linked auctions restore the retail
      * channel; standalone auctions return to inventory for relist/re-auction.
      */
+    /** @deprecated The scheduled job now uses GuardedAuctionExpiryService. */
     async revertUnpaidWins(): Promise<{ reverted: number }> {
-        const cutoff = new Date(Date.now() - BUYER_FEE_GRACE_MS);
-        const stale = await this.prisma.auction.findMany({
-            where: {
-                status: 'ENDED',
-                winnerId: { not: null },
-                buyerFeePaid: false,
-                wonAt: { not: null, lt: cutoff },
-                deletedAt: null,
-            },
-            include: {
-                listing: { select: { id: true, title: true, sellerId: true, linkedListingId: true } },
-            },
-        });
-
-        for (const auction of stale) {
-            const winnerId = auction.winnerId!;
-            const listing = auction.listing;
-
-            const linkedRetailId = listing.linkedListingId;
-            await this.prisma.$transaction([
-                this.prisma.auction.update({
-                    where: { id: auction.id },
-                    data: { status: 'CANCELLED', winnerId: null, winningBidAmount: null, wonAt: null },
-                }),
-                this.prisma.listing.update({
-                    where: { id: listing.id },
-                    data: linkedRetailId
-                        ? {
-                            status: 'DRAFT',
-                            linkedListingId: null,
-                            deletedAt: new Date(),
-                        } as any
-                        : {
-                            status: 'DRAFT',
-                            type: 'CLASSIFIED',
-                            linkedListingId: null,
-                        } as any,
-                }),
-                ...(linkedRetailId ? [
-                    this.prisma.listing.update({
-                        where: { id: linkedRetailId },
-                        data: {
-                            status: 'ACTIVE',
-                            linkedListingId: null,
-                        } as any,
-                    }),
-                ] : []),
-                this.prisma.sale.deleteMany({ where: { listingId: listing.id, buyerId: winnerId } }),
-                ...(listing.sellerId ? [
-                    this.prisma.sellerProfile.update({
-                        where: { userId: listing.sellerId },
-                        data: { totalSales: { decrement: 1 } },
-                    }),
-                ] : []),
-            ]);
-
-            this.trackAuctionEvent('auction_outcome', {
-                auction_id: auction.id,
-                auction_run_key: this.auctionRunKey(auction),
-                listing_id: listing.id,
-                outcome: 'WIN_REVERTED_UNPAID',
-                former_winner_id: winnerId,
-                reserve_price: Number(auction.reservePrice),
-                starting_bid: Number(auction.startingBid),
-                linked_retail_restored: Boolean(linkedRetailId),
-            });
-
-            await this.notificationsService.create({
-                userId: winnerId,
-                type: 'AUCTION_WIN_EXPIRED',
-                title: 'Your auction win was cancelled',
-                message: `You didn't pay the £125 buyer fee for "${listing.title}" in time, so the win was cancelled.`,
-                entityType: 'AUCTION',
-                entityId: auction.id,
-                link: `/dashboard/dealer/auctions/won`,
-            }).catch(() => {});
-
-            if (listing.sellerId) {
-                const notification = await this.notificationsService.create({
-                    userId: listing.sellerId,
-                    type: 'AUCTION_WIN_EXPIRED',
-                    title: 'Auction sale fell through',
-                    message: linkedRetailId
-                        ? `The winning buyer for "${listing.title}" didn't pay the buyer fee in time. Your retail listing has been restored and the auction was cancelled.`
-                        : `The winning buyer for "${listing.title}" didn't pay the buyer fee in time. The vehicle has returned to your inventory so you can relist or re-auction it.`,
-                    entityType: 'AUCTION',
-                    entityId: auction.id,
-                    link: `/dashboard/seller/auctions`,
-                }).catch(() => null);
-            }
-
-            this.auctionGateway.broadcastAuctionEnd(auction.id, {
-                auctionId: auction.id,
-                winnerId: null,
-                winningBidAmount: null,
-                reserveMet: false,
-            });
-        }
-
-        return { reverted: stale.length };
+        // Fail closed if any stale caller bypasses the guarded row-locked worker.
+        throw new ConflictException(
+            'The legacy unpaid-win reversion is disabled. Use GuardedAuctionExpiryService.',
+        );
     }
 
     /**
