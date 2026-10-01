@@ -3,6 +3,7 @@
 import * as React from "react"
 import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import Image from "next/image"
 import Link from "next/link"
 import { useChat } from "@/context/ChatContext"
@@ -69,6 +70,7 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
     const [reportActionError, setReportActionError] = React.useState<string | null>(null)
     const [reporting, setReporting] = React.useState(false)
     const [reportedMessageIds, setReportedMessageIds] = React.useState<Set<string>>(new Set())
+    const [selectedAdminUserId, setSelectedAdminUserId] = React.useState<string | null>(null)
     const messagesEndRef = React.useRef<HTMLDivElement>(null)
     const messagesContainerRef = React.useRef<HTMLDivElement>(null)
     const inputRef = React.useRef<HTMLInputElement>(null)
@@ -651,6 +653,22 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative bg-[var(--bg-card)] ring-1 ring-primary/30">
                             <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-2" />
                         </div>
+                    ) : isAdminViewer ? (
+                        <button
+                            type="button"
+                            onClick={() => setSelectedAdminUserId(room.otherUser.id)}
+                            aria-label={`Open ${getChatRoomDisplayName(room)} user details`}
+                            className="block w-10 h-10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            title="Open user details"
+                        >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative bg-[var(--bg-card)] transition-opacity hover:opacity-85">
+                                {room.otherUser?.profileImage ? (
+                                    <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
+                                ) : (
+                                    <User size={20} className="text-[var(--text-muted)]" />
+                                )}
+                            </div>
+                        </button>
                     ) : (
                         <Link
                             href={profileHref(room.otherUser.id)}
@@ -676,6 +694,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                 <div className="flex-1 min-w-0">
                     {isSupportUser(room.otherUser) ? (
                         <h3 className="font-bold truncate">{getChatRoomDisplayName(room)}</h3>
+                    ) : isAdminViewer ? (
+                        <button
+                            type="button"
+                            onClick={() => setSelectedAdminUserId(room.otherUser.id)}
+                            className="inline-block max-w-full text-left font-bold hover:text-primary hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                            title="Open user details"
+                        >
+                            <span className="block truncate">{getChatRoomDisplayName(room)}</span>
+                        </button>
                     ) : (
                         <Link
                             href={profileHref(room.otherUser.id)}
@@ -762,19 +789,21 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 {isAdminViewer && room.disputeCase?.buyer && room.disputeCase?.seller && (
                                     <p className="mt-2 text-xs text-[var(--text-muted)]">
                                         Buyer:{' '}
-                                        <Link
-                                            href={profileHref(room.disputeCase.buyer.id)}
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedAdminUserId(room.disputeCase!.buyer!.id)}
                                             className="font-semibold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
                                         >
                                             {getChatDisplayName(room.disputeCase.buyer)}
-                                        </Link>
+                                        </button>
                                         {' '}· Seller:{' '}
-                                        <Link
-                                            href={profileHref(room.disputeCase.seller.id)}
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedAdminUserId(room.disputeCase!.seller!.id)}
                                             className="font-semibold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
                                         >
                                             {getChatDisplayName(room.disputeCase.seller)}
-                                        </Link>
+                                        </button>
                                     </p>
                                 )}
                                 {room.disputeCase?.reason && (
@@ -954,6 +983,15 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                     <p className="mb-1 px-1 text-[10px] font-bold text-[var(--text-muted)]">
                                                         {getChatDisplayName(msg.sender)}
                                                     </p>
+                                                ) : isAdminViewer ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedAdminUserId(msg.sender.id)}
+                                                        className="mb-1 inline-block px-1 text-left text-[10px] font-bold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
+                                                        title="Open user details"
+                                                    >
+                                                        {getChatDisplayName(msg.sender)}
+                                                    </button>
                                                 ) : (
                                                     <Link
                                                         href={profileHref(msg.sender.id)}
@@ -1307,6 +1345,13 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isAdminViewer && (
+                <UserDetailModal
+                    userId={selectedAdminUserId}
+                    onClose={() => setSelectedAdminUserId(null)}
+                />
             )}
         </div>
     )
