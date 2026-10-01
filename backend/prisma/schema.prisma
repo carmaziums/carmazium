@@ -1053,6 +1053,8 @@ model Auction {
   // the separate "the £100 has actually reached the seller" signal; without
   // it, an approved-but-unpaid auction had no way to ever be marked resolved.
   manualPayoutConfirmedAt DateTime?
+  // Claim-once follow-up notice after an initially pending £100 payout is recorded.
+  sellerBonusPayoutNoticeSentAt DateTime?
 
   // Digest — seller-authored custom tags/batch labels and self-rating for their own auction
   customTags       String[] @default([])

@@ -596,6 +596,7 @@ export class AuctionsService {
                         handoverSubmittedAt: null,
                         sellerBonusReleased: false,
                         sellerBonusReleasedAt: null,
+                        sellerBonusPayoutNoticeSentAt: null,
                         buyItNowPendingBuyerId: null,
                         buyItNowPendingAt: null,
                     },
