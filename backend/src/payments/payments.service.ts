@@ -318,27 +318,55 @@ export class PaymentsService {
     ): Promise<boolean> {
         if (!listingId || !buyerId) return false;
 
-        const auction = await this.prisma.auction.findFirst({
-            where: {
-                listingId,
-                status: 'ENDED',
-                deletedAt: null,
-                winnerId: buyerId,
+        // Confirm that the processor's successful callback refers to our
+        // actual completed £125 platform-fee record for this exact winner.
+        const fee = await this.prisma.transaction.findUnique({
+            where: { id: transactionId },
+            select: {
+                id: true, listingId: true, userId: true, type: true,
+                status: true, amount: true, deletedAt: true,
             },
         });
-        if (!auction) return false;
-
-        if (!auction.buyerFeePaid || auction.buyerFeeTransactionId !== transactionId) {
-            await this.prisma.auction.update({
-                where: { id: auction.id },
-                data: {
-                    buyerFeePaid: true,
-                    buyerFeeTransactionId: transactionId,
-                },
-            });
+        if (!fee || fee.deletedAt || fee.listingId !== listingId ||
+            fee.userId !== buyerId || fee.type !== 'COMMISSION' ||
+            fee.status !== 'COMPLETED' || Number(fee.amount) !== this.AUCTION_BUYER_FEE) {
+            this.logger.error('Completed auction fee could not be validated: ' + transactionId);
+            return false;
         }
 
-        return true;
+        // Atomic conditional update: never mark a CANCELLED, reassigned, or
+        // differently paid auction after a delayed webhook. This operation
+        // obtains the same auction-row lock as the guarded expiry transaction.
+        const claimed = await this.prisma.auction.updateMany({
+            where: {
+                listingId, deletedAt: null, status: 'ENDED',
+                winnerId: buyerId, buyerFeePaid: false,
+                buyerFeeTransactionId: null,
+            },
+            data: { buyerFeePaid: true, buyerFeeTransactionId: transactionId },
+        });
+        if (claimed.count === 1) return true;
+
+        const current = await this.prisma.auction.findFirst({
+            where: { listingId, deletedAt: null },
+            select: {
+                status: true, winnerId: true, buyerFeePaid: true,
+                buyerFeeTransactionId: true,
+            },
+        });
+        if (current?.status === 'ENDED' && current.winnerId === buyerId &&
+            current.buyerFeePaid && current.buyerFeeTransactionId === transactionId) {
+            return true; // Exact webhook/client retry.
+        }
+
+        // Never silently reinstate a cancelled win or treat a successful
+        // but unapplied charge as refunded. Preserve the completed transaction
+        // so finance can verify and determine whether a refund is required.
+        this.logger.error(
+            'Captured auction fee ' + transactionId +
+            ' was not applied to current auction state. Finance review required before refunding.',
+        );
+        return false;
     }
 
     async createCheckoutSession(
