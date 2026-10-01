@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
+import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
@@ -1074,6 +1075,14 @@ export class BidsService {
             ...bid,
             isArchived: Boolean(bid.archivedAt),
             isWinning: !bid.archivedAt && winningMap.get(bid.listingId) === bid.id,
+            listing: {
+                ...bid.listing,
+                auction: bid.listing.auction ? {
+                    ...bid.listing.auction,
+                    buyerFeeDeadlineAt: bid.listing.auction.winnerId === businessBidderId
+                        ? buyerFeeDeadlineAt(bid.listing.auction) : null,
+                } : null,
+            },
         }));
 
         return { data: enrichedBids, total };
