@@ -545,6 +545,11 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
                 sellerFundsConfirmedAt: preSubmission.sellerFundsConfirmedAt,
                 handoverSubmittedAt: null,
             }),
+            data: expect.objectContaining({
+                sellerFundsConfirmationRequired: true,
+                handoverRejectedAt: null,
+                handoverRejectionReason: null,
+            }),
         }));
         expect(notificationsService.create).toHaveBeenCalledTimes(1);
     });
