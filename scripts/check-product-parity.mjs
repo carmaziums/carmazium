@@ -419,7 +419,8 @@ if (
 if (
   !backendBidsService.includes('wonAt: true') ||
   !backendBidsService.includes('buyerFeePaid: true') ||
-  !mobileBuyerBids.includes('paymentDeadline: auction?.wonAt') ||
+  !backendBidsService.includes('buyerFeeDeadlineAt: bid.listing.auction.winnerId === businessBidderId') ||
+  !mobileBuyerBids.includes('paymentDeadline: auction?.buyerFeeDeadlineAt') ||
   !mobileBuyerBids.includes('!bid.buyerFeePaid ?') ||
   !mobileBuyerBids.includes('CHAT WITH SELLER')
 ) {

@@ -31,6 +31,7 @@ export class NotificationsService {
     private static readonly TYPE_PREF_KEY: Record<string, string> = {
         OUTBID: 'outbid',
         AUCTION_WON: 'winning',
+        AUCTION_FEE_REMINDER: 'winning',
         AUCTION_ENDING: 'endingSoon',
         OFFER_COUNTERED: 'counterOffer',
         OFFER_ACCEPTED: 'offerAccepted',

@@ -36,6 +36,7 @@ import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
+import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
@@ -58,6 +59,8 @@ interface WonAuctionItem {
   status: AuctionStatus;
   endTime: string;
   winningBidAmount?: number | null;
+  buyerFeePaid?: boolean;
+  buyerFeeDeadlineAt?: string | null;
   listing: {
     id: string;
     title?: string | null;
@@ -172,6 +175,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
   const [wonAuctions, setWonAuctions] = useState<WonAuctionItem[]>([]);
+  const [wonNowMs, setWonNowMs] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setWonNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [wonLoading, setWonLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1343,6 +1351,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle}</Text>
             <Text style={styles.cardPrice}>Won for {wonFor}</Text>
+            {!item.buyerFeePaid ? (
+              <Text style={styles.cardMeta}>
+                Buyer fee: {formatBuyerFeeRemaining(item.buyerFeeDeadlineAt, wonNowMs)
+                  || 'due within 72h of recorded win — open for exact time'}
+              </Text>
+            ) : null}
             <Text style={styles.cardMeta} numberOfLines={1}>{sellerName} · Ended {fmtDate(item.endTime)}</Text>
           </View>
           <View style={styles.cardRight}>
@@ -1358,7 +1372,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
       </TouchableOpacity>
     );
-  }, [navigating, handleTap]);
+  }, [navigating, handleTap, wonNowMs]);
 
   return (
     <View style={styles.container}>

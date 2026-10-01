@@ -19,6 +19,7 @@ import {
 import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { BlurredEmail } from "@/components/shared/BlurredEmail"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
@@ -439,6 +440,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
             setAuction(p => p ? { ...p, status: "ENDED", winnerId: payload.winnerId, winningBidAmount: payload.winningBidAmount } : p)
             setBinPending(false)
             setBinResponseDeadline(null)
+            // Hydrate the server-owned wonAt+72h payment deadline; do not approximate from socket delivery time.
+            void loadAuction({ silent: true })
             // Refresh notifications — backend creates AUCTION_WON / AUCTION_ENDED notifications
             triggerNotificationRefresh()
         })
@@ -1061,6 +1064,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                 <p className="text-amber-400 font-black text-[10px] uppercase tracking-widest mb-0.5">Buyer Fee Due</p>
                                                 <div className="flex items-baseline gap-1">
                                                     <span className="text-[var(--text-primary)] font-black text-base">£125</span>
+                                                    <BuyerFeeCountdown deadline={auction.buyerFeeDeadlineAt} />
                                                 </div>
                                             </div>
                                         )}

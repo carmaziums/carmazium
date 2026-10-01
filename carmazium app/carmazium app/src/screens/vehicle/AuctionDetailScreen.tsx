@@ -27,7 +27,6 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
-  AUCTION_PAYMENT_GRACE_MS,
   getAuction, placeBid,
   triggerBuyItNow, confirmBuyItNow, declineBuyItNow,
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
@@ -44,6 +43,7 @@ import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
 import { GradeChip } from '../../components/GradeChip';
 import { Button } from '../../components/Button';
 import { getMinimumAuctionBid } from '../../lib/auctionPricing';
+import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 
 import { IconButton } from '../../components/IconButton';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -535,12 +535,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               '',
             ) || undefined,
             lotNumber: undefined,
-            // The backend measures the 72h grace from `wonAt`, which is set at
-            // the moment this event fires (`auctions.service.ts:544`) — so
-            // "now" is the exact basis here, not an approximation. This used to
-            // pass undefined, which made AuctionCompleteScreen fall back to a
-            // fabricated 24h-from-mount countdown (AUC-022).
-            paymentDeadline: new Date(Date.now() + AUCTION_PAYMENT_GRACE_MS).toISOString(),
+            // Winner screen will fetch the authoritative deadline from the backend.
+            paymentDeadline: undefined,
           });
         }
       });
@@ -1932,6 +1928,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons name="checkmark-circle-outline" size={13} color={Colors.warning} />
                 <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
                   This auction purchase was refused after a verified inspection.
+                </Text>
+              </View>
+            )}
+            {userWon && !auction?.buyerFeePaid && (
+              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                <Ionicons name="time-outline" size={13} color={Colors.warning} />
+                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                  £125 fee: {formatBuyerFeeRemaining(auction?.buyerFeeDeadlineAt, nowMs)
+                    || 'Due within 72h of recorded win; refresh for exact deadline.'}
                 </Text>
               </View>
             )}

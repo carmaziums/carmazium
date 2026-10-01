@@ -13,9 +13,8 @@ import { CarListing } from '../data/listings';
  * mount-time fallback always won (AUC-022). A winner could be told they had
  * hours left when they had days.
  *
- * Note the backend measures from `wonAt`, not `endTime`. Callers that know the
- * win just happened should use `Date.now()`; callers with only `endTime` are
- * approximating (see `BuyerBidsScreen` — `wonAt` is not in that payload).
+ * The backend exposes buyerFeeDeadlineAt derived from wonAt. Callers must
+ * use that canonical value, not device time or the scheduled auction end.
  */
 export const AUCTION_PAYMENT_GRACE_MS = 72 * 60 * 60 * 1000;
 
@@ -120,6 +119,8 @@ export interface AuctionDetail {
   // Canonical backend deadline: earlier of request+24h or auction endTime.
   buyItNowResponseDeadline?: string | null;
   buyerFeePaid?: boolean;
+  /** Backend-authoritative 72h deadline, absent for paid or grant-covered fees. */
+  buyerFeeDeadlineAt?: string | null;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
   sellerBonusReleased?: boolean;

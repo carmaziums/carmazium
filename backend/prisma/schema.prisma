@@ -1023,6 +1023,8 @@ model Auction {
   wonAt                   DateTime?
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
+  buyerFeeReminder24SentAt DateTime?
+  buyerFeeReminder6SentAt  DateTime?
   // The seller attests that the vehicle price was paid directly to them;
   // this is not a platform-collected or bank-verified payment.
   sellerFundsConfirmedAt        DateTime?
