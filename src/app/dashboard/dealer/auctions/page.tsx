@@ -23,6 +23,7 @@ import {
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
+import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from "@/lib/auctionSellerStage"
 import { createChatRoom } from "@/lib/chatApi"
 import { AuctionResultsModal } from "@/components/auctions/AuctionResultsModal"
 import { getStripeConnectStatus, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
@@ -63,31 +64,20 @@ function addHours(iso: string, hours: number): string {
 // know: whether there's something left to do. Mirrors the same badge on
 // /dashboard/seller/auctions so both auction-selling surfaces read the same way.
 function AuctionStatusBadge({ auction }: { auction: Auction }) {
-    const needsHandover = auction.status === "ENDED" && !!auction.winnerId && !auction.sellerBonusReleased
-    const approved = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
-    // sellerBonusReleased means the handover was approved — it doesn't guarantee
-    // the £100 actually arrived (auto-transfer can fail or be skipped if no
-    // payout method is connected), so "Paid" is only shown once it truly has.
-    const paidOut = approved && (!!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt)
-
-    if (needsHandover) {
+    const stage = getSellerAuctionStage(auction)
+    if (stage !== 'NOT_APPLICABLE') {
+        const needsAction = stage === 'ARRANGE_INSPECTION_PAYMENT'
+            || stage === 'READY_FOR_HANDOVER' || stage === 'CORRECT_PROOF'
+        const complete = stage === 'BONUS_PAID'
+        const color = complete
+            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+            : needsAction
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
         return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse">
-                <Handshake size={10} /> Action Needed
-            </span>
-        )
-    }
-    if (paidOut) {
-        return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                <CheckCircle size={10} /> Ended · Paid
-            </span>
-        )
-    }
-    if (approved) {
-        return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20">
-                <CheckCircle size={10} /> Ended · Payout Processing
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${color}`}>
+                {complete ? <CheckCircle size={10} /> : needsAction ? <Handshake size={10} /> : <Clock size={10} />}
+                {getSellerStageLabel(stage)}
             </span>
         )
     }
@@ -135,6 +125,8 @@ function DealerAuctionsPage() {
 
     // ── Handover proof upload ─────────────────────────────────────────────────
     const [handoverUploading, setHandoverUploading] = React.useState<string | null>(null)
+    const [confirmingFunds, setConfirmingFunds] = React.useState<string | null>(null)
+    const [fundsError, setFundsError] = React.useState<Record<string, string>>({})
     const [handoverDone, setHandoverDone] = React.useState<Set<string>>(new Set())
     const [handoverError, setHandoverError] = React.useState<Record<string, string>>({})
 
@@ -163,16 +155,38 @@ function DealerAuctionsPage() {
 
     // Seed handoverDone from API data whenever auctions load
     React.useEffect(() => {
+        // Server state wins: a rejected proof must become eligible for correction
+        // even if a previous upload succeeded in this browser session.
         const submittedIds = auctions
-            .filter(a => (a.handoverSubmittedAt || a.handoverProofUrl) && !a.sellerBonusReleased)
+            .filter(a => !!a.handoverSubmittedAt && !a.sellerBonusReleased)
             .map(a => a.id)
-        if (submittedIds.length > 0) {
-            setHandoverDone(prev => new Set([...prev, ...submittedIds]))
-        }
+        setHandoverDone(new Set(submittedIds))
     }, [auctions])
 
+    async function handleFundsConfirmation(auction: Auction) {
+        if (!canManageInventory || (isDealerStaff && dealerAccessLoading) ||
+            !auction.buyerFeePaid || auction.buyerRefusedAt || auction.handoverSubmittedAt ||
+            auction.sellerBonusReleased) return
+        if (!window.confirm(
+            `Confirm the full £${Number(auction.winningBidAmount).toLocaleString("en-GB")} vehicle payment has cleared directly in your dealership account? Do not confirm before cleared funds.`,
+        )) return
+        setConfirmingFunds(auction.id)
+        setFundsError(prev => ({ ...prev, [auction.id]: "" }))
+        try {
+            await apiClient(`/auctions/${auction.id}/seller-funds-confirmation`, {
+                method: "POST",
+                body: JSON.stringify({ confirmed: true }),
+            })
+            await fetchAuctions()
+        } catch (error: any) {
+            setFundsError(prev => ({ ...prev, [auction.id]: error?.message || "Funds confirmation failed. Try again." }))
+        } finally {
+            setConfirmingFunds(null)
+        }
+    }
+
     async function handleHandoverUpload(auctionId: string, file: File) {
-        if (!canManageInventory) {
+        if (!canManageInventory || (isDealerStaff && dealerAccessLoading)) {
             setHandoverError(prev => ({
                 ...prev,
                 [auctionId]: "Your dealership role can view this auction but does not allow handover submission.",
@@ -193,6 +207,7 @@ function DealerAuctionsPage() {
                 body,
             })
             setHandoverDone(prev => new Set([...prev, auctionId]))
+            await fetchAuctions()
             setSuccessMsg("Handover proof submitted — your £100 bonus will be released after verification.")
         } catch (err: any) {
             setHandoverError(prev => ({ ...prev, [auctionId]: err.message || "Upload failed. Please try again." }))
@@ -327,7 +342,7 @@ function DealerAuctionsPage() {
     }
 
     async function handleConnectWithWinner(auction: Auction) {
-        if (!auction.winnerId) return
+        if (!auction.winnerId || !auction.buyerFeePaid || auction.buyerRefusedAt) return
         setConnectingChat(true)
         try {
             const room = await createChatRoom(auction.winnerId, auction.listingId)
@@ -346,7 +361,11 @@ function DealerAuctionsPage() {
     const auctionRoute = DEALER_ROUTE_CONFIG.find(r => r.href === "/dashboard/dealer/auctions")
 
     // Auctions where handover is needed or pending — exclude fully approved ones
-    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.sellerBonusReleased)
+    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.buyerRefusedAt && !a.sellerBonusReleased)
+    const dealerActionCount = canManageInventory ? endedWithWinner.filter(a => {
+        const stage = getSellerAuctionStage(a)
+        return stage === "ARRANGE_INSPECTION_PAYMENT" || stage === "READY_FOR_HANDOVER" || stage === "CORRECT_PROOF"
+    }).length : 0
     // Auctions where bonus has been approved — show a completion card
     const approvedHandovers = auctions.filter(a => a.status === "ENDED" && a.winnerId && a.sellerBonusReleased)
 
@@ -407,7 +426,7 @@ function DealerAuctionsPage() {
                     {/* Action needed — the single most important thing on this page when it applies,
                         so it sits above everything else instead of being a section you have to scroll
                         past the whole table to discover on your own. */}
-                    {endedWithWinner.length > 0 && (
+                    {dealerActionCount > 0 && (
                         <button
                             type="button"
                             onClick={() => document.getElementById('handover-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -418,10 +437,10 @@ function DealerAuctionsPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-amber-300 text-base">
-                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} waiting on you
+                                    {dealerActionCount} auction{dealerActionCount > 1 ? "s" : ""} need your next step
                                 </p>
                                 <p className="text-sm text-amber-300/80 mt-0.5">
-                                    Upload handover proof to get your £100 bonus released.
+                                    Arrange inspection and direct payment, confirm cleared funds, then upload proof after vehicle handover.
                                 </p>
                             </div>
                             <ChevronRight size={18} className="text-amber-400 shrink-0" />
@@ -952,7 +971,7 @@ function DealerAuctionsPage() {
                     {approvedHandovers.length > 0 && (
                         <div className="space-y-3">
                             {approvedHandovers.map(auction => {
-                                const paid = !!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt
+                                const paid = getSellerAuctionStage(auction) === "BONUS_PAID"
                                 return (
                                 <div key={auction.id} className="dealer-glass-card p-4 flex items-center gap-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
@@ -961,7 +980,7 @@ function DealerAuctionsPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm">{auction.listing?.title}</p>
                                         <p className="text-xs text-emerald-400 mt-0.5">
-                                            {paid ? "Handover verified — £100 seller bonus released" : "Handover verified — £100 bonus is being processed"}
+                                            {paid ? "Handover verified — £100 seller bonus payment recorded" : "Handover verified — £100 bonus is being processed"}
                                         </p>
                                     </div>
                                     <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
@@ -981,8 +1000,8 @@ function DealerAuctionsPage() {
                                     <Handshake size={16} className="text-emerald-400" />
                                 </div>
                                 <div>
-                                    <h2 className="font-bold">Handover Completion</h2>
-                                    <p className="text-xs text-[var(--text-muted)]">Upload proof to receive your £100 seller bonus</p>
+                                    <h2 className="font-bold">Dealer auction sale progress</h2>
+                                    <p className="text-xs text-[var(--text-muted)]">Buyer fee → inspection and direct payment → confirm cleared funds → handover proof → admin review and £100 bonus.</p>
                                 </div>
                             </div>
 
@@ -1001,7 +1020,8 @@ function DealerAuctionsPage() {
                             )}
 
                             {endedWithWinner.map(auction => {
-                                const isDone = handoverDone.has(auction.id)
+                                const stage = getSellerAuctionStage(auction)
+                                const isDone = Boolean(auction.handoverSubmittedAt) || handoverDone.has(auction.id)
                                 const isUploading = handoverUploading === auction.id
                                 const err = handoverError[auction.id]
                                 const winningBid = Number(auction.winningBidAmount)
@@ -1025,6 +1045,10 @@ function DealerAuctionsPage() {
                                             </div>
                                         </div>
 
+                                        <div role="status" className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+                                            <p className="text-sm font-bold">{getSellerStageLabel(stage)}</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageHint(stage)}</p>
+                                        </div>
                                         {/* Fee summary — only the seller's own payout, not the
                                             full £125 breakdown (what the buyer pays and what
                                             Carmazium keeps is not the seller's business). */}
@@ -1034,7 +1058,14 @@ function DealerAuctionsPage() {
                                             <p className="text-[var(--text-secondary)] text-xs">after handover verified</p>
                                         </div>
 
-                                        {isDone || !!auction.handoverSubmittedAt ? (
+                                        {auction.handoverRejectedAt && !isDone && (
+                                            <div className="rounded-xl border border-red-500/25 bg-red-500/5 p-3 text-xs text-red-300">
+                                                <p className="font-bold">Handover proof needs correction</p>
+                                                <p className="mt-1 whitespace-pre-wrap">{auction.handoverRejectionReason || "Please upload corrected evidence."}</p>
+                                                <p className="mt-1">Your sale and the buyer fee remain unchanged.</p>
+                                            </div>
+                                        )}
+                                        {isDone ? (
                                             <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                                 <CheckCircle size={16} className="shrink-0" />
                                                 <div>
@@ -1057,8 +1088,26 @@ function DealerAuctionsPage() {
                                                     </p>
                                                 </div>
                                             </div>
+                                        ) : !auction.buyerFeePaid ? (
+                                            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-300">
+                                                Waiting for the winning buyer’s £125 platform fee, or a valid admin Free Purchase Grant. Do not submit handover evidence yet.
+                                            </div>
+                                        ) : !auction.sellerFundsConfirmedAt ? (
+                                            <div className="space-y-3 rounded-xl border border-amber-500/20 p-3">
+                                                <p className="text-sm font-semibold">Arrange inspection and vehicle payment directly with the buyer. Confirm only when your full £{winningBid.toLocaleString("en-GB")} has cleared.</p>
+                                                {fundsError[auction.id] && <p role="alert" className="text-xs text-red-400">{fundsError[auction.id]}</p>}
+                                                <button
+                                                    type="button"
+                                                    disabled={confirmingFunds === auction.id}
+                                                    onClick={() => void handleFundsConfirmation(auction)}
+                                                    className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                                                >
+                                                    {confirmingFunds === auction.id ? "Confirming..." : "Confirm Vehicle Funds Received"}
+                                                </button>
+                                            </div>
                                         ) : (
                                             <div className="space-y-3">
+                                                <p className="text-xs font-semibold text-emerald-400">Vehicle funds confirmed — upload proof once the handover has taken place.</p>
                                                 <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-[var(--text-muted)]">
                                                     <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
                                                     <span>Upload a photo or document showing the vehicle was handed over — e.g. a signed receipt, photo with the buyer, or logbook transfer confirmation.</span>
@@ -1091,7 +1140,7 @@ function DealerAuctionsPage() {
                                                     )}
                                                     <div className="text-center">
                                                         <p className="text-sm font-bold">
-                                                            {isUploading ? "Uploading proof..." : "Upload Handover Proof"}
+                                                            {isUploading ? "Uploading proof..." : stage === "CORRECT_PROOF" ? "Upload Corrected Handover Proof" : "Upload Handover Proof"}
                                                         </p>
                                                         <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                                             {isUploading ? "Please wait" : "JPG, PNG or PDF · Click or drag to upload"}

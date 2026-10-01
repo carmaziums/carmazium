@@ -58,4 +58,17 @@ assert.match(resultsUI, /auction\.winnerId && auction\.buyerFeePaid && !auction\
     'Web results must not unlock contact while the buyer fee is unpaid or inspection refused')
 assert.match(mobileUI, /resultsAuction\.winnerId && resultsAuction\.buyerFeePaid && !resultsAuction\.buyerRefusedAt/,
     'Native results must not unlock contact while the buyer fee is unpaid or inspection refused')
-console.log('Auction seller sequencing: 13 stage cases, contact gating and web/native parity passed.')
+
+const dealerUI = readFileSync(resolve('src/app/dashboard/dealer/auctions/page.tsx'), 'utf8')
+assert.match(dealerUI, /getSellerAuctionStage\(/, 'Dealer web must use the canonical seller stage')
+assert.match(dealerUI, /getSellerStageHint\(/, 'Dealer web must display the next step')
+assert.match(dealerUI, /getSellerStageLabel\(/, 'Dealer web must display the actual stage')
+assert.match(dealerUI, /hasPermission\("MANAGE_INVENTORY"\)/, 'Read-only dealer staff must not see handover write controls')
+assert.match(dealerUI, /!auction\.buyerFeePaid \?/, 'Dealer web must gate handover on the buyer fee')
+assert.match(dealerUI, /!auction\.sellerFundsConfirmedAt \?/, 'Dealer web must require cleared-funds confirmation before proof upload')
+assert.match(dealerUI, /seller-funds-confirmation/, 'Dealer web must submit explicit funds attestation')
+assert.match(dealerUI, /setHandoverDone\(new Set\(submittedIds\)\)/, 'Dealer web must clear stale uploaded state after rejection')
+assert.match(dealerUI, /auction\.winnerId \|\| !auction\.buyerFeePaid \|\| auction\.buyerRefusedAt/, 'Contact must remain gated before fee')
+assert.match(dealerUI, /handoverRejectionReason/, 'Dealer web must show reviewer correction guidance')
+
+console.log('Auction seller/dealer sequencing: 13 stages, contact gating, dealer funds and web/native parity passed.')
