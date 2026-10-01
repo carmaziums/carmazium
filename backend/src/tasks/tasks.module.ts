@@ -13,6 +13,7 @@ import { EmailModule } from '../email/email.module';
 import { DbBackupService } from './db-backup.service';
 import { WatchlistReminderService } from './watchlist-reminder.service';
 import { UnpaidAuctionFeeExpiryService } from './unpaid-auction-fee-expiry.service';
+import { GuardedAuctionExpiryService } from './guarded-auction-expiry.service';
 import { HpiPendingReminderService } from './hpi-pending-reminder.service';
 import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.service';
 
@@ -33,6 +34,7 @@ import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.se
         DeliveryExpiryService,
         DbBackupService,
         WatchlistReminderService,
+        GuardedAuctionExpiryService,
         UnpaidAuctionFeeExpiryService,
         HpiPendingReminderService,
         UnverifiedAccountCleanupService,
