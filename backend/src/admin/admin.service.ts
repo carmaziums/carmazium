@@ -1701,8 +1701,9 @@ export class AdminService {
 
         // Trigger a single follow-up only after Stripe transfer settlement is
         // durably recorded. Re-running this retry cannot duplicate notices.
+        const result = await this.prisma.auction.findUnique({ where: { id: auctionId } });
         await this.notifySellerPayoutRecordedOnce(auctionId);
-        return this.prisma.auction.findUnique({ where: { id: auctionId } });
+        return result;
     }
 
     /**
