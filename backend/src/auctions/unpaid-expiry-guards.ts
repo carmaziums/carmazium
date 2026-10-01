@@ -35,16 +35,31 @@ export function isUnpaidExpiryEligible(a: ExpiryCandidate, cutoff: Date): boolea
 export interface RecordedFee {
   status: string;
   amount: unknown;
+  createdAt?: Date | null;
   description?: string | null;
 }
 
-/** Completed £125 or valid completed £0 grant protects the win from expiry. */
-export function hasCompletedBuyerFee(rows: RecordedFee[]): boolean {
-  return rows.some(t => t.status === 'COMPLETED' &&
+/**
+ * A listing can be re-auctioned and the same dealer can win again.
+ * Only fee records created for the current wonAt or later may protect that win.
+ * Treat missing/invalid timestamps as unverified rather than reusing historic
+ * payment evidence. Valid historical wins with no wonAt never enter expiry.
+ */
+function belongsToCurrentWin(fee: RecordedFee, wonAt: Date): boolean {
+  return fee.createdAt instanceof Date &&
+    Number.isFinite(fee.createdAt.getTime()) &&
+    fee.createdAt.getTime() >= wonAt.getTime();
+}
+
+/** Completed £125 or valid completed £0 grant for this win prevents expiry. */
+export function hasCompletedBuyerFee(rows: RecordedFee[], wonAt: Date): boolean {
+  return rows.some(t => belongsToCurrentWin(t, wonAt) &&
+    t.status === 'COMPLETED' &&
     (Number(t.amount) === 125 || isAdminGrantedFreePurchaseTransaction(t)));
 }
 
-/** A pending checkout is not proof of payment, but can still capture. */
-export function hasUnresolvedCheckout(rows: RecordedFee[]): boolean {
-  return rows.some(t => t.status === 'PENDING');
+/** A pending checkout for this win may still capture and must hold expiry. */
+export function hasUnresolvedCheckout(rows: RecordedFee[], wonAt: Date): boolean {
+  return rows.some(t => belongsToCurrentWin(t, wonAt) &&
+    t.status === 'PENDING' && Number(t.amount) === 125);
 }
