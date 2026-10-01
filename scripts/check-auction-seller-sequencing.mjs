@@ -53,4 +53,9 @@ for (const [name, source] of [['web', webUI], ['mobile', mobileUI]]) {
     assert.match(source, /getSellerStageHint\(/, name + ' must render next-step hint')
     assert.match(source, /getSellerStageLabel\(/, name + ' must render accurate stage label')
 }
-console.log('Auction seller sequencing: 13 stage cases and web/native parity passed.')
+const resultsUI = readFileSync(resolve('src/components/auctions/AuctionResultsModal.tsx'), 'utf8')
+assert.match(resultsUI, /auction\.winnerId && auction\.buyerFeePaid && !auction\.buyerRefusedAt/,
+    'Web results must not unlock contact while the buyer fee is unpaid or inspection refused')
+assert.match(mobileUI, /resultsAuction\.winnerId && resultsAuction\.buyerFeePaid && !resultsAuction\.buyerRefusedAt/,
+    'Native results must not unlock contact while the buyer fee is unpaid or inspection refused')
+console.log('Auction seller sequencing: 13 stage cases, contact gating and web/native parity passed.')

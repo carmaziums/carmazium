@@ -441,7 +441,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   async function handleConnectWithWinner(item: AuctionItem) {
     const winnerId = item.winnerId ?? item.winner?.id;
-    if (!winnerId) return;
+    if (!winnerId || !item.buyerFeePaid || item.buyerRefusedAt) return;
     setConnectingChat(true);
     try {
       const res = await apiClient<{ success: boolean; data: { id: string } }>(
@@ -1655,7 +1655,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={styles.resultsBanner}>
                 <Ionicons name="trophy" size={20} color={Colors.warning} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.resultsBannerTitle}>Auction Sold</Text>
+                  <Text style={styles.resultsBannerTitle}>{resultsAuction.buyerRefusedAt ? 'Buyer declined after inspection' : 'Winner determined'}</Text>
                   <Text style={styles.resultsBannerSub}>
                     Winner: {[resultsAuction.winner?.firstName, resultsAuction.winner?.lastName].filter(Boolean).join(' ') || 'Anonymous Bidder'}
                   </Text>
@@ -1709,6 +1709,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </View>
             </View>
 
+            {resultsAuction.winnerId ? (
+              <Text style={styles.resultsBannerSub}>
+                {getSellerStageLabel(getSellerAuctionStage(resultsAuction))}: {getSellerStageHint(getSellerAuctionStage(resultsAuction))}
+              </Text>
+            ) : null}
+
             {/* Actions */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
@@ -1719,7 +1725,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 <Ionicons name="eye-outline" size={14} color={Colors.textSecondary} style={{ marginRight: 6 }} />
                 <Text style={styles.resultsViewBtnText}>View Auction</Text>
               </TouchableOpacity>
-              {resultsAuction.winnerId ? (
+              {resultsAuction.winnerId && resultsAuction.buyerFeePaid && !resultsAuction.buyerRefusedAt ? (
                 <TouchableOpacity
                   style={[styles.resultsPrimaryBtn, connectingChat && { opacity: 0.6 }]}
                   activeOpacity={0.8}
@@ -1733,6 +1739,12 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     </>
                   )}
                 </TouchableOpacity>
+              ) : resultsAuction.winnerId ? (
+                <View style={[styles.resultsPrimaryBtn, { opacity: 0.55 }]}>
+                  <Text style={styles.resultsPrimaryBtnText}>
+                    {resultsAuction.buyerRefusedAt ? 'Inspection refused' : 'Awaiting buyer fee'}
+                  </Text>
+                </View>
               ) : (
                 <TouchableOpacity
                   style={styles.resultsPrimaryBtn}

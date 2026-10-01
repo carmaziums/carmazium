@@ -440,7 +440,7 @@ function SellerAuctionsPage() {
     const approvedHandovers = auctions.filter(a => a.status === "ENDED" && a.winnerId && a.sellerBonusReleased)
 
     async function handleConnectWithWinner(auction: Auction) {
-        if (!auction.winnerId) return
+        if (!auction.winnerId || !auction.buyerFeePaid || auction.buyerRefusedAt) return
         setConnectingChat(true)
         try {
             const room = await createChatRoom(auction.winnerId, auction.listingId)

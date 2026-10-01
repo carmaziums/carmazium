@@ -8,6 +8,7 @@ import {
     Lightbulb, Gauge, Fuel, Cog,
 } from "lucide-react"
 import { getBidCount, getCurrentBid, type Auction } from "@/lib/auctionApi"
+import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from "@/lib/auctionSellerStage"
 
 function formatDate(iso: string) {
     return new Date(iso).toLocaleString("en-GB", {
@@ -20,9 +21,11 @@ function formatDate(iso: string) {
 // something they couldn't already see from the stats grid above it.
 function getResultTips(auction: Auction): string[] {
     if (auction.winnerId) {
+        const stage = getSellerAuctionStage(auction)
         return [
-            "Reach out to the buyer within 24 hours to keep the sale on track and arrange handover.",
-            "Have the logbook (V5C) and service history ready to hand over with the vehicle.",
+            getSellerStageHint(stage),
+            ...(stage === 'ARRANGE_INSPECTION_PAYMENT' || stage === 'READY_FOR_HANDOVER'
+                ? ["Have the logbook (V5C) and service history ready for the agreed handover."] : []),
         ]
     }
     const bidCount = getBidCount(auction)
@@ -109,12 +112,13 @@ export function AuctionResultsModal({
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <Trophy size={20} className="text-amber-400 shrink-0" />
                             <div>
-                                <p className="font-bold text-amber-300 text-sm">Auction Sold</p>
+                                <p className="font-bold text-amber-300 text-sm">{auction.buyerRefusedAt ? 'Buyer declined after inspection' : 'Winner determined'}</p>
                                 <p className="text-xs text-[var(--text-muted)]">Winner: <span className="font-semibold">
                                     {auction.winner
                                         ? `${auction.winner.firstName || ""} ${auction.winner.lastName || ""}`.trim() || "Anonymous Bidder"
                                         : "Anonymous Bidder"}
                                 </span></p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageLabel(getSellerAuctionStage(auction))}</p>
                             </div>
                         </div>
                     ) : (
@@ -191,7 +195,7 @@ export function AuctionResultsModal({
                         >
                             <Eye size={14} /> View Auction
                         </Link>
-                        {auction.winnerId ? (
+                        {auction.winnerId && auction.buyerFeePaid && !auction.buyerRefusedAt ? (
                             <button
                                 onClick={() => onConnectWithWinner(auction)}
                                 disabled={connectingChat}
@@ -203,6 +207,10 @@ export function AuctionResultsModal({
                                 }
                                 Connect with Winner
                             </button>
+                        ) : auction.winnerId ? (
+                            <span className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] text-xs text-center">
+                                {auction.buyerRefusedAt ? 'Inspection refused' : 'Waiting for buyer platform fee'}
+                            </span>
                         ) : (
                             <button
                                 onClick={() => onReauction(auction)}
