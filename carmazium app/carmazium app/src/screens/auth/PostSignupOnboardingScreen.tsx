@@ -125,6 +125,7 @@ const chipStyles = StyleSheet.create({
 export const PostSignupOnboardingScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const accountRole = useAuthStore((s) => s.accountRole);
   const updateUser = useAuthStore((s) => s.updateUser);
   const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
 
@@ -167,6 +168,69 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const [locationError, setLocationError] = useState('');
   const [postcodeError, setPostcodeError] = useState('');
   const [focusedContactField, setFocusedContactField] = useState<'phone' | 'location' | 'postcode' | null>(null);
+
+  const isPersonalAccount = accountRole === 'buyer' || accountRole === 'seller';
+  const roleGuide = (() => {
+    switch (accountRole) {
+      case 'dealer':
+        return {
+          label: 'PARTNER ACCOUNT',
+          title: 'Your Partner Account is ready.',
+          subtitle: 'Complete verification before using protected trade tools.',
+          items: [
+            'Complete business details and KYC before dealer-auction bidding.',
+            'Create free auction listings or £1 retail listings for stock.',
+            'A £125 CarMazium buyer fee applies to successful auction purchases.',
+            'Delivery, Inspection, Finance and Warranty services require the relevant capability approval.',
+          ],
+        };
+      case 'contractor':
+        return {
+          label: 'SERVICE PARTNER ACCOUNT',
+          title: 'Your service account is ready.',
+          subtitle: 'Complete capability approval for the work you want to provide.',
+          items: [
+            'Apply for the service capabilities your business provides.',
+            'Protected service work is available only after approval.',
+            'Use the service dashboard for eligible jobs, offers and activity.',
+          ],
+        };
+      case 'finance_partner':
+        return {
+          label: 'FINANCE PARTNER ACCOUNT',
+          title: 'Your finance workspace is ready.',
+          subtitle: 'Use your partner dashboard for finance enquiries and quotes.',
+          items: [
+            'Review finance enquiries routed to your account.',
+            'Return quotes through the CarMazium finance workflow.',
+            'Track enquiry activity from the finance dashboard.',
+          ],
+        };
+      case 'insurance_partner':
+        return {
+          label: 'INSURANCE PARTNER ACCOUNT',
+          title: 'Your insurance workspace is ready.',
+          subtitle: 'Use your partner dashboard for insurance requests and quotes.',
+          items: [
+            'Review insurance quote requests routed to your account.',
+            'Return quotes through the CarMazium insurance workflow.',
+            'Track request activity from the insurance dashboard.',
+          ],
+        };
+      default:
+        return {
+          label: 'PERSONAL ACCOUNT',
+          title: 'Your Personal Account is ready.',
+          subtitle: 'Use one account to buy retail vehicles and sell your own vehicle.',
+          items: [
+            'Buy retail vehicles directly from sellers.',
+            'Sell by dealer auction with a free auction listing.',
+            'Sell by retail listing for £1 until sold.',
+            'Personal Accounts do not bid in dealer auctions.',
+          ],
+        };
+    }
+  })();
 
   // Step 3 state
   const [selectedBodyTypes, setSelectedBodyTypes] = useState<string[]>([]);
@@ -300,11 +364,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
     const trimmedPhone = phone.trim();
     const trimmedLocation = location.trim();
     const normPostcode = normalisePostcode(postcode);
-    const preferences = {
-      bodyTypes: selectedBodyTypes,
-      fuelTypes: selectedFuelTypes,
-      ...(selectedBudget !== null ? { maxBudget: selectedBudget } : {}),
-    };
+    const preferences = isPersonalAccount
+      ? {
+          bodyTypes: selectedBodyTypes,
+          fuelTypes: selectedFuelTypes,
+          ...(selectedBudget !== null ? { maxBudget: selectedBudget } : {}),
+        }
+      : undefined;
 
     try {
       await apiClient('/users/me', {
@@ -313,7 +379,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           phone: trimmedPhone,
           location: trimmedLocation,
           postcode: normPostcode,
-          preferences,
+          ...(preferences ? { preferences } : {}),
         }),
       });
       updateUser({
@@ -335,6 +401,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
     selectedBodyTypes,
     selectedFuelTypes,
     selectedBudget,
+    isPersonalAccount,
     updateUser,
     completeOnboarding,
   ]);
@@ -589,59 +656,71 @@ export const PostSignupOnboardingScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Step 3: Preferences ────────────────────────────────────── */}
+          {/* ── Step 3: Role-aware getting started ─────────────────────── */}
           {step === 3 && (
             <View>
               <Text style={styles.stepIndicator}>STEP {stepPosition(3)} OF {steps.length}</Text>
-              <Text style={styles.titleText}>
-                What are you <Text style={styles.titleAccent}>looking for?</Text>
-              </Text>
-              <Text style={styles.subtitleText}>
-                Select all that apply. You can change these any time.
-              </Text>
+              <Text style={styles.guideEyebrow}>{roleGuide.label}</Text>
+              <Text style={styles.titleText}>{roleGuide.title}</Text>
+              <Text style={styles.subtitleText}>{roleGuide.subtitle}</Text>
 
-              {/* Body Types */}
-              <Text style={styles.sectionLabel}>BODY TYPES</Text>
-              <View style={styles.chipRow}>
-                {BODY_TYPES.map((type) => (
-                  <Chip
-                    key={type}
-                    label={type}
-                    selected={selectedBodyTypes.includes(type)}
-                    onPress={() => toggleBodyType(type)}
-                  />
+              <View style={styles.guideCard}>
+                {roleGuide.items.map((item) => (
+                  <View key={item} style={styles.guideItem}>
+                    <View style={styles.guideCheck}>
+                      <Ionicons name="checkmark" size={12} color={Colors.white} />
+                    </View>
+                    <Text style={styles.guideItemText}>{item}</Text>
+                  </View>
                 ))}
               </View>
 
-              {/* Fuel Type */}
-              <Text style={styles.sectionLabel}>FUEL TYPE</Text>
-              <View style={styles.chipRow}>
-                {FUEL_TYPES.map((type) => (
-                  <Chip
-                    key={type}
-                    label={type}
-                    selected={selectedFuelTypes.includes(type)}
-                    onPress={() => toggleFuelType(type)}
-                  />
-                ))}
-              </View>
+              {isPersonalAccount && (
+                <>
+                  <Text style={styles.preferencesIntro}>
+                    Optional: tell us what you are interested in so we can personalise your browsing.
+                  </Text>
 
-              {/* Budget */}
-              <Text style={styles.sectionLabel}>BUDGET</Text>
-              <View style={styles.chipRow}>
-                {BUDGET_OPTIONS.map((opt) => (
-                  <Chip
-                    key={opt.value}
-                    label={opt.label}
-                    selected={selectedBudget === opt.value}
-                    onPress={() =>
-                      setSelectedBudget(selectedBudget === opt.value ? null : opt.value)
-                    }
-                  />
-                ))}
-              </View>
+                  <Text style={styles.sectionLabel}>BODY TYPES</Text>
+                  <View style={styles.chipRow}>
+                    {BODY_TYPES.map((type) => (
+                      <Chip
+                        key={type}
+                        label={type}
+                        selected={selectedBodyTypes.includes(type)}
+                        onPress={() => toggleBodyType(type)}
+                      />
+                    ))}
+                  </View>
 
-              {/* Save error */}
+                  <Text style={styles.sectionLabel}>FUEL TYPE</Text>
+                  <View style={styles.chipRow}>
+                    {FUEL_TYPES.map((type) => (
+                      <Chip
+                        key={type}
+                        label={type}
+                        selected={selectedFuelTypes.includes(type)}
+                        onPress={() => toggleFuelType(type)}
+                      />
+                    ))}
+                  </View>
+
+                  <Text style={styles.sectionLabel}>BUDGET</Text>
+                  <View style={styles.chipRow}>
+                    {BUDGET_OPTIONS.map((opt) => (
+                      <Chip
+                        key={opt.value}
+                        label={opt.label}
+                        selected={selectedBudget === opt.value}
+                        onPress={() =>
+                          setSelectedBudget(selectedBudget === opt.value ? null : opt.value)
+                        }
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+
               {saveToast !== '' && (
                 <View style={styles.saveErrorRow}>
                   <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
@@ -854,6 +933,51 @@ const styles = StyleSheet.create({
     color: Colors.error,
     marginTop: 6,
     letterSpacing: 0.3,
+  },
+  guideEyebrow: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.xs,
+    color: Colors.accent,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  guideCard: {
+    backgroundColor: Colors.glassBg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: Radius.inline,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+    gap: 12,
+  },
+  guideItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  guideCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  guideItemText: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: FontSize.sm * 1.55,
+  },
+  preferencesIntro: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: FontSize.sm * 1.55,
+    marginBottom: 20,
   },
   // Section labels (Step 3)
   sectionLabel: {
