@@ -28,7 +28,11 @@ function LoginContent() {
     const [appleLoading, setAppleLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
-    const targetAfterLogin = searchParams?.get("redirect") || "/dashboard"
+    const rawTargetAfterLogin = searchParams?.get("redirect") || "/dashboard"
+    const targetAfterLogin =
+        rawTargetAfterLogin.startsWith("/") && !rawTargetAfterLogin.startsWith("//")
+            ? rawTargetAfterLogin
+            : "/dashboard"
 
     const getSafeErrorMessage = (err: unknown, fallback: string) => {
         if (err instanceof Error && err.message?.trim()) return err.message
@@ -42,7 +46,18 @@ function LoginContent() {
 
     React.useEffect(() => {
         if (!authLoading && user && profile) {
-            router.replace(profile.role === "ADMIN" ? "/dashboard/admin" : targetAfterLogin)
+            if (profile.role === "ADMIN") {
+                // Preserve a safe admin return path after an auth refresh. The
+                // previous behaviour discarded it and always sent admins to the
+                // command-centre overview, which made a failed mutation look
+                // like the button itself navigated away.
+                const adminTarget = targetAfterLogin.startsWith("/dashboard/admin")
+                    ? targetAfterLogin
+                    : "/dashboard/admin"
+                router.replace(adminTarget)
+                return
+            }
+            router.replace(targetAfterLogin)
         }
     }, [user, profile, authLoading, router, targetAfterLogin])
 
