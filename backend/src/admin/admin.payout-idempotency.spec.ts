@@ -533,4 +533,42 @@ describe('AdminService — seller bonus payout idempotency', () => {
         expect(h.notificationsService.create).not.toHaveBeenCalled();
     });
 
+    it('sends one recorded-transfer follow-up after a previously pending payout succeeds on Stripe retry', async () => {
+        const h = makeHarness();
+        const before = makeAuction({
+            sellerBonusReleased: true,
+            sellerBonusReleasedAt: new Date('2026-10-01T12:00:00Z'),
+        });
+        const paid = makeAuction({
+            ...before, stripePayoutTransferId: 'tr_bonus_retry',
+        });
+        const fresh = makeAuction({
+            ...paid, status: 'ENDED', deletedAt: null,
+            winnerId: 'winner-1', buyerFeePaid: true,
+            buyerFeeTransactionId: 'fee-1',
+            handoverSubmittedAt: new Date('2026-10-01T10:00:00Z'),
+            sellerBonusPayoutNoticeSentAt: null,
+        });
+        h.prisma.auction.findUnique
+            .mockResolvedValueOnce(before)
+            .mockResolvedValueOnce(paid)
+            .mockResolvedValueOnce(fresh);
+        h.prisma.user.findUnique
+            .mockResolvedValueOnce({
+                stripeConnectAccountId: 'acct_seller',
+                stripeConnectOnboardingComplete: true,
+            })
+            .mockResolvedValueOnce({ email: 'seller@example.com', firstName: 'Sam' });
+        h.prisma.auction.updateMany.mockResolvedValue({ count: 1 });
+        h.paymentsService.issueSellerPayout.mockResolvedValue('tr_bonus_retry');
+        const result = await h.service.retryPayout('auction-1');
+        expect(result).toBe(paid);
+        expect(h.paymentsService.issueSellerPayout).toHaveBeenCalledTimes(1);
+        expect(h.emailService.sendHandoverApprovedEmail).toHaveBeenCalledTimes(1);
+        expect(h.emailService.sendHandoverApprovedEmail).toHaveBeenCalledWith(
+            'seller@example.com', 'Sam', 'BMW M3', 'STRIPE_TRANSFER_RECORDED',
+        );
+    });
+
+
 });
