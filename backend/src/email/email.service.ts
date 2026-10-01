@@ -800,7 +800,7 @@ export class EmailService {
             <p style="margin: 0 0 28px; font-size: 14px; color: #94a3b8; line-height: 1.6;">
                 ${buyerFeeWaived
                     ? 'Your active Free Purchase Grant covered the £125 CarMazium buyer fee. The seller&apos;s contact details and auction chat are already unlocked so you can arrange inspection, collection or delivery.'
-                    : 'To continue, pay the £125 CarMazium buyer fee from the auction page. Once payment is confirmed, the seller&apos;s contact details and auction chat will unlock so you can arrange inspection, collection or delivery.'}
+                    : 'Pay the £125 buyer fee within 72 hours of your recorded win. Your exact deadline is displayed in your auction account. Once paid, seller contact and chat unlock for inspection and collection.'}
             </p>
             <div style="text-align: center; margin: 36px 0 24px;">
                 <a href="${this.frontendUrl}/auctions/live/${auctionId}" target="_blank"
@@ -810,6 +810,29 @@ export class EmailService {
             </div>
         `;
         return this.sendBrandedEmail({ to: buyerEmail, subject: `You won the auction for "${vehicleTitle}" — CarMazium 🏆`, bodyHtml });
+    }
+
+    /** Reminder uses the actual recorded win; never include a reusable payment session URL. */
+    async sendAuctionBuyerFeeReminderEmail(options: {
+        toEmail: string; vehicleTitle: string; deadline: Date; hoursStage: 24 | 6;
+    }) {
+        const safeTitle = options.vehicleTitle.replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c] || c);
+        const ukDeadline = new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Europe/London', dateStyle: 'full', timeStyle: 'short',
+        }).format(options.deadline);
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: 'Auction buyer fee reminder — CarMazium',
+            bodyHtml: '<h1>Your auction buyer fee is due</h1>' +
+                '<p>The £125 platform fee for <strong>' + safeTitle + '</strong> remains outstanding.</p>' +
+                '<p>Approximately ' + options.hoursStage + ' hours remain. Deadline: <strong>' +
+                ukDeadline + ' (UK time)</strong>.</p>' +
+                '<p>Sign in to CarMazium to view the live countdown and pay. If you have already paid ' +
+                'or have a Free Purchase Grant, do not pay again.</p>' +
+                '<p><a href="' + this.frontendUrl + '/dashboard/dealer/auctions/won">View won auctions</a></p>',
+        });
     }
 
     async sendAuctionEndedSellerEmail(
