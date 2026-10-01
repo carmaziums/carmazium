@@ -69,7 +69,7 @@ export class SimpleDmsService {
         origin = url.origin;
       }
     } catch { /* safely retain the canonical production origin */ }
-    return origin + '/auctions/live/' + encodeURIComponent(id);
+    return origin + '/auctions/live/' + encodeURIComponent(id) + '?utm_source=simpledms&utm_medium=partner_api';
   }
 
   private publicImages(images: string[]): string[] {
