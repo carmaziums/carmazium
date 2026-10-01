@@ -138,7 +138,7 @@ function SignupForm() {
             id: "DEALER" as SignupRole,
             icon: Building2,
             label: "Dealer / Sole Trader / Partner Account",
-            sub: "For motor dealers, sole traders and automotive businesses. Buy, sell and bid on vehicles, or add Delivery, Inspection, Finance and Warranty services.",
+            sub: "For motor dealers, sole traders and automotive businesses. List stock immediately; bidding requires business/KYC verification and service tools require the relevant approval.",
             active: "bg-primary/20 text-primary",
             hover: "group-hover:bg-primary/20 group-hover:text-primary",
         },
