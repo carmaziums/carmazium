@@ -10,7 +10,7 @@ describe('seller handover approval email truthfulness', () => {
     };
     it.each([
         ['APPROVED_PAYOUT_PENDING', 'payout pending', 'NOT yet been paid'],
-        ['APPROVED_SETUP_NEEDED', 'setup needed', 'NOT yet been paid'],
+        ['APPROVED_SETUP_NEEDED', 'connect your payout account', 'NOT yet been paid'],
         ['STRIPE_TRANSFER_RECORDED', 'Stripe transfer initiated', 'does not mean the funds have reached your bank'],
         ['MANUAL_PAYMENT_RECORDED', 'marked paid', 'recorded your £100 seller bonus as paid manually'],
     ] as [SellerBonusEmailState, string, string][])(

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
-import { SellerBonusEmailState } from '../admin/seller-bonus-email-state';
+import type { SellerBonusEmailState } from '../admin/seller-bonus-email-state';
 import * as nodemailer from 'nodemailer';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getAccountOnboardingGuide } from '../core/account-onboarding';
