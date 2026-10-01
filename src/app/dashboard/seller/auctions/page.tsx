@@ -24,6 +24,7 @@ import {
     type Auction, type CreateAuctionRequest,
 } from "@/lib/auctionApi"
 import { apiClient } from "@/lib/apiClient"
+import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from "@/lib/auctionSellerStage"
 import { getStripeConnectStatus, alsoAuction, alsoListRetail, createListingCheckout, type StripeConnectStatus, type Listing } from "@/lib/listingApi"
 import { getAuctionFirstOfferFloor, getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
 
@@ -63,31 +64,19 @@ function addHours(iso: string, hours: number): string {
 // the row instead of making them notice a separate section further down the
 // page and mentally connect it back to this auction.
 function AuctionStatusBadge({ auction }: { auction: Auction }) {
-    const needsHandover = auction.status === "ENDED" && !!auction.winnerId && !auction.sellerBonusReleased
-    const approved = auction.status === "ENDED" && !!auction.winnerId && auction.sellerBonusReleased
-    // sellerBonusReleased means the handover was approved — it doesn't guarantee
-    // the £100 actually arrived (auto-transfer can fail or be skipped if no
-    // payout method is connected), so "Paid" is only shown once it truly has.
-    const paidOut = approved && (!!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt)
-
-    if (needsHandover) {
+    const stage = getSellerAuctionStage(auction)
+    if (stage !== 'NOT_APPLICABLE') {
+        const sellerAction = stage === 'ARRANGE_INSPECTION_PAYMENT' || stage === 'READY_FOR_HANDOVER' || stage === 'CORRECT_PROOF'
+        const complete = stage === 'BONUS_PAID'
+        const style = complete
+            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+            : sellerAction
+                ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
         return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-amber-500/10 text-amber-400 border-amber-500/25 animate-pulse">
-                <Handshake size={10} /> Action Needed
-            </span>
-        )
-    }
-    if (paidOut) {
-        return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                <CheckCircle size={10} /> Ended · Paid
-            </span>
-        )
-    }
-    if (approved) {
-        return (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-500/10 text-blue-400 border-blue-500/20">
-                <CheckCircle size={10} /> Ended · Payout Processing
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${style}`}>
+                {complete ? <CheckCircle size={10} /> : sellerAction ? <Handshake size={10} /> : <Clock size={10} />}
+                {getSellerStageLabel(stage)}
             </span>
         )
     }
@@ -391,7 +380,7 @@ function SellerAuctionsPage() {
     // Seed handoverDone from API data whenever auctions load
     React.useEffect(() => {
         const submittedIds = auctions
-            .filter(a => a.handoverProofUrl && !a.sellerBonusReleased)
+            .filter(a => a.handoverSubmittedAt && !a.sellerBonusReleased)
             .map(a => a.id)
         // Server is authoritative: a rejected proof must no longer appear as
         // submitted merely because it was uploaded earlier in this session.
@@ -432,6 +421,7 @@ function SellerAuctionsPage() {
                 body,
             })
             setHandoverDone(prev => new Set([...prev, auctionId]))
+            await fetchAuctions()
             setSuccessMsg("Handover proof submitted — your £100 bonus will be released after verification.")
         } catch (err: any) {
             setHandoverError(prev => ({ ...prev, [auctionId]: err.message || "Upload failed. Please try again." }))
@@ -441,12 +431,16 @@ function SellerAuctionsPage() {
     }
 
     // Auctions where handover is needed or pending — exclude fully approved ones
-    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.sellerBonusReleased)
+    const endedWithWinner = auctions.filter(a => a.status === "ENDED" && a.winnerId && !a.buyerRefusedAt && !a.sellerBonusReleased)
+    const sellerActionCount = endedWithWinner.filter(a => {
+        const stage = getSellerAuctionStage(a)
+        return stage === "ARRANGE_INSPECTION_PAYMENT" || stage === "READY_FOR_HANDOVER" || stage === "CORRECT_PROOF"
+    }).length
     // Auctions where bonus has been approved — show a completion card
     const approvedHandovers = auctions.filter(a => a.status === "ENDED" && a.winnerId && a.sellerBonusReleased)
 
     async function handleConnectWithWinner(auction: Auction) {
-        if (!auction.winnerId) return
+        if (!auction.winnerId || !auction.buyerFeePaid || auction.buyerRefusedAt) return
         setConnectingChat(true)
         try {
             const room = await createChatRoom(auction.winnerId, auction.listingId)
@@ -484,7 +478,7 @@ function SellerAuctionsPage() {
                     {/* Action needed — the single most important thing on this page when it applies,
                         so it sits above everything else instead of being a section you have to scroll
                         past the whole table to discover on your own. */}
-                    {endedWithWinner.length > 0 && (
+                    {sellerActionCount > 0 && (
                         <button
                             type="button"
                             onClick={() => document.getElementById('handover-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -495,10 +489,10 @@ function SellerAuctionsPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-amber-300 text-base">
-                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} to complete
+                                    {sellerActionCount} auction{sellerActionCount > 1 ? "s" : ""} need your next step
                                 </p>
                                 <p className="text-sm text-amber-300/80 mt-0.5">
-                                    Check the buyer fee, confirm the vehicle payment and upload handover proof to receive your £100 bonus.
+                                    Arrange inspection and direct vehicle payment, confirm cleared funds, then upload proof only after handover.
                                 </p>
                             </div>
                             <ChevronRight size={18} className="text-amber-400 shrink-0" />
@@ -1078,7 +1072,7 @@ function SellerAuctionsPage() {
                     {approvedHandovers.length > 0 && (
                         <div className="space-y-3">
                             {approvedHandovers.map(auction => {
-                                const paid = !!auction.stripePayoutTransferId || !!auction.manualPayoutConfirmedAt
+                                const paid = getSellerAuctionStage(auction) === "BONUS_PAID"
                                 return (
                                 <div key={auction.id} className="glass-card p-4 flex items-center gap-4 border border-emerald-500/20 bg-emerald-500/5 rounded-2xl">
                                     <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
@@ -1087,7 +1081,7 @@ function SellerAuctionsPage() {
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm">{auction.listing?.title}</p>
                                         <p className="text-xs text-emerald-400 mt-0.5">
-                                            {paid ? "Handover verified — £100 seller bonus released" : "Handover verified — £100 bonus is being processed"}
+                                            {paid ? "Handover verified — £100 bonus payment recorded" : "Handover verified — £100 bonus is being processed"}
                                         </p>
                                     </div>
                                     <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">
@@ -1118,8 +1112,8 @@ function SellerAuctionsPage() {
                                     <Handshake size={16} className="text-emerald-400" />
                                 </div>
                                 <div>
-                                    <h2 className="font-bold">Handover Completion</h2>
-                                    <p className="text-xs text-[var(--text-muted)]">Upload proof to receive your £100 seller bonus</p>
+                                    <h2 className="font-bold">Auction sale progress</h2>
+                                    <p className="text-xs text-[var(--text-muted)]">Buyer fee → inspection and direct payment → seller confirms funds → handover proof → admin approval and £100 bonus.</p>
                                 </div>
                             </div>
 
@@ -1138,7 +1132,8 @@ function SellerAuctionsPage() {
                             )}
 
                             {endedWithWinner.map(auction => {
-                                const isDone = handoverDone.has(auction.id)
+                                const stage = getSellerAuctionStage(auction)
+                                const isDone = Boolean(auction.handoverSubmittedAt) || handoverDone.has(auction.id)
                                 const isUploading = handoverUploading === auction.id
                                 const err = handoverError[auction.id]
                                 const winningBid = Number(auction.winningBidAmount)
@@ -1160,6 +1155,11 @@ function SellerAuctionsPage() {
                                                 <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest">Winning Bid</p>
                                                 <p className="text-lg font-black font-mono">£{winningBid.toLocaleString()}</p>
                                             </div>
+                                        </div>
+
+                                        <div role="status" className="rounded-xl border border-blue-500/25 bg-blue-500/5 p-3">
+                                            <p className="text-sm font-bold">{getSellerStageLabel(stage)}</p>
+                                            <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageHint(stage)}</p>
                                         </div>
 
                                         {/* Fee summary — only the seller's own payout, not the
@@ -1200,13 +1200,13 @@ function SellerAuctionsPage() {
                                             </div>
                                         ) : !auction.buyerFeePaid ? (
                                             <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-                                                Waiting for the winning dealer to pay or have their £125 buyer fee covered. Seller contact and handover will unlock afterward.
+                                                Waiting for the winning buyer’s £125 platform fee to be completed or covered by a valid grant. You do not need to submit handover proof at this stage.
                                             </div>
                                         ) : !auction.sellerFundsConfirmedAt ? (
                                             <div className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
                                                 <p className="text-sm font-semibold">Confirm vehicle payment received</p>
                                                 <p className="text-xs text-[var(--text-muted)]">
-                                                    Once the buyer has paid you directly and the full £{winningBid.toLocaleString('en-GB')} has cleared, confirm receipt to unlock the handover upload. CarMazium does not collect or verify the vehicle payment.
+                                                    Arrange the inspection with your buyer first. After the buyer pays you directly and the full £{winningBid.toLocaleString('en-GB')} has cleared, confirm receipt. CarMazium does not collect or verify the vehicle payment.
                                                 </p>
                                                 {fundsError[auction.id] && (
                                                     <p role="alert" className="text-sm text-red-400">{fundsError[auction.id]}</p>
@@ -1220,7 +1220,7 @@ function SellerAuctionsPage() {
                                         ) : (
                                             <div className="space-y-3">
                                                 <div className="flex items-center gap-2 text-xs text-emerald-400">
-                                                    <CheckCircle size={14} /> Vehicle funds confirmed — handover upload unlocked
+                                                    <CheckCircle size={14} /> Vehicle funds confirmed — upload proof after the vehicle is handed over
                                                 </div>
                                                 <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-[var(--text-muted)]">
                                                     <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
@@ -1254,7 +1254,7 @@ function SellerAuctionsPage() {
                                                     )}
                                                     <div className="text-center">
                                                         <p className="text-sm font-bold">
-                                                            {isUploading ? "Uploading proof..." : "Upload Handover Proof"}
+                                                            {isUploading ? "Uploading proof..." : stage === "CORRECT_PROOF" ? "Upload Corrected Handover Proof" : "Upload Handover Proof"}
                                                         </p>
                                                         <p className="text-xs text-[var(--text-muted)] mt-0.5">
                                                             {isUploading ? "Please wait" : "JPG, PNG or PDF · Click or drag to upload"}
