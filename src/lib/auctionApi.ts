@@ -114,6 +114,7 @@ export interface Auction {
     winnerId: string | null;
     winningBidAmount: string | number | null;
     buyerFeePaid: boolean;
+    sellerFundsConfirmedAt?: string | null;
     handoverProofUrl: string | null;
     handoverSubmittedAt: string | null;
     sellerBonusReleased: boolean;

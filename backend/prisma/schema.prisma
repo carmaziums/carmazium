@@ -1023,6 +1023,13 @@ model Auction {
   wonAt                   DateTime?
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
+  // The seller attests that the vehicle price was paid directly to them;
+  // this is not a platform-collected or bank-verified payment.
+  sellerFundsConfirmedAt        DateTime?
+  sellerFundsConfirmedById      String? // Actual actor, including dealership staff
+  // Legacy submitted proofs are grandfathered without falsely attributing
+  // a seller confirmation. All new auctions default to requiring it.
+  sellerFundsConfirmationRequired Boolean @default(true)
   handoverProofUrl        String? // Legacy PUBLIC bucket URL — still written by released mobile clients
   handoverProofPath       String? // Object key in the private `auction-handover-documents` bucket
   handoverSubmittedAt     DateTime?

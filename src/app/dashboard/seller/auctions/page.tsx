@@ -383,6 +383,8 @@ function SellerAuctionsPage() {
     // ── Handover proof upload ─────────────────────────────────────────────────
     const [handoverUploading, setHandoverUploading] = React.useState<string | null>(null)
     const [handoverDone, setHandoverDone] = React.useState<Set<string>>(new Set())
+    const [confirmingFunds, setConfirmingFunds] = React.useState<string | null>(null)
+    const [fundsError, setFundsError] = React.useState<Record<string, string>>({})
     const [handoverError, setHandoverError] = React.useState<Record<string, string>>({})
     const [cancelSaleAuction, setCancelSaleAuction] = React.useState<{ listingId: string; title: string } | null>(null)
 
@@ -395,6 +397,25 @@ function SellerAuctionsPage() {
             setHandoverDone(prev => new Set([...prev, ...submittedIds]))
         }
     }, [auctions])
+
+    async function handleFundsConfirmation(auction: Auction) {
+        if (!window.confirm(
+            `Confirm you have received £${Number(auction.winningBidAmount).toLocaleString('en-GB')} directly from the winning buyer? Only confirm after the funds have actually cleared in your account.`
+        )) return
+        setConfirmingFunds(auction.id)
+        setFundsError(prev => ({ ...prev, [auction.id]: "" }))
+        try {
+            await apiClient(`/auctions/${auction.id}/seller-funds-confirmation`, {
+                method: 'POST',
+                body: JSON.stringify({ confirmed: true }),
+            })
+            await fetchAuctions()
+        } catch (err: any) {
+            setFundsError(prev => ({ ...prev, [auction.id]: err?.message || "Confirmation failed. Please try again." }))
+        } finally {
+            setConfirmingFunds(null)
+        }
+    }
 
     async function handleHandoverUpload(auctionId: string, file: File) {
         setHandoverUploading(auctionId)
@@ -474,10 +495,10 @@ function SellerAuctionsPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-amber-300 text-base">
-                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} waiting on you
+                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} to complete
                                 </p>
                                 <p className="text-sm text-amber-300/80 mt-0.5">
-                                    Upload handover proof to get your £100 bonus released.
+                                    Check the buyer fee, confirm the vehicle payment and upload handover proof to receive your £100 bonus.
                                 </p>
                             </div>
                             <ChevronRight size={18} className="text-amber-400 shrink-0" />
@@ -1170,8 +1191,30 @@ function SellerAuctionsPage() {
                                                     <p className="text-xs text-emerald-400/70">Your £100 bonus is pending verification — we'll notify you once released.</p>
                                                 </div>
                                             </div>
+                                        ) : !auction.buyerFeePaid ? (
+                                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                                                Waiting for the winning dealer to pay or have their £125 buyer fee covered. Seller contact and handover will unlock afterward.
+                                            </div>
+                                        ) : !auction.sellerFundsConfirmedAt ? (
+                                            <div className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+                                                <p className="text-sm font-semibold">Confirm vehicle payment received</p>
+                                                <p className="text-xs text-[var(--text-muted)]">
+                                                    Once the buyer has paid you directly and the full £{winningBid.toLocaleString('en-GB')} has cleared, confirm receipt to unlock the handover upload. CarMazium does not collect or verify the vehicle payment.
+                                                </p>
+                                                {fundsError[auction.id] && (
+                                                    <p role="alert" className="text-sm text-red-400">{fundsError[auction.id]}</p>
+                                                )}
+                                                <Button type="button" disabled={confirmingFunds === auction.id}
+                                                    onClick={() => handleFundsConfirmation(auction)}
+                                                    className="bg-emerald-600 text-white hover:bg-emerald-700">
+                                                    {confirmingFunds === auction.id ? 'Saving confirmation...' : 'I confirm vehicle funds received'}
+                                                </Button>
+                                            </div>
                                         ) : (
                                             <div className="space-y-3">
+                                                <div className="flex items-center gap-2 text-xs text-emerald-400">
+                                                    <CheckCircle size={14} /> Vehicle funds confirmed — handover upload unlocked
+                                                </div>
                                                 <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 text-xs text-[var(--text-muted)]">
                                                     <Info size={13} className="text-amber-400 shrink-0 mt-0.5" />
                                                     <span>Upload a photo or document showing the vehicle was handed over — e.g. a signed receipt, photo with the buyer, or logbook transfer confirmation.</span>

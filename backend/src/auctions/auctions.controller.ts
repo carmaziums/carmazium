@@ -277,6 +277,26 @@ export class AuctionsController {
         return new StandardResponse({ declined: true });
     }
 
+    @Post(':id/seller-funds-confirmation')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Seller attests to having received the vehicle payment directly from the auction winner' })
+    @ApiResponse({ status: 200, description: 'Seller confirmation recorded before handover' })
+    @ApiResponse({ status: 400, description: 'Buyer fee unpaid, auction cancelled or handover already submitted' })
+    @ApiResponse({ status: 403, description: 'Seller or dealership inventory-management permission required' })
+    async confirmSellerFundsReceived(
+        @Param('id') id: string,
+        @Body('confirmed') confirmed: boolean,
+        @CurrentUser() user: any,
+    ) {
+        if (confirmed !== true) {
+            throw new BadRequestException('Explicit confirmation that the seller received the vehicle payment is required');
+        }
+        const result = await this.auctionsService.confirmSellerFundsReceived(id, user.id);
+        return new StandardResponse(result);
+    }
+
     @Post(':id/handover-proof')
     @UseGuards(SessionAuthGuard)
     @ApiCookieAuth()

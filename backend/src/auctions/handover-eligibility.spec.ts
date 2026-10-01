@@ -10,6 +10,9 @@ function makeAuction(overrides: Record<string, any> = {}) {
         winnerId: 'buyer-1',
         buyerFeePaid: true,
         buyerFeeTransactionId: 'txn-125',
+        sellerFundsConfirmedAt: new Date('2026-09-27T11:30:00.000Z'),
+        sellerFundsConfirmedById: 'seller-1',
+        sellerFundsConfirmationRequired: true,
         buyerRefusedAt: null,
         handoverProofPath: 'auction-1/proof.jpg',
         handoverProofUrl: null,
@@ -51,6 +54,7 @@ function makeHarness() {
             findMany: jest.fn().mockResolvedValue([]),
             count: jest.fn().mockResolvedValue(0),
             update: jest.fn().mockResolvedValue(makeAuction()),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         transaction: {
             findUnique: jest.fn().mockResolvedValue(makeFee()),
@@ -107,6 +111,101 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
             requireProof: true,
             requireUnapproved: true,
         })).resolves.toEqual(expect.objectContaining({ id: 'auction-1' }));
+    });
+
+    it('rejects approval and payout for a NEW handover without seller funds confirmation', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({ sellerFundsConfirmedAt: null }));
+        await expect(service.assertHandoverBusinessRules('auction-1', { requireProof: true }))
+            .rejects.toThrow(/confirm receiving the vehicle payment/i);
+    });
+
+    it('does not fabricate a seller confirmation for previously submitted legacy proofs', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            sellerFundsConfirmedAt: null,
+            sellerFundsConfirmedById: null,
+            sellerFundsConfirmationRequired: false,
+        }));
+        await expect(service.assertHandoverBusinessRules('auction-1', { requireProof: true }))
+            .resolves.toEqual(expect.objectContaining({ sellerFundsConfirmedAt: null }));
+        await expect(service.assertHandoverSubmissionEligibility('auction-1', 'seller-1'))
+            .rejects.toThrow(/already been submitted/i);
+    });
+
+    it('blocks even grandfathered auctions from submitting NEW proof without real confirmation', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+            sellerFundsConfirmedAt: null,
+            sellerFundsConfirmationRequired: false,
+        }));
+        await expect(service.assertHandoverSubmissionEligibility('auction-1', 'seller-1'))
+            .rejects.toThrow(/confirm that you received/i);
+    });
+
+    it('records explicit seller attestation only after payment and before proof, with the acting staff identity', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            sellerFundsConfirmedAt: null,
+            sellerFundsConfirmedById: null,
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+        }));
+        await service.confirmSellerFundsReceived('auction-1', 'seller-1');
+        expect(prisma.auction.updateMany).toHaveBeenCalledWith({
+            where: expect.objectContaining({
+                id: 'auction-1',
+                winnerId: 'buyer-1',
+                buyerFeePaid: true,
+                buyerFeeTransactionId: 'txn-125',
+                sellerFundsConfirmedAt: null,
+                handoverSubmittedAt: null,
+            }),
+            data: {
+                sellerFundsConfirmedAt: expect.any(Date),
+                sellerFundsConfirmedById: 'seller-1',
+            },
+        });
+    });
+
+    it('prevents seller funds confirmation without a completed fee and after proof submission', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({
+            buyerFeePaid: false,
+            sellerFundsConfirmedAt: null,
+            handoverProofPath: null,
+            handoverSubmittedAt: null,
+        }));
+        await expect(service.confirmSellerFundsReceived('auction-1', 'seller-1'))
+            .rejects.toThrow(/buyer fee must be paid/i);
+        prisma.auction.findUnique.mockResolvedValueOnce(makeAuction({ sellerFundsConfirmedAt: null }));
+        await expect(service.confirmSellerFundsReceived('auction-1', 'seller-1'))
+            .rejects.toThrow(/before handover proof/i);
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('makes duplicate seller confirmations idempotent and rejects concurrent state changes', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            handoverProofPath: null,
+            handoverProofUrl: null,
+            handoverSubmittedAt: null,
+        }));
+        await service.confirmSellerFundsReceived('auction-1', 'seller-1');
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+        prisma.auction.findUnique.mockResolvedValue(makeAuction({
+            sellerFundsConfirmedAt: null,
+            handoverSubmittedAt: null,
+            handoverProofPath: null,
+            handoverProofUrl: null,
+        }));
+        prisma.auction.updateMany.mockResolvedValue({ count: 0 });
+        await expect(service.confirmSellerFundsReceived('auction-1', 'seller-1'))
+            .rejects.toThrow(/auction state changed/i);
     });
 
     it('accepts an admin-granted £0 purchase waiver as a valid buyer-fee record', async () => {
@@ -435,6 +534,7 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
                 buyerFeeTransactionId: 'txn-125',
                 buyerRefusedAt: null,
                 sellerBonusReleased: false,
+                sellerFundsConfirmedAt: preSubmission.sellerFundsConfirmedAt,
                 handoverSubmittedAt: null,
             }),
         }));
