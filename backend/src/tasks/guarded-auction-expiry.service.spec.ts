@@ -40,7 +40,14 @@ function harness(options: { linked?: boolean; fees?: any[]; patch?: Record<strin
         return { count: 1 };
       }),
     },
-    transaction: { findMany: jest.fn().mockResolvedValue(options.fees || []) },
+    // Model Prisma's createdAt >= wonAt query to keep test fixtures faithful
+    // when a listing and even its winning dealer are reused in a later run.
+    transaction: { findMany: jest.fn(async ({ where }: any) =>
+      (options.fees || []).filter((fee: any) =>
+        fee.createdAt instanceof Date &&
+        fee.createdAt >= where.createdAt.gte &&
+        fee.status !== 'REFUNDED'
+      )) },
     listing: { update: jest.fn().mockResolvedValue({}) },
     sale: { deleteMany: jest.fn().mockResolvedValue({ count: options.saleCount ?? 1 }) },
     sellerProfile: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
@@ -117,14 +124,38 @@ describe('Guarded 72-hour auction expiry integration', () => {
   });
 
   it('defers expiration while an eligible completed £125 fee is waiting for webhook reconciliation', async () => {
-    const h = harness({ fees: [{ id:'txn-1', status:'COMPLETED', amount:125 }] });
+    const h = harness({ fees: [{ id:'txn-1', status:'COMPLETED', amount:125, createdAt:new Date('2026-10-01T02:00:00Z') }] });
     expect(await h.service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
     expect(h.tx.auction.updateMany).not.toHaveBeenCalled();
     expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
   });
 
   it('defers an unresolved pending checkout instead of risking cancellation during capture', async () => {
-    const h = harness({ fees: [{ id:'txn-1', status:'PENDING', amount:125 }] });
+    const h = harness({ fees: [{ id:'txn-1', status:'PENDING', amount:125, createdAt:new Date('2026-10-01T02:00:00Z') }] });
+    expect(await h.service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
+    expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('expires a later win despite an older £125 fee or abandoned pending checkout for the same dealer', async () => {
+    const h = harness({ fees: [
+      { id:'prior-paid', status:'COMPLETED', amount:125, createdAt:new Date('2026-09-30T05:00:00Z') },
+      { id:'prior-checkout', status:'PENDING', amount:125, createdAt:new Date('2026-09-30T06:00:00Z') },
+    ] });
+    expect(await h.service.revertUnpaidWins(NOW)).toEqual({ reverted: 1 });
+    expect(h.tx.transaction.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        listingId:'listing-1', userId:'buyer-1', type:'COMMISSION',
+        deletedAt:null, createdAt:{ gte:new Date('2026-10-01T01:00:00Z') },
+      }),
+    }));
+    expect(h.tx.sale.deleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds a new win when its own pending checkout exists even alongside an old checkout', async () => {
+    const h = harness({ fees: [
+      { id:'prior-checkout', status:'PENDING', amount:125, createdAt:new Date('2026-09-30T06:00:00Z') },
+      { id:'current-checkout', status:'PENDING', amount:125, createdAt:new Date('2026-10-01T03:00:00Z') },
+    ] });
     expect(await h.service.revertUnpaidWins(NOW)).toEqual({ reverted: 0 });
     expect(h.tx.sale.deleteMany).not.toHaveBeenCalled();
   });
