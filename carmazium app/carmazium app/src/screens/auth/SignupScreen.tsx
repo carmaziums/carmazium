@@ -158,7 +158,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               Create your <Text style={styles.titleRed}>account.</Text>
             </Text>
             <Text style={styles.subtitleText}>
-              Free forever. Pay only when you list above the free tier.
+              Auction listing is free. Retail listing is £1. Choose the account that matches how you will use CarMazium.
             </Text>
           </View>
 
@@ -176,7 +176,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.roleRow}>
                 {([
                   { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
-                  { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade, bid and add business services', icon: 'business-outline' as const },
+                  { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade vehicles; bidding and services require approval', icon: 'business-outline' as const },
                 ]).map(opt => {
                   const selected = role === opt.value;
                   return (
@@ -202,7 +202,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               </View>
               {role === 'DEALER' && (
                 <Text style={styles.roleNote}>
-                  Your Partner Account uses one login for your verified business activity across CarMazium.
+                  Complete business/KYC verification before dealer-auction bidding. Additional service capabilities may require separate approval.
                 </Text>
               )}
             </View>
