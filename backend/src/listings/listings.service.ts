@@ -461,7 +461,7 @@ export class ListingsService {
                 liveUkAttempts,
                 blendedMarketAttempts: 0,
                 liveSources: [...liveSourceDomains].sort(),
-                valuationStrategy: 'LIVE',
+                    valuationStrategy: 'LIVE',
             };
         } else {
             // Only after all five live attempts return no usable current-market
@@ -504,7 +504,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
-                valuationStrategy: 'BLENDED',
+                    valuationStrategy: 'BLENDED',
                 };
             } else if (usableLiveComparables.length > 0) {
                 // There are no CarMazium marketplace signals to blend with, so
@@ -528,7 +528,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
-                valuationStrategy: 'LIVE',
+                    valuationStrategy: 'LIVE',
                 };
             } else {
                 // Only after five live attempts AND five blended attempts have
@@ -548,7 +548,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
-                valuationStrategy: 'FALLBACK',
+                    valuationStrategy: 'FALLBACK',
                 };
             }
         }
@@ -753,8 +753,18 @@ export class ListingsService {
             },
         });
         const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (recent) return recent;
+        if (
+            recent
+            && recent.marketEvidence?.valuationStrategy !== 'FALLBACK'
+            && recent.source !== 'CARMAZIUM_MODEL'
+            && recent.source !== 'CARMAZIUM_MODEL_PROFILE'
+        ) {
+            return recent;
+        }
 
+        // A fallback from a different journey is provisional. Do not let that
+        // cached model result win over a fresh live-market search that has just
+        // succeeded for this request.
         // Prisma JSON fields must contain plain JSON values; strip optional
         // undefined properties before persisting the immutable base snapshot.
         const serializableBase = JSON.parse(
