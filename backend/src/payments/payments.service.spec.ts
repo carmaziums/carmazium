@@ -1103,6 +1103,22 @@ describe('PaymentsService — createCheckoutSession (F6: server-side amount, sam
         },
     );
 
+    it('refuses a new hosted checkout after the authoritative 72-hour win deadline', async () => {
+        prisma.listing.findUnique.mockResolvedValue({
+            id: 'listing-1', title: 'BMW M3', price: 30000, deletedAt: null,
+        });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1', status: 'ENDED', winnerId: 'user-1',
+            buyerFeePaid: false,
+            wonAt: new Date(Date.now() - 73 * 60 * 60 * 1000),
+        });
+        await expect(
+            service.createCheckoutSession('listing-1', 'user-1', 125, 'COMMISSION'),
+        ).rejects.toThrow(/72-hour buyer fee deadline/i);
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+    });
+
     it('charges the fixed £125 auction buyer fee for COMMISSION regardless of client-supplied amount', async () => {
         prisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', title: 'BMW M3', price: 30000, make: 'BMW', model: 'M3', year: 2022, images: [], deletedAt: null });
         prisma.auction.findFirst.mockResolvedValue({
