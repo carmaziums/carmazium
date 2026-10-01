@@ -58,7 +58,7 @@ describe('SimpleDmsService partner data boundary', () => {
     const { service, prisma } = harness();
     const result = await service.list(1, 25);
     expect(result.pagination).toEqual({ page: 1, limit: 25, total: 1, hasMore: false });
-    expect(result.auctions[0].url).toBe('https://carmazium.com/auctions/live/auction-1');
+    expect(result.auctions[0].url).toBe('https://carmazium.com/auctions/live/auction-1?utm_source=simpledms&utm_medium=partner_api');
     expect(result.auctions[0].images).toEqual([]);
     expect(result.auctions[0].vehicle).not.toHaveProperty('registration');
     expect(result.auctions[0].auction).not.toHaveProperty('currentBidGbp');
