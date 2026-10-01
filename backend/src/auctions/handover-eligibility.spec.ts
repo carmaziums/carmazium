@@ -553,4 +553,99 @@ describe('AuctionsService handover and seller-bonus eligibility', () => {
         }));
         expect(notificationsService.create).toHaveBeenCalledTimes(1);
     });
+    it.each(['ADMIN', 'SALES_AGENT'] as const)(
+        'records %s staff as the real actor for canonical-dealership funds confirmation',
+        async (role) => {
+            const { service, prisma } = makeHarness();
+            prisma.auction.findUnique.mockResolvedValue(makeAuction({
+                sellerFundsConfirmedAt: null,
+                sellerFundsConfirmedById: null,
+                handoverSubmittedAt: null,
+                handoverProofPath: null,
+                handoverProofUrl: null,
+            }));
+            prisma.dealerProfile.findUnique.mockResolvedValue(null);
+            prisma.dealerStaff.findFirst.mockResolvedValue({
+                role,
+                dealerProfile: {
+                    id: 'dealer-1', userId: 'seller-1', isVerified: true,
+                },
+            });
+            await service.confirmSellerFundsReceived('auction-1', 'authorised-staff-1');
+            expect(prisma.auction.updateMany).toHaveBeenCalledWith({
+                where: expect.objectContaining({
+                    id: 'auction-1',
+                    buyerFeePaid: true,
+                    buyerFeeTransactionId: 'txn-125',
+                    sellerFundsConfirmedAt: null,
+                    handoverSubmittedAt: null,
+                }),
+                data: {
+                    sellerFundsConfirmedAt: expect.any(Date),
+                    sellerFundsConfirmedById: 'authorised-staff-1',
+                },
+            });
+        },
+    );
+
+    it('blocks read-only finance staff from confirming seller funds or uploading evidence', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'FINANCE_MANAGER',
+            dealerProfile: { id: 'dealer-1', userId: 'seller-1', isVerified: true },
+        });
+        await expect(service.confirmSellerFundsReceived('auction-1', 'finance-staff-1'))
+            .rejects.toThrow(/does not allow auction changes/i);
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('blocks another dealership from confirming payment against this seller auction', async () => {
+        const { service, prisma } = makeHarness();
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'ADMIN',
+            dealerProfile: { id: 'unrelated-dealer', userId: 'different-owner', isVerified: true },
+        });
+        await expect(service.confirmSellerFundsReceived('auction-1', 'unrelated-staff'))
+            .rejects.toThrow(/do not own this auction/i);
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('accepts corrected private proof from authorised staff without changing the paid buyer fee', async () => {
+        const { service, prisma } = makeHarness();
+        const corrected = makeAuction({
+            handoverProofPath: null, handoverProofUrl: null,
+            handoverSubmittedAt: null,
+            handoverRejectedAt: new Date('2026-10-01T14:00:00Z'),
+            handoverRejectionReason: 'Signed handover form was unclear',
+        });
+        prisma.auction.findUnique.mockResolvedValue(corrected);
+        prisma.dealerProfile.findUnique.mockResolvedValue(null);
+        prisma.dealerStaff.findFirst.mockResolvedValue({
+            role: 'SALES_AGENT',
+            dealerProfile: { id: 'dealer-1', userId: 'seller-1', isVerified: true },
+        });
+        await service.submitHandoverProof(
+            'auction-1', 'sales-agent-1', { proofPath: 'auction-1/new-private-proof.jpg' },
+        );
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where: expect.objectContaining({
+                id: 'auction-1', buyerFeePaid: true,
+                buyerFeeTransactionId: 'txn-125',
+                sellerFundsConfirmedAt: corrected.sellerFundsConfirmedAt,
+                handoverSubmittedAt: null,
+            }),
+            data: expect.objectContaining({
+                handoverProofPath: 'auction-1/new-private-proof.jpg',
+                handoverProofUrl: null,
+                handoverRejectedAt: null,
+                handoverRejectionReason: null,
+            }),
+        });
+        const update = prisma.auction.update.mock.calls[0][0];
+        expect(update.data).not.toHaveProperty('buyerFeePaid');
+        expect(update.data).not.toHaveProperty('buyerFeeTransactionId');
+    });
+
 });
