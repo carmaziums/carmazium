@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { AuctionsService } from '../auctions/auctions.service';
+import { GuardedAuctionExpiryService } from './guarded-auction-expiry.service';
 import { BUYER_FEE_GRACE_MS } from '../auctions/buyer-fee-deadline';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -10,7 +10,7 @@ import { EmailService } from '../email/email.service';
 export class UnpaidAuctionFeeExpiryService {
     private readonly logger = new Logger(UnpaidAuctionFeeExpiryService.name);
     constructor(
-        private readonly auctionsService: AuctionsService,
+        private readonly auctionsService: GuardedAuctionExpiryService,
         private readonly prisma: PrismaService,
         private readonly notifications: NotificationsService,
         private readonly email: EmailService,
@@ -88,7 +88,7 @@ export class UnpaidAuctionFeeExpiryService {
         }
     }
 
-    // Keep the original 72-hour expiry and cancellation logic unchanged.
+    // Hourly expiry now uses an atomic, lock-revalidated worker.
     @Cron('0 * * * *')
     async handleUnpaidAuctionFeeExpiry(): Promise<void> {
         try {
