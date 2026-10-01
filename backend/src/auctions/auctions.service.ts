@@ -270,6 +270,12 @@ export class AuctionsService {
         }
 
         if (options.requireProof) {
+            // Existing, already-submitted handovers are explicitly grandfathered by
+            // the migration. Never pretend those sellers confirmed a payment.
+            // Every new handover must carry the seller's actual confirmation.
+            if (auction.sellerFundsConfirmationRequired !== false && !auction.sellerFundsConfirmedAt) {
+                throw new BadRequestException('Seller must confirm receiving the vehicle payment before handover');
+            }
             if (!auction.handoverSubmittedAt || !this.isStructurallyValidHandoverProof(auction)) {
                 throw new BadRequestException('A valid handover proof must be submitted before approval or payout');
             }
@@ -295,6 +301,52 @@ export class AuctionsService {
         return auction;
     }
 
+    /**
+     * Seller's explicit attestation that the vehicle purchase price was paid to
+     * them directly. CarMazium does NOT collect or independently verify this
+     * transfer. Capture the acting account for dealership staff audit trails.
+     */
+    async confirmSellerFundsReceived(auctionId: string, userId: string): Promise<any> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
+        const auction = await this.assertHandoverBusinessRules(auctionId, {
+            expectedSellerId: sellerId,
+            requireUnapproved: true,
+        });
+        if (auction.handoverSubmittedAt || auction.handoverProofPath || auction.handoverProofUrl) {
+            throw new BadRequestException('Funds confirmation must be recorded before handover proof');
+        }
+        if (auction.sellerFundsConfirmedAt) {
+            return this.prisma.auction.findUnique({ where: { id: auctionId } });
+        }
+
+        const confirmedAt = new Date();
+        const result = await this.prisma.auction.updateMany({
+            where: {
+                id: auctionId,
+                deletedAt: null,
+                status: 'ENDED',
+                winnerId: auction.winnerId,
+                buyerFeePaid: true,
+                buyerFeeTransactionId: auction.buyerFeeTransactionId,
+                buyerRefusedAt: null,
+                sellerBonusReleased: false,
+                sellerFundsConfirmedAt: null,
+                handoverSubmittedAt: null,
+                handoverProofPath: null,
+                handoverProofUrl: null,
+            },
+            data: {
+                sellerFundsConfirmedAt: confirmedAt,
+                sellerFundsConfirmedById: userId,
+            },
+        });
+        if (result.count !== 1) {
+            throw new ConflictException('The auction state changed. Refresh before confirming the vehicle payment.');
+        }
+
+        return this.prisma.auction.findUnique({ where: { id: auctionId } });
+    }
+
     async assertHandoverSubmissionEligibility(auctionId: string, userId: string): Promise<any> {
         const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
         const auction = await this.assertHandoverBusinessRules(auctionId, {
@@ -303,6 +355,11 @@ export class AuctionsService {
         });
         if (auction.handoverProofUrl || auction.handoverProofPath || auction.handoverSubmittedAt) {
             throw new BadRequestException('Handover proof has already been submitted');
+        }
+        // Even legacy auctions that had older proofs rejected must obtain a
+        // genuine seller attestation before uploading any NEW handover proof.
+        if (!auction.sellerFundsConfirmedAt) {
+            throw new BadRequestException('Confirm that you received the vehicle payment before submitting handover proof');
         }
         return auction;
     }
@@ -2362,6 +2419,7 @@ export class AuctionsService {
                 buyerFeeTransactionId: auction.buyerFeeTransactionId,
                 buyerRefusedAt: null,
                 sellerBonusReleased: false,
+                sellerFundsConfirmedAt: auction.sellerFundsConfirmedAt,
                 handoverSubmittedAt: null,
             },
             data: {
