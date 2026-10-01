@@ -68,10 +68,17 @@ export class GuardedAuctionExpiryService {
               listingId: current.listingId,
               userId: current.winnerId!,
               type: 'COMMISSION', deletedAt: null,
+              // Prior wins can share both this listing ID and winner ID.
+              // An old payment or abandoned Checkout cannot hold a new win.
+              createdAt: { gte: current.wonAt! },
             },
-            select: { id: true, status: true, amount: true, description: true },
+            select: {
+              id: true, status: true, amount: true, description: true,
+              createdAt: true,
+            },
           });
-          if (hasCompletedBuyerFee(fees) || hasUnresolvedCheckout(fees)) {
+          if (hasCompletedBuyerFee(fees, current.wonAt!) ||
+              hasUnresolvedCheckout(fees, current.wonAt!)) {
             this.logger.warn(
               'Deferred expiry for auction ' + id +
               ': a completed fee/grant or unresolved checkout needs reconciliation.',

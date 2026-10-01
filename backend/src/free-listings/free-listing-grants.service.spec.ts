@@ -228,6 +228,49 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
+    it('does not let an old completed fee prevent a valid current-run free-purchase grant', async () => {
+        const wonAt = new Date('2026-09-14T12:00:00.000Z');
+        prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow()]);
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-1', listingId: 'listing-1', winnerId: 'user-1',
+            wonAt, status: 'ENDED', deletedAt: null,
+            buyerFeePaid: false, buyerFeeTransactionId: null,
+        });
+        // The Prisma query must exclude an older completed £125 fee or £0 grant.
+        prisma.transaction.findFirst.mockResolvedValue(null);
+        prisma.transaction.create.mockResolvedValue({ id: 'current-grant-fee' });
+        prisma.$executeRaw.mockResolvedValue(1);
+        expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1','user-1')).toBe(true);
+        expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
+            where: {
+                listingId: 'listing-1', userId:'user-1', type:'COMMISSION',
+                status:'COMPLETED', deletedAt:null, createdAt:{gte:wonAt},
+            },
+            select:{id:true},
+        });
+        expect(prisma.auction.update).toHaveBeenCalledWith({
+            where:{id:'auction-1'},
+            data:{buyerFeePaid:true,buyerFeeTransactionId:'current-grant-fee'},
+        });
+    });
+
+    it('does not duplicate an already completed fee from the current auction run', async () => {
+        const wonAt = new Date('2026-09-14T12:00:00.000Z');
+        prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow()]);
+        prisma.auction.findUnique.mockResolvedValue({
+            id:'auction-1',listingId:'listing-1',winnerId:'user-1',
+            wonAt,status:'ENDED',deletedAt:null,buyerFeePaid:false,
+            buyerFeeTransactionId:null,
+        });
+        prisma.transaction.findFirst.mockResolvedValue({id:'current-paid-fee'});
+        expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1','user-1')).toBe(false);
+        expect(prisma.transaction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where:expect.objectContaining({createdAt:{gte:wonAt}}),
+        }));
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     it('does not apply a purchase grant retroactively to an auction won before the grant started', async () => {
         prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow({
             createdAt: new Date('2026-09-14T13:00:00.000Z'),
