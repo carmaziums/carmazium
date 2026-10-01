@@ -67,6 +67,7 @@ function buildPrismaMock() {
             findUnique: jest.fn(),
             findFirst: jest.fn(),
             update: jest.fn(),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         $transaction: jest.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg(prismaTxProxy))),
     };
@@ -303,14 +304,16 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
     });
 
     it('heals a delayed native auction-fee webhook and marks the ended auction paid', async () => {
-        prisma.transaction.findUnique.mockResolvedValue({
-            id: 'txn-commission',
-            userId: 'buyer-1',
-            listingId: 'listing-auction',
-            type: 'COMMISSION',
-            status: 'PENDING',
-            stripePaymentId: 'pi_commission',
-        });
+        prisma.transaction.findUnique
+            .mockResolvedValueOnce({
+                id: 'txn-commission', userId: 'buyer-1', listingId: 'listing-auction',
+                type: 'COMMISSION', status: 'PENDING', stripePaymentId: 'pi_commission',
+            })
+            .mockResolvedValueOnce({
+                id: 'txn-commission', userId: 'buyer-1', listingId: 'listing-auction',
+                type: 'COMMISSION', status: 'COMPLETED', amount: 125,
+                stripePaymentId: 'pi_commission', deletedAt: null,
+            });
         mockPaymentIntentsRetrieve.mockResolvedValue({
             id: 'pi_commission',
             status: 'succeeded',
@@ -338,8 +341,12 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
                 stripePaymentId: 'pi_commission',
             },
         });
-        expect(prisma.auction.update).toHaveBeenCalledWith({
-            where: { id: 'auction-1' },
+        expect(prisma.auction.updateMany).toHaveBeenCalledWith({
+            where: {
+                listingId: 'listing-auction', deletedAt: null,
+                status: 'ENDED', winnerId: 'buyer-1', buyerFeePaid: false,
+                buyerFeeTransactionId: null,
+            },
             data: {
                 buyerFeePaid: true,
                 buyerFeeTransactionId: 'txn-commission',
