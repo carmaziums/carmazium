@@ -787,6 +787,61 @@ export async function getAdminListing(id: string) {
   return result.data;
 }
 
+// Read-only legacy auction reconciliation. Never offer payment/payout mutation
+// controls based on historic flags, Stripe references or guessed win times.
+export type HistoricalAuctionReviewReason =
+  | 'CANCELLED_OR_UNWON_APPROVAL'
+  | 'SALE_MISMATCH'
+  | 'BUYER_FEE_NOT_VERIFIED'
+  | 'BUYER_FEE_FLAG_MISMATCH'
+  | 'UNSAFE_MISSING_WIN_TIMESTAMP';
+
+export interface HistoricalAuctionReviewCase {
+  auctionId: string;
+  listingId: string;
+  vehicleTitle: string;
+  auctionDate: string;
+  status: string;
+  hasWinner: boolean;
+  hasWonAt: boolean;
+  legacyWinProtected: boolean;
+  saleMatchesWinningRecord: boolean;
+  buyerFeePaid: boolean;
+  hasBuyerFeeTransactionLink: boolean;
+  handoverSubmitted: boolean;
+  sellerBonusApproved: boolean;
+  manualSellerPayoutRecorded: boolean;
+  stripeSellerTransferRecorded: boolean;
+  reasons: HistoricalAuctionReviewReason[];
+  transactions: {
+    completedValidBuyerFee: number;
+    completedOtherCommission: number;
+    pendingCommission: number;
+    failedCommission: number;
+    refundedCommission: number;
+    stripeReferencePresent: boolean;
+    records: { id: string; status: string; amount: string; matchesWinner: boolean; hasStripeReference: boolean }[];
+  };
+}
+
+export interface HistoricalAuctionReconciliation {
+  generatedAt: string;
+  readOnly: true;
+  historicalWonAtPolicy: string;
+  protectedLegacyWinCount: number;
+  legacyWinMismatchCount: number;
+  postFeatureMissingWinCount: number;
+  manualReviewCount: number;
+  cases: HistoricalAuctionReviewCase[];
+}
+
+export async function getHistoricalAuctionReconciliation(): Promise<HistoricalAuctionReconciliation> {
+  const result = await apiClient<{ data: HistoricalAuctionReconciliation }>(
+    '/admin/auctions/historical-reconciliation',
+  );
+  return result.data;
+}
+
 export async function getAdminAuctions(page = 1, limit = 20) {
   const result = await apiClient<any>(`/admin/auctions?page=${page}&limit=${limit}`);
   return result;

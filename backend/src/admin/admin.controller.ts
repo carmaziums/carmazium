@@ -193,6 +193,12 @@ export class AdminController {
 
     // ── Auctions ──────────────────────────────────────────────────────────────
 
+    @Get('auctions/historical-reconciliation')
+    @ApiOperation({ summary: 'Read-only admin historical auction/fee/payout reconciliation; never modifies financial records' })
+    async getHistoricalAuctionReconciliation(): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.getHistoricalAuctionReconciliation());
+    }
+
     @Get('auctions')
     @ApiOperation({ summary: 'List all auctions' })
     @ApiQuery({ name: 'page', required: false })
