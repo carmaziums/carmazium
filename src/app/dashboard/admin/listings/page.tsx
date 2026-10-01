@@ -64,16 +64,17 @@ export default function AdminListingsPage() {
     const [hpiUploadTarget, setHpiUploadTarget] = React.useState<{ id: string; title: string; hasPdf: boolean } | null>(null)
 
     React.useEffect(() => {
-        // Enforce Admin Access
-        if (!authLoading) {
-            if (!user) {
-                router.replace('/auth/login')
-                return
-            }
-            if (profile?.role !== 'ADMIN') {
-                router.replace('/dashboard')
-                return
-            }
+        // Enforce Admin Access without treating a transient "profile is still
+        // hydrating" state as a role failure. On mobile, an auth/token refresh
+        // can briefly leave user present while profile is null.
+        if (authLoading) return
+        if (!user) {
+            router.replace('/auth/login')
+            return
+        }
+        if (!profile) return
+        if (profile.role !== 'ADMIN') {
+            router.replace('/dashboard')
         }
     }, [user, profile, authLoading, router])
 
@@ -127,7 +128,10 @@ export default function AdminListingsPage() {
             setExpandedId(null)
             setSuccessMsg('Listing approved and is now live.')
         } catch (err: any) {
-            setActionError(err.message || 'Failed to approve listing')
+            const message = err.message === 'AUTH_REDIRECT'
+                ? 'Your secure admin session needs to be refreshed. Please try the approval again.'
+                : (err.message || 'Failed to approve listing')
+            setActionError(message)
         } finally {
             setActionLoading(null)
         }
@@ -404,6 +408,16 @@ export default function AdminListingsPage() {
                                                                     >
                                                                         {l.hpiReport.pdfUploadedAt ? 'Replace PDF' : 'Edit report'}
                                                                     </button>
+                                                                </div>
+                                                            )}
+
+                                                            {actionError && actionLoading !== l.id && expandedId === l.id && (
+                                                                <div
+                                                                    role="alert"
+                                                                    aria-live="polite"
+                                                                    className="mt-3 p-3 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 text-xs leading-relaxed"
+                                                                >
+                                                                    {actionError}
                                                                 </div>
                                                             )}
 
