@@ -369,6 +369,7 @@ export class ListingsService {
         let latestLiveMarketCheckedAt: string | undefined;
         let sawLiveMarketResponse = false;
         let rawLiveUkComparables = 0;
+        const liveSourceDomains = new Set<string>();
         let liveUkAttempts = 0;
         let blendedMarketAttempts = 0;
 
@@ -381,6 +382,9 @@ export class ListingsService {
                 rawLiveUkComparables,
                 result.rawComparableCount ?? 0,
             );
+            for (const domain of result.sourceDomains ?? []) {
+                if (domain) liveSourceDomains.add(domain);
+            }
 
             for (const comparable of result.comparables ?? []) {
                 const key = [
@@ -399,10 +403,19 @@ export class ListingsService {
         };
 
         const runMarketSearchAttempt = async (phase: 'LIVE' | 'BLENDED') => {
-            if (phase === 'LIVE') liveUkAttempts += 1;
-            else blendedMarketAttempts += 1;
+            const attempt = phase === 'LIVE'
+                ? (liveUkAttempts += 1)
+                : (blendedMarketAttempts += 1);
 
-            const result = await this.getLiveUkMarketComparables(baseValuationInput);
+            // Search with the full first-request vehicle description so the web
+            // search can locate the right stock (variant/fuel/transmission), but
+            // calculate/freeze the market base separately. Later seller edits
+            // still adjust the frozen base deterministically and do not trigger
+            // a new market search.
+            const result = await this.getLiveUkMarketComparables(
+                specificationInput,
+                { phase, attempt },
+            );
             mergeLiveMarketResult(result);
             return result;
         };
@@ -447,7 +460,8 @@ export class ListingsService {
                 ),
                 liveUkAttempts,
                 blendedMarketAttempts: 0,
-                valuationStrategy: 'LIVE',
+                liveSources: [...liveSourceDomains].sort(),
+                    valuationStrategy: 'LIVE',
             };
         } else {
             // Only after all five live attempts return no usable current-market
@@ -489,6 +503,7 @@ export class ListingsService {
                     ),
                     liveUkAttempts,
                     blendedMarketAttempts,
+                    liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'BLENDED',
                 };
             } else if (usableLiveComparables.length > 0) {
@@ -512,6 +527,7 @@ export class ListingsService {
                     ),
                     liveUkAttempts,
                     blendedMarketAttempts,
+                    liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'LIVE',
                 };
             } else {
@@ -531,6 +547,7 @@ export class ListingsService {
                     rawLiveUkComparables,
                     liveUkAttempts,
                     blendedMarketAttempts,
+                    liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'FALLBACK',
                 };
             }
@@ -659,6 +676,14 @@ export class ListingsService {
         const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
         if (!recent) return null;
 
+        if (
+            recent.marketEvidence?.valuationStrategy === 'FALLBACK'
+            || recent.source === 'CARMAZIUM_MODEL'
+            || recent.source === 'CARMAZIUM_MODEL_PROFILE'
+        ) {
+            return null;
+        }
+
         // Give this new journey its own immutable copy. The cross-journey
         // vehicle cache may expire after 24h, but the journey itself must never
         // change value once the customer has received its base.
@@ -728,8 +753,18 @@ export class ListingsService {
             },
         });
         const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (recent) return recent;
+        if (
+            recent
+            && recent.marketEvidence?.valuationStrategy !== 'FALLBACK'
+            && recent.source !== 'CARMAZIUM_MODEL'
+            && recent.source !== 'CARMAZIUM_MODEL_PROFILE'
+        ) {
+            return recent;
+        }
 
+        // A fallback from a different journey is provisional. Do not let that
+        // cached model result win over a fresh live-market search that has just
+        // succeeded for this request.
         // Prisma JSON fields must contain plain JSON values; strip optional
         // undefined properties before persisting the immutable base snapshot.
         const serializableBase = JSON.parse(
@@ -778,6 +813,10 @@ export class ListingsService {
 
     private async getLiveUkMarketComparables(
         input: VehicleValuationInput,
+        context: {
+            phase: 'LIVE' | 'BLENDED';
+            attempt: number;
+        },
     ): Promise<LiveUkMarketSearchResult | null> {
         const apiKey = this.config.get<string>('OPENAI_API_KEY');
 
@@ -794,11 +833,13 @@ export class ListingsService {
                 model:
                     this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
                     || 'gpt-5.6-luna',
-                timeoutMs: 12_000,
+                timeoutMs: 18_000,
+                phase: context.phase,
+                attempt: context.attempt,
             });
         } catch (error: any) {
             this.logger.warn(
-                `Live UK valuation search failed for ${input.make} ${input.model}; continuing with fallback: ${error?.message || error}`,
+                `Live UK valuation search failed for ${input.make} ${input.model} (${context.phase} attempt ${context.attempt}); continuing with fallback: ${error?.message || error}`,
             );
             return null;
         }
