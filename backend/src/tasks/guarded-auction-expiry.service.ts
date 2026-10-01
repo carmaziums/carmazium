@@ -80,6 +80,7 @@ export class GuardedAuctionExpiryService {
 
           // This conditional claim covers changes from other request paths,
           // in addition to the pessimistic lock preventing duplicate workers.
+          const winnerId = current.winnerId!;
           const claimed = await tx.auction.updateMany({
             where: {
               id, status: 'ENDED', deletedAt: null,
@@ -100,7 +101,6 @@ export class GuardedAuctionExpiryService {
           if (claimed.count !== 1) return null;
 
           const listing = current.listing;
-          const winnerId = current.winnerId!;
           const linkedRetailId = listing.linkedListingId;
           await tx.listing.update({
             where: { id: listing.id },
