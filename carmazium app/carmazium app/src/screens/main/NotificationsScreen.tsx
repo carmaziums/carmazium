@@ -66,7 +66,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
   const insets = useSafeAreaInsets();
-  const role = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +106,12 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         markNotificationRead(n.id).catch(() => {});
       }
 
-      const target = await resolveMobileNotificationTarget(n, role);
+      const target = await resolveMobileNotificationTarget(n, accountRole);
       if (target) {
         navigation?.navigate(target.screen as never, target.params as never);
       }
     },
-    [navigation, role],
+    [navigation, accountRole],
   );
 
   const handleMarkAll = useCallback(async () => {
