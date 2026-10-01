@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException,
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
+import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
@@ -302,6 +303,10 @@ export class PaymentsService {
         }
         if (auction.buyerFeePaid) {
             throw new BadRequestException('The auction buyer fee has already been paid');
+        }
+        const deadline = buyerFeeDeadlineAt(auction);
+        if (deadline && new Date(deadline).getTime() <= Date.now()) {
+            throw new BadRequestException('This auction win has passed its 72-hour buyer fee deadline');
         }
         return { auction, buyerId };
     }
