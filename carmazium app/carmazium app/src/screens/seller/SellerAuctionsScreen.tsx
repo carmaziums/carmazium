@@ -90,6 +90,8 @@ interface AuctionItem {
   sellerFundsConfirmedAt?: string | null;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
+  handoverRejectedAt?: string | null;
+  handoverRejectionReason?: string | null;
   sellerBonusReleased?: boolean;
   stripePayoutError?: string | null;
   // Already returned by GET /auctions/my/list (confirmed in auctions.service.ts's
@@ -263,6 +265,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         }
       }
       setAuctions(items);
+      // A rejected proof is no longer submitted, even if this device uploaded
+      // it earlier in the current session.
+      setHandoverUploaded(Object.fromEntries(items
+        .filter(item => Boolean(item.handoverSubmittedAt || item.handoverProofUrl))
+        .map(item => [item.id, true])));
     } catch { /* silently fail */ }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -1160,6 +1167,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </Text>
               </TouchableOpacity>
             )}
+            {item.handoverRejectedAt && !item.handoverSubmittedAt && !item.sellerBonusReleased ? (
+              <View style={styles.payoutFailPill}>
+                <Ionicons name="information-circle-outline" size={13} color={Colors.warning} />
+                <Text style={styles.payoutFailText}>
+                  Proof needs correction: {item.handoverRejectionReason || 'Please upload corrected handover evidence.'} Your sale and buyer fee are unchanged.
+                </Text>
+              </View>
+            ) : null}
             {item.stripePayoutError ? (
               <View style={styles.payoutFailPill}>
                 <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_fca5a5} />
