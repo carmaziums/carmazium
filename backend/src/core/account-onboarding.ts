@@ -47,7 +47,7 @@ const GUIDES: Record<string, AccountOnboardingGuide> = {
             'List auction stock for free or create a retail listing for £1 until sold',
             'Bid in dealer auctions once verified; a £125 CarMazium buyer fee applies to successful auction purchases',
             'Manage inventory, offers, purchases and team access from your Partner dashboard',
-            'Add Delivery & Recovery, Vehicle Inspection, Finance and Warranty services where your business has the required approval',
+            'Add Delivery & Recovery, Vehicle Inspection, Finance and Warranty services where your business has the required capability approval',
         ],
         nextStep: 'Open your Partner dashboard and complete business/KYC verification so protected trade tools can be enabled.',
         notificationTitle: 'Your Partner Account is ready — Start Here',
