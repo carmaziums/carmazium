@@ -1,4 +1,4 @@
-import { getAccessToken } from './supabase';
+import { getAccessToken, refreshAccessToken } from './supabase';
 import { fetchWithRetry } from './fetchWithRetry';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
@@ -122,6 +122,50 @@ export async function apiClient<T>(
                 ? 'Request timed out — the server took too long to respond. Please try again.'
                 : msg,
         );
+    }
+
+    // Admin mutations have a server-side step-up check: a session cookie is not
+    // enough; the request must also carry a current Supabase Bearer token. A
+    // mobile browser can still have a perfectly valid CarMazium session while
+    // its Supabase access token has just expired or is being refreshed. In that
+    // case the first mutation gets a 401 before the controller runs.
+    //
+    // Refresh once and retry only that authentication failure. We do NOT retry
+    // network failures or 5xx responses because a write may already have
+    // reached the application and replaying it could duplicate a mutation.
+    const isAdminMutation =
+        endpoint.startsWith('/admin/')
+        && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+
+    if (response.status === 401 && isAdminMutation) {
+        const freshToken = await refreshAccessToken();
+        if (freshToken) {
+            const retryController = new AbortController();
+            const retryTimer = setTimeout(
+                () => retryController.abort(new Error('Request timed out after 30 s')),
+                30000,
+            );
+
+            try {
+                response = await fetch(requestUrl, {
+                    ...config,
+                    headers: {
+                        ...headers,
+                        Authorization: `Bearer ${freshToken}`,
+                    },
+                    signal: retryController.signal,
+                });
+            } catch (err: any) {
+                const msg = err?.message || String(err);
+                throw new Error(
+                    msg.includes('aborted') || msg.includes('timed out') || err?.name === 'AbortError'
+                        ? 'Request timed out — the server took too long to respond. Please try again.'
+                        : msg,
+                );
+            } finally {
+                clearTimeout(retryTimer);
+            }
+        }
     }
 
     if (!response.ok) {
