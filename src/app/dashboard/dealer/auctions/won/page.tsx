@@ -12,6 +12,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
+import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
 import { getMyBids, type Bid } from "@/lib/listingApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { FUEL_TYPE_LABELS, BODY_TYPE_LABELS } from "@/lib/vehicleLabels"
@@ -53,7 +54,7 @@ function stageFor(a: Auction): HandoverStage {
 const STAGE_LABELS: Record<HandoverStage, { label: string; hint: string; icon: React.ComponentType<{ size?: number; className?: string }>; tint: string }> = {
     fee_due: {
         label: "Payment needed",
-        hint: "Pay the £125 fee to unlock messaging with the seller and start the handover.",
+        hint: "Pay your £125 buyer fee before the 72-hour deadline. Once paid, seller contact and inspection arrangements will unlock.",
         icon: CreditCard,
         tint: "bg-amber-500/10 text-amber-400 border-amber-500/25",
     },
@@ -256,6 +257,7 @@ function WonAuctionRow({ auction, canPayAuctionFee }: { auction: Auction; canPay
             title={l.title}
             meta={<>
                 <span>Sold by <span className="text-[var(--text-primary)] font-bold">{sellerName}</span></span>
+                {stage === "fee_due" && <BuyerFeeCountdown deadline={auction.buyerFeeDeadlineAt} />}
                 {seller?.email && (
                     <a href={`mailto:${seller.email}`} className="flex items-center gap-1 hover:text-primary transition-colors truncate max-w-[220px]">
                         <Mail size={11} className="shrink-0" /> {seller.email}
