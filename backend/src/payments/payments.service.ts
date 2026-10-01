@@ -1018,6 +1018,13 @@ export class PaymentsService {
                 const session = event.data.object;
                 const { transactionId, listingId, type, boostId, kycId } = session.metadata;
 
+                // Checkout completion is not always payment settlement.
+                // A delayed/async buyer fee must never unlock an auction before Stripe confirms payment.
+                if (type === 'COMMISSION' && session.payment_status !== 'paid') {
+                    this.logger.warn('Ignoring unpaid auction Checkout completion: ' + session.id);
+                    break;
+                }
+
                 // 0. Handle Dealer KYC £1 verification fee
                 if (type === 'KYC_VERIFICATION' && kycId) {
                     await this.markKycFeePaid(kycId, session.payment_intent ?? session.id);
