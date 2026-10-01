@@ -495,7 +495,7 @@ function SellerAuctionsPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="font-black text-amber-300 text-base">
-                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} waiting on you
+                                    {endedWithWinner.length} auction{endedWithWinner.length > 1 ? "s" : ""} to complete
                                 </p>
                                 <p className="text-sm text-amber-300/80 mt-0.5">
                                     Check the buyer fee, confirm the vehicle payment and upload handover proof to receive your £100 bonus.
