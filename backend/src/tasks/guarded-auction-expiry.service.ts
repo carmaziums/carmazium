@@ -100,6 +100,7 @@ export class GuardedAuctionExpiryService {
           if (claimed.count !== 1) return null;
 
           const listing = current.listing;
+          const winnerId = current.winnerId!;
           const linkedRetailId = listing.linkedListingId;
           await tx.listing.update({
             where: { id: listing.id },
@@ -114,7 +115,7 @@ export class GuardedAuctionExpiryService {
             });
           }
           const removed = await tx.sale.deleteMany({
-            where: { listingId: listing.id, buyerId: current.winnerId! },
+            where: { listingId: listing.id, buyerId: winnerId },
           });
           // Never decrement twice or make the counter negative if the Sale
           // was already absent and another worker won the race.
@@ -125,7 +126,7 @@ export class GuardedAuctionExpiryService {
             });
           }
           return { auction: current, listing, linkedRetailId,
-            winnerId: current.winnerId! };
+            winnerId };
         }, { maxWait: 5000, timeout: 10000 });
 
         if (!result) continue;
