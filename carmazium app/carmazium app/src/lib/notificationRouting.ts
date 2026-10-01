@@ -166,6 +166,14 @@ export async function resolveMobileNotificationTarget(
   }
 
   switch (type) {
+    case 'ACCOUNT_WELCOME':
+      if (role === 'dealer') return { screen: 'PartnerDashboard' };
+      if (role === 'contractor') return { screen: 'Services' };
+      if (role === 'finance_partner' || role === 'insurance_partner') {
+        return { screen: 'PartnerDashboard' };
+      }
+      return { screen: 'UnifiedDashboard' };
+
     case 'OUTBID':
     case 'BID_PLACED':
     case 'AUCTION_WON':
