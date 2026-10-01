@@ -12,12 +12,12 @@ import { SimpleDmsService } from './simpledms.service';
 @Controller('partners/v1/simpledms')
 @UseGuards(SimpleDmsGuard, ThrottlerGuard)
 @Throttle({ default: { ttl: 60_000, limit: 60 } })
-@Header('Cache-Control', 'private, no-store, max-age=0')
-@Header('X-Robots-Tag', 'noindex')
 export class SimpleDmsController {
   constructor(private readonly service: SimpleDmsService) {}
 
   @Get('auctions')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('X-Robots-Tag', 'noindex')
   list(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(25), ParseIntPipe) limit: number,
@@ -26,6 +26,8 @@ export class SimpleDmsController {
   }
 
   @Get('auctions/:id')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('X-Robots-Tag', 'noindex')
   detail(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.detail(id);
   }
