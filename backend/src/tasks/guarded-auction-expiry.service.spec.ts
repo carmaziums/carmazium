@@ -45,8 +45,7 @@ function harness(options: { linked?: boolean; fees?: any[]; patch?: Record<strin
     transaction: { findMany: jest.fn(async ({ where }: any) =>
       (options.fees || []).filter((fee: any) =>
         fee.createdAt instanceof Date &&
-        fee.createdAt >= where.createdAt.gte &&
-        fee.status !== 'REFUNDED'
+        fee.createdAt >= where.createdAt.gte
       )) },
     listing: { update: jest.fn().mockResolvedValue({}) },
     sale: { deleteMany: jest.fn().mockResolvedValue({ count: options.saleCount ?? 1 }) },
