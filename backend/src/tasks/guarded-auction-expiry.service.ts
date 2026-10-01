@@ -32,8 +32,9 @@ export class GuardedAuctionExpiryService {
         buyerFeeTransactionId: null, winnerId: { not: null },
         wonAt: { not: null, lt: cutoff },
       },
+      // Scan IDs only, without a fixed oldest-N cap: a long-standing
+      // unresolved PENDING checkout must not starve newer eligible wins.
       select: { id: true },
-      take: 200,
       orderBy: { wonAt: 'asc' },
     });
 
