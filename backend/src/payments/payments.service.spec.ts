@@ -313,6 +313,7 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
                 id: 'txn-commission', userId: 'buyer-1', listingId: 'listing-auction',
                 type: 'COMMISSION', status: 'COMPLETED', amount: 125,
                 stripePaymentId: 'pi_commission', deletedAt: null,
+                createdAt: new Date('2026-10-01T11:00:00Z'),
             });
         mockPaymentIntentsRetrieve.mockResolvedValue({
             id: 'pi_commission',
@@ -325,9 +326,9 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
             },
         });
         prisma.auction.findFirst.mockResolvedValue({
-            id: 'auction-1',
-            buyerFeePaid: false,
-            buyerFeeTransactionId: null,
+            id: 'auction-1', status: 'ENDED', winnerId: 'buyer-1',
+            wonAt: new Date('2026-10-01T10:00:00Z'),
+            buyerFeePaid: false, buyerFeeTransactionId: null,
         });
 
         await expect(
@@ -343,9 +344,10 @@ describe('PaymentsService — reconcileAuctionFeeIntent', () => {
         });
         expect(prisma.auction.updateMany).toHaveBeenCalledWith({
             where: {
-                listingId: 'listing-auction', deletedAt: null,
-                status: 'ENDED', winnerId: 'buyer-1', buyerFeePaid: false,
-                buyerFeeTransactionId: null,
+                id: 'auction-1', listingId: 'listing-auction', deletedAt: null,
+                status: 'ENDED', winnerId: 'buyer-1',
+                wonAt: new Date('2026-10-01T10:00:00Z'),
+                buyerFeePaid: false, buyerFeeTransactionId: null,
             },
             data: {
                 buyerFeePaid: true,
