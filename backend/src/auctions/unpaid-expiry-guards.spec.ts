@@ -16,7 +16,7 @@ describe('auction expiry race guards', () => {
   it.each([
     { status: 'CANCELLED' }, { status: 'ACTIVE' }, { deletedAt: new Date() },
     { winnerId: null }, { wonAt: null },
-    { wonAt: new Date('2026-10-04T00:00:00Z') },
+    { wonAt: new Date('2026-10-05T00:00:00Z') },
     { buyerFeePaid: true }, { buyerFeeTransactionId: 'fee-1' },
     { sellerFundsConfirmedAt: new Date() }, { handoverSubmittedAt: new Date() },
     { handoverProofPath: 'private/file' }, { handoverProofUrl: 'legacy-proof' },
