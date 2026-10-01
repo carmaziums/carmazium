@@ -86,6 +86,8 @@ interface AuctionItem {
   buyItNowPrice?: number | null;
   winnerId?: string | null;
   winningBidAmount?: number | null;
+  buyerFeePaid?: boolean;
+  sellerFundsConfirmedAt?: string | null;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
   sellerBonusReleased?: boolean;
@@ -180,6 +182,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // Handover proof upload state — keyed by auctionId
   const [handoverUploading, setHandoverUploading] = useState<Record<string, boolean>>({});
   const [handoverUploaded, setHandoverUploaded] = useState<Record<string, boolean>>({});
+  const [fundsConfirming, setFundsConfirming] = useState<Record<string, boolean>>({});
+  const [fundsConfirmError, setFundsConfirmError] = useState<Record<string, string | null>>({});
   const [handoverError, setHandoverError] = useState<Record<string, string | null>>({});
 
   // Inline edit form state for SCHEDULED auctions
@@ -331,6 +335,41 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       } catch { /* leave null — unknown, so say nothing */ }
     })();
   }, []);
+
+  // Seller attestation only: the vehicle price goes directly to the seller,
+  // never through CarMazium. An explicit confirmation unlocks NEW proof upload.
+  const handleFundsConfirmation = useCallback((item: AuctionItem) => {
+    if (!canManageHandover) return;
+    const amount = Number(item.winningBidAmount ?? 0).toLocaleString('en-GB');
+    Alert.alert(
+      'Confirm vehicle payment received',
+      `Confirm only when the full £${amount} has cleared in your account. CarMazium does not collect or verify this payment.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Funds received',
+          onPress: () => {
+            void (async () => {
+              setFundsConfirming(prev => ({ ...prev, [item.id]: true }));
+              setFundsConfirmError(prev => ({ ...prev, [item.id]: null }));
+              try {
+                await apiClient(`/auctions/${item.id}/seller-funds-confirmation`, {
+                  method: 'POST',
+                  body: JSON.stringify({ confirmed: true }),
+                });
+                haptics.success();
+                await fetchAuctions(true);
+              } catch (err: any) {
+                setFundsConfirmError(prev => ({ ...prev, [item.id]: err?.message || 'Confirmation failed. Please try again.' }));
+              } finally {
+                setFundsConfirming(prev => ({ ...prev, [item.id]: false }));
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [canManageHandover, fetchAuctions]);
 
   // ── Handover proof upload ──
   async function handleHandoverUpload(auctionId: string) {
@@ -1150,6 +1189,28 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   Your dealership role can view this auction but cannot submit handover proof.
                 </Text>
               </View>
+            ) : !item.buyerFeePaid ? (
+              <View style={styles.payoutFailPill}>
+                <Ionicons name="time-outline" size={13} color={Colors.warning} />
+                <Text style={styles.payoutFailText}>Waiting for the winning dealer's £125 fee before the sale can progress.</Text>
+              </View>
+            ) : !item.sellerFundsConfirmedAt ? (
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <Text style={styles.handoverDone}>After the full vehicle payment has cleared in your account, confirm receipt to unlock handover.</Text>
+                {fundsConfirmError[item.id] ? (
+                  <Text style={styles.payoutFailText}>{fundsConfirmError[item.id]}</Text>
+                ) : null}
+                <TouchableOpacity
+                  style={styles.handoverButton}
+                  onPress={() => handleFundsConfirmation(item)}
+                  disabled={!!fundsConfirming[item.id]}
+                  activeOpacity={0.8}
+                >
+                  {fundsConfirming[item.id]
+                    ? <ActivityIndicator color={Colors.white} />
+                    : <Text style={styles.handoverButtonText}>Confirm Vehicle Funds Received</Text>}
+                </TouchableOpacity>
+              </View>
             ) : handoverError[item.id] ? (
               <ErrorBanner
                 message={handoverError[item.id]!}
@@ -1207,6 +1268,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     handoverError,
     handoverUploading,
     handleHandoverUpload,
+    handleFundsConfirmation,
+    fundsConfirming,
+    fundsConfirmError,
     setCancelSaleAuction,
   ]);
 
