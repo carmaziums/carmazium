@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BUYER_FEE_GRACE_MS, buyerFeeDeadlineAt } from './buyer-fee-deadline';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
@@ -42,7 +43,7 @@ import {
 const ANTI_SNIPE_MINUTES = 3;
 // Grace window a declared winner has to pay the £125 buyer fee before the win
 // auto-reverts — see UnpaidAuctionFeeExpiryService.
-const BUYER_FEE_GRACE_MS = 72 * 60 * 60 * 1000; // 72 hours
+// Shared deadline constants are in buyer-fee-deadline.ts
 
 export interface RetailDealAuctionCancellation {
     auctionId: string;
@@ -127,6 +128,7 @@ export class AuctionsService {
             ...auction,
             handoverProofUrl: null,
             handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+            buyerFeeDeadlineAt: buyerFeeDeadlineAt(auction),
             // Rejection feedback may describe private handover paperwork.
             // Only the seller's authenticated inventory-management view
             // should see it, not public auction visitors or winners.
@@ -582,6 +584,8 @@ export class AuctionsService {
                         winnerId: null,
                         winningBidAmount: null,
                         wonAt: null,
+                        buyerFeeReminder24SentAt: null,
+                        buyerFeeReminder6SentAt: null,
                         buyerFeePaid: false,
                         buyerFeeTransactionId: null,
                         sellerFundsConfirmedAt: null,
@@ -829,7 +833,7 @@ export class AuctionsService {
         ]);
 
         if (canManageHandover) {
-            return { data: await this.handoverDocuments.hydrateMany(data), total };
+            return { data: (await this.handoverDocuments.hydrateMany(data)).map((a: any) => ({ ...a, buyerFeeDeadlineAt: buyerFeeDeadlineAt(a) })), total };
         }
 
         const redacted = data.map((auction: any) => {
@@ -837,6 +841,7 @@ export class AuctionsService {
                 ...auction,
                 handoverProofUrl: null,
                 handoverProofIsPrivate: Boolean(auction.handoverProofPath),
+                buyerFeeDeadlineAt: buyerFeeDeadlineAt(auction),
                 handoverRejectionReason: null,
                 handoverRejectedAt: null,
             };
@@ -1318,6 +1323,8 @@ export class AuctionsService {
                     winnerId,
                     winningBidAmount: bid.amount,
                     wonAt,
+                    buyerFeeReminder24SentAt: null,
+                    buyerFeeReminder6SentAt: null,
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
@@ -1969,6 +1976,8 @@ export class AuctionsService {
                     winnerId: dealerId,
                     winningBidAmount: amount,
                     wonAt,
+                    buyerFeeReminder24SentAt: null,
+                    buyerFeeReminder6SentAt: null,
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
@@ -2853,7 +2862,7 @@ export class AuctionsService {
                 title: 'You won the auction!',
                 message: buyerFeeWaived
                     ? `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Your Free Purchase Grant covered the £125 CarMazium buyer fee, so seller contact details and auction chat are unlocked.`
-                    : `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Pay the £125 CarMazium buyer fee to unlock the seller's contact details and auction chat.`,
+                    : `You won the auction for ${vehicle} with a bid of £${winningAmount.toLocaleString()}. Pay the £125 CarMazium buyer fee within 72 hours of the recorded win to keep your purchase and unlock the seller's contact details and auction chat.`,
                 entityType: 'AUCTION',
                 entityId: auction.id,
                 link: `/dashboard/dealer/auctions/won`,
@@ -3278,6 +3287,8 @@ export class AuctionsService {
                     winnerId: pendingBuyerId,
                     winningBidAmount: binPrice,
                     wonAt,
+                    buyerFeeReminder24SentAt: null,
+                    buyerFeeReminder6SentAt: null,
                     buyItNowPendingBuyerId: null,
                     buyItNowPendingAt: null,
                 },
