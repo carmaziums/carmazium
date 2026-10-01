@@ -29,7 +29,7 @@ All requests must send the private `X-Partner-Key` HTTP header over HTTPS.
 CarMazium user cookies, Supabase access tokens and ordinary admin/API keys do
 not authenticate this feed.
 
-The default page size is 25; allowed page range 1–1000 and size 1–50. Results
+Direct auction links carry fixed `utm_source=simpledms` and `utm_medium=partner_api` tags for CarMazium referral attribution. They do not carry secrets or personal data.\n\nThe default page size is 25; allowed page range 1–1000 and size 1–50. Results
 include a current live-vehicle total and a `hasMore` marker. Responses send
 `Cache-Control: private, no-store`, and partner routes are excluded from public
 Swagger. The partner feed allows 60 requests/minute per client IP by default.
@@ -61,7 +61,7 @@ control, diagnostic logs or shared screenshots.
     },
     "images": [],
     "updatedAt": "2026-10-01T12:00:00.000Z",
-    "url": "https://carmazium.com/auctions/live/00000000-0000-4000-8000-000000000001"
+    "url": "https://carmazium.com/auctions/live/00000000-0000-4000-8000-000000000001?utm_source=simpledms&utm_medium=partner_api"
   }]
 }
 ```
