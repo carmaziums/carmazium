@@ -25,6 +25,8 @@ jobs:
           node-version: 20
       - name: Check web/mobile/backend business-rule parity
         run: node scripts/check-product-parity.mjs
+      - name: Verify authoritative auction buyer-fee deadline parity
+        run: node scripts/check-auction-fee-deadline.mjs
 
   web-typecheck:
     name: Web typecheck

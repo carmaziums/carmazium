@@ -175,6 +175,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
   const [wonAuctions, setWonAuctions] = useState<WonAuctionItem[]>([]);
+  const [wonNowMs, setWonNowMs] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setWonNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [wonLoading, setWonLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1348,7 +1353,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Text style={styles.cardPrice}>Won for {wonFor}</Text>
             {!item.buyerFeePaid ? (
               <Text style={styles.cardMeta}>
-                Buyer fee: {formatBuyerFeeRemaining(item.buyerFeeDeadlineAt, Date.now())
+                Buyer fee: {formatBuyerFeeRemaining(item.buyerFeeDeadlineAt, wonNowMs)
                   || 'due within 72h of recorded win — open for exact time'}
               </Text>
             ) : null}
@@ -1367,7 +1372,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
       </TouchableOpacity>
     );
-  }, [navigating, handleTap]);
+  }, [navigating, handleTap, wonNowMs]);
 
   return (
     <View style={styles.container}>
