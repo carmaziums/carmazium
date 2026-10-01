@@ -2432,6 +2432,8 @@ export class AuctionsService {
                 handoverProofUrl: proofPath ? null : proofUrl,
                 handoverProofPath: proofPath || null,
                 handoverSubmittedAt: new Date(),
+                handoverRejectedAt: null,
+                handoverRejectionReason: null,
             } as any,
         });
 
