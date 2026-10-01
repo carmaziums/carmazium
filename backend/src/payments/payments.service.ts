@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ForbiddenException,
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
+import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
@@ -303,6 +304,10 @@ export class PaymentsService {
         if (auction.buyerFeePaid) {
             throw new BadRequestException('The auction buyer fee has already been paid');
         }
+        const deadline = buyerFeeDeadlineAt(auction);
+        if (deadline && new Date(deadline).getTime() <= Date.now()) {
+            throw new BadRequestException('This auction win has passed its 72-hour buyer fee deadline');
+        }
         return { auction, buyerId };
     }
 
@@ -313,27 +318,77 @@ export class PaymentsService {
     ): Promise<boolean> {
         if (!listingId || !buyerId) return false;
 
-        const auction = await this.prisma.auction.findFirst({
-            where: {
-                listingId,
-                status: 'ENDED',
-                deletedAt: null,
-                winnerId: buyerId,
+        // Confirm that the processor's successful callback refers to our
+        // actual completed £125 platform-fee record for this exact winner.
+        const fee = await this.prisma.transaction.findUnique({
+            where: { id: transactionId },
+            select: {
+                id: true, listingId: true, userId: true, type: true,
+                status: true, amount: true, deletedAt: true, createdAt: true,
             },
         });
-        if (!auction) return false;
-
-        if (!auction.buyerFeePaid || auction.buyerFeeTransactionId !== transactionId) {
-            await this.prisma.auction.update({
-                where: { id: auction.id },
-                data: {
-                    buyerFeePaid: true,
-                    buyerFeeTransactionId: transactionId,
-                },
-            });
+        if (!fee || fee.deletedAt || fee.listingId !== listingId ||
+            fee.userId !== buyerId || fee.type !== 'COMMISSION' ||
+            fee.status !== 'COMPLETED' || Number(fee.amount) !== this.AUCTION_BUYER_FEE) {
+            this.logger.error('Completed auction fee could not be validated: ' + transactionId);
+            return false;
         }
 
-        return true;
+        // A completed fee for a previous auction run must never be assigned
+        // to a new win on a reused listing, even if the same dealer wins again.
+        const observed = await this.prisma.auction.findFirst({
+            where: { listingId, deletedAt: null },
+            select: {
+                id: true, status: true, winnerId: true, wonAt: true,
+                buyerFeePaid: true, buyerFeeTransactionId: true,
+            },
+        });
+        if (!observed || observed.status !== 'ENDED' || observed.winnerId !== buyerId ||
+            (observed.wonAt && fee.createdAt < observed.wonAt)) {
+            this.logger.error(
+                'Captured auction fee ' + transactionId +
+                ' refers to an expired, reassigned, or later auction run; finance review required.',
+            );
+            return false;
+        }
+        if (observed.buyerFeePaid) {
+            return observed.buyerFeeTransactionId === transactionId;
+        }
+
+        // Conditional row update obtains the same auction lock as the guarded
+        // expiry transaction and verifies that its run (wonAt) is unchanged.
+        const claimed = await this.prisma.auction.updateMany({
+            where: {
+                id: observed.id, listingId, deletedAt: null,
+                status: 'ENDED', winnerId: buyerId, wonAt: observed.wonAt,
+                buyerFeePaid: false, buyerFeeTransactionId: null,
+            },
+            data: { buyerFeePaid: true, buyerFeeTransactionId: transactionId },
+        });
+        if (claimed.count === 1) return true;
+
+        const current = await this.prisma.auction.findFirst({
+            where: { listingId, deletedAt: null },
+            select: {
+                id: true, status: true, winnerId: true, wonAt: true,
+                buyerFeePaid: true, buyerFeeTransactionId: true,
+            },
+        });
+        if (current?.id === observed.id &&
+            current?.wonAt?.getTime() === observed.wonAt?.getTime() &&
+            current.status === 'ENDED' && current.winnerId === buyerId &&
+            current.buyerFeePaid && current.buyerFeeTransactionId === transactionId) {
+            return true; // Exact webhook/client retry on the same auction run.
+        }
+
+        // Never silently reinstate a cancelled win or treat a successful
+        // but unapplied charge as refunded. Preserve the completed transaction
+        // so finance can verify and determine whether a refund is required.
+        this.logger.error(
+            'Captured auction fee ' + transactionId +
+            ' was not applied to current auction state. Finance review required before refunding.',
+        );
+        return false;
     }
 
     async createCheckoutSession(
@@ -962,6 +1017,13 @@ export class PaymentsService {
             case 'checkout.session.completed': {
                 const session = event.data.object;
                 const { transactionId, listingId, type, boostId, kycId } = session.metadata;
+
+                // Checkout completion is not always payment settlement.
+                // A delayed/async buyer fee must never unlock an auction before Stripe confirms payment.
+                if (type === 'COMMISSION' && session.payment_status !== 'paid') {
+                    this.logger.warn('Ignoring unpaid auction Checkout completion: ' + session.id);
+                    break;
+                }
 
                 // 0. Handle Dealer KYC £1 verification fee
                 if (type === 'KYC_VERIFICATION' && kycId) {
