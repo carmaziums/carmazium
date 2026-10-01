@@ -2439,6 +2439,9 @@ export class AuctionsService {
                 handoverProofUrl: proofPath ? null : proofUrl,
                 handoverProofPath: proofPath || null,
                 handoverSubmittedAt: new Date(),
+                // Any NEW proof (including a correction on a grandfathered
+                // legacy auction) follows Block 1's seller-confirmation rule.
+                sellerFundsConfirmationRequired: true,
                 handoverRejectedAt: null,
                 handoverRejectionReason: null,
             } as any,
