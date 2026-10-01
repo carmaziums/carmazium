@@ -35,6 +35,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
+import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
@@ -88,6 +89,9 @@ interface AuctionItem {
   winningBidAmount?: number | null;
   buyerFeePaid?: boolean;
   sellerFundsConfirmedAt?: string | null;
+  buyerRefusedAt?: string | null;
+  stripePayoutTransferId?: string | null;
+  manualPayoutConfirmedAt?: string | null;
   handoverProofUrl?: string | null;
   handoverSubmittedAt?: string | null;
   handoverRejectedAt?: string | null;
@@ -982,7 +986,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const isLoadingNav = navigating === item.id;
     const isEditOpen = editingId === item.id;
     const isScheduled = item.status === 'SCHEDULED';
-    const isEnded = item.status === 'ENDED' && item.winnerId;
+    const stage = getSellerAuctionStage(item);
+    const isEnded = item.status === 'ENDED' && !!item.winnerId && !item.buyerRefusedAt;
 
     return (
       <View style={[styles.card, { borderLeftColor: cfg.borderColor }]}>
@@ -1043,6 +1048,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             )}
           </View>
         </TouchableOpacity>
+
+        {stage !== 'NOT_APPLICABLE' ? (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 10 }}>
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary }}>
+              {getSellerStageLabel(stage)}
+            </Text>
+            <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 }}>
+              {getSellerStageHint(stage)}
+            </Text>
+          </View>
+        ) : null}
 
         {/* Reserve / bid info row for SCHEDULED */}
         {isScheduled && (
@@ -1185,7 +1201,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ) : item.sellerBonusReleased ? (
               <View style={styles.payoutOkPill}>
                 <Ionicons name="checkmark-circle" size={13} color={Colors.lightGreen_4ade80} />
-                <Text style={styles.handoverDone}>£100 payout released</Text>
+                <Text style={styles.handoverDone}>{stage === 'BONUS_PAID' ? '£100 bonus paid' : 'Handover approved — £100 bonus processing'}</Text>
               </View>
             ) : handoverUploaded[item.id] || item.handoverSubmittedAt || item.handoverProofUrl ? (
               <View style={styles.payoutOkPill}>
@@ -1207,11 +1223,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ) : !item.buyerFeePaid ? (
               <View style={styles.payoutFailPill}>
                 <Ionicons name="time-outline" size={13} color={Colors.warning} />
-                <Text style={styles.payoutFailText}>Waiting for the winning dealer's £125 fee before the sale can progress.</Text>
+                <Text style={styles.payoutFailText}>Waiting for the winning buyer’s £125 platform fee. No handover upload is needed yet.</Text>
               </View>
             ) : !item.sellerFundsConfirmedAt ? (
               <View style={{ gap: 10, marginTop: 12 }}>
-                <Text style={styles.handoverDone}>After the full vehicle payment has cleared in your account, confirm receipt to unlock handover.</Text>
+                <Text style={styles.handoverDone}>Arrange inspection first. Confirm funds only once the buyer’s full vehicle payment has cleared directly in your account.</Text>
                 {fundsConfirmError[item.id] ? (
                   <Text style={styles.payoutFailText}>{fundsConfirmError[item.id]}</Text>
                 ) : null}
@@ -1241,7 +1257,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 {handoverUploading[item.id] ? (
                   <ActivityIndicator color={Colors.white} />
                 ) : (
-                  <Text style={styles.handoverButtonText}>Upload Handover Proof</Text>
+                  <Text style={styles.handoverButtonText}>{stage === 'CORRECT_PROOF' ? 'Upload Corrected Handover Proof' : 'Upload Handover Proof'}</Text>
                 )}
               </TouchableOpacity>
             )}
