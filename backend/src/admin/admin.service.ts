@@ -13,6 +13,7 @@ import { AuctionsService } from '../auctions/auctions.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
 import {
     AUCTION_DURATION_MS,
     BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
@@ -1295,6 +1296,7 @@ export class AdminService {
             });
 
             let payoutSucceeded = false;
+            let stripeTransferId: string | null = null;
             let payoutReason: 'not_connected' | 'transfer_failed' | 'test_mode' | null = null;
             const stripeInTestMode = this.paymentsService.isStripeInTestMode();
 
@@ -1311,7 +1313,7 @@ export class AdminService {
                 );
             } else if (seller?.stripeConnectAccountId && seller?.stripeConnectOnboardingComplete) {
                 try {
-                    await this.settleSellerBonusViaStripe(
+                    stripeTransferId = await this.settleSellerBonusViaStripe(
                         auctionId,
                         seller.stripeConnectAccountId,
                     );
@@ -1347,7 +1349,7 @@ export class AdminService {
                 type: 'HANDOVER_APPROVED',
                 title: 'Handover verified',
                 message: payoutSucceeded
-                    ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is on its way to your bank account.`
+                    ? `Your handover proof for "${auction.listing.title}" has been approved. Your £100 transfer is recorded with Stripe; bank settlement may take longer.`
                     : payoutReason === 'not_connected'
                         ? `Your handover proof for "${auction.listing.title}" has been approved. Connect your bank account in Settings to receive your £100 bonus.`
                         : `Your handover proof for "${auction.listing.title}" has been approved. Your £100 bonus is pending payout review; our team will resolve it safely.`,
@@ -1357,11 +1359,21 @@ export class AdminService {
             });
 
             if (seller?.email) {
+                // Never infer payment from sellerBonusReleased alone: approval
+                // is a separate state. A real transfer ID means Stripe accepted
+                // the transfer, NOT that funds have reached the seller's bank.
+                const emailStage = sellerBonusEmailState({
+                    sellerBonusReleased: true,
+                    stripePayoutTransferId: stripeTransferId,
+                }, payoutReason);
                 this.emailService.sendHandoverApprovedEmail(
                     seller.email,
                     seller.firstName || 'there',
                     auction.listing.title,
-                ).catch(console.error);
+                    emailStage,
+                ).catch((error: any) => this.logger.error(
+                    `Handover email failed for auction ${auctionId}: ${error?.message || error}`,
+                ));
             }
         }
 
@@ -1456,6 +1468,88 @@ export class AdminService {
             }
         }
         return eligible;
+    }
+
+    /**
+     * A previously pending bonus has now acquired a real Stripe transfer ID,
+     * or an admin has confirmed payment outside Stripe. Claim ONE follow-up
+     * notice per auction, safely across concurrent admin retries/workers.
+     * The notice is not part of the money movement transaction: email outages
+     * must never cause an already-completed £100 transfer to be repeated.
+     */
+    private async notifySellerPayoutRecordedOnce(auctionId: string): Promise<void> {
+        try {
+            const row = await this.prisma.auction.findUnique({
+                where: { id: auctionId },
+                select: {
+                    id: true, status: true, deletedAt: true, winnerId: true,
+                    buyerFeePaid: true, buyerFeeTransactionId: true,
+                    buyerRefusedAt: true, handoverSubmittedAt: true,
+                    sellerBonusReleased: true, sellerBonusReleasedAt: true,
+                    stripePayoutTransferId: true, manualPayoutConfirmedAt: true,
+                    sellerBonusPayoutNoticeSentAt: true,
+                    listing: { select: { title: true, sellerId: true } },
+                },
+            });
+            if (!row || row.sellerBonusPayoutNoticeSentAt || !row.sellerBonusReleased ||
+                !row.sellerBonusReleasedAt || !row.listing?.sellerId ||
+                row.status !== 'ENDED' || row.deletedAt || row.buyerRefusedAt) return;
+            const stage: SellerBonusEmailState = sellerBonusEmailState(row);
+            if (stage !== 'STRIPE_TRANSFER_RECORDED' &&
+                stage !== 'MANUAL_PAYMENT_RECORDED') return;
+            await this.auctionsService.assertHandoverBusinessRules(auctionId, {
+                requireProof: true, requireApproved: true,
+            });
+            const claimTime = new Date();
+            const claimed = await this.prisma.auction.updateMany({
+                where: {
+                    id: auctionId, deletedAt: null, status: 'ENDED',
+                    winnerId: row.winnerId, buyerFeePaid: true,
+                    buyerFeeTransactionId: row.buyerFeeTransactionId,
+                    buyerRefusedAt: null, handoverSubmittedAt: row.handoverSubmittedAt,
+                    sellerBonusReleased: true, sellerBonusReleasedAt: row.sellerBonusReleasedAt,
+                    stripePayoutTransferId: row.stripePayoutTransferId,
+                    manualPayoutConfirmedAt: row.manualPayoutConfirmedAt,
+                    sellerBonusPayoutNoticeSentAt: null,
+                },
+                data: { sellerBonusPayoutNoticeSentAt: claimTime },
+            });
+            if (claimed.count !== 1) return;
+            const seller = await this.prisma.user.findUnique({
+                where: { id: row.listing.sellerId },
+                select: { email: true, firstName: true },
+            });
+            const message = stage === 'MANUAL_PAYMENT_RECORDED'
+                ? 'Your £100 seller bonus has been marked paid manually. Check your bank payment.'
+                : 'Your £100 seller bonus transfer has been recorded by Stripe. Bank settlement may take longer.';
+            await this.notificationsService.create({
+                userId: row.listing.sellerId,
+                type: 'HANDOVER_PAYOUT_RECORDED',
+                title: '£100 seller bonus payment update',
+                message,
+                entityType: 'AUCTION',
+                entityId: auctionId,
+                link: '/dashboard/seller/auctions',
+                data: { payoutStage: stage },
+            }).catch((err: any) => this.logger.error(
+                `Failed payout update notification for auction ${auctionId}: ${err?.message || err}`,
+            ));
+            if (seller?.email) {
+                const result = await this.emailService.sendHandoverApprovedEmail(
+                    seller.email,
+                    seller.firstName || 'there',
+                    row.listing.title,
+                    stage,
+                );
+                if (!result) this.logger.warn(
+                    `Payout-stage email could not be delivered for auction ${auctionId}; no duplicate automatic send was attempted.`,
+                );
+            }
+        } catch (error: any) {
+            this.logger.error(
+                `Failed seller payout-stage notification for auction ${auctionId}: ${error?.message || error}`,
+            );
+        }
     }
 
     /**
@@ -1605,6 +1699,9 @@ export class AdminService {
             throw new BadGatewayException(safeMessage);
         }
 
+        // Trigger a single follow-up only after Stripe transfer settlement is
+        // durably recorded. Re-running this retry cannot duplicate notices.
+        await this.notifySellerPayoutRecordedOnce(auctionId);
         return this.prisma.auction.findUnique({ where: { id: auctionId } });
     }
 
@@ -1661,6 +1758,9 @@ export class AdminService {
         });
 
         if (marked.count === 1) {
+            // This branch alone recorded a new manual payment. Concurrent
+            // retries cannot send the same paid notice twice.
+            await this.notifySellerPayoutRecordedOnce(auctionId);
             return this.prisma.auction.findUnique({ where: { id: auctionId } });
         }
 
