@@ -45,6 +45,8 @@ export interface VehicleValuationComparable {
     seats?: number | null;
     features?: string[] | null;
     isImported?: boolean | null;
+    sourceUrl?: string | null;
+    sourceDomain?: string | null;
     kind: ValuationEvidenceKind;
 }
 
@@ -75,6 +77,7 @@ export interface VehicleValuationResult {
         rawLiveUkComparables?: number;
         liveUkAttempts?: number;
         blendedMarketAttempts?: number;
+        liveSources?: string[];
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
     };
     explanation: string;
