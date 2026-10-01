@@ -255,10 +255,13 @@ export class AdminController {
 
     @Post('handovers/:auctionId/deny')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Deny a handover proof and refund buyer £100' })
+    @ApiOperation({ summary: 'Reject incomplete handover evidence with a reason, preserving the buyer fee and sale' })
     @ApiParam({ name: 'auctionId' })
-    async denyHandover(@Param('auctionId') auctionId: string): Promise<StandardResponse<any>> {
-        const result = await this.adminService.denyHandover(auctionId);
+    async denyHandover(
+        @Param('auctionId') auctionId: string,
+        @Body('reason') reason: string,
+    ): Promise<StandardResponse<any>> {
+        const result = await this.adminService.denyHandover(auctionId, reason);
         return new StandardResponse(result);
     }
 
