@@ -1046,6 +1046,34 @@ describe('PaymentsService — auction buyer-fee refunds', () => {
 
 });
 
+describe('Auction buyer fee webhook settlement validation', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockConstructEvent.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('does not mark a checkout fee paid when Checkout has completed but funds are still unpaid', async () => {
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: { object: {
+                id: 'cs_unsettled_fee', payment_status: 'unpaid',
+                metadata: {
+                    transactionId: 'fee-1', listingId: 'listing-1',
+                    userId: 'buyer-1', type: 'COMMISSION',
+                },
+            }},
+        });
+        await service.handleWebhook(Buffer.from('{}'), 'signature');
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+        expect(prisma.auction.updateMany).not.toHaveBeenCalled();
+    });
+});
+
 describe('PaymentsService — seller bonus Stripe idempotency', () => {
     let service: PaymentsService;
     let prisma: any;
