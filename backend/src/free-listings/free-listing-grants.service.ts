@@ -486,6 +486,10 @@ export class FreeListingGrantsService {
                     userId,
                     type: 'COMMISSION',
                     status: 'COMPLETED',
+                    deletedAt: null,
+                    // A paid/granted earlier run of the same listing does not
+                    // consume today's otherwise eligible free-purchase grant.
+                    createdAt: { gte: auction.wonAt },
                 },
                 select: { id: true },
             });
