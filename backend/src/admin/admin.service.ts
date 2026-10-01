@@ -1250,7 +1250,12 @@ export class AdminService {
                 buyerFeePaid: true,
                 buyerFeeTransactionId: auction.buyerFeeTransactionId,
                 buyerRefusedAt: null,
-                handoverSubmittedAt: { not: null },
+                // Match the exact evidence this admin reviewed. A rejected
+                // proof followed by a replacement cannot be approved using a
+                // stale review tab from before the replacement.
+                handoverSubmittedAt: auction.handoverSubmittedAt,
+                handoverProofPath: auction.handoverProofPath,
+                handoverProofUrl: auction.handoverProofUrl,
                 sellerBonusReleased: false,
                 sellerBonusReleasedAt: null,
                 stripePayoutTransferId: null,
