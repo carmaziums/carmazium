@@ -835,8 +835,11 @@ export async function approveHandover(auctionId: string) {
   return result;
 }
 
-export async function denyHandover(auctionId: string) {
-  const result = await apiClient<any>(`/admin/handovers/${auctionId}/deny`, { method: 'POST' });
+export async function denyHandover(auctionId: string, reason: string) {
+  const result = await apiClient<any>(`/admin/handovers/${auctionId}/deny`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
   return result;
 }
 
