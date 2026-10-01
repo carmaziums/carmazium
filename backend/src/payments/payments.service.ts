@@ -324,7 +324,7 @@ export class PaymentsService {
             where: { id: transactionId },
             select: {
                 id: true, listingId: true, userId: true, type: true,
-                status: true, amount: true, deletedAt: true,
+                status: true, amount: true, deletedAt: true, createdAt: true,
             },
         });
         if (!fee || fee.deletedAt || fee.listingId !== listingId ||
@@ -334,14 +334,34 @@ export class PaymentsService {
             return false;
         }
 
-        // Atomic conditional update: never mark a CANCELLED, reassigned, or
-        // differently paid auction after a delayed webhook. This operation
-        // obtains the same auction-row lock as the guarded expiry transaction.
+        // A completed fee for a previous auction run must never be assigned
+        // to a new win on a reused listing, even if the same dealer wins again.
+        const observed = await this.prisma.auction.findFirst({
+            where: { listingId, deletedAt: null },
+            select: {
+                id: true, status: true, winnerId: true, wonAt: true,
+                buyerFeePaid: true, buyerFeeTransactionId: true,
+            },
+        });
+        if (!observed || observed.status !== 'ENDED' || observed.winnerId !== buyerId ||
+            (observed.wonAt && fee.createdAt < observed.wonAt)) {
+            this.logger.error(
+                'Captured auction fee ' + transactionId +
+                ' refers to an expired, reassigned, or later auction run; finance review required.',
+            );
+            return false;
+        }
+        if (observed.buyerFeePaid) {
+            return observed.buyerFeeTransactionId === transactionId;
+        }
+
+        // Conditional row update obtains the same auction lock as the guarded
+        // expiry transaction and verifies that its run (wonAt) is unchanged.
         const claimed = await this.prisma.auction.updateMany({
             where: {
-                listingId, deletedAt: null, status: 'ENDED',
-                winnerId: buyerId, buyerFeePaid: false,
-                buyerFeeTransactionId: null,
+                id: observed.id, listingId, deletedAt: null,
+                status: 'ENDED', winnerId: buyerId, wonAt: observed.wonAt,
+                buyerFeePaid: false, buyerFeeTransactionId: null,
             },
             data: { buyerFeePaid: true, buyerFeeTransactionId: transactionId },
         });
@@ -350,13 +370,15 @@ export class PaymentsService {
         const current = await this.prisma.auction.findFirst({
             where: { listingId, deletedAt: null },
             select: {
-                status: true, winnerId: true, buyerFeePaid: true,
-                buyerFeeTransactionId: true,
+                id: true, status: true, winnerId: true, wonAt: true,
+                buyerFeePaid: true, buyerFeeTransactionId: true,
             },
         });
-        if (current?.status === 'ENDED' && current.winnerId === buyerId &&
+        if (current?.id === observed.id &&
+            current?.wonAt?.getTime() === observed.wonAt?.getTime() &&
+            current.status === 'ENDED' && current.winnerId === buyerId &&
             current.buyerFeePaid && current.buyerFeeTransactionId === transactionId) {
-            return true; // Exact webhook/client retry.
+            return true; // Exact webhook/client retry on the same auction run.
         }
 
         // Never silently reinstate a cancelled win or treat a successful
