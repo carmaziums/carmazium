@@ -938,7 +938,11 @@ export class EmailService {
         return this.sendBrandedEmail({ to: sellerEmail, subject: `Handover verified — £100 bonus released — CarMazium ✅`, bodyHtml });
     }
 
-    async sendHandoverDeniedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string) {
+    async sendHandoverDeniedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, reason: string) {
+        // Admin-entered feedback is text, never trusted HTML.
+        const safeReason = reason.replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[char] || char);
         const bodyHtml = `
             <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
                 Handover Proof Needs Attention ⚠️
@@ -948,7 +952,8 @@ export class EmailService {
             </p>
             <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 20px; margin-bottom: 32px;">
                 <p style="margin: 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-                    Please upload a clearer or more appropriate document — such as a signed handover form, V5C transfer confirmation, or photographic proof — to receive your £100 seller bonus.
+                    Reviewer feedback: <strong style="color: #ffffff;">${safeReason}</strong>.
+                    Please upload corrected handover evidence for review. Your vehicle sale and the buyer's platform fee have not been cancelled or refunded by this evidence-only rejection.
                 </p>
             </div>
             <div style="text-align: center; margin: 36px 0 24px;">
