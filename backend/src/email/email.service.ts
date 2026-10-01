@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import { SellerBonusEmailState } from '../admin/seller-bonus-email-state';
 import * as nodemailer from 'nodemailer';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getAccountOnboardingGuide } from '../core/account-onboarding';
@@ -938,27 +939,57 @@ export class EmailService {
 
     // ─── Handover Emails ─────────────────────────────────────────────
 
-    async sendHandoverApprovedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string) {
-        const bodyHtml = `
-            <h1 style="margin: 0 0 8px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 26px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                Handover Proof Verified ✅
-            </h1>
-            <p style="margin: 0 0 28px; font-size: 15px; color: #94a3b8; line-height: 1.6;">
-                Hi <strong style="color: #ffffff;">${sellerName}</strong>, great news! Your handover proof for the auction of <strong style="color: #ffffff;">${vehicleTitle}</strong> has been reviewed and approved by our team.
-            </p>
-            <div style="background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: 14px; padding: 20px; margin-bottom: 32px; text-align: center;">
-                <p style="margin: 0 0 8px; font-size: 36px;">🎉</p>
-                <p style="margin: 0; font-size: 18px; font-weight: 800; color: #4ade80;">£100 Seller Bonus Released</p>
-                <p style="margin: 8px 0 0; font-size: 13px; color: #64748b;">Your bonus has been released to your account.</p>
-            </div>
-            <div style="text-align: center; margin: 36px 0 24px;">
-                <a href="${this.frontendUrl}/dashboard/seller/auctions" target="_blank"
-                   style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #4ade80, #16a34a); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(74,222,128,0.3);">
-                    View My Auctions →
-                </a>
-            </div>
-        `;
-        return this.sendBrandedEmail({ to: sellerEmail, subject: `Handover verified — £100 bonus released — CarMazium ✅`, bodyHtml });
+    /**
+     * Approval and payment are different events. Caller must pass the stage
+     * verified against the durable Stripe/manual payout state. Never claim
+     * bank receipt from a Stripe Transfer ID (bank settlement happens later).
+     */
+    async sendHandoverApprovedEmail(
+        sellerEmail: string,
+        sellerName: string,
+        vehicleTitle: string,
+        state: SellerBonusEmailState,
+    ) {
+        const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[char] || char);
+        const name = escape(sellerName);
+        const vehicle = escape(vehicleTitle);
+        const stateCopy: Record<SellerBonusEmailState, { subject: string; heading: string; message: string }> = {
+            APPROVED_PAYOUT_PENDING: {
+                subject: 'Handover approved — £100 seller bonus pending — CarMazium',
+                heading: 'Handover approved — £100 payout pending',
+                message: 'Your handover proof has been approved. Your £100 seller bonus has NOT yet been paid. Our team is reviewing or completing the payout; we will update you when a payment is recorded.',
+            },
+            APPROVED_SETUP_NEEDED: {
+                subject: 'Handover approved — connect your payout account — CarMazium',
+                heading: 'Handover approved — payout setup needed',
+                message: 'Your handover proof has been approved, but your £100 seller bonus has NOT yet been paid. Connect your payout account in CarMazium Settings so our team can complete your payment.',
+            },
+            STRIPE_TRANSFER_RECORDED: {
+                subject: 'Handover approved — £100 Stripe transfer initiated — CarMazium',
+                heading: 'Handover approved — £100 Stripe transfer recorded',
+                message: 'CarMazium has recorded the £100 transfer to your connected Stripe payout account. This does not mean the funds have reached your bank yet; Stripe bank payout timing may vary.',
+            },
+            MANUAL_PAYMENT_RECORDED: {
+                subject: 'Your £100 seller bonus was marked paid — CarMazium',
+                heading: '£100 seller bonus — manual payment recorded',
+                message: 'Our team has recorded your £100 seller bonus as paid manually. Please check the payment in your bank account; contact support if it has not arrived.',
+            },
+        };
+        const copy = stateCopy[state];
+        const bodyHtml =
+            '<h1 style="color:#ffffff">' + copy.heading + '</h1>' +
+            '<p>Hi <strong>' + name + '</strong>, the handover proof for <strong>' +
+            vehicle + '</strong> has been verified.</p>' +
+            '<p>' + copy.message + '</p>' +
+            '<p><a href="' + this.frontendUrl + '/dashboard/seller/auctions">View your auctions and bonus status</a></p>' +
+            (state === 'APPROVED_SETUP_NEEDED'
+                ? '<p><a href="' + this.frontendUrl + '/dashboard/seller/settings#payouts">Open your payout settings</a></p>'
+                : '');
+        return this.sendBrandedEmail({
+            to: sellerEmail, subject: copy.subject, bodyHtml,
+        });
     }
 
     async sendHandoverDeniedEmail(sellerEmail: string, sellerName: string, vehicleTitle: string, reason: string) {
