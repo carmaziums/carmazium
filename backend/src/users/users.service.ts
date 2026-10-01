@@ -13,6 +13,7 @@ import { EmailService } from '../email/email.service';
 import * as bcrypt from 'bcrypt';
 import { SELF_SERVICE_USER_ROLES, isSelfServiceUserRole } from '../core/account-roles';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { getAccountOnboardingGuide } from '../core/account-onboarding';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const VERIFICATION_CODE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -836,9 +837,34 @@ export class UsersService {
             },
         });
 
-        // Fire and forget welcome email if it's a completely new user
+        // A genuinely new local account gets two durable onboarding surfaces:
+        // a role-aware email and an in-app "Start Here" notification. Keep both
+        // asynchronous so a temporary email/provider problem never blocks signup.
         if (!userExists) {
-            this.emailService.sendWelcomeEmail(user.email, user.firstName || undefined, user.role).catch(console.error);
+            const guide = getAccountOnboardingGuide(user.role);
+
+            void this.emailService
+                .sendWelcomeEmail(user.email, user.firstName || undefined, user.role)
+                .catch((error: any) => {
+                    this.logger.error(`Welcome email failed for ${user.email}: ${error?.message || error}`);
+                });
+
+            void this.prisma.notification.create({
+                data: {
+                    userId: user.id,
+                    type: 'ACCOUNT_WELCOME',
+                    title: guide.notificationTitle,
+                    message: guide.notificationMessage,
+                    actionType: 'OPEN_GETTING_STARTED',
+                    data: {
+                        link: '/auth/registration-complete',
+                        accountLabel: guide.accountLabel,
+                        dashboardPath: guide.dashboardPath,
+                    },
+                },
+            }).catch((error: any) => {
+                this.logger.error(`Welcome notification failed for ${user.email}: ${error?.message || error}`);
+            });
         }
 
         // `isNewUser` is the authoritative "a brand-new account was just
