@@ -13,6 +13,7 @@ import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { isSelfServiceUserRole } from '../core/account-roles';
+import { getAccountOnboardingGuide } from '../core/account-onboarding';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -79,6 +80,38 @@ export class AuthService {
         this.supabase = createClient(validatedUrl, supabaseKey || 'placeholder-key');
     }
 
+    private sendNewAccountOnboarding(user: {
+        id: string;
+        email: string;
+        firstName?: string | null;
+        role?: string | null;
+    }) {
+        const guide = getAccountOnboardingGuide(user.role);
+
+        void this.emailService
+            .sendWelcomeEmail(user.email, user.firstName || undefined, user.role || 'BUYER')
+            .catch((error: any) => {
+                this.logger.error(`Welcome email failed for ${user.email}: ${error?.message || error}`);
+            });
+
+        void this.prisma.notification.create({
+            data: {
+                userId: user.id,
+                type: 'ACCOUNT_WELCOME',
+                title: guide.notificationTitle,
+                message: guide.notificationMessage,
+                actionType: 'OPEN_GETTING_STARTED',
+                data: {
+                    link: '/auth/registration-complete',
+                    accountLabel: guide.accountLabel,
+                    dashboardPath: guide.dashboardPath,
+                },
+            },
+        }).catch((error: any) => {
+            this.logger.error(`Welcome notification failed for ${user.email}: ${error?.message || error}`);
+        });
+    }
+
     async register(dto: RegisterDto) {
         // Check for existing user
         const existing = await this.prisma.user.findUnique({
@@ -113,6 +146,7 @@ export class AuthService {
 
         // Process any pending dealership invitations
         await this.processPendingInvitations(user);
+        this.sendNewAccountOnboarding(user);
 
         // Return user without password hash
         const { passwordHash: _, ...safeUser } = user;
@@ -387,6 +421,7 @@ export class AuthService {
                     
                     // Process any pending dealership invitations
                     await this.processPendingInvitations(localUser);
+                    this.sendNewAccountOnboarding(localUser);
                 } catch (syncErr: any) {
                     this.logger.error(
                         `Auto-sync failed for ${email}: ${syncErr?.message || syncErr}`,
@@ -464,26 +499,26 @@ export class AuthService {
 
                 <!-- What happens next -->
                 <p style="margin: 0 0 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b;">
-                    What you get after verifying
+                    What happens after verification
                 </p>
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 36px;">
                     <tr>
                         <td width="28" valign="top" style="padding: 6px 0;">
                             <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
                         </td>
-                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Full access to buy, sell, and auction vehicles</td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Complete the required account-holder details for your CarMazium profile</td>
                     </tr>
                     <tr>
                         <td width="28" valign="top" style="padding: 6px 0;">
                             <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
                         </td>
-                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Instant HPI checks and vehicle history reports</td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">See a getting-started guide explaining the buying, selling or business tools available to your account type</td>
                     </tr>
                     <tr>
                         <td width="28" valign="top" style="padding: 6px 0;">
                             <div style="width: 20px; height: 20px; background: rgba(237,28,36,0.1); border: 1px solid rgba(237,28,36,0.2); border-radius: 6px; text-align: center; line-height: 20px; font-size: 11px; color: #ed1c24;">✓</div>
                         </td>
-                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Real-time messaging with buyers and sellers</td>
+                        <td style="padding: 6px 0 6px 12px; color: #cbd5e1; font-size: 14px; line-height: 1.5;">Partner/trade tools that require KYC or capability approval remain protected until those checks are completed</td>
                     </tr>
                 </table>
 
