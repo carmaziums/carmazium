@@ -4,6 +4,7 @@ import * as React from "react"
 import { MessageSquare, Send, Loader2, ArrowLeft, User, Check, Zap, Paperclip, ShieldAlert, CheckCircle2, Ban, Flag, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import Image from "next/image"
+import Link from "next/link"
 import { useChat } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
 import { blockChatRoom, createChatAttachmentUpload, getChatMessages, sendChatAttachment, sendChatMessage, markMessagesAsRead, getChatDisplayName, getChatRoomDisplayName, isSupportUser, openVehicleDispute, reportChatMessage, unblockChatRoom, type ChatHistoryCursor, type ChatMessage, type ChatReportReason, type ChatRoom } from "@/lib/chatApi"
@@ -14,6 +15,10 @@ import { supabase } from "@/lib/supabase"
 interface ChatWindowProps {
     room: ChatRoom
     onBack?: () => void
+}
+
+function profileHref(userId: string) {
+    return `/profile/${encodeURIComponent(userId)}`
 }
 
 // Common replies for the admin fielding support conversations — inserted
@@ -642,15 +647,26 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     </button>
                 )}
                 <div className="relative shrink-0">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative ${isSupportUser(room.otherUser) ? 'bg-[var(--bg-card)] ring-1 ring-primary/30' : 'bg-[var(--bg-card)]'}`}>
-                        {isSupportUser(room.otherUser) ? (
+                    {isSupportUser(room.otherUser) ? (
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative bg-[var(--bg-card)] ring-1 ring-primary/30">
                             <Image src="/assets/images/logo.png" alt="" fill sizes="40px" className="object-contain p-2" />
-                        ) : room.otherUser?.profileImage ? (
-                            <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
-                        ) : (
-                            <User size={20} className="text-[var(--text-muted)]" />
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <Link
+                            href={profileHref(room.otherUser.id)}
+                            aria-label={`View ${getChatRoomDisplayName(room)} profile`}
+                            className="block w-10 h-10 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            title="View profile"
+                        >
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden relative bg-[var(--bg-card)] transition-opacity hover:opacity-85">
+                                {room.otherUser?.profileImage ? (
+                                    <Image src={room.otherUser.profileImage} alt="" fill sizes="40px" className="object-cover" />
+                                ) : (
+                                    <User size={20} className="text-[var(--text-muted)]" />
+                                )}
+                            </div>
+                        </Link>
+                    )}
                     {isSupportUser(room.otherUser) && (
                         <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary ring-2 ring-[var(--bg-input)] flex items-center justify-center">
                             <Check size={8} strokeWidth={3.5} className="text-white" />
@@ -658,9 +674,17 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                     )}
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-bold truncate">
-                        {getChatRoomDisplayName(room)}
-                    </h3>
+                    {isSupportUser(room.otherUser) ? (
+                        <h3 className="font-bold truncate">{getChatRoomDisplayName(room)}</h3>
+                    ) : (
+                        <Link
+                            href={profileHref(room.otherUser.id)}
+                            className="inline-block max-w-full font-bold hover:text-primary hover:underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                            title="View profile"
+                        >
+                            <span className="block truncate">{getChatRoomDisplayName(room)}</span>
+                        </Link>
+                    )}
                     {room.listing ? (
                         <p className="text-xs text-[var(--text-muted)] truncate">
                             Re: {room.listing.title}
@@ -737,7 +761,20 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                 </div>
                                 {isAdminViewer && room.disputeCase?.buyer && room.disputeCase?.seller && (
                                     <p className="mt-2 text-xs text-[var(--text-muted)]">
-                                        Buyer: {getChatDisplayName(room.disputeCase.buyer)} · Seller: {getChatDisplayName(room.disputeCase.seller)}
+                                        Buyer:{' '}
+                                        <Link
+                                            href={profileHref(room.disputeCase.buyer.id)}
+                                            className="font-semibold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
+                                        >
+                                            {getChatDisplayName(room.disputeCase.buyer)}
+                                        </Link>
+                                        {' '}· Seller:{' '}
+                                        <Link
+                                            href={profileHref(room.disputeCase.seller.id)}
+                                            className="font-semibold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
+                                        >
+                                            {getChatDisplayName(room.disputeCase.seller)}
+                                        </Link>
                                     </p>
                                 )}
                                 {room.disputeCase?.reason && (
@@ -912,6 +949,21 @@ export function ChatWindow({ room, onBack }: ChatWindowProps) {
                                                 : 'bg-[var(--bg-card)] text-[var(--text-primary)] rounded-bl-sm'
                                                 }`}
                                         >
+                                            {!isOwn && isDispute && msg.sender && (
+                                                isSupportUser(msg.sender) ? (
+                                                    <p className="mb-1 px-1 text-[10px] font-bold text-[var(--text-muted)]">
+                                                        {getChatDisplayName(msg.sender)}
+                                                    </p>
+                                                ) : (
+                                                    <Link
+                                                        href={profileHref(msg.sender.id)}
+                                                        className="mb-1 inline-block px-1 text-[10px] font-bold text-[var(--text-secondary)] hover:text-primary hover:underline underline-offset-2"
+                                                        title="View profile"
+                                                    >
+                                                        {getChatDisplayName(msg.sender)}
+                                                    </Link>
+                                                )
+                                            )}
                                             {msg.attachmentPath && (
                                                 <div className="mb-2 overflow-hidden rounded-xl bg-black/10">
                                                     {msg.attachmentUrl ? (
