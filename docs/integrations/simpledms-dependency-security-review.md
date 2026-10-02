@@ -44,3 +44,7 @@ References: `https://github.com/carmaziums/carmazium/actions/runs/37068848143`; 
 - The remaining medium is nested `js-yaml@5.3.0` under `@nestjs/swagger`, with a patched 5.4.1 available but pinned dependency compatibility to assess separately; do not introduce an unverified global override.
 - The Prisma CLI is excluded physically from the public image and retained **only** in the separate non-root, private maintenance image. Its known advisories require scoped operational acceptance; migration access must not become public. Image separation alone does not remove the need to verify separate runtime and DDL-capable database roles before cutover.
 - The base image is pinned to the **exact digest** verified by the Node 24 compatibility run; future image updates must repeat regression and filesystem vulnerability scanning.
+
+## Minimized restricted maintenance target
+
+The first two-target scan identified 13 high and 26 medium advisories in the maintenance image because it copied the full application builder's `node_modules`, including irrelevant dev dependencies. A separate exact Prisma CLI manifest/lock (`backend/prisma-maintenance`, pinned Prisma 6.19.3) was generated and verified by GitHub Actions run 37071155059. The CLI-only target now installs just that independently locked tree, removes globally bundled npm and contains the current Prisma schema without any compiled API. Rescan after build; retained Prisma upstream advisories remain an operational risk requiring private access and explicit sign-off.

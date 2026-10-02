@@ -28,9 +28,14 @@ ENV NODE_ENV=production
 # Copy CLI tooling and the schema, NOT the compiled HTTP application or its
 # business assets. All file changes and DB credentials belong to an
 # explicitly approved, private one-off maintenance job.
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules ./node_modules
+# A distinct, lockfile-pinned Prisma CLI package avoids inheriting the
+# application's dev tools, runtime dependencies or globally bundled npm.
+COPY prisma-maintenance/package*.json ./
+RUN npm ci --omit=dev --no-fund \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+ && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+ && test -x /app/node_modules/.bin/prisma
+COPY prisma ./prisma
 USER node
 ENTRYPOINT ["/app/node_modules/.bin/prisma"]
 CMD ["--version"]

@@ -1,9 +1,7 @@
 # Restricted Prisma maintenance image — operational runbook
 
 **Status: proposed; must pass Docker CI and an infrastructure review before
-changing the running Fly API.** The two image targets use the same pinned, supported Node 24 Alpine base digest and are built from the same
-source revision with the same Prisma schema/client versions but have different
-capabilities.
+changing the running Fly API.** The two image targets use the same pinned, supported Node 24 Alpine base digest and schema revision but have different, independently locked dependency sets. The maintenance image installs ONLY `prisma@6.19.3` and its 35 lockfile dependencies from `backend/prisma-maintenance/package-lock.json`; it does not copy the application, generated API code, runtime dependencies or development tooling.
 
 | Image target | Purpose | Allowed execution |
 | --- | --- | --- |
@@ -27,7 +25,7 @@ during image build.
 
 ## Authorised maintenance access
 
-The maintenance image is not a new continuously running server and does not
+The minimal maintenance CLI manifest/lock are maintained separately under `backend/prisma-maintenance/`. Regenerate them only on a reviewed branch with the dedicated generation workflow, then validate the Prisma CLI against an isolated test database before use. The maintenance image is not a new continuously running server and does not
 expose HTTP ports. Execution requires an explicitly authorised operator, a
 restricted private network connection to the intended database, a scoped,
 time-limited database credential, change-ticket approval, suitable backups
