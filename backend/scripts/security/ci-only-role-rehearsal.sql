@@ -1,7 +1,7 @@
 -- CI ONLY: isolated disposable PostgreSQL database, synthetic credentials.
 -- Never apply this fixture against Supabase or another existing database.
 \set ON_ERROR_STOP on
-SELECT CASE WHEN current_database() <> 'cm_roles_ci' THEN 1/0 ELSE 1 END AS synthetic_only;
+DO $test_db$ BEGIN IF current_database() <> 'cm_roles_ci' THEN RAISE EXCEPTION 'Refusing to run outside disposable cm_roles_ci database'; END IF; END $test_db$;
 CREATE ROLE cm_ci_migrator LOGIN PASSWORD 'synthetic_migrator_ci_only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 CREATE ROLE cm_ci_runtime LOGIN PASSWORD 'synthetic_runtime_ci_only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
 GRANT CONNECT ON DATABASE cm_roles_ci TO cm_ci_runtime, cm_ci_migrator;
