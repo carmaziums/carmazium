@@ -24,6 +24,20 @@ describe('valuation vehicle identity guard', () => {
         )).toThrow(/model does not match/i);
     });
 
+    it('accepts an exact derivative when explicitly included in the MOT model', () => {
+        const fiesta = {
+            registration: 'AB12CDE', make: 'Ford',
+            model: 'Fiesta', variant: 'ST', year: 2012,
+        };
+        const result = verifyValuationVehicleIdentity(fiesta, {
+            vrm: 'AB12CDE', make: 'FORD', model: 'FIESTA ST',
+            year: 2012, dataSource: 'DVLA',
+        });
+        expect(result).toMatchObject({
+            status: 'MODEL_VERIFIED', modelVerified: true, derivativeVerified: true,
+        });
+    });
+
     it('rejects a conflicting manufacture year beyond one year tolerance', () => {
         expect(() => verifyValuationVehicleIdentity(
             { ...vehicle, year: 2017 }, lookup,
