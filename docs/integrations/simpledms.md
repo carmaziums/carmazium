@@ -133,3 +133,28 @@ states or bid placement requires a new separately reviewed change.
    purchases before enabling in production.
 
 No SimpleDMS credentials have been created or exchanged by this code change.
+
+## Early launch partner data-processing addendum (agreement pending)
+
+The partner may temporarily ingest only the approved API response into its
+server-side BuySmart processing layer for inventory discovery, matching, reports,
+and authorised aggregated partnership metrics. This permission does not include
+resale, onward syndication, third-party sharing, or training unrelated models.
+At a 2–5 minute complete refresh, promptly remove no-longer-live inventory;
+when synchronisation is unavailable, do not represent cached records as current.
+Agree an enforceable retention limit, purge mechanism, incident notification,
+exit deletion and compliance with applicable data-protection law in a signed
+agreement **before enabling external access**. `Cache-Control` allows private
+revalidation on authenticated GETs; it does not grant licence to retain data.
+
+An optional `region` field only releases an exact approved town name (from a
+backend-administered allowlist) and otherwise returns null; it never exposes
+unstructured addresses or detailed postcodes. Enabling region alone will not
+populate it for arbitrary seller-provided location text. Validate useful
+coverage on real data before promising location availability to SimpleDMS.
+
+**Attribution:** Deep links carry fixed `utm_source=simpledms` and
+`utm_medium=partner_api`. This currently measures tagged traffic only;
+registration, qualified bid and completed-sale attribution still require a
+separate consent-aware first-party event capture and reporting implementation.
+Do not promise those conversion metrics are available until that is tested.
