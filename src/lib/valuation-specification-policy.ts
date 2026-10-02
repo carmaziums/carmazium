@@ -74,7 +74,7 @@ export interface SpecificationValuation {
 
 const normalized = (value?: string | null): string =>
     (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
-const compact = (value?: string | null): string => normalized(value).replace(/\\s/g, '');
+const compact = (value?: string | null): string => normalized(value).replace(/\s/g, '');
 const bounded = (x: number, low: number, high: number): number =>
     Math.min(high, Math.max(low, x));
 
@@ -139,7 +139,7 @@ export function calculateSpecificationAdjustment(
     }
 
     const ownerText = normalized(input.owners);
-    const ownerMatch = ownerText.match(/^([1-9][0-9]?)\\s*\\+?$/);
+    const ownerMatch = ownerText.match(/^([1-9][0-9]?)$/);
     const owners = ownerMatch ? Number(ownerMatch[1]) : null;
     if (owners === 1) add(1.02, 'ONE_KEEPER');
     else if (owners === 2) add(1.01, 'TWO_KEEPERS');
