@@ -17,7 +17,7 @@ const mockSupabaseStorage = {
 };
 
 jest.mock('child_process', () => ({
-  execSync: jest.fn().mockReturnValue(Buffer.from('-- SQL dump --')),
+  execFileSync: jest.fn().mockReturnValue(Buffer.from('-- SQL dump --')),
 }));
 
 jest.mock('zlib', () => ({
@@ -41,13 +41,29 @@ describe('DbBackupService', () => {
     }
   });
 
+  const previousDbUrl = process.env.DATABASE_URL;
+  const previousBackupUrl = process.env.BACKUP_DATABASE_URL;
+  const previousRequireBackupRole = process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.DATABASE_URL = 'postgresql://synthetic-app.invalid/test';
+    delete process.env.BACKUP_DATABASE_URL;
+    delete process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
+  });
+
+  afterAll(() => {
+    if (previousDbUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDbUrl;
+    if (previousBackupUrl === undefined) delete process.env.BACKUP_DATABASE_URL;
+    else process.env.BACKUP_DATABASE_URL = previousBackupUrl;
+    if (previousRequireBackupRole === undefined) delete process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
+    else process.env.REQUIRE_SEPARATE_BACKUP_ROLE = previousRequireBackupRole;
   });
 
   it('BACKUP-01: handleWeeklyBackup calls pg_dump and uploads to Supabase Storage', async () => {
     if (!DbBackupService) throw new Error('DbBackupService not found — implement backend/src/tasks/db-backup.service.ts');
-    const { execSync } = require('child_process');
+    const { execFileSync } = require('child_process');
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DbBackupService,
@@ -56,7 +72,16 @@ describe('DbBackupService', () => {
     }).compile();
     const service = module.get(DbBackupService);
     await service.handleWeeklyBackup();
-    expect(execSync).toHaveBeenCalledWith(expect.stringContaining('pg_dump'), expect.any(Object));
+    expect(execFileSync).toHaveBeenCalledWith(
+      'pg_dump',
+      ['--format=plain'],
+      expect.objectContaining({
+        env: expect.objectContaining({
+          PGDATABASE: 'postgresql://synthetic-app.invalid/test',
+        }),
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }),
+    );
     expect(mockSupabaseStorage.upload).toHaveBeenCalledWith(
       expect.stringMatching(/db-backup-\d{4}-\d{2}-\d{2}\.sql\.gz/),
       expect.any(Buffer),
@@ -66,8 +91,8 @@ describe('DbBackupService', () => {
 
   it('BACKUP-02: handleWeeklyBackup calls sendBrandedEmail on pg_dump failure', async () => {
     if (!DbBackupService) throw new Error('DbBackupService not found — implement backend/src/tasks/db-backup.service.ts');
-    const { execSync } = require('child_process');
-    (execSync as jest.Mock).mockImplementationOnce(() => { throw new Error('pg_dump not found'); });
+    const { execFileSync } = require('child_process');
+    (execFileSync as jest.Mock).mockImplementationOnce(() => { throw new Error('pg_dump not found'); });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DbBackupService,
@@ -106,4 +131,50 @@ describe('DbBackupService', () => {
       expect.arrayContaining([expect.stringContaining('db-backup-recent.sql.gz')])
     );
   });
+  it('BACKUP-04: uses separately configured backup URI without placing secrets in the command arguments', async () => {
+    process.env.BACKUP_DATABASE_URL = 'postgresql://synthetic-backup-credential.invalid/test';
+    process.env.REQUIRE_SEPARATE_BACKUP_ROLE = 'true';
+    const { execFileSync } = require('child_process');
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    const args = (execFileSync as jest.Mock).mock.calls[0];
+    expect(args[0]).toBe('pg_dump');
+    expect(args[1]).toEqual(['--format=plain']);
+    expect(args[2].env.PGDATABASE).toBe(process.env.BACKUP_DATABASE_URL);
+    expect(JSON.stringify(args[1])).not.toContain('synthetic-backup-credential');
+  });
+
+  it('BACKUP-05: refuses a restricted-role cutover if separate backup URL is missing', async () => {
+    process.env.REQUIRE_SEPARATE_BACKUP_ROLE = 'true';
+    const { execFileSync } = require('child_process');
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(mockEmailService.sendBrandedEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: expect.stringContaining('backup failed'),
+        bodyHtml: expect.stringContaining('Dedicated backup database connection not configured'),
+      }),
+    );
+  });
+
+  it('BACKUP-06: strips subprocess details from backup failure alerts', async () => {
+    const { execFileSync } = require('child_process');
+    (execFileSync as jest.Mock).mockImplementationOnce(
+      () => { throw new Error('postgresql://super-secret-should-not-leak'); },
+    );
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    const sent = mockEmailService.sendBrandedEmail.mock.calls[0][0];
+    expect(sent.bodyHtml).not.toContain('super-secret-should-not-leak');
+    expect(sent.bodyHtml).toContain('investigate securely');
+  });
+
+
 });
