@@ -4,6 +4,7 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { UserRole } from '@prisma/client';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { AuthService } from '../auth/auth.service';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { SimpleDmsReferralService } from './simpledms-referral.service';
@@ -11,7 +12,7 @@ import { SimpleDmsReferralService } from './simpledms-referral.service';
 @ApiExcludeController()
 @Controller('partners/referrals/simpledms')
 export class SimpleDmsReferralController {
-  constructor(private readonly service: SimpleDmsReferralService) {}
+  constructor(private readonly service: SimpleDmsReferralService, private readonly auth: AuthService) {}
 
   // Redirect endpoint intended for use only as a SimpleDMS deep link.
   @Get('go/:id')
@@ -35,12 +36,19 @@ export class SimpleDmsReferralController {
   async claim(@Req() req: Request, @Body('token') token: string) {
     // Stronger than session-cookie-only: require current browser Supabase bearer
     // so a third-party site cannot submit claims with cross-site cookies.
-    if (!req.headers.authorization?.startsWith('Bearer ')) {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ')) {
       throw new BadRequestException('Authenticated bearer token required');
     }
     const user = (req as Request & { user?: { id: string; role: string } }).user;
     if (!user?.id) throw new BadRequestException('Authenticated dealer required');
-    return this.service.claim(user.id, user.role, token);
+    // Do not merely check the header exists. SessionAuthGuard can trust an
+    // existing session and skip the bearer; verify this token separately.
+    const verified = await this.auth.verifySupabaseToken(header.slice(7));
+    if (!verified || verified.id !== user.id) {
+      throw new BadRequestException('Bearer token must match current dealer');
+    }
+    return this.service.claim(user.id, verified.role, token);
   }
 
   @Get('report')
