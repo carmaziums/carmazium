@@ -244,7 +244,7 @@ describe('FreeListingGrantsService', () => {
         expect(prisma.transaction.findFirst).toHaveBeenCalledWith({
             where: {
                 listingId: 'listing-1', userId:'user-1', type:'COMMISSION',
-                status:'COMPLETED', deletedAt:null, createdAt:{gte:wonAt},
+                status:{in:['PENDING','COMPLETED']}, deletedAt:null, createdAt:{gte:wonAt},
             },
             select:{id:true},
         });
@@ -269,6 +269,29 @@ describe('FreeListingGrantsService', () => {
         }));
         expect(prisma.transaction.create).not.toHaveBeenCalled();
         expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('does not grant £0 while a current-run £125 Checkout or PaymentIntent is pending', async () => {
+        const wonAt = new Date('2026-09-14T12:00:00.000Z');
+        prisma.$queryRaw.mockResolvedValue([activePurchaseGrantRow()]);
+        prisma.auction.findUnique.mockResolvedValue({
+            id:'auction-1', listingId:'listing-1', winnerId:'user-1',
+            wonAt, status:'ENDED', deletedAt:null, buyerFeePaid:false,
+            buyerFeeTransactionId:null,
+        });
+        prisma.transaction.findFirst.mockResolvedValue({
+            id:'pending-card-payment', status:'PENDING',
+        });
+        expect(await service.applyPurchaseGrantToAuctionIfEligible('auction-1','user-1')).toBe(false);
+        expect(prisma.transaction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where:expect.objectContaining({
+                userId:'user-1', listingId:'listing-1', type:'COMMISSION',
+                status:{in:['PENDING','COMPLETED']}, createdAt:{gte:wonAt},
+            }),
+        }));
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+        expect(prisma.$executeRaw).not.toHaveBeenCalled();
     });
 
     it('does not apply a purchase grant retroactively to an auction won before the grant started', async () => {
