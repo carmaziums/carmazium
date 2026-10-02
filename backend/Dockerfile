@@ -22,8 +22,16 @@ RUN npx prisma generate && npx nest build
 # The production schema history includes manually applied SQL and is NOT
 # certified for arbitrary `prisma migrate deploy`, much less `db push`.
 # No database credentials are present at build time or baked into this image.
-FROM builder AS prisma-maintenance
+FROM node:${NODE_VERSION}-alpine AS prisma-maintenance
+WORKDIR /app
 ENV NODE_ENV=production
+# Copy CLI tooling and the schema, NOT the compiled HTTP application or its
+# business assets. All file changes and DB credentials belong to an
+# explicitly approved, private one-off maintenance job.
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
+USER node
 ENTRYPOINT ["/app/node_modules/.bin/prisma"]
 CMD ["--version"]
 
