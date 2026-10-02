@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { signSimpleDmsLink } from './simpledms-referral.service';
 
 // Strict database selection + explicit output mapping. Neither an ORM object
 // nor an existing auction endpoint is ever passed through to a partner.
@@ -82,7 +83,13 @@ export class SimpleDmsService {
       if (url.protocol !== 'https:' || url.username || url.password ||
           !(['carmazium-hjoh9w.fly.dev', 'api.carmazium.com'].includes(url.hostname)
             || url.hostname.endsWith('.carmazium.com'))) return this.publicAuctionUrl(id);
-      return url.origin + '/partners/referrals/simpledms/go/' + encodeURIComponent(id);
+      const secret = this.config.get<string>('PARTNER_API_REFERRAL_SIGNING_SECRET') || '';
+      if (secret.length < 32) return this.publicAuctionUrl(id);
+      // The link is issued only inside an authenticated partner feed.
+      const expires = Date.now() + 24 * 60 * 60 * 1000;
+      const signature = signSimpleDmsLink(id, expires, secret);
+      return url.origin + '/partners/referrals/simpledms/go/' + encodeURIComponent(id) +
+        '?expires=' + expires + '&signature=' + encodeURIComponent(signature);
     } catch {
       return this.publicAuctionUrl(id);
     }
