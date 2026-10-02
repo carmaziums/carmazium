@@ -376,9 +376,13 @@ async function getBrowserFallbackValuation(
         cache: 'no-store',
     })
 
+    // A browser-only, registration-free fallback must remain spec-neutral.
+    // Apply every seller factor exactly ONCE after the fallback is labelled.
     const targetModel = normalise(request.model)
-    const targetFuel = normalise(request.fuelType)
-    const targetTransmission = normalise(request.transmission)
+    const neutralBase: VehicleValuationRequest = {
+        make: request.make, model: request.model,
+        year: request.year, mileage: request.mileage,
+    }
 
     const values = (response.data ?? [])
         .filter((row) =>
@@ -395,24 +399,9 @@ async function getBrowserFallbackValuation(
             let value = price * Math.pow(0.92, compYear - request.year)
             value *= clamp(1 - ((request.mileage - compMileage) / 1000) * 0.004, 0.78, 1.22)
 
-            // Do not exclude a useful comparable for a different powertrain;
-            // reduce its influence instead by nudging it toward the conservative
-            // side before it enters the median pool.
-            if (targetFuel && normalise(row.fuelType) && normalise(row.fuelType) !== targetFuel) value *= 0.96
-
-            const rowTransmission = normalise(row.transmission)
-            if (targetTransmission && rowTransmission && rowTransmission !== targetTransmission) {
-                const targetFamily = transmissionFamily(request.transmission)
-                const compFamily = transmissionFamily(row.transmission)
-                if (targetFamily && compFamily && targetFamily !== compFamily) {
-                    value *= targetFamily === 'AUTO' ? 1.07 : 0.93
-                }
-            }
-
             // Public fallback data is live asking-price evidence, not an
             // achieved transaction price, so keep the estimate conservative.
             value *= 0.96
-            value *= profileFactor(request)
             return value
         })
         .filter((value): value is number => value !== null)
@@ -426,7 +415,7 @@ async function getBrowserFallbackValuation(
         })
         : values
 
-    const valuation = finishEstimate(request, cleaned)
+    const valuation = finishEstimate(neutralBase, cleaned)
     valuation.marketEvidence = {
         carmaziumComparables: cleaned.length,
         liveUkComparables: 0,
@@ -439,7 +428,10 @@ async function getBrowserFallbackValuation(
 function getDeterministicFallbackValuation(
     request: VehicleValuationRequest,
 ): VehicleValuation {
-    const valuation = finishEstimate(request, [])
+    const valuation = finishEstimate({
+        make: request.make, model: request.model,
+        year: request.year, mileage: request.mileage,
+    }, [])
     valuation.marketEvidence = {
         carmaziumComparables: 0,
         liveUkComparables: 0,
@@ -539,6 +531,6 @@ export async function getVehicleValuation(
         fallback.confidence = 'LOW'
         fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49)
         fallback.explanation += ' ' + fallback.identityVerification.message
-        return fallback
+        return applyVehicleValuationAdjustments(fallback, request)
     }
 }
