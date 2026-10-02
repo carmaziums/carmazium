@@ -110,7 +110,7 @@ default:
 - Current valid bid price (without bidder identities).
 - Image URLs, restricted to explicitly allowlisted public HTTPS image
   hostnames, with no URL credentials/query tokens; for Supabase only the
-  `/storage/v1/object/public/` path is accepted. Set the host allowlist
+  `/storage/v1/object/public/listings/` bucket path is accepted. Known photo-editor `#cm-photo=` metadata is stripped from approved public URLs. Set the host allowlist
   `PARTNER_API_PUBLIC_IMAGE_HOSTS` before enabling images.
 
 Reserved/internal prices are never shared. Any request to add reserve price,
