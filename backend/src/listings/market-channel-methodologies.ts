@@ -7,6 +7,8 @@ export type ChannelObservation = {
     kind: ValuationEvidenceKind;
     saleChannel?: 'RETAIL' | 'PRIVATE' | 'AUCTION' | null;
     verifiedAuctionSale?: boolean;
+    verifiedPrivateSale?: boolean;
+    channelValue?: number;
 };
 
 export interface MarketChannelGuides {
@@ -73,7 +75,8 @@ export function calculateMarketChannelGuides(
 
     const advertised = valid.filter((row) => row.kind === 'ACTIVE_ASK');
     const privateCompleted = valid.filter((row) =>
-        row.kind === 'SALE' && row.saleChannel === 'PRIVATE');
+        row.kind === 'SALE' && row.saleChannel === 'PRIVATE'
+        && row.verifiedPrivateSale === true);
     const confirmedAuctions = valid.filter((row) =>
         row.kind === 'AUCTION_RESULT'
         && row.saleChannel === 'AUCTION'
@@ -84,10 +87,10 @@ export function calculateMarketChannelGuides(
     // distinct asking-price distribution directly instead of a fixed uplift.
     const hasAskingMarket = advertised.length >= 3;
     const q25Ask = hasAskingMarket
-        ? weightedQuantile(advertised.map(({ value, weight }) => ({ value: value / 0.96, weight })), 0.25)
+        ? weightedQuantile(advertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25)
         : base.mid;
     const q75Ask = hasAskingMarket
-        ? weightedQuantile(advertised.map(({ value, weight }) => ({ value: value / 0.96, weight })), 0.75)
+        ? weightedQuantile(advertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75)
         : base.high;
     const retailMinimum = hasAskingMarket
         ? roundChannelMoney(Math.min(q25Ask, q75Ask))
@@ -100,21 +103,21 @@ export function calculateMarketChannelGuides(
     // The private proxy is bounded by the broad observed/fallback market
     // range, not an unsupported fixed fraction of advertised retail prices.
     const privateLow = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted, 0.25))
+        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25))
         : base.low;
     const privateHigh = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted, 0.75))
+        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75))
         : base.mid;
     const privateMid = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted, 0.5))
+        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.5))
         : roundChannelMoney((privateLow + privateHigh) / 2);
 
     const hasAuctionOutcomes = confirmedAuctions.length >= 3;
-    // normalizeComparable intentionally converts auction observations to
-    // retail-equivalent terms for the broad market base. Undo that conversion
-    // here to analyse the genuine auction cohort on its OWN price scale.
-    const auctionObserved = confirmedAuctions.map((row) =>
-        ({ value: row.value / 1.10, weight: row.weight }));
+    // Price normalization supplies an unboosted, age/mileage-adjusted
+    // channel price, so retail-equivalent auction uplift from the broad
+    // market calculation never contaminates achieved auction evidence.
+    const auctionObserved = confirmedAuctions.map(({ channelValue, value, weight }) =>
+        ({ value: channelValue ?? value, weight }));
     const auctionLow = hasAuctionOutcomes
         ? roundChannelMoney(weightedQuantile(auctionObserved, 0.25))
         : base.low;
