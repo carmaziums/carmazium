@@ -98,7 +98,7 @@ CREATE POLICY synthetic_bid_insert ON cm_core.bids FOR INSERT
   TO cm_core_runtime WITH CHECK (
     "deletedAt" IS NULL AND "cancelledAt" IS NULL AND "archivedAt" IS NULL
     AND EXISTS (SELECT 1 FROM cm_core.auctions a
-                WHERE a."listingId" = "listingId"));
+                WHERE a."listingId" = bids."listingId"));
 CREATE POLICY synthetic_bid_select ON cm_core.bids FOR SELECT
   TO cm_core_runtime USING ("deletedAt" IS NULL AND "cancelledAt" IS NULL);
 CREATE POLICY synthetic_session_dml ON cm_core.sessions FOR ALL
