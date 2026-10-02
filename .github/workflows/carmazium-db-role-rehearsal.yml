@@ -4,15 +4,42 @@ on:
     branches: [security/carmazium-db-role-cutover-preflight]
     paths:
       - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/src/main.ts'
+      - 'backend/src/core/config/session-table-config*'
       - '.github/workflows/carmazium-db-role-rehearsal.yml'
   pull_request:
     branches: [security/simpledms-dependency-fixes]
     paths:
       - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/src/main.ts'
+      - 'backend/src/core/config/session-table-config*'
       - '.github/workflows/carmazium-db-role-rehearsal.yml'
 permissions:
   contents: read
 jobs:
+  backward-compatible-backend:
+    name: Full backend checks for opt-in session pre-provisioning
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Unit-test the disabled-by-default session DDL switch
+        run: |
+          npm ci
+          npx jest core/config/session-table-config.spec.ts --runInBand
+      - name: Check full type safety, regression suite and build
+        run: |
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
   isolated-postgres-permissions:
     runs-on: ubuntu-latest
     timeout-minutes: 12
