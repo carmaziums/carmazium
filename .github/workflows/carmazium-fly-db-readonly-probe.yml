@@ -35,3 +35,13 @@ jobs:
           timeout 80s flyctl ssh console --app carmazium-hjoh9w --region lhr \
             --pty=false --command "sh -lc 'printf %s $payload | base64 -d | node'"
           echo 'Read-only Fly DB identity check completed; verify no secrets appeared above.'
+      - name: Probe existing session-store pg pool with SELECT 1 (no user sessions)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -eu
+          node --check backend/scripts/security/pg-session-transport-probe.js
+          payload="$(base64 -w0 backend/scripts/security/pg-session-transport-probe.js)"
+          timeout 80s flyctl ssh console --app carmazium-hjoh9w --region lhr \
+            --pty=false --command "sh -lc 'printf %s $payload | base64 -d | node'"
+
