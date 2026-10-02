@@ -3069,6 +3069,46 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     : ' (based on verified private-party sales)'}
                 </Text>
               ) : null}
+              {valuation.confidenceAssessment ? (
+                <View style={s.valuationNotice}>
+                  <Ionicons name="information-circle-outline" size={16} color={Colors.infoBlueLight} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.valuationNoticeText}>
+                      {valuation.confidenceAssessment.level} evidence strength (not a measured accuracy percentage)
+                    </Text>
+                    <Text style={s.valuationEvidenceText}>
+                      {valuation.confidenceAssessment.sourceExplanation}
+                    </Text>
+                    <Text style={s.valuationEvidenceText}>
+                      {valuation.confidenceAssessment.headline}
+                    </Text>
+                    <Text style={s.valuationEvidenceText}>
+                      {valuation.confidenceAssessment.counts.uniqueUkAdverts} accepted UK adverts;
+                      {' '}{valuation.confidenceAssessment.counts.exactModelAdverts} exact-model matches;
+                      {' '}{valuation.confidenceAssessment.counts.independentAdvertSites} cited advert sources.
+                    </Text>
+                    {valuation.confidenceAssessment.counts.verifiedCompletedAuctions > 0 ? (
+                      <Text style={s.valuationEvidenceText}>
+                        {valuation.confidenceAssessment.counts.verifiedCompletedAuctions} completed auction handovers, subject to seller confirmation rather than bank verification.
+                      </Text>
+                    ) : null}
+                    {valuation.confidenceAssessment.checkedAt ? (
+                      <Text style={s.valuationEvidenceText}>
+                        Market checked: {new Date(valuation.confidenceAssessment.checkedAt).toLocaleString('en-GB')}
+                      </Text>
+                    ) : null}
+                    {valuation.confidenceAssessment.limitations.map((message, index) => (
+                      <Text key={index} style={s.valuationEvidenceText}>
+                        {'• '}{message}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <Text style={s.valuationEvidenceText}>
+                  Evidence detail is not available for this older or locally generated valuation. Treat it as provisional; advertised asking prices are not completed sales.
+                </Text>
+              )}
               <Text style={s.valuationEvidenceText}>
                 Guide only. Condition/specification adjusts this saved base without starting another search. Auction listing opening bids still follow the separate platform listing rule.
               </Text>
