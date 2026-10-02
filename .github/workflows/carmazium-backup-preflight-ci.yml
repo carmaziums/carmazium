@@ -1,0 +1,39 @@
+name: Backup private-destination preflight and full backend regressions
+on:
+  push:
+    branches: [security/carmazium-backup-preflight-no-paid-staging]
+    paths:
+      - 'backend/src/tasks/db-backup.service.ts'
+      - 'backend/src/tasks/db-backup.service.spec.ts'
+      - '.github/workflows/carmazium-backup-preflight-ci.yml'
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/src/tasks/db-backup.service.ts'
+      - 'backend/src/tasks/db-backup.service.spec.ts'
+      - '.github/workflows/carmazium-backup-preflight-ci.yml'
+permissions:
+  contents: read
+jobs:
+  backup-safety-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install locked dependencies without production secrets
+        run: npm ci
+      - name: Require missing-credential and absent/public-bucket regression tests
+        run: npx jest tasks/db-backup.service.spec.ts tasks/backup-connection.spec.ts --runInBand
+      - name: Full backend typecheck and tests
+        run: |
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
