@@ -158,3 +158,34 @@ coverage on real data before promising location availability to SimpleDMS.
 registration, qualified bid and completed-sale attribution still require a
 separate consent-aware first-party event capture and reporting implementation.
 Do not promise those conversion metrics are available until that is tested.
+
+## First-party partner referral measurement (feature gated)
+
+If enabled in staging, each auction record has an optional `referralUrl` pointing
+at the signed CarMazium backend redirect. SimpleDMS should use `referralUrl`
+for outbound clicks (and fall back to `url` only when it is absent). The redirect
+creates a short-lived, auction-scoped signed token and sends the dealer to the
+original CarMazium auction. The raw key remains on the backend. The token stays
+in the landing URL until an authenticated dealer reaches the auction; it is not
+stored in third-party cookies or sent to SimpleDMS. Use no partner identifier
+in browser storage unless the privacy review explicitly approves it.
+
+Gate the server with `PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED=false` until tested.
+Set a strong backend-only `PARTNER_API_REFERRAL_SIGNING_SECRET` (32+ chars) and
+`PARTNER_API_REFERRAL_BACKEND_URL` to the approved HTTPS backend host. On the
+frontend, `NEXT_PUBLIC_PARTNER_ATTRIBUTION_ENABLED=false` until privacy notice
+and lawful-basis review is approved. The partner gets **aggregate reports only**.
+
+The admin-only `GET /partners/referrals/simpledms/report?days=90` counts tagged
+redirects, uniquely attributed dealer accounts, genuinely new dealer accounts,
+actual valid bids and handover-approved completed purchases linked to the
+specific advertised auction. It never returns dealer identities. Counts are
+best-effort: users declining tracking or leaving before authentication, staff
+role attribution, disabled tracking, or missing partner-side metrics mean some
+conversions cannot be proven. It is NOT a real-time partner-facing endpoint.
+
+Data-sharing agreement: permitted data cached solely for BrowseSmart matching,
+reports and the agreed 90-day pilot; refresh 2–5 minutes; delete inactive
+auction records promptly and all permitted cache on termination within an
+agreed contractual deadline. Confirm incident handling, sublicensing bans and
+image rights before issuing credentials.\n
