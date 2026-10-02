@@ -353,7 +353,7 @@ export async function getVehicleValuation(
     fallback.confidence = 'LOW';
     fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49);
     fallback.explanation += ' ' + fallback.identityVerification.message;
-    return fallback;
+    return applyVehicleValuationAdjustments(fallback, request);
   } finally {
     clearTimeout(timeoutId);
   }
