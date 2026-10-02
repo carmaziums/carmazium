@@ -77,7 +77,9 @@ describe('DbBackupService', () => {
       ['--format=plain'],
       expect.objectContaining({
         env: expect.objectContaining({
-          PGDATABASE: 'postgresql://synthetic-app.invalid/test',
+          PGHOST: 'synthetic-app.invalid',
+          PGUSER: 'synthetic-app',
+          PGDATABASE: 'test',
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
       }),
@@ -142,7 +144,9 @@ describe('DbBackupService', () => {
     const args = (execFileSync as jest.Mock).mock.calls[0];
     expect(args[0]).toBe('pg_dump');
     expect(args[1]).toEqual(['--format=plain']);
-    expect(args[2].env.PGDATABASE).toBe(process.env.BACKUP_DATABASE_URL);
+    expect(args[2].env.PGHOST).toBe('synthetic-backup-credential.invalid');
+    expect(args[2].env.PGDATABASE).toBe('test');
+    expect(args[2].env.BACKUP_DATABASE_URL).toBeUndefined();
     expect(JSON.stringify(args[1])).not.toContain('synthetic-backup-credential');
   });
 
