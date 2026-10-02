@@ -67,6 +67,17 @@ a restricted-role backup. It invokes `pg_dump` without shell
 interpolation and passes the URI through libpq's `PGDATABASE`
 environment variable to avoid putting credentials in process arguments.
 
+**Security boundary:** Providing `BACKUP_DATABASE_URL` to the *public
+HTTP process* is only transitional compatibility wiring. Even with a
+different URI, a privileged backup credential held in that process
+would remain accessible after a public API compromise and would
+undermine full privilege separation. **Do not place a new privileged
+backup URI in the public Fly application's environment**. Production
+cutover additionally requires an approved, isolated short-lived backup
+runner with its own secret delivery and schedule; the current public
+cron must only be disabled when that independently tested runner is
+operational and alerting. No such runner has been deployed by this PR.
+
 These code changes do **not** establish a separate backup account on
 Supabase, move the cron into a private job, modify running Fly secrets
 or independently validate production recovery. Test them in a genuinely
