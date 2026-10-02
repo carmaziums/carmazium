@@ -83,6 +83,10 @@ describe('licensed CAP HPI shadow benchmark', () => {
             .toEqual({ status: 'IDENTITY_MISMATCH' });
         expect(parseCapHpiVrmValuationXml(sampleXml(), { ...request, year: 2014 }))
             .toEqual({ status: 'IDENTITY_MISMATCH' });
+        expect(parseCapHpiVrmValuationXml(
+            sampleXml().replace('<CAPDer>1.4 TFSI SPORT</CAPDer>', '<CAPDer>ST-Line</CAPDer>'),
+            { ...request, variant: 'ST' },
+        )).toEqual({ status: 'IDENTITY_MISMATCH' });
     });
 
     it('ignores malformed XML, DTD, reversed trade prices and provider failures', async () => {
