@@ -60,6 +60,11 @@ jobs:
           NODE
       - name: Build real, pinned Node 24 public HTTP runtime image
         run: docker build --target runtime -t carmazium-simpledms-reviewed-public -f backend/Dockerfile backend
+      - name: Verify packaged pg_dump matches live PostgreSQL 17 server major
+        run: |
+          version="$(docker run --rm --network none --entrypoint pg_dump carmazium-simpledms-reviewed-public --version)"
+          echo "$version"
+          echo "$version" | grep -E '^pg_dump \(PostgreSQL\) 17\.'
       - name: Verify Prisma runtime present and migration/npm CLIs absent
         run: |
           docker run --rm --network none --entrypoint node carmazium-simpledms-reviewed-public -e "
