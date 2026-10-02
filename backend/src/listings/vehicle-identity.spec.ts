@@ -38,6 +38,12 @@ describe('valuation vehicle identity guard', () => {
         });
     });
 
+    it('accepts verified model labels with a redundant manufacturer prefix', () => {
+        expect(verifyValuationVehicleIdentity({
+            ...vehicle, model: 'Volkswagen Golf',
+        }, lookup)).toMatchObject({ status: 'MODEL_VERIFIED', modelVerified: true });
+    });
+
     it('rejects a conflicting manufacture year beyond one year tolerance', () => {
         expect(() => verifyValuationVehicleIdentity(
             { ...vehicle, year: 2017 }, lookup,
