@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { execFileSync } from 'child_process';
 import { gzipSync } from 'zlib';
 import { EmailService } from '../email/email.service';
+import { backupPgEnvironment } from './backup-connection';
 
 @Injectable()
 export class DbBackupService {
@@ -33,11 +34,11 @@ export class DbBackupService {
         throw new Error('BACKUP_ROLE_NOT_CONFIGURED');
       }
 
-      // Avoid embedding the database URL in shell commands, argv or errors.
-      // libpq accepts a PostgreSQL URI through the PGDATABASE environment
-      // variable. Postgres 17 pg_dump is packaged in the reviewed API image.
+      // Keep credentials out of command arguments, shell interpolation and
+      // unrelated subprocess environment variables. PostgreSQL 17 pg_dump
+      // receives only validated, supported libpq PG* connection parameters.
       const dumpBuffer = execFileSync('pg_dump', ['--format=plain'], {
-        env: { ...process.env, PGDATABASE: backupUrl },
+        env: backupPgEnvironment(backupUrl),
         maxBuffer: 200 * 1024 * 1024, // 200 MB safety ceiling
         stdio: ['ignore', 'pipe', 'pipe'],
       });
