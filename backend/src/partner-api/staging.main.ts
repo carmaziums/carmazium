@@ -41,6 +41,7 @@ function fixtures() {
 
 @Controller('staging-assets')
 class SyntheticAssetsController {
+
   @Get('demo-vehicle.svg')
   @Header('Content-Type', 'image/svg+xml')
   @Header('X-Robots-Tag', 'noindex')
@@ -60,11 +61,20 @@ const syntheticPrisma = {
   bid: { findFirst: async () => ({ amount: '5200.00' }) },
 };
 
+@Controller('staging-auctions')
+class SyntheticAuctionController {
+  @Get(':id')
+  @Header('X-Robots-Tag', 'noindex')
+  preview() {
+    return { syntheticOnly: true, biddingEnabled: false, message: 'Synthetic integration test vehicle; no real sale or dealer registration.' };
+  }
+}
+
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), ThrottlerModule.forRoot([{
     ttl: 60_000, limit: 60,
   }])],
-  controllers: [SimpleDmsController, SyntheticAssetsController],
+  controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController],
   providers: [
     SimpleDmsGuard, SimpleDmsService,
     { provide: PrismaService, useValue: syntheticPrisma },
