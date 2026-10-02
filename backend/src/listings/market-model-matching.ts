@@ -1,4 +1,4 @@
-import { canonicalValuationMake, canonicalValuationModel } from './vehicle-valuation-identity';
+import { canonicalValuationMake } from './vehicle-valuation-identity';
 
 export type MarketModelMatchQuality =
     | 'EXACT_MODEL'
@@ -17,11 +17,19 @@ const TRAILING_POWERTRAIN = new Set([
 function modelCore(model: string, make: string): string {
     // Canonicalise make aliases before comparing, but do not strip a
     // performance-model suffix (e.g. FIESTA ST) or generation number.
-    const value = canonicalValuationModel(model, make);
-    const makeTokens = normalized(canonicalValuationMake(make)).split(' ');
-    const tokens = normalized(value)
-        .split(/\s+/).filter(Boolean)
-        .filter((token) => !makeTokens.includes(token));
+    const makeKey = canonicalValuationMake(make);
+    const tokens = normalized(model).split(/\s+/).filter(Boolean);
+    const makeWords = normalized(make).split(' ').filter(Boolean);
+    const possiblePrefixes = [makeWords, [makeKey], ...(makeKey === 'MERCEDES'
+        ? [['MERCEDES', 'BENZ'], ['MERCEDESBENZ']] : []),
+        ...(makeKey === 'VOLKSWAGEN' ? [['VW'], ['VOLKSWAGEN']] : [])]
+        .sort((x, y) => y.length - x.length);
+    for (const prefix of possiblePrefixes) {
+        if (prefix.length && prefix.every((part, index) => tokens[index] === part)) {
+            tokens.splice(0, prefix.length);
+            break;
+        }
+    }
     while (tokens.length > 1 && TRAILING_POWERTRAIN.has(tokens[tokens.length - 1])) {
         tokens.pop();
     }
