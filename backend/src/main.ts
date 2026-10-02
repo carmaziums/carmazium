@@ -1,3 +1,4 @@
+import { shouldCreateSessionTable } from './core/config/session-table-config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -69,7 +70,7 @@ async function bootstrap() {
         // the target sessions table, RLS policy and explicit DML grants have
         // been provisioned and end-to-end tested in staging.
         // Default preserves legacy production behaviour until cutover.
-        createTableIfMissing: process.env.SESSION_TABLE_PREPROVISIONED !== 'true',
+        createTableIfMissing: shouldCreateSessionTable(),
       }),
       name: 'sid',
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
