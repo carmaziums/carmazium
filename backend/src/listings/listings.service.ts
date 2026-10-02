@@ -613,7 +613,13 @@ export class ListingsService {
             || this.config.get<string>('CAP_HPI_INTERNAL_COMPARISON_RIGHTS_CONFIRMED') !== 'true') {
             return null;
         }
-        return fetchLicensedCapHpiBenchmark(dto, this.config);
+        try {
+            return await fetchLicensedCapHpiBenchmark(dto, this.config);
+        } catch {
+            // Even unexpected optional integration errors cannot suppress
+            // the user's existing live-first valuation journey.
+            return { status: 'UNAVAILABLE' };
+        }
     }
 
     private async recordLicensedBenchmarkCheck(
