@@ -1513,6 +1513,93 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 7 frozen-base deterministic seller edits', () => {
+        const id = '77777777-7777-4777-8777-777777777777';
+        const storedBase = {
+            low: 7500, mid: 9000, high: 10500,
+            source: 'LIVE_UK_MARKET',
+            confidence: 'MEDIUM', confidenceScore: 0.58,
+            comparables: 4, evidence: {
+                completedSales: 0, acceptedOffers: 0, auctionResults: 0, activeAsks: 4,
+            },
+            explanation: 'Frozen genuine advert evidence.',
+            marketEvidence: {
+                carmaziumComparables: 0, liveUkComparables: 4,
+                liveUkAttempts: 1, blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
+            },
+            retail: {
+                suggestedAsking: 10800, suggestedMinimum: 9200,
+                evidenceBasis: 'OBSERVED', observedAsks: 4,
+            },
+            privateSale: {
+                low: 7000, mid: 8100, high: 9000,
+                evidenceBasis: 'PROVISIONAL_PROXY', verifiedSales: 0,
+            },
+            auction: {
+                marketValue: 6900, openingBid: 5100, reserveLow: 6400,
+                reserveHigh: 7300, suggestedReserve: 6900,
+                evidenceBasis: 'OBSERVED', verifiedOutcomes: 5,
+            },
+        };
+        const identity = {
+            make: 'VOLKSWAGEN', model: 'GOLF', year: 2010,
+            mileage: 138734, registration: 'BF10XYP',
+        };
+        const request = {
+            ...identity, valuationId: id,
+        };
+
+        beforeEach(() => {
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id, type: 'valuation_base_snapshot', payload: {
+                    identity, baseValuation: storedBase,
+                },
+            });
+        });
+
+        it('returns a path-independent price after sequential seller edits without repeated market search', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const poor = await service.estimateVehicleValue({
+                ...request, condition: 'POOR', exteriorGrade: 5, transmission: 'MANUAL',
+            } as any);
+            const clean = await service.estimateVehicleValue({
+                ...request, condition: 'EXCELLENT', exteriorGrade: 1, transmission: 'CVT',
+                ulezCompliant: true, euroStandard: 'EURO_4',
+            } as any);
+            const editedBack = await service.estimateVehicleValue({
+                ...request, condition: 'POOR', exteriorGrade: 5, transmission: 'MANUAL',
+            } as any);
+            expect(search).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(poor.mid).toBeLessThan(clean.mid);
+            expect(editedBack.mid).toBe(poor.mid);
+            expect(editedBack.retail.suggestedAsking).toBe(poor.retail.suggestedAsking);
+            expect(editedBack.auction.suggestedReserve).toBe(poor.auction.suggestedReserve);
+            expect(editedBack.privateSale?.mid).toBe(poor.privateSale?.mid);
+            expect(clean.specificationAdjustment?.base.mid).toBe(storedBase.mid);
+            expect(clean.marketEvidence).toEqual(storedBase.marketEvidence);
+            expect(clean.auction.verifiedOutcomes).toBe(5);
+        });
+
+        it('normalizes equivalent hyphenated trim and fuel/transmission aliases on the same frozen base', async () => {
+            const a = await service.estimateVehicleValue({
+                ...request, variant: 'ST-LINE', fuelType: 'PETROL_PLUGIN_HYBRID',
+                transmission: 'SEMI_AUTOMATIC',
+            } as any);
+            const b = await service.estimateVehicleValue({
+                ...request, variant: 'ST LINE', fuelType: 'Petrol Plug-in Hybrid',
+                transmission: 'Semi-Automatic',
+            } as any);
+            expect(a.mid).toBe(b.mid);
+            expect(a.retail).toEqual(b.retail);
+            expect(a.privateSale).toEqual(b.privateSale);
+            expect(a.auction).toEqual(b.auction);
+            expect(a.specificationAdjustment?.reasonCodes)
+                .toEqual(b.specificationAdjustment?.reasonCodes);
+        });
+    });
+
     describe('Block 6 completed-sale provenance and separate channels', () => {
         const car = { make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000 };
         const common = {
