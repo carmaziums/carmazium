@@ -342,7 +342,17 @@ export async function searchLiveUkVehicleMarket(
         };
     }
 
-    const response = await client.responses.create({
+    // SDK timeout alone does not guarantee the underlying HTTP request is
+    // aborted on all transport paths. Apply an independent abort signal to
+    // ensure one search plan cannot run indefinitely.
+    const abortController = new AbortController();
+    const timer = setTimeout(
+        () => abortController.abort(),
+        options.timeoutMs ?? 18_000,
+    );
+    let response: any;
+    try {
+        response = await client.responses.create({
         model: options.model,
         tools: [webSearchTool] as any,
         tool_choice: 'required',
@@ -398,7 +408,10 @@ export async function searchLiveUkVehicleMarket(
                 },
             },
         },
-    } as any);
+    } as any, { signal: abortController.signal });
+    } finally {
+        clearTimeout(timer);
+    }
 
     let parsed: { comparables?: unknown[] } = {};
     try {
