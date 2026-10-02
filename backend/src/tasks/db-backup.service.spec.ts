@@ -10,6 +10,7 @@ const mockEmailService = {
 };
 
 const mockSupabaseStorage = {
+  listBuckets: jest.fn().mockResolvedValue({ data: [{ id: 'backups', public: false }], error: null }),
   from: jest.fn().mockReturnThis(),
   upload: jest.fn().mockResolvedValue({ error: null }),
   list: jest.fn().mockResolvedValue({ data: [] }),
@@ -44,9 +45,16 @@ describe('DbBackupService', () => {
   const previousDbUrl = process.env.DATABASE_URL;
   const previousBackupUrl = process.env.BACKUP_DATABASE_URL;
   const previousRequireBackupRole = process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
+  const previousSupabaseUrl = process.env.SUPABASE_URL;
+  const previousSupabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const previousBackupEnabled = process.env.BACKUP_JOB_ENABLED;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSupabaseStorage.listBuckets.mockResolvedValue({ data: [{ id: 'backups', public: false }], error: null });
+    process.env.SUPABASE_URL = 'https://synthetic-project.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'SYNTHETIC-ONLY-KEY';
+    delete process.env.BACKUP_JOB_ENABLED;
     process.env.DATABASE_URL = 'postgresql://synthetic-user:synthetic-pass@synthetic-app.invalid/test';
     delete process.env.BACKUP_DATABASE_URL;
     delete process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
@@ -59,6 +67,12 @@ describe('DbBackupService', () => {
     else process.env.BACKUP_DATABASE_URL = previousBackupUrl;
     if (previousRequireBackupRole === undefined) delete process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
     else process.env.REQUIRE_SEPARATE_BACKUP_ROLE = previousRequireBackupRole;
+    if (previousSupabaseUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousSupabaseUrl;
+    if (previousSupabaseServiceKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = previousSupabaseServiceKey;
+    if (previousBackupEnabled === undefined) delete process.env.BACKUP_JOB_ENABLED;
+    else process.env.BACKUP_JOB_ENABLED = previousBackupEnabled;
   });
 
   it('BACKUP-01: handleWeeklyBackup calls pg_dump and uploads to Supabase Storage', async () => {
@@ -180,5 +194,57 @@ describe('DbBackupService', () => {
     expect(sent.bodyHtml).toContain('investigate securely');
   });
 
+
+  it('BACKUP-07: refuses to dump without private upload credentials', async () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { execFileSync } = require('child_process');
+    const module = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(mockSupabaseStorage.listBuckets).not.toHaveBeenCalled();
+    expect(mockEmailService.sendBrandedEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ bodyHtml: expect.stringContaining('Private backup upload credentials unavailable') }),
+    );
+  });
+
+  it('BACKUP-08: refuses to dump when private backup bucket does not exist', async () => {
+    mockSupabaseStorage.listBuckets.mockResolvedValueOnce({ data: [], error: null });
+    const { execFileSync } = require('child_process');
+    const module = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(mockEmailService.sendBrandedEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ bodyHtml: expect.stringContaining('Private backup bucket unavailable') }),
+    );
+  });
+
+  it('BACKUP-09: never uploads a backup into a public bucket with the right name', async () => {
+    mockSupabaseStorage.listBuckets.mockResolvedValueOnce({
+      data: [{ id: 'backups', public: true }], error: null,
+    });
+    const { execFileSync } = require('child_process');
+    const module = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(mockSupabaseStorage.upload).not.toHaveBeenCalled();
+  });
+
+  it('BACKUP-10: disables the legacy in-process cron only with explicit opt-out', async () => {
+    process.env.BACKUP_JOB_ENABLED = 'false';
+    const { execFileSync } = require('child_process');
+    const module = await Test.createTestingModule({
+      providers: [DbBackupService, { provide: EmailService, useValue: mockEmailService }],
+    }).compile();
+    await module.get(DbBackupService).handleWeeklyBackup();
+    expect(execFileSync).not.toHaveBeenCalled();
+    expect(mockSupabaseStorage.listBuckets).not.toHaveBeenCalled();
+    expect(mockEmailService.sendBrandedEmail).not.toHaveBeenCalled();
+  });
 
 });
