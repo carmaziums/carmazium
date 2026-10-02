@@ -26,6 +26,10 @@ export interface VehicleValuationRequest {
 
 export interface VehicleValuation {
   specificationAdjustment?: SpecificationAdjustmentAudit;
+  calibration?: {
+    version: string;
+    mode: 'SHADOW' | 'APPLIED' | 'SKIPPED';
+  };
   confidenceAssessment?: {
       rubricVersion: string;
       level: 'LOW' | 'MEDIUM' | 'HIGH';
