@@ -142,7 +142,7 @@ describe('Block 9 read-only, provenance-bound achieved outcome retrieval', () =>
     });
 
     it('rejects different variants and never uses unreviewed retail sale rows', async () => {
-        const wrongVariants = saleRows.map((row, index) => index === 0 ? {
+        const wrongVariants = saleRows.map((row, index) => index < 3 ? {
             ...row, variant: 'S LINE',
         } : row);
         const db = prisma(wrongVariants, eventsFor(wrongVariants));
