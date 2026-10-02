@@ -79,6 +79,9 @@ export interface VehicleValuationResult {
     marketEvidence?: {
         carmaziumComparables: number;
         liveUkComparables: number;
+        exactModelComparables?: number;
+        provisionalModelComparables?: number;
+        duplicateLiveAdvertRowsRemoved?: number;
         checkedAt?: string;
         liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
         rawLiveUkComparables?: number;
