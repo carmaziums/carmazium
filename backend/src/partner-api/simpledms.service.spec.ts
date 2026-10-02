@@ -101,6 +101,19 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(known.auction.region).toBe('Birmingham');
   });
 
+  it('only advertises signed referral links when the backend secret and feature are enabled', async () => {
+    const {service} = harness({
+      PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true',
+      PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com',
+      PARTNER_API_REFERRAL_SIGNING_SECRET: 'test-referral-signing-secret-with-32-characters',
+    });
+    const response = await service.detail('auction-1');
+    const url = new URL(response.auction.referralUrl as string);
+    expect(url.hostname).toBe('api.carmazium.com');
+    expect(url.searchParams.get('signature')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(Number(url.searchParams.get('expires'))).toBeGreaterThan(Date.now());
+  });
+
   it('exposes current bid only when opted in and queries current-run non-cancelled bids', async () => {
     const { service, prisma } = harness({ PARTNER_API_SIMPLEDMS_SHARE_CURRENT_BID: 'true' });
     const result = await service.detail('auction-1');
