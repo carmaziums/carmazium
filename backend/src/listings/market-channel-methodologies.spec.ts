@@ -30,6 +30,27 @@ describe('Block 6: separate channel valuation methodologies', () => {
         expect(guide.auction.reserveLow).toBeLessThan(guide.auction.reserveHigh);
     });
 
+    it('rejects one extremely cheap advert and avoids a misleadingly low retail listing floor', () => {
+        const quotes = [
+            observed(9000, 'ACTIVE_ASK'), observed(9700, 'ACTIVE_ASK'),
+            observed(10_200, 'ACTIVE_ASK'), observed(2800, 'ACTIVE_ASK'),
+        ];
+        const guide = calculateMarketChannelGuides(base, quotes);
+        expect(guide.retail.evidenceBasis).toBe('OBSERVED');
+        expect(guide.retail.observedAsks).toBe(3);
+        expect(guide.retail.suggestedMinimum).toBeGreaterThanOrEqual(9000);
+        expect(guide.retail.suggestedAsking).toBeGreaterThan(guide.retail.suggestedMinimum);
+    });
+
+    it('refuses an incoherent three-sale cohort instead of labelling it measured auction value', () => {
+        const rows = [4500, 5200, 19_000].map((value) => observed(value, 'AUCTION_RESULT', {
+            saleChannel: 'AUCTION', verifiedAuctionSale: true,
+        }));
+        const guide = calculateMarketChannelGuides(base, rows);
+        expect(guide.auction.evidenceBasis).toBe('PROVISIONAL_PROXY');
+        expect(guide.auction.marketValue).toBe(base.low);
+    });
+
     it('uses its own verified completed auction distribution rather than 70/90/95% of retail', () => {
         const proof = { saleChannel: 'AUCTION' as const, verifiedAuctionSale: true };
         const rows = [
