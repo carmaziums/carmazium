@@ -44,6 +44,31 @@ jobs:
             'test ! -e /app/dist/main.js && test ! -e /app/src && test -e /app/prisma/schema.prisma && test -x /app/node_modules/.bin/prisma'
           docker image inspect carmazium-prisma-maintenance-ci --format '{{json .Config.ExposedPorts}}' | grep -Fx null
           docker image inspect carmazium-simpledms-api-ci --format '{{json .Config.Cmd}}' | grep -F 'dist/main'
+      - name: Exercise maintenance CLI against an isolated ephemeral PostgreSQL database
+        run: |
+          set -eu
+          network="cm-prisma-maint-test-${GITHUB_RUN_ID}"
+          db="cm-prisma-test-${GITHUB_RUN_ID}"
+          docker network create "$network"
+          trap 'docker rm -f "$db" >/dev/null 2>&1 || true; docker network rm "$network" >/dev/null 2>&1 || true' EXIT
+          docker run -d --name "$db" --network "$network" \
+            -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=synthetic-only-password \
+            -e POSTGRES_DB=ci postgres:16-alpine >/dev/null
+          ready=0
+          for i in $(seq 1 35); do
+            if docker exec "$db" pg_isready -U ci -d ci >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          connection="postgresql://ci:synthetic-only-password@$db:5432/ci"
+          printf '%s\n' 'CREATE TABLE prisma_maintenance_isolation_test (id integer PRIMARY KEY);' \
+            | docker run --rm -i --network "$network" \
+                -e DATABASE_URL="$connection" -e DIRECT_URL="$connection" \
+                carmazium-prisma-maintenance-ci db execute --schema prisma/schema.prisma --stdin
+          count="$(docker exec "$db" psql -U ci -d ci -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='prisma_maintenance_isolation_test'")"
+          echo "Isolated maintenance image successfully executed a synthetic SQL statement"
+          test "$count" = 1
       - name: Run public API image in isolated synthetic mode
         run: |
           set -eu
@@ -62,6 +87,43 @@ jobs:
           code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/partners/v1/simpledms/auctions)"
           echo "Disabled partner access returns HTTP $code"
           test "$code" = 404
+      # Informational first-pass filesystem scan, not a waiver of outstanding
+      # advisories. Keep the PR draft until the findings have been reviewed.
+      - name: Scan the built API image's actual installed filesystem
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-simpledms-api-ci
+          format: json
+          output: trivy-simpledms-api-image.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Summarise actual image vulnerability findings
+        if: always()
+        run: |
+          if [ ! -s trivy-simpledms-api-image.json ]; then
+            echo 'Image scan did not produce a report; this verification is incomplete.'
+            exit 1
+          fi
+          node - <<'NODE'
+          const v=require('./trivy-simpledms-api-image.json');
+          const rows=(v.Results||[]).flatMap(r=>(r.Vulnerabilities||[]).map(x=>({
+            target:r.Target, severity:x.Severity, pkg:x.PkgName,
+            installed:x.InstalledVersion, fix:x.FixedVersion||null,
+          })));
+          const counts={};
+          for(const r of rows)counts[r.severity]=(counts[r.severity]||0)+1;
+          console.log('ACTUAL API IMAGE SCAN '+JSON.stringify(counts));
+          for(const r of rows.filter(x=>x.severity==='CRITICAL'||x.severity==='HIGH').slice(0,16))
+            console.log('FINDING '+JSON.stringify(r));
+          NODE
+      - name: Upload actual image vulnerability report for security review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-prisma-isolated-api-image-scan
+          path: trivy-simpledms-api-image.json
+          retention-days: 7
       - name: Collect image inventory without production secrets
         run: |
           docker image inspect carmazium-simpledms-api-ci --format 'API size bytes: {{.Size}}'
