@@ -81,8 +81,9 @@ export function parseCapHpiVrmValuationXml(
         // Exact token groups avoid confusing ST with ST-LINE.
         if (request.variant?.trim()) {
             const requestedVariant = exactText(request.variant);
+            // Split on whitespace, NOT on hyphens. "ST-Line" must remain
+            // STLINE and cannot be misidentified as the performance trim ST.
             const derivativeTokens = providerDerivative.toUpperCase()
-                .replace(/[^A-Z0-9]+/g, ' ')
                 .trim()
                 .split(/\s+/)
                 .map(exactText);
