@@ -20,6 +20,18 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Verify separately pinned Prisma CLI matches backend lock
+        run: |
+          node - <<'NODE'
+          const backend=require('./backend/package-lock.json');
+          const privateCli=require('./backend/prisma-maintenance/package-lock.json');
+          const a=backend.packages?.['node_modules/prisma']?.version;
+          const b=privateCli.packages?.['node_modules/prisma']?.version;
+          const root=privateCli.packages?.['']?.dependencies||{};
+          if(a!==b||b!=='6.19.3'||Object.keys(root).length!==1||root.prisma!==b)
+            throw Error('Separate maintenance Prisma CLI has drifted from app lockfile');
+          console.log('Verified lockfile-aligned Prisma CLI '+a);
+          NODE
       - uses: docker/setup-buildx-action@v3
       - name: Build pinned supported Node 24 Alpine public API runtime
         run: docker build --target runtime -t carmazium-simpledms-api-ci -f backend/Dockerfile backend

@@ -25,7 +25,7 @@ during image build.
 
 ## Authorised maintenance access
 
-The minimal maintenance CLI manifest/lock are maintained separately under `backend/prisma-maintenance/`. Regenerate them only on a reviewed branch with the dedicated generation workflow, then validate the Prisma CLI against an isolated test database before use. The maintenance image is not a new continuously running server and does not
+The minimal maintenance CLI manifest/lock are maintained separately under `backend/prisma-maintenance/`. Regenerate them only on a reviewed isolation branch using a separately reviewed, one-time lock-generation CI job (`npm install --package-lock-only` with Prisma pinned exactly to the backend lock), then validate the CLI against an isolated test database before use. The maintenance image is not a new continuously running server and does not
 expose HTTP ports. Execution requires an explicitly authorised operator, a
 restricted private network connection to the intended database, a scoped,
 time-limited database credential, change-ticket approval, suitable backups
@@ -106,3 +106,5 @@ until the separate privacy/data-sharing gates are complete.
 ## Supported image verification (pre-release)
 
 The supported Node 24 evaluation at GitHub Actions run 37070505760 completed backend regression tests, separate image builds and image scanning: the public runtime reported 0 critical / 0 high / 1 medium. The only medium advisory is a nested `js-yaml` under Nest Swagger; track this separately. The tested Node image digest is pinned in the Dockerfile, preventing an unreviewed tag move. The restricted maintenance image's dependency scan is recorded separately because it intentionally includes Prisma CLI and its own maintenance-only dependency risks.
+
+**Minimal maintenance image result:** GitHub Actions run 37071248673 verified a one-package root manifest (`prisma@6.19.3`, 35 locked transitive packages), no compiled HTTP API, a non-root entrypoint and successful execution against temporary PostgreSQL. The final maintenance-image filesystem scan reported **0 critical, 1 high**. That remaining `deepmerge-ts` advisory is inherited from the trusted Prisma CLI and is **not resolved**; private network access, trusted schema-only input, short-lived DDL credentials and explicit operational risk review remain mandatory before the image is used on a real database.
