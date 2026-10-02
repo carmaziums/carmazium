@@ -28,10 +28,13 @@ jobs:
           npm run typecheck
           npm test -- --runInBand
           npm run build
-      - name: Remove dev and optional peer dependencies from runtime
+      - name: Construct fresh production-only runtime with generated Prisma client
         working-directory: backend
         run: |
-          npm prune --omit=dev --omit=peer --ignore-scripts --no-fund
+          cp -a node_modules/.prisma "$RUNNER_TEMP/.prisma-generated"
+          npm ci --omit=dev --omit=peer --ignore-scripts --no-fund --no-audit
+          mkdir -p node_modules/.prisma
+          cp -a "$RUNNER_TEMP/.prisma-generated/." node_modules/.prisma/
           node - <<'NODE'
           const fs=require('fs');
           const requireAbsent=['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics'];
