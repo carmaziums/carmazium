@@ -1,0 +1,120 @@
+name: Free isolated PostgreSQL backup and restore privilege rehearsal
+on:
+  push:
+    branches: [security/carmazium-free-backup-restore-rehearsal]
+    paths:
+      - 'backend/scripts/security/ci-only-core-schema.sql'
+      - '.github/workflows/carmazium-free-backup-restore.yml'
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/scripts/security/ci-only-core-schema.sql'
+      - '.github/workflows/carmazium-free-backup-restore.yml'
+permissions:
+  contents: read
+jobs:
+  backup-restore-no-live-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cm_core_ci
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: synthetic_admin_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d cm_core_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install local PostgreSQL client for synthetic setup only
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client
+      - name: Provision disposable synthetic live-shaped core schema
+        env:
+          PGPASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_core_ci \
+            -v ON_ERROR_STOP=1 -f backend/scripts/security/ci-only-core-schema.sql
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_core_ci \
+            -v ON_ERROR_STOP=1 -c \
+            "INSERT INTO cm_core.bids(id,\"listingId\",\"bidderId\",amount,\"timestamp\",\"createdAt\",\"updatedAt\") VALUES ('synthetic-backup-bid','live-listing','test-dealer',7500,now(),now(),now())"
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_core_ci \
+            -v ON_ERROR_STOP=1 -c \
+            "INSERT INTO cm_core.sessions(sid,sess,expire) VALUES ('synthetic-backup-session','{\"synthetic\":true}',now() + interval '1 hour')"
+          psql -X -h 127.0.0.1 -U ci_admin -d postgres \
+            -v ON_ERROR_STOP=1 -c "CREATE DATABASE cm_core_restore_ci"
+      - name: Prove restricted app login cannot silently produce a complete archive
+        env:
+          SYNTHETIC_APP_PASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          if docker run --rm --network host \
+            -v "$RUNNER_TEMP:/artifacts" \
+            -e PGPASSWORD="$SYNTHETIC_APP_PASSWORD" postgres:17-alpine \
+            pg_dump -h 127.0.0.1 -U cm_core_runtime -d cm_core_ci \
+              -n cm_core --format=custom --no-owner --no-acl \
+              --file=/artifacts/forbidden-app-archive.dump \
+              > "$RUNNER_TEMP/app-dump-stdout.log" 2>"$RUNNER_TEMP/app-dump-stderr.log"; then
+            echo "SECURITY FAILURE: restricted login unexpectedly dumped all selected schema objects"
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/forbidden-app-archive.dump"
+          echo "Restricted runtime login cannot perform full pg_dump; app credential is not a backup credential."
+      - name: Private synthetic schema owner performs full archive
+        env:
+          SYNTHETIC_MAINT_PASSWORD: synthetic_migrator_ci_only
+        run: |
+          set -eu
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP:/artifacts" \
+            -e PGPASSWORD="$SYNTHETIC_MAINT_PASSWORD" postgres:17-alpine \
+            pg_dump -h 127.0.0.1 -U cm_core_migrator -d cm_core_ci \
+              -n cm_core --format=custom --no-owner --no-acl \
+              --file=/artifacts/synthetic-core-archive.dump
+          test -s "$RUNNER_TEMP/synthetic-core-archive.dump"
+          docker run --rm --network none -v "$RUNNER_TEMP:/artifacts" \
+            postgres:17-alpine pg_restore --list /artifacts/synthetic-core-archive.dump \
+            > "$RUNNER_TEMP/synthetic-archive-toc.txt"
+          grep -q 'TABLE DATA.* cm_core.*users' "$RUNNER_TEMP/synthetic-archive-toc.txt"
+          grep -q 'TABLE DATA.* cm_core.*sessions' "$RUNNER_TEMP/synthetic-archive-toc.txt"
+          echo "Privileged, separately operated synthetic archive includes user and session fixture tables."
+      - name: Restore into separate disposable database with PostgreSQL 17 tools
+        env:
+          SYNTHETIC_ADMIN_PASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP:/artifacts" \
+            -e PGPASSWORD="$SYNTHETIC_ADMIN_PASSWORD" postgres:17-alpine \
+            pg_restore -h 127.0.0.1 -U ci_admin -d cm_core_restore_ci \
+              --exit-on-error --no-owner --no-acl \
+              /artifacts/synthetic-core-archive.dump
+      - name: Verify synthetic records, RLS and core metadata survived restore
+        env:
+          PGPASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          q() { psql -X -h 127.0.0.1 -U ci_admin -d cm_core_restore_ci -v ON_ERROR_STOP=1 "$@"; }
+          test "$(q -tAc "SELECT count(*) FROM cm_core.users")" = 2
+          test "$(q -tAc "SELECT count(*) FROM cm_core.listings")" = 2
+          test "$(q -tAc "SELECT count(*) FROM cm_core.auctions")" = 2
+          test "$(q -tAc "SELECT count(*) FROM cm_core.bids WHERE id='synthetic-backup-bid' AND amount=7500")" = 1
+          test "$(q -tAc "SELECT count(*) FROM cm_core.sessions WHERE sid='synthetic-backup-session' AND sess->>'synthetic'='true'")" = 1
+          test "$(q -tAc "SELECT count(*) FROM pg_policies WHERE schemaname='cm_core'")" = 5
+          test "$(q -tAc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='cm_core' AND c.relkind='r' AND c.relrowsecurity")" = 5
+          echo "PASS: separately operated synthetic archive restored records, session payload and five fixture RLS policies."
+      - name: Verify restored schema does not grant CREATE to restricted login
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          q() { psql -X -h 127.0.0.1 -U cm_core_runtime -d cm_core_restore_ci -v ON_ERROR_STOP=1 "$@"; }
+          test "$(q -tAc "SELECT has_schema_privilege(current_user,'cm_core','CREATE')")" = f
+          if q -c 'ALTER TABLE cm_core.sessions ADD COLUMN security_failure text' >/tmp/forbidden-ddl.log 2>&1; then
+            echo "SECURITY FAILURE: runtime role obtained DDL on restored session table"
+            exit 1
+          fi
+          echo "PASS: restricted runtime still has no DDL after synthetic restore."
