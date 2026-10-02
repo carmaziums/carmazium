@@ -30,6 +30,13 @@ describe('Block 2 canonical valuation base identity', () => {
             .toBe(false);
     });
 
+    it('normalizes full and abbreviated manufacturer prefixes without fuzzy model matching', () => {
+        const golf = { registration: 'BF10XYP', make: 'VW', model: 'VW Golf', year: 2010, mileage: 138734 };
+        expect(sameValuationBaseIdentity(golf, { ...golf, model: 'Volkswagen Golf' })).toBe(true);
+        const merc = { registration: 'Y3AFC', make: 'MERCEDES-BENZ', model: 'Mercedes-Benz C220d', year: 2017, mileage: 24000 };
+        expect(sameValuationBaseIdentity(merc, { ...merc, model: 'C220d' })).toBe(true);
+    });
+
     it('does not conflate distinct generations or variants across new journeys', () => {
         const kia = { registration: 'MC18MHZ', make: 'KIA', model: 'SPORTAGE', year: 2018, mileage: 79500 };
         expect(sameValuationBaseIdentity(kia, { ...kia, model: 'SPORTAGE3' })).toBe(false);
