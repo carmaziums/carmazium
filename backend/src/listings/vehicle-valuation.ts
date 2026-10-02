@@ -50,7 +50,10 @@ export interface VehicleValuationComparable {
     kind: ValuationEvidenceKind;
 }
 
+import type { ValuationIdentityVerification } from './vehicle-identity';
+
 export interface VehicleValuationResult {
+    identityVerification?: ValuationIdentityVerification;
     low: number;
     mid: number;
     high: number;
