@@ -89,7 +89,7 @@ jobs:
           # single customer session: varchar SID, JSON payload and expiry.
           $db -c "INSERT INTO cm_isolated.sessions(sid,sess,expire) VALUES ('synthetic','{}'::json,now() + interval '1 hour')" >/dev/null
           test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND expire > now() AND json_typeof(sess) = 'object'")" = 1
-          $db -c "UPDATE cm_isolated.sessions SET sess='{\\"role\\":\\"test\\"}'::json,expire=now() + interval '2 hours' WHERE sid='synthetic'" >/dev/null
+          $db -c "UPDATE cm_isolated.sessions SET sess=json_build_object('role','test'),expire=now() + interval '2 hours' WHERE sid='synthetic'" >/dev/null
           test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND sess->>'role'='test' AND expire > now() + interval '90 minutes'")" = 1
           $db -c "DELETE FROM cm_isolated.sessions WHERE sid='synthetic'" >/dev/null
           test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic'")" = 0
