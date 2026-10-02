@@ -63,9 +63,13 @@ Set `REQUIRE_SEPARATE_BACKUP_ROLE=true` only once the separate backup
 connection, access privileges, actual full restore and alerting are
 validated. If the required separate connection is missing, the cron
 fails closed and sends a sanitised failure alert rather than attempting
-a restricted-role backup. It invokes `pg_dump` without shell
-interpolation and passes the URI through libpq's `PGDATABASE`
-environment variable to avoid putting credentials in process arguments.
+a restricted-role backup. It invokes `pg_dump` without shell interpolation, validates the URI,
+and passes discrete `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`,
+`PGPASSWORD` and approved SSL parameters to libpq in a minimal
+subprocess environment. Real PostgreSQL 17 CI demonstrates that these
+parameters work; an earlier test showed that putting a full URI in
+`PGDATABASE` alone does **not** work with `pg_dump`. Credentials are not
+included in shell commands, argv or raw failure-alert text.
 
 **Security boundary:** Providing `BACKUP_DATABASE_URL` to the *public
 HTTP process* is only transitional compatibility wiring. Even with a
