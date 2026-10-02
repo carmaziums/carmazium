@@ -60,7 +60,7 @@ export interface VehicleValuationComparable {
 import type { ValuationIdentityVerification } from './vehicle-identity';
 import { calculateMarketChannelGuides } from './market-channel-methodologies';
 import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
-import type { ValuationConfidenceAssessment } from './valuation-evidence-confidence';
+import { applyEvidenceConfidence, type ValuationConfidenceAssessment } from './valuation-evidence-confidence';
 
 export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
@@ -607,7 +607,7 @@ export function calculateVehicleValuation(
     // and explicitly provisional guidance when no completed cohort exists.
     const channels = calculateMarketChannelGuides({ low, mid, high }, normalized);
 
-    return {
+    const valuation: VehicleValuationResult = {
         low,
         mid,
         high,
@@ -621,4 +621,9 @@ export function calculateVehicleValuation(
         privateSale: channels.privateSale,
         auction: channels.auction,
     };
+    // The pure calculator is also used by internal tooling; never expose
+    // the old raw count-weighted score as independently validated accuracy.
+    // ListingsService later reassesses with authoritative identity and final
+    // deduplicated live-source provenance before freezing the API quote.
+    return applyEvidenceConfidence(valuation, 'UNVERIFIED');
 }
