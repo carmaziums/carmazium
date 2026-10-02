@@ -4,6 +4,7 @@ on:
     branches: [security/carmazium-db-role-cutover-preflight]
     paths:
       - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/scripts/security/runtime-db-identity.js'
       - 'backend/src/main.ts'
       - 'backend/src/core/config/session-table-config*'
       - '.github/workflows/carmazium-db-role-rehearsal.yml'
@@ -11,6 +12,7 @@ on:
     branches: [security/simpledms-dependency-fixes]
     paths:
       - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/scripts/security/runtime-db-identity.js'
       - 'backend/src/main.ts'
       - 'backend/src/core/config/session-table-config*'
       - '.github/workflows/carmazium-db-role-rehearsal.yml'
@@ -31,6 +33,8 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - name: Syntax-check credentials-safe database identity probe
+        run: node --check scripts/security/runtime-db-identity.js
       - name: Unit-test the disabled-by-default session DDL switch
         run: |
           npm ci
