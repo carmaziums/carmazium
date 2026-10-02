@@ -1,4 +1,5 @@
 name: Evaluate minimal SimpleDMS runtime installation
+# Rerun after deterministic signed-link regression fixture correction
 on:
   push:
     branches:
