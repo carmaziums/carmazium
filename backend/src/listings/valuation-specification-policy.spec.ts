@@ -5,9 +5,11 @@ import {
     calculateSpecificationAdjustment,
     exteriorGradeFromDefectCount,
     SPECIFICATION_POLICY_VERSION,
+    type SpecificationAdjustmentAudit,
 } from './valuation-specification-policy';
 
 const frozen = {
+    specificationAdjustment: undefined as SpecificationAdjustmentAudit | undefined,
     low: 8_000, mid: 10_000, high: 12_000,
     source: 'LIVE_UK_MARKET' as const,
     confidence: 'MEDIUM' as const,
