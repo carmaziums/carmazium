@@ -60,10 +60,14 @@ export interface VehicleValuationComparable {
 import type { ValuationIdentityVerification } from './vehicle-identity';
 import { calculateMarketChannelGuides } from './market-channel-methodologies';
 import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
+import { applyEvidenceConfidence, type ValuationConfidenceAssessment } from './valuation-evidence-confidence';
 
 export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
     specificationAdjustment?: SpecificationAdjustmentAudit;
+    confidenceAssessment?: ValuationConfidenceAssessment;
+    /** Interquartile spread of normalized usable prices divided by their median. */
+    normalizedComparableIqrRatio?: number;
     low: number;
     mid: number;
     high: number;
@@ -538,6 +542,13 @@ export function calculateVehicleValuation(
     if (usable.length === 1) marketMid = marketMid * 0.45 + fallback * 0.55;
     if (usable.length === 2) marketMid = marketMid * 0.65 + fallback * 0.35;
 
+    const normalizedComparableIqrRatio = usable.length >= 3
+        ? Number((
+            (weightedQuantile(usable, 0.75) - weightedQuantile(usable, 0.25))
+            / Math.max(1, weightedQuantile(usable, 0.5))
+        ).toFixed(4))
+        : undefined;
+
     const mid = roundMoney(marketMid);
 
     let lowRaw: number;
@@ -605,13 +616,14 @@ export function calculateVehicleValuation(
     // and explicitly provisional guidance when no completed cohort exists.
     const channels = calculateMarketChannelGuides({ low, mid, high }, normalized);
 
-    return {
+    const valuation: VehicleValuationResult = {
         low,
         mid,
         high,
         confidence,
         confidenceScore: Number(confidenceScore.toFixed(2)),
         comparables: usable.length,
+        normalizedComparableIqrRatio,
         evidence,
         source,
         explanation,
@@ -619,4 +631,9 @@ export function calculateVehicleValuation(
         privateSale: channels.privateSale,
         auction: channels.auction,
     };
+    // The pure calculator is also used by internal tooling; never expose
+    // the old raw count-weighted score as independently validated accuracy.
+    // ListingsService later reassesses with authoritative identity and final
+    // deduplicated live-source provenance before freezing the API quote.
+    return applyEvidenceConfidence(valuation, 'UNVERIFIED');
 }

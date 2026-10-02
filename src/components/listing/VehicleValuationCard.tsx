@@ -50,10 +50,14 @@ export function VehicleValuationCard({
 
     if (!valuation) return null
 
+    const assessment = valuation.confidenceAssessment
+    // Old frozen results/local provisional fallbacks have no evidence rubric.
+    // Do not show the old uncalibrated HIGH/MEDIUM label as measured quality.
+    const evidenceLevel = assessment?.level ?? "LOW"
     const confidenceClass =
-        valuation.confidence === "HIGH"
+        evidenceLevel === "HIGH"
             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"
-            : valuation.confidence === "MEDIUM"
+            : evidenceLevel === "MEDIUM"
                 ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
                 : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
 
@@ -82,7 +86,7 @@ export function VehicleValuationCard({
                         </div>
                     </div>
                     <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${confidenceClass}`}>
-                        {valuation.confidence} confidence
+                        {evidenceLevel} evidence strength
                     </span>
                 </div>
 
@@ -114,6 +118,40 @@ export function VehicleValuationCard({
                             : " (based on verified private-party transactions)"}
                     </div>
                 )}
+
+                <section aria-label="Valuation evidence and limitations" className="mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs leading-relaxed text-[var(--text-muted)]">
+                    <p className="font-bold text-[var(--text-primary)]">How this guide was estimated</p>
+                    {assessment ? (
+                        <>
+                            <p className="mt-2">{assessment.sourceExplanation}</p>
+                            <p className="mt-1 font-semibold">{assessment.headline}</p>
+                            <p className="mt-1">
+                                Evidence: {assessment.counts.uniqueUkAdverts} distinct UK adverts;
+                                {" "}{assessment.counts.exactModelAdverts} exact-model matches;
+                                {" "}{assessment.counts.independentAdvertSites} cited advert sources.
+                                {assessment.counts.verifiedCompletedAuctions > 0
+                                    ? ` ${assessment.counts.verifiedCompletedAuctions} completed auction handovers confirmed by sellers.`
+                                    : ""}
+                            </p>
+                            {assessment.checkedAt && (
+                                <p className="mt-1">
+                                    Market evidence checked: {new Date(assessment.checkedAt).toLocaleString("en-GB")}
+                                </p>
+                            )}
+                            <ul className="mt-2 list-disc pl-4">
+                                {assessment.limitations.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
+                            </ul>
+                        </>
+                    ) : (
+                        <p className="mt-2">
+                            This older or locally generated estimate does not have a verified
+                            evidence-quality breakdown. Treat it as provisional until refreshed.
+                            Advert asking prices are not achieved selling prices.
+                        </p>
+                    )}
+                </section>
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
