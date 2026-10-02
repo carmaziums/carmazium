@@ -41,8 +41,8 @@ export function VehicleValuationCard({
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
                 <AlertTriangle size={17} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                    <p className="text-sm font-bold text-amber-300">Valuation temporarily unavailable</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">You can continue and enter your own price. We will retry when the vehicle details change.</p>
+                    <p className="text-sm font-bold text-amber-300">Valuation could not be confirmed</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{error}. Confirm the vehicle details or enter your own price; CarMazium has not verified an automatic guide for this request.</p>
                 </div>
             </div>
         )
@@ -82,6 +82,12 @@ export function VehicleValuationCard({
                     </span>
                 </div>
 
+                {valuation.identityVerification?.status && valuation.identityVerification.status !== "MODEL_VERIFIED" && (
+                    <p role="status" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                        Provisional estimate: {valuation.identityVerification.message}
+                    </p>
+                )}
+
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
                         Current Market Value
@@ -102,7 +108,7 @@ export function VehicleValuationCard({
                     </p>
                     <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />
-                        Use this value
+                        {valuation.identityVerification?.status && valuation.identityVerification.status !== "MODEL_VERIFIED" ? "Use provisional guide" : "Use this value"}
                     </Button>
                 </div>
             </div>
