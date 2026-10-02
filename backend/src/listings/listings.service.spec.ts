@@ -1511,6 +1511,84 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 3 licensed market reference isolation', () => {
+        const dto = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, mileage: 138734,
+            valuationId: '77777777-7777-4777-8777-777777777777',
+        };
+        const live = {
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            rawComparableCount: 3,
+            sourceDomains: ['example-dealer.co.uk'],
+            comparables: [
+                { price: 7200, year: 2010, mileage: 135000, kind: 'ACTIVE_ASK' },
+                { price: 7350, year: 2010, mileage: 139000, kind: 'ACTIVE_ASK' },
+                { price: 7400, year: 2011, mileage: 125000, kind: 'ACTIVE_ASK' },
+            ],
+        };
+        const benchmark = {
+            status: 'AVAILABLE',
+            benchmark: {
+                source: 'CAP_HPI', evidenceType: 'LICENSED_PROVIDER_BENCHMARK',
+                checkedAt: '2026-10-02T12:00:00.000Z',
+                retail: 7900, tradeClean: 6000, tradeAverage: 5500, tradeBelow: 4800,
+            },
+        };
+
+        it('keeps CAP reference prices out of consumer quotes and frozen comparable evidence', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(live);
+            const reference = jest.spyOn(service as any, 'getLicensedBenchmark');
+            reference.mockResolvedValueOnce(null);
+            const baseline = await service.estimateVehicleValue(dto as any);
+            reference.mockResolvedValueOnce(benchmark);
+            const withReference = await service.estimateVehicleValue({
+                ...dto, valuationId: '88888888-8888-4888-8888-888888888888',
+            } as any);
+            expect(reference).toHaveBeenCalledTimes(2);
+            expect(withReference.low).toEqual(baseline.low);
+            expect(withReference.mid).toEqual(baseline.mid);
+            expect(withReference.high).toEqual(baseline.high);
+            expect(withReference.source).toBe('LIVE_UK_MARKET');
+            const events = prisma.analyticsEvent.create.mock.calls
+                .map((call: any[]) => call[0].data);
+            const internal = events.find((row: any) => row.type === 'valuation_licensed_benchmark_check');
+            expect(internal.payload).toEqual(expect.objectContaining({
+                source: 'CAP_HPI', comparisonStatus: 'ALIGNED',
+            }));
+            expect(JSON.stringify(internal)).not.toMatch(/7900|6000|5500|4800|BF10XYP/);
+            const snapshots = events.filter((row: any) => row.type === 'valuation_base_snapshot');
+            expect(JSON.stringify(snapshots)).not.toMatch(/CAP_HPI/);
+        });
+
+        it('does not abandon all five live/five blended attempts if optional provider is unavailable', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(null);
+            const reference = jest.spyOn(service as any, 'getLicensedBenchmark')
+                .mockResolvedValue({ status: 'UNAVAILABLE' });
+            const result = await service.estimateVehicleValue(dto as any);
+            expect(search).toHaveBeenCalledTimes(10);
+            expect(reference).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('CARMAZIUM_MODEL');
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                liveUkAttempts: 5, blendedMarketAttempts: 5,
+            }));
+            const events = prisma.analyticsEvent.create.mock.calls
+                .map((call: any[]) => call[0].data);
+            expect(events.find((row: any) => row.type === 'valuation_licensed_benchmark_check')
+                .payload.comparisonStatus).toBe('UNAVAILABLE');
+        });
+
+        it('does not call CAP for an unverified or registration-free valuation by default', async () => {
+            const result = await (service as any).getLicensedBenchmark({
+                ...dto, registration: undefined,
+            }, { status: 'UNVERIFIED' });
+            expect(result).toBeNull();
+        });
+    });
+
     describe('Block 2: consistent market base across equivalent journeys', () => {
         const audiVrm = 'RO18YWN';
         const firstId = '11111111-1111-4111-8111-111111111111';

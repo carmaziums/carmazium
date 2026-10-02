@@ -22,6 +22,11 @@ import {
     sameValuationBaseIdentity,
 } from './vehicle-valuation-identity';
 import { DvlaService, type DvlaLookupResult } from '../dvla/dvla.service';
+import {
+    classifyLicensedBenchmarkDifference,
+    fetchLicensedCapHpiBenchmark,
+    type LicensedBenchmarkOutcome,
+} from './licensed-cap-hpi-benchmark';
 import { labelValuationIdentity, verifyValuationVehicleIdentity } from './vehicle-identity';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
@@ -220,6 +225,12 @@ export class ListingsService {
                 verification,
             );
         }
+
+        // Launch at most one OPTIONAL licensed reference request for a new
+        // verified vehicle journey, alongside existing market searches.
+        // The benchmark is NOT an individual advert/achieved sale and cannot
+        // change consumer figures until market-calibration work is approved.
+        const licensedReferencePromise = this.getLicensedBenchmark(dto, verification);
 
         const mileageFloor = Math.max(0, dto.mileage - 50_000);
         const mileageCeiling = dto.mileage + 50_000;
@@ -573,6 +584,12 @@ export class ListingsService {
             }
         }
 
+        // A provider's retail/trade benchmark must NEVER enter the individual
+        // advert comparable pool. Record only a restricted, price-free internal
+        // diagnostic AFTER the five-live/five-blended policy completes.
+        const licensedReference = await licensedReferencePromise;
+        await this.recordLicensedBenchmarkCheck(dto, licensedReference, calculatedBase.mid);
+
         // A concurrent duplicate request can finish a different live search.
         // The valuationId is also the AnalyticsEvent primary key, so exactly one
         // base wins. Losers read the winning snapshot and return that same base.
@@ -582,6 +599,60 @@ export class ListingsService {
             applyVehicleSpecificationAdjustments(stableBase, specificationInput),
             verification,
         );
+    }
+
+    private async getLicensedBenchmark(
+        dto: VehicleValuationDto,
+        verification: { status: string },
+    ): Promise<LicensedBenchmarkOutcome | null> {
+        // All conditions fail closed. No external provider call without
+        // explicitly confirmed contract rights and verified model/year.
+        if (verification.status !== 'MODEL_VERIFIED'
+            || !dto.registration?.trim()
+            || this.config.get<string>('CAP_HPI_VALUATION_ENABLED') !== 'true'
+            || this.config.get<string>('CAP_HPI_INTERNAL_COMPARISON_RIGHTS_CONFIRMED') !== 'true') {
+            return null;
+        }
+        try {
+            return await fetchLicensedCapHpiBenchmark(dto, this.config);
+        } catch {
+            // Even unexpected optional integration errors cannot suppress
+            // the user's existing live-first valuation journey.
+            return { status: 'UNAVAILABLE' };
+        }
+    }
+
+    private async recordLicensedBenchmarkCheck(
+        dto: VehicleValuationDto,
+        outcome: LicensedBenchmarkOutcome | null,
+        marketMid: number,
+    ): Promise<void> {
+        if (!outcome || outcome.status === 'DISABLED' || outcome.status === 'INELIGIBLE') {
+            return;
+        }
+
+        const status = outcome.status === 'AVAILABLE'
+            ? classifyLicensedBenchmarkDifference(marketMid, outcome.benchmark)
+            : outcome.status;
+        try {
+            await this.prisma.analyticsEvent.create({
+                data: {
+                    type: 'valuation_licensed_benchmark_check',
+                    sessionId: this.valuationIdentityKey(dto),
+                    payload: {
+                        valuation_id: dto.valuationId ?? null,
+                        source: 'CAP_HPI',
+                        comparisonStatus: status,
+                        // Price, derivative, VRM, API credentials and XML are
+                        // intentionally not stored or sent to website/native.
+                        checkedAt: new Date().toISOString(),
+                    } as any,
+                },
+            });
+        } catch {
+            // A restricted diagnostics failure must never block valuation.
+            this.logger.warn('Licensed reference check status could not be recorded');
+        }
     }
 
     private async verifyValuationRequestIdentity(dto: VehicleValuationDto) {
