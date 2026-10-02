@@ -61,6 +61,14 @@ export class SimpleDmsService {
   }
 
   private publicAuctionUrl(id: string): string {
+    // Synthetic staging must NEVER direct test dealers to real CarMazium
+    // auctions, even if production defaults are left elsewhere in the repo.
+    if (this.isEnabled('STAGING_SYNTHETIC_ONLY')) {
+      const host = this.config.get<string>('STAGING_PUBLIC_HOST') || '';
+      if (!/^[a-z0-9.-]+\\.up\\.railway\\.app$/.test(host))
+        throw new Error('Synthetic staging requires a Railway synthetic-only host');
+      return 'https://' + host + '/staging-auctions/' + encodeURIComponent(id);
+    }
     const configured = this.config.get<string>('PARTNER_API_PUBLIC_BASE_URL') || 'https://carmazium.com';
     // Do not allow environment errors to produce a partner-controlled redirect.
     let origin = 'https://carmazium.com';
