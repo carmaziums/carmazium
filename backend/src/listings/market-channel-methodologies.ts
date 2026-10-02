@@ -60,6 +60,25 @@ function weightedQuantile(
 }
 
 /**
+ * The cohort's median is used to filter obvious valuation anomalies before
+ * its quartiles influence a channel. If fewer than 3 coherent records remain,
+ * report the channel as provisional rather than overfit a sparse sample.
+ */
+function coherentCohort(observations: ChannelObservation[]): ChannelObservation[] {
+    if (observations.length < 3) return [];
+    const projected = observations.map(({ channelValue, value, weight }) => ({
+        value: channelValue ?? value, weight,
+    }));
+    const median = weightedQuantile(projected, 0.5);
+    if (median <= 0) return [];
+    const coherent = observations.filter((row) => {
+        const value = row.channelValue ?? row.value;
+        return value >= median * 0.65 && value <= median * 1.55;
+    });
+    return coherent.length >= 3 ? coherent : [];
+}
+
+/**
  * Each channel uses its OWN evidence type. There is no universal discount
  * from retail to auction or unsupported assertion that public asking prices
  * are achieved prices. Sparse channels remain transparent provisional guides.
@@ -85,38 +104,44 @@ export function calculateMarketChannelGuides(
     // The main base range already normalises advert asking prices
     // conservatively. For a sufficiently broad set of adverts, use the
     // distinct asking-price distribution directly instead of a fixed uplift.
-    const hasAskingMarket = advertised.length >= 3;
+    const stableAdvertised = coherentCohort(advertised);
+    const stablePrivate = coherentCohort(privateCompleted);
+    const stableAuction = coherentCohort(confirmedAuctions);
+    const hasAskingMarket = stableAdvertised.length >= 3;
     const q25Ask = hasAskingMarket
-        ? weightedQuantile(advertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25)
+        ? weightedQuantile(stableAdvertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25)
         : base.mid;
     const q75Ask = hasAskingMarket
-        ? weightedQuantile(advertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75)
+        ? weightedQuantile(stableAdvertised.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75)
         : base.high;
     const retailMinimum = hasAskingMarket
-        ? roundChannelMoney(Math.min(q25Ask, q75Ask))
+        // Do not recommend an unrealistically low floor from one underpriced
+        // advert. The fallback constraint is the middle of the existing
+        // broad-market low-to-mid interval, not a blanket retail discount.
+        ? roundChannelMoney(Math.max(Math.min(q25Ask, q75Ask), (base.low + base.mid) / 2))
         : base.mid;
     const retailAsking = hasAskingMarket
         ? roundChannelMoney(Math.max(q25Ask, q75Ask))
         : base.high;
 
-    const hasPrivateSales = privateCompleted.length >= 3;
+    const hasPrivateSales = stablePrivate.length >= 3;
     // The private proxy is bounded by the broad observed/fallback market
     // range, not an unsupported fixed fraction of advertised retail prices.
     const privateLow = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25))
+        ? roundChannelMoney(weightedQuantile(stablePrivate.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.25))
         : base.low;
     const privateHigh = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75))
+        ? roundChannelMoney(weightedQuantile(stablePrivate.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.75))
         : base.mid;
     const privateMid = hasPrivateSales
-        ? roundChannelMoney(weightedQuantile(privateCompleted.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.5))
+        ? roundChannelMoney(weightedQuantile(stablePrivate.map(({ channelValue, value, weight }) => ({ value: channelValue ?? value, weight })), 0.5))
         : roundChannelMoney((privateLow + privateHigh) / 2);
 
-    const hasAuctionOutcomes = confirmedAuctions.length >= 3;
+    const hasAuctionOutcomes = stableAuction.length >= 3;
     // Price normalization supplies an unboosted, age/mileage-adjusted
     // channel price, so retail-equivalent auction uplift from the broad
     // market calculation never contaminates achieved auction evidence.
-    const auctionObserved = confirmedAuctions.map(({ channelValue, value, weight }) =>
+    const auctionObserved = stableAuction.map(({ channelValue, value, weight }) =>
         ({ value: channelValue ?? value, weight }));
     const auctionLow = hasAuctionOutcomes
         ? roundChannelMoney(weightedQuantile(auctionObserved, 0.25))
@@ -149,14 +174,14 @@ export function calculateMarketChannelGuides(
             suggestedAsking: Math.max(retailMinimum, retailAsking),
             suggestedMinimum: retailMinimum,
             evidenceBasis: hasAskingMarket ? 'OBSERVED' : 'PROVISIONAL_PROXY',
-            observedAsks: advertised.length,
+            observedAsks: stableAdvertised.length || advertised.length,
         },
         privateSale: {
             low: Math.min(privateLow, privateMid),
             mid: privateMid,
             high: Math.max(privateMid, privateHigh),
             evidenceBasis: hasPrivateSales ? 'OBSERVED' : 'PROVISIONAL_PROXY',
-            verifiedSales: privateCompleted.length,
+            verifiedSales: stablePrivate.length || privateCompleted.length,
         },
         auction: {
             marketValue: auctionMid,
@@ -165,7 +190,7 @@ export function calculateMarketChannelGuides(
             reserveHigh,
             suggestedReserve: Math.max(reserveLow, Math.min(reserveHigh, auctionMid)),
             evidenceBasis: hasAuctionOutcomes ? 'OBSERVED' : 'PROVISIONAL_PROXY',
-            verifiedOutcomes: confirmedAuctions.length,
+            verifiedOutcomes: stableAuction.length || confirmedAuctions.length,
         },
     };
 }
