@@ -25,7 +25,7 @@ function normalizedUrl(raw?: string | null): { url: string; collection: boolean 
         const lastSegment = parsed.pathname.split('/').filter(Boolean).pop()?.toLowerCase() ?? '';
         // CarGurus and dealer results can provide a SINGLE results URL for
         // several separate adverts. Never collapse those by URL alone.
-        const collection = /^(search|results|result|browse|cars-for-sale|used-cars|car-search|inventory|listings)$/i
+        const collection = /^(search|results|result|browse|cars|stock|vehicles|cars-for-sale|used-cars|car-search|inventory|listings)$/i
             .test(lastSegment) || parsed.searchParams.has('search') || parsed.searchParams.has('filter');
         return { url: parsed.toString(), collection };
     } catch {
