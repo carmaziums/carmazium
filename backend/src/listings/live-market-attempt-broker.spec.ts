@@ -6,7 +6,7 @@ const audi = {
     writeOffCategory: 'NONE',
 };
 const market = {
-    comparables: [{ price: 7850, kind: 'ACTIVE_ASK' as const }],
+    comparables: [{ price: 7850, year: 2018, mileage: 106470, kind: 'ACTIVE_ASK' as const }],
     checkedAt: '2026-10-02T12:00:00.000Z',
     rawComparableCount: 1,
     sourceDomains: ['example-dealer.co.uk'],
@@ -35,7 +35,7 @@ describe('Block 4 live-market attempt broker', () => {
     it('keeps all five LIVE and BLENDED plans independent', async () => {
         const broker = new LiveMarketAttemptBroker();
         const search = jest.fn().mockResolvedValue(market);
-        const inputs = [];
+        const inputs: Promise<unknown>[] = [];
         for (let attempt = 1; attempt <= 5; attempt++) {
             inputs.push(broker.run(audi, 'LIVE', attempt, search));
             inputs.push(broker.run(audi, 'BLENDED', attempt, search));
