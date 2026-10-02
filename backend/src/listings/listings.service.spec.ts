@@ -1513,6 +1513,81 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 8 conservative evidence labels and frozen-snapshot consistency', () => {
+        const car = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, mileage: 57000,
+            valuationId: '88888888-8888-4888-8888-888888888888',
+        };
+
+        it('keeps even six exact current adverts at MEDIUM until achieved-sale calibration exists', async () => {
+            const now = new Date().toISOString();
+            prisma.listing.findMany.mockResolvedValue([]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce({
+                    checkedAt: now,
+                    sourceDomains: ['example-a.co.uk', 'example-b.co.uk'],
+                    rawComparableCount: 6,
+                    comparables: Array.from({ length: 6 }, (_, i) => ({
+                        price: 9000 + i * 150,
+                        year: 2010, mileage: 57000,
+                        kind: 'ACTIVE_ASK', modelMatchQuality: 'EXACT_MODEL',
+                        sourceUrl: `https://example-${i % 2 ? 'a' : 'b'}.co.uk/listings/${i + 1}`,
+                    })),
+                });
+            const result = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(result.confidence).toBe('MEDIUM');
+            expect(result.confidenceScore).toBeLessThan(0.65);
+            expect(result.confidenceAssessment?.counts.uniqueUkAdverts).toBe(6);
+            expect(result.confidenceAssessment?.counts.exactModelAdverts).toBe(6);
+            expect(result.confidenceAssessment?.counts.verifiedCompletedAuctions).toBe(0);
+            expect(result.confidenceAssessment?.calibrationStatus)
+                .toBe('NOT_VALIDATED_AGAINST_ACHIEVED_SALES');
+        });
+
+        it('adds a conservative, coherent evidence label to historical cached bases without searching', async () => {
+            const legacy = {
+                low: 7000, mid: 8000, high: 9000,
+                confidence: 'HIGH', confidenceScore: 0.89,
+                comparables: 8, evidence: {
+                    completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 8,
+                },
+                source: 'LIVE_UK_MARKET',
+                explanation: 'Old live-market estimate.',
+                retail: { suggestedAsking: 9000, suggestedMinimum: 8000 },
+                auction: { marketValue: 6500, openingBid: 4700,
+                    reserveLow: 6000, reserveHigh: 7000, suggestedReserve: 6500 },
+                marketEvidence: {
+                    carmaziumComparables: 0,
+                    liveUkComparables: 8,
+                    liveSources: ['example-a.co.uk'],
+                },
+            };
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: car.valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: { ...car, registration: 'BF10XYP' },
+                    baseValuation: legacy,
+                },
+            });
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const result = await service.estimateVehicleValue({
+                ...car, condition: 'FAIR',
+            } as any);
+            expect(search).not.toHaveBeenCalled();
+            expect(result.mid).toBeLessThan(legacy.mid);
+            expect(result.confidence).toBe('LOW');
+            expect(result.confidenceAssessment?.level).toBe('LOW');
+            expect(result.confidenceAssessment?.reasonCodes).toContain('EXACT_MODEL_EVIDENCE_LIMITED');
+            expect(result.confidenceAssessment?.calibrationStatus)
+                .toBe('NOT_VALIDATED_AGAINST_ACHIEVED_SALES');
+        });
+    });
+
     describe('Block 7 frozen-base deterministic seller edits', () => {
         const id = '77777777-7777-4777-8777-777777777777';
         const storedBase = {
