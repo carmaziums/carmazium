@@ -24,6 +24,14 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+  identityVerification?: {
+    status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED';
+    registrationChecked: boolean;
+    makeVerified: boolean;
+    modelVerified: boolean;
+    derivativeVerified: boolean;
+    message: string;
+  };
   low: number;
   mid: number;
   high: number;
@@ -312,6 +320,8 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
   };
 }
 
+class ValuationInputRejected extends Error {}
+
 export async function getVehicleValuation(
   request: VehicleValuationRequest,
 ): Promise<VehicleValuation> {
@@ -355,17 +365,40 @@ export async function getVehicleValuation(
     });
 
     if (!response.ok) {
-      throw new Error(`Valuation request failed (${response.status})`);
+      const raw = await response.text().catch(() => '');
+      let message = `Valuation request failed (${response.status})`;
+      try {
+        const parsed = JSON.parse(raw) as { message?: string | string[] };
+        if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join('; ') : parsed.message;
+      } catch {
+        if (raw && raw.length < 240 && !raw.startsWith('<')) message = raw;
+      }
+      if (response.status >= 400 && response.status < 500) throw new ValuationInputRejected(message);
+      throw new Error(message);
     }
 
     const body = await response.json() as VehicleValuationResponse;
     if (!body?.data) throw new Error('Valuation response was empty');
     return body.data;
-  } catch {
-    // Keep the seller journey alive even during backend/network/live-market
-    // outages. The server normally returns the richer market-backed result;
-    // this deterministic local guide is the final LOW-confidence safety net.
-    return localFallbackValuation(request);
+  } catch (error) {
+    // A backend identity mismatch or unavailable DVLA lookup must never
+    // silently turn into a locally generated price for a known registration.
+    if (error instanceof ValuationInputRejected || request.registration?.trim()) {
+      throw error;
+    }
+    const fallback = localFallbackValuation(request);
+    fallback.identityVerification = {
+      status: 'UNVERIFIED',
+      registrationChecked: false,
+      makeVerified: false,
+      modelVerified: false,
+      derivativeVerified: false,
+      message: 'Registration could not be checked. Confirm the exact vehicle before using this guide.',
+    };
+    fallback.confidence = 'LOW';
+    fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49);
+    fallback.explanation += ' ' + fallback.identityVerification.message;
+    return fallback;
   } finally {
     clearTimeout(timeoutId);
   }

@@ -10,9 +10,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { TradeListingAccessGuard } from '../auctions/trade-access.guard';
 import { FreeListingsModule } from '../free-listings/free-listings.module';
 import { DealersModule } from '../dealers/dealers.module';
+import { DvlaModule } from '../dvla/dvla.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule, FreeListingsModule, DealersModule],
+  imports: [PrismaModule, AuthModule, SellersModule, ConfigModule, ScraperModule, NotificationsModule, FreeListingsModule, DealersModule, DvlaModule],
   controllers: [ListingsController],
   providers: [ListingsService, TradeListingAccessGuard],
   exports: [ListingsService],

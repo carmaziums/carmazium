@@ -28,6 +28,14 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+    identityVerification?: {
+        status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED'
+        registrationChecked: boolean
+        makeVerified: boolean
+        modelVerified: boolean
+        derivativeVerified: boolean
+        message: string
+    }
     low: number
     mid: number
     high: number
@@ -490,6 +498,8 @@ function getDeterministicFallbackValuation(
     return valuation
 }
 
+class ValuationInputRejected extends Error {}
+
 export async function getVehicleValuation(
     request: VehicleValuationRequest,
 ): Promise<VehicleValuation> {
@@ -535,8 +545,16 @@ export async function getVehicleValuation(
                 signal: controller.signal,
             })
             if (!response.ok) {
-                const body = await response.text().catch(() => '')
-                throw new Error(body || `Valuation request failed (${response.status})`)
+                const raw = await response.text().catch(() => '')
+                let message = `Valuation request failed (${response.status})`
+                try {
+                    const parsed = JSON.parse(raw) as { message?: string | string[] }
+                    if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join('; ') : parsed.message
+                } catch {
+                    if (raw && raw.length < 240 && !raw.startsWith('<')) message = raw
+                }
+                if (response.status >= 400 && response.status < 500) throw new ValuationInputRejected(message)
+                throw new Error(message)
             }
             const body = await response.json() as { data?: VehicleValuation }
             if (!body?.data) throw new Error('Valuation response was empty')
@@ -544,16 +562,32 @@ export async function getVehicleValuation(
         } finally {
             clearTimeout(timeoutId)
         }
-    } catch {
-        // Never strand a seller because an enrichment dependency, deployment,
-        // rate-limit or network request failed. Try current CarMazium adverts
-        // first; if even that public-listings request is unavailable, the local
-        // deterministic age/mileage/transmission model still returns a numeric
-        // LOW-confidence guide.
-        try {
-            return await getBrowserFallbackValuation(request)
-        } catch {
-            return getDeterministicFallbackValuation(request)
+    } catch (error) {
+        // Never bypass an authoritative registration mismatch or an unavailable
+        // verifier with a locally generated number. Retry/manual review is safer.
+        if (error instanceof ValuationInputRejected || request.registration?.trim()) {
+            throw error
         }
+
+        // Only registration-free estimates retain a clearly labelled
+        // provisional fallback if the backend is unreachable.
+        let fallback: VehicleValuation
+        try {
+            fallback = await getBrowserFallbackValuation(request)
+        } catch {
+            fallback = getDeterministicFallbackValuation(request)
+        }
+        fallback.identityVerification = {
+            status: 'UNVERIFIED',
+            registrationChecked: false,
+            makeVerified: false,
+            modelVerified: false,
+            derivativeVerified: false,
+            message: 'Registration could not be checked. Confirm the exact vehicle before using this guide.',
+        }
+        fallback.confidence = 'LOW'
+        fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49)
+        fallback.explanation += ' ' + fallback.identityVerification.message
+        return fallback
     }
 }
