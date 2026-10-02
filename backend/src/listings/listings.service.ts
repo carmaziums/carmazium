@@ -75,6 +75,7 @@ import {
     searchLiveUkVehicleMarket,
     LiveUkMarketSearchResult,
 } from './live-market-search';
+import { LiveMarketAttemptBroker, liveMarketTimeoutMs } from './live-market-attempt-broker';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -149,6 +150,7 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
     private readonly identityLookupCache = new Map<string, { result: Promise<DvlaLookupResult>; expiresAt: number }>();
+    private readonly marketAttemptBroker = new LiveMarketAttemptBroker();
 
     constructor(
         private readonly prisma: PrismaService,
@@ -396,6 +398,7 @@ export class ListingsService {
         // remains cheap. If it is too sparse, the remaining four attempts run in
         // parallel and their sanitized comparables are deduplicated. This keeps
         // the five-attempt policy inside a practical customer-facing time budget.
+        const marketSearchStartedAt = Date.now();
         const liveComparableMap = new Map<string, VehicleValuationComparable>();
         let latestLiveMarketCheckedAt: string | undefined;
         let sawLiveMarketResponse = false;
@@ -490,6 +493,7 @@ export class ListingsService {
                     usableLiveComparables.length,
                 ),
                 liveUkAttempts,
+                searchDurationMs: Date.now() - marketSearchStartedAt,
                 blendedMarketAttempts: 0,
                 liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'LIVE',
@@ -533,6 +537,7 @@ export class ListingsService {
                         usableLiveComparables.length,
                     ),
                     liveUkAttempts,
+                searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'BLENDED',
@@ -557,6 +562,7 @@ export class ListingsService {
                         usableLiveComparables.length,
                     ),
                     liveUkAttempts,
+                searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'LIVE',
@@ -577,6 +583,7 @@ export class ListingsService {
                         : 'UNAVAILABLE',
                     rawLiveUkComparables,
                     liveUkAttempts,
+                searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'FALLBACK',
@@ -959,25 +966,47 @@ export class ListingsService {
         const apiKey = this.config.get<string>('OPENAI_API_KEY');
 
         if (!apiKey) {
-            this.logger.error(
-                'OPENAI_API_KEY is missing; continuing valuation with first-party/model fallback',
-            );
+            this.logger.error('OPENAI_API_KEY is missing; continuing valuation with first-party/model fallback');
             return null;
         }
 
+        // Two independent switches prevent accidental caching when a
+        // marketplace or model-provider contract does not permit retention.
+        // Even when disabled, overlapping identical calls share one
+        // IN-FLIGHT request; settled adverts are immediately discarded.
+        const allowShortCache =
+            this.config.get<string>('LIVE_MARKET_SHORT_CACHE_ENABLED') === 'true'
+            && this.config.get<string>('LIVE_MARKET_RESPONSE_CACHE_RIGHTS_CONFIRMED') === 'true';
+        const searchModel =
+            this.config.get<string>('OPENAI_WEB_VALUATION_MODEL') || 'gpt-5.6-luna';
+
         try {
-            return await searchLiveUkVehicleMarket(input, {
-                apiKey,
-                model:
-                    this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
-                    || 'gpt-5.6-luna',
-                timeoutMs: 18_000,
-                phase: context.phase,
-                attempt: context.attempt,
-            });
+            const search = await this.marketAttemptBroker.run(
+                input,
+                context.phase,
+                context.attempt,
+                () => searchLiveUkVehicleMarket(input, {
+                    apiKey,
+                    model: searchModel,
+                    timeoutMs: liveMarketTimeoutMs(
+                        this.config.get<string>('OPENAI_WEB_VALUATION_TIMEOUT_MS'),
+                    ),
+                    phase: context.phase,
+                    attempt: context.attempt,
+                }),
+                allowShortCache,
+                searchModel,
+            );
+            return search.result;
         } catch (error: any) {
+            // A timeout/error on one distinct plan must not consume the
+            // remaining plans or prematurely choose an internal fallback.
+            // Never log provider response bodies, credentials or registration.
+            const timedOut = error?.name === 'AbortError'
+                || error?.name === 'APIConnectionTimeoutError'
+                || error?.code === 'ETIMEDOUT';
             this.logger.warn(
-                `Live UK valuation search failed for ${input.make} ${input.model} (${context.phase} attempt ${context.attempt}); continuing with fallback: ${error?.message || error}`,
+                `Live UK ${context.phase} search attempt ${context.attempt} ${timedOut ? 'timed out' : 'failed'}; continuing to next distinct search plan`,
             );
             return null;
         }
