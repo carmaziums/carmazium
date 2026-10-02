@@ -383,24 +383,26 @@ export class ListingsService {
                 continue;
             }
 
+            // A recorded sold price takes precedence over an earlier
+            // accepted offer; they must not become two independent outcomes.
+            if (row.sale?.soldPrice != null && row.status === 'SOLD') {
+                comparables.push({
+                    ...common,
+                    price: Number(row.sale.soldPrice),
+                    kind: 'SALE',
+                    // Do not claim verified dealer or private-party provenance
+                    // until sale-channel identity is independently audited.
+                    saleChannel: null,
+                });
+                continue;
+            }
+
             const acceptedOffer = row.offers?.[0];
             if (acceptedOffer) {
                 comparables.push({
                     ...common,
                     price: Number(acceptedOffer.finalAmount ?? acceptedOffer.amount),
                     kind: 'ACCEPTED_OFFER',
-                });
-                continue;
-            }
-
-            if (row.sale?.soldPrice != null && row.status === 'SOLD') {
-                comparables.push({
-                    ...common,
-                    price: Number(row.sale.soldPrice),
-                    kind: 'SALE',
-                    // The platform does not yet have independently audited
-                    // private-party seller provenance for sale-price cohorts.
-                    saleChannel: 'RETAIL',
                 });
                 continue;
             }
