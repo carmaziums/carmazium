@@ -53,6 +53,17 @@ describe('valuation vehicle identity guard', () => {
         ).status).toBe('PARTIAL');
     });
 
+    it('accepts a generic model versus generation suffix only provisionally', () => {
+        const requested = { registration: 'AB12CDE', make: 'Kia', model: 'Sportage3', year: 2012 };
+        const lookup = { vrm: 'AB12CDE', make: 'KIA', model: 'SPORTAGE', year: 2012, dataSource: 'DVLA' as const };
+        expect(verifyValuationVehicleIdentity(requested, lookup)).toMatchObject({
+            status: 'PARTIAL', modelVerified: false,
+        });
+        expect(() => verifyValuationVehicleIdentity(
+            requested, { ...lookup, model: 'SPORTAGE2' },
+        )).toThrow(/model does not match/i);
+    });
+
     it('normalizes registration spacing and common manufacturer aliases', () => {
         const vw = { registration: 'BF10XYP', make: 'VW', model: 'Golf', year: 2010 };
         expect(verifyValuationVehicleIdentity(vw, lookup).status).toBe('MODEL_VERIFIED');
