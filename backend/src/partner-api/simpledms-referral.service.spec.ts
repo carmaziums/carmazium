@@ -58,7 +58,7 @@ describe('SimpleDmsReferralService security and attribution', () => {
 
   it('only redirects valid approved live auction records to the fixed CarMazium site', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
+    const url = new URL(await visitValid(service));
     expect(url.origin).toBe('https://carmazium.com');
     expect(url.pathname).toBe('/auctions/live/' + AUCTION);
     expect(url.searchParams.get('utm_source')).toBe('simpledms');
@@ -86,7 +86,7 @@ describe('SimpleDmsReferralService security and attribution', () => {
 
   it('rejects spoofed, expired, and non-dealer claims without storing user events', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
+    const url = new URL(await visitValid(service));
     const signed = url.searchParams.get('partner_ref')!;
     await expect(service.claim('dealer-1', 'BUYER', signed)).rejects.toThrow(ForbiddenException);
     await expect(service.claim('dealer-1', 'DEALER', signed + 'bad')).rejects.toThrow(BadRequestException);
@@ -106,7 +106,7 @@ describe('SimpleDmsReferralService security and attribution', () => {
 
   it('records a genuine authenticated dealer referral once and returns no PII', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
+    const url = new URL(await visitValid(service));
     const token = url.searchParams.get('partner_ref')!;
     const claim = await service.claim('dealer-1', 'DEALER', token);
     expect(claim).toEqual({ attributed: true });
