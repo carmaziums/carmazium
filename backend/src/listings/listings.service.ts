@@ -401,6 +401,7 @@ export class ListingsService {
         // the five-attempt policy inside a practical customer-facing time budget.
         const marketSearchStartedAt = Date.now();
         let liveComparableRows: VehicleValuationComparable[] = [];
+        let duplicatedAdvertRowsRemoved = 0;
         let latestLiveMarketCheckedAt: string | undefined;
         let sawLiveMarketResponse = false;
         let rawLiveUkComparables = 0;
@@ -426,10 +427,13 @@ export class ListingsService {
 
             // Remove repeats by advert identity, not by price/year/mileage.
             // Two separate cars can legitimately have identical price tags.
+            const previousCount = liveComparableRows.length;
+            const incoming = result.comparables ?? [];
             liveComparableRows = deduplicateLiveMarketComparables(
-                [...liveComparableRows, ...(result.comparables ?? [])],
+                [...liveComparableRows, ...incoming],
                 100,
             );
+            duplicatedAdvertRowsRemoved += previousCount + incoming.length - liveComparableRows.length;
         };
 
         const runMarketSearchAttempt = async (phase: 'LIVE' | 'BLENDED') => {
@@ -588,6 +592,28 @@ export class ListingsService {
                     valuationStrategy: 'FALLBACK',
                 };
             }
+        }
+
+        // Distinguish high-quality exact model matches from provisional model
+        // aliases. Never express high confidence when all retail evidence is
+        // derived from model-family or typo recovery rather than exact matches.
+        const exactModelComparables = usableLiveComparables.filter(
+            (row) => row.modelMatchQuality === 'EXACT_MODEL',
+        ).length;
+        const provisionalModelComparables = usableLiveComparables.filter(
+            (row) => !!row.modelMatchQuality && row.modelMatchQuality !== 'EXACT_MODEL',
+        ).length;
+        if (calculatedBase.marketEvidence) {
+            calculatedBase.marketEvidence.exactModelComparables = exactModelComparables;
+            calculatedBase.marketEvidence.provisionalModelComparables = provisionalModelComparables;
+            calculatedBase.marketEvidence.duplicateLiveAdvertRowsRemoved = duplicatedAdvertRowsRemoved;
+        }
+        if (calculatedBase.source === 'LIVE_UK_MARKET'
+            && provisionalModelComparables > 0
+            && exactModelComparables === 0) {
+            calculatedBase.confidence = 'LOW';
+            calculatedBase.confidenceScore = Math.min(calculatedBase.confidenceScore, 0.49);
+            calculatedBase.explanation += ' Model-family or spelling-based comparables are provisional; confirm the exact derivative before relying on this guide.';
         }
 
         // A provider's retail/trade benchmark must NEVER enter the individual
