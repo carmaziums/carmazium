@@ -39,6 +39,9 @@ jobs:
             console.log('Public API image excludes CLI; generated Prisma client usable');
           "
           docker run --rm --network none carmazium-prisma-maintenance-ci --version
+          docker image inspect carmazium-prisma-maintenance-ci --format '{{.Config.User}}' | grep -Fx node
+          docker run --rm --network none --entrypoint sh carmazium-prisma-maintenance-ci -ec \
+            'test ! -e /app/dist/main.js && test ! -e /app/src && test -e /app/prisma/schema.prisma && test -x /app/node_modules/.bin/prisma'
           docker image inspect carmazium-prisma-maintenance-ci --format '{{json .Config.ExposedPorts}}' | grep -Fx null
           docker image inspect carmazium-simpledms-api-ci --format '{{json .Config.Cmd}}' | grep -F 'dist/main'
       - name: Run public API image in isolated synthetic mode
