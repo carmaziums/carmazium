@@ -927,11 +927,23 @@ export class PaymentsService {
             HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
         };
 
-        // Create a pending transaction record first (we'll store the PI id after)
-        const transaction = await this.reserveAuctionBuyerFeeTransaction(
-            payableAuctionId!, listingId, transactionUserId,
-            descriptionMap[type] ?? `Payment for ${listing.title}`,
-        );
+        // Only buyer-fee reservations need the auction-row lock.
+        // Retail listing fees and HPI retain their existing checkout paths.
+        const transaction = type === 'COMMISSION'
+            ? await this.reserveAuctionBuyerFeeTransaction(
+                payableAuctionId!, listingId, transactionUserId,
+                descriptionMap[type] ?? `Payment for ${listing.title}`,
+            )
+            : await this.prisma.transaction.create({
+                data: {
+                    listingId,
+                    userId: transactionUserId,
+                    amount,
+                    type: type as any,
+                    status: 'PENDING',
+                    description: descriptionMap[type] ?? `Payment for ${listing.title}`,
+                },
+            });
 
         // Create Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({
