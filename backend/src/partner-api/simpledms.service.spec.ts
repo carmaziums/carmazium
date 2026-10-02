@@ -33,6 +33,7 @@ const SAMPLE: any = {
       'https://unapproved.example.com/vehicle.jpg',
     ],
     vrm: 'PRIVATE_REG',
+    location: '19 Example Road, PRIVATE_ADDRESS',
     description: 'Seller private phone number 07111111111',
     sellerId: 'PRIVATE_SELLER',
     seller: { email: 'seller@private.invalid', phone: '07111111111' },
@@ -64,7 +65,7 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(result.auctions[0].auction).not.toHaveProperty('currentBidGbp');
     const raw = JSON.stringify(result);
     for (const secret of ['12000', 'PRIVATE_REG', 'PRIVATE_SELLER', '07111111111',
-      'secret-private-document', 'secret-winner']) {
+      'secret-private-document', 'secret-winner', 'PRIVATE_ADDRESS']) {
       expect(raw).not.toContain(secret);
     }
     const where = prisma.auction.findMany.mock.calls[0][0].where;
@@ -85,6 +86,15 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(result.auction.vehicle).toHaveProperty('registration', 'PRIVATE_REG');
     expect(result.auction.images).toEqual([PUBLIC_IMAGE]);
     expect(JSON.stringify(result)).not.toContain('seller@private.invalid');
+  });
+
+  it('only discloses an explicitly allowlisted town, never arbitrary seller locations', async () => {
+    const approved = harness({PARTNER_API_SIMPLEDMS_SHARE_REGION: 'true', PARTNER_API_SIMPLEDMS_ALLOWED_REGIONS: 'Birmingham,Leeds'});
+    const unknown = await approved.service.detail('auction-1');
+    expect(unknown.auction.region).toBeNull();
+    approved.prisma.auction.findFirst.mockResolvedValue({...SAMPLE, listing: {...SAMPLE.listing, location: 'Birmingham'}});
+    const known = await approved.service.detail('auction-1');
+    expect(known.auction.region).toBe('Birmingham');
   });
 
   it('exposes current bid only when opted in and queries current-run non-cancelled bids', async () => {
