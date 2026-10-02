@@ -9,6 +9,7 @@ const today = Date.parse('2026-10-02T12:00:00Z');
 const basis = (overrides: Partial<VehicleValuationResult> = {}): VehicleValuationResult => ({
     low: 7000, mid: 8000, high: 9000,
     confidence: 'HIGH', confidenceScore: 0.91,
+    normalizedComparableIqrRatio: 0.12,
     comparables: 6,
     evidence: {
         completedSales: 0, acceptedOffers: 0,
@@ -80,6 +81,29 @@ describe('Block 8 conservative, auditable evidence-quality rubric', () => {
                 { identityStatus: 'MODEL_VERIFIED', now: today });
             expect(r.confidence).toBe('LOW');
         }
+    });
+
+    it('downgrades widely dispersed asking prices and missing normalized spread evidence', () => {
+        for (const spread of [0.36, 1.8, undefined]) {
+            const r = assessValuationConfidence(basis({
+                normalizedComparableIqrRatio: spread,
+            }), { identityStatus: 'MODEL_VERIFIED', now: today });
+            expect(r.confidence).toBe('LOW');
+            expect(r.assessment.reasonCodes).toContain('NORMALIZED_PRICE_SPREAD_UNCERTAIN');
+        }
+    });
+
+    it('does not label three incoherent auction outcomes MEDIUM merely because they are completed', () => {
+        const r = assessValuationConfidence(basis({
+            source: 'CARMAZIUM_MARKET',
+            auction: {
+                ...basis().auction, verifiedOutcomes: 3,
+                evidenceBasis: 'PROVISIONAL_PROXY',
+            },
+            marketEvidence: { carmaziumComparables: 3, liveUkComparables: 0 },
+        }), { identityStatus: 'MODEL_VERIFIED', now: today });
+        expect(r.confidence).toBe('LOW');
+        expect(r.assessment.reasonCodes).toContain('LIMITED_VERIFIED_OUTCOMES');
     });
 
     it('treats a partial or missing identity as LOW even with diverse, fresh, exact adverts', () => {
