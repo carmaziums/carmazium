@@ -66,6 +66,8 @@ export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
     specificationAdjustment?: SpecificationAdjustmentAudit;
     confidenceAssessment?: ValuationConfidenceAssessment;
+    /** Interquartile spread of normalized usable prices divided by their median. */
+    normalizedComparableIqrRatio?: number;
     low: number;
     mid: number;
     high: number;
@@ -540,6 +542,13 @@ export function calculateVehicleValuation(
     if (usable.length === 1) marketMid = marketMid * 0.45 + fallback * 0.55;
     if (usable.length === 2) marketMid = marketMid * 0.65 + fallback * 0.35;
 
+    const normalizedComparableIqrRatio = usable.length >= 3
+        ? Number((
+            (weightedQuantile(usable, 0.75) - weightedQuantile(usable, 0.25))
+            / Math.max(1, weightedQuantile(usable, 0.5))
+        ).toFixed(4))
+        : undefined;
+
     const mid = roundMoney(marketMid);
 
     let lowRaw: number;
@@ -614,6 +623,7 @@ export function calculateVehicleValuation(
         confidence,
         confidenceScore: Number(confidenceScore.toFixed(2)),
         comparables: usable.length,
+        normalizedComparableIqrRatio,
         evidence,
         source,
         explanation,
