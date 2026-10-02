@@ -10,7 +10,7 @@ import { SimpleDmsService } from './simpledms.service';
  */
 @ApiExcludeController()
 @Controller('partners/v1/simpledms')
-@UseGuards(SimpleDmsGuard, ThrottlerGuard)
+@UseGuards(ThrottlerGuard, SimpleDmsGuard)
 @Throttle({ default: { ttl: 60_000, limit: 60 } })
 export class SimpleDmsController {
   constructor(private readonly service: SimpleDmsService) {}
