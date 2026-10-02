@@ -51,10 +51,14 @@ export interface VehicleValuationComparable {
     dealerName?: string | null;
     stockReference?: string | null;
     modelMatchQuality?: 'EXACT_MODEL' | 'FAMILY_ONLY' | 'TYPO_RECOVERY' | 'TITLE_ONLY';
+    saleChannel?: 'RETAIL' | 'PRIVATE' | 'AUCTION' | null;
+    verifiedAuctionSale?: boolean;
+    verifiedPrivateSale?: boolean;
     kind: ValuationEvidenceKind;
 }
 
 import type { ValuationIdentityVerification } from './vehicle-identity';
+import { calculateMarketChannelGuides, scaleMarketChannelGuides } from './market-channel-methodologies';
 
 export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
@@ -95,6 +99,15 @@ export interface VehicleValuationResult {
     retail: {
         suggestedAsking: number;
         suggestedMinimum: number;
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+        observedAsks?: number;
+    };
+    privateSale?: {
+        low: number;
+        mid: number;
+        high: number;
+        evidenceBasis: 'OBSERVED' | 'PROVISIONAL_PROXY';
+        verifiedSales: number;
     };
     auction: {
         marketValue: number;
@@ -102,6 +115,8 @@ export interface VehicleValuationResult {
         reserveLow: number;
         reserveHigh: number;
         suggestedReserve: number;
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+        verifiedOutcomes?: number;
     };
 }
 
@@ -417,11 +432,22 @@ export function applyVehicleSpecificationAdjustments(
     const low = roundMoney(base.low * factor);
     const mid = roundMoney(base.mid * factor);
     const high = roundMoney(base.high * factor);
-    const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
-    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
-    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
-    const reserveHigh = auctionMarketValue;
-    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
+    const channels = scaleMarketChannelGuides({
+        retail: {
+            ...base.retail,
+            evidenceBasis: base.retail.evidenceBasis ?? 'PROVISIONAL_PROXY',
+            observedAsks: base.retail.observedAsks ?? 0,
+        },
+        privateSale: base.privateSale ?? {
+            low: base.low, mid: base.mid, high: base.high,
+            evidenceBasis: 'PROVISIONAL_PROXY' as const, verifiedSales: 0,
+        },
+        auction: {
+            ...base.auction,
+            evidenceBasis: base.auction.evidenceBasis ?? 'PROVISIONAL_PROXY',
+            verifiedOutcomes: base.auction.verifiedOutcomes ?? 0,
+        },
+    }, factor);
 
     return {
         ...base,
@@ -429,24 +455,24 @@ export function applyVehicleSpecificationAdjustments(
         mid,
         high,
         explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
-        retail: {
-            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
-        },
-        auction: {
-            marketValue: auctionMarketValue,
-            openingBid,
-            reserveLow,
-            reserveHigh,
-            suggestedReserve,
-        },
+        retail: channels.retail,
+        privateSale: channels.privateSale,
+        auction: channels.auction,
     };
 }
 
 function normalizeComparable(
     input: VehicleValuationInput,
     comparable: VehicleValuationComparable,
-): { value: number; weight: number } | null {
+): {
+    value: number;
+    channelValue: number;
+    weight: number;
+    kind: ValuationEvidenceKind;
+    saleChannel?: 'RETAIL' | 'PRIVATE' | 'AUCTION' | null;
+    verifiedAuctionSale?: boolean;
+    verifiedPrivateSale?: boolean;
+} | null {
     if (!Number.isFinite(comparable.price) || comparable.price < 250) return null;
 
     const compYear = comparable.year ?? input.year;
@@ -459,6 +485,9 @@ function normalizeComparable(
     const mileageFactor = clamp(1 - mileageDeltaThousands * 0.004, 0.78, 1.22);
 
     let value = comparable.price * yearFactor * mileageFactor;
+    // Channel price must remain on the original sale/ask/auction scale;
+    // broad-market discounts and conversion are separate.
+    let channelValue = value;
     // Negotiated offers and auction outcomes are directly observed agreed/bid
     // prices. A Sale row is still strong evidence, but some legacy "mark sold"
     // paths recorded the advert asking price when no explicit sold price was
@@ -481,6 +510,7 @@ function normalizeComparable(
     const targetProfileFactor = vehicleProfileFactor(input);
     const comparableProfileFactor = vehicleProfileFactor(comparable);
     value *= targetProfileFactor / Math.max(0.20, comparableProfileFactor);
+    channelValue *= targetProfileFactor / Math.max(0.20, comparableProfileFactor);
 
     // Auction outcomes are normally trade-facing. Convert them to a cautious
     // retail-market equivalent before mixing them with classified evidence.
@@ -504,7 +534,9 @@ function normalizeComparable(
             const targetFamily = transmissionFamily(targetTransmission);
             const compFamily = transmissionFamily(compTransmission);
             if (targetFamily && compFamily && targetFamily !== compFamily) {
-                value *= targetFamily === 'AUTO' ? 1.07 : 0.93;
+                const gearboxFactor = targetFamily === 'AUTO' ? 1.07 : 0.93;
+                value *= gearboxFactor;
+                channelValue *= gearboxFactor;
             }
             weight *= 0.60;
         }
@@ -545,7 +577,12 @@ function normalizeComparable(
         weight *= targetWriteOff === compWriteOff ? 1.08 : 0.72;
     }
 
-    return { value, weight };
+    return {
+        value, channelValue, weight, kind: comparable.kind,
+        saleChannel: comparable.saleChannel,
+        verifiedAuctionSale: comparable.verifiedAuctionSale,
+        verifiedPrivateSale: comparable.verifiedPrivateSale,
+    };
 }
 
 function weightedQuantile(
@@ -573,7 +610,7 @@ export function calculateVehicleValuation(
     const fallback = fallbackResult.value;
     const normalized = comparables
         .map((row) => normalizeComparable(input, row))
-        .filter((row): row is { value: number; weight: number } => !!row);
+        .filter((row): row is NonNullable<typeof row> => !!row);
 
     // Remove extreme outliers only when enough evidence exists to identify them.
     let usable = normalized;
@@ -660,21 +697,11 @@ export function calculateVehicleValuation(
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
-    // Retail should show the stronger end of the observed asking market.
-    // Sellers can still choose their own figure, but the platform does not
-    // encourage them to under-list a clean retail vehicle.
-    const suggestedAsking = high;
-    const suggestedMinimum = mid;
-
-    // Dealer auctions need a visibly lower guide than retail so traders can
-    // buy with realistic preparation, warranty and resale margin. Use the
-    // lower end of the market range as the dealer-buy guide, then calculate
-    // the opening/reserve guidance from that lower anchor.
-    const auctionMarketValue = low;
-    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
-    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
-    const reserveHigh = Math.round(auctionMarketValue * 1.00 * 100) / 100;
-    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
+    // Channel-specific observations are NOT mixed to manufacture achieved
+    // auction/private prices from live retail adverts. The broad low/mid/high
+    // range remains backward-compatible; each channel has its own evidence
+    // and explicitly provisional guidance when no completed cohort exists.
+    const channels = calculateMarketChannelGuides({ low, mid, high }, normalized);
 
     return {
         low,
@@ -686,16 +713,8 @@ export function calculateVehicleValuation(
         evidence,
         source,
         explanation,
-        retail: {
-            suggestedAsking,
-            suggestedMinimum,
-        },
-        auction: {
-            marketValue: auctionMarketValue,
-            openingBid,
-            reserveLow,
-            reserveHigh,
-            suggestedReserve,
-        },
+        retail: channels.retail,
+        privateSale: channels.privateSale,
+        auction: channels.auction,
     };
 }
