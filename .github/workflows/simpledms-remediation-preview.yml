@@ -1,0 +1,47 @@
+name: SimpleDMS compatible dependency remediation preview
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/simpledms-remediation-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Baseline production vulnerability counts
+        working-directory: backend
+        run: |
+          npm audit --omit=dev --json > "$RUNNER_TEMP/baseline-audit.json" || true
+          node -e "const a=require(process.env.RUNNER_TEMP+'/baseline-audit.json');console.log('BEFORE '+JSON.stringify(a.metadata?.vulnerabilities||{}))"
+      - name: Apply ONLY npm compatible lockfile fixes in temporary workspace
+        working-directory: backend
+        run: |
+          npm audit fix --package-lock-only --ignore-scripts --no-fund --json > "$RUNNER_TEMP/fix-attempt.json" || true
+          npm audit --omit=dev --json > "$RUNNER_TEMP/after-audit.json" || true
+          node -e "const a=require(process.env.RUNNER_TEMP+'/after-audit.json');console.log('AFTER '+JSON.stringify(a.metadata?.vulnerabilities||{}))"
+      - name: Reject changes outside lockfile
+        run: |
+          git status --short
+          unexpected="$(git diff --name-only -- . ':!backend/package-lock.json')"
+          if [ -n "$unexpected" ]; then echo "Unexpected changed files: $unexpected"; exit 1; fi
+          git diff -- backend/package-lock.json > "$RUNNER_TEMP/compatible-lockfile.patch"
+          git diff --stat -- backend/package-lock.json
+      - name: Upload remediation and audit artifacts (no source changes)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-remediation-preview
+          path: |
+            ${{ runner.temp }}/baseline-audit.json
+            ${{ runner.temp }}/after-audit.json
+            ${{ runner.temp }}/fix-attempt.json
+            ${{ runner.temp }}/compatible-lockfile.patch
+          retention-days: 7
