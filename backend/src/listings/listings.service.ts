@@ -76,6 +76,7 @@ import {
     LiveUkMarketSearchResult,
 } from './live-market-search';
 import { LiveMarketAttemptBroker, liveMarketTimeoutMs } from './live-market-attempt-broker';
+import { deduplicateLiveMarketComparables } from './market-comparable-integrity';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -399,7 +400,8 @@ export class ListingsService {
         // parallel and their sanitized comparables are deduplicated. This keeps
         // the five-attempt policy inside a practical customer-facing time budget.
         const marketSearchStartedAt = Date.now();
-        const liveComparableMap = new Map<string, VehicleValuationComparable>();
+        let liveComparableRows: VehicleValuationComparable[] = [];
+        let duplicatedAdvertRowsRemoved = 0;
         let latestLiveMarketCheckedAt: string | undefined;
         let sawLiveMarketResponse = false;
         let rawLiveUkComparables = 0;
@@ -411,7 +413,10 @@ export class ListingsService {
             if (!result) return;
 
             sawLiveMarketResponse = true;
-            latestLiveMarketCheckedAt = result.checkedAt;
+            if (!latestLiveMarketCheckedAt
+                || Date.parse(result.checkedAt) > Date.parse(latestLiveMarketCheckedAt)) {
+                latestLiveMarketCheckedAt = result.checkedAt;
+            }
             rawLiveUkComparables = Math.max(
                 rawLiveUkComparables,
                 result.rawComparableCount ?? 0,
@@ -420,20 +425,15 @@ export class ListingsService {
                 if (domain) liveSourceDomains.add(domain);
             }
 
-            for (const comparable of result.comparables ?? []) {
-                const key = [
-                    Math.round(Number(comparable.price) || 0),
-                    comparable.year ?? '',
-                    comparable.mileage ?? '',
-                    (comparable.variant ?? '').trim().toUpperCase(),
-                    (comparable.fuelType ?? '').trim().toUpperCase(),
-                    (comparable.transmission ?? '').trim().toUpperCase(),
-                ].join('|');
-
-                if (!liveComparableMap.has(key)) {
-                    liveComparableMap.set(key, comparable);
-                }
-            }
+            // Remove repeats by advert identity, not by price/year/mileage.
+            // Two separate cars can legitimately have identical price tags.
+            const previousCount = liveComparableRows.length;
+            const incoming = result.comparables ?? [];
+            liveComparableRows = deduplicateLiveMarketComparables(
+                [...liveComparableRows, ...incoming],
+                100,
+            );
+            duplicatedAdvertRowsRemoved += previousCount + incoming.length - liveComparableRows.length;
         };
 
         const runMarketSearchAttempt = async (phase: 'LIVE' | 'BLENDED') => {
@@ -450,25 +450,27 @@ export class ListingsService {
                 specificationInput,
                 { phase, attempt },
             );
-            mergeLiveMarketResult(result);
             return result;
         };
 
-        await runMarketSearchAttempt('LIVE');
+        mergeLiveMarketResult(await runMarketSearchAttempt('LIVE'));
 
-        if (liveComparableMap.size < 3) {
+        if (liveComparableRows.length < 3) {
             const remainingLiveAttempts = 5 - liveUkAttempts;
             if (remainingLiveAttempts > 0) {
-                await Promise.all(
+                const completed = await Promise.all(
                     Array.from(
                         { length: remainingLiveAttempts },
                         () => runMarketSearchAttempt('LIVE'),
                     ),
                 );
+                // Promise.all preserves planned attempt order even if provider
+                // responses finish out of order; price evidence remains stable.
+                completed.forEach(mergeLiveMarketResult);
             }
         }
 
-        let usableLiveComparables = [...liveComparableMap.values()];
+        let usableLiveComparables = liveComparableRows;
         let calculatedBase: VehicleValuationResult;
 
         // Prefer live UK evidence whenever the five-attempt live phase found
@@ -503,21 +505,22 @@ export class ListingsService {
             // comparables do we enter blended mode. Blended mode gets its own
             // five attempts to recover live UK evidence which can be combined
             // with CarMazium marketplace signals when those exist.
-            await runMarketSearchAttempt('BLENDED');
+            mergeLiveMarketResult(await runMarketSearchAttempt('BLENDED'));
 
-            if (liveComparableMap.size === 0) {
+            if (liveComparableRows.length === 0) {
                 const remainingBlendedAttempts = 5 - blendedMarketAttempts;
                 if (remainingBlendedAttempts > 0) {
-                    await Promise.all(
+                    const completed = await Promise.all(
                         Array.from(
                             { length: remainingBlendedAttempts },
                             () => runMarketSearchAttempt('BLENDED'),
                         ),
                     );
+                    completed.forEach(mergeLiveMarketResult);
                 }
             }
 
-            usableLiveComparables = [...liveComparableMap.values()];
+            usableLiveComparables = liveComparableRows;
 
             if (usableLiveComparables.length > 0 && carmaziumComparableCount > 0) {
                 calculatedBase = calculateVehicleValuation(
@@ -589,6 +592,28 @@ export class ListingsService {
                     valuationStrategy: 'FALLBACK',
                 };
             }
+        }
+
+        // Distinguish high-quality exact model matches from provisional model
+        // aliases. Never express high confidence when all retail evidence is
+        // derived from model-family or typo recovery rather than exact matches.
+        const exactModelComparables = usableLiveComparables.filter(
+            (row) => row.modelMatchQuality === 'EXACT_MODEL',
+        ).length;
+        const provisionalModelComparables = usableLiveComparables.filter(
+            (row) => !!row.modelMatchQuality && row.modelMatchQuality !== 'EXACT_MODEL',
+        ).length;
+        if (calculatedBase.marketEvidence) {
+            calculatedBase.marketEvidence.exactModelComparables = exactModelComparables;
+            calculatedBase.marketEvidence.provisionalModelComparables = provisionalModelComparables;
+            calculatedBase.marketEvidence.duplicateLiveAdvertRowsRemoved = duplicatedAdvertRowsRemoved;
+        }
+        if (calculatedBase.source === 'LIVE_UK_MARKET'
+            && provisionalModelComparables > 0
+            && exactModelComparables === 0) {
+            calculatedBase.confidence = 'LOW';
+            calculatedBase.confidenceScore = Math.min(calculatedBase.confidenceScore, 0.49);
+            calculatedBase.explanation += ' Model-family or spelling-based comparables are provisional; confirm the exact derivative before relying on this guide.';
         }
 
         // A provider's retail/trade benchmark must NEVER enter the individual

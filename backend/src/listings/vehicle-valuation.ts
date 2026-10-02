@@ -47,6 +47,10 @@ export interface VehicleValuationComparable {
     isImported?: boolean | null;
     sourceUrl?: string | null;
     sourceDomain?: string | null;
+    listingTitle?: string | null;
+    dealerName?: string | null;
+    stockReference?: string | null;
+    modelMatchQuality?: 'EXACT_MODEL' | 'FAMILY_ONLY' | 'TYPO_RECOVERY' | 'TITLE_ONLY';
     kind: ValuationEvidenceKind;
 }
 
@@ -75,6 +79,9 @@ export interface VehicleValuationResult {
     marketEvidence?: {
         carmaziumComparables: number;
         liveUkComparables: number;
+        exactModelComparables?: number;
+        provisionalModelComparables?: number;
+        duplicateLiveAdvertRowsRemoved?: number;
         checkedAt?: string;
         liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE';
         rawLiveUkComparables?: number;

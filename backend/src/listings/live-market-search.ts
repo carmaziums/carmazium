@@ -3,6 +3,9 @@ import type {
     VehicleValuationComparable,
     VehicleValuationInput,
 } from './vehicle-valuation';
+import { canonicalValuationMake } from './vehicle-valuation-identity';
+import { matchMarketplaceModel } from './market-model-matching';
+import { deduplicateLiveMarketComparables } from './market-comparable-integrity';
 
 export interface LiveUkMarketSearchResult {
     comparables: VehicleValuationComparable[];
@@ -96,118 +99,6 @@ export function getLiveUkMarketSearchPlan(
 const normalize = (value?: string | null) =>
     (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 
-const MODEL_POWERTRAIN_NOISE = new Set([
-    'E',
-    'POWER',
-    'EPOWER',
-    'HYBRID',
-    'PHEV',
-    'MHEV',
-    'PLUGIN',
-    'PLUG',
-    'IN',
-    'ELECTRIC',
-]);
-
-function modelTokens(value: string, make?: string): string[] {
-    const makeTokens = new Set(
-        normalize(make).split(/\s+/).filter(Boolean),
-    );
-
-    const tokens = normalize(value)
-        .split(/\s+/)
-        .filter(Boolean)
-        .filter((token) => !makeTokens.has(token));
-
-    // Registration data sometimes appends the powertrain family to the model,
-    // e.g. "X-TRAIL E-POWER". Strip only trailing powertrain words so the
-    // underlying model family still has to match.
-    while (
-        tokens.length > 1
-        && MODEL_POWERTRAIN_NOISE.has(tokens[tokens.length - 1])
-    ) {
-        tokens.pop();
-    }
-
-    return tokens;
-}
-
-function modelCore(value: string, make?: string): string {
-    return modelTokens(value, make).join('');
-}
-
-function stripTrailingGenerationDigit(value: string): string {
-    const match = value.match(/^([A-Z]{5,})\d$/);
-    return match ? match[1] : value;
-}
-
-function isUkRegistrationLike(value: string): boolean {
-    return /^[A-Z]{2}\d{2}[A-Z]{3}$/.test(normalize(value).replace(/\s+/g, ''));
-}
-
-function withinOneEdit(left: string, right: string): boolean {
-    if (left === right) return true;
-    if (Math.abs(left.length - right.length) > 1) return false;
-    if (Math.min(left.length, right.length) < 5) return false;
-
-    let i = 0;
-    let j = 0;
-    let edits = 0;
-
-    while (i < left.length && j < right.length) {
-        if (left[i] === right[j]) {
-            i += 1;
-            j += 1;
-            continue;
-        }
-
-        edits += 1;
-        if (edits > 1) return false;
-
-        if (left.length > right.length) i += 1;
-        else if (right.length > left.length) j += 1;
-        else {
-            i += 1;
-            j += 1;
-        }
-    }
-
-    if (i < left.length || j < right.length) edits += 1;
-    return edits <= 1;
-}
-
-function modelMatches(
-    input: VehicleValuationInput,
-    candidateModel: string,
-    title: string,
-): boolean {
-    // If a registration has accidentally landed in the model field, do not
-    // broaden all the way to make-only evidence. That would create false
-    // confidence across unrelated models.
-    if (isUkRegistrationLike(input.model)) return false;
-
-    const target = modelCore(input.model, input.make);
-    const candidate = modelCore(candidateModel, input.make);
-    if (!target) return false;
-
-    const targetFamily = stripTrailingGenerationDigit(target);
-    const candidateFamily = stripTrailingGenerationDigit(candidate);
-
-    if (candidate) {
-        if (target === candidate || targetFamily === candidateFamily) return true;
-        if (withinOneEdit(target, candidate)) return true;
-        if (withinOneEdit(targetFamily, candidateFamily)) return true;
-    }
-
-    // Some marketplace result pages provide a sparse model field but include
-    // the full model in the advert title. Make/year are validated separately,
-    // so checking the canonical model family in the title is still bounded.
-    const titleCore = normalize(title).replace(/[^A-Z0-9]/g, '');
-    if (titleCore.includes(target) || titleCore.includes(targetFamily)) return true;
-
-    return false;
-}
-
 function isCleanComparableTitle(title: string, targetWriteOff?: string): boolean {
     if (targetWriteOff && normalize(targetWriteOff) !== 'NONE') return true;
     return !/\b(cat\s*[abns]|write[ -]?off|salvage|spares|repair|damaged|non[- ]runner)\b/i.test(title);
@@ -223,8 +114,7 @@ export function sanitizeLiveUkComparables(
 ): VehicleValuationComparable[] {
     if (!Array.isArray(raw)) return [];
 
-    const targetMake = normalize(input.make);
-    const seen = new Set<string>();
+    const targetMake = canonicalValuationMake(input.make);
     const rows: VehicleValuationComparable[] = [];
 
     const yearTolerance = Math.max(1, Math.min(6, options?.yearTolerance ?? 3));
@@ -245,8 +135,16 @@ export function sanitizeLiveUkComparables(
         if (!title || !url.startsWith('http')) continue;
         if (!Number.isFinite(price) || price < 750 || price > 500_000) continue;
         if (!Number.isInteger(year) || Math.abs(year - input.year) > yearTolerance) continue;
-        if (normalize(make) !== targetMake && !normalize(title).includes(targetMake)) continue;
-        if (!modelMatches(input, model, title)) continue;
+        // A contradictory explicit make/model cannot be overruled by a
+        // substring in an advert title (Fiesta is not Fiesta ST).
+        const statedMake = canonicalValuationMake(make);
+        if (statedMake && statedMake !== targetMake) continue;
+        if (!statedMake && !normalize(title).split(' ').some((token) =>
+            canonicalValuationMake(token) === targetMake)) continue;
+        const modelMatchQuality = matchMarketplaceModel(input, {
+            model, title, variant: typeof row.variant === 'string' ? row.variant : null,
+        });
+        if (!modelMatchQuality) continue;
         if (!isCleanComparableTitle(title, input.writeOffCategory)) continue;
 
         const mileage = mileageValue != null && Number.isFinite(mileageValue) && mileageValue >= 0
@@ -262,9 +160,7 @@ export function sanitizeLiveUkComparables(
         }
         if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') continue;
 
-        const dedupeKey = `${parsedUrl.hostname}|${normalize(title)}|${Math.round(price)}|${mileage ?? ''}`;
-        if (seen.has(dedupeKey)) continue;
-        seen.add(dedupeKey);
+        if (parsedUrl.username || parsedUrl.password) continue;
 
         rows.push({
             price,
@@ -280,11 +176,15 @@ export function sanitizeLiveUkComparables(
             isImported: null,
             sourceUrl: parsedUrl.toString(),
             sourceDomain: parsedUrl.hostname.replace(/^www\./, '').toLowerCase(),
+            listingTitle: title,
+            dealerName: typeof row.dealerName === 'string' ? row.dealerName.trim().slice(0, 100) : null,
+            stockReference: typeof row.stockReference === 'string' ? row.stockReference.trim().slice(0, 40) : null,
+            modelMatchQuality,
             kind: 'ACTIVE_ASK',
         });
     }
 
-    return rows.slice(0, 20);
+    return deduplicateLiveMarketComparables(rows, 20);
 }
 
 export async function searchLiveUkVehicleMarket(
@@ -328,6 +228,8 @@ export async function searchLiveUkVehicleMarket(
         'CarGurus filtered/result pages are acceptable evidence when the page visibly contains individual current adverts with price, year and mileage; return each visible advert as its own comparable row.',
         'If fewer than 3 credible current adverts can be found, return fewer results rather than inventing listings.',
         'Every row must have a real public source URL that supports the advert or the marketplace result containing it.',
+        'When a single result page contains several different cars, return their actual individual titles and distinct details; never manufacture individual advert IDs.',
+        'Return dealerName and stockReference only when both are explicitly shown in the source listing. Otherwise use null; never invent them.',
         `Search pass: ${phase} ${attempt} (${plan.label}).`,
         `Target vehicle: ${details}`,
     ].join('\n');
@@ -388,6 +290,8 @@ export async function searchLiveUkVehicleMarket(
                                     variant: { type: ['string', 'null'] },
                                     fuelType: { type: ['string', 'null'] },
                                     transmission: { type: ['string', 'null'] },
+                                    dealerName: { type: ['string', 'null'] },
+                                    stockReference: { type: ['string', 'null'] },
                                 },
                                 required: [
                                     'title',
@@ -400,6 +304,8 @@ export async function searchLiveUkVehicleMarket(
                                     'variant',
                                     'fuelType',
                                     'transmission',
+                                    'dealerName',
+                                    'stockReference',
                                 ],
                             },
                         },

@@ -1513,6 +1513,60 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 5 unique advert evidence across live attempts', () => {
+        const car = {
+            make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000,
+        };
+        const row = (url: string, price: number) => ({
+            sourceUrl: url, sourceDomain: 'dealer.example',
+            listingTitle: '2018 Volkswagen Golf SE',
+            price, year: 2018, mileage: 57000,
+            variant: 'SE', transmission: 'MANUAL',
+            kind: 'ACTIVE_ASK' as const,
+            modelMatchQuality: 'EXACT_MODEL' as const,
+        });
+        const result = (comparables: ReturnType<typeof row>[]) => ({
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            sourceDomains: ['dealer.example'],
+            rawComparableCount: comparables.length, comparables,
+        });
+
+        it('does not inflate comparable count from repeats across five search passes', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const a = row('https://dealer.example/cars/golf-123?utm_source=pass1', 10995);
+            const repeat = row('https://dealer.example/cars/golf-123?utm_source=pass2', 10995);
+            const b = row('https://dealer.example/cars/golf-456', 10750);
+            const c = row('https://dealer.example/cars/golf-789', 10995);
+            // The first two cars share the same price and mileage. They
+            // must remain independent; only a repeat of the same URL merges.
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce(result([a, b]))
+                .mockResolvedValueOnce(result([repeat]))
+                .mockResolvedValueOnce(result([c]))
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+
+            const valuation = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(5);
+            expect(valuation.source).toBe('LIVE_UK_MARKET');
+            expect(valuation.marketEvidence?.liveUkComparables).toBe(3);
+            expect(valuation.marketEvidence?.blendedMarketAttempts).toBe(0);
+        });
+
+        it('frozen results are unchanged when downstream sources repeat a known URL', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const a = row('https://dealer.example/cars/golf-123', 10995);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(result([a]));
+            const first = await service.estimateVehicleValue(car as any);
+            const repeated = await service.estimateVehicleValue(car as any);
+            expect(first.mid).toBe(repeated.mid);
+            expect(first.marketEvidence?.liveUkComparables).toBe(1);
+            expect(repeated.marketEvidence?.liveUkComparables).toBe(1);
+            expect(search).toHaveBeenCalledTimes(10);
+        });
+    });
+
     describe('Block 4 reliable live search delivery', () => {
         const car = { make: 'Audi', model: 'Audi A1', year: 2018, mileage: 106470,
             variant: 'Sport', fuelType: 'Petrol', transmission: 'Manual' };
