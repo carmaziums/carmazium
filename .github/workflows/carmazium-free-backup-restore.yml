@@ -97,6 +97,19 @@ jobs:
           grep -q 'TABLE DATA.* cm_core.*users' "$RUNNER_TEMP/synthetic-archive-toc.txt"
           grep -q 'TABLE DATA.* cm_core.*sessions' "$RUNNER_TEMP/synthetic-archive-toc.txt"
           echo "Privileged, separately operated synthetic archive includes user and session fixture tables."
+      - name: Verify shell-free backup URI transport using PostgreSQL libpq environment
+        env:
+          SYNTHETIC_MAINT_PASSWORD: synthetic_migrator_ci_only
+        run: |
+          set -eu
+          synthetic_url='postgresql://cm_core_migrator@127.0.0.1:5432/cm_core_ci'
+          docker run --rm --network host \
+            -e PGPASSWORD="$SYNTHETIC_MAINT_PASSWORD" \
+            -e PGDATABASE="$synthetic_url" postgres:17-alpine \
+            pg_dump --format=plain --schema=cm_core \
+            > "$RUNNER_TEMP/synthetic-env-url-smoke.sql"
+          grep -q 'CREATE TABLE cm_core.sessions' "$RUNNER_TEMP/synthetic-env-url-smoke.sql"
+          echo "PASS: pg_dump accepts connection URI through libpq PGDATABASE rather than process args."
       - name: Restore into separate disposable database with PostgreSQL 17 tools
         env:
           SYNTHETIC_ADMIN_PASSWORD: synthetic_admin_ci_only
