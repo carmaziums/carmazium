@@ -41,6 +41,7 @@ export class LiveMarketAttemptBroker {
         input: VehicleValuationInput,
         phase: LiveUkMarketSearchPhase,
         attempt: number,
+        searchModel: string,
     ): string {
         const make = canonicalValuationMake(input.make);
         // Preserve the exact model family, generation and derivative.
@@ -55,6 +56,7 @@ export class LiveMarketAttemptBroker {
             (input.writeOffCategory || '').trim().toUpperCase(),
             phase,
             attempt,
+            searchModel,
         ];
         return createHash('sha256').update(JSON.stringify(searchable)).digest('hex');
     }
@@ -65,8 +67,9 @@ export class LiveMarketAttemptBroker {
         attempt: number,
         fetcher: () => Promise<LiveUkMarketSearchResult | null>,
         allowShortCache = false,
+        searchModel = '',
     ): Promise<{ result: LiveUkMarketSearchResult | null; origin: MarketAttemptOrigin }> {
-        const key = this.key(input, phase, attempt);
+        const key = this.key(input, phase, attempt, searchModel);
         const old = this.entries.get(key);
 
         if (old?.state === 'PENDING') {
