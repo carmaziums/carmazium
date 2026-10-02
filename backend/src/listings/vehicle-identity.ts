@@ -38,6 +38,14 @@ function normalizedModel(value: string | undefined | null, make?: string): strin
     return model;
 }
 
+// A known data-source formatting difference: some registration providers
+// append a single model-generation digit (e.g. SPORTAGE3). Accept the generic
+// model family only provisionally; never equate two *different* generations.
+function stripTrailingGenerationDigit(model: string): string {
+    const match = model.match(/^([A-Z]{5,})[0-9]$/);
+    return match ? match[1] : model;
+}
+
 export function verifyValuationVehicleIdentity(
     request: { registration?: string; make: string; model: string; year: number; variant?: string },
     lookup: DvlaLookupResult | null,
@@ -81,14 +89,24 @@ export function verifyValuationVehicleIdentity(
     const modelAndVariantVerified = Boolean(
         sourceModel && requestedWithVariant !== requestedModel && sourceModel === requestedWithVariant,
     );
-    if (sourceModel && sourceModel !== requestedModel && !modelAndVariantVerified) {
+    const generationFamilyOnly = Boolean(
+        sourceModel
+        && sourceModel !== requestedModel
+        && (
+            sourceModel === stripTrailingGenerationDigit(requestedModel)
+            || requestedModel === stripTrailingGenerationDigit(sourceModel)
+        ),
+    );
+    if (sourceModel && sourceModel !== requestedModel && !modelAndVariantVerified && !generationFamilyOnly) {
         // Never silently treat a performance derivative as the base model.
         throw new BadRequestException(
             'Vehicle model does not match registration records. Confirm the exact model and derivative before valuing.',
         );
     }
 
-    const modelVerified = Boolean(sourceModel);
+    const modelVerified = Boolean(
+        sourceModel && (sourceModel === requestedModel || modelAndVariantVerified),
+    );
     const derivativeVerified = !request.variant?.trim()
         || modelAndVariantVerified
         || Boolean(lookup.variant && normalized(lookup.variant) === normalized(request.variant));
