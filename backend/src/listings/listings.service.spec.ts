@@ -19,6 +19,7 @@ import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { DealersService } from '../dealers/dealers.service';
+import { DvlaService } from '../dvla/dvla.service';
 
 /**
  * Listings service guarantees:
@@ -34,6 +35,7 @@ describe('ListingsService', () => {
     let prisma: any;
     let sellers: any;
     let scraper: any;
+    let dvla: { lookupVrm: jest.Mock };
 
     beforeEach(async () => {
         mockListingCheckoutSessionRetrieve.mockReset();
@@ -97,6 +99,10 @@ describe('ListingsService', () => {
             ),
         };
         scraper = { scrape: jest.fn() };
+        dvla = { lookupVrm: jest.fn().mockResolvedValue({
+            vrm: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, dataSource: 'DVLA',
+        }) };
         const notifications = { create: jest.fn().mockResolvedValue(null) };
         const notificationsGateway = { sendNotification: jest.fn() };
 
@@ -110,10 +116,49 @@ describe('ListingsService', () => {
                 { provide: NotificationsService, useValue: notifications },
                 { provide: NotificationsGateway, useValue: notificationsGateway },
                 { provide: DealersService, useValue: { markRetailLeadWon: jest.fn().mockResolvedValue(null) } },
+                { provide: DvlaService, useValue: dvla },
             ],
         }).compile();
 
         service = module.get<ListingsService>(ListingsService);
+    });
+
+    describe('Block 1 registration identity safeguards', () => {
+        it('rejects a Ford make submitted for a Volkswagen registration before market search', async () => {
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'FORD', model: 'FIESTA',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/make does not match/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects an invented performance model before market search', async () => {
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF R',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/model does not match/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('fails closed if the registration service is unavailable', async () => {
+            dvla.lookupVrm.mockRejectedValueOnce(new Error('DVLA unavailable'));
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/DVLA unavailable/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('does not call DVLA when a registration is not provided', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
+            const result = await service.estimateVehicleValue({
+                make: 'FORD', model: 'FOCUS', year: 2019, mileage: 45000,
+            } as any);
+            expect(dvla.lookupVrm).not.toHaveBeenCalled();
+            expect(result.identityVerification?.status).toBe('UNVERIFIED');
+            expect(result.confidence).toBe('LOW');
+        });
     });
 
     describe('auction to retail conversion', () => {
