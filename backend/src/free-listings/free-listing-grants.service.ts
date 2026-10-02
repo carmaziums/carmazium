@@ -480,15 +480,17 @@ export class FreeListingGrantsService {
                 return false;
             }
 
+            // The checkout-reservation path takes the same auction row lock.
+            // Do not waive a fee while a current-run Checkout/PaymentIntent
+            // can still capture £125. Never change or refund that fee here.
             const existingFee = await tx.transaction.findFirst({
                 where: {
                     listingId: auction.listingId,
                     userId,
                     type: 'COMMISSION',
-                    status: 'COMPLETED',
+                    status: { in: ['PENDING', 'COMPLETED'] },
                     deletedAt: null,
-                    // A paid/granted earlier run of the same listing does not
-                    // consume today's otherwise eligible free-purchase grant.
+                    // Preserve earlier-run fee isolation from Block 9.
                     createdAt: { gte: auction.wonAt },
                 },
                 select: { id: true },

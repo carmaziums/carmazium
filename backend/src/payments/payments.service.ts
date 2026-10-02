@@ -1,6 +1,7 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ModuleRef } from '@nestjs/core';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import { HpiService } from '../hpi/hpi.service';
@@ -391,6 +392,70 @@ export class PaymentsService {
         return false;
     }
 
+    /**
+     * Reserve the buyer fee under the auction row lock used by expiry and
+     * free-purchase grants. The initial eligibility read is not sufficient:
+     * a waiver, payment or cancellation can occur before Stripe is called.
+     */
+    private async reserveAuctionBuyerFeeTransaction(
+        auctionId: string,
+        listingId: string,
+        buyerId: string,
+        description: string,
+    ) {
+        return this.prisma.$transaction(async (tx) => {
+            const locked = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+                SELECT "id" FROM "auctions" WHERE "id" = ${auctionId} FOR UPDATE
+            `);
+            if (!locked.length) {
+                throw new BadRequestException('The auction win is no longer available for payment.');
+            }
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                select: {
+                    id: true, listingId: true, status: true, deletedAt: true,
+                    winnerId: true, wonAt: true, buyerFeePaid: true,
+                    buyerFeeTransactionId: true,
+                },
+            });
+            if (!auction || auction.listingId !== listingId || auction.deletedAt ||
+                auction.status !== 'ENDED' || auction.winnerId !== buyerId) {
+                throw new BadRequestException('The auction winner changed or this win is no longer payable.');
+            }
+            if (auction.buyerFeePaid || auction.buyerFeeTransactionId) {
+                throw new ConflictException('The buyer fee has already been paid or waived.');
+            }
+            const deadline = buyerFeeDeadlineAt(auction);
+            if (deadline && new Date(deadline).getTime() <= Date.now()) {
+                throw new BadRequestException('This auction win has passed its 72-hour buyer fee deadline');
+            }
+
+            // An existing current-run pending checkout may still capture.
+            // A second checkout and an automatic waiver must wait until the
+            // original processor payment has been reconciled.
+            const existing = await tx.transaction.findFirst({
+                where: {
+                    listingId, userId: buyerId, type: 'COMMISSION',
+                    deletedAt: null, status: { in: ['PENDING', 'COMPLETED'] },
+                    ...(auction.wonAt ? { createdAt: { gte: auction.wonAt } } : {}),
+                },
+                select: { id: true, status: true },
+            });
+            if (existing) {
+                throw new ConflictException(
+                    'A buyer-fee payment is already started or completed for this auction. ' +
+                    'Check its status or contact support before trying again.',
+                );
+            }
+            return tx.transaction.create({
+                data: {
+                    listingId, userId: buyerId, amount: this.AUCTION_BUYER_FEE,
+                    type: 'COMMISSION', status: 'PENDING', description,
+                },
+            });
+        }, { maxWait: 5000, timeout: 10000 });
+    }
+
     async createCheckoutSession(
         listingId: string,
         userId: string,
@@ -413,9 +478,11 @@ export class PaymentsService {
         }
 
         let transactionUserId = userId;
+        let payableAuctionId: string | null = null;
         if (type === 'COMMISSION') {
             const payable = await this.getPayableAuctionForWinner(listingId, userId);
             transactionUserId = payable.buyerId;
+            payableAuctionId = payable.auction.id;
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -437,16 +504,10 @@ export class PaymentsService {
             COMMISSION: `Auction buyer fee — ${listing.title} (£${this.AUCTION_SELLER_BONUS} seller bonus + £${this.AUCTION_PLATFORM_FEE} platform fee)`,
         };
 
-        const transaction = await this.prisma.transaction.create({
-            data: {
-                listingId,
-                userId: transactionUserId,
-                amount,
-                type: type as any,
-                status: 'PENDING',
-                description: descriptionMap[type] ?? `Payment for ${listing.title}`,
-            },
-        });
+        const transaction = await this.reserveAuctionBuyerFeeTransaction(
+            payableAuctionId!, listingId, transactionUserId,
+            descriptionMap[type] ?? `Payment for ${listing.title}`,
+        );
 
         const productNameMap: Record<string, string> = {
             COMMISSION: 'Auction Buyer Fee — Carmazium',
@@ -775,9 +836,11 @@ export class PaymentsService {
         if (!user) throw new NotFoundException('User not found');
 
         let transactionUserId = userId;
+        let payableAuctionId: string | null = null;
         if (type === 'COMMISSION') {
             const payable = await this.getPayableAuctionForWinner(listingId, userId);
             transactionUserId = payable.buyerId;
+            payableAuctionId = payable.auction.id;
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -864,17 +927,23 @@ export class PaymentsService {
             HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
         };
 
-        // Create a pending transaction record first (we'll store the PI id after)
-        const transaction = await this.prisma.transaction.create({
-            data: {
-                listingId,
-                userId: transactionUserId,
-                amount,
-                type: type as any,
-                status: 'PENDING',
-                description: descriptionMap[type] ?? `Payment for ${listing.title}`,
-            },
-        });
+        // Only buyer-fee reservations need the auction-row lock.
+        // Retail listing fees and HPI retain their existing checkout paths.
+        const transaction = type === 'COMMISSION'
+            ? await this.reserveAuctionBuyerFeeTransaction(
+                payableAuctionId!, listingId, transactionUserId,
+                descriptionMap[type] ?? `Payment for ${listing.title}`,
+            )
+            : await this.prisma.transaction.create({
+                data: {
+                    listingId,
+                    userId: transactionUserId,
+                    amount,
+                    type: type as any,
+                    status: 'PENDING',
+                    description: descriptionMap[type] ?? `Payment for ${listing.title}`,
+                },
+            });
 
         // Create Payment Intent
         const paymentIntent = await stripe.paymentIntents.create({

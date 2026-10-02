@@ -70,6 +70,7 @@ function buildPrismaMock() {
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         $transaction: jest.fn((arg) => (Array.isArray(arg) ? Promise.all(arg) : arg(prismaTxProxy))),
+        $queryRaw: jest.fn().mockResolvedValue([{ id: 'auction-1' }]),
     };
 }
 
@@ -78,6 +79,15 @@ let prismaTxProxy: any;
 
 function buildModule(prisma: any) {
     prismaTxProxy = prisma;
+    // A fee-reservation recheck reads the currently configured winning auction
+    // after taking the same row lock as a grant or expiry operation.
+    prisma.auction.findUnique.mockImplementation(async () => {
+        const auction = await prisma.auction.findFirst();
+        return auction ? {
+            listingId: 'listing-1', status: 'ENDED', deletedAt: null,
+            wonAt: null, buyerFeeTransactionId: null, ...auction,
+        } : null;
+    });
     return Test.createTestingModule({
         providers: [
             PaymentsService,
