@@ -1527,7 +1527,7 @@ describe('ListingsService', () => {
         const completed = (id: string, winningBidAmount: number) => ({
             ...common, id,
             auction: {
-                status: 'COMPLETED', winnerId: 'winner', winningBidAmount,
+                status: 'ENDED', winnerId: 'winner', winningBidAmount,
                 buyerFeePaid: true, sellerFundsConfirmedAt: new Date(),
                 sellerFundsConfirmationRequired: true,
                 sellerBonusReleased: true, buyerRefusedAt: null,
