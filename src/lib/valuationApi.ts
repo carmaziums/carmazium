@@ -31,6 +31,27 @@ export interface VehicleValuationRequest {
 
 export interface VehicleValuation {
     specificationAdjustment?: SpecificationAdjustmentAudit;
+    confidenceAssessment?: {
+        rubricVersion: string
+        level: 'LOW' | 'MEDIUM' | 'HIGH'
+        calibrationStatus: 'NOT_VALIDATED_AGAINST_ACHIEVED_SALES'
+        headline: string
+        sourceExplanation: string
+        limitations: string[]
+        reasonCodes: string[]
+        counts: {
+            uniqueUkAdverts: number
+            exactModelAdverts: number
+            provisionalModelAdverts: number
+            independentAdvertSites: number
+            verifiedCompletedAuctions: number
+            verifiedPrivateSales: number
+            acceptedOffers: number
+            otherPlatformMarketSignals: number
+        }
+        checkedAt?: string
+    }
+
     identityVerification?: {
         status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED'
         registrationChecked: boolean
