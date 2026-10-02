@@ -691,24 +691,9 @@ export class ListingsService {
         // different answer five minutes later merely because a live search
         // returned a different advert set. Reuse the latest vehicle base for
         // 24 hours, after which market evidence is allowed to refresh.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select,
-        });
-
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (!recent) return null;
-
-        if (!this.isReusableMarketValuation(recent)) {
-            return null;
-        }
+        const found = await this.findRecentReusableMarketBase(this.prisma, dto);
+        if (!found) return null;
+        const { row: recentVehicleBase, base: recent } = found;
 
         // Give this new journey its own immutable copy. The cross-journey
         // vehicle cache may expire after 24h, but the journey itself must never
@@ -741,13 +726,13 @@ export class ListingsService {
                     });
                     const frozenWinner = this.parseFrozenValuationBase(winner, dto);
                     if (frozenWinner) return frozenWinner;
-                } else {
-                    // The already-frozen identity base is still safe to return;
-                    // persistence of the alias must not make valuation unavailable.
-                    this.logger.warn(
-                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
+                    throw new BadRequestException(
+                        'Valuation journey could not be saved. Please retry.',
                     );
                 }
+                // Do not display a base that we failed to persist. Otherwise
+                // the next request could return a different market value.
+                throw error;
             }
         }
 
@@ -784,19 +769,10 @@ export class ListingsService {
                 if (frozen) return frozen;
 
                 if (dto.registration?.trim()) {
-                    const recentRow = await tx.analyticsEvent.findFirst({
-                        where: {
-                            type: 'valuation_base_snapshot',
-                            sessionId,
-                            createdAt: {
-                                gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                            },
-                        },
-                        orderBy: { createdAt: 'desc' },
-                        select,
-                    });
-                    const recent = this.parseFrozenValuationBase(recentRow, dto);
-                    if (recent && this.isReusableMarketValuation(recent)) {
+                    const found = await this.findRecentReusableMarketBase(tx, dto);
+                    const recentRow = found?.row;
+                    const recent = found?.base;
+                    if (recent) {
                         await tx.analyticsEvent.create({
                             data: {
                                 id: dto.valuationId,
@@ -847,6 +823,46 @@ export class ListingsService {
             }
             return frozen;
         }
+    }
+
+    private async findRecentReusableMarketBase(
+        db: any,
+        dto: VehicleValuationDto,
+    ): Promise<{
+        row: { id: string; type: string; payload: unknown };
+        base: VehicleValuationResult;
+    } | null> {
+        const query = {
+            where: {
+                type: 'valuation_base_snapshot',
+                sessionId: this.valuationIdentityKey(dto),
+                createdAt: {
+                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' as const },
+            select: { id: true, type: true, payload: true },
+        };
+        const newest = await db.analyticsEvent.findFirst(query);
+        if (!newest) return null;
+        const mostRecent = this.parseFrozenValuationBase(newest, dto);
+        if (mostRecent && this.isReusableMarketValuation(mostRecent)) {
+            return { row: newest, base: mostRecent };
+        }
+
+        // A provisional fallback from an overlapping journey must not hide
+        // a more reliable earlier live valuation still inside the 24h TTL.
+        const candidates = await db.analyticsEvent.findMany({
+            ...query,
+            take: 20,
+        });
+        for (const row of candidates) {
+            const base = this.parseFrozenValuationBase(row, dto);
+            if (base && this.isReusableMarketValuation(base)) {
+                return { row, base };
+            }
+        }
+        return null;
     }
 
     private isReusableMarketValuation(value: VehicleValuationResult): boolean {
