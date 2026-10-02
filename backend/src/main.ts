@@ -65,7 +65,11 @@ async function bootstrap() {
       store: new PgSession({
         conString: process.env.DATABASE_URL,
         tableName: 'sessions',
-        createTableIfMissing: true,
+        // Restricted runtime DB roles must not create tables. Enable only AFTER
+        // the target sessions table, RLS policy and explicit DML grants have
+        // been provisioned and end-to-end tested in staging.
+        // Default preserves legacy production behaviour until cutover.
+        createTableIfMissing: process.env.SESSION_TABLE_PREPROVISIONED !== 'true',
       }),
       name: 'sid',
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
