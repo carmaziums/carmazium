@@ -1,8 +1,12 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { SimpleDmsReferralService } from './simpledms-referral.service';
+import { SimpleDmsReferralService, signSimpleDmsLink } from './simpledms-referral.service';
 
 const AUCTION = '11111111-1111-4111-8111-111111111111';
 const KEY = 'local-test-referral-signing-secret-strong-enough';
+function validLink(id = AUCTION) {
+  const expires = Date.now() + 60_000;
+  return {expires: String(expires), sig: signSimpleDmsLink(id, expires, KEY)};
+}
 
 function harness(overrides: Record<string, string> = {}) {
   const env = {
@@ -45,12 +49,12 @@ function harness(overrides: Record<string, string> = {}) {
 describe('SimpleDmsReferralService security and attribution', () => {
   it('never generates referrals when partner access is disabled', async () => {
     const { service } = harness({ PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'false' });
-    await expect(service.visit(AUCTION)).rejects.toThrow(NotFoundException);
+    await expect(service.visit(AUCTION, validLink().expires, validLink().sig)).rejects.toThrow(NotFoundException);
   });
 
   it('only redirects valid approved live auction records to the fixed CarMazium site', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION));
+    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
     expect(url.origin).toBe('https://carmazium.com');
     expect(url.pathname).toBe('/auctions/live/' + AUCTION);
     expect(url.searchParams.get('utm_source')).toBe('simpledms');
@@ -59,15 +63,26 @@ describe('SimpleDmsReferralService security and attribution', () => {
       status: 'ACTIVE', deletedAt: null,
       listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null } },
     });
-    await expect(service.visit('https://evil.example')).rejects.toThrow(NotFoundException);
+    await expect(service.visit('https://evil.example', validLink().expires, validLink().sig)).rejects.toThrow(NotFoundException);
     expect(prisma.analyticsEvent.create.mock.calls[0][0].data).toEqual({
       type: 'partner_simpledms_redirect', payload: { auctionId: AUCTION },
     });
   });
 
+  it('rejects unsigned, tampered and expired publicly guessed referral URLs', async () => {
+    const {service, prisma} = harness();
+    const {expires, sig} = validLink();
+    await expect(service.visit(AUCTION, '', '')).rejects.toThrow(BadRequestException);
+    await expect(service.visit(AUCTION, expires, sig.slice(0, -1) + 'x')).rejects.toThrow(BadRequestException);
+    const old = Date.now() - 1000;
+    await expect(service.visit(AUCTION, String(old), signSimpleDmsLink(AUCTION, old, KEY)))
+      .rejects.toThrow(BadRequestException);
+    expect(prisma.auction.findFirst).not.toHaveBeenCalled();
+  });
+
   it('rejects spoofed, expired, and non-dealer claims without storing user events', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION));
+    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
     const signed = url.searchParams.get('partner_ref')!;
     await expect(service.claim('dealer-1', 'BUYER', signed)).rejects.toThrow(ForbiddenException);
     await expect(service.claim('dealer-1', 'DEALER', signed + 'bad')).rejects.toThrow(BadRequestException);
@@ -87,7 +102,7 @@ describe('SimpleDmsReferralService security and attribution', () => {
 
   it('records a genuine authenticated dealer referral once and returns no PII', async () => {
     const { service, prisma } = harness();
-    const url = new URL(await service.visit(AUCTION));
+    const url = new URL(await service.visit(AUCTION, validLink().expires, validLink().sig));
     const token = url.searchParams.get('partner_ref')!;
     const claim = await service.claim('dealer-1', 'DEALER', token);
     expect(claim).toEqual({ attributed: true });
