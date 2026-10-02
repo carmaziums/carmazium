@@ -18,8 +18,13 @@ export class SimpleDmsReferralController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { ttl: 60000, limit: 60 } })
   @Header('Cache-Control', 'no-store')
-  async go(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
-    const location = await this.service.visit(id);
+  async go(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('expires') expires: string,
+    @Query('signature') signature: string,
+    @Res() res: Response,
+  ) {
+    const location = await this.service.visit(id, expires, signature);
     // Fixed-origin destination built server-side; no caller-supplied return URL.
     return res.redirect(302, location);
   }
