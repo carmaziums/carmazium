@@ -98,6 +98,30 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const { user, profile } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
+    // A signed SimpleDMS deep link carries a short-lived attribution token.
+    // We do not put partner identifiers in storage or transmit private user
+    // details to SimpleDMS. Claims are server-verified and only submitted by
+    // a signed-in dealer when first-party attribution is enabled.
+    React.useEffect(() => {
+        const token = searchParams.get('partner_ref')
+        if (!token || !user || profile?.role !== 'DEALER' ||
+            process.env.NEXT_PUBLIC_PARTNER_ATTRIBUTION_ENABLED !== 'true') return
+        let active = true
+        import('@/lib/apiClient').then(({ apiClient }) => {
+            if (!active) return
+            // A failed analytics call must never interrupt auction browsing.
+            apiClient('/partners/referrals/simpledms/claim', {
+                method: 'POST', body: JSON.stringify({ token }),
+            }).then(() => {
+                if (!active) return
+                const next = new URL(window.location.href)
+                next.searchParams.delete('partner_ref')
+                window.history.replaceState(null, '', next.pathname + next.search)
+            }).catch(() => undefined)
+        }).catch(() => undefined)
+        return () => { active = false }
+    }, [searchParams, user?.id, profile?.role])
+
 
     const [auction, setAuction] = React.useState<Auction | null>(null)
     const [dealerAccess, setDealerAccess] = React.useState<DealerAccess | null>(null)
