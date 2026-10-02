@@ -16,6 +16,8 @@ import {
 } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
+import { DvlaService, type DvlaLookupResult } from '../dvla/dvla.service';
+import { labelValuationIdentity, verifyValuationVehicleIdentity } from './vehicle-identity';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
 import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
@@ -136,6 +138,7 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
+    private readonly identityLookupCache = new Map<string, { result: Promise<DvlaLookupResult>; expiresAt: number }>();
 
     constructor(
         private readonly prisma: PrismaService,
@@ -144,6 +147,7 @@ export class ListingsService {
         private readonly scraper: ScraperService,
         private readonly notificationsService: NotificationsService,
         private readonly dealersService: DealersService,
+        private readonly dvlaService: DvlaService,
     ) { }
 
     /**
@@ -160,6 +164,10 @@ export class ListingsService {
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
     async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
+        // Block 1: verify submitted registration against DVLA and the MOT model
+        // when available. Refuse mismatches *before* looking up frozen values or
+        // sending the submitted vehicle description to live market search.
+        const verification = await this.verifyValuationRequestIdentity(dto);
         const make = dto.make.trim();
         const model = dto.model.trim();
 
@@ -195,9 +203,9 @@ export class ListingsService {
         // condition/specification adjustments may change the customer figure.
         const frozenBase = await this.findFrozenValuationBase(dto);
         if (frozenBase) {
-            return applyVehicleSpecificationAdjustments(
-                frozenBase,
-                specificationInput,
+            return labelValuationIdentity(
+                applyVehicleSpecificationAdjustments(frozenBase, specificationInput),
+                verification,
             );
         }
 
@@ -558,10 +566,39 @@ export class ListingsService {
         // base wins. Losers read the winning snapshot and return that same base.
         const stableBase = await this.freezeValuationBase(dto, calculatedBase);
 
-        return applyVehicleSpecificationAdjustments(
-            stableBase,
-            specificationInput,
+        return labelValuationIdentity(
+            applyVehicleSpecificationAdjustments(stableBase, specificationInput),
+            verification,
         );
+    }
+
+    private async verifyValuationRequestIdentity(dto: VehicleValuationDto) {
+        const vrm = (dto.registration ?? '').replace(/\\s+/g, '').toUpperCase();
+        if (!vrm) return verifyValuationVehicleIdentity(dto, null);
+
+        // Short-lived per-instance cache prevents repeatedly fetching DVLA/MOT
+        // during the same customer's condition/specification wizard. Cache
+        // successful responses only, never failed lookups or identity conflicts.
+        const now = Date.now();
+        let entry = this.identityLookupCache.get(vrm);
+        if (!entry || entry.expiresAt <= now) {
+            entry = {
+                result: this.dvlaService.lookupVrm(vrm, false),
+                expiresAt: now + 30 * 60 * 1000,
+            };
+            this.identityLookupCache.set(vrm, entry);
+        }
+
+        let lookup: DvlaLookupResult;
+        try {
+            lookup = await entry.result;
+        } catch (error) {
+            if (this.identityLookupCache.get(vrm) === entry) {
+                this.identityLookupCache.delete(vrm);
+            }
+            throw error; // No automatic valuation when verification fails.
+        }
+        return verifyValuationVehicleIdentity(dto, lookup);
     }
 
     private valuationIdentity(dto: VehicleValuationDto) {
