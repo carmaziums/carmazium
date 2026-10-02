@@ -1,0 +1,43 @@
+name: Verify SimpleDMS minimal production dependency tree
+on:
+  push:
+    branches:
+      - security/simpledms-dependency-fixes
+    paths:
+      - .github/workflows/simpledms-runtime-tree.yml
+permissions:
+  contents: read
+jobs:
+  verify-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install production packages only without lifecycle scripts
+        working-directory: backend
+        run: npm ci --omit=dev --ignore-scripts --no-fund --no-audit
+      - name: Record actual modules present in production-only install
+        working-directory: backend
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const n of ['prisma','@prisma/config','deepmerge-ts','brace-expansion','bcrypt','tar']) {
+            const p='node_modules/'+n;
+            const f=p+'/package.json';
+            console.log('PRESENT '+n+': '+(fs.existsSync(f)?JSON.parse(fs.readFileSync(f)).version:'ABSENT'));
+          }
+          NODE
+          npm ls --omit=dev prisma @prisma/config deepmerge-ts brace-expansion bcrypt tar || true
+          npm audit --omit=dev --json > "$RUNNER_TEMP/runtime-audit.json" || true
+          node -e "const a=require(process.env.RUNNER_TEMP+'/runtime-audit.json');console.log('AUDIT RESULT '+JSON.stringify(a.metadata?.vulnerabilities||{}))"
+      - name: Save read-only audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-production-only-dependency-tree
+          path: ${{ runner.temp }}/runtime-audit.json
+          retention-days: 7
