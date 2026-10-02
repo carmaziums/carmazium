@@ -7,6 +7,10 @@ function validLink(id = AUCTION) {
   const expires = Date.now() + 60_000;
   return {expires: String(expires), sig: signSimpleDmsLink(id, expires, KEY)};
 }
+function visitValid(service: SimpleDmsReferralService, id = AUCTION) {
+  const {expires,sig} = validLink(id);
+  return service.visit(id, expires, sig);
+}
 
 function harness(overrides: Record<string, string> = {}) {
   const env = {
@@ -49,7 +53,7 @@ function harness(overrides: Record<string, string> = {}) {
 describe('SimpleDmsReferralService security and attribution', () => {
   it('never generates referrals when partner access is disabled', async () => {
     const { service } = harness({ PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'false' });
-    await expect(service.visit(AUCTION, validLink().expires, validLink().sig)).rejects.toThrow(NotFoundException);
+    await expect(visitValid(service)).rejects.toThrow(NotFoundException);
   });
 
   it('only redirects valid approved live auction records to the fixed CarMazium site', async () => {
@@ -63,7 +67,7 @@ describe('SimpleDmsReferralService security and attribution', () => {
       status: 'ACTIVE', deletedAt: null,
       listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null } },
     });
-    await expect(service.visit('https://evil.example', validLink().expires, validLink().sig)).rejects.toThrow(NotFoundException);
+    await expect(visitValid(service, 'https://evil.example')).rejects.toThrow(NotFoundException);
     expect(prisma.analyticsEvent.create.mock.calls[0][0].data).toEqual({
       type: 'partner_simpledms_redirect', payload: { auctionId: AUCTION },
     });
