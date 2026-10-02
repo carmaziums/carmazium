@@ -7,6 +7,10 @@ on:
       - 'backend/package-lock.json'
       - 'backend/prisma-maintenance/**'
       - 'backend/src/partner-api/**'
+      - 'backend/src/main.ts'
+      - 'backend/src/core/config/session-table-config*'
+      - 'backend/scripts/security/**'
+      - '.github/workflows/carmazium-db-role-rehearsal.yml'
       - '.github/workflows/simpledms-partner-security.yml'
   workflow_dispatch:
 permissions:
@@ -26,6 +30,8 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: backend/package-lock.json
+      - name: Check credential-safe database-role inspection script
+        run: node --check scripts/security/runtime-db-identity.js
       - name: Check generated Prisma, types, backend tests and build
         run: |
           npm ci
