@@ -25,6 +25,29 @@ The Development project already demonstrates a tighter schema ACL. Revoke
 `PUBLIC` CREATE only after confirming any required application-side
 creation paths have been provisioned elsewhere.
 
+## Safely identifying the real API database login
+
+`backend/scripts/security/runtime-db-identity.js` is a read-only,
+credential-safe probe. It uses the `DATABASE_URL` already present in an
+**authorised** application container and prints **only** the PostgreSQL
+login's name and permission booleans; it never prints connection URLs,
+user passwords or SQL table contents. It is included in the new Docker
+runtime image, but is **not installed on the existing live Fly machines**
+until a separately approved deployment occurs.
+
+On a non-production backend image with authorised DB connectivity, an
+operator may run:
+
+```sh
+node scripts/security/runtime-db-identity.js
+```
+
+Review the result privately with the deployment owner. If and when this
+script is separately approved and deployed to Fly, run it using the
+organisation's approved Fly SSH/session workflow rather than exporting a
+credential to a local laptop. **This read-only Supabase metadata inspection
+alone cannot identify which active `postgres` session belongs to Fly.**
+
 ## Live cutover gates (all required)
 
 1. **Identify the actual live backend database login** from within the
