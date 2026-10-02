@@ -1,0 +1,95 @@
+name: Evaluate supported Node 24 for SimpleDMS backend
+on:
+  push:
+    branches: [security/simpledms-node24-evaluation]
+    paths:
+      - 'backend/Dockerfile'
+      - '.github/workflows/simpledms-node24-evaluation.yml'
+permissions:
+  contents: read
+jobs:
+  backend-node24:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Full backend compatibility tests on supported Node 24
+        run: |
+          npm ci
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+      - name: GeoIP and bcrypt Node 24 compatibility
+        run: |
+          node -e "const g=require('geoip-lite'); if(!g||typeof g.lookup!=='function')throw Error('GeoIP incompatible'); const b=require('bcrypt'); if(typeof b.hashSync!=='function')throw Error('bcrypt incompatible'); console.log('GeoIP/bcrypt on '+process.version+' verified')"
+  real-images:
+    needs: backend-node24
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build Node 24 public API image
+        run: docker build --target runtime -t carmazium-simpledms-api-node24 -f backend/Dockerfile backend
+      - name: Build Node 24 restricted maintenance image
+        run: docker build --target prisma-maintenance -t carmazium-prisma-maint-node24 -f backend/Dockerfile backend
+      - name: Check Node 24 images, Prisma client and synthetic API isolation
+        run: |
+          docker run --rm --network none --entrypoint node carmazium-simpledms-api-node24 -e "
+            const fs=require('fs');
+            for(const n of ['prisma','@prisma/config','deepmerge-ts'])
+              if(fs.existsSync('node_modules/'+n+'/package.json'))throw Error('Prisma CLI leaked: '+n);
+            if(fs.existsSync('/usr/local/lib/node_modules/npm'))throw Error('Global npm leaked into HTTP runtime');
+            const p=require('@prisma/client'); const c=new p.PrismaClient();if(typeof c.user.findMany!=='function')throw Error('Prisma client invalid');
+            const g=require('geoip-lite');if(typeof g.lookup!=='function')throw Error('GeoIP incompatible with Node 24');
+            console.log('Runtime '+process.version+' with generated client and geoip');
+          "
+          docker image inspect carmazium-prisma-maint-node24 --format '{{.Config.User}}' | grep -Fx node
+          docker run --rm --network none carmazium-prisma-maint-node24 --version
+          id="$(docker run -d -p 127.0.0.1:18180:8080 \
+            -e STAGING_SYNTHETIC_ONLY=true -e STAGING_PUBLIC_HOST=synthetic-test.up.railway.app \
+            -e PARTNER_API_ENABLED=false -e PARTNER_API_SIMPLEDMS_ENABLED=false \
+            --entrypoint node carmazium-simpledms-api-node24 dist/partner-api/staging.main.js)"
+          trap 'docker logs "$id" || true; docker rm -f "$id" || true' EXIT
+          ready=0
+          for i in $(seq 1 35);do
+            if curl -fsS --max-time 2 http://127.0.0.1:18180/health/live >/tmp/live.json;then ready=1;break;fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          node -e "const h=require('/tmp/live.json');if(!h.syntheticOnly||!h.ok)process.exit(1)"
+          code="$(curl --max-time 2 -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18180/partners/v1/simpledms/auctions)"
+          test "$code" = 404
+      - name: Scan built supported-base API image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-simpledms-api-node24
+          format: json
+          output: trivy-simpledms-node24-image.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Record supported-base scan results
+        run: |
+          node - <<'NODE'
+          const r=require('./trivy-simpledms-node24-image.json');
+          const a=(r.Results||[]).flatMap(x=>(x.Vulnerabilities||[]).map(v=>({target:x.Target,severity:v.Severity,pkg:v.PkgName,fix:v.FixedVersion})));
+          const c={};for(const v of a)c[v.severity]=(c[v.severity]||0)+1;
+          console.log('SUPPORTED NODE 24 IMAGE SCAN '+JSON.stringify(c));
+          for(const v of a.filter(x=>x.severity==='CRITICAL'||x.severity==='HIGH').slice(0,25))console.log('IMAGE FINDING '+JSON.stringify(v));
+          NODE
+      - name: Archive report for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-supported-node24-image-security-report
+          path: trivy-simpledms-node24-image.json
+          retention-days: 7
