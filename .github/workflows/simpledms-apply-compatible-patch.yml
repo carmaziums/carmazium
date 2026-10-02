@@ -1,0 +1,56 @@
+name: Apply vetted SimpleDMS compatible dependency patch
+on:
+  push:
+    branches:
+      - security/simpledms-dependency-fixes
+    paths:
+      - .github/workflows/simpledms-apply-compatible-patch.yml
+permissions:
+  contents: write
+  actions: read
+jobs:
+  vetted-patch:
+    if: github.ref == 'refs/heads/security/simpledms-dependency-fixes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Retrieve the exact inspected remediation preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/remediation"
+          gh run download 37067432566 -R carmaziums/carmazium \
+            --name simpledms-remediation-preview \
+            --dir "$RUNNER_TEMP/remediation"
+          test -s "$RUNNER_TEMP/remediation/compatible-lockfile.patch"
+      - name: Apply only inspected lockfile patch without scripts
+        run: |
+          git apply --check "$RUNNER_TEMP/remediation/compatible-lockfile.patch"
+          git apply "$RUNNER_TEMP/remediation/compatible-lockfile.patch"
+          test "$(git diff --name-only)" = "backend/package-lock.json"
+          git diff --check
+          cd backend
+          npm ci --ignore-scripts --no-fund
+          npm audit --omit=dev --json > "$RUNNER_TEMP/updated-audit.json" || true
+          node -e "const a=require(process.env.RUNNER_TEMP+'/updated-audit.json');const v=a.metadata?.vulnerabilities; if(!v)process.exit(2); console.log('AFTER COMPATIBLE PATCH '+JSON.stringify(v)); if((v.critical||0)>1 || (v.high||0)>6)process.exit(2)"
+      - name: Commit reviewed lockfile change only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/package-lock.json
+          git commit -m "security: apply compatible backend dependency lockfile updates"
+          git push origin HEAD:security/simpledms-dependency-fixes
+      - name: Store post-patch dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-compatible-patch-security-audit
+          path: ${{ runner.temp }}/updated-audit.json
+          retention-days: 7
