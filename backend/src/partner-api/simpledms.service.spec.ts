@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SimpleDmsService } from './simpledms.service';
 
 const PUBLIC_IMAGE = 'https://assets.carmazium.com/auctions/vehicle-1.jpg';
+const SUPABASE_LISTING_IMAGE = 'https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/object/public/listings/owner/exterior/photo.jpg';
 const SAMPLE: any = {
   id: 'auction-1',
   listingId: 'listing-1',
@@ -28,6 +29,7 @@ const SAMPLE: any = {
     images: [
       PUBLIC_IMAGE,
       PUBLIC_IMAGE + '#cm-photo=exterior',
+      SUPABASE_LISTING_IMAGE + '#cm-photo=eyJjYXRlZ29yeSI6IkVYVEVSSU9SIn0',
       'https://storage.example.supabase.co/storage/v1/object/public/kyc/private.jpg',
       'https://assets.carmazium.com/private/handover/secret.jpg',
       'https://assets.carmazium.com/auctions/signed.jpg?token=secret',
@@ -82,11 +84,11 @@ describe('SimpleDmsService partner data boundary', () => {
     const { service } = harness({
       PARTNER_API_SIMPLEDMS_SHARE_REGISTRATION: 'true',
       PARTNER_API_SIMPLEDMS_SHARE_IMAGES: 'true',
-      PARTNER_API_PUBLIC_IMAGE_HOSTS: 'assets.carmazium.com',
+      PARTNER_API_PUBLIC_IMAGE_HOSTS: 'assets.carmazium.com,bwtnzmevjlowwronylxm.supabase.co',
     });
     const result = await service.detail('auction-1');
     expect(result.auction.vehicle).toHaveProperty('registration', 'PRIVATE_REG');
-    expect(result.auction.images).toEqual([PUBLIC_IMAGE, PUBLIC_IMAGE]);
+    expect(result.auction.images).toEqual([PUBLIC_IMAGE, PUBLIC_IMAGE, SUPABASE_LISTING_IMAGE]);
     expect(JSON.stringify(result)).not.toContain('seller@private.invalid');
   });
 
