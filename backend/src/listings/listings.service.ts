@@ -76,6 +76,7 @@ import {
     LiveUkMarketSearchResult,
 } from './live-market-search';
 import { LiveMarketAttemptBroker, liveMarketTimeoutMs } from './live-market-attempt-broker';
+import { applyEvidenceConfidence } from './valuation-evidence-confidence';
 import { deduplicateLiveMarketComparables } from './market-comparable-integrity';
 import {
     assertDealerPermission,
@@ -223,8 +224,14 @@ export class ListingsService {
         // condition/specification adjustments may change the customer figure.
         const frozenBase = await this.findFrozenValuationBase(dto);
         if (frozenBase) {
+            // Historical snapshots may predate the Block 8 rubric. Add a
+            // conservative explanation without re-searching or changing any
+            // of their saved monetary market bases.
+            const assessed = frozenBase.confidenceAssessment
+                ? frozenBase
+                : applyEvidenceConfidence(frozenBase, verification.status);
             return labelValuationIdentity(
-                applyVehicleSpecificationAdjustments(frozenBase, specificationInput),
+                applyVehicleSpecificationAdjustments(assessed, specificationInput),
                 verification,
             );
         }
@@ -645,6 +652,12 @@ export class ListingsService {
             calculatedBase.explanation += ' Model-family or spelling-based comparables are provisional; confirm the exact derivative before relying on this guide.';
         }
 
+        // Calculate explanatory evidence strength only after Block 5 has
+        // deduplicated the final sources and after Block 6's independently
+        // verified sale channels have been decided. No bank-verification or
+        // sale-price prediction is inferred from asking adverts or offers.
+        calculatedBase = applyEvidenceConfidence(calculatedBase, verification.status);
+
         // A provider's retail/trade benchmark must NEVER enter the individual
         // advert comparable pool. Record only a restricted, price-free internal
         // diagnostic AFTER the five-live/five-blended policy completes.
@@ -656,8 +669,14 @@ export class ListingsService {
         // base wins. Losers read the winning snapshot and return that same base.
         const stableBase = await this.freezeValuationBase(dto, calculatedBase);
 
+        // A concurrent search may have won with a pre-rubric saved base.
+        // Describe that historical evidence conservatively without changing
+        // its frozen prices, the five-plus-five sequence or provider contract.
+        const assessedBase = stableBase.confidenceAssessment
+            ? stableBase
+            : applyEvidenceConfidence(stableBase, verification.status);
         return labelValuationIdentity(
-            applyVehicleSpecificationAdjustments(stableBase, specificationInput),
+            applyVehicleSpecificationAdjustments(assessedBase, specificationInput),
             verification,
         );
     }
