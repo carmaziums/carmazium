@@ -48,6 +48,15 @@ export interface VehicleValuation {
   retail: {
     suggestedAsking: number;
     suggestedMinimum: number;
+    evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    observedAsks?: number;
+  };
+  privateSale?: {
+    low: number;
+    mid: number;
+    high: number;
+    evidenceBasis: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    verifiedSales: number;
   };
   auction: {
     marketValue: number;
@@ -55,6 +64,8 @@ export interface VehicleValuation {
     reserveLow: number;
     reserveHigh: number;
     suggestedReserve: number;
+    evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    verifiedOutcomes?: number;
   };
   marketEvidence?: {
     carmaziumComparables: number;
@@ -254,6 +265,8 @@ export function applyVehicleValuationAdjustments(
   const mid = roundMoney(base.mid * factor);
   const high = roundMoney(base.high * factor);
   const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
+  const auctionReserveLow = roundMoney(base.auction.reserveLow * factor);
+  const auctionReserveHigh = Math.max(auctionReserveLow + 50, roundMoney(base.auction.reserveHigh * factor));
 
   return {
     ...base,
@@ -262,15 +275,23 @@ export function applyVehicleValuationAdjustments(
     high,
     explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
     retail: {
+      ...base.retail,
       suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
       suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
     },
+    privateSale: base.privateSale ? {
+      ...base.privateSale,
+      low: roundMoney(base.privateSale.low * factor),
+      mid: roundMoney(base.privateSale.mid * factor),
+      high: roundMoney(base.privateSale.high * factor),
+    } : undefined,
     auction: {
+      ...base.auction,
       marketValue: auctionMarketValue,
-      openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
-      reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
-      reserveHigh: auctionMarketValue,
-      suggestedReserve: roundMoney(auctionMarketValue * 0.95),
+      openingBid: Math.min(roundMoney(base.auction.openingBid * factor), Math.max(500, auctionReserveLow - 50)),
+      reserveLow: auctionReserveLow,
+      reserveHigh: auctionReserveHigh,
+      suggestedReserve: Math.max(auctionReserveLow, Math.min(auctionReserveHigh, roundMoney(base.auction.suggestedReserve * factor))),
     },
   };
 }
@@ -303,13 +324,24 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
     retail: {
       suggestedAsking: high,
       suggestedMinimum: mid,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      observedAsks: 0,
+    },
+    privateSale: {
+      low,
+      mid: roundMoney((low + mid) / 2),
+      high: mid,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      verifiedSales: 0,
     },
     auction: {
       marketValue: low,
-      openingBid: Math.round(low * 0.70 * 100) / 100,
-      reserveLow: Math.round(low * 0.90 * 100) / 100,
-      reserveHigh: low,
-      suggestedReserve: roundMoney(low * 0.95),
+      openingBid: roundMoney(Math.max(500, low - Math.max(100, mid - low))),
+      reserveLow: roundMoney(Math.max(500, low - Math.max(100, mid - low) / 4)),
+      reserveHigh: roundMoney(low + Math.max(100, mid - low) / 4),
+      suggestedReserve: low,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      verifiedOutcomes: 0,
     },
     marketEvidence: {
       carmaziumComparables: 0,
