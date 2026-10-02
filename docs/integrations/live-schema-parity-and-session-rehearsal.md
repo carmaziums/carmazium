@@ -16,11 +16,14 @@ as the running CarMazium backend, issued one metadata-only SELECT and reported:
 Evidence: Actions 37074014355. No DB URL/password or customer data was
 printed, and no configuration or schema change took place.
 
-An independent direct `pg.Client` read-only check against the existing Fly
-`DATABASE_URL` failed with PostgreSQL protocol code **08P01** (Actions
-37073906561). Its cause and any production session effects are **unproven**.
-Do not interpret a passing Prisma test as proof the `connect-pg-simple`
-session connection also works.
+A subsequent, independent read-only `pg.Pool` SELECT inside the **same
+existing Fly application** succeeded and confirmed that the session-store
+connection pool also authenticates as `postgres` (Actions 37074396199).
+An earlier standalone `pg.Client` test returned protocol code **08P01**
+(Actions 37073906561), but that result did not recur with the pool and is
+**not evidence of an ongoing session outage**. Before cutover, recheck both
+Prisma and the session-store pool using the proposed restricted credentials
+in a production-equivalent isolated staging environment.
 
 ## Metadata-only production vs Development fingerprint
 
