@@ -39,6 +39,7 @@ import { ServicesModule } from './services/services.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { BlogModule } from './blog/blog.module';
 import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations.module';
+import { SimpleDmsModule } from './partner-api/simpledms.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { SaleCancellationsModule } from './sale-cancellations/sale-cancellations
     MarketingModule,
     BlogModule,
     SaleCancellationsModule,
+    SimpleDmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
