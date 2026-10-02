@@ -1,0 +1,28 @@
+name: One-time redacted Fly backup destination verification
+on:
+  push:
+    branches: [security/backup-destination-readonly-probe]
+    paths:
+      - '.github/workflows/backup-destination-readonly-probe.yml'
+permissions:
+  contents: read
+jobs:
+  read-existing-machine-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify probe syntax without accessing secrets
+        run: node --check backend/scripts/security/backup-destination-onhost-check.cjs
+      - name: Install existing Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Read metadata without downloading or echoing secrets
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -eu
+          test -n "$FLY_API_TOKEN" || { echo 'Fly credential unavailable: stopped safely'; exit 1; }
+          payload="$(base64 -w0 backend/scripts/security/backup-destination-onhost-check.cjs)"
+          timeout 80s flyctl ssh console --app carmazium-hjoh9w --region lhr \
+            --pty=false --command "sh -lc 'printf %s $payload | base64 -d | node'"
+          echo 'Metadata-only check complete. No backup action or deployment performed.'
