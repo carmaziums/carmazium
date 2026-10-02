@@ -5,7 +5,7 @@
  * The default preserves the legacy production behaviour.
  */
 export function shouldCreateSessionTable(
-  env: { SESSION_TABLE_PREPROVISIONED?: string } = process.env,
+  env: Record<string, string | undefined> = process.env,
 ): boolean {
   return env.SESSION_TABLE_PREPROVISIONED !== 'true';
 }
