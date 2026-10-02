@@ -168,7 +168,14 @@ export class ListingsService {
      * only after both stages fail does it fall back to CarMazium evidence and
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
-    async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
+    async estimateVehicleValue(request: VehicleValuationDto): Promise<VehicleValuationResult> {
+        // Legacy/API callers sometimes omit a journey ID. Create a server ID
+        // for a registered vehicle so those calls still participate in the
+        // shared 24-hour frozen base, without merging unregistered vehicles.
+        const dto: VehicleValuationDto = request.registration?.trim() && !request.valuationId
+            ? { ...request, valuationId: randomUUID() }
+            : request;
+
         // Block 1: verify submitted registration against DVLA and the MOT model
         // when available. Refuse mismatches *before* looking up frozen values or
         // sending the submitted vehicle description to live market search.
