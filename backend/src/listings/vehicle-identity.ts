@@ -119,13 +119,30 @@ export function labelValuationIdentity(
     verification: ValuationIdentityVerification,
 ): VehicleValuationResult {
     const provisional = verification.status !== 'MODEL_VERIFIED';
+    // A previously frozen exact-model estimate must never show MEDIUM
+    // evidence strength when this request only verifies a partial identity.
+    const assessment = valuation.confidenceAssessment;
+    const labelledAssessment = provisional && assessment ? {
+        ...assessment,
+        level: 'LOW' as const,
+        headline: 'The vehicle identity is only partially verified; this remains a provisional guide.',
+        limitations: assessment.limitations.includes(
+            'The exact vehicle identity or derivative is not fully independently verified.',
+        ) ? assessment.limitations : [
+            'The exact vehicle identity or derivative is not fully independently verified.',
+            ...assessment.limitations,
+        ],
+        reasonCodes: assessment.reasonCodes.includes('IDENTITY_PARTIAL_OR_UNKNOWN')
+            ? assessment.reasonCodes : ['IDENTITY_PARTIAL_OR_UNKNOWN', ...assessment.reasonCodes],
+    } : assessment;
     return {
         ...valuation,
         identityVerification: verification,
+        ...(labelledAssessment ? { confidenceAssessment: labelledAssessment } : {}),
         ...(provisional
             ? {
                 confidence: 'LOW' as const,
-                confidenceScore: Math.min(valuation.confidenceScore, 0.49),
+                confidenceScore: Math.min(valuation.confidenceScore, 0.44),
                 explanation: `${valuation.explanation} ${verification.message}`,
             }
             : {}),
