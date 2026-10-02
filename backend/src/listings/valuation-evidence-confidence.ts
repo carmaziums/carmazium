@@ -133,11 +133,14 @@ export function assessValuationConfidence(
             codes.push('LIVE_EVIDENCE_FRESHNESS_LIMITED');
         }
     }
-    if (verifiedOutcomeCohort) {
+    if (verifiedAuctions > 0) {
         limitations.push('Completed auction handovers reflect seller-confirmed funds, not independently bank-verified payments.');
         codes.push('HANDOVER_IS_SELLER_ATTESTATION');
-    } else {
-        limitations.push('The estimate is not calibrated against a sufficient verified achieved-sale sample for this vehicle.');
+    }
+    // Three recorded outcomes are enough for a descriptive, provisional
+    // channel-specific comparison, NOT an accuracy-calibration dataset.
+    if (!verifiedOutcomeCohort) {
+        limitations.push('The estimate lacks a sufficient verified achieved-sale cohort for a descriptive channel comparison.');
         codes.push('LIMITED_VERIFIED_OUTCOMES');
     }
     if (acceptedOffers > 0) {
