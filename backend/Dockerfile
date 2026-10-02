@@ -7,7 +7,7 @@
 # Build: docker build --target runtime -t carmazium-backend-api .
 #        docker build --target prisma-maintenance -t carmazium-prisma-maintenance .
 # The default final stage remains runtime for existing Fly deployments.
-ARG NODE_VERSION=20.10.0
+ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /app
