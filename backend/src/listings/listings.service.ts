@@ -77,6 +77,17 @@ import {
 } from './live-market-search';
 import { LiveMarketAttemptBroker, liveMarketTimeoutMs } from './live-market-attempt-broker';
 import { applyEvidenceConfidence } from './valuation-evidence-confidence';
+import {
+    auditedAuctionIds, assessHistoricalAuctionOutcomes,
+} from './achieved-sale-calibration-loader';
+import {
+    evaluateAchievedAuctionCalibration, resolveCalibrationMode,
+    type AuctionCalibrationEvaluation, type CalibrationMode,
+} from './achieved-sale-calibration';
+import {
+    applyAchievedAuctionCalibration,
+    restoreUncalibratedValuation,
+} from './achieved-sale-calibration-pricing';
 import { deduplicateLiveMarketComparables } from './market-comparable-integrity';
 import {
     assertDealerPermission,
@@ -230,8 +241,13 @@ export class ListingsService {
             const assessed = frozenBase.confidenceAssessment
                 ? frozenBase
                 : applyEvidenceConfidence(frozenBase, verification.status);
+            // Turning calibration OFF, or downgrading to SHADOW, must also
+            // restore OLD prices in immutable snapshots previously written ON.
+            const mode = this.currentAuctionCalibrationMode();
+            const effective = mode === 'on' ? assessed
+                : restoreUncalibratedValuation(assessed);
             return labelValuationIdentity(
-                applyVehicleSpecificationAdjustments(assessed, specificationInput),
+                applyVehicleSpecificationAdjustments(effective, specificationInput),
                 verification,
             );
         }
@@ -241,6 +257,9 @@ export class ListingsService {
         // The benchmark is NOT an individual advert/achieved sale and cannot
         // change consumer figures until market-calibration work is approved.
         const licensedReferencePromise = this.getLicensedBenchmark(dto, verification);
+        const outcomeCalibrationPromise = this.getOptionalAuctionCalibration(
+            dto, verification.status,
+        );
 
         const mileageFloor = Math.max(0, dto.mileage - 50_000);
         const mileageCeiling = dto.mileage + 50_000;
@@ -657,12 +676,28 @@ export class ListingsService {
         // verified sale channels have been decided. No bank-verification or
         // sale-price prediction is inferred from asking adverts or offers.
         calculatedBase = applyEvidenceConfidence(calculatedBase, verification.status);
+        // Only freshly verified, pre-outcome market snapshots created from
+        // this point forward can ever enter a retrospective training cohort.
+        // Historic legacy snapshots are not silently certified as verified.
+        if (verification.status === 'MODEL_VERIFIED'
+            && dto.registration?.trim()
+            && ['LIVE_UK_MARKET', 'BLENDED_MARKET'].includes(calculatedBase.source)) {
+            calculatedBase.calibrationOrigin = { verifiedAtCreation: true };
+        }
 
         // A provider's retail/trade benchmark must NEVER enter the individual
         // advert comparable pool. Record only a restricted, price-free internal
         // diagnostic AFTER the five-live/five-blended policy completes.
         const licensedReference = await licensedReferencePromise;
         await this.recordLicensedBenchmarkCheck(dto, licensedReference, calculatedBase.mid);
+
+        const calibration = await outcomeCalibrationPromise;
+        if (calibration.mode !== 'off' && calibration.evaluation
+            && ['LIVE_UK_MARKET', 'BLENDED_MARKET'].includes(calculatedBase.source)) {
+            calculatedBase = applyAchievedAuctionCalibration(
+                calculatedBase, calibration.evaluation, calibration.mode,
+            );
+        }
 
         // A concurrent duplicate request can finish a different live search.
         // The valuationId is also the AnalyticsEvent primary key, so exactly one
@@ -675,10 +710,75 @@ export class ListingsService {
         const assessedBase = stableBase.confidenceAssessment
             ? stableBase
             : applyEvidenceConfidence(stableBase, verification.status);
+        const effective = this.currentAuctionCalibrationMode() === 'on'
+            ? assessedBase : restoreUncalibratedValuation(assessedBase);
         return labelValuationIdentity(
-            applyVehicleSpecificationAdjustments(assessedBase, specificationInput),
+            applyVehicleSpecificationAdjustments(effective, specificationInput),
             verification,
         );
+    }
+
+    /**
+     * Emergency switch: OFF is the default, and an invalid configuration
+     * fails closed. SHADOW only reads first-party historical outcomes.
+     * ON requires explicit review + rollout approval and at least 30
+     * individually audited auction IDs, with per-query holdout gates.
+     */
+    private currentAuctionCalibrationMode(): CalibrationMode {
+        const mode = resolveCalibrationMode(
+            this.config.get<string>('VALUATION_CALIBRATION_MODE'),
+            this.config.get<string>('VALUATION_CALIBRATION_DATA_REVIEW_APPROVED'),
+            this.config.get<string>('VALUATION_CALIBRATION_ROLLOUT_APPROVED'),
+        );
+        if (mode === 'on') {
+            const approved = auditedAuctionIds(
+                this.config.get<string>('VALUATION_CALIBRATION_AUDITED_AUCTION_IDS'),
+            );
+            if (approved.size < 30) return 'off';
+        }
+        return mode;
+    }
+
+    private async getOptionalAuctionCalibration(
+        dto: VehicleValuationDto,
+        verificationStatus: string,
+    ): Promise<{
+        mode: CalibrationMode;
+        evaluation?: AuctionCalibrationEvaluation;
+    }> {
+        const mode = this.currentAuctionCalibrationMode();
+        if (mode === 'off' || verificationStatus !== 'MODEL_VERIFIED'
+            || !dto.registration?.trim()) {
+            return { mode: 'off' };
+        }
+
+        // Bound optional analytical overhead; no valuation fails because a
+        // calibration read is slow/unavailable. Never log raw sale amounts,
+        // seller IDs, registrations, stock references or audited manifest IDs.
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const audited = mode === 'on'
+                ? auditedAuctionIds(
+                    this.config.get<string>('VALUATION_CALIBRATION_AUDITED_AUCTION_IDS'),
+                )
+                : new Set<string>();
+            const evaluation = await Promise.race([
+                assessHistoricalAuctionOutcomes(this.prisma, dto, mode, audited),
+                new Promise<AuctionCalibrationEvaluation>((resolve) => {
+                    timeout = setTimeout(
+                        () => resolve(evaluateAchievedAuctionCalibration([])),
+                        2500,
+                    );
+                }),
+            ]);
+            return { mode, evaluation };
+        } catch {
+            // Price-preserving failure is deliberate, not a 500 or fallback
+            // to invented achieved-sale figures.
+            return { mode, evaluation: evaluateAchievedAuctionCalibration([]) };
+        } finally {
+            if (timeout) clearTimeout(timeout);
+        }
     }
 
     private async getLicensedBenchmark(

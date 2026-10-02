@@ -1513,6 +1513,120 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 9 reversible calibration controls', () => {
+        const registered = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN',
+            model: 'GOLF', year: 2010, mileage: 57000,
+            valuationId: '99999999-9999-4999-8999-999999999999',
+        };
+
+        it('is OFF by default, performs no outcome scans and retains the old auction prices', async () => {
+            const evalMode = await (service as any).getOptionalAuctionCalibration(
+                registered, 'MODEL_VERIFIED',
+            );
+            expect(evalMode).toEqual({ mode: 'off' });
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(prisma.analyticsEvent.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects ON unless data review, rollout and thirty individual audit IDs all exist', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'on',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+                VALUATION_CALIBRATION_ROLLOUT_APPROVED: 'false',
+            } as Record<string, string>)[key]);
+            expect((service as any).currentAuctionCalibrationMode()).toBe('off');
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'on',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+                VALUATION_CALIBRATION_ROLLOUT_APPROVED: 'true',
+                VALUATION_CALIBRATION_AUDITED_AUCTION_IDS:
+                    '3ce3af8d-8103-4a26-a2ad-420aca42bccd',
+            } as Record<string, string>)[key]);
+            expect((service as any).currentAuctionCalibrationMode()).toBe('off');
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('SHADOW reads qualifying historical data but never changes the price when samples are sparse', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'shadow',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+            } as Record<string, string>)[key]);
+            const evalMode = await (service as any).getOptionalAuctionCalibration(
+                registered, 'MODEL_VERIFIED',
+            );
+            expect(evalMode.mode).toBe('shadow');
+            expect(evalMode.evaluation.state).toBe('INSUFFICIENT');
+            expect(prisma.listing.findMany).toHaveBeenCalledTimes(1);
+            expect(prisma.analyticsEvent.findMany).not.toHaveBeenCalled();
+        });
+
+        it('immediately restores old auction figures from an already-calibrated immutable quote once OFF', async () => {
+            const originallyFrozen = {
+                low: 7700, mid: 9000, high: 10200,
+                confidence: 'LOW', confidenceScore: 0.42,
+                comparables: 5,
+                source: 'LIVE_UK_MARKET',
+                explanation: 'Frozen old-system price.',
+                evidence: { completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 5 },
+                retail: { suggestedAsking: 10700, suggestedMinimum: 9300 },
+                auction: { marketValue: 6800, openingBid: 4800,
+                    reserveLow: 6100, reserveHigh: 7100, suggestedReserve: 6700 },
+                marketEvidence: { carmaziumComparables: 0, liveUkComparables: 5 },
+            };
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: registered.valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: { registration: registered.registration, make: registered.make,
+                        model: registered.model, year: registered.year, mileage: registered.mileage },
+                    baseValuation: {
+                        ...originallyFrozen,
+                        auction: {
+                            ...originallyFrozen.auction,
+                            marketValue: 7350, suggestedReserve: 7200,
+                        },
+                        calibration: {
+                            version: 'auction-outcome-v1',
+                            mode: 'APPLIED',
+                            originalAuction: originallyFrozen.auction,
+                            originalExplanation: originallyFrozen.explanation,
+                            evaluation: {
+                                state: 'VALIDATED', samples: 30,
+                                trainingSamples: 20, holdoutSamples: 10,
+                                multiplier: 1.08,
+                            },
+                        },
+                    },
+                },
+            });
+            const live = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const result = await service.estimateVehicleValue(registered as any);
+            expect(live).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(result.auction).toEqual(originallyFrozen.auction);
+            expect(result.retail).toEqual(originallyFrozen.retail);
+            expect(result.low).toBe(originallyFrozen.low);
+            expect(result.mid).toBe(originallyFrozen.mid);
+            expect(result.high).toBe(originallyFrozen.high);
+            expect(result.explanation).toBe(originallyFrozen.explanation);
+            expect(result.calibration).toBeUndefined();
+        });
+
+        it('does not collect historic outcomes for missing or PARTIAL identity in SHADOW', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'shadow',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+            } as Record<string, string>)[key]);
+            const result = await (service as any).getOptionalAuctionCalibration(
+                registered, 'PARTIAL',
+            );
+            expect(result.mode).toBe('off');
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+    });
+
     describe('Block 8 conservative evidence labels and frozen-snapshot consistency', () => {
         const car = {
             registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',

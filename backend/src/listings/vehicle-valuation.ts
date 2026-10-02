@@ -58,6 +58,7 @@ export interface VehicleValuationComparable {
 }
 
 import type { ValuationIdentityVerification } from './vehicle-identity';
+import type { ValuationAuctionCalibration } from './achieved-sale-calibration-pricing';
 import { calculateMarketChannelGuides } from './market-channel-methodologies';
 import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
 import { applyEvidenceConfidence, type ValuationConfidenceAssessment } from './valuation-evidence-confidence';
@@ -66,6 +67,9 @@ export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
     specificationAdjustment?: SpecificationAdjustmentAudit;
     confidenceAssessment?: ValuationConfidenceAssessment;
+    /** Prospective verified source marker; never retroactively mark old data verified. */
+    calibrationOrigin?: { verifiedAtCreation: true };
+    calibration?: ValuationAuctionCalibration;
     /** Interquartile spread of normalized usable prices divided by their median. */
     normalizedComparableIqrRatio?: number;
     low: number;

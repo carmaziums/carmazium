@@ -110,6 +110,15 @@ export function VehicleValuationCard({
                     </p>
                 </div>
 
+                {mode === "auction" && valuation.calibration?.mode === "APPLIED" && (
+                    <p role="status" className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+                        This auction guide includes an optional adjustment evaluated against earlier
+                        seller-confirmed completed auctions and later held-out outcomes. It does
+                        not guarantee an achieved price and can be disabled without losing the
+                        original saved valuation.
+                    </p>
+                )}
+
                 {mode === "retail" && valuation.privateSale && (
                     <div className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
                         Indicative private-sale guide: {formatPrice(valuation.privateSale.low)}–{formatPrice(valuation.privateSale.high)}
