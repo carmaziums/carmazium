@@ -28,6 +28,7 @@ const PARTNER_SELECT = {
       engineSize: true,
       images: true,
       vrm: true,
+      location: true,
       updatedAt: true,
     },
   },
@@ -96,6 +97,15 @@ export class SimpleDmsService {
     }).slice(0, 12);
   }
 
+  // Never infer a town from an unstructured seller address. An explicit
+  // approved town/region allowlist prevents accidentally syndicating postcodes.
+  private approvedRegion(raw: string | null): string | null {
+    if (!this.isEnabled('PARTNER_API_SIMPLEDMS_SHARE_REGION') || !raw) return null;
+    const allowed = (this.config.get<string>('PARTNER_API_SIMPLEDMS_ALLOWED_REGIONS') || '')
+      .split(',').map(v => v.trim()).filter(Boolean);
+    return allowed.find(v => v.toLowerCase() === raw.trim().toLowerCase()) || null;
+  }
+
   private async mapAuction(auction: SelectedAuction) {
     const listing = auction.listing;
     const output: Record<string, unknown> = {
@@ -122,6 +132,7 @@ export class SimpleDmsService {
         startingBidGbp: Number(auction.startingBid),
       },
       images: this.publicImages(listing.images || []),
+      region: this.approvedRegion(listing.location),
       updatedAt: new Date(Math.max(auction.updatedAt.getTime(), listing.updatedAt.getTime())).toISOString(),
       url: this.publicAuctionUrl(auction.id),
     };
