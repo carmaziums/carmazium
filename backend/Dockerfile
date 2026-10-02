@@ -48,7 +48,10 @@ ENV PORT=8080
 
 # Required for the existing weekly backup implementation; do not modify the
 # production backup process while isolating Prisma migrations.
-RUN apk upgrade --no-cache && apk add --no-cache postgresql16-client
+# Live Supabase reports PostgreSQL 17.6 (read-only metadata, 2026-10-03).
+# pg_dump major version must not be older than the server major.
+RUN apk upgrade --no-cache && apk add --no-cache postgresql17-client \
+ && pg_dump --version | grep -E '^pg_dump \(PostgreSQL\) 17\.'
 
 COPY package*.json ./
 # `@prisma/client` has an npm optional Prisma peer; npm still physically
