@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import type { DvlaLookupResult } from '../dvla/dvla.service';
 import type { VehicleValuationResult } from './vehicle-valuation';
+import { canonicalValuationMake, canonicalValuationModel } from './vehicle-valuation-identity';
 
 export type IdentityVerificationStatus = 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED';
 
@@ -20,22 +21,11 @@ const normalized = (value: string | undefined | null) =>
     (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 function normalizedMake(value: string | undefined | null): string {
-    const make = normalized(value);
-    const aliases: Record<string, string> = {
-        VW: 'VOLKSWAGEN',
-        MERCEDESBENZ: 'MERCEDES',
-        MERCEDESBENZCARS: 'MERCEDES',
-    };
-    return aliases[make] ?? make;
+    return canonicalValuationMake(value ?? '');
 }
 
 function normalizedModel(value: string | undefined | null, make?: string): string {
-    let model = normalized(value);
-    const sourceMake = normalizedMake(make);
-    if (sourceMake && model.startsWith(sourceMake) && model.length > sourceMake.length) {
-        model = model.slice(sourceMake.length);
-    }
-    return model;
+    return canonicalValuationModel(value ?? '', make ?? '');
 }
 
 // A known data-source formatting difference: some registration providers

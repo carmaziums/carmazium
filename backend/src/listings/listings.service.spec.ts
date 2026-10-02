@@ -68,6 +68,7 @@ describe('ListingsService', () => {
             analyticsEvent: {
                 findUnique: jest.fn().mockResolvedValue(null),
                 findFirst: jest.fn().mockResolvedValue(null),
+                findMany: jest.fn().mockResolvedValue([]),
                 create: jest.fn().mockResolvedValue({}),
             },
             transaction: { findMany: jest.fn(), update: jest.fn() },
@@ -1507,6 +1508,186 @@ describe('ListingsService', () => {
 
             expect(result.auction.marketValue).toBe(2650);
             expect(result.source).toBe('BLENDED_MARKET');
+        });
+    });
+
+    describe('Block 2: consistent market base across equivalent journeys', () => {
+        const audiVrm = 'RO18YWN';
+        const firstId = '11111111-1111-4111-8111-111111111111';
+        const secondId = '22222222-2222-4222-8222-222222222222';
+        const lookup = {
+            vrm: audiVrm, make: 'AUDI', model: 'A1',
+            year: 2018, dataSource: 'DVLA' as const,
+        };
+        const firstRequest = {
+            registration: 'RO18 YWN', make: 'AUDI', model: 'Audi A1',
+            year: 2018, mileage: 106470, valuationId: firstId,
+        };
+        const secondRequest = {
+            ...firstRequest, registration: audiVrm, model: 'A1',
+            valuationId: secondId,
+        };
+        const marketResult = (mid: number) => ({
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            sourceDomains: ['example-dealer.co.uk'],
+            rawComparableCount: 3,
+            comparables: [mid - 200, mid, mid + 200].map((price) => ({
+                price, year: 2018, mileage: 106470, kind: 'ACTIVE_ASK',
+            })),
+        });
+
+        beforeEach(() => {
+            dvla.lookupVrm.mockResolvedValue(lookup);
+            prisma.listing.findMany.mockResolvedValue([]);
+        });
+
+        it('reuses a saved Audi A1 base for the equivalent model label without searching again', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            const first = await service.estimateVehicleValue(firstRequest as any);
+            const firstInsert = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            const stored = {
+                id: firstId, type: 'valuation_base_snapshot',
+                payload: firstInsert.payload,
+            };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce(stored);
+
+            const second = await service.estimateVehicleValue(secondRequest as any);
+            expect(second.auction.marketValue).toEqual(first.auction.marketValue);
+            expect(second.mid).toEqual(first.mid);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(prisma.analyticsEvent.create).toHaveBeenCalledTimes(2);
+            const inserts = prisma.analyticsEvent.create.mock.calls.map((call: any[]) => call[0].data);
+            expect(inserts[0].sessionId).toBe(inserts[1].sessionId);
+            expect(inserts[1].payload.reusedFromSnapshotId).toBe(firstId);
+        });
+
+        it('assigns legacy VRM requests without valuationId a server journey and reuses the saved base', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            const legacy = {
+                registration: audiVrm, make: 'AUDI',
+                model: 'A1', year: 2018, mileage: 106470,
+            };
+            const first = await service.estimateVehicleValue(legacy as any);
+            const firstData = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            expect(firstData.id).toMatch(/^[0-9a-f-]{36}$/i);
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstData.id,
+                type: 'valuation_base_snapshot',
+                payload: firstData.payload,
+            });
+            const second = await service.estimateVehicleValue(legacy as any);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(second.mid).toBe(first.mid);
+            const secondData = prisma.analyticsEvent.create.mock.calls[1][0].data;
+            expect(secondData.id).not.toBe(firstData.id);
+            expect(secondData.sessionId).toBe(firstData.sessionId);
+        });
+
+        it('under the DB lock prefers a newly committed quote over the independently searched result', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce(marketResult(7450))
+                .mockResolvedValueOnce(marketResult(5900));
+            // Both clients initially observed an empty cache. By the time
+            // the second enters its serialized snapshot transaction, the
+            // first request has already committed.
+            prisma.analyticsEvent.findFirst
+                .mockResolvedValueOnce(null) // first pre-search read
+                .mockResolvedValueOnce(null) // first under lock
+                .mockResolvedValueOnce(null); // second pre-search stale read
+
+            const first = await service.estimateVehicleValue(firstRequest as any);
+            const stored = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstId, type: 'valuation_base_snapshot', payload: stored.payload,
+            });
+            const second = await service.estimateVehicleValue(secondRequest as any);
+            expect(search).toHaveBeenCalledTimes(2);
+            expect(second.mid).toBe(first.mid);
+            expect(second.auction.marketValue).toBe(first.auction.marketValue);
+            expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+            // Both labels should take exactly the same cross-instance lock.
+            expect(prisma.$queryRaw.mock.calls[0][1]).toBe(
+                prisma.$queryRaw.mock.calls[1][1],
+            );
+            expect(prisma.analyticsEvent.create.mock.calls[1][0].data.payload.reusedFromSnapshotId)
+                .toBe(firstId);
+        });
+
+        it('an overlapping fallback must not eclipse an earlier usable live base', async () => {
+            const liveBase = {
+                low: 6500, mid: 7450, high: 8000,
+                confidence: 'LOW', confidenceScore: 0.4,
+                comparables: 5, evidence: {
+                    completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 5,
+                }, source: 'LIVE_UK_MARKET',
+                explanation: 'Older live snapshot', retail: {
+                    suggestedAsking: 8000, suggestedMinimum: 7450,
+                }, auction: {
+                    marketValue: 6500, openingBid: 4550,
+                    reserveLow: 5850, reserveHigh: 6500, suggestedReserve: 6150,
+                },
+            };
+            const fallback = {
+                ...liveBase, source: 'CARMAZIUM_MODEL', comparables: 0,
+                marketEvidence: { valuationStrategy: 'FALLBACK' },
+            };
+            const identity = {
+                registration: audiVrm, make: 'AUDI', model: 'A1',
+                year: 2018, mileage: 106470,
+            };
+            const newest = { id: secondId, type: 'valuation_base_snapshot',
+                payload: { identity, baseValuation: fallback } };
+            const older = { id: firstId, type: 'valuation_base_snapshot',
+                payload: { identity, baseValuation: liveBase } };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce(newest);
+            prisma.analyticsEvent.findMany.mockResolvedValueOnce([newest, older]);
+            const found = await (service as any).findRecentReusableMarketBase(prisma, firstRequest);
+            expect(found.row.id).toBe(firstId);
+            expect(found.base.source).toBe('LIVE_UK_MARKET');
+            expect(prisma.analyticsEvent.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({ take: 20 }),
+            );
+        });
+
+        it('does not return an unfrozen cached quote if alias persistence fails', async () => {
+            const frozen = {
+                low: 6500, mid: 7450, high: 8000,
+                source: 'LIVE_UK_MARKET', confidence: 'LOW',
+                confidenceScore: 0.4, comparables: 3,
+                retail: { suggestedAsking: 8000, suggestedMinimum: 7450 },
+                auction: {
+                    marketValue: 6500, openingBid: 4550,
+                    reserveLow: 5850, reserveHigh: 6500, suggestedReserve: 6150,
+                },
+            };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: {
+                        registration: audiVrm, make: 'AUDI',
+                        model: 'A1', year: 2018, mileage: 106470,
+                    },
+                    baseValuation: frozen,
+                },
+            });
+            prisma.analyticsEvent.create.mockRejectedValueOnce(new Error('database write failed'));
+            await expect(service.estimateVehicleValue(secondRequest as any))
+                .rejects.toThrow(/database write failed/);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('does not share a cached generic valuation without a registration', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            await service.estimateVehicleValue({
+                ...firstRequest, registration: undefined,
+            } as any);
+            expect(prisma.analyticsEvent.findFirst).not.toHaveBeenCalled();
+            expect(search).toHaveBeenCalledTimes(1);
         });
     });
 

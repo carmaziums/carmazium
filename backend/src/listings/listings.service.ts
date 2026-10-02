@@ -16,6 +16,11 @@ import {
 } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
+import {
+    canonicalValuationIdentity,
+    canonicalValuationCacheParts,
+    sameValuationBaseIdentity,
+} from './vehicle-valuation-identity';
 import { DvlaService, type DvlaLookupResult } from '../dvla/dvla.service';
 import { labelValuationIdentity, verifyValuationVehicleIdentity } from './vehicle-identity';
 import { ListingFilterDto } from './dto/listing-filter.dto';
@@ -163,7 +168,14 @@ export class ListingsService {
      * only after both stages fail does it fall back to CarMazium evidence and
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
-    async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
+    async estimateVehicleValue(request: VehicleValuationDto): Promise<VehicleValuationResult> {
+        // Legacy/API callers sometimes omit a journey ID. Create a server ID
+        // for a registered vehicle so those calls still participate in the
+        // shared 24-hour frozen base, without merging unregistered vehicles.
+        const dto: VehicleValuationDto = request.registration?.trim() && !request.valuationId
+            ? { ...request, valuationId: randomUUID() }
+            : request;
+
         // Block 1: verify submitted registration against DVLA and the MOT model
         // when available. Refuse mismatches *before* looking up frozen values or
         // sending the submitted vehicle description to live market search.
@@ -602,31 +614,16 @@ export class ListingsService {
     }
 
     private valuationIdentity(dto: VehicleValuationDto) {
-        return {
-            registration: (dto.registration ?? '').replace(/\s+/g, '').trim().toUpperCase(),
-            make: dto.make.trim().toUpperCase(),
-            model: dto.model.trim().toUpperCase(),
-            year: dto.year,
-            mileage: dto.mileage,
-        };
+        return canonicalValuationIdentity(dto);
     }
 
     /**
-     * Same physical vehicle + same mileage gets one market base for 24 hours.
-     * The hash is stored in AnalyticsEvent.sessionId only for snapshot rows;
-     * valuation analytics queries are type-scoped, so this never counts as a
-     * customer browsing session.
+     * Harmless label differences (e.g. "Audi A1" vs "A1") must share the
+     * same market base. Preserve performance trims, generations and a
+     * first-request explicit variant as distinct cache identities.
      */
     private valuationIdentityKey(dto: VehicleValuationDto): string {
-        const identity = this.valuationIdentity(dto);
-        const raw = [
-            identity.registration,
-            identity.make,
-            identity.model,
-            identity.year,
-            identity.mileage,
-        ].join('|');
-
+        const raw = canonicalValuationCacheParts(dto).join('|');
         return `valuation-base:${createHash('sha256').update(raw).digest('hex')}`;
     }
 
@@ -644,14 +641,13 @@ export class ListingsService {
 
         const payload = (event.payload ?? {}) as any;
         const identity = payload.identity ?? {};
-        const expected = this.valuationIdentity(dto);
-
-        const sameIdentity =
-            String(identity.registration ?? '') === expected.registration
-            && String(identity.make ?? '') === expected.make
-            && String(identity.model ?? '') === expected.model
-            && Number(identity.year) === expected.year
-            && Number(identity.mileage) === expected.mileage;
+        const sameIdentity = sameValuationBaseIdentity({
+            registration: String(identity.registration ?? ''),
+            make: String(identity.make ?? ''),
+            model: String(identity.model ?? ''),
+            year: Number(identity.year),
+            mileage: Number(identity.mileage),
+        }, dto);
 
         if (!sameIdentity) {
             throw new BadRequestException(
@@ -694,32 +690,17 @@ export class ListingsService {
         const exact = this.parseFrozenValuationBase(exactJourney, dto);
         if (exact) return exact;
 
+        // Do not share a base across different physical vehicles when a
+        // registration was never verified; exact valuationId reuse still works.
+        if (!dto.registration?.trim()) return null;
+
         // A new journey for the same unchanged vehicle should not get a wildly
         // different answer five minutes later merely because a live search
         // returned a different advert set. Reuse the latest vehicle base for
         // 24 hours, after which market evidence is allowed to refresh.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select,
-        });
-
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (!recent) return null;
-
-        if (
-            recent.marketEvidence?.valuationStrategy === 'FALLBACK'
-            || recent.source === 'CARMAZIUM_MODEL'
-            || recent.source === 'CARMAZIUM_MODEL_PROFILE'
-        ) {
-            return null;
-        }
+        const found = await this.findRecentReusableMarketBase(this.prisma, dto);
+        if (!found) return null;
+        const { row: recentVehicleBase, base: recent } = found;
 
         // Give this new journey its own immutable copy. The cross-journey
         // vehicle cache may expire after 24h, but the journey itself must never
@@ -752,13 +733,13 @@ export class ListingsService {
                     });
                     const frozenWinner = this.parseFrozenValuationBase(winner, dto);
                     if (frozenWinner) return frozenWinner;
-                } else {
-                    // The already-frozen identity base is still safe to return;
-                    // persistence of the alias must not make valuation unavailable.
-                    this.logger.warn(
-                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
+                    throw new BadRequestException(
+                        'Valuation journey could not be saved. Please retry.',
                     );
                 }
+                // Do not display a base that we failed to persist. Otherwise
+                // the next request could return a different market value.
+                throw error;
             }
         }
 
@@ -771,73 +752,76 @@ export class ListingsService {
     ): Promise<VehicleValuationResult> {
         if (!dto.valuationId) return calculatedBase;
 
-        // A different journey for this same unchanged vehicle may have
-        // completed while our live search was running. Prefer that already-
-        // frozen 24-hour identity base rather than publishing a second value.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                type: true,
-                payload: true,
-            },
-        });
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (
-            recent
-            && recent.marketEvidence?.valuationStrategy !== 'FALLBACK'
-            && recent.source !== 'CARMAZIUM_MODEL'
-            && recent.source !== 'CARMAZIUM_MODEL_PROFILE'
-        ) {
-            return recent;
-        }
-
-        // A fallback from a different journey is provisional. Do not let that
-        // cached model result win over a fresh live-market search that has just
-        // succeeded for this request.
-        // Prisma JSON fields must contain plain JSON values; strip optional
-        // undefined properties before persisting the immutable base snapshot.
-        const serializableBase = JSON.parse(
-            JSON.stringify(calculatedBase),
-        ) as VehicleValuationResult;
-
-        const data = {
-            id: dto.valuationId,
-            type: 'valuation_base_snapshot',
-            sessionId: this.valuationIdentityKey(dto),
-            payload: {
-                valuation_id: dto.valuationId,
-                identity: this.valuationIdentity(dto),
-                baseValuation: serializableBase,
-                lockedAt: new Date().toISOString(),
-            } as any,
-        };
+        const sessionId = this.valuationIdentityKey(dto);
+        const select = { id: true, type: true, payload: true } as const;
+        const serializableBase = JSON.parse(JSON.stringify(calculatedBase)) as VehicleValuationResult;
 
         try {
-            await this.prisma.analyticsEvent.create({ data });
-            return serializableBase;
-        } catch (error: any) {
-            // P2002 means another request with the same valuationId won the
-            // race. Never return our independently-calculated result; re-read
-            // the winner so both callers see the exact same market base.
-            if (error?.code !== 'P2002') throw error;
+            // A unique valuationId only protects a *single* journey.
+            // Serialize short snapshot decisions for the SAME verified
+            // vehicle across backend instances. Never hold a database lock
+            // while requesting third-party market data.
+            return await this.prisma.$transaction(async (tx) => {
+                // PostgreSQL returns void from advisory locks; cast to text
+                // for Prisma, matching existing listing creation locks.
+                await tx.$queryRaw`
+                    SELECT pg_advisory_xact_lock(hashtext(${sessionId}))::text AS lock_result
+                `;
 
+                const existing = await tx.analyticsEvent.findUnique({
+                    where: { id: dto.valuationId },
+                    select,
+                });
+                const frozen = this.parseFrozenValuationBase(existing, dto);
+                if (frozen) return frozen;
+
+                if (dto.registration?.trim()) {
+                    const found = await this.findRecentReusableMarketBase(tx, dto);
+                    const recentRow = found?.row;
+                    const recent = found?.base;
+                    if (recent) {
+                        await tx.analyticsEvent.create({
+                            data: {
+                                id: dto.valuationId,
+                                type: 'valuation_base_snapshot',
+                                sessionId,
+                                payload: {
+                                    valuation_id: dto.valuationId,
+                                    identity: this.valuationIdentity(dto),
+                                    baseValuation: JSON.parse(JSON.stringify(recent)),
+                                    lockedAt: new Date().toISOString(),
+                                    reusedFromSnapshotId: recentRow?.id ?? null,
+                                } as any,
+                            },
+                        });
+                        return recent;
+                    }
+                }
+
+                await tx.analyticsEvent.create({
+                    data: {
+                        id: dto.valuationId,
+                        type: 'valuation_base_snapshot',
+                        sessionId,
+                        payload: {
+                            valuation_id: dto.valuationId,
+                            identity: this.valuationIdentity(dto),
+                            baseValuation: serializableBase,
+                            lockedAt: new Date().toISOString(),
+                        } as any,
+                    },
+                });
+                return serializableBase;
+            });
+        } catch (error: any) {
+            if (error?.code !== 'P2002') throw error;
+            // If another concurrent request with THIS journey ID won,
+            // reuse its committed result rather than our own calculated
+            // figure. This also covers older snapshots without the lock.
             const winner = await this.prisma.analyticsEvent.findUnique({
                 where: { id: dto.valuationId },
-                select: {
-                    id: true,
-                    type: true,
-                    payload: true,
-                },
+                select,
             });
-
             const frozen = this.parseFrozenValuationBase(winner, dto);
             if (!frozen) {
                 throw new BadRequestException(
@@ -846,6 +830,52 @@ export class ListingsService {
             }
             return frozen;
         }
+    }
+
+    private async findRecentReusableMarketBase(
+        db: any,
+        dto: VehicleValuationDto,
+    ): Promise<{
+        row: { id: string; type: string; payload: unknown };
+        base: VehicleValuationResult;
+    } | null> {
+        const query = {
+            where: {
+                type: 'valuation_base_snapshot',
+                sessionId: this.valuationIdentityKey(dto),
+                createdAt: {
+                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' as const },
+            select: { id: true, type: true, payload: true },
+        };
+        const newest = await db.analyticsEvent.findFirst(query);
+        if (!newest) return null;
+        const mostRecent = this.parseFrozenValuationBase(newest, dto);
+        if (mostRecent && this.isReusableMarketValuation(mostRecent)) {
+            return { row: newest, base: mostRecent };
+        }
+
+        // A provisional fallback from an overlapping journey must not hide
+        // a more reliable earlier live valuation still inside the 24h TTL.
+        const candidates = await db.analyticsEvent.findMany({
+            ...query,
+            take: 20,
+        });
+        for (const row of candidates) {
+            const base = this.parseFrozenValuationBase(row, dto);
+            if (base && this.isReusableMarketValuation(base)) {
+                return { row, base };
+            }
+        }
+        return null;
+    }
+
+    private isReusableMarketValuation(value: VehicleValuationResult): boolean {
+        return value.marketEvidence?.valuationStrategy !== 'FALLBACK'
+            && value.source !== 'CARMAZIUM_MODEL'
+            && value.source !== 'CARMAZIUM_MODEL_PROFILE';
     }
 
     private async getLiveUkMarketComparables(
