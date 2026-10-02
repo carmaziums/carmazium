@@ -890,14 +890,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function applyValuationGuide() {
     if (!valuation) return;
 
-    setPriceAsking(String(valuation.auction.marketValue));
     if (listingType === 'AUCTION') {
+      setPriceAsking(String(valuation.auction.marketValue));
       setReservePrice(String(valuation.auction.suggestedReserve));
-      setStartingBid(String(valuation.auction.openingBid));
+      // The auction listing form still uses its own published platform
+      // opening-bid rule. Channel-derived openingBid is separate guidance,
+      // not an undocumented override of the listing engine.
       return;
     }
 
-    // Do not silently introduce a second auto-valued customer price.
+    // The retail action must apply the retail ASKING guide, never the
+    // lower auction market estimate. Customer remains in control.
+    setPriceAsking(String(valuation.retail.suggestedAsking));
     setPriceMin('');
   }
 
@@ -3036,9 +3040,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={applyValuationGuide}
                 activeOpacity={0.8}
               >
-                <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
-                <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
+                <Text style={s.valuationCardLabel}>
+                  {isAuction ? 'AUCTION MARKET-VALUE GUIDE' : 'SUGGESTED RETAIL ASKING GUIDE'}
+                </Text>
+                <Text style={s.valuationAuctionPrice}>
+                  £{(isAuction ? valuation.auction.marketValue : valuation.retail.suggestedAsking).toLocaleString('en-GB')}
+                </Text>
+                <Text style={s.valuationCardHint}>
+                  {(isAuction ? valuation.auction.evidenceBasis : valuation.retail.evidenceBasis) !== 'OBSERVED'
+                    ? 'Provisional channel guide: insufficient verified transactions or adverts for a measured channel price.'
+                    : 'Based on channel-specific market evidence; advertised prices are not guaranteed achieved prices.'}
+                </Text>
                 <Text style={s.valuationApplyText}>{valuation.identityVerification?.status && valuation.identityVerification.status !== 'MODEL_VERIFIED' ? 'Use provisional guide' : 'Use this value'}</Text>
               </TouchableOpacity>
               {valuation.identityVerification?.status && valuation.identityVerification.status !== 'MODEL_VERIFIED' ? (
@@ -3049,8 +3061,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   </Text>
                 </View>
               ) : null}
+              {!isAuction && valuation.privateSale ? (
+                <Text style={s.valuationEvidenceText}>
+                  Private-sale guide: £{valuation.privateSale.low.toLocaleString('en-GB')}–£{valuation.privateSale.high.toLocaleString('en-GB')}
+                  {valuation.privateSale.evidenceBasis !== 'OBSERVED'
+                    ? ' (provisional; verified private-party sale data is not available)'
+                    : ' (based on verified private-party sales)'}
+                </Text>
+              ) : null}
               <Text style={s.valuationEvidenceText}>
-                Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
+                Guide only. Condition/specification adjusts this saved base without starting another search. Auction listing opening bids still follow the separate platform listing rule.
               </Text>
             </>
           ) : (
