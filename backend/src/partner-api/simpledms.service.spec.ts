@@ -27,6 +27,8 @@ const SAMPLE: any = {
     engineSize: 2000,
     images: [
       PUBLIC_IMAGE,
+      PUBLIC_IMAGE + '#cm-photo=exterior',
+      'https://storage.example.supabase.co/storage/v1/object/public/kyc/private.jpg',
       'https://assets.carmazium.com/private/handover/secret.jpg',
       'https://assets.carmazium.com/auctions/signed.jpg?token=secret',
       'http://assets.carmazium.com/insecure.jpg',
@@ -84,7 +86,7 @@ describe('SimpleDmsService partner data boundary', () => {
     });
     const result = await service.detail('auction-1');
     expect(result.auction.vehicle).toHaveProperty('registration', 'PRIVATE_REG');
-    expect(result.auction.images).toEqual([PUBLIC_IMAGE]);
+    expect(result.auction.images).toEqual([PUBLIC_IMAGE, PUBLIC_IMAGE]);
     expect(JSON.stringify(result)).not.toContain('seller@private.invalid');
   });
 
