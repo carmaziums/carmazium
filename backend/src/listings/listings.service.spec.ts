@@ -1513,6 +1513,67 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('Block 6 completed-sale provenance and separate channels', () => {
+        const car = { make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000 };
+        const common = {
+            type: 'AUCTION',
+            status: 'SOLD',
+            year: 2018, mileage: 57000, make: 'VOLKSWAGEN', model: 'GOLF',
+            price: 15000, fuelType: 'PETROL', transmission: 'MANUAL',
+            variant: null, writeOffCategory: null, condition: null,
+            serviceHistory: null, owners: null, sale: { soldPrice: 99999 },
+            offers: [],
+        };
+        const completed = (id: string, winningBidAmount: number) => ({
+            ...common, id,
+            auction: {
+                status: 'COMPLETED', winnerId: 'winner', winningBidAmount,
+                buyerFeePaid: true, sellerFundsConfirmedAt: new Date(),
+                sellerFundsConfirmationRequired: true,
+                sellerBonusReleased: true, buyerRefusedAt: null,
+            },
+        });
+
+        it('uses only handed-over completed auctions; pending high bids cannot inflate the guide', async () => {
+            const pending = {
+                ...completed('pending', 65_000),
+                auction: {
+                    ...completed('pending', 65_000).auction,
+                    sellerBonusReleased: false,
+                },
+            };
+            prisma.listing.findMany.mockResolvedValue([
+                completed('one', 5800), completed('two', 6300),
+                completed('three', 6700), pending,
+            ]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(null);
+            const result = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(10);
+            expect(result.evidence.auctionResults).toBe(3);
+            expect(result.auction.evidenceBasis).toBe('OBSERVED');
+            expect(result.auction.verifiedOutcomes).toBe(3);
+            expect(result.auction.marketValue).toBe(6300);
+            expect(result.privateSale?.evidenceBasis).toBe('PROVISIONAL_PROXY');
+        });
+
+        it('prefers a completed classified sold price over an earlier accepted offer', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                ...common, id: 'sold-retail', type: 'CLASSIFIED',
+                sale: { soldPrice: 9000 },
+                offers: [{ amount: 15000, finalAmount: 14900, status: 'ACCEPTED' }],
+                auction: null,
+            }]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
+            const result = await service.estimateVehicleValue(car as any);
+            expect(result.evidence.completedSales).toBe(1);
+            expect(result.evidence.acceptedOffers).toBe(0);
+            expect(result.privateSale?.verifiedSales).toBe(0);
+            expect(result.privateSale?.evidenceBasis).toBe('PROVISIONAL_PROXY');
+            expect(result.auction.verifiedOutcomes).toBe(0);
+        });
+    });
+
     describe('Block 5 unique advert evidence across live attempts', () => {
         const car = {
             make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000,
