@@ -43,7 +43,7 @@ ENV PORT=8080
 
 # Required for the existing weekly backup implementation; do not modify the
 # production backup process while isolating Prisma migrations.
-RUN apk add --no-cache postgresql16-client
+RUN apk upgrade --no-cache && apk add --no-cache postgresql16-client
 
 COPY package*.json ./
 # `@prisma/client` has an npm optional Prisma peer; npm still physically
@@ -54,7 +54,10 @@ RUN npm ci --omit=dev --omit=peer --ignore-scripts --no-fund \
  && rm -rf ./node_modules/prisma ./node_modules/@prisma/config ./node_modules/deepmerge-ts \
  && test ! -e ./node_modules/prisma \
  && test ! -e ./node_modules/@prisma/config \
- && test ! -e ./node_modules/deepmerge-ts
+ && test ! -e ./node_modules/deepmerge-ts \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+ && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+ && test ! -e /usr/local/lib/node_modules/npm
 
 # Do not copy /app/node_modules/@prisma wholesale from builder: doing so
 # reintroduces Prisma CLI dependencies. The runtime's @prisma/client comes
