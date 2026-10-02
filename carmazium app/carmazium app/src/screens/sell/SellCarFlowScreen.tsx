@@ -3039,8 +3039,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
                 <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
                 <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
-                <Text style={s.valuationApplyText}>Use this value</Text>
+                <Text style={s.valuationApplyText}>{valuation.identityVerification?.status && valuation.identityVerification.status !== 'MODEL_VERIFIED' ? 'Use provisional guide' : 'Use this value'}</Text>
               </TouchableOpacity>
+              {valuation.identityVerification?.status && valuation.identityVerification.status !== 'MODEL_VERIFIED' ? (
+                <View style={s.valuationNotice}>
+                  <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
+                  <Text style={s.valuationNoticeText}>
+                    Provisional estimate: {valuation.identityVerification.message}
+                  </Text>
+                </View>
+              ) : null}
               <Text style={s.valuationEvidenceText}>
                 Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
               </Text>
