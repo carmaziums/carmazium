@@ -71,6 +71,7 @@
     "backend/src/listings/market-model-matching.ts",
     "backend/src/listings/valuation-evidence-confidence.spec.ts",
     "backend/src/listings/valuation-evidence-confidence.ts",
+    "backend/src/listings/valuation-full-programme.spec.ts",
     "backend/src/listings/valuation-specification-policy.spec.ts",
     "backend/src/listings/valuation-specification-policy.ts",
     "backend/src/listings/vehicle-identity.spec.ts",
