@@ -1562,6 +1562,29 @@ describe('ListingsService', () => {
             expect(inserts[1].payload.reusedFromSnapshotId).toBe(firstId);
         });
 
+        it('assigns legacy VRM requests without valuationId a server journey and reuses the saved base', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            const legacy = {
+                registration: audiVrm, make: 'AUDI',
+                model: 'A1', year: 2018, mileage: 106470,
+            };
+            const first = await service.estimateVehicleValue(legacy as any);
+            const firstData = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            expect(firstData.id).toMatch(/^[0-9a-f-]{36}$/i);
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstData.id,
+                type: 'valuation_base_snapshot',
+                payload: firstData.payload,
+            });
+            const second = await service.estimateVehicleValue(legacy as any);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(second.mid).toBe(first.mid);
+            const secondData = prisma.analyticsEvent.create.mock.calls[1][0].data;
+            expect(secondData.id).not.toBe(firstData.id);
+            expect(secondData.sessionId).toBe(firstData.sessionId);
+        });
+
         it('under the DB lock prefers a newly committed quote over the independently searched result', async () => {
             const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
                 .mockResolvedValueOnce(marketResult(7450))
