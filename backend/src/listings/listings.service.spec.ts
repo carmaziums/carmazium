@@ -20,6 +20,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { DealersService } from '../dealers/dealers.service';
 import { DvlaService } from '../dvla/dvla.service';
+import * as marketSearch from './live-market-search';
 
 /**
  * Listings service guarantees:
@@ -36,6 +37,7 @@ describe('ListingsService', () => {
     let sellers: any;
     let scraper: any;
     let dvla: { lookupVrm: jest.Mock };
+    let config: { get: jest.Mock };
 
     beforeEach(async () => {
         mockListingCheckoutSessionRetrieve.mockReset();
@@ -94,7 +96,7 @@ describe('ListingsService', () => {
             incrementListings: jest.fn().mockResolvedValue(undefined),
             incrementSales: jest.fn().mockResolvedValue(undefined),
         };
-        const config = {
+        config = {
             get: jest.fn((key: string) =>
                 key === 'SUPABASE_URL' ? 'https://test.supabase.co' : undefined,
             ),
@@ -1508,6 +1510,95 @@ describe('ListingsService', () => {
 
             expect(result.auction.marketValue).toBe(2650);
             expect(result.source).toBe('BLENDED_MARKET');
+        });
+    });
+
+    describe('Block 4 reliable live search delivery', () => {
+        const car = { make: 'Audi', model: 'Audi A1', year: 2018, mileage: 106470,
+            variant: 'Sport', fuelType: 'Petrol', transmission: 'Manual' };
+        const evidence = {
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            rawComparableCount: 1,
+            sourceDomains: ['dealer.example'],
+            comparables: [{ price: 7200, year: 2018, mileage: 106470, kind: 'ACTIVE_ASK' }],
+        };
+
+        it('shares an in-flight external search without skipping distinct plan attempts', async () => {
+            config.get.mockImplementation((key: string) =>
+                key === 'OPENAI_API_KEY' ? 'test-key' : undefined);
+            let finish!: (value: typeof evidence) => void;
+            const pending = new Promise<typeof evidence>((resolve) => { finish = resolve; });
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockImplementation(() => pending as any);
+            try {
+                const first = (service as any).getLiveUkMarketComparables(car, { phase: 'LIVE', attempt: 1 });
+                const duplicate = (service as any).getLiveUkMarketComparables({
+                    ...car, model: 'A1',
+                }, { phase: 'LIVE', attempt: 1 });
+                finish(evidence);
+                expect(await first).toEqual(evidence);
+                expect(await duplicate).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(1);
+
+                // Same first plan after settlement: no retained search data
+                // while contractual short caching is disabled.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toEqual(evidence);
+                // Second plan must still be searched, not treated as a retry
+                // of plan one or suppressed by the shared result.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 2 },
+                )).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(3);
+                expect(sdk.mock.calls[0][1].timeoutMs).toBe(18_000);
+            } finally {
+                sdk.mockRestore();
+            }
+        });
+
+        it('applies only bounded, explicitly configured per-search timeout', async () => {
+            config.get.mockImplementation((key: string) => ({
+                OPENAI_API_KEY: 'test-key',
+                OPENAI_WEB_VALUATION_TIMEOUT_MS: '999999',
+            } as Record<string, string>)[key]);
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockResolvedValue(evidence as any);
+            try {
+                await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                );
+                expect(sdk.mock.calls[0][1].timeoutMs).toBe(22_000);
+            } finally {
+                sdk.mockRestore();
+            }
+        });
+
+        it('treats an individual plan failure as recoverable, never as a fake comparable', async () => {
+            config.get.mockImplementation((key: string) =>
+                key === 'OPENAI_API_KEY' ? 'test-key' : undefined);
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockRejectedValueOnce(new Error('provider timeout'))
+                .mockResolvedValue(evidence as any);
+            const warn = jest.spyOn((service as any).logger, 'warn').mockImplementation();
+            try {
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toBeNull();
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 2 },
+                )).toEqual(evidence);
+                // Failed results are not retained, so a later first-plan
+                // retry may again consult the actual first source.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(3);
+                expect(JSON.stringify(warn.mock.calls)).not.toContain('provider timeout');
+            } finally {
+                sdk.mockRestore();
+                warn.mockRestore();
+            }
         });
     });
 
