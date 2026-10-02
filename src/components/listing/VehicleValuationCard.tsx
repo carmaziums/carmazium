@@ -57,7 +57,11 @@ export function VehicleValuationCard({
                 ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
                 : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
 
-    const primaryValue = valuation.auction.marketValue
+    const primaryValue = mode === "retail"
+        ? valuation.retail.suggestedAsking
+        : valuation.auction.marketValue
+    const currentChannel = mode === "retail" ? valuation.retail : valuation.auction
+    const channelProvisional = currentChannel.evidenceBasis !== "OBSERVED"
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6">
@@ -90,17 +94,26 @@ export function VehicleValuationCard({
 
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                        Current Market Value
+                        {mode === "retail" ? "Suggested retail asking guide" : "Auction market-value guide"}
                     </p>
                     <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
+                        {channelProvisional
+                            ? "Provisional guide: insufficient verified observations for this selling channel. This is not a confirmed achieved-sale price or an automatic reserve."
+                            : "Derived from channel-specific market evidence, adjusted for the condition and specification provided."}
                     </p>
                 </div>
 
-
+                {mode === "retail" && valuation.privateSale && (
+                    <div className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+                        Indicative private-sale guide: {formatPrice(valuation.privateSale.low)}–{formatPrice(valuation.privateSale.high)}
+                        {valuation.privateSale.evidenceBasis !== "OBSERVED"
+                            ? " (provisional; verified private-party sales are not yet available)"
+                            : " (based on verified private-party transactions)"}
+                    </div>
+                )}
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">

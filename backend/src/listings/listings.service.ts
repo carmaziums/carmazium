@@ -273,6 +273,12 @@ export class ListingsService {
                     status: true,
                     winningBidAmount: true,
                     updatedAt: true,
+                    winnerId: true,
+                    buyerFeePaid: true,
+                    sellerFundsConfirmedAt: true,
+                    sellerFundsConfirmationRequired: true,
+                    sellerBonusReleased: true,
+                    buyerRefusedAt: true,
                 },
             },
             offers: {
@@ -351,11 +357,43 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
+            if (row.type === 'AUCTION') {
+                // A highest bid is not a completed sale. A result only counts
+                // after paid fee, valid winner, seller confirmation and
+                // approved handover; legacy explicit exemption is honoured.
+                // Seller funds confirmation is attestation, not bank proof.
+                const auction = row.auction;
+                const handedOver = row.status === 'SOLD'
+                    && auction?.status === 'ENDED'
+                    && auction?.sellerBonusReleased === true
+                    && auction?.buyerFeePaid === true
+                    && !!auction?.winnerId
+                    && !auction?.buyerRefusedAt
+                    && (auction?.sellerFundsConfirmedAt
+                        || auction?.sellerFundsConfirmationRequired === false);
+                if (handedOver && auction?.winningBidAmount != null) {
+                    comparables.push({
+                        ...common,
+                        price: Number(auction.winningBidAmount),
+                        kind: 'AUCTION_RESULT',
+                        saleChannel: 'AUCTION',
+                        verifiedAuctionSale: true,
+                    });
+                }
+                // Never relabel an uncompleted auction as a completed SALE.
+                continue;
+            }
+
+            // A recorded sold price takes precedence over an earlier
+            // accepted offer; they must not become two independent outcomes.
+            if (row.sale?.soldPrice != null && row.status === 'SOLD') {
                 comparables.push({
                     ...common,
-                    price: Number(row.auction.winningBidAmount),
-                    kind: 'AUCTION_RESULT',
+                    price: Number(row.sale.soldPrice),
+                    kind: 'SALE',
+                    // Do not claim verified dealer or private-party provenance
+                    // until sale-channel identity is independently audited.
+                    saleChannel: null,
                 });
                 continue;
             }
@@ -366,15 +404,6 @@ export class ListingsService {
                     ...common,
                     price: Number(acceptedOffer.finalAmount ?? acceptedOffer.amount),
                     kind: 'ACCEPTED_OFFER',
-                });
-                continue;
-            }
-
-            if (row.sale?.soldPrice != null) {
-                comparables.push({
-                    ...common,
-                    price: Number(row.sale.soldPrice),
-                    kind: 'SALE',
                 });
                 continue;
             }
