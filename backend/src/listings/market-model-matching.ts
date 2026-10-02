@@ -87,7 +87,10 @@ function titleConflictsWithGenericModel(title: string, requestedCore: string, va
             const titleSuffix = tokens.join('');
             // ST-Line is an equipment trim, not the Fiesta/Focus ST engine.
             const titleIsStLine = titleSuffix === 'ST' && titleTokens[i + tokens.length + 1] === 'LINE';
-            if (titleIsStLine && requestedVariant === 'STLINE') continue;
+            if (titleIsStLine) {
+                if (requestedVariant !== 'STLINE') return true;
+                continue;
+            }
             if (requestedVariant !== titleSuffix) return true;
         }
     }
@@ -150,7 +153,7 @@ export function matchMarketplaceModel(
         return null;
     }
     if (/^(FIESTA|FOCUS)ST$/.test(target)
-        && /\\b(FIESTA|FOCUS)\\s+ST[\\s-]*LINE\\b/i.test(candidate.title)) {
+        && /\b(FIESTA|FOCUS)\s+ST[\s-]*LINE\b/i.test(candidate.title)) {
         return null; // Do not treat ST-Line equipment as an ST engine model.
     }
 
