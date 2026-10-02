@@ -1588,6 +1588,112 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
             </View>
 
+            {/* Full buyer-relevant listing details — never display seller's
+                contact, private reserve, VIN or free-text keeper relationship. */}
+            {auction?.listing && (() => {
+              const l = auction.listing as any;
+              const moreDetails: [string, string | number | null | undefined][] = [
+                ['Variant / trim', l.variant],
+                ['Drive type', l.driveType],
+                ['Number of keys', l.numberOfKeys],
+                ['Number of owners', l.owners],
+                ['Service history', l.serviceHistory],
+                ['Torque', l.torqueNm != null ? `${l.torqueNm} Nm` : null],
+                ['Top speed', l.topSpeedMph != null ? `${l.topSpeedMph} mph` : null],
+                ['0–60 mph', l.zeroTo60Mph != null ? `${l.zeroTo60Mph} sec` : null],
+                ['Combined economy', l.combinedMpg != null ? `${l.combinedMpg} mpg` : null],
+                ['Extra-urban economy', l.extraUrbanMpg != null ? `${l.extraUrbanMpg} mpg` : null],
+              ];
+              const historyDetails: [string, string | number | null | undefined][] = [
+                ['First used', l.firstUsedDate],
+                ['Last V5C issued', l.dateOfLastV5CIssued],
+                ['Type approval', l.typeApproval],
+                ['Wheelplan', l.wheelplan],
+                ['Marked for export', l.markedForExport == null ? null : l.markedForExport ? 'Yes' : 'No'],
+              ];
+              const declarations: [string, string | number | null | undefined][] = [
+                ['Stolen / recovered', l.stolenRecovered == null ? null : l.stolenRecovered ? 'Seller says yes' : 'Seller says no'],
+                ['Outstanding finance', l.hasOutstandingFinance == null ? null : l.hasOutstandingFinance ? 'Seller says yes' : 'Seller says no'],
+                ['Registered keeper', l.isLegalRegisteredKeeper == null ? null : l.isLegalRegisteredKeeper ? 'Seller says yes' : 'Seller says no'],
+                ['Insurance write-off', l.writeOffCategory == null ? null : l.writeOffCategory === 'NONE' ? 'Seller says none' : `Seller says ${String(l.writeOffCategory).replace(/_/g, ' ')}`],
+                ['Imported', l.isImported == null ? null : l.isImported ? 'Seller says yes' : 'Seller says no'],
+              ];
+              const visible = (rows: typeof moreDetails) => rows.filter(([, value]) => value !== null && value !== undefined && value !== '');
+              const details = visible(moreDetails);
+              const history = visible(historyDetails);
+              const declared = visible(declarations);
+              if (!details.length && !history.length && !declared.length) return null;
+              const renderRows = (rows: typeof moreDetails) => rows.map(([key, value]) => (
+                <View key={key} style={s.specRow}>
+                  <Text style={s.specKey}>{key}</Text>
+                  <Text style={[s.specVal, { flexShrink: 1, textAlign: 'right' }]}>{String(value)}</Text>
+                </View>
+              ));
+              return (
+                <View style={s.card}>
+                  <Text style={s.cardSectionTitle}>Additional Vehicle Information</Text>
+                  {details.length > 0 && (
+                    <View style={s.specsSection}>
+                      <Text style={s.specGroup}>Ownership, history & performance</Text>
+                      {renderRows(details)}
+                    </View>
+                  )}
+                  {history.length > 0 && (
+                    <View style={[s.specsSection, { marginTop: details.length ? 16 : 0 }]}>
+                      <Text style={s.specGroup}>Recorded vehicle details</Text>
+                      {renderRows(history)}
+                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
+                        Saved when the listing was created or edited; may not reflect subsequent DVLA updates.
+                      </Text>
+                    </View>
+                  )}
+                  {declared.length > 0 && (
+                    <View style={[s.specsSection, { marginTop: 16, padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 10 }]}>
+                      <Text style={[s.specGroup, { color: Colors.warning }]}>Seller declarations</Text>
+                      {renderRows(declared)}
+                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
+                        Seller statements, not independent HPI or finance checks. Review any separately provided completed report before bidding.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+
+            {Array.isArray((auction?.listing as any)?.motHistory)
+              && (auction!.listing as any).motHistory.length > 0 && (
+                <View style={s.card}>
+                  <Text style={s.cardSectionTitle}>Saved MOT History</Text>
+                  <Text style={[s.muted, { fontSize: 10, marginBottom: 12 }]}>
+                    Listing-time MOT snapshot, not an independently verified or continuously updated history report.
+                  </Text>
+                  {((auction!.listing as any).motHistory as Array<{
+                    motTestNumber?: string;
+                    completedDate?: string;
+                    testResult?: string;
+                    odometerValue?: string;
+                    odometerUnit?: string;
+                    expiryDate?: string;
+                    defects?: unknown[];
+                  }>).slice(0, 8).map((test, index) => (
+                    <View key={test.motTestNumber || `${test.completedDate || 'test'}-${index}`}
+                      style={[s.specsSection, { marginBottom: 8 }]}>
+                      <View style={s.specRow}>
+                        <Text style={s.specKey}>{test.testResult || 'Result unavailable'}</Text>
+                        <Text style={s.specVal}>{test.completedDate || 'Date unavailable'}</Text>
+                      </View>
+                      {test.odometerValue ? (
+                        <Text style={s.muted}>{Number(test.odometerValue).toLocaleString('en-GB')} {test.odometerUnit || 'mi'}</Text>
+                      ) : null}
+                      {test.expiryDate ? <Text style={s.muted}>Expiry: {test.expiryDate}</Text> : null}
+                      {Array.isArray(test.defects) && test.defects.length ? (
+                        <Text style={s.muted}>{test.defects.length} recorded defects/advisories</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              )}
+
             {/* Features */}
             {Array.isArray((auction?.listing as any)?.features) && (auction!.listing as any).features.length > 0 && (
               <View style={s.card}>

@@ -1491,6 +1491,94 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                         </div>
 
+                                        {/* Show saved buyer-relevant answers from the listing
+                                            wizard. These details are not seller contact details,
+                                            and must be visible while deciding whether to bid.
+                                            Seller declarations are NOT independent history checks. */}
+                                        {(() => {
+                                            const l = auction.listing
+                                            const details: [string, string | number | null | undefined][] = [
+                                                ["Variant / trim", l.variant],
+                                                ["Drive type", l.driveType],
+                                                ["Keys included", l.numberOfKeys],
+                                                ["Number of owners", l.owners],
+                                                ["Service history", l.serviceHistory],
+                                                ["Torque", l.torqueNm != null ? `${l.torqueNm} Nm` : null],
+                                                ["Top speed", l.topSpeedMph != null ? `${l.topSpeedMph} mph` : null],
+                                                ["0–60 mph", l.zeroTo60Mph != null ? `${l.zeroTo60Mph} sec` : null],
+                                                ["Combined economy", l.combinedMpg != null ? `${l.combinedMpg} mpg` : null],
+                                                ["Extra-urban economy", l.extraUrbanMpg != null ? `${l.extraUrbanMpg} mpg` : null],
+                                            ]
+                                            const history: [string, string | null | undefined][] = [
+                                                ["First used", l.firstUsedDate],
+                                                ["Last V5C issued", l.dateOfLastV5CIssued],
+                                                ["Type approval", l.typeApproval],
+                                                ["Wheelplan", l.wheelplan],
+                                                ["Marked for export", l.markedForExport == null ? null : l.markedForExport ? "Yes" : "No"],
+                                            ]
+                                            const declarations: [string, string | null][] = [
+                                                ["Stolen / recovered", l.stolenRecovered == null ? null : l.stolenRecovered ? "Seller says yes" : "Seller says no"],
+                                                ["Outstanding finance", l.hasOutstandingFinance == null ? null : l.hasOutstandingFinance ? "Seller says yes" : "Seller says no"],
+                                                ["Registered keeper", l.isLegalRegisteredKeeper == null ? null : l.isLegalRegisteredKeeper ? "Seller says yes" : "Seller says no"],
+                                                ["Insurance write-off", l.writeOffCategory == null ? null : l.writeOffCategory === "NONE" ? "Seller says none" : `Seller says ${l.writeOffCategory.replace(/_/g, " ")}`],
+                                                ["Imported", l.isImported == null ? null : l.isImported ? "Seller says yes" : "Seller says no"],
+                                            ]
+                                            const visibleDetails = details.filter(([, v]) => v != null && v !== "")
+                                            const visibleHistory = history.filter(([, v]) => v != null && v !== "")
+                                            const visibleDeclarations = declarations.filter(([, v]) => v != null && v !== "")
+                                            if (!visibleDetails.length && !visibleHistory.length && !visibleDeclarations.length) return null
+
+                                            const renderRows = (rows: Array<[string, string | number | null | undefined]>) =>
+                                                rows.map(([label, value]) => (
+                                                    <div key={label} className="flex justify-between gap-4 py-1 text-xs">
+                                                        <span className="text-[var(--text-muted)] shrink-0">{label}</span>
+                                                        <span className="text-[var(--text-primary)] font-semibold text-right break-words">{value}</span>
+                                                    </div>
+                                                ))
+                                            return (
+                                                <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 space-y-5">
+                                                    <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-l-2 border-primary pl-2.5">Additional vehicle information</h4>
+                                                    {visibleDetails.length > 0 && (
+                                                        <section>
+                                                            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">Ownership, history &amp; performance</h5>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">{renderRows(visibleDetails)}</div>
+                                                        </section>
+                                                    )}
+                                                    {visibleHistory.length > 0 && (
+                                                        <section>
+                                                            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2">Recorded vehicle details</h5>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">{renderRows(visibleHistory)}</div>
+                                                            <p className="text-[10px] mt-2 text-[var(--text-muted)]">Saved when the listing was created or edited; may not reflect subsequent DVLA updates.</p>
+                                                        </section>
+                                                    )}
+                                                    {visibleDeclarations.length > 0 && (
+                                                        <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                                            <h5 className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-2">Seller declarations</h5>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8">{renderRows(visibleDeclarations)}</div>
+                                                            <p className="text-[10px] mt-2 text-[var(--text-muted)]">These are the seller's statements, not independent HPI or finance checks. Review any separately provided completed report before bidding.</p>
+                                                        </section>
+                                                    )}
+                                                </div>
+                                            )
+                                        })()}
+
+                                        {Array.isArray(auction.listing.motHistory) && auction.listing.motHistory.length > 0 && (
+                                            <section className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                                <h4 className="text-xs font-bold uppercase tracking-wider border-l-2 border-primary pl-2.5 mb-2">Saved MOT history</h4>
+                                                <p className="text-[10px] text-[var(--text-muted)] mb-3">Listing-time MOT snapshot, not an independently verified or continuously updated history report.</p>
+                                                <div className="space-y-2">
+                                                    {auction.listing.motHistory.slice(0, 8).map((test, index) => (
+                                                        <div key={test.motTestNumber || `${test.completedDate || "test"}-${index}`} className="flex flex-wrap justify-between gap-2 rounded-lg border border-[var(--border-default)] p-2 text-xs">
+                                                            <span className="font-semibold">{test.testResult || "Result not recorded"} · {test.completedDate || "Date unavailable"}</span>
+                                                            <span className="text-[var(--text-muted)]">
+                                                                {[test.odometerValue ? `${Number(test.odometerValue).toLocaleString("en-GB")} ${test.odometerUnit || "mi"}` : null, test.expiryDate ? `Expires ${test.expiryDate}` : null, Array.isArray(test.defects) && test.defects.length ? `${test.defects.length} recorded items` : null].filter(Boolean).join(" · ")}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        )}
+
                                         {/* ── Features ────────────────────────────────────── */}
                                         {auction.listing.features && Array.isArray(auction.listing.features) && (auction.listing.features as string[]).length > 0 && (
                                             <div>
