@@ -54,6 +54,14 @@ describe('Block 5 model and derivative matching', () => {
             { make: 'Ford', model: 'Fiesta', variant: 'ST' },
             { model: 'Fiesta', variant: 'ST-Line', title: '2021 Ford Fiesta ST-Line' },
         )).toBeNull();
+        expect(matchMarketplaceModel(
+            { make: 'Ford', model: 'Fiesta', variant: 'ST-Line' },
+            { model: 'Fiesta', variant: 'ST-Line', title: '2021 Ford Fiesta ST-Line' },
+        )).toBe('EXACT_MODEL');
+        expect(matchMarketplaceModel(
+            { make: 'Ford', model: 'Fiesta ST' },
+            { model: 'Fiesta ST', title: '2021 Ford Fiesta ST-Line' },
+        )).toBeNull();
     });
 
     it('does not use a contradictory model field even if the title contains the target', () => {
