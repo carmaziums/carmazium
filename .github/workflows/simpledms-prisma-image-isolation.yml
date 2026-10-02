@@ -1,0 +1,70 @@
+name: Verify isolated Prisma maintenance and public API Docker images
+on:
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/Dockerfile'
+      - 'backend/package*.json'
+      - 'backend/src/partner-api/**'
+      - '.github/workflows/simpledms-prisma-image-isolation.yml'
+  push:
+    branches: [security/simpledms-prisma-image-split]
+    paths:
+      - 'backend/Dockerfile'
+      - '.github/workflows/simpledms-prisma-image-isolation.yml'
+permissions:
+  contents: read
+jobs:
+  test-separate-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build actual Node 20 Alpine public API runtime
+        run: docker build --target runtime -t carmazium-simpledms-api-ci -f backend/Dockerfile backend
+      - name: Build separate on-demand Prisma maintenance image
+        run: docker build --target prisma-maintenance -t carmazium-prisma-maintenance-ci -f backend/Dockerfile backend
+      - name: Check image purposes and locked client compatibility
+        run: |
+          docker run --rm --network none --entrypoint node carmazium-simpledms-api-ci -e "
+            const fs=require('node:fs');
+            for(const name of ['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics']) {
+              if(fs.existsSync('node_modules/'+name+'/package.json'))throw Error('Forbidden HTTP runtime package: '+name);
+            }
+            if(!fs.existsSync('node_modules/.prisma/client'))throw Error('Generated Prisma query client absent');
+            const c=require('@prisma/client');
+            const db=new c.PrismaClient();
+            if(typeof db.user.findMany !== 'function')throw Error('Prisma client schema invalid');
+            console.log('Public API image excludes CLI; generated Prisma client usable');
+          "
+          docker run --rm --network none carmazium-prisma-maintenance-ci --version
+          docker image inspect carmazium-prisma-maintenance-ci --format '{{json .Config.ExposedPorts}}' | grep -Fx null
+          docker image inspect carmazium-simpledms-api-ci --format '{{json .Config.Cmd}}' | grep -F 'dist/main'
+      - name: Run public API image in isolated synthetic mode
+        run: |
+          set -eu
+          id="$(docker run -d --network bridge -p 127.0.0.1:18080:8080 \
+            -e STAGING_SYNTHETIC_ONLY=true -e STAGING_PUBLIC_HOST=synthetic-test.up.railway.app \
+            -e PARTNER_API_ENABLED=false -e PARTNER_API_SIMPLEDMS_ENABLED=false \
+            --entrypoint node carmazium-simpledms-api-ci dist/partner-api/staging.main.js)"
+          trap 'docker logs "$id" || true; docker rm -f "$id" || true' EXIT
+          ready=0
+          for n in $(seq 1 30); do
+            if curl --max-time 2 -fsS http://127.0.0.1:18080/health/live > /tmp/simpledms-health.json; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          node -e "let h=require('/tmp/simpledms-health.json');if(!h.syntheticOnly||!h.ok)process.exit(1)"
+          code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/partners/v1/simpledms/auctions)"
+          echo "Disabled partner access returns HTTP $code"
+          test "$code" = 404
+      - name: Collect image inventory without production secrets
+        run: |
+          docker image inspect carmazium-simpledms-api-ci --format 'API size bytes: {{.Size}}'
+          docker image inspect carmazium-prisma-maintenance-ci --format 'Maintenance size bytes: {{.Size}}'
+          docker run --rm --network none --entrypoint node carmazium-simpledms-api-ci -e "
+            const fs=require('fs');
+            const modules=['@prisma/client','@prisma/config','prisma','deepmerge-ts','bcrypt','@nestjs/core'];
+            for(const m of modules)console.log(m+': '+(fs.existsSync('node_modules/'+m+'/package.json')?'PRESENT':'ABSENT'));
+          "
