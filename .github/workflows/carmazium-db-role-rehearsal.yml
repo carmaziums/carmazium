@@ -85,8 +85,14 @@ jobs:
           $db -c "UPDATE cm_isolated.listings SET title='synthetic updated' WHERE id=1" >/dev/null
           test "$($db -tAc "SELECT title FROM cm_isolated.listings WHERE id=1")" = "synthetic updated"
           $db -c "DELETE FROM cm_isolated.listings WHERE id=1" >/dev/null
-          $db -c "INSERT INTO cm_isolated.sessions(sid,sess) VALUES ('synthetic','{}')" >/dev/null
-          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic'")" = 1
+          # Match the observed live session-store schema without importing a
+          # single customer session: varchar SID, JSON payload and expiry.
+          $db -c "INSERT INTO cm_isolated.sessions(sid,sess,expire) VALUES ('synthetic','{}'::json,now() + interval '1 hour')" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND expire > now() AND json_typeof(sess) = 'object'")" = 1
+          $db -c "UPDATE cm_isolated.sessions SET sess=json_build_object('role','test'),expire=now() + interval '2 hours' WHERE sid='synthetic'" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND sess->>'role'='test' AND expire > now() + interval '90 minutes'")" = 1
+          $db -c "DELETE FROM cm_isolated.sessions WHERE sid='synthetic'" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic'")" = 0
           test "$($db -tAc "SELECT count(*) FROM cm_isolated.rls_guarded")" = 0
           test "$($db -tAc "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolbypassrls FROM pg_roles WHERE rolname=current_user")" = f
           echo "Synthetic runtime DML, explicit session RLS policy and default-deny guard verified."
