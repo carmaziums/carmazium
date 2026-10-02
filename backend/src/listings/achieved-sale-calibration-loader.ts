@@ -112,6 +112,7 @@ export async function assessHistoricalAuctionOutcomes(
             mileage: row.mileage ?? -1,
         });
         return !!row.vrm
+            && (mode !== 'on' || auditedIds.has(row.id.toLowerCase()))
             && clean(row.vrm) !== normalized.registration // No self-fitting
             && matching.make === normalized.make
             && matching.model === normalized.model
