@@ -7,9 +7,9 @@
 # Build: docker build --target runtime -t carmazium-backend-api .
 #        docker build --target prisma-maintenance -t carmazium-prisma-maintenance .
 # The default final stage remains runtime for existing Fly deployments.
-ARG NODE_VERSION=20.10.0
+ARG NODE_IMAGE=node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
@@ -22,7 +22,7 @@ RUN npx prisma generate && npx nest build
 # The production schema history includes manually applied SQL and is NOT
 # certified for arbitrary `prisma migrate deploy`, much less `db push`.
 # No database credentials are present at build time or baked into this image.
-FROM node:${NODE_VERSION}-alpine AS prisma-maintenance
+FROM ${NODE_IMAGE} AS prisma-maintenance
 WORKDIR /app
 ENV NODE_ENV=production
 # Copy CLI tooling and the schema, NOT the compiled HTTP application or its
@@ -36,7 +36,7 @@ ENTRYPOINT ["/app/node_modules/.bin/prisma"]
 CMD ["--version"]
 
 # Public API runtime: no migration CLI or Prisma CLI dependency chain.
-FROM node:${NODE_VERSION}-alpine AS runtime
+FROM ${NODE_IMAGE} AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080

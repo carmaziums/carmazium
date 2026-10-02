@@ -1,7 +1,7 @@
 # Restricted Prisma maintenance image — operational runbook
 
 **Status: proposed; must pass Docker CI and an infrastructure review before
-changing the running Fly API.** The two image targets are built from the same
+changing the running Fly API.** The two image targets use the same pinned, supported Node 24 Alpine base digest and are built from the same
 source revision with the same Prisma schema/client versions but have different
 capabilities.
 
@@ -83,7 +83,7 @@ preserves backups, incident recovery and manual SQL deployment.
 
 ## Image security acceptance
 
-1. CI builds *both* targets on the repo's Dockerfile (Node 20 Alpine)
+1. CI builds *both* targets on the repo's Dockerfile (pinned Node 24 Alpine)
    without production secrets and checks the maintenance command's version.
 2. CI proves the API filesystem contains neither `node_modules/prisma` nor
    `node_modules/@prisma/config` nor `node_modules/deepmerge-ts` while
@@ -94,9 +94,9 @@ preserves backups, incident recovery and manual SQL deployment.
 4. The same image version receives a container filesystem dependency scan
    (rather than relying only on `npm audit` against a lockfile which still
    lists optional peer dependencies that are physically removed).
-5. If Node 20 runtime warnings from `geoip-lite` are encountered, run a
-   separate Node-compatibility review. Do not silently change production's
-   Node major version during this security remediation.
+5. Node 24 has passed a separate full-backend, bcrypt, GeoIP, Docker and
+   synthetic-API compatibility run (Actions 37070505760). Every digest update
+   requires the same checks; no change to live Fly is implied.
 6. A human operator verifies a private, short-lived maintenance task can
    read the *non-production* database and migrate status, then approves an
    incident-recovery exercise and the operational handover **before** changing
@@ -104,3 +104,7 @@ preserves backups, incident recovery and manual SQL deployment.
 
 Production partner API and SimpleDMS partner credentials remain disabled
 until the separate privacy/data-sharing gates are complete.
+
+## Supported image verification (pre-release)
+
+The supported Node 24 evaluation at GitHub Actions run 37070505760 completed backend regression tests, separate image builds and image scanning: the public runtime reported 0 critical / 0 high / 1 medium. The only medium advisory is a nested `js-yaml` under Nest Swagger; track this separately. The tested Node image digest is pinned in the Dockerfile, preventing an unreviewed tag move. The restricted maintenance image's dependency scan is recorded separately because it intentionally includes Prisma CLI and its own maintenance-only dependency risks.

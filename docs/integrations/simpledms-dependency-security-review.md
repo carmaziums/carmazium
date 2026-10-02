@@ -1,5 +1,5 @@
 # SimpleDMS dependency-security investigation (internal)
-Status: **0 critical and 3 high in validated minimal runtime; Prisma CLI high findings remain. Do not issue external credentials.**
+Status: **Image isolation implemented; supported Node 24 public image test reports 0 critical, 0 high, 1 medium. Prisma CLI advisories remain in restricted maintenance tooling. Production not changed.**
 Date: 2026-10-02. Scope: `backend/package-lock.json`, auth/runtime dependencies, isolated synthetic staging. No production deploy is authorised by this investigation.
 
 ## Reproducible evidence
@@ -35,3 +35,12 @@ These are advisory findings and dependency presence, not independent evidence of
 - Keep SimpleDMS integration draft PR #333 and security PR #346 separate until code review, passing final checks and deployment approval. External staging key must remain withheld pending required security and signed data agreement.
 
 References: `https://github.com/carmaziums/carmazium/actions/runs/37068848143`; `https://github.com/carmaziums/carmazium/actions/runs/37066357064`; `https://github.com/carmaziums/carmazium/actions/runs/37067432566`; `https://github.com/carmaziums/carmazium/actions/runs/37067774302`; `https://github.com/carmaziums/carmazium/pull/346`.
+
+## Image-level follow-up — supported Node 24
+
+- First actual Node 20.10 Alpine image scan (Actions 37070064796) found 1 critical, 27 high and 30 medium, **predominantly the legacy base image's globally bundled npm and outdated Alpine packages**, not Prisma code reachable in the HTTP service.
+- After removing global npm/npx from the API image and upgrading available Alpine packages, the actual Node 20 image scan (Actions 37070368914) found **0 critical, 0 high, 1 medium**.
+- Node 20 reached end of support 2026-04-30 according to nodejs/Release. A separate Node 24 evaluation (Actions 37070505760) passed full backend tests, bcrypt/GeoIP checks, both image builds and synthetic API startup. The **supported Node 24 public image scanner** likewise reported **0 critical, 0 high, 1 medium**.
+- The remaining medium is nested `js-yaml@5.3.0` under `@nestjs/swagger`, with a patched 5.4.1 available but pinned dependency compatibility to assess separately; do not introduce an unverified global override.
+- The Prisma CLI is excluded physically from the public image and retained **only** in the separate non-root, private maintenance image. Its known advisories require scoped operational acceptance; migration access must not become public. Image separation alone does not remove the need to verify separate runtime and DDL-capable database roles before cutover.
+- The base image is pinned to the **exact digest** verified by the Node 24 compatibility run; future image updates must repeat regression and filesystem vulnerability scanning.

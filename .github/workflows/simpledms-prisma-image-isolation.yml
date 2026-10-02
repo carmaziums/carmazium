@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build actual Node 20 Alpine public API runtime
+      - name: Build pinned supported Node 24 Alpine public API runtime
         run: docker build --target runtime -t carmazium-simpledms-api-ci -f backend/Dockerfile backend
       - name: Build separate on-demand Prisma maintenance image
         run: docker build --target prisma-maintenance -t carmazium-prisma-maintenance-ci -f backend/Dockerfile backend
@@ -29,6 +29,7 @@ jobs:
         run: |
           docker run --rm --network none --entrypoint node carmazium-simpledms-api-ci -e "
             const fs=require('node:fs');
+            if(!process.versions.node.startsWith('24.'))throw Error('Unexpected unsupported Node runtime: '+process.version);
             for(const name of ['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics']) {
               if(fs.existsSync('node_modules/'+name+'/package.json'))throw Error('Forbidden HTTP runtime package: '+name);
             }
@@ -116,6 +117,7 @@ jobs:
           const counts={};
           for(const r of rows)counts[r.severity]=(counts[r.severity]||0)+1;
           console.log('ACTUAL API IMAGE SCAN '+JSON.stringify(counts));
+          if((counts.CRITICAL||0)+(counts.HIGH||0)>0){console.error('Public image has unresolved critical or high vulnerabilities');process.exitCode=1;}
           for(const r of rows.filter(x=>x.severity==='CRITICAL'||x.severity==='HIGH').slice(0,16))
             console.log('FINDING '+JSON.stringify(r));
           NODE
@@ -125,6 +127,32 @@ jobs:
         with:
           name: simpledms-prisma-isolated-api-image-scan
           path: trivy-simpledms-api-image.json
+          retention-days: 7
+      - name: Scan separate, non-public Prisma maintenance image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-prisma-maintenance-ci
+          format: json
+          output: trivy-prisma-maintenance-image.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Report restricted maintenance image findings separately
+        run: |
+          node - <<'NODE'
+          const r=require('./trivy-prisma-maintenance-image.json');
+          const a=(r.Results||[]).flatMap(t=>(t.Vulnerabilities||[]).map(v=>({target:t.Target,severity:v.Severity,pkg:v.PkgName})));
+          const c={};for(const x of a)c[x.severity]=(c[x.severity]||0)+1;
+          console.log('RESTRICTED MAINTENANCE IMAGE SCAN '+JSON.stringify(c));
+          for(const x of a.filter(v=>v.severity==='CRITICAL'||v.severity==='HIGH').slice(0,18))
+            console.log('RESTRICTED IMAGE FINDING '+JSON.stringify(x));
+          NODE
+      - name: Archive restricted-image security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-restricted-prisma-maintenance-image-scan
+          path: trivy-prisma-maintenance-image.json
           retention-days: 7
       - name: Collect image inventory without production secrets
         run: |
