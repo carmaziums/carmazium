@@ -80,6 +80,7 @@ export interface VehicleValuationResult {
         rawLiveUkComparables?: number;
         liveUkAttempts?: number;
         blendedMarketAttempts?: number;
+        searchDurationMs?: number;
         liveSources?: string[];
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
     };
