@@ -60,10 +60,12 @@ export interface VehicleValuationComparable {
 import type { ValuationIdentityVerification } from './vehicle-identity';
 import { calculateMarketChannelGuides } from './market-channel-methodologies';
 import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
+import type { ValuationConfidenceAssessment } from './valuation-evidence-confidence';
 
 export interface VehicleValuationResult {
     identityVerification?: ValuationIdentityVerification;
     specificationAdjustment?: SpecificationAdjustmentAudit;
+    confidenceAssessment?: ValuationConfidenceAssessment;
     low: number;
     mid: number;
     high: number;
