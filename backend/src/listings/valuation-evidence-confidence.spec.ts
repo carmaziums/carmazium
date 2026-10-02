@@ -54,6 +54,7 @@ describe('Block 8 conservative, auditable evidence-quality rubric', () => {
         for (const n of [1, 2]) {
             const r = assessValuationConfidence(basis({
                 marketEvidence: {
+                    carmaziumComparables: 0,
                     liveUkComparables: n, exactModelComparables: n,
                     liveSources: ['a.example', 'b.example'],
                     checkedAt: '2026-10-02T11:00:00Z',
@@ -75,7 +76,7 @@ describe('Block 8 conservative, auditable evidence-quality rubric', () => {
             { liveUkComparables: 5, exactModelComparables: 5,
               liveSources: ['a.example', 'b.example'], checkedAt: 'invalid-date' },
         ]) {
-            const r = assessValuationConfidence(basis({ marketEvidence: evidence }),
+            const r = assessValuationConfidence(basis({ marketEvidence: { carmaziumComparables: 0, ...evidence } }),
                 { identityStatus: 'MODEL_VERIFIED', now: today });
             expect(r.confidence).toBe('LOW');
         }
