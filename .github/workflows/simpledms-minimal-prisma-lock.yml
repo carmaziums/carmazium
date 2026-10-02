@@ -1,0 +1,38 @@
+name: Generate pinned minimal Prisma maintenance dependency lock
+on:
+  push:
+    branches: [security/simpledms-prisma-image-split]
+    paths:
+      - backend/prisma-maintenance/package.json
+      - .github/workflows/simpledms-minimal-prisma-lock.yml
+permissions:
+  contents: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Generate deterministic separate Prisma-only lock
+        working-directory: backend/prisma-maintenance
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-fund
+          npm ci --no-fund
+          node -e "const x=require('./package-lock.json');if(Object.keys(x.packages[''].dependencies||{}).join(',')!=='prisma'||x.packages['node_modules/prisma']?.version!=='6.19.3')process.exit(1);console.log('Prisma-only CLI pinned to 6.19.3')"
+          ./node_modules/.bin/prisma --version
+      - name: Commit minimal lockfile without modifying application dependencies
+        run: |
+          test -f backend/prisma-maintenance/package-lock.json
+          unexpected="$(git diff --name-only -- . ':!backend/prisma-maintenance/package-lock.json')"
+          if [ -n "$unexpected" ]; then echo "Unexpected files: $unexpected"; exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/prisma-maintenance/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "security: pin standalone Prisma CLI dependency lock"
+            git push origin HEAD:security/simpledms-prisma-image-split
+          fi
