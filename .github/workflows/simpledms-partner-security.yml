@@ -1,36 +1,158 @@
-name: SimpleDMS partner dependency security audit
+name: SimpleDMS public-runtime and maintenance dependency security
 on:
   pull_request:
     paths:
+      - 'backend/Dockerfile'
       - 'backend/package.json'
       - 'backend/package-lock.json'
+      - 'backend/prisma-maintenance/**'
       - 'backend/src/partner-api/**'
       - '.github/workflows/simpledms-partner-security.yml'
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  backend-production-dependency-audit:
+  backend-node24-regressions:
+    name: Full Node 24 backend regression
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '24'
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - name: Audit backend runtime dependencies without automatic changes
-        working-directory: backend
+      - name: Check generated Prisma, types, backend tests and build
         run: |
-          set +e
-          npm audit --omit=dev --json > "$RUNNER_TEMP/simpledms-audit.json"
-          status=$?
-          set -e
-          node -e "const a=require(process.env.RUNNER_TEMP+'/simpledms-audit.json');const v=a.metadata?.vulnerabilities||{};console.log('Production dependency audit: '+JSON.stringify(v)); if((v.high||0)+(v.critical||0)>0)process.exit(1)"
-      - name: Preserve full report privately for security review
+          npm ci
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+
+  public-http-runtime-security:
+    name: Block critical/high vulnerabilities in actual public HTTP image
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Require private Prisma CLI version to match backend lock
+        run: |
+          node - <<'NODE'
+          const app=require('./backend/package-lock.json');
+          const cli=require('./backend/prisma-maintenance/package-lock.json');
+          const a=app.packages?.['node_modules/prisma']?.version;
+          const b=cli.packages?.['node_modules/prisma']?.version;
+          const roots=cli.packages?.['']?.dependencies||{};
+          if(!a||a!==b||Object.keys(roots).length!==1||roots.prisma!==b)
+            throw Error('Minimal maintenance CLI version is out of sync with backend');
+          console.log('Locked maintenance Prisma CLI matches backend: '+a);
+          NODE
+      - name: Build real, pinned Node 24 public HTTP runtime image
+        run: docker build --target runtime -t carmazium-simpledms-reviewed-public -f backend/Dockerfile backend
+      - name: Verify Prisma runtime present and migration/npm CLIs absent
+        run: |
+          docker run --rm --network none --entrypoint node carmazium-simpledms-reviewed-public -e "
+            const fs=require('node:fs');
+            if(!process.versions.node.startsWith('24.'))throw Error('Unexpected Node version');
+            for(const p of ['node_modules/prisma','node_modules/@prisma/config','node_modules/deepmerge-ts',
+              '/usr/local/lib/node_modules/npm','/usr/local/bin/npm','/usr/local/bin/npx'])
+              if(fs.existsSync(p))throw Error('Forbidden public-image maintenance/tooling package: '+p);
+            const c=require('@prisma/client'); const db=new c.PrismaClient();
+            if(typeof db.user.findMany!=='function')throw Error('Generated Prisma query client missing');
+            console.log('Public image excludes Prisma maintenance tools');
+          "
+      - name: Confirm synthetic backend runs and partner API remains disabled
+        run: |
+          set -eu
+          id="$(docker run -d -p 127.0.0.1:18380:8080 \
+            -e STAGING_SYNTHETIC_ONLY=true -e STAGING_PUBLIC_HOST=synthetic-test.up.railway.app \
+            -e PARTNER_API_ENABLED=false -e PARTNER_API_SIMPLEDMS_ENABLED=false \
+            --entrypoint node carmazium-simpledms-reviewed-public dist/partner-api/staging.main.js)"
+          trap 'docker logs "$id" || true; docker rm -f "$id" || true' EXIT
+          ready=0
+          for i in $(seq 1 30);do
+            if curl -fsS --max-time 2 http://127.0.0.1:18380/health/live >/tmp/partner-health.json;then ready=1;break;fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          node -e "const h=require('/tmp/partner-health.json');if(!h.ok||!h.syntheticOnly)process.exit(1)"
+          status="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:18380/partners/v1/simpledms/auctions)"
+          echo "Partner feed disabled HTTP status: $status"
+          test "$status" = 404
+      - name: Scan actual installed public image (not full development lockfile)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-simpledms-reviewed-public
+          format: json
+          output: simpledms-public-runtime-trivy.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Required public-image critical/high security gate
+        run: |
+          test -s simpledms-public-runtime-trivy.json
+          node - <<'NODE'
+          const report=require('./simpledms-public-runtime-trivy.json');
+          if(!Array.isArray(report.Results))throw Error('No readable image vulnerability results');
+          const items=report.Results.flatMap(x=>(x.Vulnerabilities||[]).map(v=>({
+            severity:v.Severity,package:v.PkgName,target:x.Target,
+          })));
+          const counts={};for(const v of items)counts[v.severity]=(counts[v.severity]||0)+1;
+          console.log('ACTUAL PUBLIC API IMAGE SECURITY GATE '+JSON.stringify(counts));
+          for(const v of items.filter(v=>v.severity==='CRITICAL'||v.severity==='HIGH').slice(0,20))
+            console.log('UNRESOLVED PUBLIC FINDING '+JSON.stringify(v));
+          if((counts.CRITICAL||0)+(counts.HIGH||0)>0)throw Error('Public image has critical/high findings');
+          NODE
+      - name: Archive public image scan even if gate fails
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: simpledms-backend-production-dependency-audit
-          path: ${{ runner.temp }}/simpledms-audit.json
+          name: simpledms-required-public-api-image-scan
+          path: simpledms-public-runtime-trivy.json
+          retention-days: 7
+
+  dependency-and-private-cli-inventory:
+    name: Preserve complete lockfile and private maintenance risk evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Audit full app lockfile INCLUDING separately isolated Prisma optional peer
+        working-directory: backend
+        run: |
+          npm audit --omit=dev --json > "$RUNNER_TEMP/partner-full-lockfile-audit.json" || true
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/partner-full-lockfile-audit.json','utf8'));
+          if(!p.metadata?.vulnerabilities)throw Error('App lockfile audit did not produce valid data');
+          console.log('FULL LOCKFILE inventory; not a measurement of shipped API image: '+JSON.stringify(p.metadata.vulnerabilities));
+          console.log('The independent, strictly gated public-image filesystem scan is authoritative for public deployment. This report retains maintenance/optional-peer advisory visibility.');
+          NODE
+      - name: Audit minimal independently locked private Prisma maintenance CLI
+        working-directory: backend/prisma-maintenance
+        run: |
+          npm audit --omit=dev --json > "$RUNNER_TEMP/partner-private-prisma-cli-audit.json" || true
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/partner-private-prisma-cli-audit.json','utf8'));
+          if(!p.metadata?.vulnerabilities)throw Error('Private Prisma CLI audit did not produce valid data');
+          console.log('PRIVATE MAINTENANCE CLI advisory inventory: '+JSON.stringify(p.metadata.vulnerabilities));
+          console.log('Remaining upstream Prisma deepmerge-ts risk requires private, ephemeral operation and explicit ops acceptance; this job does NOT release real database credentials.');
+          NODE
+      - name: Preserve both raw inventories without hiding residual advisories
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-full-lockfile-and-private-cli-audits
+          path: |
+            ${{ runner.temp }}/partner-full-lockfile-audit.json
+            ${{ runner.temp }}/partner-private-prisma-cli-audit.json
           retention-days: 7
