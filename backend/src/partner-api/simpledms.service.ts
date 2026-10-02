@@ -110,7 +110,7 @@ export class SimpleDmsService {
         // if the Supabase project domain was explicitly allowlisted.
         if (url.hostname.endsWith('.supabase.co') &&
             !url.pathname.startsWith('/storage/v1/object/public/listings/')) return false;
-        return !/(?:^|\/)(?:private|handover|auction-handover-documents)(?:\/|$)/i.test(url.pathname);
+        return !/(?:^|\/)(?:private|kyc|identity|documents|handover|auction-handover-documents)(?:\/|$)/i.test(url.pathname);
       } catch {
         return false;
       }
