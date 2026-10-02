@@ -273,6 +273,12 @@ export class ListingsService {
                     status: true,
                     winningBidAmount: true,
                     updatedAt: true,
+                    winnerId: true,
+                    buyerFeePaid: true,
+                    sellerFundsConfirmedAt: true,
+                    sellerFundsConfirmationRequired: true,
+                    sellerBonusReleased: true,
+                    buyerRefusedAt: true,
                 },
             },
             offers: {
@@ -351,12 +357,29 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
-                comparables.push({
-                    ...common,
-                    price: Number(row.auction.winningBidAmount),
-                    kind: 'AUCTION_RESULT',
-                });
+            if (row.type === 'AUCTION') {
+                // A highest bid is not a completed sale. A result only counts
+                // after paid fee, valid winner, seller confirmation and
+                // approved handover; legacy explicit exemption is honoured.
+                // Seller funds confirmation is attestation, not bank proof.
+                const auction = row.auction;
+                const handedOver = row.status === 'SOLD'
+                    && auction?.sellerBonusReleased === true
+                    && auction?.buyerFeePaid === true
+                    && !!auction?.winnerId
+                    && !auction?.buyerRefusedAt
+                    && (auction?.sellerFundsConfirmedAt
+                        || auction?.sellerFundsConfirmationRequired === false);
+                if (handedOver && auction?.winningBidAmount != null) {
+                    comparables.push({
+                        ...common,
+                        price: Number(auction.winningBidAmount),
+                        kind: 'AUCTION_RESULT',
+                        saleChannel: 'AUCTION',
+                        verifiedAuctionSale: true,
+                    });
+                }
+                // Never relabel an uncompleted auction as a completed SALE.
                 continue;
             }
 
@@ -370,11 +393,14 @@ export class ListingsService {
                 continue;
             }
 
-            if (row.sale?.soldPrice != null) {
+            if (row.sale?.soldPrice != null && row.status === 'SOLD') {
                 comparables.push({
                     ...common,
                     price: Number(row.sale.soldPrice),
                     kind: 'SALE',
+                    // The platform does not yet have independently audited
+                    // private-party seller provenance for sale-price cohorts.
+                    saleChannel: 'RETAIL',
                 });
                 continue;
             }
