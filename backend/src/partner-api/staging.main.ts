@@ -39,6 +39,13 @@ function fixtures() {
   }];
 }
 
+@Controller('health')
+class SyntheticHealthController {
+  @Get('live')
+  @Header('Cache-Control', 'no-store')
+  live() { return { ok: true, syntheticOnly: true }; }
+}
+
 @Controller('staging-assets')
 class SyntheticAssetsController {
 
@@ -74,7 +81,7 @@ class SyntheticAuctionController {
   imports: [ConfigModule.forRoot({ isGlobal: true }), ThrottlerModule.forRoot([{
     ttl: 60_000, limit: 60,
   }])],
-  controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController],
+  controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController, SyntheticHealthController],
   providers: [
     SimpleDmsGuard, SimpleDmsService,
     { provide: PrismaService, useValue: syntheticPrisma },
