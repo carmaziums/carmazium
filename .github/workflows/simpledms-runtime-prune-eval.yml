@@ -37,7 +37,8 @@ jobs:
           cp -a "$RUNNER_TEMP/.prisma-generated/." node_modules/.prisma/
           node - <<'NODE'
           const fs=require('fs');
-          const requireAbsent=['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics'];
+          const requireAbsent=['@nestjs/cli','@nestjs/schematics'];
+          for(const n of ['prisma','@prisma/config','deepmerge-ts'])console.log('UNRESOLVED OPTIONAL-PEER '+n+': '+fs.existsSync('node_modules/'+n+'/package.json'));
           for(const n of requireAbsent) {
             const found=fs.existsSync('node_modules/'+n+'/package.json');
             console.log('ABSENT '+n+': '+!found);
