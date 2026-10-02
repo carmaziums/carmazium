@@ -364,6 +364,7 @@ export class ListingsService {
                 // Seller funds confirmation is attestation, not bank proof.
                 const auction = row.auction;
                 const handedOver = row.status === 'SOLD'
+                    && auction?.status === 'ENDED'
                     && auction?.sellerBonusReleased === true
                     && auction?.buyerFeePaid === true
                     && !!auction?.winnerId
