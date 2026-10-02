@@ -16,7 +16,7 @@ export class SimpleDmsController {
   constructor(private readonly service: SimpleDmsService) {}
 
   @Get('auctions')
-  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('Cache-Control', 'private, max-age=0, must-revalidate')
   @Header('X-Robots-Tag', 'noindex')
   list(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
