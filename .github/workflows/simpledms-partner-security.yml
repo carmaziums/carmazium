@@ -10,6 +10,11 @@ on:
       - 'backend/src/main.ts'
       - 'backend/src/core/config/session-table-config*'
       - 'backend/scripts/security/**'
+      - 'backend/src/tasks/db-backup.service.ts'
+      - 'backend/src/tasks/db-backup.service.spec.ts'
+      - 'backend/src/tasks/backup-connection.ts'
+      - 'backend/src/tasks/backup-connection.spec.ts'
+      - '.github/workflows/carmazium-backup-preflight-ci.yml'
       - '.github/workflows/carmazium-db-role-rehearsal.yml'
       - '.github/workflows/simpledms-partner-security.yml'
   workflow_dispatch:
