@@ -28,14 +28,23 @@ export function canonicalValuationMake(input: string): string {
 export function canonicalValuationModel(model: string, make: string): string {
     const makeKey = canonicalValuationMake(make);
     let value = clean(model);
-    // Registry, MOT and manual input can return "Audi A1" or "A1".
-    // Remove ONLY a full repeated manufacturer prefix; never fuzzy-match
-    // short model names or strip generation/performance suffixes.
-    while (makeKey && value.startsWith(makeKey) && value.length > makeKey.length) {
-        value = value.slice(makeKey.length);
+    // Prefer the longest brand prefix: MERCEDESBENZ before MERCEDES.
+    // The raw make handles "VW Golf"; the canonical make handles
+    // "Volkswagen Golf" when the separate make field is "VW".
+    const prefixes = [...new Set([
+        makeKey, clean(make), ...(makeKey === 'MERCEDES' ? ['MERCEDESBENZ'] : []),
+    ])].filter(Boolean).sort((a, b) => b.length - a.length);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const prefix of prefixes) {
+            if (value.startsWith(prefix) && value.length > prefix.length) {
+                value = value.slice(prefix.length);
+                changed = true;
+                break;
+            }
+        }
     }
-    // Source data sometimes expands the prefix with the full manufacturer
-    // while the request uses a documented alias such as VW.
     return value;
 }
 
