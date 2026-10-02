@@ -47,7 +47,7 @@ describe('DbBackupService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.DATABASE_URL = 'postgresql://synthetic-app.invalid/test';
+    process.env.DATABASE_URL = 'postgresql://synthetic-user:synthetic-pass@synthetic-app.invalid/test';
     delete process.env.BACKUP_DATABASE_URL;
     delete process.env.REQUIRE_SEPARATE_BACKUP_ROLE;
   });
@@ -78,7 +78,7 @@ describe('DbBackupService', () => {
       expect.objectContaining({
         env: expect.objectContaining({
           PGHOST: 'synthetic-app.invalid',
-          PGUSER: 'synthetic-app',
+          PGUSER: 'synthetic-user',
           PGDATABASE: 'test',
         }),
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -134,7 +134,7 @@ describe('DbBackupService', () => {
     );
   });
   it('BACKUP-04: uses separately configured backup URI without placing secrets in the command arguments', async () => {
-    process.env.BACKUP_DATABASE_URL = 'postgresql://synthetic-backup-credential.invalid/test';
+    process.env.BACKUP_DATABASE_URL = 'postgresql://synthetic-backup-user:synthetic-backup-pass@synthetic-backup-credential.invalid/test';
     process.env.REQUIRE_SEPARATE_BACKUP_ROLE = 'true';
     const { execFileSync } = require('child_process');
     const module: TestingModule = await Test.createTestingModule({
