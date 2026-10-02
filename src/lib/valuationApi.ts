@@ -68,6 +68,15 @@ export interface VehicleValuation {
     retail: {
         suggestedAsking: number
         suggestedMinimum: number
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        observedAsks?: number
+    }
+    privateSale?: {
+        low: number
+        mid: number
+        high: number
+        evidenceBasis: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        verifiedSales: number
     }
     auction: {
         marketValue: number
@@ -75,6 +84,8 @@ export interface VehicleValuation {
         reserveLow: number
         reserveHigh: number
         suggestedReserve: number
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        verifiedOutcomes?: number
     }
 }
 
@@ -291,6 +302,8 @@ export function applyVehicleValuationAdjustments(
     const mid = roundMoney(base.mid * factor)
     const high = roundMoney(base.high * factor)
     const auctionMarketValue = roundMoney(base.auction.marketValue * factor)
+    const auctionReserveLow = roundMoney(base.auction.reserveLow * factor)
+    const auctionReserveHigh = Math.max(auctionReserveLow + 50, roundMoney(base.auction.reserveHigh * factor))
 
     return {
         ...base,
@@ -299,15 +312,23 @@ export function applyVehicleValuationAdjustments(
         high,
         explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
+            ...base.retail,
             suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
             suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
         },
+        privateSale: base.privateSale ? {
+            ...base.privateSale,
+            low: roundMoney(base.privateSale.low * factor),
+            mid: roundMoney(base.privateSale.mid * factor),
+            high: roundMoney(base.privateSale.high * factor),
+        } : undefined,
         auction: {
+            ...base.auction,
             marketValue: auctionMarketValue,
-            openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
-            reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
-            reserveHigh: auctionMarketValue,
-            suggestedReserve: roundMoney(auctionMarketValue * 0.95),
+            openingBid: Math.min(roundMoney(base.auction.openingBid * factor), Math.max(500, auctionReserveLow - 50)),
+            reserveLow: auctionReserveLow,
+            reserveHigh: auctionReserveHigh,
+            suggestedReserve: Math.max(auctionReserveLow, Math.min(auctionReserveHigh, roundMoney(base.auction.suggestedReserve * factor))),
         },
     }
 }
@@ -390,18 +411,28 @@ function finishEstimate(
                 ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age and mileage.'
                 : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age and mileage and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
         retail: {
-            // Retail uses the upper market guide.
             suggestedAsking: high,
             suggestedMinimum: mid,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            observedAsks: values.length,
+        },
+        privateSale: {
+            low,
+            mid: roundMoney((low + mid) / 2),
+            high: mid,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            verifiedSales: 0,
         },
         auction: {
-            // Auction uses the lower dealer-buy guide so traders retain
-            // realistic preparation, warranty and resale margin.
+            // Registration-free browser-only fallback: provisional guides,
+            // not observed auction clearing prices or automatic reserves.
             marketValue: low,
-            openingBid: Math.round(low * 0.70 * 100) / 100,
-            reserveLow: Math.round(low * 0.90 * 100) / 100,
-            reserveHigh: Math.round(low * 1.00 * 100) / 100,
-            suggestedReserve: roundMoney(low * 0.95),
+            openingBid: roundMoney(Math.max(500, low - Math.max(100, mid - low))),
+            reserveLow: roundMoney(Math.max(500, low - Math.max(100, mid - low) / 4)),
+            reserveHigh: roundMoney(low + Math.max(100, mid - low) / 4),
+            suggestedReserve: low,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            verifiedOutcomes: 0,
         },
     }
 }
