@@ -15,7 +15,7 @@ handover and dispute handling **remain exclusively on CarMazium**.
 No account, session, admin permission, payment authority, seller identity, VIN,
 handover proof, reserve price, internal valuation or buyer identity is issued to
 SimpleDMS by this API. Retail listings are not included. Data fields cannot be
-expanded without a reviewed code change, except the three narrowly scoped
+expanded without a reviewed code change, except the narrowly scoped
 configuration flags described below.
 
 ## Endpoints
@@ -30,8 +30,8 @@ CarMazium user cookies, Supabase access tokens and ordinary admin/API keys do
 not authenticate this feed.
 
 Direct auction links carry fixed `utm_source=simpledms` and `utm_medium=partner_api` tags for CarMazium referral attribution. They do not carry secrets or personal data.\n\nThe default page size is 25; allowed page range 1–1000 and size 1–50. Results
-include a current live-vehicle total and a `hasMore` marker. Responses send
-`Cache-Control: private, no-store`, and partner routes are excluded from public
+include a current live-vehicle total and a `hasMore` marker. Inventory responses send
+`Cache-Control: private, max-age=0, must-revalidate` (detail responses are `no-store`), and partner routes are excluded from public
 Swagger. The partner feed allows 60 requests/minute per client IP by default.
 Partners must not make their API key available in browsers, mobile apps, source
 control, diagnostic logs or shared screenshots.
@@ -184,7 +184,7 @@ best-effort: users declining tracking or leaving before authentication, staff
 role attribution, disabled tracking, or missing partner-side metrics mean some
 conversions cannot be proven. It is NOT a real-time partner-facing endpoint.
 
-Data-sharing agreement: permitted data cached solely for BrowseSmart matching,
+Data-sharing agreement: permitted data cached solely for BuySmart matching,
 reports and the agreed 90-day pilot; refresh 2–5 minutes; delete inactive
 auction records promptly and all permitted cache on termination within an
 agreed contractual deadline. Confirm incident handling, sublicensing bans and
