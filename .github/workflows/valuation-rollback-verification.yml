@@ -1,0 +1,91 @@
+name: Valuation Whole-System Revert Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'src/**'
+      - 'carmazium app/carmazium app/**'
+      - 'scripts/valuation-rollback.mjs'
+      - 'scripts/test-valuation-rollback.mjs'
+      - '.github/workflows/valuation-rollback-verification.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: valuation-whole-revert-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  whole-system-revert:
+    name: Single-squash release and legacy rollback proof
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout actual PR head and full Git history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Node runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Simulate reverting the entire bundle after unrelated updates
+        run: node --test scripts/test-valuation-rollback.mjs
+      - name: Refuse undeclared changes or modified legacy source anchors
+        run: node scripts/valuation-rollback.mjs --check-candidate --base-ref origin/main
+      - name: Explain remaining external release gates
+        run: |
+          echo "Validated ONLY source scope and synthetic whole-programme reversal."
+          echo "Real-market staging, security/advisory review and release approval are still required."
+          echo "No production deployment or database write has occurred."
+
+  dependency-advisory-report:
+    name: Dependency advisories (manual release gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # All ten valuation blocks introduce no package changes; do not mix
+      # unrelated dependency upgrades into an irreversible release.
+      # Run a read-only lockfile scan and REQUIRE explicit human sign-off
+      # for anything high/critical. This report is NOT a security clearance.
+      - name: Read-only audit summaries for backend, website and native app
+        shell: bash
+        run: |
+          set -euo pipefail
+          for directory in backend . "carmazium app/carmazium app"; do
+            echo "Auditing lockfile for: ${directory}"
+            temp="$(mktemp)"
+            (cd "${directory}" && npm audit --package-lock-only --omit=dev --json > "${temp}") || true
+            node -e '
+              const fs=require("fs");
+              const [f,name]=process.argv.slice(1);
+              const raw=fs.readFileSync(f,"utf8");
+              let data;
+              try { data=JSON.parse(raw); } catch {
+                console.error("Cannot verify dependency audit output: "+name);
+                process.exit(2);
+              }
+              const v=data.metadata?.vulnerabilities;
+              if (!v || typeof v.critical!=="number" || typeof v.high!=="number") {
+                console.error("Dependency audit unavailable; manual release gate remains open: "+name);
+                process.exit(2);
+              }
+              console.log(JSON.stringify({
+                project:name, critical:v.critical, high:v.high,
+                moderate:v.moderate, low:v.low, total:v.total,
+                releaseSecurityApproval: v.critical||v.high ? "REQUIRES_SECURITY_REVIEW" : "ADVISORY_SCAN_COMPLETE",
+              }));
+              if (v.critical||v.high) {
+                console.log("::warning::High/critical dependency advisories require triage before valuation release.");
+              }
+            ' "${temp}" "${directory}"
+            rm -f "${temp}"
+          done
