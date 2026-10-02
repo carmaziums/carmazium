@@ -70,9 +70,16 @@ export function assessValuationConfidence(
     // Three exact, independent, reasonably fresh active adverts spanning
     // at least two cited sources are moderate ASKING evidence, not proof of
     // an achieved price. Verified completed auctions are kept separate.
+    const spread = valuation.normalizedComparableIqrRatio;
+    const tightEnough = spread != null && Number.isFinite(spread)
+        && spread >= 0 && spread <= 0.35;
     const strongAsking = live && uniqueUkAdverts >= 3 && exact >= 3
-        && sites >= 2 && isFresh;
-    const verifiedOutcomeCohort = verifiedAuctions >= 3 || verifiedPrivate >= 3;
+        && sites >= 2 && isFresh && tightEnough;
+    // Numeric totals alone do not guarantee a coherent auction/private
+    // cohort: Block 6 marks incoherent price groups PROVISIONAL_PROXY.
+    const verifiedOutcomeCohort =
+        (valuation.auction.evidenceBasis === 'OBSERVED' && verifiedAuctions >= 3)
+        || (valuation.privateSale?.evidenceBasis === 'OBSERVED' && verifiedPrivate >= 3);
     const fullyIdentified = identity === 'MODEL_VERIFIED';
     const medium = !fallbackModel && fullyIdentified
         && (strongAsking || verifiedOutcomeCohort);
@@ -131,6 +138,12 @@ export function assessValuationConfidence(
                 ? 'The last accepted live-market evidence is over 24 hours old.'
                 : 'A valid time for the accepted live-market evidence was not available.');
             codes.push('LIVE_EVIDENCE_FRESHNESS_LIMITED');
+        }
+        if (!tightEnough) {
+            limitations.push(spread == null || !Number.isFinite(spread)
+                ? 'The normalized price distribution could not be verified for this evidence set.'
+                : 'Comparable asking prices vary too widely for a stronger evidence label.');
+            codes.push('NORMALIZED_PRICE_SPREAD_UNCERTAIN');
         }
     }
     if (verifiedAuctions > 0) {
