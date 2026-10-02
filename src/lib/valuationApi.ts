@@ -1,4 +1,6 @@
 import { apiClient } from './apiClient'
+import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
 
@@ -28,6 +30,7 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+    specificationAdjustment?: SpecificationAdjustmentAudit;
     identityVerification?: {
         status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED'
         registrationChecked: boolean
@@ -238,99 +241,16 @@ function profileFactor(request: VehicleValuationRequest): number {
     return factor
 }
 
-function fuelSpecificationFactor(value?: string): number {
-    const fuel = normalise(value)
-    if (!fuel) return 1
-    if (fuel.includes('PLUGINHYBRID')) return 1.01
-    if (fuel.includes('HYBRID')) return 1.0075
-    if (fuel === 'DIESEL') return 0.995
-    if (['LPG', 'BIFUEL', 'NATURALGAS'].includes(fuel)) return 0.98
-    return 1
-}
-
-function variantSpecificationFactor(value?: string): number {
-    const variant = (value ?? '').trim().toUpperCase()
-    if (!variant) return 1
-
-    const performanceMarkers = [
-        'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'VRS',
-        'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
-    ]
-    if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02
-
-    const premiumMarkers = [
-        'M SPORT', 'AMG LINE', 'S LINE', 'R LINE', 'ST LINE', 'N LINE',
-        'GT LINE', 'TITANIUM', 'VIGNALE', 'TEKNA', 'PORTFOLIO',
-        'AUTOBIOGRAPHY', 'HSE', 'R DESIGN', 'INSCRIPTION', 'EXCEL',
-    ]
-    if (premiumMarkers.some((marker) => variant.includes(marker))) return 1.01
-    return 1
-}
-
-function bodyConfigurationFactor(request: VehicleValuationRequest): number {
-    let factor = 1
-    if (request.doors === 5) factor *= 1.004
-    if (request.doors === 3) factor *= 0.996
-    if (request.doors === 2) factor *= 0.992
-    if ((request.seats ?? 0) >= 7) factor *= 1.008
-    if ((request.seats ?? 0) > 0 && (request.seats ?? 0) <= 2) factor *= 0.995
-    return factor
-}
 
 export function vehicleSpecificationAdjustmentFactor(request: VehicleValuationRequest): number {
-    let factor = profileFactor(request)
-
-    const transmission = transmissionFamily(request.transmission)
-    if (transmission === 'AUTO') factor *= 1.03
-    if (transmission === 'MANUAL') factor *= 0.98
-
-    factor *= fuelSpecificationFactor(request.fuelType)
-    factor *= variantSpecificationFactor(request.variant)
-    factor *= bodyConfigurationFactor(request)
-
-    return clamp(factor, 0.18, 1.20)
+    return calculateSpecificationAdjustment(request).factor
 }
 
 export function applyVehicleValuationAdjustments(
     base: VehicleValuation,
     request: VehicleValuationRequest,
 ): VehicleValuation {
-    const factor = vehicleSpecificationAdjustmentFactor(request)
-    if (Math.abs(factor - 1) < 0.0001) return { ...base }
-
-    const low = roundMoney(base.low * factor)
-    const mid = roundMoney(base.mid * factor)
-    const high = roundMoney(base.high * factor)
-    const auctionMarketValue = roundMoney(base.auction.marketValue * factor)
-    const auctionReserveLow = roundMoney(base.auction.reserveLow * factor)
-    const auctionReserveHigh = Math.max(auctionReserveLow + 50, roundMoney(base.auction.reserveHigh * factor))
-
-    return {
-        ...base,
-        low,
-        mid,
-        high,
-        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
-        retail: {
-            ...base.retail,
-            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
-        },
-        privateSale: base.privateSale ? {
-            ...base.privateSale,
-            low: roundMoney(base.privateSale.low * factor),
-            mid: roundMoney(base.privateSale.mid * factor),
-            high: roundMoney(base.privateSale.high * factor),
-        } : undefined,
-        auction: {
-            ...base.auction,
-            marketValue: auctionMarketValue,
-            openingBid: Math.min(roundMoney(base.auction.openingBid * factor), Math.max(500, auctionReserveLow - 50)),
-            reserveLow: auctionReserveLow,
-            reserveHigh: auctionReserveHigh,
-            suggestedReserve: Math.max(auctionReserveLow, Math.min(auctionReserveHigh, roundMoney(base.auction.suggestedReserve * factor))),
-        },
-    }
+    return applySpecificationToFrozenValuation(base, request)
 }
 
 function getModelFallbackProfile(request: VehicleValuationRequest) {
