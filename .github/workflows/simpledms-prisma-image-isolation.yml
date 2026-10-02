@@ -32,6 +32,8 @@ jobs:
             for(const name of ['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics']) {
               if(fs.existsSync('node_modules/'+name+'/package.json'))throw Error('Forbidden HTTP runtime package: '+name);
             }
+            if(fs.existsSync('/usr/local/lib/node_modules/npm'))throw Error('Bundled npm CLI present in public API');
+            if(fs.existsSync('/usr/local/bin/npm')||fs.existsSync('/usr/local/bin/npx'))throw Error('CLI tools retained');
             if(!fs.existsSync('node_modules/.prisma/client'))throw Error('Generated Prisma query client absent');
             const c=require('@prisma/client');
             const db=new c.PrismaClient();
