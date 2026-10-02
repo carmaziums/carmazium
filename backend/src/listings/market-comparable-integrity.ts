@@ -78,8 +78,18 @@ export function sameAdvertIdentity(a: VehicleValuationComparable, b: VehicleValu
     // asking price changes; tracking-query differences do not create new cars.
     if (au && bu && !au.collection && !bu.collection && au.url === bu.url) return true;
 
+    // Synthetic/legacy test sources have no URL. Collapse a truly identical
+    // row repeated across attempts, but never price-only matches in real
+    // sourced data; independent vehicles can share a price and mileage.
+    if (!au && !bu && !a.sourceUrl && !b.sourceUrl) {
+        return a.price === b.price && a.year === b.year && a.mileage === b.mileage
+            && compact(a.variant) === compact(b.variant)
+            && compact(a.fuelType) === compact(b.fuelType)
+            && compact(a.transmission) === compact(b.transmission)
+            && compact(a.listingTitle) === compact(b.listingTitle);
+    }
     // Search pages cannot uniquely identify a car: require an exact row
-    // fingerprint or independently stated, matching dealer + long stock ID.
+    // fingerprint or a sufficiently specific stated dealer + stock reference.
     return sameCollectionAdvert(a, b) || sameVerifiedDealerStock(a, b);
 }
 
