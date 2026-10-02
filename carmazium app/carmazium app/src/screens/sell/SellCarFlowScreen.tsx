@@ -3061,6 +3061,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   </Text>
                 </View>
               ) : null}
+              {isAuction && valuation.calibration?.mode === 'APPLIED' ? (
+                <Text style={s.valuationEvidenceText}>
+                  This auction guide uses optional calibration from earlier seller-confirmed
+                  completed auctions, evaluated against later held-out outcomes. It is not a
+                  guaranteed sale price. The original guide is saved and can be restored.
+                </Text>
+              ) : null}
               {!isAuction && valuation.privateSale ? (
                 <Text style={s.valuationEvidenceText}>
                   Private-sale guide: £{valuation.privateSale.low.toLocaleString('en-GB')}–£{valuation.privateSale.high.toLocaleString('en-GB')}
