@@ -22,9 +22,9 @@ const saleRows = Array.from({ length: 32 }, (_, index) => {
             sellerBonusReleasedAt: new Date(beforeAuction + 3 * day),
             sellerBonusReleased: true,
             buyerFeePaid: true,
-            sellerFundsConfirmedAt: new Date(beforeAuction + 2 * day),
+            sellerFundsConfirmedAt: new Date(beforeAuction + 2 * day) as Date | null,
             sellerFundsConfirmationRequired: true,
-            buyerRefusedAt: null,
+            buyerRefusedAt: null as Date | null,
             winningBidAmount: predicted * 1.08,
         },
     };
@@ -43,7 +43,8 @@ const eventsFor = (rows = saleRows) => rows.map((row) => ({
             model: row.model, year: row.year, mileage: row.mileage,
         },
         baseValuation: {
-            calibrationOrigin: { verifiedAtCreation: true },
+            calibrationOrigin: { verifiedAtCreation: true } as
+                { verifiedAtCreation: boolean } | undefined,
             source: 'LIVE_UK_MARKET',
             auction: { marketValue: row.predicted },
         },
