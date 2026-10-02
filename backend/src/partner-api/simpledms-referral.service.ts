@@ -6,6 +6,13 @@ import { resolveBusinessBuyerId } from '../dealers/dealer-access';
 
 type ReferralToken = { partner: 'simpledms'; auctionId: string; iat: number };
 const TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const LINK_VALIDITY_MS = 24 * 60 * 60 * 1000;
+
+/** Signs *feed-issued* referral links; an arbitrary public redirect URL is insufficient. */
+export function signSimpleDmsLink(id: string, expires: number, secret: string): string {
+  return createHmac('sha256', secret).update('simpledms:' + id + ':' + expires).digest('base64url');
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Injectable()
@@ -53,9 +60,20 @@ export class SimpleDmsReferralService {
   }
 
   /** Server redirects via a fixed CarMazium host: never accepts a return URL. */
-  async visit(id: string) {
+  async visit(id: string, expiresRaw: string, signature: string) {
     this.enabled();
     const secret = this.secret();
+    const expires = Number(expiresRaw);
+    if (!Number.isSafeInteger(expires) || expires < Date.now() ||
+        expires > Date.now() + LINK_VALIDITY_MS + 60_000 ||
+        !signature || !/^[a-zA-Z0-9_-]{43}$/.test(signature)) {
+      throw new BadRequestException('Invalid or expired partner referral link');
+    }
+    const expected = signSimpleDmsLink(id, expires, secret);
+    if (signature.length !== expected.length ||
+        !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      throw new BadRequestException('Invalid partner referral signature');
+    }
     if (!UUID.test(id)) throw new NotFoundException();
     const live = await this.prisma.auction.findFirst({
       where: {
