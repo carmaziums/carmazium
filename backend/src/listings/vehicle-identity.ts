@@ -75,7 +75,13 @@ export function verifyValuationVehicleIdentity(
 
     const sourceModel = normalizedModel(lookup.model, lookup.make);
     const requestedModel = normalizedModel(request.model, request.make);
-    if (sourceModel && sourceModel !== requestedModel) {
+    const requestedWithVariant = request.variant?.trim()
+        ? normalizedModel(`${request.model} ${request.variant}`, request.make)
+        : requestedModel;
+    const modelAndVariantVerified = Boolean(
+        sourceModel && requestedWithVariant !== requestedModel && sourceModel === requestedWithVariant,
+    );
+    if (sourceModel && sourceModel !== requestedModel && !modelAndVariantVerified) {
         // Never silently treat a performance derivative as the base model.
         throw new BadRequestException(
             'Vehicle model does not match registration records. Confirm the exact model and derivative before valuing.',
@@ -84,6 +90,7 @@ export function verifyValuationVehicleIdentity(
 
     const modelVerified = Boolean(sourceModel);
     const derivativeVerified = !request.variant?.trim()
+        || modelAndVariantVerified
         || Boolean(lookup.variant && normalized(lookup.variant) === normalized(request.variant));
     const yearVerified = lookup.year != null && lookup.year === request.year;
     const fullyVerified = modelVerified && derivativeVerified && yearVerified;
