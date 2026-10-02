@@ -1,58 +1,67 @@
-# Syntax=docker/dockerfile:1
-
+# syntax=docker/dockerfile:1
+#
+# Explicit build targets:
+#   runtime            = public HTTP API; NO Prisma CLI or migration tooling
+#   prisma-maintenance = on-demand CLI-only maintenance; NEVER a public service
+#
+# Build: docker build --target runtime -t carmazium-backend-api .
+#        docker build --target prisma-maintenance -t carmazium-prisma-maintenance .
+# The default final stage remains runtime for existing Fly deployments.
 ARG NODE_VERSION=20.10.0
 
-# ── Stage 1: Build ──────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS builder
-
 WORKDIR /app
-
-# Install ALL dependencies (dev included, needed for nest CLI + prisma generate)
 COPY package*.json ./
 COPY prisma ./prisma/
 RUN npm ci
-
-# Copy source and build
 COPY . .
-RUN npx prisma generate
-RUN npx nest build
+RUN npx prisma generate && npx nest build
 
-# ── Stage 2: Production ────────────────────────────────────────
-FROM node:${NODE_VERSION}-alpine AS runner
+# This separate image can execute the Prisma CLI for explicitly authorised,
+# auditable database maintenance. Never expose ports or start it persistently.
+# The production schema history includes manually applied SQL and is NOT
+# certified for arbitrary `prisma migrate deploy`, much less `db push`.
+# No database credentials are present at build time or baked into this image.
+FROM builder AS prisma-maintenance
+ENV NODE_ENV=production
+ENTRYPOINT ["/app/node_modules/.bin/prisma"]
+CMD ["--version"]
 
+# Public API runtime: no migration CLI or Prisma CLI dependency chain.
+FROM node:${NODE_VERSION}-alpine AS runtime
 WORKDIR /app
-
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Install postgresql-client for pg_dump (required by weekly backup cron)
+# Required for the existing weekly backup implementation; do not modify the
+# production backup process while isolating Prisma migrations.
 RUN apk add --no-cache postgresql16-client
 
-# Copy package files and install production deps only.
-# NODE_ENV=production is already set above — postinstall checks this and
-# skips `prisma generate` automatically (Prisma client is already built
-# in Stage 1 and copied below; prisma CLI is a devDependency anyway).
 COPY package*.json ./
-RUN npm ci --omit=dev
+# `@prisma/client` has an npm optional Prisma peer; npm still physically
+# installs the CLI in our locked production-only tree. Explicitly remove
+# ONLY the CLI's verified non-runtime packages. Retain @prisma/client and the
+# generated query engine. The CI image-isolation tests validate both.
+RUN npm ci --omit=dev --omit=peer --ignore-scripts --no-fund \
+ && rm -rf ./node_modules/prisma ./node_modules/@prisma/config ./node_modules/deepmerge-ts \
+ && test ! -e ./node_modules/prisma \
+ && test ! -e ./node_modules/@prisma/config \
+ && test ! -e ./node_modules/deepmerge-ts
 
-# Copy Prisma schema + generated client from builder
+# Do not copy /app/node_modules/@prisma wholesale from builder: doing so
+# reintroduces Prisma CLI dependencies. The runtime's @prisma/client comes
+# from npm ci; copy only the generated Prisma client and its engine.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-# Copy prisma CLI so we can run migrate deploy at startup
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-
-# Copy compiled NestJS app
 COPY --from=builder /app/dist ./dist
-
-# Static assets bundled with the app (letterhead PDF template, etc.)
 COPY --from=builder /app/assets ./assets
-
-# One-off maintenance scripts. Shipped so they can be run against production
-# from `flyctl ssh console`, where DATABASE_URL and SUPABASE_SERVICE_KEY already
-# exist, rather than needing those secrets copied onto someone's laptop.
+# Existing maintenance scripts remain for backwards-compatible non-Prisma
+# operations. Prisma CLI commands must use the maintenance image.
 COPY --from=builder /app/scripts ./scripts
 
-EXPOSE 8080
+# Fail the image build if the generated client is missing or if the CLI
+# slipped back into the HTTP image via a future package-lock change.
+RUN node -e "const fs=require('node:fs');for(const p of ['node_modules/prisma','node_modules/@prisma/config','node_modules/deepmerge-ts'])if(fs.existsSync(p))throw Error('Forbidden Prisma maintenance dependency: '+p);const c=require('@prisma/client');if(typeof c.PrismaClient!=='function')throw Error('Generated Prisma client missing')"
 
+EXPOSE 8080
 CMD ["node", "dist/main"]
