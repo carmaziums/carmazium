@@ -65,6 +65,17 @@ a separate, database-specific reconciliation and recovery test is approved.
 The maintenance image provides the CLI *capability*, not blanket permission to
 run schema-changing commands.
 
+Removing the CLI reduces the public application's attack surface, but **does
+not alone enforce database privileges**: a compromised app with a database
+owner/DDL-capable `DATABASE_URL` can still issue schema-changing SQL directly.
+Before production cutover, verify that the regular API connection uses a
+non-owner account with only the DML/schema privileges its runtime actually
+needs, while the private short-lived maintenance connection uses a separately
+controlled, audited migration role. Test all existing API flows (including
+session-table creation, scheduled backups, handover and admin operations)
+against the restricted role; do not revoke any current permissions abruptly
+without that compatibility test. Never disclose either credential in CI logs.
+
 The maintenance image must not be deployed as another public Fly service.
 Before any cutover from the existing API image, the platform owner must
 confirm a short-lived, access-restricted maintenance-job procedure that
