@@ -15,6 +15,9 @@ export class DbBackupService {
   // Every Sunday at 2 AM UTC
   @Cron('0 2 * * 0')
   async handleWeeklyBackup(): Promise<void> {
+    // A separately approved private backup runner can disable the legacy
+    // in-process cron after independent restoration has been demonstrated.
+    if (process.env.BACKUP_JOB_ENABLED === 'false') return;
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const filename = `db-backup-${date}.sql.gz`;
 
@@ -34,6 +37,25 @@ export class DbBackupService {
         throw new Error('BACKUP_ROLE_NOT_CONFIGURED');
       }
 
+      // Fail before creating any dump when the exact configured private
+      // upload destination cannot be accessed. Never log the service key,
+      // bucket metadata or returned provider error.
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('BACKUP_UPLOAD_CREDENTIALS_MISSING');
+      }
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+      );
+      const { data: buckets, error: bucketError } =
+        await supabase.storage.listBuckets();
+      if (
+        bucketError ||
+        !buckets?.some((bucket) => bucket.id === 'backups' && bucket.public === false)
+      ) {
+        throw new Error('BACKUP_PRIVATE_BUCKET_UNAVAILABLE');
+      }
+
       // Keep credentials out of command arguments, shell interpolation and
       // unrelated subprocess environment variables. PostgreSQL 17 pg_dump
       // receives only validated, supported libpq PG* connection parameters.
@@ -46,12 +68,9 @@ export class DbBackupService {
       // 2. gzip in-memory — avoids ephemeral disk writes (Fly.io restarts wipe disk)
       const compressed = gzipSync(dumpBuffer);
 
-      // 3. Upload to private 'backups' bucket via service role key (bypasses RLS)
-      const supabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
-
+      // 3. Use ONLY the previously verified private destination. The
+      // public app's service role credential is legacy architecture; moving
+      // backups to an isolated runner remains a separate release gate.
       const { error } = await supabase.storage
         .from('backups')
         .upload(`backups/${filename}`, compressed, {
@@ -69,8 +88,12 @@ export class DbBackupService {
       // pg_dump/libpq failures may include network metadata; never echo
       // the exception's raw message (or a database URL) into logs or email.
       const diagnostic =
-        err?.message === 'BACKUP_ROLE_NOT_CONFIGURED'
-          ? 'Dedicated backup database connection not configured'
+        err?.message === 'BACKUP_UPLOAD_CREDENTIALS_MISSING'
+          ? 'Private backup upload credentials unavailable'
+          : err?.message === 'BACKUP_PRIVATE_BUCKET_UNAVAILABLE'
+            ? 'Private backup bucket unavailable'
+            : err?.message === 'BACKUP_ROLE_NOT_CONFIGURED'
+              ? 'Dedicated backup database connection not configured'
           : err?.message === 'BACKUP_STORAGE_UPLOAD_FAILED'
             ? 'Private storage upload failed'
             : 'Backup failed; investigate securely within the application host';
