@@ -57,13 +57,19 @@ async function main() {
     throw new Error('Session expiry was not extended');
   }
   await call('destroy', sid);
-  if (await call('get', sid) !== null) throw new Error('Session was not destroyed');
+  if ((await call('get', sid)) != null) throw new Error('Session was not destroyed');
   console.log('PASS: real connect-pg-simple set/get/touch/destroy under restricted synthetic login');
 }
 main().catch(error => {
   // Never print SQL payloads or connection URLs. CI has synthetic secrets only.
-  console.error('FAIL: restricted real session adapter; code=' +
-    (typeof error.code === 'string' ? error.code : 'UNCLASSIFIED'));
+  const expectedErrors = [
+    'Session restore failed', 'Session expiry was not extended',
+    'Session was not destroyed', 'Session adapter is not using the intended restricted role',
+  ];
+  const ownReason = expectedErrors.includes(error.message) ? '; assertion=' + error.message : '';
+  console.error('FAIL: restricted real session adapter; type=' +
+    String(error.name || 'unknown').replace(/[^A-Za-z]/g, '') +
+    '; code=' + (typeof error.code === 'string' ? error.code : 'UNCLASSIFIED') + ownReason);
   process.exitCode = 1;
 }).finally(async () => {
   try { await pool.end(); } catch { process.exitCode = 1; }
