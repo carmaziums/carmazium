@@ -74,6 +74,17 @@ describe('SimpleDmsReferralService security and attribution', () => {
     expect(prisma.analyticsEvent.create).toHaveBeenCalledTimes(1); // redirect only
   });
 
+  it('rejects expired but otherwise correctly signed tokens', async () => {
+    const { createHmac } = await import('node:crypto');
+    const { service } = harness();
+    const payload = Buffer.from(JSON.stringify({
+      partner: 'simpledms', auctionId: AUCTION, iat: Date.now() - 8 * 86400_000,
+    })).toString('base64url');
+    const sig = createHmac('sha256', KEY).update(payload).digest('base64url');
+    await expect(service.claim('dealer-1', 'DEALER', payload + '.' + sig))
+      .rejects.toThrow(BadRequestException);
+  });
+
   it('records a genuine authenticated dealer referral once and returns no PII', async () => {
     const { service, prisma } = harness();
     const url = new URL(await service.visit(AUCTION));
