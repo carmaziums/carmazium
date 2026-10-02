@@ -73,6 +73,21 @@ export class SimpleDmsService {
     return origin + '/auctions/live/' + encodeURIComponent(id) + '?utm_source=simpledms&utm_medium=partner_api';
   }
 
+  private referralLink(id: string): string {
+    const raw = this.config.get<string>('PARTNER_API_REFERRAL_BACKEND_URL') || '';
+    if (!raw) return this.publicAuctionUrl(id);
+    try {
+      const url = new URL(raw);
+      // Never generate links to arbitrary endpoints supplied by configuration.
+      if (url.protocol !== 'https:' || url.username || url.password ||
+          !(['carmazium-hjoh9w.fly.dev', 'api.carmazium.com'].includes(url.hostname)
+            || url.hostname.endsWith('.carmazium.com'))) return this.publicAuctionUrl(id);
+      return url.origin + '/partners/referrals/simpledms/go/' + encodeURIComponent(id);
+    } catch {
+      return this.publicAuctionUrl(id);
+    }
+  }
+
   private publicImages(images: string[]): string[] {
     if (!this.isEnabled('PARTNER_API_SIMPLEDMS_SHARE_IMAGES')) return [];
     const hosts = (this.config.get<string>('PARTNER_API_PUBLIC_IMAGE_HOSTS') || '')
@@ -135,6 +150,10 @@ export class SimpleDmsService {
       region: this.approvedRegion(listing.location),
       updatedAt: new Date(Math.max(auction.updatedAt.getTime(), listing.updatedAt.getTime())).toISOString(),
       url: this.publicAuctionUrl(auction.id),
+      // Optional signed redirect: the direct URL remains the fallback while
+      // partner referral tracking is not configured/enabled.
+      ...(this.isEnabled('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED')
+        ? { referralUrl: this.referralLink(auction.id) } : {}),
     };
 
     if (this.isEnabled('PARTNER_API_SIMPLEDMS_SHARE_REGISTRATION')) {
