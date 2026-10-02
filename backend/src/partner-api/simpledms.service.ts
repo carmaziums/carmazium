@@ -94,7 +94,12 @@ export class SimpleDmsService {
       .split(',').map((host) => host.trim().toLowerCase()).filter(Boolean);
 
     if (hosts.length === 0) return [];
-    return images.filter((image) => {
+    return images.map((image) => {
+      // CarMazium photo-editor presentation metadata lives exclusively in the
+      // hash fragment, not at the storage origin. Strip only our own marker.
+      if (image.includes('#cm-photo=')) return image.split('#cm-photo=')[0];
+      return image;
+    }).filter((image) => {
       try {
         const url = new URL(image);
         if (url.protocol !== 'https:' ||
@@ -104,7 +109,7 @@ export class SimpleDmsService {
         // Supabase signed/private object URLs must never be syndicated, even
         // if the Supabase project domain was explicitly allowlisted.
         if (url.hostname.endsWith('.supabase.co') &&
-            !url.pathname.startsWith('/storage/v1/object/public/')) return false;
+            !url.pathname.startsWith('/storage/v1/object/public/listings/')) return false;
         return !/(?:^|\/)(?:private|handover|auction-handover-documents)(?:\/|$)/i.test(url.pathname);
       } catch {
         return false;
@@ -152,7 +157,8 @@ export class SimpleDmsService {
       url: this.publicAuctionUrl(auction.id),
       // Optional signed redirect: the direct URL remains the fallback while
       // partner referral tracking is not configured/enabled.
-      ...(this.isEnabled('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED')
+      ...(this.isEnabled('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED') &&
+        this.config.get<string>('PARTNER_API_REFERRAL_BACKEND_URL')
         ? { referralUrl: this.referralLink(auction.id) } : {}),
     };
 
