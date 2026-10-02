@@ -42,7 +42,7 @@
     "@supabase/supabase-js": "^2.95.3",
     "@types/nodemailer": "^8.0.1",
     "axios": "^1.13.5",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cheerio": "^1.2.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
