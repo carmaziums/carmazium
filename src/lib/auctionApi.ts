@@ -68,6 +68,32 @@ export interface AuctionListing {
     exteriorGrade: number | null;
     owners: string | null;
     serviceHistory: string | null;
+    // Additional non-sensitive listing details already stored on the vehicle.
+    variant?: string | null;
+    driveType?: string | null;
+    numberOfKeys?: number | null;
+    stolenRecovered?: boolean | null;
+    hasOutstandingFinance?: boolean | null;
+    isLegalRegisteredKeeper?: boolean | null;
+    firstUsedDate?: string | null;
+    dateOfLastV5CIssued?: string | null;
+    markedForExport?: boolean | null;
+    typeApproval?: string | null;
+    wheelplan?: string | null;
+    torqueNm?: number | null;
+    topSpeedMph?: number | null;
+    zeroTo60Mph?: number | null;
+    combinedMpg?: number | null;
+    extraUrbanMpg?: number | null;
+    motHistory?: Array<{
+        completedDate?: string;
+        testResult?: string;
+        odometerValue?: string;
+        odometerUnit?: string;
+        expiryDate?: string;
+        motTestNumber?: string;
+        defects?: Array<unknown>;
+    }> | null;
     mechanicalIssues?: string | null;
     electricalIssues?: string | null;
     // Only present if the seller purchased an HPI report
