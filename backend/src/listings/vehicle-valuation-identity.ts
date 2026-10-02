@@ -56,11 +56,15 @@ export function canonicalValuationCacheParts(input: ValuationBaseIdentityInput):
     // for the same registration, nor silently combine two different trims.
     // Later specification adjustments within the same valuationId keep
     // the existing immutable journey contract.
-    return [
+    const parts = [
         identity.registration, identity.make, identity.model,
         String(identity.year), String(identity.mileage),
-        clean(input.variant),
     ];
+    const variant = clean(input.variant);
+    // Keep the historical hash for ordinary vehicles without a specified
+    // variant so existing 24-hour snapshots remain addressable.
+    if (variant) parts.push(variant);
+    return parts;
 }
 
 export function sameValuationBaseIdentity(
