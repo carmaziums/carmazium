@@ -1,0 +1,160 @@
+name: Temporary Scoped Prisma6 Config Advisory Remediation
+
+on:
+  pull_request:
+    branches: [security-backend-bcrypt6-compatibility-20261003]
+    paths:
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'backend/scripts/check-prisma-config-security.cjs'
+      - '.github/workflows/security-backend-prisma6-config.yml'
+
+# Temporary, same-repo single-branch writer. Remove after verified lockfile commit.
+permissions:
+  contents: write
+
+jobs:
+  prisma6-config-security:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref == 'security-backend-prisma6-config-advisory-20261003'
+      && github.event.pull_request.base.ref == 'security-backend-bcrypt6-compatibility-20261003'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out exact reviewed security branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Use supported Node 20 backend runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify untouched prior Prisma 6 graph and bcrypt6 baseline
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$BASE_SHA:backend/package-lock.json" > /tmp/prisma-base-lock.json
+          node -e '
+            const b=require("/tmp/prisma-base-lock.json").packages;
+            const p=require("./backend/package.json");
+            if(b["node_modules/prisma"]?.version!=="6.19.3"
+              || b["node_modules/@prisma/client"]?.version!=="6.19.2"
+              || b["node_modules/@prisma/config"]?.dependencies?.["deepmerge-ts"]!=="7.1.5"
+              || b["node_modules/effect"]?.version!=="3.21.0"
+              || b["node_modules/bcrypt"]?.version!=="6.0.0")
+              throw Error("Unexpected base: unsafe to generate override lockfile");
+            if(p.dependencies["@prisma/client"]!=="6.19.3"
+              || p.devDependencies.prisma!=="6.19.3"
+              || p.dependencies.bcrypt!=="6.0.0"
+              || JSON.stringify(p.overrides)!==JSON.stringify({
+                "@prisma/config":{"deepmerge-ts":"8.0.2"}
+              }))
+              throw Error("This release must contain ONLY the scoped reviewed Prisma fix");
+          '
+      - name: Regenerate lockfile without downgrades, force or unrelated changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+          cd ..
+          node -e '
+            const {execFileSync}=require("node:child_process");
+            const files=execFileSync("git",["diff","--name-only"],{encoding:"utf8"})
+              .trim().split("\n").filter(Boolean);
+            if(files.length!==1||files[0]!=="backend/package-lock.json")
+              throw Error("Unexpected generated change: "+files.join(","));
+            const l=require("./backend/package-lock.json").packages;
+            if(l["node_modules/prisma"]?.version!=="6.19.3"
+              || l["node_modules/@prisma/client"]?.version!=="6.19.3"
+              || l["node_modules/@prisma/config"]?.version!=="6.19.3"
+              || l["node_modules/effect"]?.version!=="3.21.0"
+              || l["node_modules/bcrypt"]?.version!=="6.0.0")
+              throw Error("CLI, Client, Effect or bcrypt version mismatch");
+            for(const [name,v] of Object.entries(l)) {
+              if((name==="node_modules/deepmerge-ts"||name.endsWith("/node_modules/deepmerge-ts"))
+                 && v.version!=="8.0.2")
+                throw Error("Unpatched deepmerge-ts remains: "+name+"@"+v.version);
+            }
+            console.log("SCOPED_PRISMA6_OVERRIDE_GENERATED");
+          '
+      - name: Fail closed unless backend has zero critical/high advisories
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit --package-lock-only --omit=dev --json > /tmp/prisma-audit.json) || true
+          node -e '
+            const fs=require("fs"), a=JSON.parse(fs.readFileSync("/tmp/prisma-audit.json","utf8"));
+            const c=a.metadata?.vulnerabilities;
+            if(!c||!Number.isInteger(c.critical)||!Number.isInteger(c.high))
+              throw Error("Audit unavailable, so release remains blocked");
+            const bad=Object.entries(a.vulnerabilities||{}).filter(([,r])=>
+              ["high","critical"].includes(r.severity)).map(([n])=>n);
+            console.log("PRISMA6_CONFIG_PATCH_AUDIT "+JSON.stringify({
+              critical:c.critical,high:c.high,moderate:c.moderate,low:c.low,
+              remainingCriticalOrHigh:bad
+            }));
+            if(c.critical!==0 || c.high!==0)
+              throw Error("Prisma scoped patch has remaining critical/high dependency findings");
+          '
+      - name: Clean install and verify real Prisma config and source schema
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://synthetic:synthetic@127.0.0.1:5432/synthetic
+          DIRECT_URL: postgresql://synthetic:synthetic@127.0.0.1:5432/synthetic
+        run: |
+          set -euo pipefail
+          cd backend
+          npm ci --no-fund --no-audit
+          node scripts/check-prisma-config-security.cjs
+          npx prisma validate
+          npx prisma generate
+          npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/prisma6-synthetic-schema.sql
+          test -s /tmp/prisma6-synthetic-schema.sql
+          # Schema-only diff can be performed completely without connecting to a DB.
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "backend/package-lock.json" || true
+          echo "PRISMA6_SCHEMA_VALIDATE_GENERATE_AND_DIFF_PASS"
+      - name: Complete backend tests, bcrypt compatibility regressions and build
+        shell: bash
+        env:
+          DATABASE_URL: postgresql://synthetic:synthetic@127.0.0.1:5432/synthetic
+          DIRECT_URL: postgresql://synthetic:synthetic@127.0.0.1:5432/synthetic
+        run: |
+          set -euo pipefail
+          cd backend
+          npm test -- --runInBand --runTestsByPath src/auth/bcrypt-v6-upgrade.spec.ts
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+          node scripts/check-prisma-config-security.cjs
+      - name: Verify production advisory report after clean install
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit --package-lock-only --omit=dev --json > /tmp/prisma-post-build-audit.json) || true
+          node -e '
+            const fs=require("fs"),r=JSON.parse(fs.readFileSync("/tmp/prisma-post-build-audit.json","utf8"));
+            const c=r.metadata?.vulnerabilities;
+            if(!c||c.critical!==0||c.high!==0)
+              throw Error("Post-build security audit failed; never commit lockfile");
+            console.log("PRISMA6_POST_FULL_BACKEND_BUILD_AUDIT "+JSON.stringify(c));
+          '
+      - name: Commit only verified backend lockfile to isolated PR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=security-backend-prisma6-config-advisory-20261003
+          actual="$(git ls-remote origin "refs/heads/$target" | cut -f1)"
+          test "$actual" = "$(git rev-parse HEAD)"
+          test "$(git diff --name-only)" = "backend/package-lock.json"
+          git add -- backend/package-lock.json
+          git -c user.name='CarMazium Security CI' -c user.email='security-ci@users.noreply.github.com' \
+            commit -m 'Security: pin verified Prisma 6.19.3 client and scoped advisory-free config lockfile'
+          git push origin "HEAD:refs/heads/$target"
+          echo PRISMA6_LOCKFILE_VERIFIED_AND_COMMITTED
