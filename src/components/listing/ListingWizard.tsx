@@ -27,6 +27,7 @@ import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS, HGV_BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
+import { recogniseVehicleModel } from "@/lib/vehicleModelRecognition"
 import { useAuth } from "@/context/AuthContext"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { SELLER_FUNNEL, listingTypeLabel } from "@/lib/gtm"
@@ -847,7 +848,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         formData.mileage !== '' &&
         Number(formData.mileage) >= 0
 
-    const currentValuationBaseKey = getValuationBaseKey(formData, editId)
+    // Canonical identity ensures harmless text formatting never starts a new market search.
+    const modelIdentity = recogniseVehicleModel({
+        make: formData.make, model: formData.model, variant: formData.variant,
+        year: Number(formData.year),
+    })
+    const currentValuationBaseKey = getValuationBaseKey(
+        { ...formData, model: modelIdentity.model || formData.model }, editId,
+    )
 
     React.useEffect(() => {
         if (!valuationReady) {
@@ -899,6 +907,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     if (cancelled) return
                     valuationBaseKeyRef.current = currentValuationBaseKey
                     setBaseValuation(result)
+                    if (result.modelRecognition?.recognised) {
+                        const identity = result.modelRecognition
+                        setFormData(prev => {
+                            if (prev.model !== formData.model || prev.make !== formData.make) return prev
+                            const variant = identity.variant || prev.variant
+                            if (prev.model === identity.model && prev.variant === variant) return prev
+                            return { ...prev, model: identity.model, variant }
+                        })
+                    }
 
                     if (startsNewJourney) {
                         trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
@@ -2465,7 +2482,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     const canonical = CAR_MAKES.find(m => m.toLowerCase() === r.make!.toLowerCase())
                                                     set("make", canonical ?? r.make)
                                                 }
-                                                if (r.model) set("model", r.model)
+                                                if (r.model) {
+                                                    const identity = recogniseVehicleModel({
+                                                        make: r.make || formData.make,
+                                                        model: r.model,
+                                                        variant: r.variant,
+                                                        year: r.year,
+                                                    })
+                                                    if (identity.model) set("model", identity.model)
+                                                    if (identity.variant) set("variant", identity.variant)
+                                                }
                                                 
                                                 if (r.primaryColour) set("primaryColour", r.primaryColour)
                                                 
@@ -2755,7 +2781,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             const modelMissing = hasAttemptedNext && !formData.model
                                             return (
                                                 <>
-                                                    <Input placeholder="e.g. M4 Competition" value={formData.model}
+                                                    <Input placeholder="e.g. Honda Jazz 1.3 SE" value={formData.model}
                                                         onChange={(e) => {
                                                             setManualVariantEntry(false)
                                                             set("model", e.target.value); set("variant", "")
@@ -2788,7 +2814,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     <option value="__other__">Other (type below)</option>
                                                 </select>
                                                 {isCustomModel && (
-                                                    <Input placeholder="e.g. M4 Competition" value={formData.model}
+                                                    <Input placeholder="e.g. Honda Jazz 1.3 SE" value={formData.model}
                                                         onChange={(e) => {
                                                             setManualVariantEntry(false)
                                                             set("model", e.target.value); set("variant", "")
