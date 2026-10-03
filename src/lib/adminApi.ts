@@ -782,6 +782,22 @@ export async function getAdminListings(page = 1, limit = 20, sellerRole?: string
   return result;
 }
 
+export interface AdminDraftAuctionRelistResult {
+  listingId: string;
+  auctionId: string;
+  reservePrice: number;
+  reserveSource: 'PREVIOUS_RESERVE' | 'DRAFT_LISTED_PRICE';
+  status: 'SCHEDULED';
+}
+
+export async function relistAdminDraftAsAuction(listingId: string) {
+  const result = await apiClient<{ data: AdminDraftAuctionRelistResult }>(
+    `/admin/listings/${listingId}/relist-auction`,
+    { method: 'POST' },
+  );
+  return result.data;
+}
+
 export async function getAdminListing(id: string) {
   const result = await apiClient<{ data: any }>(`/admin/listings/${id}`);
   return result.data;
