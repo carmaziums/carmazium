@@ -26,6 +26,20 @@
 - Expo-related high findings span `expo`, `expo-updates`, `@expo/cli`, `@expo/code-signing-certificates`, `node-forge`, `postcss`, `@stripe/stripe-react-native` and `@react-native-community/datetimepicker`. Several `npm audit fix --force` proposals would **downgrade to Expo SDK 44 or older module versions**, breaking native compatibility. Explicitly **prohibit force and major downgrade**; investigate maintained fixes within the project's current supported Expo SDK, then separately plan a tested SDK upgrade only if required.
 - High non-major transitive fix candidates: `@xmldom/xmldom`, `brace-expansion`, `browserslist`, `fast-uri`, `image-size`, `js-yaml`, `nanoid`, `shell-quote`, `socket.io-parser`, `undici` and `ws`. Review whether each is only build tooling versus code handling customer-controlled input.
 
+## Verified non-breaking patch simulation (disposable CI only)
+
+The workflow **did not commit or deploy any fix**. It ran `npm audit fix --package-lock-only --omit=dev --ignore-scripts` without `--force` in each disposable CI runner, then independently rescanned the resulting temporary lockfile:
+
+| Component | Before critical/high | After simulation critical/high | Exact unresolved high/critical packages |
+|---|---:|---:|---|
+| Backend | 3 / 29 | **1 / 6** | Critical `tar`; high `@mapbox/node-pre-gyp`, `@prisma/config`, `bcrypt`, `brace-expansion`, `deepmerge-ts`, `prisma` |
+| Website | 1 / 5 | **1 / 2** | Critical `next`; high `postcss`, `sharp` |
+| Native | 1 / 20 | **0 / 9** | High Expo stack: `@expo/cli`, `@expo/code-signing-certificates`, `@react-native-community/datetimepicker`, `@stripe/stripe-react-native`, `expo`, `expo-updates`, `node-forge`, `postcss`; also `image-size` |
+
+The website’s critical `next` entry persists because its version is **exactly pinned**; a separate reviewable, paired `next`/`eslint-config-next` update to npm audit's offered `16.3.8` is the next candidate. The backend’s critical `tar` persists through `bcrypt`'s legacy native prebuilt-tooling chain, and **cannot be resolved safely by force-upgrading auth libraries** without password/hash and native-build regression tests. Expo and Stripe-related high findings require supported SDK planning; npm audit's offered blanket downgrade to **Expo 44** is not accepted. Even after compatible safe updates, a separate manual review of the remaining findings and package reachability remains required.
+
+These temporary-runner results prove feasibility of **some** fixes, not safety of shipping them: no dependency update, generated lockfile, production secret or customer record left CI. Inventory and simulation jobs can be green while the customer release remains blocked.
+
 ## Evidence collection and change rules
 
 The new workflow independently inventories **the exact high/critical package names and advisory references** and then runs `npm audit fix --package-lock-only --omit=dev --ignore-scripts` **only inside a disposable GitHub Actions runner**. It rescans and publishes proposed before/after counts without pushing any lockfile or changing the GitHub repository. If the CI dependency registry is unavailable, the parser fails closed rather than reporting an artificial clean result.
