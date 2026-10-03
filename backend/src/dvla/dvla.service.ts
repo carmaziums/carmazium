@@ -401,7 +401,7 @@ export class DvlaService {
             dateOfLastV5CIssued: data.dateOfLastV5CIssued,
             realDrivingEmissions: data.realDrivingEmissions,
             transmission: (data as any).transmission,
-            dataSource: 'DVLA',
+            dataSource: 'DVLA' as const,
         };
         }).catch(error => {
             if (error instanceof BadRequestException || error instanceof ServiceUnavailableException) throw error;
