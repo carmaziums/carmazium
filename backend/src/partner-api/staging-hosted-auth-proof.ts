@@ -6,8 +6,6 @@
  * This module is imported ONLY by staging.main.ts, not the real AppModule.
  */
 import { createHash, randomBytes } from 'node:crypto';
-import type { ConfigService } from '@nestjs/config';
-import { SimpleDmsGuard } from './simpledms.guard';
 
 const AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const key = randomBytes(48).toString('base64url');
@@ -19,24 +17,30 @@ let allowed = process.env.STAGING_HOSTED_AUTH_PROBE_ENABLED === 'true';
 let state: 'disabled' | 'pending' | 'passed' | 'failed' = allowed ? 'pending' : 'disabled';
 let testsPassed = 0;
 
-/** The standard guard is reused, without replacing or even reading the raw
- * existing stage key. The extra digest exists only until the one-shot proof
- * succeeds or expires. The separate synthetic stage has no DB or live data.
+/**
+ * Staging bootstrap installs a ONE-TIME digest in this process ONLY, before
+ * Nest ConfigModule and the unchanged real SimpleDmsGuard are instantiated.
+ * Railway's original digest is never overwritten in its persisted settings.
  */
-export function stagingGuard(config: ConfigService): SimpleDmsGuard {
-  const original = config.get<string>('PARTNER_API_SIMPLEDMS_KEY_SHA256') || '';
-  const originalValid = original.split(',').some((hash) => /^[a-fA-F0-9]{64}$/.test(hash.trim()));
-  const wrapped = {
-    get: (name: string) => {
-      const ordinary = config.get<string>(name);
-      if (name === 'PARTNER_API_SIMPLEDMS_KEY_SHA256' && originalValid &&
-          allowed && state === 'pending' && Date.now() - born < maxKeyAgeMs) {
-        return original + ',' + digest;
-      }
-      return ordinary;
-    },
-  } as unknown as ConfigService;
-  return new SimpleDmsGuard(wrapped);
+let originalDigest: string | null = null;
+let installed = false;
+export function installHostedProofDigest() {
+  if (!allowed || process.env.STAGING_SYNTHETIC_ONLY !== 'true' ||
+      process.env.DATABASE_URL || process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.STRIPE_SECRET_KEY) return;
+  const original = process.env.PARTNER_API_SIMPLEDMS_KEY_SHA256 || '';
+  if (!original.split(',').some((h) => /^[a-fA-F0-9]{64}$/.test(h.trim()))) return;
+  originalDigest = original;
+  process.env.PARTNER_API_SIMPLEDMS_KEY_SHA256 = original + ',' + digest;
+  installed = true;
+}
+
+function revokeHostedProofDigest() {
+  allowed = false;
+  if (originalDigest !== null) {
+    process.env.PARTNER_API_SIMPLEDMS_KEY_SHA256 = originalDigest;
+    installed = false;
+  }
 }
 
 export function proofInstance(): string {
@@ -47,7 +51,7 @@ export function proofHealth() {
   return {
     state,
     checksPassed: testsPassed,
-    disposableCredentialAccepted: allowed && state === 'pending',
+    disposableCredentialAccepted: installed && allowed && state === 'pending',
     // Never include the raw key, digest, request headers or customer data.
   };
 }
@@ -68,6 +72,7 @@ async function request(url: string, maybeKey?: string): Promise<Response> {
  */
 export async function runHostedProof(host: string) {
   if (!allowed) return;
+  if (!installed) { state = 'failed'; allowed = false; return; }
   if (!/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.up\.railway\.app$/.test(host) ||
       process.env.STAGING_SYNTHETIC_ONLY !== 'true' ||
       !process.env.PARTNER_API_SIMPLEDMS_KEY_SHA256?.split(',')
@@ -133,9 +138,17 @@ export async function runHostedProof(host: string) {
         if (asset.status !== 200 || !(await asset.text()).includes('SYNTHETIC TEST VEHICLE')) {
           throw Error('Hosted demo image failed');
         }
-        testsPassed = 6; // self-instance, anonymous, incorrect, list, pagination/detail, asset
+        // Revoke the disposable digest IN THE ACTUAL GUARD CONFIGURATION.
+        // The original staging key digest is preserved. Independently prove
+        // the previously accepted disposable key is now HTTP 401 over HTTPS.
+        revokeHostedProofDigest();
+        const revoked = await request(list, key);
+        if (revoked.status !== 401) {
+          state = 'failed';
+          return;
+        }
+        testsPassed = 7; // public routing, denials, list, pagination/detail, asset, revocation
         state = 'passed';
-        allowed = false; // key is invalid for all later requests
         return;
       } catch {
         // Never print the key, HTTP request, partner response or endpoint.
@@ -144,6 +157,6 @@ export async function runHostedProof(host: string) {
     }
   } finally {
     if (state !== 'passed') state = 'failed';
-    allowed = false; // fail closed after the bounded attempt window
+    revokeHostedProofDigest(); // fail closed after bounded attempt window
   }
 }
