@@ -114,7 +114,7 @@ class FakeVault:
             raise OSError("synthetic read denied")
         blob = self.objects[key]
         if self.corrupt_new_read and "/objects/" in key:
-            blob = b"tampered-vault-bytes"
+            blob = b"x" * len(blob)  # unchanged length, altered SHA-256
         return {"Body": io.BytesIO(blob), "ContentLength": len(blob)}
 
 
