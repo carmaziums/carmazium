@@ -310,9 +310,12 @@ export class AdminService {
      * only the rows would leave the total describing a different set, and the
      * pager would offer pages that come back empty.
      */
-    async getAllListings(page = 1, limit = 20, sellerRole?: string) {
+    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string) {
         const skip = (page - 1) * limit;
-        const where = sellerRole ? { seller: { role: sellerRole as any } } : {};
+        const where = {
+            ...(sellerRole ? { seller: { role: sellerRole as any } } : {}),
+            ...(status === 'DRAFT' ? { status: 'DRAFT' as const } : {}),
+        };
         const [data, total] = await Promise.all([
             this.prisma.listing.findMany({
                 where,
@@ -393,6 +396,9 @@ export class AdminService {
                 || !['SCHEDULED', 'ENDED', 'CANCELLED'].includes(current.status)
                 || current.winnerId || current.wonAt
                 || current.provisionalOfferBidId
+                || current.stripePayoutTransferId || current.manualPayoutConfirmedAt
+                || current.sellerBonusReleasedAt || current.sellerFundsConfirmedAt
+                || current.buyerRefusedAt || current.handoverRejectedAt
                 || current.buyerFeePaid || current.buyerFeeTransactionId
                 || current.handoverSubmittedAt || current.handoverProofPath
                 || current.handoverProofUrl || current.sellerBonusReleased
