@@ -1828,6 +1828,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
         };
         notificationsService = {
             create: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+            shouldSendEmail: jest.fn().mockResolvedValue(true),
         };
         paymentsService = {
             issueFullRefundForAuctionInspection: jest.fn().mockResolvedValue(undefined),
@@ -1856,6 +1857,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     useValue: {
                         sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
                         sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined),
+                        sendAuctionProvisionalBidBuyerEmail: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 {
@@ -2001,7 +2003,10 @@ describe('AuctionsService — final lifecycle consistency', () => {
             },
         });
 
-        prisma.user.findUnique.mockResolvedValue({ email: 'seller@example.com', firstName: 'Seller' });
+        prisma.user.findUnique.mockImplementation(({ where }: any) =>
+            Promise.resolve(where.id === 'dealer-1'
+                ? { email: 'buyer@example.com', firstName: 'Buyer' }
+                : { email: 'seller@example.com', firstName: 'Seller' }));
         await service.closeAuction('auction-below-reserve');
         expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
             userId: 'seller-1', type: 'AUCTION_OFFER_RECEIVED',
@@ -2013,6 +2018,21 @@ describe('AuctionsService — final lifecycle consistency', () => {
             .toHaveBeenCalledWith(expect.objectContaining({
                 toEmail: 'seller@example.com', ended: true, amount: 7000, reservePrice: 10000,
             }));
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'dealer-1', type: 'AUCTION_PROVISIONAL_BID',
+            title: expect.stringMatching(/provisional/i),
+            message: expect.stringContaining('You have not won yet'),
+            data: expect.objectContaining({ amount: 7000, provisional: true, sellerDecisionPending: true }),
+        }));
+        expect(notificationsService.shouldSendEmail)
+            .toHaveBeenCalledWith('dealer-1', 'AUCTION_PROVISIONAL_BID');
+        expect((service as any).emailService.sendAuctionProvisionalBidBuyerEmail)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                toEmail: 'buyer@example.com', amount: 7000, auctionId: 'auction-below-reserve',
+            }));
+        expect(notificationsService.create).not.toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'dealer-1', type: 'AUCTION_WON',
+        }));
 
         expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.sale.create).not.toHaveBeenCalled();
@@ -2034,6 +2054,38 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 }),
             }),
         });
+    });
+
+    it('keeps the in-app provisional bidder notice when the buyer disables email', async () => {
+        notificationsService.shouldSendEmail.mockResolvedValueOnce(false);
+        prisma.user.findUnique.mockImplementation(({ where }: any) =>
+            Promise.resolve(where.id === 'dealer-1'
+                ? { email: 'buyer@example.com', firstName: 'Buyer' }
+                : { email: 'seller@example.com', firstName: 'Seller' }));
+        await (service as any).notifyAuctionEnd({
+            id: 'auction-provisional', listingId: 'listing-1', reservePrice: 10000,
+            listing: { sellerId: 'seller-1', title: 'BMW M3', year: 2022, make: 'BMW', model: 'M3', linkedListingId: null },
+        }, null, null, false, 7000, true, 'dealer-1');
+
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'dealer-1', type: 'AUCTION_PROVISIONAL_BID',
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalBidBuyerEmail).not.toHaveBeenCalled();
+        expect(notificationsService.create).not.toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'dealer-1', type: 'AUCTION_WON',
+        }));
+    });
+
+    it('does not declare a bidder provisional without the persisted close marker', async () => {
+        await (service as any).notifyAuctionEnd({
+            id: 'auction-legacy', listingId: 'listing-1', reservePrice: 10000,
+            listing: { sellerId: null, title: 'BMW M3', year: 2022, make: 'BMW', model: 'M3', linkedListingId: null },
+        }, null, null, false, 7000, false, null);
+
+        expect(notificationsService.create).not.toHaveBeenCalledWith(expect.objectContaining({
+            type: 'AUCTION_PROVISIONAL_BID',
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalBidBuyerEmail).not.toHaveBeenCalled();
     });
 
     it('creates the normal winner and sale when the final real bid meets reserve', async () => {
