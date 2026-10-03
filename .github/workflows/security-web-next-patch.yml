@@ -1,0 +1,107 @@
+name: Scoped Website Framework Security Patch
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/security-web-next-patch.yml'
+
+# Write-enabled job restricted to one preapproved same-repository PR branch.
+permissions:
+  contents: write
+
+jobs:
+  reviewable-web-lockfile:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref == 'security-web-next-16-3-8-20261003'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact security PR head, not main
+        uses: actions/checkout@v4
+        with:
+          ref: \${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Use Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify exact paired framework versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e '
+            const p=require("./package.json");
+            if(p.dependencies.next!=="16.3.8" || p.devDependencies["eslint-config-next"]!=="16.3.8")
+              process.exit(2);
+            console.log("The exact paired Next.js 16.3.8 update is confirmed");
+          '
+      - name: Generate reproducible npm lockfile without force or major upgrade
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --save-exact --no-audit --no-fund
+          npm audit fix --package-lock-only --ignore-scripts --no-fund > /tmp/web-safe-fixes.txt 2>&1 || true
+          node -e '
+            const p=require("./package.json"), l=require("./package-lock.json");
+            if(p.dependencies.next!=="16.3.8" || p.devDependencies["eslint-config-next"]!=="16.3.8"
+              || l.packages[""].dependencies.next!=="16.3.8"
+              || l.packages[""].devDependencies["eslint-config-next"]!=="16.3.8"
+              || l.packages["node_modules/next"].version!=="16.3.8")
+              throw Error("Unsafe or incomplete framework/lockfile pair");
+          '
+          node -e '
+            const {execFileSync}=require("child_process");
+            const files=execFileSync("git",["diff","--name-only"],{encoding:"utf8"}).trim().split("\n").filter(Boolean);
+            const unexpected=files.filter(x=>x!=="package-lock.json");
+            if(unexpected.length)throw Error("Unexpected source edits: "+unexpected.join(", "));
+            if(!files.includes("package-lock.json"))throw Error("Missing lockfile update");
+          '
+      - name: Independently verify remaining production advisories
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --package-lock-only --omit=dev --json > /tmp/web-audit.json || true
+          node -e '
+            const fs=require("fs");
+            const a=JSON.parse(fs.readFileSync("/tmp/web-audit.json","utf8"));
+            const c=a.metadata?.vulnerabilities;
+            if(!c||typeof c.critical!=="number"||typeof c.high!=="number")
+              throw Error("Audit unavailable");
+            console.log("WEBSITE_PATCH_AUDIT "+JSON.stringify({
+              critical:c.critical,high:c.high,moderate:c.moderate,low:c.low,
+              remaining:Object.entries(a.vulnerabilities||{}).filter(([name,v])=>
+                ["critical","high"].includes(v.severity)).map(([name])=>name)
+            }));
+            if(c.critical||c.high)throw Error("Critical/high remain; do not commit");
+          '
+      - name: Install and typecheck patched website
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-fund --no-audit
+          npx tsc --noEmit
+      - name: Compile website and validate existing contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          npm run parity:check
+          npm run release:check
+      - name: Commit only verified lockfile to this security PR branch
+        shell: bash
+        env:
+          BRANCH: security-web-next-16-3-8-20261003
+        run: |
+          set -euo pipefail
+          current="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+          test "$current" = "$(git rev-parse HEAD)"
+          test "$(git status --porcelain --untracked-files=no | wc -l)" -eq 1
+          git add -- package-lock.json
+          git -c user.name='CarMazium Security CI' -c user.email='security-ci@users.noreply.github.com' \
+            commit -m 'Security web: regenerate verified Next.js 16.3.8 lockfile'
+          git push origin "HEAD:refs/heads/$BRANCH"
+          echo "LOCKFILE_COMMITTED_AFTER_WEB_BUILD_AND_ZERO_CRITICAL_HIGH_AUDIT"
