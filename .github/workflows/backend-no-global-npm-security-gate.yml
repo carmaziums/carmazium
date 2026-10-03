@@ -1,0 +1,128 @@
+name: No-NPM Backend Runtime Image Security Gate
+
+on:
+  pull_request:
+    branches: [security-backend-actual-image-os-sbom-20261003]
+    paths:
+      - '.github/workflows/backend-no-global-npm-security-gate.yml'
+      - 'backend/Dockerfile'
+      - 'docs/security/backend-no-npm-runtime-hardening.md'
+
+permissions:
+  contents: read
+
+jobs:
+  prove-physical-runtime-minimisation:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'security-backend-runtime-remove-global-npm-20261003'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inventory current candidate npm production lockfile OUTSIDE the server image
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit --package-lock-only --omit=dev --json > /tmp/backend-candidate-lockfile-audit.json) || true
+          node -e '
+            const fs=require("fs"),x=JSON.parse(fs.readFileSync("/tmp/backend-candidate-lockfile-audit.json"));
+            const c=x.metadata?.vulnerabilities;
+            if(!c||!Number.isInteger(c.critical)||!Number.isInteger(c.high))
+              throw Error("Lockfile audit unavailable");
+            console.log("NPM_LOCKFILE_ONLY_AUDIT "+JSON.stringify(c));
+            if(c.critical||c.high)throw Error("Application candidate has new critical/high advisories");
+          '
+      - name: Build EXACT updated default Node22 backend runtime in disposable Docker runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "ARG NODE_VERSION=22.23.3" backend/Dockerfile
+          grep -F "rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx" backend/Dockerfile
+          docker build --pull --progress=plain -f backend/Dockerfile \
+            -t carmazium-no-global-npm-security-candidate:ci backend
+      - name: Prove npm/npx and their global dependency tree are physically absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --entrypoint /bin/sh \
+            carmazium-no-global-npm-security-candidate:ci -ec '
+              cd /app
+              test "$(node --version)" = "v22.23.3"
+              test ! -e /usr/local/lib/node_modules/npm/package.json
+              test ! -e /usr/local/bin/npm
+              test ! -e /usr/local/bin/npx
+              test ! -d node_modules/@nestjs/cli
+              test ! -d node_modules/@swc/cli
+              test -s dist/main.js
+              node scripts/verify-backend-docker-image.cjs
+              # Emergency Prisma schema maintenance remains possible with
+              # explicitly copied Prisma CLI; runtime npm/npx is not required.
+              node node_modules/prisma/build/index.js --version
+              pg_dump --version
+              echo RUNTIME_WITHOUT_GLOBAL_NPM_AND_PRISMA_CLI_PASS
+            '
+      - name: Scan the entire final image filesystem for OS and Node CVEs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .scan "$HOME/.cache/trivy"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.scan:/reports" \
+            -v "$HOME/.cache/trivy:/root/.cache" \
+            docker.io/aquasec/trivy:0.75.0 image \
+            --scanners vuln --image-src docker --format json \
+            --output /reports/scan.json \
+            carmazium-no-global-npm-security-candidate:ci
+          node scripts/security/parse-backend-trivy-image.cjs .scan/scan.json
+          node -e '
+            const r=require("./.scan/scan.json");
+            if(!r.Results.some(x=>x.Class==="os-pkgs") ||
+               !r.Results.some(x=>x.Class==="lang-pkgs"))
+              throw Error("Partial scanner results are not a security clearance");
+            const b=r.Results.flatMap(x=>x.Vulnerabilities||[])
+              .filter(v=>["CRITICAL","HIGH"].includes(v.Severity));
+            console.log("PHYSICAL_IMAGE_HIGH_CRITICAL_TOTAL "+b.length);
+            if(b.length){
+              for(const x of b.slice(0,15))console.log("IMAGE_BLOCKER "+x.VulnerabilityID+
+                " "+x.PkgName+" "+x.InstalledVersion+" "+(x.PkgPath||""));
+              throw Error("Final assembled image still has critical/high findings");
+            }
+          '
+      - name: Verify a new CycloneDX SBOM without production cloud access
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.scan:/reports" \
+            -v "$HOME/.cache/trivy:/root/.cache" \
+            docker.io/aquasec/trivy:0.75.0 image \
+            --scanners vuln --image-src docker --format cyclonedx \
+            --output /reports/sbom.json carmazium-no-global-npm-security-candidate:ci
+          node -e '
+            const s=require("./.scan/sbom.json");
+            if(s.bomFormat!=="CycloneDX"||!Array.isArray(s.components)||!s.components.length)
+              throw Error("SBOM incomplete");
+            console.log("HARDENED_BACKEND_IMAGE_SBOM_COMPONENTS "+s.components.length);
+          '
+      - name: Store scanner and SBOM evidence privately for seven days
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardened-backend-runtime-image-cve-and-sbom
+          path: |
+            .scan/scan.json
+            .scan/sbom.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: Reiterate scope of no-cloud image gate
+        shell: bash
+        run: |
+          echo "No production, Fly staging, Supabase branch, DB, user/password records or store release touched."
+          echo "Zero CVEs on this disposable image is a dated scanner measurement, NOT live API staging clearance."

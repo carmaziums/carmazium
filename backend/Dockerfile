@@ -54,6 +54,18 @@ COPY --from=builder /app/assets ./assets
 # exist, rather than needing those secrets copied onto someone's laptop.
 COPY --from=builder /app/scripts ./scripts
 
+# npm is needed to install dependencies in each build stage, but the final
+# application launches with node dist/main. Do not retain Node's vulnerable
+# global npm package tree in the live API container. Explicit Prisma CLI
+# maintenance remains available via node node_modules/prisma/build/index.js.
+# This MUST be verified in the independent physical-image security job.
+RUN set -eux; \
+    test -e /usr/local/lib/node_modules/npm/package.json; \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx; \
+    test ! -e /usr/local/lib/node_modules/npm; \
+    test ! -e /usr/local/bin/npm; \
+    test ! -e /usr/local/bin/npx
+
 EXPOSE 8080
 
 CMD ["node", "dist/main"]
