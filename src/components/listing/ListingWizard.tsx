@@ -37,6 +37,7 @@ import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPrici
 import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
+import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -340,6 +341,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
+    const lookupRequestRef = React.useRef(0)
     // Tracks "the user explicitly chose Other" independently of whether the
     // field has anything typed in it yet — deriving that purely from the
     // field being non-empty meant picking Other (which resets the field to
@@ -428,9 +430,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     year: l.year ? String(l.year) : '',
                     mileage: l.mileage ? String(l.mileage) : '',
                     fuelType: l.fuelType || '',
-                    transmission: l.transmission || '',
+                    transmission: normalizeSellerTransmission(l.transmission),
                     color: l.color || '',
-                    bodyType: l.bodyType || '',
+                    bodyType: normalizeSellerBodyType(l.bodyType, getBodyTypeKeysForVehicleType(l.vehicleType || 'CAR')),
                     doors: l.doors ? String(l.doors) : '',
                     seats: l.seats ? String(l.seats) : '',
                     engineSize: l.engineSize ? String(l.engineSize) : '',
@@ -563,7 +565,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const normaliseVrm = (value: string) => value.replace(/\s/g, '').toUpperCase()
             if (urlVrm && normaliseVrm(urlVrm) !== normaliseVrm(parsed.vrm)) return
 
-            setFormData(prev => ({ ...prev, ...parsed }))
+            setFormData(prev => ({
+                ...prev, ...parsed,
+                transmission: normalizeSellerTransmission(parsed.transmission),
+                bodyType: normalizeSellerBodyType(parsed.bodyType, getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR')),
+            }))
             setSellingMethod('list')
 
             const savedStep = Number(localStorage.getItem('carmazium_listing_draft_step'))
@@ -601,7 +607,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (saved) {
             try {
                 const parsed = JSON.parse(saved)
-                setFormData(parsed)
+                setFormData({
+                    ...INITIAL_FORM, ...parsed,
+                    transmission: normalizeSellerTransmission(parsed.transmission),
+                    bodyType: normalizeSellerBodyType(parsed.bodyType, getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR')),
+                })
                 setSellingMethod('list')
                 setCurrentStep(2) // Return to media step where HPI is
             } catch (e) {
@@ -1074,8 +1084,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!formData.year) missing.push('year')
                 if (!formData.mileage) missing.push('mileage')
                 if (!formData.fuelType) missing.push('fuel type')
-                if (!formData.transmission) missing.push('transmission')
-                if (formData.vehicleType !== 'MOTORCYCLE' && !formData.bodyType) missing.push('body type')
+                if (!normalizeSellerTransmission(formData.transmission)) missing.push('transmission')
+                if (formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)) missing.push('body type')
                 if (!formData.title || formData.title.length < 5) missing.push('listing title')
                 if (!formData.location) missing.push('location')
                 if (!formData.owners) missing.push('previous keepers')
@@ -1150,12 +1160,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const focusFirstTransmissionOrBodyTypeError = (): boolean => {
         if (currentStep !== 1) return false
 
-        const target = !formData.transmission
+        const target = !normalizeSellerTransmission(formData.transmission)
             ? {
                 id: 'transmission-field',
                 message: 'Please select the transmission to continue.',
             }
-            : formData.vehicleType !== 'MOTORCYCLE' && !formData.bodyType
+            : formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)
                 ? {
                     id: 'body-type-field',
                     message: formData.vehicleType === 'HGV'
@@ -1267,13 +1277,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
 
             const listingType = detail.listingType
-            setFormData(prev => ({
-                ...prev,
-                ...detail.vehicle,
-                listingType,
-                badgeTier: listingType === "AUCTION" ? "FREE" : "BASIC",
-                status: "ACTIVE",
-            }))
+            setFormData(prev => {
+                const sameVehicle = !!normalizeVehicleRegistration(prev.vrm)
+                    && normalizeVehicleRegistration(prev.vrm) === normalizeVehicleRegistration(detail.vehicle?.vrm)
+                const nextVehicleType = detail.vehicle?.vehicleType ?? (sameVehicle ? prev.vehicleType : 'CAR')
+                const specs = resolveSellerVehicleSpecs(
+                    prev,
+                    { vrm: detail.vehicle?.vrm || '', transmission: detail.vehicle?.transmission, bodyType: detail.vehicle?.bodyType },
+                    getBodyTypeKeysForVehicleType(nextVehicleType),
+                )
+                return {
+                    ...(sameVehicle ? prev : INITIAL_FORM),
+                    ...detail.vehicle,
+                    vehicleType: nextVehicleType,
+                    ...specs,
+                    listingType,
+                    badgeTier: listingType === "AUCTION" ? "FREE" : "BASIC",
+                    status: "ACTIVE",
+                }
+            })
             const landingBase = detail.valuation ?? null
             setBaseValuation(landingBase)
             valuationBaseKeyRef.current = landingBase
@@ -1408,8 +1430,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 model: formData.model || undefined,
                 description: formData.description || undefined,
                 fuelType: formData.fuelType as any || undefined,
-                transmission: formData.transmission as any || undefined,
-                bodyType: (formData.bodyType as BodyTypeValue) || undefined,
+                transmission: normalizeSellerTransmission(formData.transmission) || undefined,
+                bodyType: normalizeSellerBodyType(formData.bodyType, bodyTypeKeys) || undefined,
                 color: formData.color || undefined,
                 doors: formData.doors ? parseInt(formData.doors) : undefined,
                 seats: formData.seats ? parseInt(formData.seats) : undefined,
@@ -2275,14 +2297,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
                                     <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
-                                        onChange={(e) => { set("vrm", e.target.value.toUpperCase()); setDvlaSuccess(false); setDvlaError(null) }}
+                                        onChange={(e) => {
+                                            const nextVrm = e.target.value.toUpperCase()
+                                            lookupRequestRef.current += 1
+                                            setFormData(prev => ({
+                                                ...prev, vrm: nextVrm,
+                                                ...(normalizeVehicleRegistration(prev.vrm) !== normalizeVehicleRegistration(nextVrm)
+                                                    ? { transmission: "", bodyType: "" }
+                                                    : {}),
+                                            }))
+                                            setDvlaSuccess(false)
+                                            setDvlaError(null)
+                                        }}
                                         className={`${inputCls} uppercase font-mono tracking-widest text-lg h-14 flex-1 ${hasAttemptedNext && !formData.vrm ? 'border-red-500' : 'border-primary/20 focus:border-primary'}`} />
                                     <Button type="button" disabled={!formData.vrm || dvlaLoading}
                                         className="bg-primary hover:bg-primary/90 text-white font-bold px-8 h-14 uppercase tracking-widest gap-2 shadow-neon transition-transform active:scale-95 w-full sm:w-auto"
                                         onClick={async () => {
+                                            const requestedVrm = normalizeVehicleRegistration(formData.vrm)
+                                            const lookupId = ++lookupRequestRef.current
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
                                                 const r = await dvlaLookup(formData.vrm, hasAiSharingConsent())
+                                                if (lookupId !== lookupRequestRef.current) return
                                                 // Core vehicle fields — normalize make/model to canonical casing
                                                 if (r.make) {
                                                     const canonical = CAR_MAKES.find(m => m.toLowerCase() === r.make!.toLowerCase())
@@ -2319,29 +2355,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     const mappedFuel = fuelTypeMap[r.fuelType.toUpperCase()]
                                                     if (mappedFuel) set("fuelType", mappedFuel)
                                                 }
-                                                if (r.transmission) {
-                                                    const transmissionMap: Record<string, string> = {
-                                                        'MANUAL': 'MANUAL', 'AUTOMATIC': 'AUTOMATIC',
-                                                        'SEMI_AUTOMATIC': 'SEMI_AUTOMATIC', 'SEMI-AUTOMATIC': 'SEMI_AUTOMATIC',
-                                                        'SEMI AUTOMATIC': 'SEMI_AUTOMATIC',
-                                                        'CVT': 'CVT', 'CONTINUOUSLY VARIABLE': 'CVT',
-                                                    }
-                                                    const mappedTrans = transmissionMap[r.transmission.toUpperCase()]
-                                                    if (mappedTrans) set("transmission", mappedTrans)
+                                                // Lookup suggestions never replace the seller's valid selection.
+                                                if (r.transmission || r.bodyType) {
+                                                    setFormData(prev => {
+                                                        if (normalizeVehicleRegistration(prev.vrm) !== requestedVrm) return prev
+                                                        const specs = resolveSellerVehicleSpecs(
+                                                            prev,
+                                                            { vrm: requestedVrm, transmission: r.transmission, bodyType: r.bodyType },
+                                                            getBodyTypeKeysForVehicleType(prev.vehicleType),
+                                                        )
+                                                        return { ...prev, ...specs }
+                                                    })
                                                 }
 
-                                                // Evidence-backed AI specification enrichment. The backend
-                                                // only exposes auto-fill fields when the match is sufficiently
-                                                // strong; the seller can still review and edit them.
                                                 if (r.variant) set("variant", r.variant)
-                                                if (r.bodyType) {
-                                                    const candidateBodyType = r.bodyType as BodyTypeValue
-                                                    setFormData(prev => (
-                                                        getBodyTypeKeysForVehicleType(prev.vehicleType).includes(candidateBodyType)
-                                                            ? { ...prev, bodyType: candidateBodyType }
-                                                            : prev
-                                                    ))
-                                                }
                                                 if (r.driveType && ["FWD", "RWD", "AWD", "4WD"].includes(r.driveType)) {
                                                     set("driveType", r.driveType)
                                                 }
@@ -2790,7 +2817,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {formData.vehicleType !== 'MOTORCYCLE' && (
                                 <div
                                     id="body-type-field"
-                                    className={`space-y-3 scroll-mt-28 ${hasAttemptedNext && !formData.bodyType ? 'rounded-xl border border-red-500/60 bg-red-500/5 p-3' : ''}`}
+                                    className={`space-y-3 scroll-mt-28 ${hasAttemptedNext && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys) ? 'rounded-xl border border-red-500/60 bg-red-500/5 p-3' : ''}`}
                                 >
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">
                                         {formData.vehicleType === 'HGV' ? 'HGV Body Type *' : 'Body Type *'}
@@ -2812,7 +2839,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             )
                                         })}
                                     </div>
-                                    {hasAttemptedNext && !formData.bodyType && (
+                                    {hasAttemptedNext && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys) && (
                                         <p className="text-xs font-semibold text-red-400" role="alert">
                                             {formData.vehicleType === 'HGV'
                                                 ? 'Select the HGV body type to continue.'
@@ -3034,7 +3061,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     id="transmission-field"
                                     label="Transmission"
                                     required
-                                    error={hasAttemptedNext && !formData.transmission}
+                                    error={hasAttemptedNext && !normalizeSellerTransmission(formData.transmission)}
                                     errorMessage="Select the transmission to continue."
                                     value={formData.transmission}
                                     onChange={(v) => set("transmission", v)}
