@@ -1478,6 +1478,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             valuation_id: valuationJourneyIdRef.current || undefined,
         }
         trackEvent(SELLER_FUNNEL.LISTING_SUBMITTED, { ...common, outcome })
+        // Only a successfully published non-admin auction awaiting review
+        // qualifies here; revisions retain the same listing-id dedupe key.
+        if (listing_type === 'auction' && outcome === 'pending_review'
+            && String(common.seller_role).toUpperCase() !== 'ADMIN') {
+            trackEvent(SELLER_FUNNEL.QUALIFIED_SELLER_LISTING, {
+                listing_id: listingId,
+                listing_type: 'auction',
+                qualification: 'auction_review',
+                outcome: 'pending_review',
+                seller_role: common.seller_role,
+                transaction_id: `qualified_listing:${listingId}`,
+            })
+        }
         // Gate the path-specific events on listing_type, not on outcome —
         // a retail listing can also reach pending_review directly (already
         // paid, resubmitting after a rejection), and that's not an auction.
@@ -1681,8 +1694,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 // FREE tier (auctions) — no payment step, so publishing (DRAFT/REJECTED
                 // -> PENDING_REVIEW) is the whole submission, not something a webhook does.
-                await publishListing(editId)
-                trackListingSubmitted(payload, editId, 'pending_review')
+                const auctionSubmission = await publishListing(editId)
+                trackListingSubmitted(payload, editId, auctionSubmission.pendingReview ? 'pending_review' : 'published')
                 setPendingReview({ title: payload.title, onContinue: () => router.push('/dashboard/seller/listings') })
             } else if (draftListingId) {
                 // User returned from HPI payment — update the existing draft listing instead of creating a new one
@@ -1749,8 +1762,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 // FREE tier (auctions) — no payment step, so publishing (DRAFT -> PENDING_REVIEW)
                 // is the whole submission, not something a webhook does.
-                await publishListing(finalListingId)
-                trackListingSubmitted(payload, finalListingId, 'pending_review')
+                const auctionSubmission = await publishListing(finalListingId)
+                trackListingSubmitted(payload, finalListingId, auctionSubmission.pendingReview ? 'pending_review' : 'published')
                 setFormData(INITIAL_FORM)
                 setCurrentStep(1)
                 setSellingMethod(null)
@@ -1890,8 +1903,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // FREE tier (auctions) — no payment step, so publishing (DRAFT -> PENDING_REVIEW)
                 // is the whole submission. Show the same "under review" messaging as the
                 // paid-tier checkout-success flow before sending them onward.
-                await publishListing(newListingId)
-                trackListingSubmitted(payload, newListingId, 'pending_review')
+                const auctionSubmission = await publishListing(newListingId)
+                trackListingSubmitted(payload, newListingId, auctionSubmission.pendingReview ? 'pending_review' : 'published')
                 setPendingReview({
                     title: payload.title,
                     onContinue: () => {
