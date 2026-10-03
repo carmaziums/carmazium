@@ -943,11 +943,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Hydrate only after the authenticated user is known. A previous user's
   // in-memory draft is detached before reading this account's separate key.
   useEffect(() => {
-    if (editMode || !currentUserId) return;
+    if (!currentUserId) return;
     let cancelled = false;
     void (async () => {
       const loaded = await loadSellWizardDraftForUser(currentUserId);
-      if (!loaded || cancelled) return;
+      if (!loaded || cancelled || editMode) return;
       const store = useSellWizardStore.getState();
       if (!store.make && !store.model && store.lastStep <= 1) return;
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
@@ -2242,7 +2242,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (!validateStep(step)) return;
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
-    updateDraft({
+    if (!editMode) updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, priceMin, listingType,
       location, description, condition, owners, writeOffCat,
@@ -2284,6 +2284,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
+    if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, priceMin, listingType,
