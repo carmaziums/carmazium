@@ -1,0 +1,57 @@
+name: One-time read-only Supabase managed-backup availability check
+on:
+  push:
+    branches: [security/backup-availability-readonly]
+    paths: [.github/workflows/backup-availability-readonly.yml]
+permissions:
+  contents: read
+jobs:
+  backup-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check whether a separately authorised management token exists
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_MANAGEMENT_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] && [ -z "$SUPABASE_MANAGEMENT_TOKEN" ]; then
+            echo "RESULT: No project-management access token configured in this repository. Actual backup inventory cannot be checked here."
+            exit 0
+          fi
+          echo "RESULT: A project-management token is available; attempting metadata-only GET."
+      - name: Fetch only backup metadata from official management API when authorised
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_MANAGEMENT_TOKEN: ${{ secrets.SUPABASE_MANAGEMENT_TOKEN }}
+        run: |
+          set -eu
+          token="${SUPABASE_ACCESS_TOKEN:-$SUPABASE_MANAGEMENT_TOKEN}"
+          if [ -z "$token" ]; then exit 0; fi
+          code="$(curl --silent --show-error --max-time 20 -o "$RUNNER_TEMP/backups.json" -w '%{http_code}' \
+            -H "Authorization: Bearer $token" \
+            https://api.supabase.com/v1/projects/bwtnzmevjlowwronylxm/database/backups)" || {
+            echo 'RESULT: Backup metadata endpoint unreachable or failed'; exit 0;
+          }
+          if [ "$code" != 200 ]; then
+            echo "RESULT: Backup metadata GET returned HTTP $code (no body disclosed)"
+            exit 0
+          fi
+          node - <<'NODE'
+          const fs=require('node:fs');
+          let x;try{x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/backups.json','utf8'));}catch{
+            console.log('RESULT: Could not parse management backup response');process.exit(0)
+          }
+          const candidates=Array.isArray(x)?x:
+            Array.isArray(x.backups)?x.backups:
+            Array.isArray(x.data?.backups)?x.data.backups:
+            Array.isArray(x.data)?x.data:null;
+          if(!candidates){console.log('RESULT: API response returned, but backup inventory schema needs manual authorised review');process.exit(0)}
+          const out=candidates.map(b=>({
+            status:String(b.status||b.state||'unspecified').slice(0,36),
+            date:String(b.inserted_at||b.created_at||b.createdAt||b.backup_time||'undisclosed').slice(0,28),
+            type:String(b.type||b.backup_type||'unspecified').slice(0,24)
+          })).slice(0,12);
+          console.log('RESULT: Backup inventory metadata '+JSON.stringify({count:candidates.length,recent:out}));
+          NODE
+          rm -f "$RUNNER_TEMP/backups.json"
