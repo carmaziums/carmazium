@@ -711,14 +711,13 @@ export class AdminService {
     // ── Listing Review ───────────────────────────────────────────────────────
 
     /**
-     * All listings currently awaiting admin review, plus previously-rejected
-     * listings still sitting in that state (mirrors getPendingKyc's "pending or
-     * rejected" pattern so the admin can track outstanding fixes, not just new
-     * submissions).
+     * Only listings awaiting an admin decision belong in the review queue.
+     * Rejected vehicles remain in All Listings and the seller's dashboard, and
+     * return here only when the seller explicitly resubmits them for review.
      */
     async getPendingListingReviews() {
         return this.prisma.listing.findMany({
-            where: { status: { in: ['PENDING_REVIEW', 'REJECTED'] }, deletedAt: null },
+            where: { status: 'PENDING_REVIEW', deletedAt: null },
             orderBy: { createdAt: 'asc' },
             include: {
                 seller: { select: { id: true, email: true, firstName: true, lastName: true, phone: true } },
