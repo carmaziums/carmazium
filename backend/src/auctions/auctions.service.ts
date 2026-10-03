@@ -602,6 +602,8 @@ export class AuctionsService {
                         winnerId: null,
                         winningBidAmount: null,
                         wonAt: null,
+                        provisionalOfferBidId: null,
+                        provisionalOfferedAt: null,
                         buyerFeeReminder24SentAt: null,
                         buyerFeeReminder6SentAt: null,
                         buyerFeePaid: false,
@@ -1292,6 +1294,7 @@ export class AuctionsService {
             const activeAcceptance = auction.status === 'ACTIVE' && auction.listing.status === 'ACTIVE';
             const provisionalAcceptance = auction.status === 'ENDED'
                 && !auction.winnerId && !auction.wonAt
+                && !!auction.provisionalOfferBidId
                 && auction.listing.status === 'DRAFT';
             if (!activeAcceptance && !provisionalAcceptance) {
                 throw new BadRequestException('This auction has no provisional offer available to accept');
@@ -1317,6 +1320,9 @@ export class AuctionsService {
 
             if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
                 throw new NotFoundException('Bid not found in this auction');
+            }
+            if (provisionalAcceptance && auction.provisionalOfferBidId !== bid.id) {
+                throw new BadRequestException('This is not the recorded provisional offer for this auction');
             }
             if (!highestBid || highestBid.id !== bid.id) {
                 throw new BadRequestException(
@@ -2573,6 +2579,8 @@ export class AuctionsService {
                     "winnerId" = o.winner_id,
                     "winningBidAmount" = o.winning_amount,
                     "wonAt" = CASE WHEN o.sale_completed THEN NOW() ELSE NULL END,
+                    "provisionalOfferBidId" = CASE WHEN NOT o.sale_completed AND NOT o.reserve_met AND o.top_bid_id IS NOT NULL THEN o.top_bid_id ELSE NULL END,
+                    "provisionalOfferedAt" = CASE WHEN NOT o.sale_completed AND NOT o.reserve_met AND o.top_bid_id IS NOT NULL THEN NOW() ELSE NULL END,
                     "buyItNowPendingBuyerId" = NULL,
                     "buyItNowPendingAt" = NULL,
                     "updatedAt" = NOW()
@@ -2677,6 +2685,7 @@ export class AuctionsService {
                 o.winning_amount,
                 o.sale_completed,
                 o.outcome_type,
+                CASE WHEN o.decision_code = 'OK' AND NOT o.sale_completed AND NOT o.reserve_met THEN o.top_bid_id ELSE NULL END AS provisional_offer_bid_id,
                 (SELECT COUNT(*)::int FROM auction_updated) AS updated_count
             FROM outcome o
         `;
@@ -2751,6 +2760,7 @@ export class AuctionsService {
             winningAmount,
             saleCompleted,
             highestBidAmount,
+            Boolean(row.provisional_offer_bid_id),
         );
     }
 
@@ -2760,6 +2770,7 @@ export class AuctionsService {
         winningAmount: number | null,
         reserveMet: boolean,
         highestBidAmount: number | null = null,
+        provisionalOfferRecorded = false,
     ): Promise<void> {
         const listing = auction.listing;
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
@@ -2844,7 +2855,7 @@ export class AuctionsService {
                     buyerFeeWaived,
                 ).catch(console.error);
             }
-        } else if (highestBidAmount !== null && highestBidAmount > 0
+        } else if (provisionalOfferRecorded && highestBidAmount !== null && highestBidAmount > 0
             && highestBidAmount < Number(auction.reservePrice) && listing.sellerId) {
             // The auction is ENDED but no winner/Sale exists until the seller accepts.
             const retailAlreadyLive = Boolean(listing.linkedListingId);

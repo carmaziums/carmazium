@@ -113,6 +113,8 @@ export interface AuctionDetail {
   status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
   winnerId?: string | null;
   winningBidAmount?: number | null;
+  provisionalOfferBidId?: string | null;
+  provisionalOfferedAt?: string | null;
   buyItNowPrice?: number | null;
   buyItNowPendingBuyerId?: string | null;
   buyItNowPendingAt?: string | null;

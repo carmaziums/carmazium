@@ -1239,6 +1239,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
     it('accepts a provisional below-reserve offer after auction closure, but never marks it sold before consent', async () => {
         const ended = {
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null,
+            provisionalOfferBidId: 'bid-current',
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
             listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT',
                 linkedListingId: null, year: 2020, make: 'Test', model: 'Car' },
@@ -1258,9 +1259,20 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.sale.create).toHaveBeenCalledTimes(1);
     });
 
+    it('never resurrects a historical below-reserve bid into a provisional sale', async () => {
+        prisma.auction.findUnique.mockResolvedValue({ id: 'old-auction', listingId: 'listing-1',
+            status: 'ENDED', winnerId: null, wonAt: null, reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT' },
+        });
+        await expect(service.acceptBid('old-auction', 'bid-current', 'seller-1'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/no provisional offer/i) });
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
     it('rejects an expired provisional offer if the vehicle has been re-listed or moved to Retail', async () => {
         prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
             status: 'ENDED', winnerId: null, wonAt: null,
+            provisionalOfferBidId: 'bid-current',
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
             listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', linkedListingId: null },
         });
@@ -1966,7 +1978,8 @@ describe('AuctionsService — final lifecycle consistency', () => {
             winner_id: null,
             winning_amount: null,
             sale_completed: false,
-            outcome_type: 'BELOW_RESERVE_UNSOLD',
+            outcome_type: 'BELOW_RESERVE_SELLER_DECISION',
+            provisional_offer_bid_id: 'bid-1',
             updated_count: 1,
         }]);
         prisma.auction.findUnique.mockResolvedValueOnce({

@@ -90,6 +90,7 @@ interface AuctionItem {
   buyItNowPrice?: number | null;
   winnerId?: string | null;
   winningBidAmount?: number | null;
+  provisionalOfferBidId?: string | null;
   buyerFeePaid?: boolean;
   sellerFundsConfirmedAt?: string | null;
   buyerRefusedAt?: string | null;
@@ -140,8 +141,8 @@ interface EligibleListing {
 
 function provisionalPending(item: AuctionItem): boolean {
   const amount = Number(item.listing.bids?.[0]?.amount ?? 0);
-  return item.status === 'ENDED' && !item.winnerId && item.listing.status === 'DRAFT'
-    && amount > 0 && amount < Number(item.reservePrice);
+  return item.status === 'ENDED' && !item.winnerId && !!item.provisionalOfferBidId
+    && item.listing.status === 'DRAFT' && amount > 0 && amount < Number(item.reservePrice);
 }
 
 // ─────────────────────────── Status Config ───────────────────────────

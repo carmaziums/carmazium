@@ -780,6 +780,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
     const provisionalOfferPending = isEnded && !auction.winnerId
+        && !!auction.provisionalOfferBidId && auction.provisionalOfferBidId === bidHistory[0]?.bidId
         && auction.listing.status === 'DRAFT' && topBidAmount !== null
         && topBidAmount > 0 && !reserveMet
 

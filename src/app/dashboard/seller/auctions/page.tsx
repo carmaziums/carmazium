@@ -65,8 +65,8 @@ function addHours(iso: string, hours: number): string {
 // page and mentally connect it back to this auction.
 function isPendingProvisionalAuction(auction: Auction): boolean {
     const offer = getCurrentBid(auction)
-    return auction.status === 'ENDED' && !auction.winnerId && auction.listing.status === 'DRAFT'
-        && getBidCount(auction) > 0 && offer > 0 && offer < Number(auction.reservePrice)
+    return auction.status === 'ENDED' && !auction.winnerId && !!auction.provisionalOfferBidId
+        && auction.listing.status === 'DRAFT' && getBidCount(auction) > 0 && offer > 0 && offer < Number(auction.reservePrice)
 }
 
 function AuctionStatusBadge({ auction }: { auction: Auction }) {

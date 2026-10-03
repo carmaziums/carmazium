@@ -140,6 +140,8 @@ export interface Auction {
     minIncrement: string | number;
     winnerId: string | null;
     winningBidAmount: string | number | null;
+    provisionalOfferBidId?: string | null;
+    provisionalOfferedAt?: string | null;
     buyerFeePaid: boolean;
     /** Canonical backend deadline: 72h after wonAt, only while £125 fee is outstanding. */
     buyerFeeDeadlineAt?: string | null;
