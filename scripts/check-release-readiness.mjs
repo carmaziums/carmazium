@@ -283,7 +283,13 @@ if (
 
 if (
   !webListingAi.includes('ensureAiSharingConsent') ||
-  !webListingAi.includes('dvlaLookup(formData.vrm, hasAiSharingConsent())') ||
+  !(webListingAi.includes('dvlaLookup(formData.vrm, hasAiSharingConsent())') ||
+    (webListingAi.includes('dvlaLookup(formData.vrm, false)') &&
+     webListingAi.includes('if (hasAiSharingConsent())') &&
+     webListingAi.includes('dvlaEnrich(requestedVrm)') &&
+     dvlaControllerAi.includes("@Post('enrich')") &&
+     dvlaControllerAi.includes('this.dvlaService.enrichVrm(dto.vrm, dto.allowAiEnrichment === true)') &&
+     dvlaServiceAi.includes('if (!consent) throw new BadRequestException'))) ||
   !nativeListingAi.includes('ensureSellerAiConsent') ||
   !nativeListingAi.includes('allowAiEnrichment') ||
   !nativeSearchAi.includes('ensureAiSearchConsent') ||
