@@ -3496,9 +3496,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     onClick={() => set("writeOffCategory", opt.value)}
                                                     className={`p-3 rounded-xl border text-center transition-all flex flex-col gap-0.5 ${active
                                                         ? isAuctionOnly
-                                                            ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                                                            : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                            ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100"
+                                                            : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                                 >
                                                     <span className="text-sm font-bold">{opt.label}</span>
@@ -3528,8 +3528,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("stolenRecovered", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.stolenRecovered === val
-                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? val ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100" : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3546,8 +3546,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("hasOutstandingFinance", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.hasOutstandingFinance === val
-                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? val ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100" : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3570,7 +3570,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 onClick={() => set("isLegalRegisteredKeeper", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isLegalRegisteredKeeper === val
                                                     ? val ? "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100" : "border-blue-600 bg-blue-50 text-blue-900 dark:border-sky-400 dark:bg-sky-500/15 dark:text-sky-100"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
