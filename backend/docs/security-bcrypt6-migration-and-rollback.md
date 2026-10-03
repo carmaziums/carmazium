@@ -20,3 +20,15 @@ The scoped temporary CI generator must:
 bcrypt 6 uses the same established bcrypt on-disk hash format. However, do not assume migration is safe until real cross-version synthetically generated hashes verify in **both** directions. No existing customer password reset is expected, and **there is no migration of stored hash values**. If the new module has to be reverted, previous bcrypt 5 must still validate hashes generated while 6 was active (subject to separately reviewed Node/native compatibility). API login lockout and Supabase-managed login remain completely unchanged.
 
 Full production acceptance additionally requires an **isolated compatible staging backend** that boots on the target Fly.io Node base image and tests mocked/migrated synthetic authentication journeys, a verified deployment rollback image and a separate security review of the remaining high findings. CI success is not permission to merge the valuation release, the independent security patches, or to touch the production database.
+
+## Actual CI evidence from the isolated pre-commit verification
+
+The temporary branch-scoped GitHub workflow **37082961632** completed successfully on 3 October 2026, before its writer workflow was deleted. Recorded evidence from its exact test job:
+
+- **Six** actual bcrypt 5.1.1-generated synthetic hash families verified with bcrypt 6.0.0; six bcrypt 6 hashes verified again with actual bcrypt 5.1.1 for rollback. The `$2a$` legacy marker and the 72-byte input boundary passed. No real account data or password-hash snapshots were used.
+- New direct `AuthService` regression tests: **5 passed** including legacy-password login/reset and unchanged Supabase external-account handling; full backend suite: **86 suites / 948 tests passed**.
+- TypeScript backend checks, native-addon installation and Nest backend production build passed.
+- Before and after the clean installation, the production-dependency audit reported **0 critical, 3 high, 12 moderate and 0 low** (down from the previous safe-lockfile result of 1 critical / 6 high). Remaining high packages: `prisma`, `@prisma/config`, `deepmerge-ts`; these require a separately reviewed Prisma dependency strategy. No `tar`/bcrypt-related critical or high finding remained in this test's audit.
+- The generated lockfile was committed to the security draft branch only; the temporary write-enabled workflow has since been removed. The final release PR remains blocked until independently repeated normal GitHub CI on the final exact SHA and a compatible isolated Fly backend staging rehearsal.
+
+These are **automated test and npm-audit results**, not a claim that the production servers have been updated or that npm dependency advisories prove exploitation. No customer database or password-reset migration was changed.
