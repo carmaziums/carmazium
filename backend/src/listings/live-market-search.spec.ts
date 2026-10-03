@@ -145,6 +145,38 @@ describe('sanitizeLiveUkComparables', () => {
         }));
     });
 
+    it('matches a BMW Gran Tourer title but not the wrong 2 Series body style', () => {
+        const input = { make: 'BMW', model: '2 Series Gran Tourer', year: 2019, mileage: 67000 };
+        const rows = sanitizeLiveUkComparables(input, [
+            {
+                title: '2019 BMW 220i Gran Tourer 7 seat',
+                url: 'https://www.cargurus.co.uk/Cars/gran-tourer',
+                priceGBP: 13995, year: 2019, mileage: 67000,
+                make: 'BMW', model: '220i', variant: 'Gran Tourer',
+            },
+            {
+                title: '2019 BMW 2 Series Active Tourer',
+                url: 'https://www.cargurus.co.uk/Cars/active-tourer',
+                priceGBP: 12995, year: 2019, mileage: 64000,
+                make: 'BMW', model: '2 Series', variant: 'Active Tourer',
+            },
+        ]);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].price).toBe(13995);
+    });
+
+    it('rejects a different catalogue model even if its name shares a prefix', () => {
+        const rows = sanitizeLiveUkComparables({
+            make: 'Ford', model: 'Focus', year: 2020, mileage: 45000,
+        }, [{
+            title: '2020 Ford Focus ST',
+            url: 'https://www.autotrader.co.uk/car-details/focus-st',
+            priceGBP: 23995, year: 2020, mileage: 45000,
+            make: 'Ford', model: 'Focus', variant: 'ST',
+        }]);
+        expect(rows).toEqual([]);
+    });
+
     it('still refuses to broaden a registration accidentally stored as a model into make-only evidence', () => {
         const rows = sanitizeLiveUkComparables({
             make: 'Mini',
