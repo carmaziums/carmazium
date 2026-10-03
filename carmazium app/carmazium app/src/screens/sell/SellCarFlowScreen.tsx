@@ -1312,6 +1312,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setDvlaLoading(true);
     try {
       const allowAiEnrichment = await hasSellerAiConsent();
+      // Consent can involve a dialog: the seller might change the VRM while it is open.
+      if (requestId !== lookupRequestRef.current || clean !== currentVrmRef.current) return;
       const data = await apiClient<DvlaData>('/dvla/lookup', {
         method: 'POST',
         body: JSON.stringify({ vrm: clean, allowAiEnrichment }),
