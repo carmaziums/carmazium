@@ -59,7 +59,13 @@ class SyntheticAssetsController {
 
 const syntheticPrisma = {
   auction: {
-    findMany: async () => fixtures(),
+    // Honour the real service's Prisma pagination contract; otherwise the
+    // synthetic partner demo repeats vehicles on every page.
+    findMany: async (args: { skip?: number; take?: number } = {}) => {
+      const skip = args.skip ?? 0;
+      const take = args.take ?? 25;
+      return fixtures().slice(skip, skip + take);
+    },
     count: async () => fixtures().length,
     findFirst: async (args: any) => {
       return args?.where?.id === STAGING_AUCTION_ID ? fixtures()[0] : null;
