@@ -14,6 +14,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
+import { normalizeNativeTransmission, normalizeNativeBodyType, normalizeNativeRegistration, type NativeVehicleType } from '../../lib/sellerVehicleSpecs';
 import { IconButton } from '../../components/IconButton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { apiClient } from '../../lib/apiClient';
@@ -182,6 +183,17 @@ const PRESET_FEATURES = [
 ];
 // Source of truth for body-type icons app-wide — see src/constants/bodyTypes.ts
 const BODY_TYPES = BODY_TYPE_ICONS.map(b => ({ v: b.value, l: b.label, icon: b.icon }));
+const HGV_BODY_TYPES = [
+  { v: 'HGV_TRACTOR_UNIT', l: 'Tractor Unit', icon: 'van-utility' },
+  { v: 'HGV_BOX', l: 'Box', icon: 'van-utility' },
+  { v: 'HGV_CURTAIN_SIDER', l: 'Curtain Sider', icon: 'van-utility' },
+  { v: 'HGV_FLATBED', l: 'Flatbed', icon: 'car-pickup' },
+  { v: 'HGV_TIPPER', l: 'Tipper', icon: 'car-pickup' },
+  { v: 'HGV_DROPSIDE', l: 'Dropside', icon: 'car-pickup' },
+  { v: 'HGV_TANKER', l: 'Tanker', icon: 'van-utility' },
+  { v: 'HGV_REFRIGERATED', l: 'Refrigerated', icon: 'van-utility' },
+  { v: 'HGV_CAR_TRANSPORTER', l: 'Car Transporter', icon: 'car-pickup' },
+];
 const DAMAGE_TYPES = ['SCRATCH', 'SCUFF', 'DENT', 'CRACK', 'OTHER'];
 
 const BADGES = [
@@ -607,6 +619,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [vrm, setVrm] = useState('');
   const [dvlaLoading, setDvlaLoading] = useState(false);
   const [dvlaFetched, setDvlaFetched] = useState(false);
+  const lookupRequestRef = useRef(0);
+  const currentVrmRef = useRef('');
+  const vehicleTypeRef = useRef<NativeVehicleType>('CAR');
   // DVLA / Registration & Compliance
   const [vin, setVin] = useState('');
   const [make, setMake] = useState('');
@@ -942,21 +957,36 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {
               text: 'Resume',
               onPress: () => {
+                if (store.vrm) {
+                  const normalized = normalizeNativeRegistration(store.vrm);
+                  currentVrmRef.current = normalized;
+                  setVrm(normalized);
+                }
+                const draftVehicleType = store.vehicleType || 'CAR';
+                vehicleTypeRef.current = draftVehicleType;
+                setVehicleType(draftVehicleType);
                 if (store.make) setMake(store.make);
                 if (store.model) setModel(store.model);
                 if (store.year) setYear(store.year);
                 if (store.mileage) setMileage(store.mileage);
                 if (store.title) setTitle(store.title);
                 if (store.fuelType) setFuelType(store.fuelType);
-                if (store.transmission) setTransmission(store.transmission);
-                if (store.bodyType) setBodyType(store.bodyType);
+                setTransmission(normalizeNativeTransmission(store.transmission));
+                setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
                 if (store.colour) setColour(store.colour);
                 if (store.price) setPriceAsking(store.price);
                 if (store.listingType) setListingType(store.listingType as 'CLASSIFIED' | 'AUCTION');
                 if (store.exteriorImages.length > 0) setExteriorImages(store.exteriorImages);
                 if (store.interiorImages.length > 0) setInteriorImages(store.interiorImages);
                 if (store.damageImages.length > 0) setDamageImages(store.damageImages);
-                if (store.lastStep > 1) setStep(store.lastStep as Step);
+                const draftSpecsValid = !!normalizeNativeTransmission(store.transmission)
+                  && (draftVehicleType === 'MOTORCYCLE'
+                    || !!normalizeNativeBodyType(store.bodyType, draftVehicleType));
+                if (store.vrm && draftSpecsValid && store.lastStep > 1) setStep(store.lastStep as Step);
+                else {
+                  setStep(1);
+                  setTouched(prev => ({ ...prev, transmission: true, bodyType: draftVehicleType !== 'MOTORCYCLE' }));
+                }
               },
             },
           ],
@@ -980,7 +1010,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (!l || cancelled) return;
 
         if (l.vin) setVin(String(l.vin));
-        if (l.vehicleType) setVehicleType(l.vehicleType);
+        const editVrm = normalizeNativeRegistration(l.vrm);
+        lookupRequestRef.current += 1;
+        currentVrmRef.current = editVrm;
+        setVrm(editVrm);
+        const editVehicleType: NativeVehicleType = l.vehicleType || 'CAR';
+        vehicleTypeRef.current = editVehicleType;
+        setVehicleType(editVehicleType);
         setMake(l.make ?? '');
         setModel(l.model ?? '');
         if (l.year) setYear(String(l.year));
@@ -1002,11 +1038,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (l.torqueNm != null) setTorque(String(l.torqueNm));
         if (l.combinedMpg != null) setCombinedMpg(String(l.combinedMpg));
         if (l.extraUrbanMpg != null) setExtraUrbanMpg(String(l.extraUrbanMpg));
-        setBodyType(l.bodyType ?? '');
+        setBodyType(normalizeNativeBodyType(l.bodyType, editVehicleType));
         setLocation(l.location ?? '');
         if (l.mileage != null) setMileage(String(l.mileage));
         if (l.fuelType) setFuelType(l.fuelType);
-        if (l.transmission) setTransmission(l.transmission);
+        setTransmission(normalizeNativeTransmission(l.transmission));
         setColour(l.color ?? '');
         if (l.engineSize != null) setEngineSize(String(l.engineSize));
         if (l.bhp != null) setBhp(String(l.bhp));
@@ -1133,6 +1169,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     // Web now requires + red-highlights Location on submit (ListingWizard.tsx) —
     // mobile previously had no validation on this field at all.
     if (key === 'location' && !location.trim()) return 'Required';
+    if (key === 'transmission' && !normalizeNativeTransmission(transmission)) return 'Select transmission to continue';
+    if (key === 'bodyType' && vehicleType !== 'MOTORCYCLE'
+      && !normalizeNativeBodyType(bodyType, vehicleType)) return 'Select the vehicle body type';
     if (key === 'condition' && !condition) return 'Required';
     if (key === 'owners' && !owners) return 'Required';
     if (key === 'departedRelationship' && isDepartedSale && !departedRelationship.trim()) return 'Required';
@@ -1162,7 +1201,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'location', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'location', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
 
@@ -1174,7 +1213,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // Step 1 has invalid touched fields?
   const step1HasErrors = (): boolean => {
-    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location');
+    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location')
+      || !!fieldError('transmission') || !!fieldError('bodyType');
   };
 
   // Step 3 has invalid touched fields?
@@ -1246,7 +1286,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── DVLA Auto-submit handler ─────────────────────────────────────────────────
 
   const handlePlateChange = (raw: string) => {
-    const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleaned = normalizeNativeRegistration(raw);
+    if (cleaned !== currentVrmRef.current) {
+      lookupRequestRef.current += 1;
+      currentVrmRef.current = cleaned;
+      setTransmission('');
+      setBodyType('');
+      setDvlaFetched(false);
+      // The old in-flight request has been invalidated; do not leave Analyse disabled
+      // if its stale finally block correctly refrains from touching a new request.
+      setDvlaLoading(false);
+    }
     setVrm(cleaned);
     if (cleaned.length >= 7 && cleaned.length <= 8 && !dvlaFetched && !dvlaLoading) {
       handleDvlaLookup(cleaned);
@@ -1256,16 +1306,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── DVLA Lookup ─────────────────────────────────────────────────────────────
 
   async function handleDvlaLookup(override?: string) {
-    const clean = (override ?? vrm).replace(/\s/g, '').toUpperCase();
+    const clean = normalizeNativeRegistration(override ?? vrm);
     if (!clean) return Alert.alert('Enter a registration', 'Please enter a UK registration number.');
+    const requestId = ++lookupRequestRef.current;
+    currentVrmRef.current = clean;
     setDvlaLoading(true);
     try {
       const allowAiEnrichment = await hasSellerAiConsent();
+      // Consent can involve a dialog: the seller might change the VRM while it is open.
+      if (requestId !== lookupRequestRef.current || clean !== currentVrmRef.current) return;
       const data = await apiClient<DvlaData>('/dvla/lookup', {
         method: 'POST',
         body: JSON.stringify({ vrm: clean, allowAiEnrichment }),
         timeoutMs: 25_000,
       });
+      if (requestId !== lookupRequestRef.current || clean !== currentVrmRef.current) return;
       // Use String() on every field — the backend might return nested objects for some fields
       if (data.make) setMake(String(data.make));
       if (data.model) setModel(String(data.model));
@@ -1274,9 +1329,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.primaryColour) setColour(String(data.primaryColour));
       if (data.engineSize) setEngineSize(String(data.engineSize));
       if (data.fuelType) setFuelType(String(data.fuelType));
-      if (data.transmission) setTransmission(String(data.transmission));
+      if (data.transmission) {
+        const incomingTransmission = normalizeNativeTransmission(data.transmission);
+        if (incomingTransmission) setTransmission(prev => normalizeNativeTransmission(prev) || incomingTransmission);
+      }
       if (data.variant) setVariant(String(data.variant));
-      if (data.bodyType) setBodyType(String(data.bodyType));
+      if (data.bodyType) {
+        const currentType = vehicleTypeRef.current;
+        const incomingBodyType = normalizeNativeBodyType(data.bodyType, currentType);
+        if (incomingBodyType) setBodyType(prev => normalizeNativeBodyType(prev, currentType) || incomingBodyType);
+      }
       if (data.driveType) setDriveType(String(data.driveType));
       if (data.doors != null) setDoors(String(data.doors));
       if (data.seats != null) setSeats(String(data.seats));
@@ -1295,9 +1357,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (Array.isArray(data.motHistory)) setMotHistory(data.motHistory);
       setDvlaFetched(true);
     } catch (err: any) {
-      Alert.alert('DVLA Lookup Failed', err.message || 'Could not fetch vehicle data. Fill in details manually.');
+      if (requestId === lookupRequestRef.current) {
+        Alert.alert('DVLA Lookup Failed', err.message || 'Could not fetch vehicle data. Fill in details manually.');
+      }
     } finally {
-      setDvlaLoading(false);
+      if (requestId === lookupRequestRef.current) setDvlaLoading(false);
     }
   }
 
@@ -2139,7 +2203,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
     updateDraft({
-      make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, listingType,
       exteriorImages, interiorImages, damageImages,
       lastStep: nextStep,
@@ -2177,7 +2241,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
     updateDraft({
-      make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
+      vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
       price: priceAsking, listingType,
       exteriorImages, interiorImages, damageImages,
       lastStep: step,
@@ -2238,7 +2302,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <TouchableOpacity
                 key={t}
                 style={[s.pill, { flex: 1, justifyContent: 'center' }, vehicleType === t && s.pillActive]}
-                onPress={() => setVehicleType(t)}
+                onPress={() => {
+                  vehicleTypeRef.current = t;
+                  setVehicleType(t);
+                  setBodyType(prev => normalizeNativeBodyType(prev, t));
+                }}
                 activeOpacity={0.7}
               >
                 <Text style={[s.pillText, vehicleType === t && s.pillTextActive]}>
@@ -2439,10 +2507,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        {/* Body Type */}
-        <SectionBox title="Body Type">
+        {/* Body Type — no hidden mandatory choice for motorcycles. */}
+        {vehicleType !== 'MOTORCYCLE' && <SectionBox title="Body Type *">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {BODY_TYPES.map(bt => (
+            {(vehicleType === 'HGV' ? HGV_BODY_TYPES : BODY_TYPES).map(bt => (
               <TouchableOpacity
                 key={bt.v}
                 style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
@@ -2454,7 +2522,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </TouchableOpacity>
             ))}
           </View>
-        </SectionBox>
+          {fieldError('bodyType') ? <Text style={s.inlineError}>{fieldError('bodyType')}</Text> : null}
+        </SectionBox>}
 
         {/* Location */}
         <SectionBox title="Location *">
@@ -2497,7 +2566,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
           </View>
           <PillRow label="FUEL TYPE" options={FUEL_TYPES} value={fuelType as any} onSelect={setFuelType} />
-          <PillRow label="TRANSMISSION" options={TRANSMISSIONS} value={transmission as any} onSelect={setTransmission} />
+          <PillRow label="TRANSMISSION *" options={TRANSMISSIONS} value={transmission as any} onSelect={setTransmission} />
+          {fieldError('transmission') ? <Text style={s.inlineError}>{fieldError('transmission')}</Text> : null}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <FieldInput label="ENGINE SIZE (CC)" value={engineSize} onChange={setEngineSize} placeholder="e.g. 1998" keyboardType="number-pad" />

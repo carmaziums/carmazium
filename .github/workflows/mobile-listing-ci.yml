@@ -13,6 +13,8 @@ on:
       - "carmazium app/carmazium app/src/components/ImportListingModal.tsx"
       - "carmazium app/carmazium app/src/hooks/useListingFeePayment.ts"
       - "carmazium app/carmazium app/src/constants/pricing.ts"
+      - "carmazium app/carmazium app/src/lib/sellerVehicleSpecs.ts"
+      - "carmazium app/carmazium app/scripts/test-seller-vehicle-specs.test.mjs"
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
@@ -44,6 +46,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Native seller gearbox and body-type regression suite
+        run: npm run test:seller-specs
+
       - name: Typecheck mobile listing surfaces
         shell: bash
         run: |
@@ -58,7 +63,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(sellerVehicleSpecs|listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
           if [ -n "$LISTING_ERRORS" ]; then
             echo
             echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"

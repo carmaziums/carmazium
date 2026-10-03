@@ -5,6 +5,8 @@ import { CarListing } from '../data/listings';
 
 export interface ApiListing {
   id: string;
+  /** UK registration from the canonical listing row; required for edit identity restoration. */
+  vrm?: string | null;
   title: string;
   make?: string | null;
   model?: string | null;
