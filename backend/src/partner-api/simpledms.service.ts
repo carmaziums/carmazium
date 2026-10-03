@@ -65,7 +65,7 @@ export class SimpleDmsService {
     // auctions, even if production defaults are left elsewhere in the repo.
     if (this.isEnabled('STAGING_SYNTHETIC_ONLY')) {
       const host = this.config.get<string>('STAGING_PUBLIC_HOST') || '';
-      if (!/^[a-z0-9.-]+\\.up\\.railway\\.app$/.test(host))
+      if (!/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.up\.railway\.app$/.test(host))
         throw new Error('Synthetic staging requires a Railway synthetic-only host');
       return 'https://' + host + '/staging-auctions/' + encodeURIComponent(id);
     }
