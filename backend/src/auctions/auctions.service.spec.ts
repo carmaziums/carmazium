@@ -2029,7 +2029,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 type: 'auction_outcome',
                 payload: expect.objectContaining({
                     auction_id: 'auction-below-reserve',
-                    outcome: 'BELOW_RESERVE_UNSOLD',
+                    outcome: 'BELOW_RESERVE_SELLER_DECISION',
                     highest_bid_amount: 7000,
                 }),
             }),
