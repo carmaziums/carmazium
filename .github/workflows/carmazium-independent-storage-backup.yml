@@ -1,0 +1,30 @@
+name: Independent Storage backup and no-source recovery tests
+on:
+  push:
+    branches:
+      - security/carmazium-independent-storage-backup-20261003
+    paths:
+      - backend/scripts/security/storage_offsite_backup.py
+      - backend/scripts/security/test_storage_offsite_backup.py
+      - .github/workflows/carmazium-independent-storage-backup.yml
+  pull_request:
+    branches:
+      - integration/simpledms-staging-candidate-20261003
+    paths:
+      - backend/scripts/security/storage_offsite_backup.py
+      - backend/scripts/security/test_storage_offsite_backup.py
+      - .github/workflows/carmazium-independent-storage-backup.yml
+permissions:
+  contents: read
+jobs:
+  offline-synthetic-independent-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure code syntax without installing or accessing cloud credentials
+        run: python3 -m py_compile backend/scripts/security/storage_offsite_backup.py backend/scripts/security/test_storage_offsite_backup.py
+      - name: Exercise synthetic AWS/Supabase fakes and independent vault restore
+        run: python3 backend/scripts/security/test_storage_offsite_backup.py
+      - name: Explicit data-control boundary
+        run: echo "Offline synthetic fakes only; NO real Storage bytes, service role, AWS credentials, KYC files, live backups, provider network, paid infrastructure or published artifacts."
