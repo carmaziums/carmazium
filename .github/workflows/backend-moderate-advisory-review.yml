@@ -1,0 +1,82 @@
+name: Independent Backend Moderate Advisory Inventory
+
+on:
+  pull_request:
+    branches: [security-backend-prisma6-config-advisory-20261003]
+    paths:
+      - '.github/workflows/backend-moderate-advisory-review.yml'
+      - 'backend/scripts/security-moderate-advisory-report.cjs'
+      - 'backend/package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  moderate-dependency-inventory:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'security-backend-moderate-advisory-review-20261003')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check exact original backend audit with unchanged lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --version
+          before="$(mktemp)"
+          (cd backend && npm audit --package-lock-only --omit=dev --json > "$before") || true
+          node backend/scripts/security-moderate-advisory-report.cjs "$before" before
+          rm -f "$before"
+      - name: Verify actual production-only installation and live npm advisory tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          # Do not run prisma postinstall or touch any database. This runner is
+          # disposable: the only writes are its own local node_modules.
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npm ls --omit=dev --all --json > /tmp/backend-prod-tree.json 2>/tmp/npm-ls-warnings || true
+          node -e '
+            const fs=require("fs"),p=require("./package.json");
+            const target=["@swc/cli","@swc/core","@nestjs/cli",
+              "@nestjs/swagger","@xhmikosr/bin-wrapper","@xhmikosr/decompress",
+              "file-type","js-yaml","prisma","@prisma/client"];
+            const tree=JSON.parse(fs.readFileSync("/tmp/backend-prod-tree.json","utf8"));
+            const matches=[];
+            function visit(deps,parent,depth){
+              if(depth>14||!deps)return;
+              for(const [name,pkg] of Object.entries(deps)){
+                if(target.includes(name))
+                  matches.push({pkg:name,version:pkg.version,path:parent+"/"+name,
+                    markedDev:!!pkg.dev,missing:!!pkg.missing});
+                visit(pkg.dependencies,parent+"/"+name,depth+1);
+              }
+            }
+            visit(tree.dependencies,"root",0);
+            console.log("ACTUAL_PRODUCTION_DEPENDENCY_PATHS "+JSON.stringify(matches));
+          '
+          npm audit --omit=dev --json > /tmp/backend-installed-prod-audit.json || true
+          node scripts/security-moderate-advisory-report.cjs             /tmp/backend-installed-prod-audit.json before
+          cd ..
+      - name: Simulate compatible dependency fixes, without force, on disposable CI runner only
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund \
+            > /tmp/moderate-fix-simulation.log 2>&1) || true
+          after="$(mktemp)"
+          (cd backend && npm audit --package-lock-only --omit=dev --json > "$after") || true
+          node backend/scripts/security-moderate-advisory-report.cjs "$after" after-simulation
+          echo 'SIMULATED_MODERATE_FIX_DIFF'
+          git diff --numstat -- backend/package-lock.json backend/package.json
+          echo 'No simulated lockfile is committed, uploaded or deployed.'
+          rm -f "$after"
