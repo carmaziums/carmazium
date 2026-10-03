@@ -11,6 +11,7 @@ on:
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
       - "src/lib/sellerVehicleSpecs.ts"
+      - "src/lib/pendingSellerHandoff.ts"
       - "scripts/test-seller-vehicle-specs.test.mjs"
       - "src/lib/pricingConfig.ts"
       - "src/lib/auctionApi.ts"
@@ -54,7 +55,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs)\.ts)' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff)\.ts)' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo
