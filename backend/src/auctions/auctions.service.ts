@@ -1283,9 +1283,6 @@ export class AuctionsService {
                     'This auction has ended and is being finalised. Refresh for the seller decision.',
                 );
             }
-            if (provisionalAcceptance && Date.now() < auction.endTime.getTime()) {
-                throw new BadRequestException('The auction has not reached its final deadline');
-            }
 
             const [bid, highestBid] = await Promise.all([
                 tx.bid.findUnique({ where: { id: bidId } }),

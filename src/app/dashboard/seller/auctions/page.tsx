@@ -63,7 +63,16 @@ function addHours(iso: string, hours: number): string {
 // know: whether there's something left to do. This surfaces that directly on
 // the row instead of making them notice a separate section further down the
 // page and mentally connect it back to this auction.
+function isPendingProvisionalAuction(auction: Auction): boolean {
+    const offer = getCurrentBid(auction)
+    return auction.status === 'ENDED' && !auction.winnerId && auction.listing.status === 'DRAFT'
+        && getBidCount(auction) > 0 && offer > 0 && offer < Number(auction.reservePrice)
+}
+
 function AuctionStatusBadge({ auction }: { auction: Auction }) {
+    if (isPendingProvisionalAuction(auction)) {
+        return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold border border-amber-500/25 bg-amber-500/10 text-amber-400">Provisionally Sold · Decide</span>
+    }
     const stage = getSellerAuctionStage(auction)
     if (stage !== 'NOT_APPLICABLE') {
         const sellerAction = stage === 'ARRANGE_INSPECTION_PAYMENT' || stage === 'READY_FOR_HANDOVER' || stage === 'CORRECT_PROOF'
@@ -870,7 +879,7 @@ function SellerAuctionsPage() {
                                                     onClick={() => setResultsAuction(auction)}
                                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:bg-white/10 transition-colors"
                                                 >
-                                                    <BarChart2 size={13} /> Results
+                                                    <BarChart2 size={13} /> {isPendingProvisionalAuction(auction) ? 'Review Offer' : 'Results'}
                                                 </button>
                                             )}
                                         </div>
@@ -1056,7 +1065,7 @@ function SellerAuctionsPage() {
                                                                 onClick={() => setResultsAuction(auction)}
                                                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--border-default)] text-xs font-bold hover:bg-white/10 transition-colors"
                                                             >
-                                                                <BarChart2 size={13} /> Results
+                                                                <BarChart2 size={13} /> {isPendingProvisionalAuction(auction) ? 'Review Offer' : 'Results'}
                                                             </button>
                                                         )}
                                                     </div>

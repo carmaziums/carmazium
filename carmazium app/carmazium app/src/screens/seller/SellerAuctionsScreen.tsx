@@ -116,6 +116,7 @@ interface AuctionItem {
     images?: string[];
     viewCount?: number;
     sellerId?: string | null;
+    status?: string;
     _count?: { bids?: number };
     bids?: { amount: number }[];
   };
@@ -134,6 +135,12 @@ interface EligibleListing {
   /** Set when this listing is the retail half of an also-list-retail pair — such
    *  a listing must not be offered for a new auction (AUC-030). */
   linkedListingId?: string | null;
+}
+
+function provisionalPending(item: AuctionItem): boolean {
+  const amount = Number(item.listing.bids?.[0]?.amount ?? 0);
+  return item.status === 'ENDED' && !item.winnerId && item.listing.status === 'DRAFT'
+    && amount > 0 && amount < Number(item.reservePrice);
 }
 
 // ─────────────────────────── Status Config ───────────────────────────
@@ -331,8 +338,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     try {
       const listing = await getListingById(item.listing.id);
       if (!listing) { Alert.alert('Not available', 'Could not load listing.'); return; }
-      if (item.status === 'ACTIVE') {
-        navigation?.navigate('LiveAuctionDetailed', { listing });
+      if (item.status === 'ACTIVE' || provisionalPending(item)) {
+        navigation?.navigate('LiveAuctionDetailed', { listing: { ...listing, auctionId: item.id } });
       } else {
         navigation?.navigate('VehicleDetail', { listing });
       }
@@ -1026,7 +1033,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
           <View style={styles.cardRight}>
             <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[styles.statusChipText, { color: cfg.chipText }]}>{cfg.label}</Text>
+              <Text style={[styles.statusChipText, { color: provisionalPending(item) ? Colors.warning : cfg.chipText }]}>{provisionalPending(item) ? 'PROVISIONALLY SOLD' : cfg.label}</Text>
             </View>
             {isLoadingNav ? (
               <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
@@ -1679,8 +1686,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.resultsBanner, { backgroundColor: Colors.whiteAlpha04, borderColor: Colors.whiteAlpha10 }]}>
                 <Ionicons name="close-circle-outline" size={20} color={Colors.textMuted} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultsBannerTitle, { color: Colors.textSecondary }]}>No Winner</Text>
-                  <Text style={styles.resultsBannerSub}>Reserve price not met or no bids placed</Text>
+                  <Text style={[styles.resultsBannerTitle, { color: provisionalPending(resultsAuction) ? Colors.warning : Colors.textSecondary }]}>{provisionalPending(resultsAuction) ? 'Provisionally Sold — Your Decision' : 'No Winner'}</Text>
+                  <Text style={styles.resultsBannerSub}>{provisionalPending(resultsAuction)
+                    ? `Highest offer £${Number(resultsAuction.listing.bids?.[0]?.amount).toLocaleString('en-GB')}. Accept, re-list in auction or list on Retail.`
+                    : 'Reserve price not met or no bids placed'}</Text>
                 </View>
               </View>
             )}
@@ -1758,6 +1767,22 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <Text style={styles.resultsPrimaryBtnText}>
                     {resultsAuction.buyerRefusedAt ? 'Inspection refused' : 'Awaiting buyer fee'}
                   </Text>
+                </View>
+              ) : provisionalPending(resultsAuction) ? (
+                <View style={{ flex: 1, gap: 8 }}>
+                  <TouchableOpacity style={styles.resultsPrimaryBtn}
+                    onPress={() => { const chosen = resultsAuction; setResultsAuction(null); handleTap(chosen); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>Review & Accept Offer</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.resultsPrimaryBtn}
+                    onPress={() => { const id = resultsAuction.listing.id; setResultsAuction(null); openCreateModal(id); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>Re-list in Auction</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.resultsPrimaryBtn}
+                    onPress={() => { const id = resultsAuction.listing.id; setResultsAuction(null);
+                      navigation?.navigate('SellCarFlow', { listingId: id }); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>List on Retail (£1)</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity

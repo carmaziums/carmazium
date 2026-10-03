@@ -122,6 +122,7 @@ export interface AuctionListing {
     isImported?: boolean;
     type: 'AUCTION' | 'CLASSIFIED';
     status: string;
+    linkedListingId?: string | null;
     sellerId: string | null;
     seller?: AuctionSeller | null;
     bids?: AuctionBid[];
