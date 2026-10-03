@@ -1,3 +1,4 @@
+import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
 export interface VehicleValuationRequest {
   make: string;
   model: string;
@@ -24,6 +25,40 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+  specificationAdjustment?: SpecificationAdjustmentAudit;
+  calibration?: {
+    version: string;
+    mode: 'SHADOW' | 'APPLIED' | 'SKIPPED';
+  };
+  confidenceAssessment?: {
+      rubricVersion: string;
+      level: 'LOW' | 'MEDIUM' | 'HIGH';
+      calibrationStatus: 'NOT_VALIDATED_AGAINST_ACHIEVED_SALES';
+      headline: string;
+      sourceExplanation: string;
+      limitations: string[];
+      reasonCodes: string[];
+      counts: {
+      uniqueUkAdverts: number;
+      exactModelAdverts: number;
+      provisionalModelAdverts: number;
+      independentAdvertSites: number;
+      verifiedCompletedAuctions: number;
+      verifiedPrivateSales: number;
+      acceptedOffers: number;
+      otherPlatformMarketSignals: number;
+      }
+      checkedAt?: string;
+  }
+
+  identityVerification?: {
+    status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED';
+    registrationChecked: boolean;
+    makeVerified: boolean;
+    modelVerified: boolean;
+    derivativeVerified: boolean;
+    message: string;
+  };
   low: number;
   mid: number;
   high: number;
@@ -40,6 +75,15 @@ export interface VehicleValuation {
   retail: {
     suggestedAsking: number;
     suggestedMinimum: number;
+    evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    observedAsks?: number;
+  };
+  privateSale?: {
+    low: number;
+    mid: number;
+    high: number;
+    evidenceBasis: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    verifiedSales: number;
   };
   auction: {
     marketValue: number;
@@ -47,6 +91,8 @@ export interface VehicleValuation {
     reserveLow: number;
     reserveHigh: number;
     suggestedReserve: number;
+    evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY';
+    verifiedOutcomes?: number;
   };
   marketEvidence?: {
     carmaziumComparables: number;
@@ -187,84 +233,15 @@ function profileFactor(request: VehicleValuationRequest): number {
   return factor;
 }
 
-function fuelSpecificationFactor(value?: string): number {
-  const fuel = (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!fuel) return 1;
-  if (fuel.includes('PLUGINHYBRID')) return 1.01;
-  if (fuel.includes('HYBRID')) return 1.0075;
-  if (fuel === 'DIESEL') return 0.995;
-  if (['LPG', 'BIFUEL', 'NATURALGAS'].includes(fuel)) return 0.98;
-  return 1;
-}
-
-function variantSpecificationFactor(value?: string): number {
-  const variant = (value ?? '').trim().toUpperCase();
-  if (!variant) return 1;
-
-  const performanceMarkers = [
-    'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'VRS',
-    'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
-  ];
-  if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02;
-
-  const premiumMarkers = [
-    'M SPORT', 'AMG LINE', 'S LINE', 'R LINE', 'ST LINE', 'N LINE',
-    'GT LINE', 'TITANIUM', 'VIGNALE', 'TEKNA', 'PORTFOLIO',
-    'AUTOBIOGRAPHY', 'HSE', 'R DESIGN', 'INSCRIPTION', 'EXCEL',
-  ];
-  if (premiumMarkers.some((marker) => variant.includes(marker))) return 1.01;
-  return 1;
-}
-
 export function vehicleSpecificationAdjustmentFactor(request: VehicleValuationRequest): number {
-  let factor = profileFactor(request);
-
-  const transmission = transmissionFamily(request.transmission);
-  if (transmission === 'AUTO') factor *= 1.03;
-  if (transmission === 'MANUAL') factor *= 0.98;
-
-  factor *= fuelSpecificationFactor(request.fuelType);
-  factor *= variantSpecificationFactor(request.variant);
-
-  if (request.doors === 5) factor *= 1.004;
-  if (request.doors === 3) factor *= 0.996;
-  if (request.doors === 2) factor *= 0.992;
-  if ((request.seats ?? 0) >= 7) factor *= 1.008;
-  if ((request.seats ?? 0) > 0 && (request.seats ?? 0) <= 2) factor *= 0.995;
-
-  return clamp(factor, 0.18, 1.20);
+  return calculateSpecificationAdjustment(request).factor;
 }
 
 export function applyVehicleValuationAdjustments(
   base: VehicleValuation,
   request: VehicleValuationRequest,
 ): VehicleValuation {
-  const factor = vehicleSpecificationAdjustmentFactor(request);
-  if (Math.abs(factor - 1) < 0.0001) return { ...base };
-
-  const low = roundMoney(base.low * factor);
-  const mid = roundMoney(base.mid * factor);
-  const high = roundMoney(base.high * factor);
-  const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
-
-  return {
-    ...base,
-    low,
-    mid,
-    high,
-    explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
-    retail: {
-      suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-      suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
-    },
-    auction: {
-      marketValue: auctionMarketValue,
-      openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
-      reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
-      reserveHigh: auctionMarketValue,
-      suggestedReserve: roundMoney(auctionMarketValue * 0.95),
-    },
-  };
+  return applySpecificationToFrozenValuation(base, request);
 }
 
 function localFallbackValuation(request: VehicleValuationRequest): VehicleValuation {
@@ -295,13 +272,24 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
     retail: {
       suggestedAsking: high,
       suggestedMinimum: mid,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      observedAsks: 0,
+    },
+    privateSale: {
+      low,
+      mid: roundMoney((low + mid) / 2),
+      high: mid,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      verifiedSales: 0,
     },
     auction: {
       marketValue: low,
-      openingBid: Math.round(low * 0.70 * 100) / 100,
-      reserveLow: Math.round(low * 0.90 * 100) / 100,
-      reserveHigh: low,
-      suggestedReserve: roundMoney(low * 0.95),
+      openingBid: roundMoney(Math.max(500, low - Math.max(100, mid - low))),
+      reserveLow: roundMoney(Math.max(500, low - Math.max(100, mid - low) / 4)),
+      reserveHigh: roundMoney(low + Math.max(100, mid - low) / 4),
+      suggestedReserve: low,
+      evidenceBasis: 'PROVISIONAL_PROXY',
+      verifiedOutcomes: 0,
     },
     marketEvidence: {
       carmaziumComparables: 0,
@@ -311,6 +299,8 @@ function localFallbackValuation(request: VehicleValuationRequest): VehicleValuat
     },
   };
 }
+
+class ValuationInputRejected extends Error {}
 
 export async function getVehicleValuation(
   request: VehicleValuationRequest,
@@ -355,17 +345,40 @@ export async function getVehicleValuation(
     });
 
     if (!response.ok) {
-      throw new Error(`Valuation request failed (${response.status})`);
+      const raw = await response.text().catch(() => '');
+      let message = `Valuation request failed (${response.status})`;
+      try {
+        const parsed = JSON.parse(raw) as { message?: string | string[] };
+        if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join('; ') : parsed.message;
+      } catch {
+        if (raw && raw.length < 240 && !raw.startsWith('<')) message = raw;
+      }
+      if (response.status >= 400 && response.status < 500) throw new ValuationInputRejected(message);
+      throw new Error(message);
     }
 
     const body = await response.json() as VehicleValuationResponse;
     if (!body?.data) throw new Error('Valuation response was empty');
     return body.data;
-  } catch {
-    // Keep the seller journey alive even during backend/network/live-market
-    // outages. The server normally returns the richer market-backed result;
-    // this deterministic local guide is the final LOW-confidence safety net.
-    return localFallbackValuation(request);
+  } catch (error) {
+    // A backend identity mismatch or unavailable DVLA lookup must never
+    // silently turn into a locally generated price for a known registration.
+    if (error instanceof ValuationInputRejected || request.registration?.trim()) {
+      throw error;
+    }
+    const fallback = localFallbackValuation(request);
+    fallback.identityVerification = {
+      status: 'UNVERIFIED',
+      registrationChecked: false,
+      makeVerified: false,
+      modelVerified: false,
+      derivativeVerified: false,
+      message: 'Registration could not be checked. Confirm the exact vehicle before using this guide.',
+    };
+    fallback.confidence = 'LOW';
+    fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49);
+    fallback.explanation += ' ' + fallback.identityVerification.message;
+    return applyVehicleValuationAdjustments(fallback, request);
   } finally {
     clearTimeout(timeoutId);
   }

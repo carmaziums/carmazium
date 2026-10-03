@@ -16,6 +16,18 @@ import {
 } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
+import {
+    canonicalValuationIdentity,
+    canonicalValuationCacheParts,
+    sameValuationBaseIdentity,
+} from './vehicle-valuation-identity';
+import { DvlaService, type DvlaLookupResult } from '../dvla/dvla.service';
+import {
+    classifyLicensedBenchmarkDifference,
+    fetchLicensedCapHpiBenchmark,
+    type LicensedBenchmarkOutcome,
+} from './licensed-cap-hpi-benchmark';
+import { labelValuationIdentity, verifyValuationVehicleIdentity } from './vehicle-identity';
 import { ListingFilterDto } from './dto/listing-filter.dto';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
 import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
@@ -63,6 +75,20 @@ import {
     searchLiveUkVehicleMarket,
     LiveUkMarketSearchResult,
 } from './live-market-search';
+import { LiveMarketAttemptBroker, liveMarketTimeoutMs } from './live-market-attempt-broker';
+import { applyEvidenceConfidence } from './valuation-evidence-confidence';
+import {
+    auditedAuctionIds, assessHistoricalAuctionOutcomes,
+} from './achieved-sale-calibration-loader';
+import {
+    evaluateAchievedAuctionCalibration, resolveCalibrationMode,
+    type AuctionCalibrationEvaluation, type CalibrationMode,
+} from './achieved-sale-calibration';
+import {
+    applyAchievedAuctionCalibration,
+    restoreUncalibratedValuation,
+} from './achieved-sale-calibration-pricing';
+import { deduplicateLiveMarketComparables } from './market-comparable-integrity';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -136,6 +162,8 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
+    private readonly identityLookupCache = new Map<string, { result: Promise<DvlaLookupResult>; expiresAt: number }>();
+    private readonly marketAttemptBroker = new LiveMarketAttemptBroker();
 
     constructor(
         private readonly prisma: PrismaService,
@@ -144,6 +172,7 @@ export class ListingsService {
         private readonly scraper: ScraperService,
         private readonly notificationsService: NotificationsService,
         private readonly dealersService: DealersService,
+        private readonly dvlaService: DvlaService,
     ) { }
 
     /**
@@ -159,7 +188,18 @@ export class ListingsService {
      * only after both stages fail does it fall back to CarMazium evidence and
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
-    async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
+    async estimateVehicleValue(request: VehicleValuationDto): Promise<VehicleValuationResult> {
+        // Legacy/API callers sometimes omit a journey ID. Create a server ID
+        // for a registered vehicle so those calls still participate in the
+        // shared 24-hour frozen base, without merging unregistered vehicles.
+        const dto: VehicleValuationDto = request.registration?.trim() && !request.valuationId
+            ? { ...request, valuationId: randomUUID() }
+            : request;
+
+        // Block 1: verify submitted registration against DVLA and the MOT model
+        // when available. Refuse mismatches *before* looking up frozen values or
+        // sending the submitted vehicle description to live market search.
+        const verification = await this.verifyValuationRequestIdentity(dto);
         const make = dto.make.trim();
         const model = dto.model.trim();
 
@@ -195,11 +235,31 @@ export class ListingsService {
         // condition/specification adjustments may change the customer figure.
         const frozenBase = await this.findFrozenValuationBase(dto);
         if (frozenBase) {
-            return applyVehicleSpecificationAdjustments(
-                frozenBase,
-                specificationInput,
+            // Historical snapshots may predate the Block 8 rubric. Add a
+            // conservative explanation without re-searching or changing any
+            // of their saved monetary market bases.
+            const assessed = frozenBase.confidenceAssessment
+                ? frozenBase
+                : applyEvidenceConfidence(frozenBase, verification.status);
+            // Turning calibration OFF, or downgrading to SHADOW, must also
+            // restore OLD prices in immutable snapshots previously written ON.
+            const mode = this.currentAuctionCalibrationMode();
+            const effective = mode === 'on' ? assessed
+                : restoreUncalibratedValuation(assessed);
+            return labelValuationIdentity(
+                applyVehicleSpecificationAdjustments(effective, specificationInput),
+                verification,
             );
         }
+
+        // Launch at most one OPTIONAL licensed reference request for a new
+        // verified vehicle journey, alongside existing market searches.
+        // The benchmark is NOT an individual advert/achieved sale and cannot
+        // change consumer figures until market-calibration work is approved.
+        const licensedReferencePromise = this.getLicensedBenchmark(dto, verification);
+        const outcomeCalibrationPromise = this.getOptionalAuctionCalibration(
+            dto, verification.status,
+        );
 
         const mileageFloor = Math.max(0, dto.mileage - 50_000);
         const mileageCeiling = dto.mileage + 50_000;
@@ -239,6 +299,12 @@ export class ListingsService {
                     status: true,
                     winningBidAmount: true,
                     updatedAt: true,
+                    winnerId: true,
+                    buyerFeePaid: true,
+                    sellerFundsConfirmedAt: true,
+                    sellerFundsConfirmationRequired: true,
+                    sellerBonusReleased: true,
+                    buyerRefusedAt: true,
                 },
             },
             offers: {
@@ -317,11 +383,43 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
+            if (row.type === 'AUCTION') {
+                // A highest bid is not a completed sale. A result only counts
+                // after paid fee, valid winner, seller confirmation and
+                // approved handover; legacy explicit exemption is honoured.
+                // Seller funds confirmation is attestation, not bank proof.
+                const auction = row.auction;
+                const handedOver = row.status === 'SOLD'
+                    && auction?.status === 'ENDED'
+                    && auction?.sellerBonusReleased === true
+                    && auction?.buyerFeePaid === true
+                    && !!auction?.winnerId
+                    && !auction?.buyerRefusedAt
+                    && (auction?.sellerFundsConfirmedAt
+                        || auction?.sellerFundsConfirmationRequired === false);
+                if (handedOver && auction?.winningBidAmount != null) {
+                    comparables.push({
+                        ...common,
+                        price: Number(auction.winningBidAmount),
+                        kind: 'AUCTION_RESULT',
+                        saleChannel: 'AUCTION',
+                        verifiedAuctionSale: true,
+                    });
+                }
+                // Never relabel an uncompleted auction as a completed SALE.
+                continue;
+            }
+
+            // A recorded sold price takes precedence over an earlier
+            // accepted offer; they must not become two independent outcomes.
+            if (row.sale?.soldPrice != null && row.status === 'SOLD') {
                 comparables.push({
                     ...common,
-                    price: Number(row.auction.winningBidAmount),
-                    kind: 'AUCTION_RESULT',
+                    price: Number(row.sale.soldPrice),
+                    kind: 'SALE',
+                    // Do not claim verified dealer or private-party provenance
+                    // until sale-channel identity is independently audited.
+                    saleChannel: null,
                 });
                 continue;
             }
@@ -332,15 +430,6 @@ export class ListingsService {
                     ...common,
                     price: Number(acceptedOffer.finalAmount ?? acceptedOffer.amount),
                     kind: 'ACCEPTED_OFFER',
-                });
-                continue;
-            }
-
-            if (row.sale?.soldPrice != null) {
-                comparables.push({
-                    ...common,
-                    price: Number(row.sale.soldPrice),
-                    kind: 'SALE',
                 });
                 continue;
             }
@@ -365,7 +454,9 @@ export class ListingsService {
         // remains cheap. If it is too sparse, the remaining four attempts run in
         // parallel and their sanitized comparables are deduplicated. This keeps
         // the five-attempt policy inside a practical customer-facing time budget.
-        const liveComparableMap = new Map<string, VehicleValuationComparable>();
+        const marketSearchStartedAt = Date.now();
+        let liveComparableRows: VehicleValuationComparable[] = [];
+        let duplicatedAdvertRowsRemoved = 0;
         let latestLiveMarketCheckedAt: string | undefined;
         let sawLiveMarketResponse = false;
         let rawLiveUkComparables = 0;
@@ -377,7 +468,10 @@ export class ListingsService {
             if (!result) return;
 
             sawLiveMarketResponse = true;
-            latestLiveMarketCheckedAt = result.checkedAt;
+            if (!latestLiveMarketCheckedAt
+                || Date.parse(result.checkedAt) > Date.parse(latestLiveMarketCheckedAt)) {
+                latestLiveMarketCheckedAt = result.checkedAt;
+            }
             rawLiveUkComparables = Math.max(
                 rawLiveUkComparables,
                 result.rawComparableCount ?? 0,
@@ -386,20 +480,15 @@ export class ListingsService {
                 if (domain) liveSourceDomains.add(domain);
             }
 
-            for (const comparable of result.comparables ?? []) {
-                const key = [
-                    Math.round(Number(comparable.price) || 0),
-                    comparable.year ?? '',
-                    comparable.mileage ?? '',
-                    (comparable.variant ?? '').trim().toUpperCase(),
-                    (comparable.fuelType ?? '').trim().toUpperCase(),
-                    (comparable.transmission ?? '').trim().toUpperCase(),
-                ].join('|');
-
-                if (!liveComparableMap.has(key)) {
-                    liveComparableMap.set(key, comparable);
-                }
-            }
+            // Remove repeats by advert identity, not by price/year/mileage.
+            // Two separate cars can legitimately have identical price tags.
+            const previousCount = liveComparableRows.length;
+            const incoming = result.comparables ?? [];
+            liveComparableRows = deduplicateLiveMarketComparables(
+                [...liveComparableRows, ...incoming],
+                100,
+            );
+            duplicatedAdvertRowsRemoved += previousCount + incoming.length - liveComparableRows.length;
         };
 
         const runMarketSearchAttempt = async (phase: 'LIVE' | 'BLENDED') => {
@@ -416,25 +505,27 @@ export class ListingsService {
                 specificationInput,
                 { phase, attempt },
             );
-            mergeLiveMarketResult(result);
             return result;
         };
 
-        await runMarketSearchAttempt('LIVE');
+        mergeLiveMarketResult(await runMarketSearchAttempt('LIVE'));
 
-        if (liveComparableMap.size < 3) {
+        if (liveComparableRows.length < 3) {
             const remainingLiveAttempts = 5 - liveUkAttempts;
             if (remainingLiveAttempts > 0) {
-                await Promise.all(
+                const completed = await Promise.all(
                     Array.from(
                         { length: remainingLiveAttempts },
                         () => runMarketSearchAttempt('LIVE'),
                     ),
                 );
+                // Promise.all preserves planned attempt order even if provider
+                // responses finish out of order; price evidence remains stable.
+                completed.forEach(mergeLiveMarketResult);
             }
         }
 
-        let usableLiveComparables = [...liveComparableMap.values()];
+        let usableLiveComparables = liveComparableRows;
         let calculatedBase: VehicleValuationResult;
 
         // Prefer live UK evidence whenever the five-attempt live phase found
@@ -459,6 +550,7 @@ export class ListingsService {
                     usableLiveComparables.length,
                 ),
                 liveUkAttempts,
+                searchDurationMs: Date.now() - marketSearchStartedAt,
                 blendedMarketAttempts: 0,
                 liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'LIVE',
@@ -468,21 +560,22 @@ export class ListingsService {
             // comparables do we enter blended mode. Blended mode gets its own
             // five attempts to recover live UK evidence which can be combined
             // with CarMazium marketplace signals when those exist.
-            await runMarketSearchAttempt('BLENDED');
+            mergeLiveMarketResult(await runMarketSearchAttempt('BLENDED'));
 
-            if (liveComparableMap.size === 0) {
+            if (liveComparableRows.length === 0) {
                 const remainingBlendedAttempts = 5 - blendedMarketAttempts;
                 if (remainingBlendedAttempts > 0) {
-                    await Promise.all(
+                    const completed = await Promise.all(
                         Array.from(
                             { length: remainingBlendedAttempts },
                             () => runMarketSearchAttempt('BLENDED'),
                         ),
                     );
+                    completed.forEach(mergeLiveMarketResult);
                 }
             }
 
-            usableLiveComparables = [...liveComparableMap.values()];
+            usableLiveComparables = liveComparableRows;
 
             if (usableLiveComparables.length > 0 && carmaziumComparableCount > 0) {
                 calculatedBase = calculateVehicleValuation(
@@ -502,6 +595,7 @@ export class ListingsService {
                         usableLiveComparables.length,
                     ),
                     liveUkAttempts,
+                    searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'BLENDED',
@@ -526,6 +620,7 @@ export class ListingsService {
                         usableLiveComparables.length,
                     ),
                     liveUkAttempts,
+                    searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'LIVE',
@@ -546,6 +641,7 @@ export class ListingsService {
                         : 'UNAVAILABLE',
                     rawLiveUkComparables,
                     liveUkAttempts,
+                    searchDurationMs: Date.now() - marketSearchStartedAt,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'FALLBACK',
@@ -553,43 +649,232 @@ export class ListingsService {
             }
         }
 
+        // Distinguish high-quality exact model matches from provisional model
+        // aliases. Never express high confidence when all retail evidence is
+        // derived from model-family or typo recovery rather than exact matches.
+        const exactModelComparables = usableLiveComparables.filter(
+            (row) => row.modelMatchQuality === 'EXACT_MODEL',
+        ).length;
+        const provisionalModelComparables = usableLiveComparables.filter(
+            (row) => !!row.modelMatchQuality && row.modelMatchQuality !== 'EXACT_MODEL',
+        ).length;
+        if (calculatedBase.marketEvidence) {
+            calculatedBase.marketEvidence.exactModelComparables = exactModelComparables;
+            calculatedBase.marketEvidence.provisionalModelComparables = provisionalModelComparables;
+            calculatedBase.marketEvidence.duplicateLiveAdvertRowsRemoved = duplicatedAdvertRowsRemoved;
+        }
+        if (calculatedBase.source === 'LIVE_UK_MARKET'
+            && provisionalModelComparables > 0
+            && exactModelComparables === 0) {
+            calculatedBase.confidence = 'LOW';
+            calculatedBase.confidenceScore = Math.min(calculatedBase.confidenceScore, 0.49);
+            calculatedBase.explanation += ' Model-family or spelling-based comparables are provisional; confirm the exact derivative before relying on this guide.';
+        }
+
+        // Calculate explanatory evidence strength only after Block 5 has
+        // deduplicated the final sources and after Block 6's independently
+        // verified sale channels have been decided. No bank-verification or
+        // sale-price prediction is inferred from asking adverts or offers.
+        calculatedBase = applyEvidenceConfidence(calculatedBase, verification.status);
+        // Only freshly verified, pre-outcome market snapshots created from
+        // this point forward can ever enter a retrospective training cohort.
+        // Historic legacy snapshots are not silently certified as verified.
+        if (verification.status === 'MODEL_VERIFIED'
+            && dto.registration?.trim()
+            && ['LIVE_UK_MARKET', 'BLENDED_MARKET'].includes(calculatedBase.source)) {
+            calculatedBase.calibrationOrigin = { verifiedAtCreation: true };
+        }
+
+        // A provider's retail/trade benchmark must NEVER enter the individual
+        // advert comparable pool. Record only a restricted, price-free internal
+        // diagnostic AFTER the five-live/five-blended policy completes.
+        const licensedReference = await licensedReferencePromise;
+        await this.recordLicensedBenchmarkCheck(dto, licensedReference, calculatedBase.mid);
+
+        const calibration = await outcomeCalibrationPromise;
+        if (calibration.mode !== 'off' && calibration.evaluation
+            && ['LIVE_UK_MARKET', 'BLENDED_MARKET'].includes(calculatedBase.source)) {
+            calculatedBase = applyAchievedAuctionCalibration(
+                calculatedBase, calibration.evaluation, calibration.mode,
+            );
+        }
+
         // A concurrent duplicate request can finish a different live search.
         // The valuationId is also the AnalyticsEvent primary key, so exactly one
         // base wins. Losers read the winning snapshot and return that same base.
         const stableBase = await this.freezeValuationBase(dto, calculatedBase);
 
-        return applyVehicleSpecificationAdjustments(
-            stableBase,
-            specificationInput,
+        // A concurrent search may have won with a pre-rubric saved base.
+        // Describe that historical evidence conservatively without changing
+        // its frozen prices, the five-plus-five sequence or provider contract.
+        const assessedBase = stableBase.confidenceAssessment
+            ? stableBase
+            : applyEvidenceConfidence(stableBase, verification.status);
+        const effective = this.currentAuctionCalibrationMode() === 'on'
+            ? assessedBase : restoreUncalibratedValuation(assessedBase);
+        return labelValuationIdentity(
+            applyVehicleSpecificationAdjustments(effective, specificationInput),
+            verification,
         );
     }
 
+    /**
+     * Emergency switch: OFF is the default, and an invalid configuration
+     * fails closed. SHADOW only reads first-party historical outcomes.
+     * ON requires explicit review + rollout approval and at least 30
+     * individually audited auction IDs, with per-query holdout gates.
+     */
+    private currentAuctionCalibrationMode(): CalibrationMode {
+        const mode = resolveCalibrationMode(
+            this.config.get<string>('VALUATION_CALIBRATION_MODE'),
+            this.config.get<string>('VALUATION_CALIBRATION_DATA_REVIEW_APPROVED'),
+            this.config.get<string>('VALUATION_CALIBRATION_ROLLOUT_APPROVED'),
+        );
+        if (mode === 'on') {
+            const approved = auditedAuctionIds(
+                this.config.get<string>('VALUATION_CALIBRATION_AUDITED_AUCTION_IDS'),
+            );
+            if (approved.size < 30) return 'off';
+        }
+        return mode;
+    }
+
+    private async getOptionalAuctionCalibration(
+        dto: VehicleValuationDto,
+        verificationStatus: string,
+    ): Promise<{
+        mode: CalibrationMode;
+        evaluation?: AuctionCalibrationEvaluation;
+    }> {
+        const mode = this.currentAuctionCalibrationMode();
+        if (mode === 'off' || verificationStatus !== 'MODEL_VERIFIED'
+            || !dto.registration?.trim()) {
+            return { mode: 'off' };
+        }
+
+        // Bound optional analytical overhead; no valuation fails because a
+        // calibration read is slow/unavailable. Never log raw sale amounts,
+        // seller IDs, registrations, stock references or audited manifest IDs.
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+            const audited = mode === 'on'
+                ? auditedAuctionIds(
+                    this.config.get<string>('VALUATION_CALIBRATION_AUDITED_AUCTION_IDS'),
+                )
+                : new Set<string>();
+            const evaluation = await Promise.race([
+                assessHistoricalAuctionOutcomes(this.prisma, dto, mode, audited),
+                new Promise<AuctionCalibrationEvaluation>((resolve) => {
+                    timeout = setTimeout(
+                        () => resolve(evaluateAchievedAuctionCalibration([])),
+                        2500,
+                    );
+                }),
+            ]);
+            return { mode, evaluation };
+        } catch {
+            // Price-preserving failure is deliberate, not a 500 or fallback
+            // to invented achieved-sale figures.
+            return { mode, evaluation: evaluateAchievedAuctionCalibration([]) };
+        } finally {
+            if (timeout) clearTimeout(timeout);
+        }
+    }
+
+    private async getLicensedBenchmark(
+        dto: VehicleValuationDto,
+        verification: { status: string },
+    ): Promise<LicensedBenchmarkOutcome | null> {
+        // All conditions fail closed. No external provider call without
+        // explicitly confirmed contract rights and verified model/year.
+        if (verification.status !== 'MODEL_VERIFIED'
+            || !dto.registration?.trim()
+            || this.config.get<string>('CAP_HPI_VALUATION_ENABLED') !== 'true'
+            || this.config.get<string>('CAP_HPI_INTERNAL_COMPARISON_RIGHTS_CONFIRMED') !== 'true') {
+            return null;
+        }
+        try {
+            return await fetchLicensedCapHpiBenchmark(dto, this.config);
+        } catch {
+            // Even unexpected optional integration errors cannot suppress
+            // the user's existing live-first valuation journey.
+            return { status: 'UNAVAILABLE' };
+        }
+    }
+
+    private async recordLicensedBenchmarkCheck(
+        dto: VehicleValuationDto,
+        outcome: LicensedBenchmarkOutcome | null,
+        marketMid: number,
+    ): Promise<void> {
+        if (!outcome || outcome.status === 'DISABLED' || outcome.status === 'INELIGIBLE') {
+            return;
+        }
+
+        const status = outcome.status === 'AVAILABLE'
+            ? classifyLicensedBenchmarkDifference(marketMid, outcome.benchmark)
+            : outcome.status;
+        try {
+            await this.prisma.analyticsEvent.create({
+                data: {
+                    type: 'valuation_licensed_benchmark_check',
+                    sessionId: this.valuationIdentityKey(dto),
+                    payload: {
+                        valuation_id: dto.valuationId ?? null,
+                        source: 'CAP_HPI',
+                        comparisonStatus: status,
+                        // Price, derivative, VRM, API credentials and XML are
+                        // intentionally not stored or sent to website/native.
+                        checkedAt: new Date().toISOString(),
+                    } as any,
+                },
+            });
+        } catch {
+            // A restricted diagnostics failure must never block valuation.
+            this.logger.warn('Licensed reference check status could not be recorded');
+        }
+    }
+
+    private async verifyValuationRequestIdentity(dto: VehicleValuationDto) {
+        const vrm = (dto.registration ?? '').replace(/\\s+/g, '').toUpperCase();
+        if (!vrm) return verifyValuationVehicleIdentity(dto, null);
+
+        // Short-lived per-instance cache prevents repeatedly fetching DVLA/MOT
+        // during the same customer's condition/specification wizard. Cache
+        // successful responses only, never failed lookups or identity conflicts.
+        const now = Date.now();
+        let entry = this.identityLookupCache.get(vrm);
+        if (!entry || entry.expiresAt <= now) {
+            entry = {
+                result: this.dvlaService.lookupVrm(vrm, false),
+                expiresAt: now + 30 * 60 * 1000,
+            };
+            this.identityLookupCache.set(vrm, entry);
+        }
+
+        let lookup: DvlaLookupResult;
+        try {
+            lookup = await entry.result;
+        } catch (error) {
+            if (this.identityLookupCache.get(vrm) === entry) {
+                this.identityLookupCache.delete(vrm);
+            }
+            throw error; // No automatic valuation when verification fails.
+        }
+        return verifyValuationVehicleIdentity(dto, lookup);
+    }
+
     private valuationIdentity(dto: VehicleValuationDto) {
-        return {
-            registration: (dto.registration ?? '').replace(/\s+/g, '').trim().toUpperCase(),
-            make: dto.make.trim().toUpperCase(),
-            model: dto.model.trim().toUpperCase(),
-            year: dto.year,
-            mileage: dto.mileage,
-        };
+        return canonicalValuationIdentity(dto);
     }
 
     /**
-     * Same physical vehicle + same mileage gets one market base for 24 hours.
-     * The hash is stored in AnalyticsEvent.sessionId only for snapshot rows;
-     * valuation analytics queries are type-scoped, so this never counts as a
-     * customer browsing session.
+     * Harmless label differences (e.g. "Audi A1" vs "A1") must share the
+     * same market base. Preserve performance trims, generations and a
+     * first-request explicit variant as distinct cache identities.
      */
     private valuationIdentityKey(dto: VehicleValuationDto): string {
-        const identity = this.valuationIdentity(dto);
-        const raw = [
-            identity.registration,
-            identity.make,
-            identity.model,
-            identity.year,
-            identity.mileage,
-        ].join('|');
-
+        const raw = canonicalValuationCacheParts(dto).join('|');
         return `valuation-base:${createHash('sha256').update(raw).digest('hex')}`;
     }
 
@@ -607,14 +892,13 @@ export class ListingsService {
 
         const payload = (event.payload ?? {}) as any;
         const identity = payload.identity ?? {};
-        const expected = this.valuationIdentity(dto);
-
-        const sameIdentity =
-            String(identity.registration ?? '') === expected.registration
-            && String(identity.make ?? '') === expected.make
-            && String(identity.model ?? '') === expected.model
-            && Number(identity.year) === expected.year
-            && Number(identity.mileage) === expected.mileage;
+        const sameIdentity = sameValuationBaseIdentity({
+            registration: String(identity.registration ?? ''),
+            make: String(identity.make ?? ''),
+            model: String(identity.model ?? ''),
+            year: Number(identity.year),
+            mileage: Number(identity.mileage),
+        }, dto);
 
         if (!sameIdentity) {
             throw new BadRequestException(
@@ -657,32 +941,17 @@ export class ListingsService {
         const exact = this.parseFrozenValuationBase(exactJourney, dto);
         if (exact) return exact;
 
+        // Do not share a base across different physical vehicles when a
+        // registration was never verified; exact valuationId reuse still works.
+        if (!dto.registration?.trim()) return null;
+
         // A new journey for the same unchanged vehicle should not get a wildly
         // different answer five minutes later merely because a live search
         // returned a different advert set. Reuse the latest vehicle base for
         // 24 hours, after which market evidence is allowed to refresh.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select,
-        });
-
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (!recent) return null;
-
-        if (
-            recent.marketEvidence?.valuationStrategy === 'FALLBACK'
-            || recent.source === 'CARMAZIUM_MODEL'
-            || recent.source === 'CARMAZIUM_MODEL_PROFILE'
-        ) {
-            return null;
-        }
+        const found = await this.findRecentReusableMarketBase(this.prisma, dto);
+        if (!found) return null;
+        const { row: recentVehicleBase, base: recent } = found;
 
         // Give this new journey its own immutable copy. The cross-journey
         // vehicle cache may expire after 24h, but the journey itself must never
@@ -715,13 +984,13 @@ export class ListingsService {
                     });
                     const frozenWinner = this.parseFrozenValuationBase(winner, dto);
                     if (frozenWinner) return frozenWinner;
-                } else {
-                    // The already-frozen identity base is still safe to return;
-                    // persistence of the alias must not make valuation unavailable.
-                    this.logger.warn(
-                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
+                    throw new BadRequestException(
+                        'Valuation journey could not be saved. Please retry.',
                     );
                 }
+                // Do not display a base that we failed to persist. Otherwise
+                // the next request could return a different market value.
+                throw error;
             }
         }
 
@@ -734,73 +1003,76 @@ export class ListingsService {
     ): Promise<VehicleValuationResult> {
         if (!dto.valuationId) return calculatedBase;
 
-        // A different journey for this same unchanged vehicle may have
-        // completed while our live search was running. Prefer that already-
-        // frozen 24-hour identity base rather than publishing a second value.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                type: true,
-                payload: true,
-            },
-        });
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (
-            recent
-            && recent.marketEvidence?.valuationStrategy !== 'FALLBACK'
-            && recent.source !== 'CARMAZIUM_MODEL'
-            && recent.source !== 'CARMAZIUM_MODEL_PROFILE'
-        ) {
-            return recent;
-        }
-
-        // A fallback from a different journey is provisional. Do not let that
-        // cached model result win over a fresh live-market search that has just
-        // succeeded for this request.
-        // Prisma JSON fields must contain plain JSON values; strip optional
-        // undefined properties before persisting the immutable base snapshot.
-        const serializableBase = JSON.parse(
-            JSON.stringify(calculatedBase),
-        ) as VehicleValuationResult;
-
-        const data = {
-            id: dto.valuationId,
-            type: 'valuation_base_snapshot',
-            sessionId: this.valuationIdentityKey(dto),
-            payload: {
-                valuation_id: dto.valuationId,
-                identity: this.valuationIdentity(dto),
-                baseValuation: serializableBase,
-                lockedAt: new Date().toISOString(),
-            } as any,
-        };
+        const sessionId = this.valuationIdentityKey(dto);
+        const select = { id: true, type: true, payload: true } as const;
+        const serializableBase = JSON.parse(JSON.stringify(calculatedBase)) as VehicleValuationResult;
 
         try {
-            await this.prisma.analyticsEvent.create({ data });
-            return serializableBase;
-        } catch (error: any) {
-            // P2002 means another request with the same valuationId won the
-            // race. Never return our independently-calculated result; re-read
-            // the winner so both callers see the exact same market base.
-            if (error?.code !== 'P2002') throw error;
+            // A unique valuationId only protects a *single* journey.
+            // Serialize short snapshot decisions for the SAME verified
+            // vehicle across backend instances. Never hold a database lock
+            // while requesting third-party market data.
+            return await this.prisma.$transaction(async (tx) => {
+                // PostgreSQL returns void from advisory locks; cast to text
+                // for Prisma, matching existing listing creation locks.
+                await tx.$queryRaw`
+                    SELECT pg_advisory_xact_lock(hashtext(${sessionId}))::text AS lock_result
+                `;
 
+                const existing = await tx.analyticsEvent.findUnique({
+                    where: { id: dto.valuationId },
+                    select,
+                });
+                const frozen = this.parseFrozenValuationBase(existing, dto);
+                if (frozen) return frozen;
+
+                if (dto.registration?.trim()) {
+                    const found = await this.findRecentReusableMarketBase(tx, dto);
+                    const recentRow = found?.row;
+                    const recent = found?.base;
+                    if (recent) {
+                        await tx.analyticsEvent.create({
+                            data: {
+                                id: dto.valuationId,
+                                type: 'valuation_base_snapshot',
+                                sessionId,
+                                payload: {
+                                    valuation_id: dto.valuationId,
+                                    identity: this.valuationIdentity(dto),
+                                    baseValuation: JSON.parse(JSON.stringify(recent)),
+                                    lockedAt: new Date().toISOString(),
+                                    reusedFromSnapshotId: recentRow?.id ?? null,
+                                } as any,
+                            },
+                        });
+                        return recent;
+                    }
+                }
+
+                await tx.analyticsEvent.create({
+                    data: {
+                        id: dto.valuationId,
+                        type: 'valuation_base_snapshot',
+                        sessionId,
+                        payload: {
+                            valuation_id: dto.valuationId,
+                            identity: this.valuationIdentity(dto),
+                            baseValuation: serializableBase,
+                            lockedAt: new Date().toISOString(),
+                        } as any,
+                    },
+                });
+                return serializableBase;
+            });
+        } catch (error: any) {
+            if (error?.code !== 'P2002') throw error;
+            // If another concurrent request with THIS journey ID won,
+            // reuse its committed result rather than our own calculated
+            // figure. This also covers older snapshots without the lock.
             const winner = await this.prisma.analyticsEvent.findUnique({
                 where: { id: dto.valuationId },
-                select: {
-                    id: true,
-                    type: true,
-                    payload: true,
-                },
+                select,
             });
-
             const frozen = this.parseFrozenValuationBase(winner, dto);
             if (!frozen) {
                 throw new BadRequestException(
@@ -809,6 +1081,52 @@ export class ListingsService {
             }
             return frozen;
         }
+    }
+
+    private async findRecentReusableMarketBase(
+        db: any,
+        dto: VehicleValuationDto,
+    ): Promise<{
+        row: { id: string; type: string; payload: unknown };
+        base: VehicleValuationResult;
+    } | null> {
+        const query = {
+            where: {
+                type: 'valuation_base_snapshot',
+                sessionId: this.valuationIdentityKey(dto),
+                createdAt: {
+                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                },
+            },
+            orderBy: { createdAt: 'desc' as const },
+            select: { id: true, type: true, payload: true },
+        };
+        const newest = await db.analyticsEvent.findFirst(query);
+        if (!newest) return null;
+        const mostRecent = this.parseFrozenValuationBase(newest, dto);
+        if (mostRecent && this.isReusableMarketValuation(mostRecent)) {
+            return { row: newest, base: mostRecent };
+        }
+
+        // A provisional fallback from an overlapping journey must not hide
+        // a more reliable earlier live valuation still inside the 24h TTL.
+        const candidates = await db.analyticsEvent.findMany({
+            ...query,
+            take: 20,
+        });
+        for (const row of candidates) {
+            const base = this.parseFrozenValuationBase(row, dto);
+            if (base && this.isReusableMarketValuation(base)) {
+                return { row, base };
+            }
+        }
+        return null;
+    }
+
+    private isReusableMarketValuation(value: VehicleValuationResult): boolean {
+        return value.marketEvidence?.valuationStrategy !== 'FALLBACK'
+            && value.source !== 'CARMAZIUM_MODEL'
+            && value.source !== 'CARMAZIUM_MODEL_PROFILE';
     }
 
     private async getLiveUkMarketComparables(
@@ -821,25 +1139,47 @@ export class ListingsService {
         const apiKey = this.config.get<string>('OPENAI_API_KEY');
 
         if (!apiKey) {
-            this.logger.error(
-                'OPENAI_API_KEY is missing; continuing valuation with first-party/model fallback',
-            );
+            this.logger.error('OPENAI_API_KEY is missing; continuing valuation with first-party/model fallback');
             return null;
         }
 
+        // Two independent switches prevent accidental caching when a
+        // marketplace or model-provider contract does not permit retention.
+        // Even when disabled, overlapping identical calls share one
+        // IN-FLIGHT request; settled adverts are immediately discarded.
+        const allowShortCache =
+            this.config.get<string>('LIVE_MARKET_SHORT_CACHE_ENABLED') === 'true'
+            && this.config.get<string>('LIVE_MARKET_RESPONSE_CACHE_RIGHTS_CONFIRMED') === 'true';
+        const searchModel =
+            this.config.get<string>('OPENAI_WEB_VALUATION_MODEL') || 'gpt-5.6-luna';
+
         try {
-            return await searchLiveUkVehicleMarket(input, {
-                apiKey,
-                model:
-                    this.config.get<string>('OPENAI_WEB_VALUATION_MODEL')
-                    || 'gpt-5.6-luna',
-                timeoutMs: 18_000,
-                phase: context.phase,
-                attempt: context.attempt,
-            });
+            const search = await this.marketAttemptBroker.run(
+                input,
+                context.phase,
+                context.attempt,
+                () => searchLiveUkVehicleMarket(input, {
+                    apiKey,
+                    model: searchModel,
+                    timeoutMs: liveMarketTimeoutMs(
+                        this.config.get<string>('OPENAI_WEB_VALUATION_TIMEOUT_MS'),
+                    ),
+                    phase: context.phase,
+                    attempt: context.attempt,
+                }),
+                allowShortCache,
+                searchModel,
+            );
+            return search.result;
         } catch (error: any) {
+            // A timeout/error on one distinct plan must not consume the
+            // remaining plans or prematurely choose an internal fallback.
+            // Never log provider response bodies, credentials or registration.
+            const timedOut = error?.name === 'AbortError'
+                || error?.name === 'APIConnectionTimeoutError'
+                || error?.code === 'ETIMEDOUT';
             this.logger.warn(
-                `Live UK valuation search failed for ${input.make} ${input.model} (${context.phase} attempt ${context.attempt}); continuing with fallback: ${error?.message || error}`,
+                `Live UK ${context.phase} search attempt ${context.attempt} ${timedOut ? 'timed out' : 'failed'}; continuing to next distinct search plan`,
             );
             return null;
         }

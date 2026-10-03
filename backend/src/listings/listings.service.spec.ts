@@ -19,6 +19,8 @@ import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { DealersService } from '../dealers/dealers.service';
+import { DvlaService } from '../dvla/dvla.service';
+import * as marketSearch from './live-market-search';
 
 /**
  * Listings service guarantees:
@@ -34,6 +36,8 @@ describe('ListingsService', () => {
     let prisma: any;
     let sellers: any;
     let scraper: any;
+    let dvla: { lookupVrm: jest.Mock };
+    let config: { get: jest.Mock };
 
     beforeEach(async () => {
         mockListingCheckoutSessionRetrieve.mockReset();
@@ -66,6 +70,7 @@ describe('ListingsService', () => {
             analyticsEvent: {
                 findUnique: jest.fn().mockResolvedValue(null),
                 findFirst: jest.fn().mockResolvedValue(null),
+                findMany: jest.fn().mockResolvedValue([]),
                 create: jest.fn().mockResolvedValue({}),
             },
             transaction: { findMany: jest.fn(), update: jest.fn() },
@@ -91,12 +96,16 @@ describe('ListingsService', () => {
             incrementListings: jest.fn().mockResolvedValue(undefined),
             incrementSales: jest.fn().mockResolvedValue(undefined),
         };
-        const config = {
+        config = {
             get: jest.fn((key: string) =>
                 key === 'SUPABASE_URL' ? 'https://test.supabase.co' : undefined,
             ),
         };
         scraper = { scrape: jest.fn() };
+        dvla = { lookupVrm: jest.fn().mockResolvedValue({
+            vrm: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, dataSource: 'DVLA',
+        }) };
         const notifications = { create: jest.fn().mockResolvedValue(null) };
         const notificationsGateway = { sendNotification: jest.fn() };
 
@@ -110,10 +119,49 @@ describe('ListingsService', () => {
                 { provide: NotificationsService, useValue: notifications },
                 { provide: NotificationsGateway, useValue: notificationsGateway },
                 { provide: DealersService, useValue: { markRetailLeadWon: jest.fn().mockResolvedValue(null) } },
+                { provide: DvlaService, useValue: dvla },
             ],
         }).compile();
 
         service = module.get<ListingsService>(ListingsService);
+    });
+
+    describe('Block 1 registration identity safeguards', () => {
+        it('rejects a Ford make submitted for a Volkswagen registration before market search', async () => {
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'FORD', model: 'FIESTA',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/make does not match/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects an invented performance model before market search', async () => {
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF R',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/model does not match/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('fails closed if the registration service is unavailable', async () => {
+            dvla.lookupVrm.mockRejectedValueOnce(new Error('DVLA unavailable'));
+            await expect(service.estimateVehicleValue({
+                registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+                year: 2010, mileage: 50000,
+            } as any)).rejects.toThrow(/DVLA unavailable/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('does not call DVLA when a registration is not provided', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
+            const result = await service.estimateVehicleValue({
+                make: 'FORD', model: 'FOCUS', year: 2019, mileage: 45000,
+            } as any);
+            expect(dvla.lookupVrm).not.toHaveBeenCalled();
+            expect(result.identityVerification?.status).toBe('UNVERIFIED');
+            expect(result.confidence).toBe('LOW');
+        });
     });
 
     describe('auction to retail conversion', () => {
@@ -1462,6 +1510,744 @@ describe('ListingsService', () => {
 
             expect(result.auction.marketValue).toBe(2650);
             expect(result.source).toBe('BLENDED_MARKET');
+        });
+    });
+
+    describe('Block 9 reversible calibration controls', () => {
+        const registered = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN',
+            model: 'GOLF', year: 2010, mileage: 57000,
+            valuationId: '99999999-9999-4999-8999-999999999999',
+        };
+
+        it('is OFF by default, performs no outcome scans and retains the old auction prices', async () => {
+            const evalMode = await (service as any).getOptionalAuctionCalibration(
+                registered, 'MODEL_VERIFIED',
+            );
+            expect(evalMode).toEqual({ mode: 'off' });
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(prisma.analyticsEvent.findMany).not.toHaveBeenCalled();
+        });
+
+        it('rejects ON unless data review, rollout and thirty individual audit IDs all exist', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'on',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+                VALUATION_CALIBRATION_ROLLOUT_APPROVED: 'false',
+            } as Record<string, string>)[key]);
+            expect((service as any).currentAuctionCalibrationMode()).toBe('off');
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'on',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+                VALUATION_CALIBRATION_ROLLOUT_APPROVED: 'true',
+                VALUATION_CALIBRATION_AUDITED_AUCTION_IDS:
+                    '3ce3af8d-8103-4a26-a2ad-420aca42bccd',
+            } as Record<string, string>)[key]);
+            expect((service as any).currentAuctionCalibrationMode()).toBe('off');
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('SHADOW reads qualifying historical data but never changes the price when samples are sparse', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'shadow',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+            } as Record<string, string>)[key]);
+            const evalMode = await (service as any).getOptionalAuctionCalibration(
+                registered, 'MODEL_VERIFIED',
+            );
+            expect(evalMode.mode).toBe('shadow');
+            expect(evalMode.evaluation.state).toBe('INSUFFICIENT');
+            expect(prisma.listing.findMany).toHaveBeenCalledTimes(1);
+            expect(prisma.analyticsEvent.findMany).not.toHaveBeenCalled();
+        });
+
+        it('immediately restores old auction figures from an already-calibrated immutable quote once OFF', async () => {
+            const originallyFrozen = {
+                low: 7700, mid: 9000, high: 10200,
+                confidence: 'LOW', confidenceScore: 0.42,
+                comparables: 5,
+                source: 'LIVE_UK_MARKET',
+                explanation: 'Frozen old-system price.',
+                evidence: { completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 5 },
+                retail: { suggestedAsking: 10700, suggestedMinimum: 9300 },
+                auction: { marketValue: 6800, openingBid: 4800,
+                    reserveLow: 6100, reserveHigh: 7100, suggestedReserve: 6700 },
+                marketEvidence: { carmaziumComparables: 0, liveUkComparables: 5 },
+            };
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: registered.valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: { registration: registered.registration, make: registered.make,
+                        model: registered.model, year: registered.year, mileage: registered.mileage },
+                    baseValuation: {
+                        ...originallyFrozen,
+                        auction: {
+                            ...originallyFrozen.auction,
+                            marketValue: 7350, suggestedReserve: 7200,
+                        },
+                        calibration: {
+                            version: 'auction-outcome-v1',
+                            mode: 'APPLIED',
+                            originalAuction: originallyFrozen.auction,
+                            originalExplanation: originallyFrozen.explanation,
+                            evaluation: {
+                                state: 'VALIDATED', samples: 30,
+                                trainingSamples: 20, holdoutSamples: 10,
+                                multiplier: 1.08,
+                            },
+                        },
+                    },
+                },
+            });
+            const live = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const result = await service.estimateVehicleValue(registered as any);
+            expect(live).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(result.auction).toEqual(originallyFrozen.auction);
+            expect(result.retail).toEqual(originallyFrozen.retail);
+            expect(result.low).toBe(originallyFrozen.low);
+            expect(result.mid).toBe(originallyFrozen.mid);
+            expect(result.high).toBe(originallyFrozen.high);
+            expect(result.explanation).toBe(originallyFrozen.explanation);
+            expect(result.calibration).toBeUndefined();
+        });
+
+        it('does not collect historic outcomes for missing or PARTIAL identity in SHADOW', async () => {
+            config.get.mockImplementation((key: string) => ({
+                VALUATION_CALIBRATION_MODE: 'shadow',
+                VALUATION_CALIBRATION_DATA_REVIEW_APPROVED: 'true',
+            } as Record<string, string>)[key]);
+            const result = await (service as any).getOptionalAuctionCalibration(
+                registered, 'PARTIAL',
+            );
+            expect(result.mode).toBe('off');
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Block 8 conservative evidence labels and frozen-snapshot consistency', () => {
+        const car = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, mileage: 57000,
+            valuationId: '88888888-8888-4888-8888-888888888888',
+        };
+
+        it('keeps even six exact current adverts at MEDIUM until achieved-sale calibration exists', async () => {
+            const now = new Date().toISOString();
+            prisma.listing.findMany.mockResolvedValue([]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce({
+                    checkedAt: now,
+                    sourceDomains: ['example-a.co.uk', 'example-b.co.uk'],
+                    rawComparableCount: 6,
+                    comparables: Array.from({ length: 6 }, (_, i) => ({
+                        price: 9000 + i * 150,
+                        year: 2010, mileage: 57000,
+                        kind: 'ACTIVE_ASK', modelMatchQuality: 'EXACT_MODEL',
+                        sourceUrl: `https://example-${i % 2 ? 'a' : 'b'}.co.uk/listings/${i + 1}`,
+                    })),
+                });
+            const result = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('LIVE_UK_MARKET');
+            expect(result.confidence).toBe('MEDIUM');
+            expect(result.confidenceScore).toBeLessThan(0.65);
+            expect(result.confidenceAssessment?.counts.uniqueUkAdverts).toBe(6);
+            expect(result.confidenceAssessment?.counts.exactModelAdverts).toBe(6);
+            expect(result.confidenceAssessment?.counts.verifiedCompletedAuctions).toBe(0);
+            expect(result.confidenceAssessment?.calibrationStatus)
+                .toBe('NOT_VALIDATED_AGAINST_ACHIEVED_SALES');
+        });
+
+        it('adds a conservative, coherent evidence label to historical cached bases without searching', async () => {
+            const legacy = {
+                low: 7000, mid: 8000, high: 9000,
+                confidence: 'HIGH', confidenceScore: 0.89,
+                comparables: 8, evidence: {
+                    completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 8,
+                },
+                source: 'LIVE_UK_MARKET',
+                explanation: 'Old live-market estimate.',
+                retail: { suggestedAsking: 9000, suggestedMinimum: 8000 },
+                auction: { marketValue: 6500, openingBid: 4700,
+                    reserveLow: 6000, reserveHigh: 7000, suggestedReserve: 6500 },
+                marketEvidence: {
+                    carmaziumComparables: 0,
+                    liveUkComparables: 8,
+                    liveSources: ['example-a.co.uk'],
+                },
+            };
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id: car.valuationId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: { ...car, registration: 'BF10XYP' },
+                    baseValuation: legacy,
+                },
+            });
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const result = await service.estimateVehicleValue({
+                ...car, condition: 'FAIR',
+            } as any);
+            expect(search).not.toHaveBeenCalled();
+            expect(result.mid).toBeLessThan(legacy.mid);
+            expect(result.confidence).toBe('LOW');
+            expect(result.confidenceAssessment?.level).toBe('LOW');
+            expect(result.confidenceAssessment?.reasonCodes).toContain('EXACT_MODEL_EVIDENCE_LIMITED');
+            expect(result.confidenceAssessment?.calibrationStatus)
+                .toBe('NOT_VALIDATED_AGAINST_ACHIEVED_SALES');
+        });
+    });
+
+    describe('Block 7 frozen-base deterministic seller edits', () => {
+        const id = '77777777-7777-4777-8777-777777777777';
+        const storedBase = {
+            low: 7500, mid: 9000, high: 10500,
+            source: 'LIVE_UK_MARKET',
+            confidence: 'MEDIUM', confidenceScore: 0.58,
+            comparables: 4, evidence: {
+                completedSales: 0, acceptedOffers: 0, auctionResults: 0, activeAsks: 4,
+            },
+            explanation: 'Frozen genuine advert evidence.',
+            marketEvidence: {
+                carmaziumComparables: 0, liveUkComparables: 4,
+                liveUkAttempts: 1, blendedMarketAttempts: 0,
+                valuationStrategy: 'LIVE',
+            },
+            retail: {
+                suggestedAsking: 10800, suggestedMinimum: 9200,
+                evidenceBasis: 'OBSERVED', observedAsks: 4,
+            },
+            privateSale: {
+                low: 7000, mid: 8100, high: 9000,
+                evidenceBasis: 'PROVISIONAL_PROXY', verifiedSales: 0,
+            },
+            auction: {
+                marketValue: 6900, openingBid: 5100, reserveLow: 6400,
+                reserveHigh: 7300, suggestedReserve: 6900,
+                evidenceBasis: 'OBSERVED', verifiedOutcomes: 5,
+            },
+        };
+        const identity = {
+            make: 'VOLKSWAGEN', model: 'GOLF', year: 2010,
+            mileage: 138734, registration: 'BF10XYP',
+        };
+        const request = {
+            ...identity, valuationId: id,
+        };
+
+        beforeEach(() => {
+            prisma.analyticsEvent.findUnique.mockResolvedValue({
+                id, type: 'valuation_base_snapshot', payload: {
+                    identity, baseValuation: storedBase,
+                },
+            });
+        });
+
+        it('returns a path-independent price after sequential seller edits without repeated market search', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            const poor = await service.estimateVehicleValue({
+                ...request, condition: 'POOR', exteriorGrade: 5, transmission: 'MANUAL',
+            } as any);
+            const clean = await service.estimateVehicleValue({
+                ...request, condition: 'EXCELLENT', exteriorGrade: 1, transmission: 'CVT',
+                ulezCompliant: true, euroStandard: 'EURO_4',
+            } as any);
+            const editedBack = await service.estimateVehicleValue({
+                ...request, condition: 'POOR', exteriorGrade: 5, transmission: 'MANUAL',
+            } as any);
+            expect(search).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+            expect(poor.mid).toBeLessThan(clean.mid);
+            expect(editedBack.mid).toBe(poor.mid);
+            expect(editedBack.retail.suggestedAsking).toBe(poor.retail.suggestedAsking);
+            expect(editedBack.auction.suggestedReserve).toBe(poor.auction.suggestedReserve);
+            expect(editedBack.privateSale?.mid).toBe(poor.privateSale?.mid);
+            expect(clean.specificationAdjustment?.base.mid).toBe(storedBase.mid);
+            expect(clean.marketEvidence).toEqual(storedBase.marketEvidence);
+            expect(clean.auction.verifiedOutcomes).toBe(5);
+        });
+
+        it('normalizes equivalent hyphenated trim and fuel/transmission aliases on the same frozen base', async () => {
+            const a = await service.estimateVehicleValue({
+                ...request, variant: 'ST-LINE', fuelType: 'PETROL_PLUGIN_HYBRID',
+                transmission: 'SEMI_AUTOMATIC',
+            } as any);
+            const b = await service.estimateVehicleValue({
+                ...request, variant: 'ST LINE', fuelType: 'Petrol Plug-in Hybrid',
+                transmission: 'Semi-Automatic',
+            } as any);
+            expect(a.mid).toBe(b.mid);
+            expect(a.retail).toEqual(b.retail);
+            expect(a.privateSale).toEqual(b.privateSale);
+            expect(a.auction).toEqual(b.auction);
+            expect(a.specificationAdjustment?.reasonCodes)
+                .toEqual(b.specificationAdjustment?.reasonCodes);
+        });
+    });
+
+    describe('Block 6 completed-sale provenance and separate channels', () => {
+        const car = { make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000 };
+        const common = {
+            type: 'AUCTION',
+            status: 'SOLD',
+            year: 2018, mileage: 57000, make: 'VOLKSWAGEN', model: 'GOLF',
+            price: 15000, fuelType: 'PETROL', transmission: 'MANUAL',
+            variant: null, writeOffCategory: null, condition: null,
+            serviceHistory: null, owners: null, sale: { soldPrice: 99999 },
+            offers: [],
+        };
+        const completed = (id: string, winningBidAmount: number) => ({
+            ...common, id,
+            auction: {
+                status: 'ENDED', winnerId: 'winner', winningBidAmount,
+                buyerFeePaid: true, sellerFundsConfirmedAt: new Date(),
+                sellerFundsConfirmationRequired: true,
+                sellerBonusReleased: true, buyerRefusedAt: null,
+            },
+        });
+
+        it('uses only handed-over completed auctions; pending high bids cannot inflate the guide', async () => {
+            const pending = {
+                ...completed('pending', 65_000),
+                auction: {
+                    ...completed('pending', 65_000).auction,
+                    sellerBonusReleased: false,
+                },
+            };
+            prisma.listing.findMany.mockResolvedValue([
+                completed('one', 5800), completed('two', 6300),
+                completed('three', 6700), pending,
+            ]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(null);
+            const result = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(10);
+            expect(result.evidence.auctionResults).toBe(3);
+            expect(result.auction.evidenceBasis).toBe('OBSERVED');
+            expect(result.auction.verifiedOutcomes).toBe(3);
+            expect(result.auction.marketValue).toBe(6300);
+            expect(result.privateSale?.evidenceBasis).toBe('PROVISIONAL_PROXY');
+        });
+
+        it('prefers a completed classified sold price over an earlier accepted offer', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                ...common, id: 'sold-retail', type: 'CLASSIFIED',
+                sale: { soldPrice: 9000 },
+                offers: [{ amount: 15000, finalAmount: 14900, status: 'ACCEPTED' }],
+                auction: null,
+            }]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
+            const result = await service.estimateVehicleValue(car as any);
+            expect(result.evidence.completedSales).toBe(1);
+            expect(result.evidence.acceptedOffers).toBe(0);
+            expect(result.privateSale?.verifiedSales).toBe(0);
+            expect(result.privateSale?.evidenceBasis).toBe('PROVISIONAL_PROXY');
+            expect(result.auction.verifiedOutcomes).toBe(0);
+        });
+    });
+
+    describe('Block 5 unique advert evidence across live attempts', () => {
+        const car = {
+            make: 'VOLKSWAGEN', model: 'GOLF', year: 2018, mileage: 57000,
+        };
+        const row = (url: string, price: number) => ({
+            sourceUrl: url, sourceDomain: 'dealer.example',
+            listingTitle: '2018 Volkswagen Golf SE',
+            price, year: 2018, mileage: 57000,
+            variant: 'SE', transmission: 'MANUAL',
+            kind: 'ACTIVE_ASK' as const,
+            modelMatchQuality: 'EXACT_MODEL' as const,
+        });
+        const result = (comparables: ReturnType<typeof row>[]) => ({
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            sourceDomains: ['dealer.example'],
+            rawComparableCount: comparables.length, comparables,
+        });
+
+        it('does not inflate comparable count from repeats across five search passes', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const a = row('https://dealer.example/cars/golf-123?utm_source=pass1', 10995);
+            const repeat = row('https://dealer.example/cars/golf-123?utm_source=pass2', 10995);
+            const b = row('https://dealer.example/cars/golf-456', 10750);
+            const c = row('https://dealer.example/cars/golf-789', 10995);
+            // The first two cars share the same price and mileage. They
+            // must remain independent; only a repeat of the same URL merges.
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce(result([a, b]))
+                .mockResolvedValueOnce(result([repeat]))
+                .mockResolvedValueOnce(result([c]))
+                .mockResolvedValueOnce(null)
+                .mockResolvedValueOnce(null);
+
+            const valuation = await service.estimateVehicleValue(car as any);
+            expect(search).toHaveBeenCalledTimes(5);
+            expect(valuation.source).toBe('LIVE_UK_MARKET');
+            expect(valuation.marketEvidence?.liveUkComparables).toBe(3);
+            expect(valuation.marketEvidence?.blendedMarketAttempts).toBe(0);
+        });
+
+        it('frozen results are unchanged when downstream sources repeat a known URL', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const a = row('https://dealer.example/cars/golf-123', 10995);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(result([a]));
+            const first = await service.estimateVehicleValue(car as any);
+            const repeated = await service.estimateVehicleValue(car as any);
+            expect(first.mid).toBe(repeated.mid);
+            expect(first.marketEvidence?.liveUkComparables).toBe(1);
+            expect(repeated.marketEvidence?.liveUkComparables).toBe(1);
+            expect(search).toHaveBeenCalledTimes(10);
+        });
+    });
+
+    describe('Block 4 reliable live search delivery', () => {
+        const car = { make: 'Audi', model: 'Audi A1', year: 2018, mileage: 106470,
+            variant: 'Sport', fuelType: 'Petrol', transmission: 'Manual' };
+        const evidence = {
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            rawComparableCount: 1,
+            sourceDomains: ['dealer.example'],
+            comparables: [{ price: 7200, year: 2018, mileage: 106470, kind: 'ACTIVE_ASK' }],
+        };
+
+        it('shares an in-flight external search without skipping distinct plan attempts', async () => {
+            config.get.mockImplementation((key: string) =>
+                key === 'OPENAI_API_KEY' ? 'test-key' : undefined);
+            let finish!: (value: typeof evidence) => void;
+            const pending = new Promise<typeof evidence>((resolve) => { finish = resolve; });
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockImplementation(() => pending as any);
+            try {
+                const first = (service as any).getLiveUkMarketComparables(car, { phase: 'LIVE', attempt: 1 });
+                const duplicate = (service as any).getLiveUkMarketComparables({
+                    ...car, model: 'A1',
+                }, { phase: 'LIVE', attempt: 1 });
+                finish(evidence);
+                expect(await first).toEqual(evidence);
+                expect(await duplicate).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(1);
+
+                // Same first plan after settlement: no retained search data
+                // while contractual short caching is disabled.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toEqual(evidence);
+                // Second plan must still be searched, not treated as a retry
+                // of plan one or suppressed by the shared result.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 2 },
+                )).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(3);
+                expect(sdk.mock.calls[0][1].timeoutMs).toBe(18_000);
+            } finally {
+                sdk.mockRestore();
+            }
+        });
+
+        it('applies only bounded, explicitly configured per-search timeout', async () => {
+            config.get.mockImplementation((key: string) => ({
+                OPENAI_API_KEY: 'test-key',
+                OPENAI_WEB_VALUATION_TIMEOUT_MS: '999999',
+            } as Record<string, string>)[key]);
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockResolvedValue(evidence as any);
+            try {
+                await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                );
+                expect(sdk.mock.calls[0][1].timeoutMs).toBe(22_000);
+            } finally {
+                sdk.mockRestore();
+            }
+        });
+
+        it('treats an individual plan failure as recoverable, never as a fake comparable', async () => {
+            config.get.mockImplementation((key: string) =>
+                key === 'OPENAI_API_KEY' ? 'test-key' : undefined);
+            const sdk = jest.spyOn(marketSearch, 'searchLiveUkVehicleMarket')
+                .mockRejectedValueOnce(new Error('provider timeout'))
+                .mockResolvedValue(evidence as any);
+            const warn = jest.spyOn((service as any).logger, 'warn').mockImplementation();
+            try {
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toBeNull();
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 2 },
+                )).toEqual(evidence);
+                // Failed results are not retained, so a later first-plan
+                // retry may again consult the actual first source.
+                expect(await (service as any).getLiveUkMarketComparables(
+                    car, { phase: 'LIVE', attempt: 1 },
+                )).toEqual(evidence);
+                expect(sdk).toHaveBeenCalledTimes(3);
+                expect(JSON.stringify(warn.mock.calls)).not.toContain('provider timeout');
+            } finally {
+                sdk.mockRestore();
+                warn.mockRestore();
+            }
+        });
+    });
+
+    describe('Block 3 licensed market reference isolation', () => {
+        const dto = {
+            registration: 'BF10XYP', make: 'VOLKSWAGEN', model: 'GOLF',
+            year: 2010, mileage: 138734,
+            valuationId: '77777777-7777-4777-8777-777777777777',
+        };
+        const live = {
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            rawComparableCount: 3,
+            sourceDomains: ['example-dealer.co.uk'],
+            comparables: [
+                { price: 7200, year: 2010, mileage: 135000, kind: 'ACTIVE_ASK' },
+                { price: 7350, year: 2010, mileage: 139000, kind: 'ACTIVE_ASK' },
+                { price: 7400, year: 2011, mileage: 125000, kind: 'ACTIVE_ASK' },
+            ],
+        };
+        const benchmark = {
+            status: 'AVAILABLE',
+            benchmark: {
+                source: 'CAP_HPI', evidenceType: 'LICENSED_PROVIDER_BENCHMARK',
+                checkedAt: '2026-10-02T12:00:00.000Z',
+                retail: 7900, tradeClean: 6000, tradeAverage: 5500, tradeBelow: 4800,
+            },
+        };
+
+        it('keeps CAP reference prices out of consumer quotes and frozen comparable evidence', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(live);
+            const reference = jest.spyOn(service as any, 'getLicensedBenchmark');
+            reference.mockResolvedValueOnce(null);
+            const baseline = await service.estimateVehicleValue(dto as any);
+            reference.mockResolvedValueOnce(benchmark);
+            const withReference = await service.estimateVehicleValue({
+                ...dto, valuationId: '88888888-8888-4888-8888-888888888888',
+            } as any);
+            expect(reference).toHaveBeenCalledTimes(2);
+            expect(withReference.low).toEqual(baseline.low);
+            expect(withReference.mid).toEqual(baseline.mid);
+            expect(withReference.high).toEqual(baseline.high);
+            expect(withReference.source).toBe('LIVE_UK_MARKET');
+            const events = prisma.analyticsEvent.create.mock.calls
+                .map((call: any[]) => call[0].data);
+            const internal = events.find((row: any) => row.type === 'valuation_licensed_benchmark_check');
+            expect(internal.payload).toEqual(expect.objectContaining({
+                source: 'CAP_HPI', comparisonStatus: 'ALIGNED',
+            }));
+            expect(JSON.stringify(internal)).not.toMatch(/7900|6000|5500|4800|BF10XYP/);
+            const snapshots = events.filter((row: any) => row.type === 'valuation_base_snapshot');
+            expect(JSON.stringify(snapshots)).not.toMatch(/CAP_HPI/);
+        });
+
+        it('does not abandon all five live/five blended attempts if optional provider is unavailable', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(null);
+            const reference = jest.spyOn(service as any, 'getLicensedBenchmark')
+                .mockResolvedValue({ status: 'UNAVAILABLE' });
+            const result = await service.estimateVehicleValue(dto as any);
+            expect(search).toHaveBeenCalledTimes(10);
+            expect(reference).toHaveBeenCalledTimes(1);
+            expect(result.source).toBe('CARMAZIUM_MODEL');
+            expect(result.marketEvidence).toEqual(expect.objectContaining({
+                liveUkAttempts: 5, blendedMarketAttempts: 5,
+            }));
+            const events = prisma.analyticsEvent.create.mock.calls
+                .map((call: any[]) => call[0].data);
+            expect(events.find((row: any) => row.type === 'valuation_licensed_benchmark_check')
+                .payload.comparisonStatus).toBe('UNAVAILABLE');
+        });
+
+        it('does not call CAP for an unverified or registration-free valuation by default', async () => {
+            const result = await (service as any).getLicensedBenchmark({
+                ...dto, registration: undefined,
+            }, { status: 'UNVERIFIED' });
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('Block 2: consistent market base across equivalent journeys', () => {
+        const audiVrm = 'RO18YWN';
+        const firstId = '11111111-1111-4111-8111-111111111111';
+        const secondId = '22222222-2222-4222-8222-222222222222';
+        const lookup = {
+            vrm: audiVrm, make: 'AUDI', model: 'A1',
+            year: 2018, dataSource: 'DVLA' as const,
+        };
+        const firstRequest = {
+            registration: 'RO18 YWN', make: 'AUDI', model: 'Audi A1',
+            year: 2018, mileage: 106470, valuationId: firstId,
+        };
+        const secondRequest = {
+            ...firstRequest, registration: audiVrm, model: 'A1',
+            valuationId: secondId,
+        };
+        const marketResult = (mid: number) => ({
+            checkedAt: '2026-10-02T12:00:00.000Z',
+            sourceDomains: ['example-dealer.co.uk'],
+            rawComparableCount: 3,
+            comparables: [mid - 200, mid, mid + 200].map((price) => ({
+                price, year: 2018, mileage: 106470, kind: 'ACTIVE_ASK',
+            })),
+        });
+
+        beforeEach(() => {
+            dvla.lookupVrm.mockResolvedValue(lookup);
+            prisma.listing.findMany.mockResolvedValue([]);
+        });
+
+        it('reuses a saved Audi A1 base for the equivalent model label without searching again', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            const first = await service.estimateVehicleValue(firstRequest as any);
+            const firstInsert = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            const stored = {
+                id: firstId, type: 'valuation_base_snapshot',
+                payload: firstInsert.payload,
+            };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce(stored);
+
+            const second = await service.estimateVehicleValue(secondRequest as any);
+            expect(second.auction.marketValue).toEqual(first.auction.marketValue);
+            expect(second.mid).toEqual(first.mid);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(prisma.analyticsEvent.create).toHaveBeenCalledTimes(2);
+            const inserts = prisma.analyticsEvent.create.mock.calls.map((call: any[]) => call[0].data);
+            expect(inserts[0].sessionId).toBe(inserts[1].sessionId);
+            expect(inserts[1].payload.reusedFromSnapshotId).toBe(firstId);
+        });
+
+        it('assigns legacy VRM requests without valuationId a server journey and reuses the saved base', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            const legacy = {
+                registration: audiVrm, make: 'AUDI',
+                model: 'A1', year: 2018, mileage: 106470,
+            };
+            const first = await service.estimateVehicleValue(legacy as any);
+            const firstData = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            expect(firstData.id).toMatch(/^[0-9a-f-]{36}$/i);
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstData.id,
+                type: 'valuation_base_snapshot',
+                payload: firstData.payload,
+            });
+            const second = await service.estimateVehicleValue(legacy as any);
+            expect(search).toHaveBeenCalledTimes(1);
+            expect(second.mid).toBe(first.mid);
+            const secondData = prisma.analyticsEvent.create.mock.calls[1][0].data;
+            expect(secondData.id).not.toBe(firstData.id);
+            expect(secondData.sessionId).toBe(firstData.sessionId);
+        });
+
+        it('under the DB lock prefers a newly committed quote over the independently searched result', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValueOnce(marketResult(7450))
+                .mockResolvedValueOnce(marketResult(5900));
+            // Both clients initially observed an empty cache. By the time
+            // the second enters its serialized snapshot transaction, the
+            // first request has already committed.
+            prisma.analyticsEvent.findFirst
+                .mockResolvedValueOnce(null) // first pre-search read
+                .mockResolvedValueOnce(null) // first under lock
+                .mockResolvedValueOnce(null); // second pre-search stale read
+
+            const first = await service.estimateVehicleValue(firstRequest as any);
+            const stored = prisma.analyticsEvent.create.mock.calls[0][0].data;
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstId, type: 'valuation_base_snapshot', payload: stored.payload,
+            });
+            const second = await service.estimateVehicleValue(secondRequest as any);
+            expect(search).toHaveBeenCalledTimes(2);
+            expect(second.mid).toBe(first.mid);
+            expect(second.auction.marketValue).toBe(first.auction.marketValue);
+            expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+            // Both labels should take exactly the same cross-instance lock.
+            expect(prisma.$queryRaw.mock.calls[0][1]).toBe(
+                prisma.$queryRaw.mock.calls[1][1],
+            );
+            expect(prisma.analyticsEvent.create.mock.calls[1][0].data.payload.reusedFromSnapshotId)
+                .toBe(firstId);
+        });
+
+        it('an overlapping fallback must not eclipse an earlier usable live base', async () => {
+            const liveBase = {
+                low: 6500, mid: 7450, high: 8000,
+                confidence: 'LOW', confidenceScore: 0.4,
+                comparables: 5, evidence: {
+                    completedSales: 0, acceptedOffers: 0,
+                    auctionResults: 0, activeAsks: 5,
+                }, source: 'LIVE_UK_MARKET',
+                explanation: 'Older live snapshot', retail: {
+                    suggestedAsking: 8000, suggestedMinimum: 7450,
+                }, auction: {
+                    marketValue: 6500, openingBid: 4550,
+                    reserveLow: 5850, reserveHigh: 6500, suggestedReserve: 6150,
+                },
+            };
+            const fallback = {
+                ...liveBase, source: 'CARMAZIUM_MODEL', comparables: 0,
+                marketEvidence: { valuationStrategy: 'FALLBACK' },
+            };
+            const identity = {
+                registration: audiVrm, make: 'AUDI', model: 'A1',
+                year: 2018, mileage: 106470,
+            };
+            const newest = { id: secondId, type: 'valuation_base_snapshot',
+                payload: { identity, baseValuation: fallback } };
+            const older = { id: firstId, type: 'valuation_base_snapshot',
+                payload: { identity, baseValuation: liveBase } };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce(newest);
+            prisma.analyticsEvent.findMany.mockResolvedValueOnce([newest, older]);
+            const found = await (service as any).findRecentReusableMarketBase(prisma, firstRequest);
+            expect(found.row.id).toBe(firstId);
+            expect(found.base.source).toBe('LIVE_UK_MARKET');
+            expect(prisma.analyticsEvent.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({ take: 20 }),
+            );
+        });
+
+        it('does not return an unfrozen cached quote if alias persistence fails', async () => {
+            const frozen = {
+                low: 6500, mid: 7450, high: 8000,
+                source: 'LIVE_UK_MARKET', confidence: 'LOW',
+                confidenceScore: 0.4, comparables: 3,
+                retail: { suggestedAsking: 8000, suggestedMinimum: 7450 },
+                auction: {
+                    marketValue: 6500, openingBid: 4550,
+                    reserveLow: 5850, reserveHigh: 6500, suggestedReserve: 6150,
+                },
+            };
+            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+                id: firstId,
+                type: 'valuation_base_snapshot',
+                payload: {
+                    identity: {
+                        registration: audiVrm, make: 'AUDI',
+                        model: 'A1', year: 2018, mileage: 106470,
+                    },
+                    baseValuation: frozen,
+                },
+            });
+            prisma.analyticsEvent.create.mockRejectedValueOnce(new Error('database write failed'));
+            await expect(service.estimateVehicleValue(secondRequest as any))
+                .rejects.toThrow(/database write failed/);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('does not share a cached generic valuation without a registration', async () => {
+            const search = jest.spyOn(service as any, 'getLiveUkMarketComparables')
+                .mockResolvedValue(marketResult(7450));
+            await service.estimateVehicleValue({
+                ...firstRequest, registration: undefined,
+            } as any);
+            expect(prisma.analyticsEvent.findFirst).not.toHaveBeenCalled();
+            expect(search).toHaveBeenCalledTimes(1);
         });
     });
 

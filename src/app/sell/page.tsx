@@ -387,7 +387,7 @@ function QuickValuationForm() {
 
             setManualMode(true)
             setPendingVehicle(null)
-            setError(null)
+            setError(err instanceof Error ? err.message : "Vehicle details could not be verified. Please correct them and retry.")
         } finally {
             setLoading(false)
         }
@@ -523,7 +523,7 @@ function QuickValuationForm() {
                     <Button type="submit" size="lg" disabled={loading} className="h-12 w-full sm:w-auto">
                         {loading
                             ? <><Loader2 size={18} className="animate-spin" /> Valuing…</>
-                            : <>{needsManualDetails ? "Value Manually" : needsModel ? "Continue Valuation" : "Get My Free Valuation"} <ArrowRight size={18} /></>}
+                            : <>{needsManualDetails ? "Check Corrected Details" : needsModel ? "Continue Valuation" : "Get My Free Valuation"} <ArrowRight size={18} /></>}
                     </Button>
                 </div>
 
@@ -535,8 +535,8 @@ function QuickValuationForm() {
 
                 {needsManualDetails && (
                     <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm text-amber-800 dark:text-amber-200">
-                        <p className="font-bold">We couldn't verify {vrm.trim().toUpperCase()} through DVLA.</p>
-                        <p className="mt-1">Check the registration, or enter the make, model and year above to continue with a CarMazium estimated valuation.</p>
+                        <p className="font-bold">Vehicle details require confirmation for {vrm.trim().toUpperCase()}.</p>
+                        <p className="mt-1">Correct the registration, make, model and year, then retry. CarMazium will not generate an automatic price for a registration the backend cannot verify.</p>
                     </div>
                 )}
 
@@ -560,6 +560,11 @@ function QuickValuationForm() {
                             </p>
                             {hasGuide && (
                                 <>
+                                    {result.valuation.identityVerification?.status && result.valuation.identityVerification.status !== "MODEL_VERIFIED" && (
+                                        <p role="status" className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                                            Provisional estimate: {result.valuation.identityVerification.message}
+                                        </p>
+                                    )}
                                     <div className="mt-3 max-w-xl rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4">
                                         <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
                                             Current Market Value

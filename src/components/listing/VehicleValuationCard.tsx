@@ -41,8 +41,8 @@ export function VehicleValuationCard({
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
                 <AlertTriangle size={17} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                    <p className="text-sm font-bold text-amber-300">Valuation temporarily unavailable</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">You can continue and enter your own price. We will retry when the vehicle details change.</p>
+                    <p className="text-sm font-bold text-amber-300">Valuation could not be confirmed</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{error}. Confirm the vehicle details or enter your own price; CarMazium has not verified an automatic guide for this request.</p>
                 </div>
             </div>
         )
@@ -50,14 +50,22 @@ export function VehicleValuationCard({
 
     if (!valuation) return null
 
+    const assessment = valuation.confidenceAssessment
+    // Old frozen results/local provisional fallbacks have no evidence rubric.
+    // Do not show the old uncalibrated HIGH/MEDIUM label as measured quality.
+    const evidenceLevel = assessment?.level ?? "LOW"
     const confidenceClass =
-        valuation.confidence === "HIGH"
+        evidenceLevel === "HIGH"
             ? "text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400"
-            : valuation.confidence === "MEDIUM"
+            : evidenceLevel === "MEDIUM"
                 ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
                 : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
 
-    const primaryValue = valuation.auction.marketValue
+    const primaryValue = mode === "retail"
+        ? valuation.retail.suggestedAsking
+        : valuation.auction.marketValue
+    const currentChannel = mode === "retail" ? valuation.retail : valuation.auction
+    const channelProvisional = currentChannel.evidenceBasis !== "OBSERVED"
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6">
@@ -78,23 +86,81 @@ export function VehicleValuationCard({
                         </div>
                     </div>
                     <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${confidenceClass}`}>
-                        {valuation.confidence} confidence
+                        {evidenceLevel} evidence strength
                     </span>
                 </div>
 
+                {valuation.identityVerification?.status && valuation.identityVerification.status !== "MODEL_VERIFIED" && (
+                    <p role="status" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                        Provisional estimate: {valuation.identityVerification.message}
+                    </p>
+                )}
+
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                        Current Market Value
+                        {mode === "retail" ? "Suggested retail asking guide" : "Auction market-value guide"}
                     </p>
                     <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
+                        {channelProvisional
+                            ? "Provisional guide: insufficient verified observations for this selling channel. This is not a confirmed achieved-sale price or an automatic reserve."
+                            : "Derived from channel-specific market evidence, adjusted for the condition and specification provided."}
                     </p>
                 </div>
 
+                {mode === "auction" && valuation.calibration?.mode === "APPLIED" && (
+                    <p role="status" className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+                        This auction guide includes an optional adjustment evaluated against earlier
+                        seller-confirmed completed auctions and later held-out outcomes. It does
+                        not guarantee an achieved price and can be disabled without losing the
+                        original saved valuation.
+                    </p>
+                )}
 
+                {mode === "retail" && valuation.privateSale && (
+                    <div className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+                        Indicative private-sale guide: {formatPrice(valuation.privateSale.low)}–{formatPrice(valuation.privateSale.high)}
+                        {valuation.privateSale.evidenceBasis !== "OBSERVED"
+                            ? " (provisional; verified private-party sales are not yet available)"
+                            : " (based on verified private-party transactions)"}
+                    </div>
+                )}
+
+                <section aria-label="Valuation evidence and limitations" className="mt-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-xs leading-relaxed text-[var(--text-muted)]">
+                    <p className="font-bold text-[var(--text-primary)]">How this guide was estimated</p>
+                    {assessment ? (
+                        <>
+                            <p className="mt-2">{assessment.sourceExplanation}</p>
+                            <p className="mt-1 font-semibold">{assessment.headline}</p>
+                            <p className="mt-1">
+                                Evidence: {assessment.counts.uniqueUkAdverts} distinct UK adverts;
+                                {" "}{assessment.counts.exactModelAdverts} exact-model matches;
+                                {" "}{assessment.counts.independentAdvertSites} cited advert sources.
+                                {assessment.counts.verifiedCompletedAuctions > 0
+                                    ? ` ${assessment.counts.verifiedCompletedAuctions} completed auction handovers confirmed by sellers.`
+                                    : ""}
+                            </p>
+                            {assessment.checkedAt && (
+                                <p className="mt-1">
+                                    Market evidence checked: {new Date(assessment.checkedAt).toLocaleString("en-GB")}
+                                </p>
+                            )}
+                            <ul className="mt-2 list-disc pl-4">
+                                {assessment.limitations.map((item, index) => (
+                                    <li key={index}>{item}</li>
+                                ))}
+                            </ul>
+                        </>
+                    ) : (
+                        <p className="mt-2">
+                            This older or locally generated estimate does not have a verified
+                            evidence-quality breakdown. Treat it as provisional until refreshed.
+                            Advert asking prices are not achieved selling prices.
+                        </p>
+                    )}
+                </section>
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
@@ -102,7 +168,7 @@ export function VehicleValuationCard({
                     </p>
                     <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />
-                        Use this value
+                        {valuation.identityVerification?.status && valuation.identityVerification.status !== "MODEL_VERIFIED" ? "Use provisional guide" : "Use this value"}
                     </Button>
                 </div>
             </div>

@@ -1,4 +1,6 @@
 import { apiClient } from './apiClient'
+import { applySpecificationToFrozenValuation, calculateSpecificationAdjustment, type SpecificationAdjustmentAudit } from './valuation-specification-policy';
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
 
@@ -28,6 +30,40 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+    specificationAdjustment?: SpecificationAdjustmentAudit;
+    calibration?: {
+        version: string
+        mode: 'SHADOW' | 'APPLIED' | 'SKIPPED'
+    }
+    confidenceAssessment?: {
+        rubricVersion: string
+        level: 'LOW' | 'MEDIUM' | 'HIGH'
+        calibrationStatus: 'NOT_VALIDATED_AGAINST_ACHIEVED_SALES'
+        headline: string
+        sourceExplanation: string
+        limitations: string[]
+        reasonCodes: string[]
+        counts: {
+            uniqueUkAdverts: number
+            exactModelAdverts: number
+            provisionalModelAdverts: number
+            independentAdvertSites: number
+            verifiedCompletedAuctions: number
+            verifiedPrivateSales: number
+            acceptedOffers: number
+            otherPlatformMarketSignals: number
+        }
+        checkedAt?: string
+    }
+
+    identityVerification?: {
+        status: 'MODEL_VERIFIED' | 'PARTIAL' | 'UNVERIFIED'
+        registrationChecked: boolean
+        makeVerified: boolean
+        modelVerified: boolean
+        derivativeVerified: boolean
+        message: string
+    }
     low: number
     mid: number
     high: number
@@ -60,6 +96,15 @@ export interface VehicleValuation {
     retail: {
         suggestedAsking: number
         suggestedMinimum: number
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        observedAsks?: number
+    }
+    privateSale?: {
+        low: number
+        mid: number
+        high: number
+        evidenceBasis: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        verifiedSales: number
     }
     auction: {
         marketValue: number
@@ -67,6 +112,8 @@ export interface VehicleValuation {
         reserveLow: number
         reserveHigh: number
         suggestedReserve: number
+        evidenceBasis?: 'OBSERVED' | 'PROVISIONAL_PROXY'
+        verifiedOutcomes?: number
     }
 }
 
@@ -219,89 +266,16 @@ function profileFactor(request: VehicleValuationRequest): number {
     return factor
 }
 
-function fuelSpecificationFactor(value?: string): number {
-    const fuel = normalise(value)
-    if (!fuel) return 1
-    if (fuel.includes('PLUGINHYBRID')) return 1.01
-    if (fuel.includes('HYBRID')) return 1.0075
-    if (fuel === 'DIESEL') return 0.995
-    if (['LPG', 'BIFUEL', 'NATURALGAS'].includes(fuel)) return 0.98
-    return 1
-}
-
-function variantSpecificationFactor(value?: string): number {
-    const variant = (value ?? '').trim().toUpperCase()
-    if (!variant) return 1
-
-    const performanceMarkers = [
-        'AMG', 'M SPORT COMPETITION', 'M COMPETITION', 'VRS',
-        'GTI', 'TYPE R', 'GR SPORT', 'GRMN', 'N PERFORMANCE',
-    ]
-    if (performanceMarkers.some((marker) => variant.includes(marker))) return 1.02
-
-    const premiumMarkers = [
-        'M SPORT', 'AMG LINE', 'S LINE', 'R LINE', 'ST LINE', 'N LINE',
-        'GT LINE', 'TITANIUM', 'VIGNALE', 'TEKNA', 'PORTFOLIO',
-        'AUTOBIOGRAPHY', 'HSE', 'R DESIGN', 'INSCRIPTION', 'EXCEL',
-    ]
-    if (premiumMarkers.some((marker) => variant.includes(marker))) return 1.01
-    return 1
-}
-
-function bodyConfigurationFactor(request: VehicleValuationRequest): number {
-    let factor = 1
-    if (request.doors === 5) factor *= 1.004
-    if (request.doors === 3) factor *= 0.996
-    if (request.doors === 2) factor *= 0.992
-    if ((request.seats ?? 0) >= 7) factor *= 1.008
-    if ((request.seats ?? 0) > 0 && (request.seats ?? 0) <= 2) factor *= 0.995
-    return factor
-}
 
 export function vehicleSpecificationAdjustmentFactor(request: VehicleValuationRequest): number {
-    let factor = profileFactor(request)
-
-    const transmission = transmissionFamily(request.transmission)
-    if (transmission === 'AUTO') factor *= 1.03
-    if (transmission === 'MANUAL') factor *= 0.98
-
-    factor *= fuelSpecificationFactor(request.fuelType)
-    factor *= variantSpecificationFactor(request.variant)
-    factor *= bodyConfigurationFactor(request)
-
-    return clamp(factor, 0.18, 1.20)
+    return calculateSpecificationAdjustment(request).factor
 }
 
 export function applyVehicleValuationAdjustments(
     base: VehicleValuation,
     request: VehicleValuationRequest,
 ): VehicleValuation {
-    const factor = vehicleSpecificationAdjustmentFactor(request)
-    if (Math.abs(factor - 1) < 0.0001) return { ...base }
-
-    const low = roundMoney(base.low * factor)
-    const mid = roundMoney(base.mid * factor)
-    const high = roundMoney(base.high * factor)
-    const auctionMarketValue = roundMoney(base.auction.marketValue * factor)
-
-    return {
-        ...base,
-        low,
-        mid,
-        high,
-        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
-        retail: {
-            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
-        },
-        auction: {
-            marketValue: auctionMarketValue,
-            openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
-            reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
-            reserveHigh: auctionMarketValue,
-            suggestedReserve: roundMoney(auctionMarketValue * 0.95),
-        },
-    }
+    return applySpecificationToFrozenValuation(base, request)
 }
 
 function getModelFallbackProfile(request: VehicleValuationRequest) {
@@ -382,18 +356,28 @@ function finishEstimate(
                 ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age and mileage.'
                 : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age and mileage and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
         retail: {
-            // Retail uses the upper market guide.
             suggestedAsking: high,
             suggestedMinimum: mid,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            observedAsks: values.length,
+        },
+        privateSale: {
+            low,
+            mid: roundMoney((low + mid) / 2),
+            high: mid,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            verifiedSales: 0,
         },
         auction: {
-            // Auction uses the lower dealer-buy guide so traders retain
-            // realistic preparation, warranty and resale margin.
+            // Registration-free browser-only fallback: provisional guides,
+            // not observed auction clearing prices or automatic reserves.
             marketValue: low,
-            openingBid: Math.round(low * 0.70 * 100) / 100,
-            reserveLow: Math.round(low * 0.90 * 100) / 100,
-            reserveHigh: Math.round(low * 1.00 * 100) / 100,
-            suggestedReserve: roundMoney(low * 0.95),
+            openingBid: roundMoney(Math.max(500, low - Math.max(100, mid - low))),
+            reserveLow: roundMoney(Math.max(500, low - Math.max(100, mid - low) / 4)),
+            reserveHigh: roundMoney(low + Math.max(100, mid - low) / 4),
+            suggestedReserve: low,
+            evidenceBasis: 'PROVISIONAL_PROXY',
+            verifiedOutcomes: 0,
         },
     }
 }
@@ -417,9 +401,13 @@ async function getBrowserFallbackValuation(
         cache: 'no-store',
     })
 
+    // A browser-only, registration-free fallback must remain spec-neutral.
+    // Apply every seller factor exactly ONCE after the fallback is labelled.
     const targetModel = normalise(request.model)
-    const targetFuel = normalise(request.fuelType)
-    const targetTransmission = normalise(request.transmission)
+    const neutralBase: VehicleValuationRequest = {
+        make: request.make, model: request.model,
+        year: request.year, mileage: request.mileage,
+    }
 
     const values = (response.data ?? [])
         .filter((row) =>
@@ -436,24 +424,9 @@ async function getBrowserFallbackValuation(
             let value = price * Math.pow(0.92, compYear - request.year)
             value *= clamp(1 - ((request.mileage - compMileage) / 1000) * 0.004, 0.78, 1.22)
 
-            // Do not exclude a useful comparable for a different powertrain;
-            // reduce its influence instead by nudging it toward the conservative
-            // side before it enters the median pool.
-            if (targetFuel && normalise(row.fuelType) && normalise(row.fuelType) !== targetFuel) value *= 0.96
-
-            const rowTransmission = normalise(row.transmission)
-            if (targetTransmission && rowTransmission && rowTransmission !== targetTransmission) {
-                const targetFamily = transmissionFamily(request.transmission)
-                const compFamily = transmissionFamily(row.transmission)
-                if (targetFamily && compFamily && targetFamily !== compFamily) {
-                    value *= targetFamily === 'AUTO' ? 1.07 : 0.93
-                }
-            }
-
             // Public fallback data is live asking-price evidence, not an
             // achieved transaction price, so keep the estimate conservative.
             value *= 0.96
-            value *= profileFactor(request)
             return value
         })
         .filter((value): value is number => value !== null)
@@ -467,7 +440,7 @@ async function getBrowserFallbackValuation(
         })
         : values
 
-    const valuation = finishEstimate(request, cleaned)
+    const valuation = finishEstimate(neutralBase, cleaned)
     valuation.marketEvidence = {
         carmaziumComparables: cleaned.length,
         liveUkComparables: 0,
@@ -480,7 +453,10 @@ async function getBrowserFallbackValuation(
 function getDeterministicFallbackValuation(
     request: VehicleValuationRequest,
 ): VehicleValuation {
-    const valuation = finishEstimate(request, [])
+    const valuation = finishEstimate({
+        make: request.make, model: request.model,
+        year: request.year, mileage: request.mileage,
+    }, [])
     valuation.marketEvidence = {
         carmaziumComparables: 0,
         liveUkComparables: 0,
@@ -489,6 +465,8 @@ function getDeterministicFallbackValuation(
     }
     return valuation
 }
+
+class ValuationInputRejected extends Error {}
 
 export async function getVehicleValuation(
     request: VehicleValuationRequest,
@@ -535,8 +513,16 @@ export async function getVehicleValuation(
                 signal: controller.signal,
             })
             if (!response.ok) {
-                const body = await response.text().catch(() => '')
-                throw new Error(body || `Valuation request failed (${response.status})`)
+                const raw = await response.text().catch(() => '')
+                let message = `Valuation request failed (${response.status})`
+                try {
+                    const parsed = JSON.parse(raw) as { message?: string | string[] }
+                    if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join('; ') : parsed.message
+                } catch {
+                    if (raw && raw.length < 240 && !raw.startsWith('<')) message = raw
+                }
+                if (response.status >= 400 && response.status < 500) throw new ValuationInputRejected(message)
+                throw new Error(message)
             }
             const body = await response.json() as { data?: VehicleValuation }
             if (!body?.data) throw new Error('Valuation response was empty')
@@ -544,16 +530,32 @@ export async function getVehicleValuation(
         } finally {
             clearTimeout(timeoutId)
         }
-    } catch {
-        // Never strand a seller because an enrichment dependency, deployment,
-        // rate-limit or network request failed. Try current CarMazium adverts
-        // first; if even that public-listings request is unavailable, the local
-        // deterministic age/mileage/transmission model still returns a numeric
-        // LOW-confidence guide.
-        try {
-            return await getBrowserFallbackValuation(request)
-        } catch {
-            return getDeterministicFallbackValuation(request)
+    } catch (error) {
+        // Never bypass an authoritative registration mismatch or an unavailable
+        // verifier with a locally generated number. Retry/manual review is safer.
+        if (error instanceof ValuationInputRejected || request.registration?.trim()) {
+            throw error
         }
+
+        // Only registration-free estimates retain a clearly labelled
+        // provisional fallback if the backend is unreachable.
+        let fallback: VehicleValuation
+        try {
+            fallback = await getBrowserFallbackValuation(request)
+        } catch {
+            fallback = getDeterministicFallbackValuation(request)
+        }
+        fallback.identityVerification = {
+            status: 'UNVERIFIED',
+            registrationChecked: false,
+            makeVerified: false,
+            modelVerified: false,
+            derivativeVerified: false,
+            message: 'Registration could not be checked. Confirm the exact vehicle before using this guide.',
+        }
+        fallback.confidence = 'LOW'
+        fallback.confidenceScore = Math.min(fallback.confidenceScore, 0.49)
+        fallback.explanation += ' ' + fallback.identityVerification.message
+        return applyVehicleValuationAdjustments(fallback, request)
     }
 }

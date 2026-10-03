@@ -306,8 +306,9 @@ describe('calculateVehicleValuation', () => {
             { price: 11000, year: 2021, mileage: 50000, kind: 'ACTIVE_ASK' },
         ]);
 
-        expect(result.retail.suggestedAsking).toBe(result.high);
-        expect(result.retail.suggestedMinimum).toBe(result.mid);
+        expect(result.retail.evidenceBasis).toBe('OBSERVED');
+        expect(result.retail.suggestedAsking).toBeGreaterThanOrEqual(result.retail.suggestedMinimum);
+        expect(result.retail.observedAsks).toBe(5);
         expect(result.auction.marketValue).toBe(result.low);
         expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking);
         expect(result.auction.suggestedReserve).toBeLessThanOrEqual(result.auction.marketValue);
