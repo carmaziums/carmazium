@@ -4,6 +4,7 @@ import { BidsService } from './bids.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 describe('BidsService — incremental bidding', () => {
     let service: BidsService;
@@ -202,6 +203,7 @@ describe('BidsService — incremental bidding', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 {
                     provide: AuctionGateway,
@@ -794,6 +796,7 @@ describe('BidsService — cancelBid', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 { provide: AuctionGateway, useValue: auctionGateway },
                 { provide: NotificationsService, useValue: notificationsService },
@@ -1036,6 +1039,7 @@ describe('BidsService — current auction positions', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 { provide: AuctionGateway, useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() } },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },

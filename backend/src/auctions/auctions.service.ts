@@ -1271,16 +1271,20 @@ export class AuctionsService {
             if (auction.listing.sellerId !== businessSellerId) {
                 throw new ForbiddenException('You do not own this auction');
             }
-            if (auction.status !== 'ACTIVE') {
-                throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+            const activeAcceptance = auction.status === 'ACTIVE' && auction.listing.status === 'ACTIVE';
+            const provisionalAcceptance = auction.status === 'ENDED'
+                && !auction.winnerId && !auction.wonAt
+                && auction.listing.status === 'DRAFT';
+            if (!activeAcceptance && !provisionalAcceptance) {
+                throw new BadRequestException('This auction has no provisional offer available to accept');
             }
-            if (auction.listing.status !== 'ACTIVE') {
-                throw new BadRequestException('This auction vehicle is no longer active');
-            }
-            if (Date.now() >= auction.endTime.getTime()) {
+            if (activeAcceptance && Date.now() >= auction.endTime.getTime()) {
                 throw new BadRequestException(
-                    'This auction has ended. The offer can no longer be accepted while the result is being finalised',
+                    'This auction has ended and is being finalised. Refresh for the seller decision.',
                 );
+            }
+            if (provisionalAcceptance && Date.now() < auction.endTime.getTime()) {
+                throw new BadRequestException('The auction has not reached its final deadline');
             }
 
             const [bid, highestBid] = await Promise.all([
@@ -2542,7 +2546,7 @@ export class AuctionsService {
                         WHEN ${sellerEarlyClose}::boolean
                             THEN 'SELLER_EARLY_CLOSE_UNSOLD'
                         WHEN d.top_bid_id IS NOT NULL
-                            THEN 'BELOW_RESERVE_UNSOLD'
+                            THEN 'BELOW_RESERVE_SELLER_DECISION'
                         ELSE 'NO_BIDS_UNSOLD'
                     END AS outcome_type
                 FROM decision d
@@ -2731,6 +2735,7 @@ export class AuctionsService {
             row.winner_id,
             winningAmount,
             saleCompleted,
+            highestBidAmount,
         );
     }
 
@@ -2739,6 +2744,7 @@ export class AuctionsService {
         winnerId: string | null,
         winningAmount: number | null,
         reserveMet: boolean,
+        highestBidAmount: number | null = null,
     ): Promise<void> {
         const listing = auction.listing;
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
@@ -2822,6 +2828,39 @@ export class AuctionsService {
                     auction.id,
                     buyerFeeWaived,
                 ).catch(console.error);
+            }
+        } else if (highestBidAmount !== null && highestBidAmount > 0
+            && highestBidAmount < Number(auction.reservePrice) && listing.sellerId) {
+            // The auction is ENDED but no winner/Sale exists until the seller accepts.
+            const retailAlreadyLive = Boolean(listing.linkedListingId);
+            const seller = await this.prisma.user.findUnique({
+                where: { id: listing.sellerId }, select: { email: true, firstName: true },
+            });
+            const retailUrl = retailAlreadyLive
+                ? '/dashboard/seller/listings'
+                : '/sell?editId=' + auction.listingId + '&sellMode=retail';
+            await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'AUCTION_OFFER_RECEIVED',
+                title: 'Provisionally sold — choose what happens next',
+                message: 'Highest offer: £' + highestBidAmount.toLocaleString('en-GB')
+                    + ' for ' + (vehicle || listing.title) + '. Reserve: £'
+                    + Number(auction.reservePrice).toLocaleString('en-GB')
+                    + '. Accept the offer, re-list in auction or list on Retail.',
+                entityType: 'AUCTION', entityId: auction.id,
+                actionType: 'ACCEPT_OR_RELIST',
+                link: '/auctions/live/' + auction.id,
+                data: { auctionId: auction.id, listingId: auction.listingId,
+                    amount: highestBidAmount, reservePrice: Number(auction.reservePrice),
+                    provisional: true, retailAlreadyLive, retailUrl },
+            }).catch(error => this.logger.error('Provisional sale notification failed', error));
+            if (seller?.email) {
+                this.emailService.sendAuctionProvisionalOfferEmail({
+                    toEmail: seller.email, sellerName: seller.firstName || 'there',
+                    vehicleTitle: vehicle || listing.title, amount: highestBidAmount,
+                    reservePrice: Number(auction.reservePrice), auctionId: auction.id,
+                    listingId: auction.listingId, ended: true, retailAlreadyLive,
+                }).catch(error => this.logger.error('Provisional sale email failed', error));
             }
         } else {
             // No winner — give the seller a clear next step instead of simply

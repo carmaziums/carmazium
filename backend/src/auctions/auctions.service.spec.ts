@@ -1236,6 +1236,39 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
+    it('accepts a provisional below-reserve offer after auction closure, but never marks it sold before consent', async () => {
+        const ended = {
+            id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null,
+            endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT',
+                linkedListingId: null, year: 2020, make: 'Test', model: 'Car' },
+        };
+        const topBid = { id: 'bid-current', listingId: 'listing-1', bidderId: 'dealer-1',
+            amount: 8200, deletedAt: null, cancelledAt: null, archivedAt: null };
+        prisma.auction.findUnique.mockResolvedValue(ended);
+        prisma.bid.findUnique.mockResolvedValue(topBid);
+        prisma.bid.findFirst.mockResolvedValue(topBid);
+        await service.acceptBid('auction-1', topBid.id, 'seller-1');
+        expect(prisma.auction.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ status: 'ENDED', winnerId: 'dealer-1', winningBidAmount: 8200 }),
+        }));
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' }, data: { status: 'SOLD' },
+        });
+        expect(prisma.sale.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects an expired provisional offer if the vehicle has been re-listed or moved to Retail', async () => {
+        prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
+            status: 'ENDED', winnerId: null, wonAt: null,
+            endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', linkedListingId: null },
+        });
+        await expect(service.acceptBid('auction-1', 'bid-current', 'seller-1'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/no provisional offer/i) });
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
     it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
         const auction = {
             id: 'auction-1',
