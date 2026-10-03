@@ -1,0 +1,48 @@
+name: Independent Dependency Security Triage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/independent-dependency-triage.yml'
+      - 'scripts/security-advisory-report.mjs'
+      - 'backend/package*.json'
+      - 'package*.json'
+      - 'carmazium app/carmazium app/package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audited-runtime-dependencies:
+    name: Audit ${{ matrix.name }} runtime lockfile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            directory: backend
+          - name: web
+            directory: .
+          - name: native
+            directory: carmazium app/carmazium app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Inventory current production dependency advisories (never modifies lockfiles)
+        shell: bash
+        env:
+          TARGET_DIR: ${{ matrix.directory }}
+          PROJECT: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          temp="$(mktemp)"
+          # audit exits 1 when vulnerabilities exist; malformed/unavailable
+          # results are rejected by the parser below.
+          (cd "$TARGET_DIR" && npm audit --package-lock-only --omit=dev --json > "$temp") || true
+          node scripts/security-advisory-report.mjs "$temp" "$PROJECT"
+          rm -f "$temp"
