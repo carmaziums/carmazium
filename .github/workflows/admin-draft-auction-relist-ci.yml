@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - "backend/src/admin/admin.service.ts"
+      - "backend/src/admin/admin.service.spec.ts"
       - "backend/src/admin/admin.controller.ts"
       - "backend/src/admin/admin-draft-auction-relist.spec.ts"
       - "src/app/dashboard/admin/listings/page.tsx"
+      - "scripts/test-admin-review-mobile.test.mjs"
       - "src/lib/adminApi.ts"
       - ".github/workflows/admin-draft-auction-relist-ci.yml"
 
@@ -27,8 +29,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
-      - name: Focused admin relist regression suite
-        run: npm test -- --runInBand admin-draft-auction-relist.spec.ts
+      - name: Focused admin approval and relist regression suites
+        run: npm test -- --runInBand admin.service.spec.ts admin-draft-auction-relist.spec.ts
       - name: Backend TypeScript (fail on changed admin surfaces)
         shell: bash
         run: |
@@ -38,7 +40,7 @@ jobs:
           set -e
           printf '%s\n' "$OUTPUT"
           if [ "$STATUS" -eq 0 ]; then exit 0; fi
-          CHANGED="$(printf '%s\n' "$OUTPUT" | grep -E '^src/admin/(admin\.service|admin\.controller|admin-draft-auction-relist\.spec)\.ts' || true)"
+          CHANGED="$(printf '%s\n' "$OUTPUT" | grep -E '^src/admin/(admin\.service|admin\.controller|admin-draft-auction-relist\.spec|admin\.service\.spec)\.ts' || true)"
           if [ -n "$CHANGED" ]; then
             echo "TypeScript errors detected in this feature:"
             printf '%s\n' "$CHANGED"
@@ -56,6 +58,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Mobile admin review responsive action regressions
+        run: node --test scripts/test-admin-review-mobile.test.mjs
       - name: Web TypeScript (fail on changed admin surfaces)
         shell: bash
         run: |
