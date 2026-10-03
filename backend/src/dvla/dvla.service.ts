@@ -227,7 +227,7 @@ export class DvlaService {
         // Optional MOT can stall independently, but never longer than its
         // own 2.5-second budget. The core DVLA request has an 8-second cap.
         const [dvlaResult, motResult] = await Promise.allSettled([
-            this.dvlaRequest(normalised),
+            this.dvlaWithRetry(normalised),
             this.motApiRequest(normalised),
         ]);
 
@@ -330,6 +330,24 @@ export class DvlaService {
         }
 
         return combined;
+    }
+
+    /**
+     * DVLA's POST /vehicles endpoint only reads vehicle information, so one
+     * transient transport retry is safe. Never repeat invalid registrations,
+     * permission/configuration errors or arbitrary application mutations.
+     */
+    private async dvlaWithRetry(vrm: string): Promise<DvlaLookupResult> {
+        try {
+            return await this.dvlaRequest(vrm);
+        } catch (error) {
+            if (!(error instanceof ServiceUnavailableException)) throw error;
+            const message = error.message || '';
+            if (/DVLA API returned (400|401|403|404|422)\b/.test(message)) throw error;
+            this.logger.warn('DVLA temporary upstream failure; retrying lookup once');
+            await new Promise(resolve => setTimeout(resolve, 250));
+            return this.dvlaRequest(vrm);
+        }
     }
 
     // ─── DVLA REST request ────────────────────────────────────────────────────
