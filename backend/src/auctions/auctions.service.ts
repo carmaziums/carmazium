@@ -2775,6 +2775,7 @@ export class AuctionsService {
             saleCompleted,
             highestBidAmount,
             Boolean(row.provisional_offer_bid_id),
+            row.provisional_offer_bid_id ? row.top_bidder_id : null,
         );
     }
 
@@ -2785,6 +2786,7 @@ export class AuctionsService {
         reserveMet: boolean,
         highestBidAmount: number | null = null,
         provisionalOfferRecorded = false,
+        provisionalBidderId: string | null = null,
     ): Promise<void> {
         const listing = auction.listing;
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
@@ -2873,9 +2875,16 @@ export class AuctionsService {
             && highestBidAmount < Number(auction.reservePrice) && listing.sellerId) {
             // The auction is ENDED but no winner/Sale exists until the seller accepts.
             const retailAlreadyLive = Boolean(listing.linkedListingId);
-            const seller = await this.prisma.user.findUnique({
-                where: { id: listing.sellerId }, select: { email: true, firstName: true },
-            });
+            const [seller, provisionalBuyer] = await Promise.all([
+                this.prisma.user.findUnique({
+                    where: { id: listing.sellerId }, select: { email: true, firstName: true },
+                }),
+                provisionalBidderId
+                    ? this.prisma.user.findUnique({
+                        where: { id: provisionalBidderId }, select: { email: true, firstName: true },
+                    })
+                    : Promise.resolve(null),
+            ]);
             const retailUrl = retailAlreadyLive
                 ? '/dashboard/seller/listings'
                 : '/sell?editId=' + auction.listingId + '&sellMode=retail';
@@ -2901,6 +2910,38 @@ export class AuctionsService {
                     reservePrice: Number(auction.reservePrice), auctionId: auction.id,
                     listingId: auction.listingId, ended: true, retailAlreadyLive,
                 }).catch(error => this.logger.error('Provisional sale email failed', error));
+            }
+            // Only the bidder whose offer was atomically recorded at close
+            // receives this notice. This is not an AUCTION_WON event: no buyer
+            // fee is due and no seller contact is unlocked before acceptance.
+            if (provisionalBidderId) {
+                await this.notificationsService.create({
+                    userId: provisionalBidderId,
+                    type: 'AUCTION_PROVISIONAL_BID',
+                    title: 'Your highest bid is provisional — seller decision pending',
+                    message: 'Your £' + highestBidAmount.toLocaleString('en-GB')
+                        + ' bid on ' + (vehicle || listing.title)
+                        + ' is the highest offer, but it is below the reserve. The auction has ended and the seller may accept your offer, re-list the car or move it to Retail. You have not won yet. Do not pay the £125 buyer fee unless CarMazium confirms that the seller accepted your offer.',
+                    entityType: 'AUCTION', entityId: auction.id,
+                    link: '/auctions/live/' + auction.id,
+                    data: { auctionId: auction.id, listingId: auction.listingId,
+                        amount: highestBidAmount, provisional: true, sellerDecisionPending: true },
+                }).catch(error => this.logger.error('Provisional bidder notification failed', error));
+                if (provisionalBuyer?.email) {
+                    try {
+                        if (await this.notificationsService.shouldSendEmail(provisionalBidderId, 'AUCTION_PROVISIONAL_BID')) {
+                            this.emailService.sendAuctionProvisionalBidBuyerEmail({
+                                toEmail: provisionalBuyer.email,
+                                buyerName: provisionalBuyer.firstName || 'there',
+                                vehicleTitle: vehicle || listing.title,
+                                amount: highestBidAmount,
+                                auctionId: auction.id,
+                            }).catch(error => this.logger.error('Provisional bidder email failed', error));
+                        }
+                    } catch (error) {
+                        this.logger.error('Could not check provisional bidder email preference', error);
+                    }
+                }
             }
         } else {
             // No winner — give the seller a clear next step instead of simply

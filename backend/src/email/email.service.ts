@@ -817,6 +817,35 @@ export class EmailService {
     }
 
 
+    /** The auction has ended below reserve. This buyer has the provisional
+     * highest offer, not a win: the seller still has three possible choices. */
+    async sendAuctionProvisionalBidBuyerEmail(options: {
+        toEmail: string; buyerName: string; vehicleTitle: string;
+        amount: number; auctionId: string;
+    }) {
+        const escape = (value: string) => String(value).replace(/[&<>"']/g, char =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[char]);
+        const vehicle = escape(options.vehicleTitle);
+        const buyer = escape(options.buyerName);
+        const amount = options.amount.toLocaleString('en-GB');
+        const auctionUrl = this.frontendUrl + '/auctions/live/' + encodeURIComponent(options.auctionId);
+        const bodyHtml = '<h1>Your bid is provisional — the seller will decide</h1>'
+            + '<p>Hello ' + buyer + ',</p>'
+            + '<p>Your bid of <strong>£' + amount + '</strong> is the highest offer for '
+            + '<strong>' + vehicle + '</strong>, but the auction ended below reserve.</p>'
+            + '<p>The seller can accept your offer, re-list the vehicle in auction or list it on Retail.'
+            + ' <strong>You have not won the vehicle yet.</strong></p>'
+            + '<p>If the seller accepts, we will send a separate winning notification'
+            + ' with instructions for the £125 CarMazium buyer fee (unless you have a Free Purchase Grant).'
+            + ' Please do not pay anything or arrange collection until your win is confirmed.</p>'
+            + '<p><a href="' + auctionUrl + '">Review this auction on CarMazium</a></p>';
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: 'Your auction bid is provisional — seller decision pending — CarMazium',
+            bodyHtml,
+        });
+    }
+
     async sendAuctionWonEmail(
         buyerEmail: string,
         buyerName: string,
