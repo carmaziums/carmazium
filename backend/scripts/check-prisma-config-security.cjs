@@ -44,8 +44,12 @@ const cli = require('prisma/package.json');
 const client = require('@prisma/client/package.json');
 assert.equal(cli.version,'6.19.3');
 assert.equal(client.version,'6.19.3');
-assert.equal(require('deepmerge-ts/package.json').version,'8.0.2');
-assert.equal(require('effect/package.json').version,'3.21.0');
+// deepmerge-ts 8 deliberately does not export its package.json subpath.
+// Read the installed metadata from disk; do not bypass the package API.
+assert.equal(JSON.parse(fs.readFileSync(
+  path.join(root,'node_modules/deepmerge-ts/package.json'),'utf8')).version,'8.0.2');
+assert.equal(JSON.parse(fs.readFileSync(
+  path.join(root,'node_modules/effect/package.json'),'utf8')).version,'3.21.0');
 
 (async()=>{
   const {deepmerge} = await import('deepmerge-ts');
