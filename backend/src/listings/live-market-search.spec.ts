@@ -81,7 +81,7 @@ describe('sanitizeLiveUkComparables', () => {
         expect(plan.instruction).toMatch(/CarGurus/i);
     });
 
-    it('accepts common lookup formatting differences and a one-character model typo', () => {
+    it('accepts harmless formatting differences and typos but rejects a distinct powertrain model', () => {
         const sportage = sanitizeLiveUkComparables({
             make: 'Kia',
             model: 'SPORTAGE3',
@@ -137,7 +137,9 @@ describe('sanitizeLiveUkComparables', () => {
         }]);
 
         expect(sportage).toHaveLength(1);
-        expect(xtrail).toHaveLength(1);
+        // e-Power is a separate powertrain model, not the same used-car
+        // market evidence as a diesel X-Trail Tekna.
+        expect(xtrail).toEqual([]);
         expect(chery).toHaveLength(1);
         expect(chery[0]).toEqual(expect.objectContaining({
             sourceDomain: 'cargurus.co.uk',
