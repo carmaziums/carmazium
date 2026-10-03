@@ -24,11 +24,11 @@ The old in-app weekly DB backup runner is separately broken (no `backups` Storag
 
 ## Architecture and necessary existing capabilities
 
-`backend/scripts/security/storage_offsite_backup.py` reads **all seven** production Supabase Storage buckets using Supabase's S3-compatible read path. It writes into an **already existing, independent AWS S3 vault** in a separately controlled account, with versioning, all four public-access blocks and an exact approved AWS KMS default encryption key. It does not create a paid bucket, buy a Supabase branch, alter live data, access the PostgreSQL database or handle Stripe or platform service-role credentials.
+`backend/scripts/security/storage_offsite_backup.py` reads **all seven** production Supabase Storage buckets using Supabase's S3-compatible read path. It writes into an **already existing, independent AWS S3 vault in the London (eu-west-2) region** in a separately controlled account, with versioning, all four public-access blocks and an exact approved AWS KMS default encryption key. It does not create a paid bucket, buy a Supabase branch, alter live data, access the PostgreSQL database or handle Stripe or platform service-role credentials.
 
 Before any real operation, independently confirm:
 
-1. An existing independently controlled AWS S3 destination, current explicit owner approval for any associated data-transfer/Storage/KMS charges, versioning **Enabled**, public access **fully blocked**, a default **AWS KMS** key and an IAM identity without object-delete permission. Consider S3 Object Lock/retention if that existing bucket already supports it. The script **fails** if the expected bucket controls are absent; it does not silently downgrade encryption. Establish region, retention, incident notification and separate access audit. If this infrastructure does **not** exist, **STOP**: the operator must supply an approved existing vault or separately authorise new infrastructure.
+1. An existing independently controlled AWS S3 destination, current explicit owner approval for any associated data-transfer/Storage/KMS charges, versioning **Enabled**, public access **fully blocked**, a default **AWS KMS** key and an IAM identity without object-delete permission. Consider S3 Object Lock/retention if that existing bucket already supports it. The script **fails** if the expected bucket controls are absent; it does not silently downgrade encryption. Use **eu-west-2 (London)** only by default to keep private KYC and handover data in the approved UK region; another destination region requires explicit privacy/legal review and a reviewed code change. Establish retention, incident notification and separate access audit. If this infrastructure does **not** exist, **STOP**: the operator must supply an approved existing vault or separately authorise new infrastructure.
 2. An ephemeral/private **encrypted** Linux runner outside CarMazium's public Fly/Railway API, with Python 3.11+ and a reviewed compatible boto3/botocore installation. Run the validated, pinned standalone Python dependencies from a controlled environment. Do not attach source or destination secrets to GitHub Actions, public service variables, code, chat, logs, or external SimpleDMS communications. Provide at least 512 MiB available memory; each object is bounded to 128 MiB.
 **Private SDK dependency installation:** create a fresh isolated Python virtual environment and install [the fully pinned dependency list](../../backend/scripts/security/requirements-storage-private-runner.txt) from a vetted, pinned internal package mirror with reviewed artifact hashes. Its exact package combination was exercised in synthetic GitHub CI. Do not install the private runner into the public Node/NestJS API container, and do not inject any cloud credentials merely for package installation.
 
@@ -76,7 +76,7 @@ BACKUP_DEST_KMS_KEY_ARN=<approved AWS KMS key ARN>
 BACKUP_MANIFEST_HMAC_KEY_B64=<base64 encoding of independent random 32+ bytes>
 BACKUP_MIN_OBJECTS=<freshly approved metadata count threshold>
 BACKUP_MIN_BUCKET_COUNTS_JSON=<freshly approved complete seven-bucket minimum map>
-AWS_REGION=<independent AWS vault region>
+AWS_REGION=eu-west-2
 BACKUP_PRINT_SNAPSHOT_ID=yes
 ```
 
@@ -102,7 +102,7 @@ BACKUP_DEST_BUCKET=<approved existing vault>
 BACKUP_DEST_KMS_KEY_ARN=<approved KMS ARN>
 BACKUP_MANIFEST_HMAC_KEY_B64=<same protected signing key>
 BACKUP_VERIFY_SNAPSHOT=<protected immutable snapshot ID>
-AWS_REGION=<vault region>
+AWS_REGION=eu-west-2
 ```
 
 Run the same private script. It must retrieve the `COMPLETE.json` marker, retrieve the manifest from the **independent AWS vault**, validate the HMAC and sha256 of the manifest and read **every independently stored object byte** to verify its hash and category. It never contacts Supabase or copies files back into production. A missing/altered file or manifest fails the entire drill.
