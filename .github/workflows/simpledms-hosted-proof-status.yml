@@ -3,6 +3,9 @@ on:
   push:
     branches: [test/simpledms-hosted-auth-proof-20261003]
     paths: ['.github/workflows/simpledms-hosted-proof-status.yml']
+  pull_request:
+    branches: [integration/simpledms-staging-candidate-20261003]
+    paths: ['.github/workflows/simpledms-hosted-proof-status.yml']
 permissions:
   contents: read
 jobs:
