@@ -1,0 +1,58 @@
+name: Verify hosted synthetic SimpleDMS authenticated HTTPS proof
+on:
+  push:
+    branches: [test/simpledms-hosted-auth-proof-20261003]
+    paths: ['.github/workflows/simpledms-hosted-proof-status.yml']
+permissions:
+  contents: read
+jobs:
+  external-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Verify synthetic proof from real HTTPS deployment without receiving any key
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin="https://partner-api-synthetic-production.up.railway.app"
+          success=false
+          for i in {1..30}; do
+            health="$(curl -fsS --connect-timeout 7 --max-time 15 "$origin/health/live" || true)"
+            if [[ -n "$health" ]]; then
+              state="$(printf '%s' "$health" | node -e '
+                let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{
+                  try {
+                    const x=JSON.parse(s);
+                    if(x.syntheticOnly!==true){process.exitCode=2;return;}
+                    if(x.hostedAuthProof?.state==="passed" &&
+                       x.hostedAuthProof?.checksPassed===6 &&
+                       x.hostedAuthProof?.disposableCredentialAccepted===false)
+                      console.log("passed");
+                    else console.log(x.hostedAuthProof?.state||"unavailable");
+                  } catch { console.log("malformed"); }
+                })'
+              )"
+              if [[ "$state" == passed ]]; then
+                success=true
+                break
+              fi
+              if [[ "$state" == failed ]]; then
+                echo "Host proof reported failure; no credentials were exposed."
+                exit 1
+              fi
+            fi
+            sleep 8
+          done
+          if [[ "$success" != true ]]; then
+            echo "Hosted HTTPS proof not confirmed on active staging instance."
+            exit 1
+          fi
+          # Independently cross the public Railway edge from GitHub: the
+          # completed disposable key has already been revoked in-process.
+          anonymous="$(curl -sS --connect-timeout 7 --max-time 15 -o /dev/null -w '%{http_code}' \
+            "$origin/partners/v1/simpledms/auctions")"
+          test "$anonymous" = "401"
+          asset="$(curl -fsS --connect-timeout 7 --max-time 15 \
+            "$origin/staging-assets/demo-vehicle.svg")"
+          grep -q 'SYNTHETIC TEST VEHICLE' <<< "$asset"
+          echo "PASS: deployed synthetic service reports real HTTPS self-auth proof; disposable key revoked; independent anonymous edge denial 401 and fixture asset confirmed."
