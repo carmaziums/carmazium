@@ -39,6 +39,7 @@ import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
 import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
 import { saveSellerHandoff, readSellerHandoff, clearSellerHandoff } from "@/lib/pendingSellerHandoff"
+import { sellerDraftKeys, discardUnownedLegacySellerDraft, createHpiBinding, parseHpiBinding, matchesHpiReturn } from "@/lib/sellerDraftIsolation"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -401,6 +402,32 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // Edit mode — detect from URL params
     const searchParams = useSearchParams()
     const draftRestoreAttemptedRef = React.useRef(false)
+    const activeDraftOwnerRef = React.useRef<string | null>(null)
+    const [readyDraftOwner, setReadyDraftOwner] = React.useState<string | null>(null)
+    const draftKeys = React.useMemo(
+        () => sellerDraftKeys(user?.id || "") ?? sellerDraftKeys("not-authenticated")!,
+        [user?.id],
+    )
+    // Reset in-memory details *before* another authenticated account can restore
+    // or autosave a draft. Unattributable legacy drafts cannot be assigned safely.
+    React.useEffect(() => {
+        if (authLoading) return
+        const nextOwner = user?.id || null
+        if (activeDraftOwnerRef.current === nextOwner) return
+        activeDraftOwnerRef.current = nextOwner
+        setReadyDraftOwner(nextOwner)
+        draftRestoreAttemptedRef.current = false
+        setFormData({ ...INITIAL_FORM })
+        setSellingMethod(null)
+        setCurrentStep(1)
+        setDraftListingId(null)
+        setHasAttemptedNext(false)
+        setBaseValuation(null)
+        setValuation(null)
+        valuationJourneyIdRef.current = null
+        valuationJourneyBaseKeyRef.current = null
+        if (nextOwner) discardUnownedLegacySellerDraft(localStorage)
+    }, [user?.id, authLoading])
     const quickSellModeAppliedRef = React.useRef<string | null>(null)
     const editId = searchParams.get('editId')
     const editSlug = searchParams.get('editSlug')
@@ -551,13 +578,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // prefill and HPI-return has a dedicated restoration path below, so neither
     // should be overwritten by a stale local draft.
     React.useEffect(() => {
+        if (authLoading || !user?.id || activeDraftOwnerRef.current !== user.id) return
         if (draftRestoreAttemptedRef.current) return
         if (editId || searchParams.get('hpi_success') === 'true' || searchParams.get('sellMode')) return
         // Pending sign-in handoff has priority over an unrelated historical browser draft.
         if (!isDashboard && readSellerHandoff(sessionStorage)) return
         draftRestoreAttemptedRef.current = true
 
-        const saved = localStorage.getItem('carmazium_listing_draft')
+        const saved = localStorage.getItem(draftKeys.draft)
         if (!saved) return
 
         try {
@@ -575,7 +603,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }))
             setSellingMethod('list')
 
-            const savedStep = Number(localStorage.getItem('carmazium_listing_draft_step'))
+            const savedStep = Number(localStorage.getItem(draftKeys.step))
             const maxStep = parsed.listingType === 'AUCTION' ? 5 : 4
             const specsValid = hasCompleteSellerVehicleSpecs(
                 parsed,
@@ -585,87 +613,79 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ? Math.min(savedStep, maxStep) : 1)
             if (!specsValid) setHasAttemptedNext(true)
 
-            const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
+            const savedDraftId = localStorage.getItem(draftKeys.hpiDraftId)
             if (savedDraftId) setDraftListingId(savedDraftId)
         } catch (error) {
             console.error('Failed to restore saved listing draft:', error)
-            localStorage.removeItem('carmazium_listing_draft')
-            localStorage.removeItem('carmazium_listing_draft_step')
+            localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.step)
         }
-    }, [editId, searchParams, isDashboard])
+    }, [editId, searchParams, isDashboard, draftKeys, user?.id, authLoading])
 
-    // Handle Stripe return for HPI — verify the session actually completed
-    // instead of trusting the bare `hpi_success` URL flag (which anyone could
-    // navigate to directly, e.g. after a cancelled checkout), and fall back to
-    // triggering report generation ourselves in case the webhook was delayed
-    // or dropped — otherwise the UI could show "unlocked" with no report ever
-    // having been generated server-side.
+    // HPI return requires the checkout, draft and URL to refer to the same
+    // account and vehicle; backend payment verification is still mandatory.
     React.useEffect(() => {
-        const hpiSuccess = searchParams.get('hpi_success') === 'true'
-        const urlVrm = searchParams.get('vrm')
+        if (authLoading || !user?.id || activeDraftOwnerRef.current !== user.id) return
+        if (searchParams.get('hpi_success') !== 'true') return
         const sessionId = searchParams.get('session_id')
-
-        if (!hpiSuccess) return
-
-        // Restore form data from localStorage if available
-        const saved = localStorage.getItem('carmazium_listing_draft')
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved)
-                setFormData({
-                    ...INITIAL_FORM, ...parsed,
-                    transmission: normalizeSellerTransmission(parsed.transmission),
-                    bodyType: normalizeSellerBodyType(parsed.bodyType, getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR')),
-                })
-                setSellingMethod('list')
-                // An older checkout draft can contain invalid or missing specs;
-                // correct those before allowing media/review progression.
-                const specsValid = hasCompleteSellerVehicleSpecs(
-                    parsed,
-                    getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR'),
-                )
-                setCurrentStep(specsValid ? 2 : 1)
-                if (!specsValid) setHasAttemptedNext(true)
-            } catch (e) {
-                console.error("Failed to parse saved draft", e)
-            }
+        const urlVrm = searchParams.get('vrm')
+        const saved = localStorage.getItem(draftKeys.draft)
+        const savedDraftId = localStorage.getItem(draftKeys.hpiDraftId)
+        const binding = parseHpiBinding(sessionStorage.getItem(draftKeys.hpiCheckout))
+        let parsed: Partial<FormData> | null = null
+        try { parsed = saved ? JSON.parse(saved) as Partial<FormData> : null } catch {}
+        if (!parsed?.vrm || !matchesHpiReturn(binding, parsed.vrm, urlVrm, savedDraftId)) {
+            setHpiVerifyError("This checkout does not match your saved vehicle. Your payment has not been reapplied. Please contact support with the checkout reference.")
+            setSellingMethod('list')
+            setCurrentStep(1)
+            return
         }
-        // Restore draft listing ID if present
-        const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
-        if (savedDraftId) setDraftListingId(savedDraftId)
-        if (urlVrm && !formData.vrm) {
-            setFormData(prev => ({ ...prev, vrm: urlVrm }))
-        }
-
+        const verifiedDraft = parsed
+        setFormData({
+            ...INITIAL_FORM, ...verifiedDraft,
+            transmission: normalizeSellerTransmission(verifiedDraft.transmission),
+            bodyType: normalizeSellerBodyType(verifiedDraft.bodyType, getBodyTypeKeysForVehicleType(verifiedDraft.vehicleType || 'CAR')),
+        })
+        setSellingMethod('list')
+        setDraftListingId(savedDraftId)
+        const specsValid = hasCompleteSellerVehicleSpecs(verifiedDraft, getBodyTypeKeysForVehicleType(verifiedDraft.vehicleType || 'CAR'))
+        setCurrentStep(specsValid ? 2 : 1)
+        if (!specsValid) setHasAttemptedNext(true)
         if (!sessionId) {
             setHpiVerifyError("Couldn't verify your payment — no session reference found.")
             return
         }
-
+        let cancelled = false
         setIsVerifyingHpiPayment(true)
         setHpiVerifyError(null)
         getSessionStatus(sessionId)
             .then(status => {
+                if (cancelled) return
                 if (status.paymentStatus !== 'paid') {
                     setHpiVerifyError("We couldn't confirm your HPI report payment. If you were charged, please contact support.")
                     return
                 }
-                // Idempotent — safe even if the webhook already generated the report.
-                return applyHpiFee(sessionId).then(() => setIsHpiUnlocked(true))
+                return applyHpiFee(sessionId).then(() => {
+                    if (!cancelled) {
+                        setIsHpiUnlocked(true)
+                        sessionStorage.removeItem(draftKeys.hpiCheckout)
+                    }
+                })
             })
-            .catch(() => setHpiVerifyError("Couldn't verify your payment. Please refresh or contact support if you were charged."))
-            .finally(() => setIsVerifyingHpiPayment(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams])
+            .catch(() => { if (!cancelled) setHpiVerifyError("Couldn't verify your payment. Please refresh or contact support if you were charged.") })
+            .finally(() => { if (!cancelled) setIsVerifyingHpiPayment(false) })
+        return () => { cancelled = true }
+    }, [searchParams, draftKeys, user?.id, authLoading])
 
     // Persist the form and the seller's current step so a normal browser
     // refresh resumes where they were instead of dropping back to method choice.
     React.useEffect(() => {
-        if (sellingMethod === 'list' && formData.vrm) {
-            localStorage.setItem('carmazium_listing_draft', JSON.stringify(formData))
-            localStorage.setItem('carmazium_listing_draft_step', String(currentStep))
+        if (!authLoading && user?.id && readyDraftOwner === user.id && activeDraftOwnerRef.current === user.id
+            && sellingMethod === 'list' && formData.vrm) {
+            localStorage.setItem(draftKeys.draft, JSON.stringify(formData))
+            localStorage.setItem(draftKeys.step, String(currentStep))
         }
-    }, [formData, sellingMethod, currentStep])
+    }, [formData, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
 
     const handleStartFresh = () => {
         const confirmed = window.confirm(
@@ -675,9 +695,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
         // Clear every browser-side draft reference first so the reset cannot be
         // restored on the next render or after a refresh.
-        localStorage.removeItem('carmazium_listing_draft')
-        localStorage.removeItem('carmazium_listing_draft_step')
-        localStorage.removeItem('carmazium_hpi_draft_id')
+        localStorage.removeItem(draftKeys.draft)
+        localStorage.removeItem(draftKeys.step)
+        localStorage.removeItem(draftKeys.hpiDraftId)
         draftRestoreAttemptedRef.current = true
 
         // Reset the listing itself and all wizard-only state. Existing server
@@ -1654,9 +1674,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     console.error('Failed to save damage records:', e)
                 }
 
-                localStorage.removeItem('carmazium_listing_draft')
-            localStorage.removeItem('carmazium_listing_draft_step')
-                localStorage.removeItem('carmazium_hpi_draft_id')
+                localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.step)
+                localStorage.removeItem(draftKeys.hpiDraftId)
 
                 await ensureAuctionScheduled(finalListingId)
 
@@ -1800,8 +1820,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     if (publish.activated) {
                         trackListingSubmitted(payload, newListingId, 'published')
                         setFormData(INITIAL_FORM)
-                        localStorage.removeItem('carmazium_listing_draft')
-                        localStorage.removeItem('carmazium_listing_draft_step')
+                        localStorage.removeItem(draftKeys.draft)
+                        localStorage.removeItem(draftKeys.step)
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(response.data.slug ? `/buy-cars/${response.data.slug}` : '/dashboard/seller/listings')
@@ -1813,8 +1833,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             title: payload.title,
                             onContinue: () => {
                                 setFormData(INITIAL_FORM)
-                                localStorage.removeItem('carmazium_listing_draft')
-                        localStorage.removeItem('carmazium_listing_draft_step')
+                                localStorage.removeItem(draftKeys.draft)
+                        localStorage.removeItem(draftKeys.step)
                                 setCurrentStep(1)
                                 setSellingMethod(null)
                                 router.push('/dashboard/seller/listings')
@@ -1838,8 +1858,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     title: payload.title,
                     onContinue: () => {
                         setFormData(INITIAL_FORM)
-                        localStorage.removeItem('carmazium_listing_draft')
-                        localStorage.removeItem('carmazium_listing_draft_step')
+                        localStorage.removeItem(draftKeys.draft)
+                        localStorage.removeItem(draftKeys.step)
                         setCurrentStep(1)
                         setSellingMethod(null)
                         router.push(payload.listingType === 'AUCTION' ? '/dashboard/seller/auctions' : '/dashboard/seller/listings')
@@ -1914,8 +1934,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const publish = await publishListing(result.listingId)
             if (publish.activated) {
                 trackListingSubmitted(payload, result.listingId, 'published')
-                localStorage.removeItem('carmazium_listing_draft')
-                localStorage.removeItem('carmazium_listing_draft_step')
+                localStorage.removeItem(draftKeys.draft)
+                localStorage.removeItem(draftKeys.step)
                 router.push(result.slug ? `/buy-cars/${result.slug}` : '/dashboard/seller/listings')
                 return
             }
@@ -2101,6 +2121,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                  // the final submit flow owns the destructive confirmation and reuses
                                  // the existing listing row instead of producing a duplicate.
                                  let listingId = draftListingId
+                                 if (!user?.id || activeDraftOwnerRef.current !== user.id) throw new Error("Please sign in before requesting HPI.")
                                  if (!listingId) {
                                      if (formData.listingType === 'CLASSIFIED') {
                                          const conversion = await getRetailConversionCandidate(formData.vrm)
@@ -2131,9 +2152,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                      })
                                      listingId = draft.data.id
                                      setDraftListingId(listingId)
-                                     localStorage.setItem('carmazium_hpi_draft_id', listingId)
                                  }
+                                 const binding = createHpiBinding(formData.vrm, listingId)
+                                 if (!binding) throw new Error("Please confirm a valid registration before checkout.")
+                                 localStorage.setItem(draftKeys.hpiDraftId, listingId)
                                  const checkout = await createHpiCheckoutSession(formData.vrm, listingId)
+                                 sessionStorage.setItem(draftKeys.hpiCheckout, JSON.stringify(binding))
                                  window.location.href = checkout.url
                              } catch (err: any) {
                                  console.error("HPI Checkout error:", err)
