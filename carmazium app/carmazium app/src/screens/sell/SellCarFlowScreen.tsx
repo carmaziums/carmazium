@@ -1213,7 +1213,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // Step 1 has invalid touched fields?
   const step1HasErrors = (): boolean => {
-    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location');
+    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location')
+      || !!fieldError('transmission') || !!fieldError('bodyType');
   };
 
   // Step 3 has invalid touched fields?
