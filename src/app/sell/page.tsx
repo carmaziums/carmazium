@@ -5,6 +5,7 @@ import { Suspense } from "react"
 import { ListingWizard } from "@/components/listing/ListingWizard"
 import { dvlaLookup } from "@/lib/dvlaApi"
 import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import { recogniseVehicleModel } from "@/lib/vehicleModelRecognition"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
@@ -176,8 +177,9 @@ function QuickValuationForm() {
         try {
             if (manualMode) {
                 const make = manualMake.trim()
-                const manualResolvedModel = manualModel.trim()
                 const year = Number(manualYear)
+                const manualRecognition = recogniseVehicleModel({ make, model: manualModel, year })
+                const manualResolvedModel = manualRecognition.model
 
                 if (!make || !manualResolvedModel || !Number.isInteger(year) || year < 1950 || year > new Date().getFullYear() + 1) {
                     setError("Enter the vehicle make, model and a valid year to continue.")
@@ -188,10 +190,16 @@ function QuickValuationForm() {
                     return
                 }
 
+                if (manualRecognition.suggestions.length) {
+                    setError("Did you mean " + manualRecognition.suggestions.join(" or ") + "? Please confirm your model.")
+                    return
+                }
+
                 const valuationId = beginValuationJourney()
                 const valuation = await getVehicleValuation({
                     make,
                     model: manualResolvedModel,
+                    variant: manualRecognition.variant,
                     year,
                     mileage: mileageNumber,
                     valuationId,
@@ -206,12 +214,12 @@ function QuickValuationForm() {
                     vehicle: {
                         vrm: cleanVrm,
                         make,
-                        model: manualResolvedModel,
+                        model: valuation.modelRecognition?.model || manualResolvedModel,
                         year: String(year),
                         mileage: String(mileageNumber),
                         fuelType: "",
                         transmission: "",
-                        variant: "",
+                        variant: valuation.modelRecognition?.variant || manualRecognition.variant || "",
                         bodyType: "",
                         driveType: "",
                         doors: "",
@@ -281,12 +289,19 @@ function QuickValuationForm() {
             )
                 ? vehicle.model.trim()
                 : ""
-            const resolvedModel = (trustedVehicleModel || model).trim()
+            const parsedModel = recogniseVehicleModel({
+                make: vehicle.make,
+                model: trustedVehicleModel || model,
+                year: vehicle.year,
+                variant: vehicle.variant,
+            })
+            const resolvedModel = parsedModel.model
 
-            if (!resolvedModel || !isPlausibleVehicleModel(resolvedModel, vehicle.make, vehicle.year)) {
+            if (!resolvedModel || parsedModel.suggestions.length || !isPlausibleVehicleModel(resolvedModel, vehicle.make, vehicle.year)) {
                 setPendingVehicle({ ...vehicle, model: undefined })
-                setModel("")
-                setError("Vehicle found. Enter the actual model, for example Corsa, Golf or Octavia, to complete the valuation.")
+                setError(parsedModel.suggestions.length
+                    ? "Did you mean " + parsedModel.suggestions.join(" or ") + "? Please confirm the vehicle model."
+                    : "Vehicle found, but its model could not be confirmed. Enter the model as shown on your vehicle documents.")
                 return
             }
 
@@ -298,6 +313,7 @@ function QuickValuationForm() {
             const valuation = await getVehicleValuation({
                 make: vehicle.make,
                 model: resolvedModel,
+                variant: parsedModel.variant,
                 year: vehicle.year,
                 mileage: mileageNumber,
                 valuationId,
@@ -312,12 +328,12 @@ function QuickValuationForm() {
                 vehicle: {
                     vrm: cleanVrm,
                     make: vehicle.make,
-                    model: resolvedModel,
+                    model: valuation.modelRecognition?.model || resolvedModel,
                     year: String(vehicle.year),
                     mileage: String(mileageNumber),
                     fuelType: vehicle.fuelType || "",
                     transmission: vehicle.transmission || "",
-                    variant: vehicle.variant || "",
+                    variant: valuation.modelRecognition?.variant || parsedModel.variant || "",
                     bodyType: vehicle.bodyType || "",
                     driveType: vehicle.driveType || "",
                     doors: vehicle.doors != null ? String(vehicle.doors) : "",
