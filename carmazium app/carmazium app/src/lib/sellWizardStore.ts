@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SellWizardDraft {
   // Vehicle details
+  vrm: string;
+  vehicleType: 'CAR' | 'HGV' | 'MOTORCYCLE';
   make: string;
   model: string;
   year: string;
@@ -30,6 +32,8 @@ interface SellWizardDraft {
 }
 
 const INITIAL_STATE = {
+  vrm: '',
+  vehicleType: 'CAR' as const,
   make: '',
   model: '',
   year: '',
@@ -62,6 +66,8 @@ export const useSellWizardStore = create<SellWizardDraft>()(
       storage: createJSONStorage(() => AsyncStorage),
       // Only persist serializable fields — exclude function refs
       partialize: (state) => ({
+        vrm: state.vrm,
+        vehicleType: state.vehicleType,
         make: state.make,
         model: state.model,
         year: state.year,
