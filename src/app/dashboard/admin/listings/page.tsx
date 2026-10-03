@@ -261,7 +261,7 @@ export default function AdminListingsPage() {
                                 <Car className="text-primary hidden sm:block" size={28} />
                                 Listing Moderation
                             </h1>
-                            <p className="text-[var(--text-muted)] text-sm mt-1">{total} total listings on the platform</p>
+                            <p className="text-[var(--text-muted)] text-sm mt-1">Manage seller submissions, active vehicles and listing history</p>
                         </div>
                     </div>
 
