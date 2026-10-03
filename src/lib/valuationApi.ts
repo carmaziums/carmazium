@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import { recogniseVehicleModel, type VehicleModelRecognition } from './vehicleModelRecognition'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
 
@@ -28,6 +29,7 @@ export interface VehicleValuationRequest {
 }
 
 export interface VehicleValuation {
+    modelRecognition?: VehicleModelRecognition
     low: number
     mid: number
     high: number
@@ -493,6 +495,14 @@ function getDeterministicFallbackValuation(
 export async function getVehicleValuation(
     request: VehicleValuationRequest,
 ): Promise<VehicleValuation> {
+    const recognition = recogniseVehicleModel(request)
+    if (!recognition.model) {
+        throw new Error('Enter the actual vehicle model, rather than the make, year or registration.')
+    }
+    if (recognition.suggestions.length) {
+        throw new Error('Model not recognised. Did you mean ' + recognition.suggestions.join(' or ') + '? Please correct the model.')
+    }
+    request = { ...request, model: recognition.model, variant: recognition.variant }
     try {
         const params = new URLSearchParams({
             make: request.make,
@@ -540,7 +550,7 @@ export async function getVehicleValuation(
             }
             const body = await response.json() as { data?: VehicleValuation }
             if (!body?.data) throw new Error('Valuation response was empty')
-            return body.data
+            return { ...body.data, modelRecognition: body.data.modelRecognition || recognition }
         } finally {
             clearTimeout(timeoutId)
         }
@@ -551,9 +561,9 @@ export async function getVehicleValuation(
         // deterministic age/mileage/transmission model still returns a numeric
         // LOW-confidence guide.
         try {
-            return await getBrowserFallbackValuation(request)
+            return { ...await getBrowserFallbackValuation(request), modelRecognition: recognition }
         } catch {
-            return getDeterministicFallbackValuation(request)
+            return { ...getDeterministicFallbackValuation(request), modelRecognition: recognition }
         }
     }
 }

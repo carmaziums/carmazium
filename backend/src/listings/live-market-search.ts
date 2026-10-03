@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { recogniseVehicleModel } from './vehicle-model-recognition';
 import type {
     VehicleValuationComparable,
     VehicleValuationInput,
@@ -185,6 +186,15 @@ function modelMatches(
     // broaden all the way to make-only evidence. That would create false
     // confidence across unrelated models.
     if (isUkRegistrationLike(input.model)) return false;
+
+    // A complete recognised title is safer than a substring search.
+    // In particular, Focus ST must not contaminate Focus, and
+    // '220i Gran Tourer' should match the 2 Series Gran Tourer family.
+    const recognisedTarget = recogniseVehicleModel({ make: input.make, model: input.model, year: input.year });
+    const recognisedTitle = recogniseVehicleModel({ make: input.make, model: title, year: input.year });
+    if (recognisedTarget.recognised && recognisedTitle.recognised) {
+        return recognisedTarget.model.toUpperCase() === recognisedTitle.model.toUpperCase();
+    }
 
     const target = modelCore(input.model, input.make);
     const candidate = modelCore(candidateModel, input.make);

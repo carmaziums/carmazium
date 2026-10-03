@@ -51,6 +51,7 @@ export interface VehicleValuationComparable {
 }
 
 export interface VehicleValuationResult {
+    modelRecognition?: { model: string; variant?: string; recognised: boolean; method: 'CATALOG' | 'BMW_BODY_ALIAS' | 'FORMAT_ONLY'; suggestions: string[] };
     low: number;
     mid: number;
     high: number;

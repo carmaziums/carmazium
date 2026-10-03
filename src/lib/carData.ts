@@ -28,7 +28,7 @@ export const MODELS_BY_MAKE: Record<string, string[]> = {
   ],
   'Bentley': ['Continental GT', 'Continental GT Speed', 'Continental GTC', 'Bentayga', 'Bentayga EWB', 'Flying Spur', 'Mulsanne'],
   'BMW': [
-    '1 Series', '2 Series', '2 Series Active Tourer', '2 Series Gran Coupe', '3 Series', '3 Series Touring', '4 Series', '4 Series Gran Coupe', '4 Series Convertible',
+    '1 Series', '2 Series', '2 Series Active Tourer', '2 Series Gran Tourer', '2 Series Gran Coupe', '3 Series', '3 Series Touring', '4 Series', '4 Series Gran Coupe', '4 Series Convertible',
     '5 Series', '5 Series Touring', '6 Series', '6 Series Gran Turismo', '7 Series', '8 Series', '8 Series Gran Coupe',
     'X1', 'X2', 'X3', 'X3 M', 'X4', 'X4 M', 'X5', 'X5 M', 'X6', 'X6 M', 'X7',
     'iX', 'iX1', 'iX2', 'iX3', 'i3', 'i4', 'i5', 'i5 Touring', 'i7',

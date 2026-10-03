@@ -59,6 +59,7 @@ import {
     VehicleValuationInput,
     VehicleValuationResult,
 } from './vehicle-valuation';
+import { recogniseVehicleModel } from './vehicle-model-recognition';
 import {
     searchLiveUkVehicleMarket,
     LiveUkMarketSearchResult,
@@ -160,8 +161,29 @@ export class ListingsService {
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
     async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
-        const make = dto.make.trim();
-        const model = dto.model.trim();
+        // Normalize before the frozen-base identity, internal database lookup and
+        // all live-market calls. Formatting mistakes must not select a different
+        // vehicle or create multiple inconsistent valuations for one journey.
+        const recognition = recogniseVehicleModel(dto);
+        if (!recognition.model) {
+            throw new BadRequestException('Enter the actual vehicle model, not its make, year or registration.');
+        }
+        if (recognition.suggestions.length > 0) {
+            throw new BadRequestException(
+                'Vehicle model not recognised. Please check whether you meant: '
+                + recognition.suggestions.join(' or '),
+            );
+        }
+        dto = {
+            ...dto,
+            make: dto.make.trim(),
+            model: recognition.model,
+            variant: recognition.variant,
+        };
+        const withModelRecognition = (result: VehicleValuationResult): VehicleValuationResult =>
+            ({ ...result, modelRecognition: recognition });
+        const make = dto.make;
+        const model = dto.model;
 
         const baseValuationInput: VehicleValuationInput = {
             make,
@@ -195,10 +217,10 @@ export class ListingsService {
         // condition/specification adjustments may change the customer figure.
         const frozenBase = await this.findFrozenValuationBase(dto);
         if (frozenBase) {
-            return applyVehicleSpecificationAdjustments(
+            return withModelRecognition(applyVehicleSpecificationAdjustments(
                 frozenBase,
                 specificationInput,
-            );
+            ));
         }
 
         const mileageFloor = Math.max(0, dto.mileage - 50_000);
@@ -282,13 +304,23 @@ export class ListingsService {
                     vehicleType: 'CAR',
                     ...(dto.excludeListingId ? { id: { not: dto.excludeListingId } } : {}),
                     make: { equals: make, mode: 'insensitive' },
-                    model: { equals: model, mode: 'insensitive' },
+                    // Include known data-entry variants, then verify each model below;
+                // never assume a text substring identifies the same car.
+                model: { contains: model.split(' ')[0], mode: 'insensitive' },
                     year: { gte: dto.year - 8, lte: dto.year + 8 },
                     status: { in: ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'] },
                 },
                 select,
                 orderBy: { updatedAt: 'desc' },
                 take: 120,
+            });
+            // The broader DB query is only a candidate fetch. Avoid blending
+            // different catalogue models that share a prefix (Focus / Focus RS).
+            rows = rows.filter(row => {
+                const candidate = recogniseVehicleModel({
+                    make: row.make ?? '', model: row.model ?? '', year: row.year ?? undefined,
+                });
+                return candidate.recognised && candidate.model.toUpperCase() === model.toUpperCase();
             });
         }
 
@@ -558,10 +590,10 @@ export class ListingsService {
         // base wins. Losers read the winning snapshot and return that same base.
         const stableBase = await this.freezeValuationBase(dto, calculatedBase);
 
-        return applyVehicleSpecificationAdjustments(
+        return withModelRecognition(applyVehicleSpecificationAdjustments(
             stableBase,
             specificationInput,
-        );
+        ));
     }
 
     private valuationIdentity(dto: VehicleValuationDto) {
