@@ -93,6 +93,19 @@ function CheckoutSuccessContent() {
                             listing_type: 'retail',
                             listing_id: data.metadata?.listingId,
                         })
+                        // Only confirmed paid retail listings qualify. The
+                        // listing ID prevents another Ads conversion for the
+                        // same vehicle on re-payment, refresh or channel switch.
+                        if (data.metadata?.listingId && profile?.role !== 'ADMIN') {
+                            trackEvent(SELLER_FUNNEL.QUALIFIED_SELLER_LISTING, {
+                                listing_id: data.metadata.listingId,
+                                listing_type: 'retail',
+                                qualification: 'retail_payment',
+                                payment_status: 'paid',
+                                seller_role: profile?.role || 'UNKNOWN',
+                                transaction_id: `qualified_listing:${data.metadata.listingId}`,
+                            })
+                        }
                     } else if (data.metadata?.type === 'COMMISSION') {
                         trackMetaEvent("AuctionBuyerFeePaid", {
                             value,

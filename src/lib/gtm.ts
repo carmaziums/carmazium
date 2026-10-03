@@ -86,6 +86,8 @@ export const SELLER_FUNNEL = {
      * page, not in the wizard, because the seller leaves the site for Stripe.
      */
     LISTING_FEE_PAID: 'listing_fee_paid',
+    /** A verified auction review submission or confirmed paid retail listing. */
+    QUALIFIED_SELLER_LISTING: 'qualified_seller_listing',
 } as const
 
 /** Normalises the internal listingType enum for reporting. */

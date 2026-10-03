@@ -10,6 +10,10 @@ on:
       - "src/app/dashboard/seller/auctions/**"
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
+      - "src/lib/googleAds.ts"
+      - "src/lib/gtm.ts"
+      - "src/app/checkout/success/page.tsx"
+      - "scripts/test-google-ads-qualified-seller.test.mjs"
       - "src/lib/dvlaApi.ts"
       - "src/lib/apiClient.ts"
       - "src/lib/fetchWithRetry.ts"
@@ -55,6 +59,9 @@ jobs:
       - name: MaziuM description contrast and mobile overflow regressions
         run: node --test scripts/test-mazium-description.test.mjs
 
+      - name: Qualified seller Google Ads tracking regression suite
+        run: node --test scripts/test-google-ads-qualified-seller.test.mjs
+
       - name: Typecheck web listing surfaces
         shell: bash
         run: |
@@ -69,7 +76,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|dvlaApi|apiClient|fetchWithRetry)\.ts)' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|googleAds|gtm|dvlaApi|apiClient|fetchWithRetry)\.ts)|^src/app/checkout/success/page\.tsx' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo
