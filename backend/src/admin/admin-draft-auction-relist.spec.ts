@@ -40,6 +40,7 @@ function buildSubject(overrides: Record<string, any> = {}) {
             findUnique: jest.fn().mockResolvedValue(listing),
             findMany: jest.fn().mockResolvedValue([]),
             update: jest.fn().mockResolvedValue({ id: 'listing-1' }),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         auction: {
             create: jest.fn().mockResolvedValue({ id: 'auction-new' }),
@@ -190,6 +191,62 @@ describe('AdminService one-click auction relisting', () => {
         });
         await expect(service.relistDraftAsAuction('listing-1', 'admin-1'))
             .rejects.toBeInstanceOf(BadRequestException);
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
+    it('heals exactly one unlinked retail sibling when recovering an old no-sale auction draft', async () => {
+        const { service, prisma } = buildSubject({
+            type: 'CLASSIFIED',
+            auction: {
+                id: 'auction-previous',
+                status: 'ENDED',
+                reservePrice: 5200,
+                minIncrement: 100,
+                deletedAt: null,
+                winnerId: null,
+                wonAt: null,
+            },
+        });
+        prisma.listing.findMany.mockResolvedValue([{
+            id: 'retail-1',
+            type: 'CLASSIFIED',
+            status: 'ACTIVE',
+            vrm: 'AB12CDE',
+            linkedListingId: null,
+        }]);
+        await service.relistDraftAsAuction('listing-1', 'admin-1');
+        expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+            where: expect.objectContaining({
+                id: 'retail-1',
+                linkedListingId: null,
+                status: 'ACTIVE',
+            }),
+            data: { linkedListingId: 'listing-1' },
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: expect.objectContaining({
+                type: 'AUCTION',
+                linkedListingId: 'retail-1',
+            }),
+        });
+    });
+
+    it('rolls back relisting if the historical retail sibling changes before it is claimed', async () => {
+        const { service, prisma } = buildSubject({
+            type: 'CLASSIFIED',
+            auction: { id: 'auction-previous', status: 'ENDED', reservePrice: 5200 },
+        });
+        prisma.listing.findMany.mockResolvedValue([{
+            id: 'retail-1',
+            type: 'CLASSIFIED',
+            status: 'ACTIVE',
+            vrm: 'AB12CDE',
+            linkedListingId: null,
+        }]);
+        prisma.listing.updateMany.mockResolvedValue({ count: 0 });
+        await expect(service.relistDraftAsAuction('listing-1', 'admin-1'))
+            .rejects.toThrow(/matching retail listing changed/i);
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
