@@ -117,6 +117,7 @@ interface AuctionItem {
     viewCount?: number;
     sellerId?: string | null;
     status?: string;
+    linkedListingId?: string | null;
     _count?: { bids?: number };
     bids?: { amount: number }[];
   };
@@ -1779,9 +1780,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     <Text style={styles.resultsPrimaryBtnText}>Re-list in Auction</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
-                    onPress={() => { const id = resultsAuction.listing.id; setResultsAuction(null);
-                      navigation?.navigate('SellCarFlow', { listingId: id }); }}>
-                    <Text style={styles.resultsPrimaryBtnText}>List on Retail (£1)</Text>
+                    onPress={() => { const id = resultsAuction.listing.id; const alreadyLive = !!resultsAuction.listing.linkedListingId;
+                      setResultsAuction(null); alreadyLive
+                        ? navigation?.navigate('SellerListings')
+                        : navigation?.navigate('SellCarFlow', { listingId: id }); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (

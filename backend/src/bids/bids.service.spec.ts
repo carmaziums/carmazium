@@ -304,6 +304,27 @@ describe('BidsService — incremental bidding', () => {
         });
     });
 
+    it('emails and notifies the seller for a new highest below-reserve offer', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockImplementation(({ where }: any) => Promise.resolve(
+            where.id === 'seller-1'
+                ? { email: 'seller@example.com', firstName: 'Seller' }
+                : { role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } },
+        ));
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({ id: 'bid-first', listingId: 'listing-1',
+            bidderId: 'bidder-A', amount: 3500, timestamp: new Date() });
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+        await new Promise(resolve => setImmediate(resolve));
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'seller-1', type: 'AUCTION_OFFER_RECEIVED', actionType: 'ACCEPT_OR_WAIT',
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                toEmail: 'seller@example.com', amount: 3500, reservePrice: 9000, ended: false,
+            }));
+    });
+
     it.each([5000, 6700, 13000])(
         'accepts £%s on the production first-offer shape (start £6,650 / reserve £8,500 / floor £4,655)',
         async (amount) => {

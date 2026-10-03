@@ -1833,6 +1833,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     provide: EmailService,
                     useValue: {
                         sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
+                        sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 {
@@ -1977,7 +1978,18 @@ describe('AuctionsService — final lifecycle consistency', () => {
             },
         });
 
+        prisma.user.findUnique.mockResolvedValue({ email: 'seller@example.com', firstName: 'Seller' });
         await service.closeAuction('auction-below-reserve');
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'seller-1', type: 'AUCTION_OFFER_RECEIVED',
+            title: expect.stringMatching(/provisionally sold/i),
+            actionType: 'ACCEPT_OR_RELIST',
+            data: expect.objectContaining({ provisional: true, amount: 7000, reservePrice: 10000 }),
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                toEmail: 'seller@example.com', ended: true, amount: 7000, reservePrice: 10000,
+            }));
 
         expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.sale.create).not.toHaveBeenCalled();
