@@ -1,12 +1,12 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd backend && npm ci && npm run build"
+    "builder": "RAILPACK",
+    "buildCommand": "cd backend && npm ci --include=dev && npm run build"
   },
   "deploy": {
     "startCommand": "cd backend && node dist/partner-api/staging.main.js",
-    "healthcheckPath": "/staging-assets/demo-vehicle.svg",
+    "healthcheckPath": "/health/live",
     "healthcheckTimeout": 90,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
