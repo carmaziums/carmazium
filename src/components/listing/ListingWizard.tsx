@@ -1134,6 +1134,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') {
                     return 'Category A and Category B vehicles can only be listed in Auction. Switch this listing to Auction to continue.'
                 }
+                if (missing.length === 1 && missing[0] === "confirmation checkbox") {
+                    return "Please tick the confirmation box to continue."
+                }
                 return missing.length > 0
                     ? `Please complete: ${missing.join(', ')}.`
                     : null
@@ -1233,6 +1236,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         behavior: 'smooth',
                         block: 'center',
                     })
+                }, 50)
+            } else if (currentStep === 1 && validationError === "Please tick the confirmation box to continue.") {
+                // Bring the actual native checkbox into view for the common
+                // case shown on Android, instead of displaying a generic alert.
+                window.setTimeout(() => {
+                    const checkbox = document.getElementById("seller-declaration-acknowledged") as HTMLInputElement | null
+                    checkbox?.closest("label")?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    checkbox?.focus({ preventScroll: true })
                 }, 50)
             }
             alert(validationError ?? "Please complete the required information before proceeding.")
