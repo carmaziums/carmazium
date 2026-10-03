@@ -55,3 +55,63 @@ test('native screen uses request guards, valid edit/draft specs and inline contr
   assert.match(screen, /const draftSpecsValid =/);
   assert.match(screen, /vrm, vehicleType, make, model/);
 });
+
+
+const draftSource = readFileSync(new URL('../src/lib/nativeSellerDraftReadiness.ts', import.meta.url), 'utf8');
+const draftCompiled = ts.transpileModule(draftSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+});
+const draftHelper = {};
+runInNewContext(draftCompiled.outputText, { exports: draftHelper });
+const completeDraft = {
+  vrm: 'AB12CDE', make: 'Ford', model: 'Focus', year: '2019',
+  mileage: '49000', title: 'Ford Focus 2019', location: 'Birmingham',
+  fuelType: 'PETROL', transmission: 'MANUAL', bodyType: 'HATCHBACK',
+  vehicleType: 'CAR', description: 'Vehicle description', condition: 'GOOD',
+  owners: '2', writeOffCat: 'NONE', stolenRecovered: false,
+  outstandingFinance: false, isLegalKeeper: true, notOwnerRelationship: '',
+  isDepartedSale: false, departedRelationship: '', declAcknowledged: true,
+};
+test('full persisted Step 1 only resumes later step when all mandatory answers survive restart', () => {
+  const valid = d => draftHelper.nativeDraftStepOneComplete(d, normalizeNativeTransmission, normalizeNativeBodyType);
+  assert.equal(valid(completeDraft), true);
+  for (const field of ['location', 'condition', 'owners', 'writeOffCat', 'description', 'transmission', 'bodyType', 'fuelType']) {
+    assert.equal(valid({ ...completeDraft, [field]: '' }), false, `blank ${field} must re-open details`);
+  }
+  for (const field of ['stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {
+    assert.equal(valid({ ...completeDraft, [field]: null }), false, `missing ${field} must re-open details`);
+  }
+  assert.equal(valid({ ...completeDraft, isLegalKeeper: false, notOwnerRelationship: '' }), false);
+  assert.equal(valid({ ...completeDraft, isDepartedSale: true, departedRelationship: '' }), false);
+  assert.equal(valid({ ...completeDraft, declAcknowledged: false }), false);
+  assert.equal(valid({ ...completeDraft, vehicleType: 'MOTORCYCLE', bodyType: '' }), true);
+});
+test('native uses account-scoped hydration and never stores editing an existing listing as the next draft', () => {
+  const store = readFileSync(new URL('../src/lib/sellWizardStore.ts', import.meta.url), 'utf8');
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  const auth = readFileSync(new URL('../src/store/authStore.ts', import.meta.url), 'utf8');
+  assert.match(store, /skipHydration: true/);
+  assert.match(store, /czm-sell-wizard-v2:/);
+  assert.match(store, /persist\.setOptions\(\{ name: storageKey \}\)/);
+  assert.match(store, /AsyncStorage\.removeItem\('czm-sell-wizard-draft'\)/);
+  assert.match(auth, /detachSellWizardDraft\(\)/);
+  assert.match(screen, /loadSellWizardDraftForUser\(currentUserId\)/);
+  assert.match(screen, /nativeDraftStepOneComplete\(store,/);
+  assert.match(screen, /if \(!editMode\) updateDraft\(/);
+  assert.match(screen, /if \(editMode\) \{ navigation\?\.goBack\(\); return; \}/);
+  for (const name of ['location', 'description', 'condition', 'owners', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper']) {
+    assert.match(store, new RegExp(name + ': state\\.' + name));
+  }
+});
+test('publish revalidates restored vehicle, price and auction settings before any payment', () => {
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  const pub = screen.slice(screen.indexOf('async function handlePublish()'), screen.indexOf('// ─── Navigation'));
+  assert.ok(pub.indexOf('validateStep(1)') < pub.indexOf('setIsPublishing(true)'));
+  assert.ok(pub.indexOf('validateStep(3)') < pub.indexOf('setIsPublishing(true)'));
+  assert.ok(pub.indexOf('validateStep(4)') < pub.indexOf('setIsPublishing(true)'));
+});
+test('typing a new full registration triggers lookup without stale dvlaLoading/dvlaFetched', () => {
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  assert.match(screen, /const registrationChanged = cleaned !== currentVrmRef\.current/);
+  assert.match(screen, /registrationChanged \|\| \(!dvlaFetched && !dvlaLoading\)/);
+});
