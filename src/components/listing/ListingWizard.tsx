@@ -3430,22 +3430,29 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             setIsGeneratingDesc(false)
                                         }
                                     }}
+                                    variant="outline"
+                                    data-testid="seller-mazium-description"
+                                    aria-busy={isGeneratingDesc}
                                     disabled={isGeneratingDesc || (!formData.make && !formData.model && !formData.year)}
-                                    className="mt-2 w-full justify-start rounded-lg bg-gradient-to-r from-indigo-600/10 to-violet-600/10 border border-indigo-500/20 p-3 flex items-center gap-3 hover:from-indigo-600/20 hover:to-violet-600/20 h-auto text-left"
+                                    className="mt-2 flex h-auto w-full min-w-0 max-w-full items-start justify-start gap-3 overflow-hidden whitespace-normal break-words rounded-xl border-2 border-indigo-500 bg-indigo-50 p-3 text-left text-indigo-950 shadow-sm transition-colors hover:border-indigo-700 hover:bg-indigo-100 hover:text-indigo-950 focus-visible:ring-indigo-600 dark:border-indigo-400 dark:bg-indigo-950 dark:text-indigo-50 dark:hover:border-indigo-300 dark:hover:bg-indigo-900 dark:hover:text-white sm:items-center sm:p-4 disabled:opacity-100 disabled:cursor-not-allowed disabled:border-slate-500 disabled:bg-slate-100 disabled:text-slate-900 dark:disabled:border-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-100"
                                 >
                                     {isGeneratingDesc ? (
-                                        <Loader2 size={16} className="text-indigo-400 shrink-0 animate-spin" />
+                                        <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-indigo-700 dark:text-indigo-200 sm:mt-0" aria-hidden="true" />
                                     ) : (
-                                        <Sparkles size={16} className="text-indigo-400 shrink-0" />
+                                        <Sparkles size={20} className="mt-0.5 shrink-0 text-indigo-700 dark:text-indigo-200 sm:mt-0" aria-hidden="true" />
                                     )}
-                                    <div>
-                                        <p className="text-xs text-indigo-300 font-bold">
-                                            {isGeneratingDesc ? "Generating magical description..." : "Auto-generate with AI"}
-                                        </p>
-                                        <p className="text-[10px] text-indigo-400/70">
-                                            Click to draft a description using OpenAI. Your vehicle details are shared only after you consent.
-                                        </p>
-                                    </div>
+                                    <span className="block min-w-0 flex-1 whitespace-normal break-words [overflow-wrap:anywhere]">
+                                        <span className="block text-sm font-extrabold leading-snug text-inherit sm:text-base">
+                                            MaziuM description
+                                        </span>
+                                        <span className="mt-1 block whitespace-normal break-words text-xs font-medium leading-relaxed text-indigo-900 dark:text-indigo-100 disabled:text-inherit [overflow-wrap:anywhere] sm:text-sm">
+                                            {isGeneratingDesc
+                                                ? "MaziuM is drafting your description..."
+                                                : !formData.make && !formData.model && !formData.year
+                                                    ? "Add the vehicle make, model or year above to enable MaziuM."
+                                                    : "Draft a description with MaziuM. Vehicle details are shared with OpenAI only after you consent."}
+                                        </span>
+                                    </span>
                                 </Button>
                             </div>
 
