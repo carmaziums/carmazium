@@ -4,6 +4,7 @@ import { apiClient } from '../lib/apiClient';
 import * as SecureStore from 'expo-secure-store';
 import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
 import { navigationRef } from '../lib/navigationRef';
+import { detachSellWizardDraft } from '../lib/sellWizardStore';
 
 /** Post-signup wizard only: name -> verify -> postcode -> preferences.
  *  Key deliberately unchanged so existing installs that already have it are not
@@ -218,6 +219,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Offline or already invalid — the local reset below is what matters.
     }
+    await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
 
     set({
       isAuthenticated: false,
@@ -633,6 +635,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (e) {
       console.warn('Supabase logout error:', e);
     } finally {
+      await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
       set({
         isAuthenticated: false,
         pendingEmailVerification: false,

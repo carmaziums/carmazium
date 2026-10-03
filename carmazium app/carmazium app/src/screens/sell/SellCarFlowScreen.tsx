@@ -20,7 +20,8 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, deletePublicStorageObject, uploadToStorage } from '../../lib/storageHelper';
-import { useSellWizardStore } from '../../lib/sellWizardStore';
+import { useSellWizardStore, loadSellWizardDraftForUser } from '../../lib/sellWizardStore';
+import { nativeDraftStepOneComplete } from '../../lib/nativeSellerDraftReadiness';
 import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
@@ -608,6 +609,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
+  const currentUserId = useAuthStore(state => state.isAuthenticated ? state.user?.id : null);
 
   // Route-derived edit identity is needed by valuation as well as draft save.
   // Keep it above effects that may reference the current listing id.
@@ -938,63 +940,77 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Shared across steps since only one step's ScrollView is ever mounted at a time.
   const stepScrollRef = useRef<ScrollView>(null);
 
-  // ── Draft hydration — offer resume after app restart ─────────────────────────
+  // Hydrate only after the authenticated user is known. A previous user's
+  // in-memory draft is detached before reading this account's separate key.
   useEffect(() => {
-    // Only show resume prompt for new listings, not edits
-    if (editMode) return;
-    const unsub = useSellWizardStore.persist.onFinishHydration(() => {
+    if (!currentUserId) return;
+    let cancelled = false;
+    void (async () => {
+      const loaded = await loadSellWizardDraftForUser(currentUserId);
+      if (!loaded || cancelled || editMode) return;
       const store = useSellWizardStore.getState();
-      if (store.make || store.model || store.lastStep > 1) {
-        Alert.alert(
-          'Resume draft?',
-          'You have an unsaved listing. Continue where you left off?',
-          [
-            {
-              text: 'Start fresh',
-              onPress: clearDraft,
-              style: 'cancel',
-            },
-            {
-              text: 'Resume',
-              onPress: () => {
-                if (store.vrm) {
-                  const normalized = normalizeNativeRegistration(store.vrm);
-                  currentVrmRef.current = normalized;
-                  setVrm(normalized);
-                }
-                const draftVehicleType = store.vehicleType || 'CAR';
-                vehicleTypeRef.current = draftVehicleType;
-                setVehicleType(draftVehicleType);
-                if (store.make) setMake(store.make);
-                if (store.model) setModel(store.model);
-                if (store.year) setYear(store.year);
-                if (store.mileage) setMileage(store.mileage);
-                if (store.title) setTitle(store.title);
-                if (store.fuelType) setFuelType(store.fuelType);
-                setTransmission(normalizeNativeTransmission(store.transmission));
-                setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
-                if (store.colour) setColour(store.colour);
-                if (store.price) setPriceAsking(store.price);
-                if (store.listingType) setListingType(store.listingType as 'CLASSIFIED' | 'AUCTION');
-                if (store.exteriorImages.length > 0) setExteriorImages(store.exteriorImages);
-                if (store.interiorImages.length > 0) setInteriorImages(store.interiorImages);
-                if (store.damageImages.length > 0) setDamageImages(store.damageImages);
-                const draftSpecsValid = !!normalizeNativeTransmission(store.transmission)
-                  && (draftVehicleType === 'MOTORCYCLE'
-                    || !!normalizeNativeBodyType(store.bodyType, draftVehicleType));
-                if (store.vrm && draftSpecsValid && store.lastStep > 1) setStep(store.lastStep as Step);
-                else {
-                  setStep(1);
-                  setTouched(prev => ({ ...prev, transmission: true, bodyType: draftVehicleType !== 'MOTORCYCLE' }));
-                }
-              },
-            },
-          ],
-        );
-      }
-    });
-    return () => unsub();
-  }, []);
+      if (!store.make && !store.model && store.lastStep <= 1) return;
+      Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
+        { text: 'Start fresh', onPress: clearDraft, style: 'cancel' },
+        { text: 'Resume', onPress: () => {
+            if (cancelled) return;
+            const normalizedVrm = normalizeNativeRegistration(store.vrm);
+            currentVrmRef.current = normalizedVrm;
+            setVrm(normalizedVrm);
+            const draftVehicleType = store.vehicleType || 'CAR';
+            vehicleTypeRef.current = draftVehicleType;
+            setVehicleType(draftVehicleType);
+            setMake(store.make);
+            setModel(store.model);
+            setYear(store.year);
+            setMileage(store.mileage);
+            setTitle(store.title);
+            setFuelType(store.fuelType);
+            setTransmission(normalizeNativeTransmission(store.transmission));
+            setBodyType(normalizeNativeBodyType(store.bodyType, draftVehicleType));
+            setColour(store.colour);
+            setPriceAsking(store.price);
+            setPriceMin(store.priceMin);
+            setListingType(store.listingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED');
+            setLocation(store.location);
+            setDescription(store.description);
+            setCondition(store.condition);
+            setOwners(store.owners);
+            setWriteOffCat(store.writeOffCat);
+            setStolenRecovered(store.stolenRecovered);
+            setOutstandingFinance(store.outstandingFinance);
+            setIsLegalKeeper(store.isLegalKeeper);
+            setNotOwnerRelSelect(store.notOwnerRelSelect);
+            setNotOwnerRelOther(store.notOwnerRelOther);
+            setIsDepartedSale(store.isDepartedSale);
+            setDepartedRelSelect(store.departedRelSelect);
+            setDepartedRelOther(store.departedRelOther);
+            setDeclAcknowledged(store.declAcknowledged);
+            setExteriorImages(store.exteriorImages ?? []);
+            setInteriorImages(store.interiorImages ?? []);
+            setDamageImages(store.damageImages ?? []);
+            const detailsReady = nativeDraftStepOneComplete(store,
+              normalizeNativeTransmission, normalizeNativeBodyType);
+            if (detailsReady && store.lastStep >= 1 && store.lastStep <= (store.listingType === 'AUCTION' ? 5 : 4)) {
+              setStep(store.lastStep as Step);
+            } else {
+              setStep(1);
+              setTouched(prev => ({
+                ...prev, vrm: true, make: true, model: true, year: true,
+                mileage: true, title: true, location: true, fuelType: true,
+                transmission: true, bodyType: draftVehicleType !== 'MOTORCYCLE',
+                condition: true, owners: true, description: true,
+                writeOffCat: true, stolenRecovered: true, outstandingFinance: true,
+                isLegalKeeper: true, notOwnerRelationship: true,
+                departedRelationship: true, declAcknowledged: true,
+              }));
+            }
+          },
+        },
+      ]);
+    })().catch(error => console.warn('Unable to restore seller draft:', error));
+    return () => { cancelled = true };
+  }, [editMode, currentUserId, clearDraft]);
 
   // ── Edit mode — prefill the form from the existing listing ─────────────────
   // Mirrors ListingWizard.tsx's edit-prefill effect (web). Without this, opening
@@ -1169,6 +1185,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     // Web now requires + red-highlights Location on submit (ListingWizard.tsx) —
     // mobile previously had no validation on this field at all.
     if (key === 'location' && !location.trim()) return 'Required';
+    if (key === 'vrm' && !/^[A-Z0-9]{2,8}$/.test(normalizeNativeRegistration(vrm))) return 'Enter a valid registration';
+    if (key === 'fuelType' && !fuelType.trim()) return 'Select a fuel type';
+    if (key === 'description' && !description.trim()) return 'Add a vehicle description';
     if (key === 'transmission' && !normalizeNativeTransmission(transmission)) return 'Select transmission to continue';
     if (key === 'bodyType' && vehicleType !== 'MOTORCYCLE'
       && !normalizeNativeBodyType(bodyType, vehicleType)) return 'Select the vehicle body type';
@@ -1201,7 +1220,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // All field keys validated per step — used to force every field's error to show
   // (mark touched) when Next is tapped, and to know which keys to check.
-  const STEP1_FIELD_KEYS = ['make', 'model', 'year', 'mileage', 'title', 'location', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
+  const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
   const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
 
@@ -1287,7 +1306,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const handlePlateChange = (raw: string) => {
     const cleaned = normalizeNativeRegistration(raw);
-    if (cleaned !== currentVrmRef.current) {
+    const registrationChanged = cleaned !== currentVrmRef.current;
+    if (registrationChanged) {
       lookupRequestRef.current += 1;
       currentVrmRef.current = cleaned;
       setTransmission('');
@@ -1298,8 +1318,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       setDvlaLoading(false);
     }
     setVrm(cleaned);
-    if (cleaned.length >= 7 && cleaned.length <= 8 && !dvlaFetched && !dvlaLoading) {
-      handleDvlaLookup(cleaned);
+    // A full replacement registration must be looked up even if the old
+    // render still says the previous lookup is loading or already fetched.
+    if (cleaned.length >= 7 && cleaned.length <= 8
+      && (registrationChanged || (!dvlaFetched && !dvlaLoading))) {
+      void handleDvlaLookup(cleaned);
     }
   };
 
@@ -1840,6 +1863,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
+    // A restored review screen may not have passed Step 1 in this session.
+    // Validate before any mutation, checkout or fee/grant consumption.
+    if (!validateStep(1)) {
+      setStep(1);
+      Alert.alert('Review vehicle details', 'Please correct the highlighted vehicle details before publishing.');
+      return;
+    }
+    if (!validateStep(3)) {
+      setStep(3);
+      Alert.alert('Review pricing', 'Please correct the listing price before publishing.');
+      return;
+    }
+    if (isAuction && !validateStep(4)) {
+      setStep(4);
+      Alert.alert('Review auction settings', 'Please complete the auction settings before publishing.');
+      return;
+    }
     if (allImages.length < MIN_PHOTOS) {
       // Was `=== 0`. The backend's publish guard is 10 and runs before the
       // badge-tier branch, so anything below it used to reach the payment sheet
@@ -2202,9 +2242,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (!validateStep(step)) return;
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
-    updateDraft({
+    if (!editMode) updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
-      price: priceAsking, listingType,
+      price: priceAsking, priceMin, listingType,
+      location, description, condition, owners, writeOffCat,
+      stolenRecovered, outstandingFinance, isLegalKeeper,
+      notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
+      isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
       lastStep: nextStep,
     });
@@ -2240,9 +2284,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
+    if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
-      price: priceAsking, listingType,
+      price: priceAsking, priceMin, listingType,
+      location, description, condition, owners, writeOffCat,
+      stolenRecovered, outstandingFinance, isLegalKeeper,
+      notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
+      isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
       lastStep: step,
     });
