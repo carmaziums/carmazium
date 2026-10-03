@@ -89,14 +89,17 @@ export async function apiClient<T>(
 
     let response: Response;
     try {
-        if (method === 'GET' || method === 'HEAD') {
-            // Vercel occasionally sees transient Fly.io socket resets/timeouts.
-            // Reads are safe to retry; writes are intentionally single-attempt
-            // to prevent duplicate mutations if only the response was lost.
+        // The DVLA lookup uses POST but only reads vehicle information.
+        // It can safely retry once after a transient Fly.io socket reset or
+        // HTTP 503 without retrying *any* listing/payment mutation or optional
+        // paid live-web specification research.
+        const isReadOnlyDvlaLookup = method === 'POST' && endpoint === '/dvla/lookup';
+        if (method === 'GET' || method === 'HEAD' || isReadOnlyDvlaLookup) {
             response = await fetchWithRetry(requestUrl, config, {
-                timeoutMs: 10000,
-                retries: 2,
+                timeoutMs: isReadOnlyDvlaLookup ? 18000 : 10000,
+                retries: isReadOnlyDvlaLookup ? 1 : 2,
                 retryDelayMs: 400,
+                retryReadOnlyPost: isReadOnlyDvlaLookup,
             });
         } else {
             // Keep mutations single-attempt with the existing 30 s ceiling.
