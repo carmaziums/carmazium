@@ -59,3 +59,12 @@ export function resolveSellerVehicleSpecs<B extends string>(
             : incomingBodyType,
     }
 }
+
+/** One shared readiness check for resumed drafts and final seller submissions. */
+export function hasCompleteSellerVehicleSpecs<B extends string>(
+    data: { transmission?: unknown; bodyType?: unknown; vehicleType?: string },
+    allowedBodyTypes: readonly B[],
+): boolean {
+    return !!normalizeSellerTransmission(data.transmission)
+        && (data.vehicleType === "MOTORCYCLE" || !!normalizeSellerBodyType(data.bodyType, allowedBodyTypes))
+}
