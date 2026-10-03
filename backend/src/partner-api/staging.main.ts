@@ -1,11 +1,12 @@
 import { Controller, Get, Header, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import helmet from 'helmet';
 import { SimpleDmsGuard } from './simpledms.guard';
 import { SimpleDmsController } from './simpledms.controller';
 import { SimpleDmsService } from './simpledms.service';
+import { proofHealth, proofInstance, runHostedProof, stagingGuard } from './staging-hosted-auth-proof';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -43,7 +44,7 @@ function fixtures() {
 class SyntheticHealthController {
   @Get('live')
   @Header('Cache-Control', 'no-store')
-  live() { return { ok: true, syntheticOnly: true }; }
+  live() { return { ok: true, syntheticOnly: true, hostedAuthProof: proofHealth() }; }
 }
 
 @Controller('staging-assets')
@@ -89,7 +90,8 @@ class SyntheticAuctionController {
   }])],
   controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController, SyntheticHealthController],
   providers: [
-    SimpleDmsGuard, SimpleDmsService,
+    { provide: SimpleDmsGuard, useFactory: stagingGuard, inject: [ConfigService] },
+    SimpleDmsService,
     { provide: PrismaService, useValue: syntheticPrisma },
   ],
 })
@@ -107,8 +109,16 @@ async function bootstrap() {
   app.use(helmet());
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     res.setHeader('X-CarMazium-Environment', 'synthetic-staging');
+    if (process.env.STAGING_HOSTED_AUTH_PROBE_ENABLED === 'true') {
+      res.setHeader('X-CarMazium-Synthetic-Instance', proofInstance());
+    }
     next();
   });
   await app.listen(Number(process.env.PORT || 8080), '0.0.0.0');
+  if (process.env.STAGING_HOSTED_AUTH_PROBE_ENABLED === 'true') {
+    // Nonblocking bounded probe; /health/live exposes pass/failure. The temporary
+    // key is revoked after completion and can never authenticate a real DB.
+    void runHostedProof(process.env.STAGING_PUBLIC_HOST || '');
+  }
 }
 void bootstrap();
