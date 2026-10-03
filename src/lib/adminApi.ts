@@ -775,9 +775,10 @@ export async function getAdminDealersKycArchive(page = 1, limit = 20) {
   return result;
 }
 
-export async function getAdminListings(page = 1, limit = 20, sellerRole?: string) {
+export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: 'DRAFT') {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (sellerRole) query.set('sellerRole', sellerRole);
+  if (status) query.set('status', status);
   const result = await apiClient<any>(`/admin/listings?${query.toString()}`);
   return result;
 }
