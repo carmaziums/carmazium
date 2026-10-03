@@ -49,7 +49,7 @@ export default function AdminListingsPage() {
     // "CarMazium" = listings created by an ADMIN account. Admins can list
     // directly now, so their own vehicles would otherwise be buried among
     // every seller's in this table.
-    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
+    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN' | 'DRAFT'>('ALL')
     const limit = 20
 
     // ── Pending review ──
@@ -84,7 +84,7 @@ export default function AdminListingsPage() {
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined)
+            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined, ownerFilter === 'DRAFT' ? 'DRAFT' : undefined)
             setListings(result.data || [])
             setTotal(result.pagination?.total || 0)
         } catch (err: any) {
@@ -505,6 +505,7 @@ export default function AdminListingsPage() {
                     <div className="flex items-center gap-2">
                         {([
                             ['ALL', 'All listings'],
+                            ['DRAFT', 'Drafts'],
                             ['ADMIN', 'CarMazium'],
                         ] as const).map(([value, label]) => (
                             <button
