@@ -3655,7 +3655,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </span>
                                     <span id="seller-declaration-help" className="text-sm sm:text-base font-medium leading-relaxed text-[var(--text-primary)]">
                                         <strong className="block mb-1 font-bold">I confirm these declarations *</strong>
-                                        I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations may invalidate the listing and have legal consequences.
+                                        I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action.
                                         {!formData.declarationAcknowledged && <span className="block mt-2 text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">Tick this box to continue.</span>}
                                     </span>
                                 </label>
