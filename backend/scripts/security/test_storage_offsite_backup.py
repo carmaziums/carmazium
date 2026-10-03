@@ -182,6 +182,15 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
         with self.assertRaisesRegex(BackupUnsafe, "independent"):
             make_snapshot(src, vault, VAULT, KMS, MAC, 1)
 
+    def test_private_per_bucket_floor_fails_before_copy_even_when_total_is_met(self):
+        src, vault = FakeSource(), FakeVault()
+        src.objects.pop(("dealer-kyc-documents", "fictional/nested/dealer-kyc-documents.txt"))
+        minima = {k: 1 for k in BUCKET_PRIVACY}
+        with self.assertRaisesRegex(BackupUnsafe, "per-bucket minimum"):
+            make_snapshot(src, vault, VAULT, KMS, MAC, 6, now=WHEN, nonce=NONCE,
+                          min_bucket_counts=minima)
+        self.assertEqual(vault.objects, {})
+
     def test_source_mutation_refuses_to_complete_snapshot(self):
         src, vault = FakeSource(), FakeVault()
         src.change_head = True
@@ -254,12 +263,15 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
             "BACKUP_DEST_BUCKET": VAULT,
             "BACKUP_DEST_KMS_KEY_ARN": KMS,
             "BACKUP_MANIFEST_HMAC_KEY_B64": base64.b64encode(MAC).decode(),
-            "BACKUP_MIN_OBJECTS": "12000", "BACKUP_SOURCE_PROJECT_REF": "bwtnzmevjlowwronylxm",
+            "BACKUP_MIN_OBJECTS": "12000",
+            "BACKUP_MIN_BUCKET_COUNTS_JSON": json.dumps({k: 1 for k in BUCKET_PRIVACY}),
+            "BACKUP_SOURCE_PROJECT_REF": "bwtnzmevjlowwronylxm",
             "AWS_REGION": "eu-west-2",
         }
-        secret, minimum = load_config(good)
+        secret, minimum, bucket_minima = load_config(good)
         self.assertEqual(secret, MAC)
         self.assertEqual(minimum, 12000)
+        self.assertEqual(set(bucket_minima), set(BUCKET_PRIVACY))
         for change in (
             {"DATABASE_URL": "synthetic-invalid-db-url"},
             {"SUPABASE_SERVICE_ROLE_KEY": "synthetic-unexpected-key"},
@@ -267,6 +279,8 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
             {"BACKUP_APPROVED_LIVE_RUN": "no"},
             {"BACKUP_SOURCE_PROJECT_REF": "other-project"},
             {"BACKUP_MIN_OBJECTS": "0"},
+            {"BACKUP_MIN_BUCKET_COUNTS_JSON": json.dumps({"listings": 12000})},
+            {"BACKUP_MIN_BUCKET_COUNTS_JSON": json.dumps({k: -1 for k in BUCKET_PRIVACY})},
             {"BACKUP_MANIFEST_HMAC_KEY_B64": "bad-invalid"},
         ):
             with self.subTest(change=set(change)):
