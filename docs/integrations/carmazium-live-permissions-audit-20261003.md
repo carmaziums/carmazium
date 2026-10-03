@@ -22,6 +22,16 @@ The transaction verified both client roles no longer had table or apiKey column 
 - **Other client column scope:** authenticated users have SELECT on public.users including passwordHash/bank fields, while RLS allows own-account (or actual admin) reads. Authenticated dealer invite SELECT includes token but its policy restricts eligible dealer profiles/admin. Public vehicles currently has zero records yet grants anonymous full-column SELECT with a permissive public RLS policy, including prospective VIN/VRM. The public retail policy exposes 166 retail listing rows, 3 with nonempty VIN and 98 with precise coordinate fields at this inspection. These are *metadata counts only*; no passwords, keys, names, coordinates, VRMs, VINs, other records or media were read. Classify seller-authorised fields and migrate to tested safe public views/projections; unreviewed blanket changes could break retail search, signup or dealer flows.
 - **Recovery prerequisite:** The owner confirmed seeing a managed database backup dated 2 October 2026 at 11:59 pm, dashboard time zone unknown. No independent non-production real DB restoration proves it usable, and database backups do NOT include uploaded Storage file bytes. Draft PR #382 provides a fully tested independent seven-bucket encrypted backup/recovery runner, but the existing UK-region independent private vault/credentials and real restoration evidence are not available through current connected accounts. Issue #364 stays open.
 
+## Non-sensitive schema fingerprint for future isolated restore comparison
+
+A fresh read-only query of the actual live production catalog on 3 October found **63 public base tables, 939 public relation columns, 41 RLS policies and 10 public functions**. The following fingerprints hash *metadata definitions*, never customer rows. They are an acceptance comparison target for a real isolated recovery, not proof that a usable provider backup exists:
+
+- Column/type/nullability fingerprint (MD5 for catalog drift only): d7d243d9a8232c723de3aa709ce075b8
+- RLS policy-definition fingerprint: fffa117521b079da8227f8b7926bfc3b
+- Public function-definition fingerprint: 379163bafc28b38240e416ec83911f6f
+
+Regenerate using the same ordered catalog query for the restored database. Account for legitimate schema changes made since this snapshot; do not reject a good backup simply because newer migrations change the live fingerprint.
+
 ## Production release gates
 
 Complete a non-production rehearsal with all relevant direct SQL/Prisma, RLS, policies, triggers, login/session adapter, dealer KYC, bids, refund/payment and handover flows on a production-equivalent schema, with synthetic records. Prove a real isolated database restore and an independent, private KYC/handover object recovery before changes to the PUBLIC schema CREATE grant, privileged runtime login or other broad live permissions. Preserve the already-performed partner_profiles containment. Do not publish partner production keys until the privacy agreement, hosted staging verification and recovery/security gates are complete.
