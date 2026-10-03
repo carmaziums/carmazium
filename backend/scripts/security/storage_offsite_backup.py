@@ -216,7 +216,8 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
             "bucket_counts": counts}
 
 
-def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix):
+def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix,
+                          restore_sample_dir=None):
     """Disaster drill: verify every vaulted byte without any Supabase access.
 
     This does not write production objects, fetch live credentials or create
@@ -268,8 +269,41 @@ def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix):
             counts[bucket] += 1
         if verified_bytes != completion["verified_bytes"] or counts != manifest["counts"]:
             raise BackupUnsafe("Independent backup inventory or byte totals do not match")
+        sampled = 0
+        if restore_sample_dir is not None:
+            # Only a private operator-owned ENCRYPTED runner folder.
+            import stat
+            import tempfile
+            from pathlib import Path
+            root = Path(restore_sample_dir)
+            if not root.is_absolute() or root.is_symlink() or not root.is_dir():
+                raise BackupUnsafe("Isolated restoration needs a private absolute directory")
+            mode = root.stat()
+            if mode.st_uid != os.getuid() or stat.S_IMODE(mode.st_mode) != 0o700:
+                raise BackupUnsafe("Isolated restore folder must be owned and mode 0700")
+            examples = {}
+            for item in objects:
+                examples.setdefault(item["bucket"], item)
+            with tempfile.TemporaryDirectory(prefix="encrypted-recovery-test-", dir=root) as folder:
+                for bucket, item in examples.items():
+                    downloaded = dest.get_object(Bucket=vault_bucket, Key=item["vault_key"])
+                    payload = read_bounded(downloaded["Body"], item["bytes"])
+                    path = Path(folder) / base64.urlsafe_b64encode(bucket.encode()).decode().rstrip("=")
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                    if hasattr(os, "O_NOFOLLOW"):
+                        flags |= os.O_NOFOLLOW
+                    fd = os.open(path, flags, 0o600)
+                    with os.fdopen(fd, "wb") as f:
+                        f.write(payload)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
+                        raise BackupUnsafe("Restored private sample did not match signed manifest")
+                    sampled += 1
+            # Private test samples removed; no customer bytes printed or exported.
         return {"status": "RESTORE_BYTES_VERIFIED", "objects": len(objects),
-                "verified_bytes": verified_bytes, "bucket_counts": counts}
+                "verified_bytes": verified_bytes, "bucket_counts": counts,
+                "isolated_sample_restores": sampled}
     except BackupUnsafe:
         raise
     except Exception:
