@@ -168,6 +168,12 @@ export class ListingsService {
         if (!recognition.model) {
             throw new BadRequestException('Enter the actual vehicle model, not its make, year or registration.');
         }
+        if (recognition.suggestions.length > 0) {
+            throw new BadRequestException(
+                'Vehicle model not recognised. Please check whether you meant: '
+                + recognition.suggestions.join(' or '),
+            );
+        }
         dto = {
             ...dto,
             make: dto.make.trim(),
