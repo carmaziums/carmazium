@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { SimpleDmsGuard } from './simpledms.guard';
 import { SimpleDmsController } from './simpledms.controller';
 import { SimpleDmsService } from './simpledms.service';
+import { installHostedProofDigest, proofHealth, proofInstance, runHostedProof } from './staging-hosted-auth-proof';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -13,6 +14,8 @@ import { PrismaService } from '../prisma/prisma.service';
  * No AppModule, Supabase DB, payment credentials, cron jobs, or live inventory.
  * Reuses the exact production guard/controller/service on synthetic fixtures.
  */
+// Install only in synthetic staging, before ConfigModule and the standard guard.
+installHostedProofDigest();
 const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const STAGING_LISTING_ID = '22222222-2222-4222-8222-222222222222';
 function fixtures() {
@@ -43,7 +46,7 @@ function fixtures() {
 class SyntheticHealthController {
   @Get('live')
   @Header('Cache-Control', 'no-store')
-  live() { return { ok: true, syntheticOnly: true }; }
+  live() { return { ok: true, syntheticOnly: true, hostedAuthProof: proofHealth() }; }
 }
 
 @Controller('staging-assets')
@@ -89,7 +92,8 @@ class SyntheticAuctionController {
   }])],
   controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController, SyntheticHealthController],
   providers: [
-    SimpleDmsGuard, SimpleDmsService,
+    SimpleDmsGuard,
+    SimpleDmsService,
     { provide: PrismaService, useValue: syntheticPrisma },
   ],
 })
@@ -107,8 +111,16 @@ async function bootstrap() {
   app.use(helmet());
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     res.setHeader('X-CarMazium-Environment', 'synthetic-staging');
+    if (process.env.STAGING_HOSTED_AUTH_PROBE_ENABLED === 'true') {
+      res.setHeader('X-CarMazium-Synthetic-Instance', proofInstance());
+    }
     next();
   });
   await app.listen(Number(process.env.PORT || 8080), '0.0.0.0');
+  if (process.env.STAGING_HOSTED_AUTH_PROBE_ENABLED === 'true') {
+    // Nonblocking bounded probe; /health/live exposes pass/failure. The temporary
+    // key is revoked after completion and can never authenticate a real DB.
+    void runHostedProof(process.env.STAGING_PUBLIC_HOST || '');
+  }
 }
 void bootstrap();
