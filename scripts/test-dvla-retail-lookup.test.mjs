@@ -28,3 +28,15 @@ test('old or abandoned lookup cannot display a stale failure or stop a newer spi
   assert.match(wizard, /if \(lookupId === lookupRequestRef\.current\) setDvlaLoading\(false\)/);
   assert.doesNotMatch(wizard, /trackEvent\('valuation_failed', \{\s*listing_type: listingTypeLabel\(formData\.listingType\),\s*registration:/);
 });
+
+
+test('only read-only DVLA POST receives a bounded Fly connection retry', () => {
+  const client = readFileSync(new URL('../src/lib/apiClient.ts', import.meta.url), 'utf8');
+  const retry = readFileSync(new URL('../src/lib/fetchWithRetry.ts', import.meta.url), 'utf8');
+  assert.match(client, /const isReadOnlyDvlaLookup = method === 'POST' && endpoint === '\/dvla\/lookup'/);
+  assert.match(client, /timeoutMs: isReadOnlyDvlaLookup \? 18000 : 10000/);
+  assert.match(client, /retries: isReadOnlyDvlaLookup \? 1 : 2/);
+  assert.match(client, /retryReadOnlyPost: isReadOnlyDvlaLookup/);
+  assert.match(retry, /\(retryReadOnlyPost && method === 'POST'\)/);
+  assert.doesNotMatch(client, /endpoint === '\/dvla\/enrich' && .*retry/);
+});
