@@ -91,7 +91,8 @@ export function recogniseVehicleModel(input: {
         .sort((a, b) => b.key.length - a.key.length);
     const best = matches[0];
     if (best) {
-        const suffix = value.slice(best.key.length).trim();
+        const suffix = originalTrimSuffix(raw, input.make, year, best.model)
+            ?? value.slice(best.key.length).trim();
         const variant = suffix && userVariant && !plain(userVariant).includes(suffix)
             ? suffix + ' ' + userVariant
             : (userVariant || suffix);
