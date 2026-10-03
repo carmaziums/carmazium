@@ -22,7 +22,7 @@ jobs:
       - name: Check out exact security PR head, not main
         uses: actions/checkout@v4
         with:
-          ref: \${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: true
       - name: Use Node 20
