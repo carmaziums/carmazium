@@ -36,6 +36,12 @@ function originalTrimSuffix(raw: string, make: string, year: string, model: stri
     const tolerant = (name: string) => plain(name).split(' ').join('[^A-Za-z0-9]*');
     let text = raw.trim();
     if (year) text = text.replace(new RegExp('^' + year + '\\s+', 'i'), '').trim();
+    // Marketplace adverts can be from adjacent years, not just input.year.
+    // Strip another leading year only when a trusted make immediately follows.
+    const initialYear = text.match(/^(?:19|20)\d{2}\s+(.+)$/);
+    if (initialYear && plain(initialYear[1]).startsWith(plain(make) + ' ')) {
+        text = initialYear[1].trim();
+    }
     const makePattern = tolerant(make);
     while (makePattern && new RegExp('^' + makePattern + '(?:\\s+|$)', 'i').test(text)) {
         text = text.replace(new RegExp('^' + makePattern + '(?:\\s+|$)', 'i'), '').trim();
@@ -54,6 +60,10 @@ export function recogniseVehicleModel(input: {
     const make = plain(input.make || '');
     const year = input.year ? String(input.year) : '';
     if (year) value = value.replace(new RegExp('^' + year + '\\s+'), '');
+    const titledYear = value.match(/^(?:19|20)\d{2}\s+(.+)$/);
+    if (titledYear && make && titledYear[1].startsWith(make + ' ')) {
+        value = titledYear[1];
+    }
     // A duplicated make is common with free text, including multiword makes.
     while (make && (value === make || value.startsWith(make + ' '))) {
         value = value.slice(make.length).trim();
