@@ -1,0 +1,28 @@
+name: Synthetic private Storage-object restore safety
+on:
+  push:
+    branches:
+      - security/carmazium-storage-recovery-synthetic-20261003
+    paths:
+      - backend/scripts/security/ci-only-storage-recovery.py
+      - .github/workflows/carmazium-storage-object-recovery.yml
+  pull_request:
+    branches:
+      - security/simpledms-dependency-fixes
+      - feature/simpledms-partner-auction-feed
+    paths:
+      - backend/scripts/security/ci-only-storage-recovery.py
+      - .github/workflows/carmazium-storage-object-recovery.yml
+permissions:
+  contents: read
+jobs:
+  isolated-synthetic-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate synthetic public/private Storage-object recovery
+        run: python3 backend/scripts/security/ci-only-storage-recovery.py
+      - name: Explicitly forbid live credentials, database restores and artifact publication
+        run: |
+          echo "Synthetic-only offline test. No provider access, no secrets, no live objects, no upload-artifact."
