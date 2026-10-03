@@ -28,6 +28,8 @@ export async function fetchWithRetry(
     retries?: number;
     retryDelayMs?: number;
     retryOnStatuses?: number[];
+    /** Only for explicitly approved read-only POST endpoints (e.g. DVLA lookup). */
+    retryReadOnlyPost?: boolean;
   } = {},
 ): Promise<Response> {
   const {
@@ -35,10 +37,12 @@ export async function fetchWithRetry(
     retries = 2,
     retryDelayMs = 400,
     retryOnStatuses,
+    retryReadOnlyPost = false,
   } = config;
 
   const method = (options.method || 'GET').toUpperCase();
-  const retryableMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+  const retryableMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS'
+    || (retryReadOnlyPost && method === 'POST');
   const maxRetries = retryableMethod ? Math.max(0, retries) : 0;
   const statuses = retryOnStatuses
     ? new Set(retryOnStatuses)
