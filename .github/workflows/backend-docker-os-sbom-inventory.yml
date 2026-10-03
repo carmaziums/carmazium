@@ -1,0 +1,96 @@
+name: Non-Deploying OS and Library Docker Image CVE + SBOM Inventory
+
+on:
+  pull_request:
+    branches: [security-backend-docker-image-preflight-20261003]
+    paths:
+      - '.github/workflows/backend-docker-os-sbom-inventory.yml'
+      - 'scripts/security/parse-backend-trivy-image.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-image-os-cve-sbom:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'security-backend-actual-image-os-sbom-20261003')
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Check out exact reviewed image candidate (read-only token)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify the unmodified pinned backend image and no DB release command
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "ARG NODE_VERSION=22.23.3" backend/Dockerfile
+          if grep -E '^[[:space:]]*release_command' backend/fly.toml; then
+            echo "Automatic database release migration disallowed"; exit 1
+          fi
+          git diff --exit-code -- backend/Dockerfile backend/package.json backend/package-lock.json
+      - name: Build real proposed production Docker image without pushing or deploying
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --pull --progress=plain -f backend/Dockerfile \
+            -t carmazium-security-os-inventory:ci backend
+          mkdir -p .security-image-report "$HOME/.cache/trivy"
+          echo ACTUAL_PINNED_DOCKER_IMAGE_REBUILT_READ_ONLY
+      - name: Scan real assembled image using official pinned Trivy 0.75.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.security-image-report:/reports" \
+            -v "$HOME/.cache/trivy:/root/.cache/" \
+            docker.io/aquasec/trivy:0.75.0 image \
+            --scanners vuln --image-src docker \
+            --format json --output /reports/backend-trivy-vulnerabilities.json \
+            carmazium-security-os-inventory:ci
+          test -s .security-image-report/backend-trivy-vulnerabilities.json
+      - name: Parse OS and language CVEs separately; never hide the release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/security/parse-backend-trivy-image.cjs \
+            .security-image-report/backend-trivy-vulnerabilities.json
+      - name: Generate reviewable CycloneDX SBOM from the same exact image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.security-image-report:/reports" \
+            -v "$HOME/.cache/trivy:/root/.cache/" \
+            docker.io/aquasec/trivy:0.75.0 image \
+            --scanners vuln --image-src docker \
+            --format cyclonedx --output /reports/backend-cyclonedx-sbom.json \
+            carmazium-security-os-inventory:ci
+          node -e '
+            const x=require("./.security-image-report/backend-cyclonedx-sbom.json");
+            if(x.bomFormat!=="CycloneDX" || !Array.isArray(x.components) || !x.components.length)
+              throw Error("SBOM incomplete: fail closed");
+            console.log("ASSEMBLED_IMAGE_CYCLONEDX_COMPONENTS "+x.components.length);
+          '
+      - name: Upload private scan inventory for independent security review (seven-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: proposed-backend-image-security-sbom
+          path: |
+            .security-image-report/backend-trivy-vulnerabilities.json
+            .security-image-report/backend-cyclonedx-sbom.json
+          retention-days: 7
+          if-no-files-found: error
+      - name: State independent release limitations
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "This audit runs only on a disposable GitHub runner against the proposed Docker image."
+          echo "No Fly application, production account, Supabase instance, private user data, database migration or paid branch was touched."
+          echo "The real Fly staging/API, native app advisories, rollback rehearsal and current image CVE triage are independent hard release gates."
