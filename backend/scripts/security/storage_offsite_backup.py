@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""Private, manually authorised CarMazium Supabase Storage -> independent AWS S3 backup.
+
+Not a web API, cron task, GitHub Actions live-data job or a replacement for
+managed PostgreSQL backups. Production execution needs privately configured
+Supabase S3 credentials and a pre-existing independent AWS KMS-protected vault.
+Never print source paths, object bytes, IAM credentials or object-key metadata.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import io
+import json
+import os
+import secrets
+import sys
+from datetime import datetime, timezone
+
+# Explicit production allowlist. An unexpected NEW bucket blocks completion.
+# This list is metadata only; no customer records or object names are committed.
+BUCKET_PRIVACY = {
+    "admin-broadcasts": False,
+    "auction-handover-documents": True,
+    "chat-attachments": True,
+    "dealer-kyc-documents": True,
+    "listings": False,
+    "sale-cancellation-evidence": True,
+    "tradexchange-documents": True,
+}
+LIVE_PROJECT_REF = "bwtnzmevjlowwronylxm"
+MAX_SINGLE_OBJECT = 128 * 1024 * 1024  # observed bucket limits max at 100 MiB
+PUBLIC_BLOCK_SETTINGS = ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")
+
+
+class BackupUnsafe(RuntimeError):
+    """Safe failure messages only; do not wrap raw boto3/provider errors in logs."""
+
+
+def canonical(record):
+    return json.dumps(record, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def expected_vault(dest, vault_bucket, kms_arn):
+    """Verify the EXISTING independent vault; never create a bucket or grant."""
+    try:
+        if dest.get_bucket_versioning(Bucket=vault_bucket).get("Status") != "Enabled":
+            raise BackupUnsafe("Independent vault bucket versioning is required")
+        block = dest.get_public_access_block(Bucket=vault_bucket)["PublicAccessBlockConfiguration"]
+        if not all(block.get(setting) is True for setting in PUBLIC_BLOCK_SETTINGS):
+            raise BackupUnsafe("Independent vault must block all public access")
+        rules = dest.get_bucket_encryption(Bucket=vault_bucket)["ServerSideEncryptionConfiguration"]["Rules"]
+        if not any(
+            rule["ApplyServerSideEncryptionByDefault"].get("SSEAlgorithm") == "aws:kms"
+            and rule["ApplyServerSideEncryptionByDefault"].get("KMSMasterKeyID") == kms_arn
+            for rule in rules
+        ):
+            raise BackupUnsafe("Independent vault must default to the approved KMS key")
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Could not verify independent vault versioning, privacy and KMS") from None
+
+
+def enumerate_source(source):
+    """Read only. Deterministic inventory; never silently omit newly created buckets."""
+    try:
+        got = {b["Name"] for b in source.list_buckets()["Buckets"]}
+        if got != set(BUCKET_PRIVACY):
+            raise BackupUnsafe("Source bucket inventory differs from the reviewed seven-bucket allowlist")
+        inventory = []
+        for bucket in sorted(BUCKET_PRIVACY):
+            continuation = None
+            seen = set()
+            while True:
+                opts = {"Bucket": bucket, "MaxKeys": 1000}
+                if continuation:
+                    opts["ContinuationToken"] = continuation
+                page = source.list_objects_v2(**opts)
+                for item in page.get("Contents", []):
+                    key, size = item["Key"], item["Size"]
+                    if not isinstance(key, str) or not key or key in seen or size < 0 or size > MAX_SINGLE_OBJECT:
+                        raise BackupUnsafe("Source contains duplicate, invalid or oversized object")
+                    seen.add(key)
+                    inventory.append((bucket, key, size, item.get("ETag", "")))
+                if not page.get("IsTruncated"):
+                    break
+                continuation = page.get("NextContinuationToken")
+                if not continuation:
+                    raise BackupUnsafe("Incomplete source inventory pagination")
+        return inventory
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Source Storage inventory was not fully accessible") from None
+
+
+def vault_key(prefix, bucket, key):
+    # Obscures customer filenames/VRMs from independent vault *object keys*.
+    digest = hashlib.sha256((bucket + "\0" + key).encode()).hexdigest()
+    category = base64.urlsafe_b64encode(bucket.encode()).decode().rstrip("=")
+    return f"{prefix}/objects/{category}/{digest}"
+
+
+def read_bounded(body, expected_size):
+    try:
+        payload = body.read(MAX_SINGLE_OBJECT + 1)
+        if len(payload) != expected_size or len(payload) > MAX_SINGLE_OBJECT:
+            raise BackupUnsafe("Source object changed size or exceeded permitted limit")
+        return payload
+    finally:
+        close = getattr(body, "close", None)
+        if callable(close):
+            close()
+
+
+def assert_restorable(dest, bucket, key, expected_sha, expected_size):
+    try:
+        fetched = dest.get_object(Bucket=bucket, Key=key)
+        restored = read_bounded(fetched["Body"], expected_size)
+        if hashlib.sha256(restored).hexdigest() != expected_sha:
+            raise BackupUnsafe("Independent vault checksum verification failed")
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Could not retrieve backed-up bytes from independent vault") from None
+
+
+def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
+                  now=None, nonce=None):
+    """Fail closed. COMPLETE sentinel written last, after real restore reads."""
+    if len(mac_key) < 32 or min_objects < 1:
+        raise BackupUnsafe("Private manifest signing key and minimum object count required")
+    if getattr(source.meta, "endpoint_url", "") == getattr(dest.meta, "endpoint_url", ""):
+        raise BackupUnsafe("Storage backup vault must be an independent endpoint")
+    expected_vault(dest, vault_bucket, kms_arn)
+    inventory = enumerate_source(source)
+    if len(inventory) < min_objects:
+        raise BackupUnsafe("Source inventory fell below approved minimum object count")
+    instant = now or datetime.now(timezone.utc)
+    nonce = nonce or secrets.token_hex(12)
+    prefix = f"carmazium-storage/v1/{instant.strftime('%Y%m%dT%H%M%SZ')}-{nonce}"
+    try:
+        preexisting = dest.list_objects_v2(Bucket=vault_bucket, Prefix=prefix + "/", MaxKeys=1)
+        if preexisting.get("Contents"):
+            raise BackupUnsafe("Snapshot destination already exists; refusing overwrite")
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Could not confirm an unused independent-vault snapshot path") from None
+    kwargs = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_arn}
+    manifest = {"schema": 1, "snapshot": prefix, "captured_utc": instant.isoformat(),
+                "complete": True, "source": "CarMazium Supabase Storage",
+                "buckets": {k: {"private": v} for k, v in sorted(BUCKET_PRIVACY.items())},
+                "objects": []}
+    counts = {k: 0 for k in BUCKET_PRIVACY}
+    for bucket, key, size, etag in inventory:
+        try:
+            received = source.get_object(Bucket=bucket, Key=key)
+            if int(received.get("ContentLength", -1)) != size:
+                raise BackupUnsafe("Source object length changed during backup")
+            payload = read_bounded(received["Body"], size)
+            observed = source.head_object(Bucket=bucket, Key=key)
+            if observed.get("ContentLength") != size or (etag and observed.get("ETag") != etag):
+                raise BackupUnsafe("Source object changed while being backed up")
+            sha = hashlib.sha256(payload).hexdigest()
+            output_key = vault_key(prefix, bucket, key)
+            dest.put_object(Bucket=vault_bucket, Key=output_key, Body=payload, **kwargs)
+            # This is an actual independent restore read, not a metadata-only HEAD.
+            assert_restorable(dest, vault_bucket, output_key, sha, size)
+            manifest["objects"].append({
+                "bucket": bucket, "key": key, "private": BUCKET_PRIVACY[bucket],
+                "bytes": size, "sha256": sha, "vault_key": output_key,
+            })
+            counts[bucket] += 1
+        except BackupUnsafe:
+            raise
+        except Exception:
+            raise BackupUnsafe("Private object copying or verification failed; snapshot incomplete") from None
+    manifest["counts"] = counts
+    raw = canonical(manifest)
+    signature = hmac.new(mac_key, raw, hashlib.sha256).hexdigest()
+    manifest_key = prefix + "/manifest.json"
+    try:
+        dest.put_object(Bucket=vault_bucket, Key=manifest_key, Body=raw, **kwargs)
+        saved = dest.get_object(Bucket=vault_bucket, Key=manifest_key)
+        if read_bounded(saved["Body"], len(raw)) != raw:
+            raise BackupUnsafe("Manifest read-back failed")
+        completion = canonical({"schema": 1, "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+                                "manifest_hmac_sha256": signature, "objects": len(inventory),
+                                "verified_bytes": sum(x[2] for x in inventory)})
+        dest.put_object(Bucket=vault_bucket, Key=prefix + "/COMPLETE.json",
+                        Body=completion, **kwargs)
+        assert_restorable(dest, vault_bucket, prefix + "/COMPLETE.json",
+                          hashlib.sha256(completion).hexdigest(), len(completion))
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Could not atomically mark verified snapshot complete") from None
+    return {"snapshot": prefix, "objects": len(inventory), "verified_bytes": sum(x[2] for x in inventory),
+            "bucket_counts": counts}
+
+
+def load_config(env):
+    """No secrets are accepted on the command line or written to any logs."""
+    required = ("BACKUP_APPROVED_LIVE_RUN", "BACKUP_ENCRYPTED_PRIVATE_RUNNER",
+                "SUPABASE_S3_ACCESS_KEY_ID", "SUPABASE_S3_SECRET_ACCESS_KEY",
+                "BACKUP_DEST_BUCKET", "BACKUP_DEST_KMS_KEY_ARN",
+                "BACKUP_MANIFEST_HMAC_KEY_B64", "BACKUP_MIN_OBJECTS",
+                "BACKUP_SOURCE_PROJECT_REF", "AWS_REGION")
+    if any(not env.get(k) for k in required) or env["BACKUP_APPROVED_LIVE_RUN"] != "yes" \
+       or env["BACKUP_ENCRYPTED_PRIVATE_RUNNER"] != "yes" \
+       or env["BACKUP_SOURCE_PROJECT_REF"] != LIVE_PROJECT_REF:
+        raise BackupUnsafe("Approved isolated runner, complete credentials and exact live source required")
+    if any(env.get(k) for k in ("DATABASE_URL", "BACKUP_DATABASE_URL",
+                                "SUPABASE_SERVICE_ROLE_KEY", "STRIPE_SECRET_KEY")):
+        raise BackupUnsafe("Private Storage runner must not inherit database or payment credentials")
+    try:
+        key = base64.b64decode(env["BACKUP_MANIFEST_HMAC_KEY_B64"], validate=True)
+        minimum = int(env["BACKUP_MIN_OBJECTS"])
+        if len(key) < 32 or minimum < 1:
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise BackupUnsafe("Invalid private manifest signing key or minimum inventory") from None
+    arn = env["BACKUP_DEST_KMS_KEY_ARN"]
+    if not arn.startswith("arn:aws:kms:") or env["BACKUP_DEST_BUCKET"] in BUCKET_PRIVACY:
+        raise BackupUnsafe("Independent AWS S3 bucket and KMS key required")
+    return key, minimum
+
+
+def main():
+    try:
+        key, minimum = load_config(os.environ)
+        # Only import the isolated runner's dependency AFTER fail-closed env checks.
+        import boto3
+        from botocore.config import Config
+        source = boto3.client(
+            "s3",
+            endpoint_url=f"https://{LIVE_PROJECT_REF}.supabase.co/storage/v1/s3",
+            region_name="eu-west-2",
+            aws_access_key_id=os.environ["SUPABASE_S3_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["SUPABASE_S3_SECRET_ACCESS_KEY"],
+            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+        )
+        # Use the separately secured AWS identity/role on a private, encrypted runner.
+        dest = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+        result = make_snapshot(source, dest, os.environ["BACKUP_DEST_BUCKET"],
+                               os.environ["BACKUP_DEST_KMS_KEY_ARN"], key, minimum)
+        # No customer object names, document contents, account secrets or source URLs logged.
+        print(json.dumps({"status": "VERIFIED", "objects": result["objects"],
+                          "verified_bytes": result["verified_bytes"],
+                          "bucket_counts": result["bucket_counts"]}, sort_keys=True))
+    except BackupUnsafe as exc:
+        print("STORAGE_BACKUP_FAILED: " + str(exc), file=sys.stderr)
+        sys.exit(1)
+    except Exception:
+        print("STORAGE_BACKUP_FAILED: private-runner failure; inspect protected logs", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
