@@ -1,0 +1,43 @@
+name: Disposable five-helper and public-schema ACL hardening rehearsal
+on:
+  push:
+    branches: [release/simpledms-contract-recovery-gates-20261003]
+    paths:
+      - backend/scripts/security/ci-only-privileged-helper-hardening.sql
+      - .github/workflows/carmazium-five-helper-security-ci.yml
+  pull_request:
+    branches: [integration/simpledms-staging-candidate-20261003]
+    paths:
+      - backend/scripts/security/ci-only-privileged-helper-hardening.sql
+      - .github/workflows/carmazium-five-helper-security-ci.yml
+permissions:
+  contents: read
+jobs:
+  disposable-postgresql-seventeen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cm_helper_ci
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: synthetic-fake-ci-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d cm_helper_ci"
+          --health-interval 3s
+          --health-timeout 4s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ephemeral PostgreSQL client
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client
+      - name: Rehearse observed five helper signatures, explicit grants and seller/dealer/admin identity tests
+        env:
+          PGPASSWORD: synthetic-fake-ci-only
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_helper_ci \
+            -v ON_ERROR_STOP=1 -f backend/scripts/security/ci-only-privileged-helper-hardening.sql
+          echo "PASS: synthetic schema CREATE revoked; USAGE preserved; five privileged helpers tested with empty search_path; anonymous EXECUTE denied; buyer, dealer/staff and admin synthetic identity tests passed."
