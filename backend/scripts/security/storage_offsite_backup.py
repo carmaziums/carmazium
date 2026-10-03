@@ -44,7 +44,11 @@ def canonical(record):
 
 def expected_vault(dest, vault_bucket, kms_arn):
     """Verify the EXISTING independent vault; never create a bucket or grant."""
+    if not kms_arn.startswith("arn:aws:kms:eu-west-2:"):
+        raise BackupUnsafe("Default destination must use approved UK AWS KMS region")
     try:
+        if dest.get_bucket_location(Bucket=vault_bucket).get("LocationConstraint") != "eu-west-2":
+            raise BackupUnsafe("Independent vault must be located in approved UK AWS region")
         if dest.get_bucket_versioning(Bucket=vault_bucket).get("Status") != "Enabled":
             raise BackupUnsafe("Independent vault bucket versioning is required")
         block = dest.get_public_access_block(Bucket=vault_bucket)["PublicAccessBlockConfiguration"]
@@ -136,9 +140,7 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
     source_host = urlsplit(getattr(source.meta, "endpoint_url", "")).hostname
     dest_host = urlsplit(getattr(dest.meta, "endpoint_url", "")).hostname
     if source_host != LIVE_PROJECT_REF + ".supabase.co" or \
-       not (dest_host == "s3.amazonaws.com" or \
-            (dest_host or "").startswith("s3.") and \
-            (dest_host or "").endswith(".amazonaws.com")):
+       dest_host not in ("s3.eu-west-2.amazonaws.com", "s3.amazonaws.com"):
         raise BackupUnsafe("Exact production Supabase source and independent AWS S3 vault are required")
     expected_vault(dest, vault_bucket, kms_arn)
     inventory = enumerate_source(source)
@@ -336,7 +338,9 @@ def load_config(env):
     except (ValueError, TypeError):
         raise BackupUnsafe("Invalid private manifest signing key or minimum inventory") from None
     arn = env["BACKUP_DEST_KMS_KEY_ARN"]
-    if not arn.startswith("arn:aws:kms:") or env["BACKUP_DEST_BUCKET"] in BUCKET_PRIVACY:
+    if env["AWS_REGION"] != "eu-west-2" or \
+       not arn.startswith("arn:aws:kms:eu-west-2:") or \
+       env["BACKUP_DEST_BUCKET"] in BUCKET_PRIVACY:
         raise BackupUnsafe("Independent AWS S3 bucket and KMS key required")
     return key, minimum, minima
 
@@ -354,6 +358,8 @@ def main():
                    "DATABASE_URL", "BACKUP_DATABASE_URL", "STRIPE_SECRET_KEY")):
                 raise BackupUnsafe("Independent restore drill requires a separate private runner without live secrets")
             cfg = os.environ
+            if cfg.get("AWS_REGION") != "eu-west-2":
+                raise BackupUnsafe("Independent recovery vault must be in approved UK region")
             try:
                 signing = base64.b64decode(cfg["BACKUP_MANIFEST_HMAC_KEY_B64"], validate=True)
                 if len(signing) < 32:
