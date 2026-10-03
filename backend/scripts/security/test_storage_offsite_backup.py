@@ -11,6 +11,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -145,6 +146,22 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
         source.objects.clear()
         recovered = verify_without_source(vault, VAULT, KMS, MAC, report["snapshot"])
         self.assertEqual(recovered["bucket_counts"]["dealer-kyc-documents"], 1)
+
+    def test_physical_isolated_samples_recover_each_populated_bucket_then_are_erased(self):
+        _, vault, report = snapshot()
+        with tempfile.TemporaryDirectory() as folder:
+            os.chmod(folder, 0o700)
+            verified = verify_without_source(vault, VAULT, KMS, MAC,
+                                             report["snapshot"], folder)
+            self.assertEqual(verified["isolated_sample_restores"], 7)
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def test_physical_restore_refuses_writable_or_uncontrolled_directory(self):
+        _, vault, report = snapshot()
+        with tempfile.TemporaryDirectory() as folder:
+            os.chmod(folder, 0o755)
+            with self.assertRaisesRegex(BackupUnsafe, "owned and mode 0700"):
+                verify_without_source(vault, VAULT, KMS, MAC, report["snapshot"], folder)
 
     def test_enumerates_paginated_source_without_losing_items(self):
         source = FakeSource()
