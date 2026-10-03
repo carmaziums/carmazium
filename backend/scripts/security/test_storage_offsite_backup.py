@@ -237,7 +237,7 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
     def test_vault_filenames_use_secret_hmac_not_guessable_plain_hash(self):
         prefix = "carmazium-storage/v2/20261003T100000Z-0123456789abcdeffedcba98"
         bucket, key = "dealer-kyc-documents", "fictional/nested/test-vrm.jpg"
-        guessed = hashlib.sha256((bucket + "\\0" + key).encode()).hexdigest()
+        guessed = hashlib.sha256((bucket + "\0" + key).encode()).hexdigest()
         actual = vault_key(prefix, bucket, key, MAC)
         self.assertNotEqual(actual.split("/")[-1], guessed)
         self.assertNotEqual(actual, vault_key(prefix, bucket, key, b"independent-different-secret-key-1234567"))
