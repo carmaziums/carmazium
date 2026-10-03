@@ -1292,6 +1292,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       setTransmission('');
       setBodyType('');
       setDvlaFetched(false);
+      // The old in-flight request has been invalidated; do not leave Analyse disabled
+      // if its stale finally block correctly refrains from touching a new request.
+      setDvlaLoading(false);
     }
     setVrm(cleaned);
     if (cleaned.length >= 7 && cleaned.length <= 8 && !dvlaFetched && !dvlaLoading) {
