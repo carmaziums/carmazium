@@ -115,7 +115,7 @@ describe('SimpleDmsService partner data boundary', () => {
   });
 
   it('never advertises an untrackable or misconfigured direct URL as a signed referral', async () => {
-    const cases = [
+    const cases: Record<string, string>[] = [
       { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com' },
       { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com', PARTNER_API_REFERRAL_SIGNING_SECRET: 'short' },
       { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://outside.example', PARTNER_API_REFERRAL_SIGNING_SECRET: 'test-referral-signing-secret-with-32-characters' },
