@@ -41,6 +41,7 @@ import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleR
 import { saveSellerHandoff, readSellerHandoff, clearSellerHandoff } from "@/lib/pendingSellerHandoff"
 import { sellerDraftKeys, discardUnownedLegacySellerDraft, createHpiBinding, parseHpiBinding, matchesHpiReturn } from "@/lib/sellerDraftIsolation"
 import { getMissingSellerDeclarations, sellerDeclarationErrorMessage } from "@/lib/sellerDeclarationValidation"
+import { EMPTY_SELLER_AUCTION_DRAFT, parseSellerAuctionDraft, sellerAuctionDraftReady } from "@/lib/sellerAuctionDraft"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -391,13 +392,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
-    const [auctionSchedule, setAuctionSchedule] = React.useState({
-        startTime: '',
-        reservePrice: '',
-        startingBid: '',
-        minIncrement: '100',
-        buyItNowPrice: '',
-    })
+    const [auctionSchedule, setAuctionSchedule] = React.useState({ ...EMPTY_SELLER_AUCTION_DRAFT })
 
 
     // Edit mode — detect from URL params
@@ -419,6 +414,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         setReadyDraftOwner(nextOwner)
         draftRestoreAttemptedRef.current = false
         setFormData({ ...INITIAL_FORM })
+        setAuctionSchedule({ ...EMPTY_SELLER_AUCTION_DRAFT })
         setSellingMethod(null)
         setCurrentStep(1)
         setDraftListingId(null)
@@ -610,15 +606,21 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 parsed,
                 getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR'),
             )
-            setCurrentStep(specsValid && Number.isInteger(savedStep) && savedStep >= 1
-                ? Math.min(savedStep, maxStep) : 1)
-            if (!specsValid) setHasAttemptedNext(true)
+            const savedAuction = parsed.listingType === 'AUCTION'
+                ? parseSellerAuctionDraft(localStorage.getItem(draftKeys.auctionSchedule))
+                : null
+            setAuctionSchedule(savedAuction ?? { ...EMPTY_SELLER_AUCTION_DRAFT })
+            const auctionReady = parsed.listingType !== 'AUCTION' || sellerAuctionDraftReady(savedAuction)
+            const wantedStep = Number.isInteger(savedStep) && savedStep >= 1 ? Math.min(savedStep, maxStep) : 1
+            setCurrentStep(!specsValid ? 1 : (!auctionReady && wantedStep > 3 ? 4 : wantedStep))
+            if (!specsValid || (!auctionReady && wantedStep > 3)) setHasAttemptedNext(true)
 
             const savedDraftId = localStorage.getItem(draftKeys.hpiDraftId)
             if (savedDraftId) setDraftListingId(savedDraftId)
         } catch (error) {
             console.error('Failed to restore saved listing draft:', error)
             localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
             localStorage.removeItem(draftKeys.step)
         }
     }, [editId, searchParams, isDashboard, draftKeys, user?.id, authLoading])
@@ -649,6 +651,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         })
         setSellingMethod('list')
         setDraftListingId(savedDraftId)
+        const returnedAuction = verifiedDraft.listingType === 'AUCTION'
+            ? parseSellerAuctionDraft(localStorage.getItem(draftKeys.auctionSchedule))
+            : null
+        setAuctionSchedule(returnedAuction ?? { ...EMPTY_SELLER_AUCTION_DRAFT })
         const specsValid = hasCompleteSellerVehicleSpecs(verifiedDraft, getBodyTypeKeysForVehicleType(verifiedDraft.vehicleType || 'CAR'))
         setCurrentStep(specsValid ? 2 : 1)
         if (!specsValid) setHasAttemptedNext(true)
@@ -662,15 +668,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         getSessionStatus(sessionId)
             .then(status => {
                 if (cancelled) return
-                if (status.paymentStatus !== 'paid') {
-                    setHpiVerifyError("We couldn't confirm your HPI report payment. If you were charged, please contact support.")
+                if (status.paymentStatus !== 'paid'
+                    || status.metadata?.listingId !== savedDraftId
+                    || normalizeVehicleRegistration(status.metadata?.vrm) !== binding?.vrm) {
+                    setHpiVerifyError("This HPI checkout could not be verified for your saved vehicle. If you were charged, please contact support.")
                     return
                 }
-                return applyHpiFee(sessionId).then(() => {
-                    if (!cancelled) {
-                        setIsHpiUnlocked(true)
-                        sessionStorage.removeItem(draftKeys.hpiCheckout)
+                return applyHpiFee(sessionId).then(result => {
+                    if (cancelled) return
+                    if (!result.applied) {
+                        setHpiVerifyError("Your payment was received, but the HPI request has not been confirmed. Please contact support. Do not pay again.")
+                        return
                     }
+                    setIsHpiUnlocked(true)
+                    sessionStorage.removeItem(draftKeys.hpiCheckout)
                 })
             })
             .catch(() => { if (!cancelled) setHpiVerifyError("Couldn't verify your payment. Please refresh or contact support if you were charged.") })
@@ -685,8 +696,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             && sellingMethod === 'list' && formData.vrm) {
             localStorage.setItem(draftKeys.draft, JSON.stringify(formData))
             localStorage.setItem(draftKeys.step, String(currentStep))
+            if (formData.listingType === 'AUCTION') {
+                localStorage.setItem(draftKeys.auctionSchedule, JSON.stringify(auctionSchedule))
+            } else {
+                localStorage.removeItem(draftKeys.auctionSchedule)
+            }
         }
-    }, [formData, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
+    }, [formData, auctionSchedule, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
 
     const handleStartFresh = () => {
         const confirmed = window.confirm(
@@ -697,6 +713,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         // Clear every browser-side draft reference first so the reset cannot be
         // restored on the next render or after a refresh.
         localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
         localStorage.removeItem(draftKeys.step)
         localStorage.removeItem(draftKeys.hpiDraftId)
         draftRestoreAttemptedRef.current = true
@@ -705,6 +722,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         // drafts are deliberately not deleted here; this action clears the
         // current unsaved form without silently destroying a saved listing.
         setFormData({ ...INITIAL_FORM, features: [], images: [], videoUrls: [], motHistory: [] })
+        setAuctionSchedule({ ...EMPTY_SELLER_AUCTION_DRAFT })
         setCurrentStep(1)
         setSellingMethod(null)
         setManualMakeEntry(false)
@@ -1167,8 +1185,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
                 if (auctionSchedule.startTime !== 'NOW') {
                     const startMs = new Date(auctionSchedule.startTime).getTime()
-                    if (startMs < Date.now() - 60 * 1000) {
-                        return 'The auction start time cannot be in the past.'
+                    if (!Number.isFinite(startMs) || startMs <= Date.now()) {
+                        return 'Please enter a valid future auction start date and time.'
                     }
                 }
                 if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) {
@@ -1177,8 +1195,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) {
                     return 'Please enter a valid opening bid.'
                 }
-                if (!auctionSchedule.minIncrement || parseFloat(auctionSchedule.minIncrement) <= 0) {
+                if (!auctionSchedule.minIncrement || !Number.isFinite(Number(auctionSchedule.minIncrement)) || Number(auctionSchedule.minIncrement) <= 0) {
                     return 'Please enter a valid minimum bid increment.'
+                }
+                if (auctionSchedule.buyItNowPrice
+                    && (!Number.isFinite(Number(auctionSchedule.buyItNowPrice)) || Number(auctionSchedule.buyItNowPrice) <= 0)) {
+                    return 'Please enter a valid Buy It Now price.'
                 }
                 return null
             }
@@ -1498,15 +1520,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         if (!isAuthenticated) { setShowLoginModal(true); return }
         if (!isEmailVerified) { router.push("/auth/onboarding"); return }
 
-        // Review can be reached through a historical draft or return from HPI,
-        // so never send invalid details to create/checkout or spend a listing grant.
-        const detailsError = getStepValidationError(1)
-        if (detailsError) {
-            setCurrentStep(1)
-            setHasAttemptedNext(true)
-            setSubmitError("Review your vehicle details before submitting.")
-            alert(detailsError)
-            return
+        // A restored Review step has not necessarily passed the earlier form
+        // gates during this session. Check all steps before any API/payment.
+        for (const step of (formData.listingType === 'AUCTION' ? [1, 2, 3, 4] : [1, 2, 3])) {
+            const error = getStepValidationError(step)
+            if (error) {
+                setCurrentStep(step)
+                setHasAttemptedNext(true)
+                setSubmitError(error)
+                alert(error)
+                return
+            }
         }
 
         setIsSubmitting(true)
@@ -1683,6 +1707,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
 
                 localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
             localStorage.removeItem(draftKeys.step)
                 localStorage.removeItem(draftKeys.hpiDraftId)
 
@@ -1829,6 +1854,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         trackListingSubmitted(payload, newListingId, 'published')
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
                         localStorage.removeItem(draftKeys.step)
                         setCurrentStep(1)
                         setSellingMethod(null)
@@ -1842,6 +1868,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             onContinue: () => {
                                 setFormData(INITIAL_FORM)
                                 localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
                         localStorage.removeItem(draftKeys.step)
                                 setCurrentStep(1)
                                 setSellingMethod(null)
@@ -1867,6 +1894,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     onContinue: () => {
                         setFormData(INITIAL_FORM)
                         localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
                         localStorage.removeItem(draftKeys.step)
                         setCurrentStep(1)
                         setSellingMethod(null)
@@ -1943,6 +1971,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             if (publish.activated) {
                 trackListingSubmitted(payload, result.listingId, 'published')
                 localStorage.removeItem(draftKeys.draft)
+            localStorage.removeItem(draftKeys.auctionSchedule)
                 localStorage.removeItem(draftKeys.step)
                 router.push(result.slug ? `/buy-cars/${result.slug}` : '/dashboard/seller/listings')
                 return
