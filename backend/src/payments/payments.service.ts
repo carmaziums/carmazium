@@ -561,9 +561,35 @@ export class PaymentsService {
     }
 
     /**
+     * All seller HPI payment paths must prove ownership/verified dealership
+     * authority and use the registration on the persisted listing. Never
+     * issue a checkout against a stranger's or a different vehicle's listing.
+     */
+    private async requireSellerHpiListing(
+        listingId: string,
+        userId: string,
+        requestedVrm: string | undefined,
+    ): Promise<string> {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: { id: true, sellerId: true, vrm: true, deletedAt: true },
+        });
+        if (!listing || listing.deletedAt) throw new NotFoundException('Vehicle listing not found');
+        await this.assertPaymentActorAccess(listing.sellerId, userId, 'MANAGE_INVENTORY');
+
+        const canonicalVrm = String(listing.vrm ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const suppliedVrm = String(requestedVrm ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!canonicalVrm || !suppliedVrm || suppliedVrm !== canonicalVrm) {
+            throw new BadRequestException('HPI registration must match the saved vehicle listing');
+        }
+        return canonicalVrm;
+    }
+
+    /**
      * Create a Stripe Checkout Session for an HPI Report.
      */
     async createHpiSession(vrm: string, userId: string, listingId: string) {
+        vrm = await this.requireSellerHpiListing(listingId, userId, vrm);
         const stripe = await this.getStripe();
         const baseUrl = resolveFrontendUrl(this.config.get<string>('FRONTEND_URL'));
 
@@ -883,9 +909,7 @@ export class PaymentsService {
                 amount = this.AUCTION_BUYER_FEE;
                 break;
             case 'HPI_REPORT':
-                if (!vrm) {
-                    throw new BadRequestException('vrm is required for a HPI_REPORT payment.');
-                }
+                vrm = await this.requireSellerHpiListing(listingId, userId, vrm);
                 amount = this.HPI_REPORT_PRICE;
                 break;
             default:
