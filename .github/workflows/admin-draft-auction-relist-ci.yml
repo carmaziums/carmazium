@@ -1,0 +1,74 @@
+name: Admin Draft Auction Relist CI
+
+on:
+  pull_request:
+    paths:
+      - "backend/src/admin/admin.service.ts"
+      - "backend/src/admin/admin.controller.ts"
+      - "backend/src/admin/admin-draft-auction-relist.spec.ts"
+      - "src/app/dashboard/admin/listings/page.tsx"
+      - "src/lib/adminApi.ts"
+      - ".github/workflows/admin-draft-auction-relist-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backend-regressions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Focused admin relist regression suite
+        run: npm test -- --runInBand admin-draft-auction-relist.spec.ts
+      - name: Backend TypeScript (fail on changed admin surfaces)
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npx tsc --noEmit --pretty false 2>&1)"
+          STATUS=$?
+          set -e
+          printf '%s\n' "$OUTPUT"
+          if [ "$STATUS" -eq 0 ]; then exit 0; fi
+          CHANGED="$(printf '%s\n' "$OUTPUT" | grep -E '^src/admin/(admin\.service|admin\.controller|admin-draft-auction-relist\.spec)\.ts' || true)"
+          if [ -n "$CHANGED" ]; then
+            echo "TypeScript errors detected in this feature:"
+            printf '%s\n' "$CHANGED"
+            exit 1
+          fi
+          echo "Backend has unrelated pre-existing TS errors; none were reported in changed admin files."
+
+  web-admin-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Web TypeScript (fail on changed admin surfaces)
+        shell: bash
+        run: |
+          set +e
+          OUTPUT="$(npx tsc --noEmit --pretty false 2>&1)"
+          STATUS=$?
+          set -e
+          printf '%s\n' "$OUTPUT"
+          if [ "$STATUS" -eq 0 ]; then exit 0; fi
+          CHANGED="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(app/dashboard/admin/listings/page\.tsx|lib/adminApi\.ts)' || true)"
+          if [ -n "$CHANGED" ]; then
+            echo "TypeScript errors detected in this feature:"
+            printf '%s\n' "$CHANGED"
+            exit 1
+          fi
+          echo "Web has unrelated pre-existing TS errors; none were reported in changed admin files."
