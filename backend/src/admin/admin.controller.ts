@@ -28,6 +28,7 @@ import { AdminCorrectAuctionPriceDto } from './dto/admin-correct-auction-price.d
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
@@ -168,6 +169,18 @@ export class AdminController {
     ): Promise<StandardResponse<any>> {
         const listing = await this.adminService.updateListing(id, dto);
         return new StandardResponse(listing);
+    }
+
+    @Post('listings/:id/relist-auction')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Admin-only one-click relist of an eligible seller draft into a 24-hour auction' })
+    @ApiParam({ name: 'id', description: 'Draft listing UUID' })
+    async relistDraftAsAuction(
+        @Param('id') id: string,
+        @CurrentUser() admin: any,
+    ): Promise<StandardResponse<any>> {
+        const auction = await this.adminService.relistDraftAsAuction(id, admin.id);
+        return new StandardResponse(auction);
     }
 
     @Post('listings/:id/approve')
