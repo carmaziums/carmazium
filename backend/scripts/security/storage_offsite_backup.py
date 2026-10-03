@@ -344,9 +344,11 @@ def load_config(env):
 def main():
     try:
         mode = os.environ.get("BACKUP_MODE", "backup")
-        if mode == "verify":
+        if mode in ("verify", "restore_sample"):
             if os.environ.get("BACKUP_ENCRYPTED_PRIVATE_RUNNER") != "yes" or \
                os.environ.get("BACKUP_APPROVED_VERIFY_ONLY") != "yes" or \
+               (mode == "restore_sample" and
+                os.environ.get("BACKUP_APPROVED_SAMPLE_RESTORE") != "yes") or \
                any(os.environ.get(k) for k in (
                    "SUPABASE_S3_SECRET_ACCESS_KEY", "SUPABASE_SERVICE_ROLE_KEY",
                    "DATABASE_URL", "BACKUP_DATABASE_URL", "STRIPE_SECRET_KEY")):
@@ -362,7 +364,9 @@ def main():
                                     config=Config(signature_version="s3v4"))
                 out = verify_without_source(dest, cfg["BACKUP_DEST_BUCKET"],
                                             cfg["BACKUP_DEST_KMS_KEY_ARN"],
-                                            signing, cfg["BACKUP_VERIFY_SNAPSHOT"])
+                                            signing, cfg["BACKUP_VERIFY_SNAPSHOT"],
+                                            cfg["BACKUP_SAMPLE_RESTORE_DIR"]
+                                            if mode == "restore_sample" else None)
             except (KeyError, ValueError):
                 raise BackupUnsafe("Independent restore drill configuration incomplete") from None
         elif mode == "backup":
@@ -390,7 +394,9 @@ def main():
             raise BackupUnsafe("Unsupported backup operation")
         print(json.dumps({"status": out["status"], "objects": out["objects"],
                           "verified_bytes": out["verified_bytes"],
-                          "bucket_counts": out["bucket_counts"]}, sort_keys=True))
+                          "bucket_counts": out["bucket_counts"],
+                          "isolated_sample_restores": out.get("isolated_sample_restores", 0)},
+                         sort_keys=True))
     except BackupUnsafe as exc:
         print("STORAGE_BACKUP_FAILED: " + str(exc), file=sys.stderr)
         sys.exit(1)
