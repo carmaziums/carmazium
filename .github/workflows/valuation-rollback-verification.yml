@@ -1,0 +1,137 @@
+name: Valuation Whole-System Revert Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'src/**'
+      - 'carmazium app/carmazium app/**'
+      - 'scripts/valuation-rollback.mjs'
+      - 'scripts/test-valuation-rollback.mjs'
+      - '.github/workflows/valuation-rollback-verification.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: valuation-whole-revert-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  whole-system-revert:
+    name: Single-squash release and legacy rollback proof
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout actual PR head and full Git history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Node runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Simulate reverting the entire bundle after unrelated updates
+        run: node --test scripts/test-valuation-rollback.mjs
+      - name: Refuse undeclared changes or modified legacy source anchors
+        run: node scripts/valuation-rollback.mjs --check-candidate --base-ref origin/main
+      - name: Rehearse reverting the ACTUAL complete ten-block source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline="741aaa35d605c151bfe31ad071fee279058c563f"
+          candidate="$(git rev-parse HEAD)"
+          scratch="$(mktemp -d)"
+          rehearsal="$scratch/actual-release"
+          cp backend/docs/valuation-release-manifest.json "$scratch/manifest.json"
+          trap 'git worktree remove --force "$rehearsal" >/dev/null 2>&1 || true; rm -rf "$scratch"' EXIT
+          git worktree add --detach "$rehearsal" "$baseline"
+          # Construct a throwaway real-source version of the one-squash
+          # commit we require on the future approved main release.
+          git -C "$rehearsal" merge --squash "$candidate"
+          git -C "$rehearsal" -c user.name='Valuation CI' \
+            -c user.email='valuation-ci@example.invalid' \
+            commit -m 'CarMazium valuation release blocks 1-10: real source rehearsal'
+          release="$(git -C "$rehearsal" rev-parse HEAD)"
+          short="$(printf '%s' "$release" | cut -c1-8)"
+          git -C "$rehearsal" switch -c "valuation-rollback/$short"
+          # Unrelated work after release MUST survive the rollback.
+          printf 'new unrelated development after the valuation release\n' \
+            > "$rehearsal/ci-rehearsal-unrelated-only.txt"
+          git -C "$rehearsal" add ci-rehearsal-unrelated-only.txt
+          git -C "$rehearsal" -c user.name='Valuation CI' \
+            -c user.email='valuation-ci@example.invalid' \
+            commit -m 'Keep unrelated post-release development'
+          node "$rehearsal/scripts/valuation-rollback.mjs" --verify-release "$release"
+          node "$rehearsal/scripts/valuation-rollback.mjs" --prepare-revert "$release"
+          # Compare ALL 51 real programme files against the untouched
+          # pre-Block-1 Git tree, not just a few backend anchors.
+          node --input-type=module - "$rehearsal" "$baseline" "$scratch/manifest.json" <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          const [folder, baseline, file] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(file,'utf8'));
+          const actual = execFileSync('git', ['diff','--name-only',baseline,'--',...manifest.allowedReleasePaths], {cwd:folder,encoding:'utf8'}).trim();
+          assert.equal(actual,'','Not every real valuation programme file returned to its exact original content');
+          assert.equal(fs.readFileSync(path.join(folder,'ci-rehearsal-unrelated-only.txt'),'utf8'),
+            'new unrelated development after the valuation release\n');
+          const staged = execFileSync('git',['diff','--cached','--name-only','-z'],{cwd:folder,encoding:'utf8'}).split('\0').filter(Boolean).sort();
+          assert.deepEqual(staged, [...manifest.allowedReleasePaths].sort());
+          console.log('REAL_TEN_BLOCK_SOURCE_ROLLBACK_PASS: all 51 files restored; later unrelated commit preserved');
+          NODE
+      - name: Explain remaining external release gates
+        run: |
+          echo "Validated ONLY source scope and synthetic whole-programme reversal."
+          echo "Real-market staging, security/advisory review and release approval are still required."
+          echo "No production deployment or database write has occurred."
+
+  dependency-advisory-report:
+    name: Dependency advisories (manual release gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # All ten valuation blocks introduce no package changes; do not mix
+      # unrelated dependency upgrades into an irreversible release.
+      # Run a read-only lockfile scan and REQUIRE explicit human sign-off
+      # for anything high/critical. This report is NOT a security clearance.
+      - name: Read-only audit summaries for backend, website and native app
+        shell: bash
+        run: |
+          set -euo pipefail
+          for directory in backend . "carmazium app/carmazium app"; do
+            echo "Auditing lockfile for: ${directory}"
+            temp="$(mktemp)"
+            (cd "${directory}" && npm audit --package-lock-only --omit=dev --json > "${temp}") || true
+            node -e '
+              const fs=require("fs");
+              const [f,name]=process.argv.slice(1);
+              const raw=fs.readFileSync(f,"utf8");
+              let data;
+              try { data=JSON.parse(raw); } catch {
+                console.error("Cannot verify dependency audit output: "+name);
+                process.exit(2);
+              }
+              const v=data.metadata?.vulnerabilities;
+              if (!v || typeof v.critical!=="number" || typeof v.high!=="number") {
+                console.error("Dependency audit unavailable; manual release gate remains open: "+name);
+                process.exit(2);
+              }
+              console.log(JSON.stringify({
+                project:name, critical:v.critical, high:v.high,
+                moderate:v.moderate, low:v.low, total:v.total,
+                releaseSecurityApproval: v.critical||v.high ? "REQUIRES_SECURITY_REVIEW" : "ADVISORY_SCAN_COMPLETE",
+              }));
+              if (v.critical||v.high) {
+                console.log("::warning::High/critical dependency advisories require triage before valuation release.");
+              }
+            ' "${temp}" "${directory}"
+            rm -f "${temp}"
+          done
