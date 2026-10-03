@@ -1,0 +1,123 @@
+name: Non-Deploying Backend Docker Image Preflight
+
+on:
+  pull_request:
+    branches: [security-backend-runtime-build-tool-isolation-20261003]
+    paths:
+      - '.github/workflows/backend-docker-image-preflight.yml'
+      - 'backend/Dockerfile'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-inspect-isolated-image:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'security-backend-docker-image-preflight-20261003')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out pinned proposed security candidate only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect target Dockerfile and declare known default-Node caveat
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F "ARG NODE_VERSION=20.10.0" backend/Dockerfile
+          echo "::warning::The existing unmodified production Dockerfile defaults to Node 20.10.0 while Nest CLI 11.0.24 requires Node >=20.11. This preflight explicitly overrides Node for a non-deployed compatibility test."
+          # Do NOT change production Fly config or create an app.
+          grep -F "app = 'carmazium-hjoh9w'" backend/fly.toml
+          if grep -E '^[[:space:]]*release_command' backend/fly.toml; then
+            echo "Unsafe automatic DB release migration detected"; exit 1
+          fi
+      - name: Build actual multistage image using supported Node 22 test override
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --pull --progress=plain \
+            --build-arg NODE_VERSION=22 \
+            -f backend/Dockerfile \
+            -t carmazium-synthetic-staging-preflight:pr \
+            backend
+          echo DOCKER_MULTISTAGE_BUILD_NODE22_COMPATIBILITY_PASS
+      - name: Inspect physical runtime image offline; require auth/Prisma native readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            --entrypoint /bin/sh \
+            carmazium-synthetic-staging-preflight:pr \
+            -ec '
+              cd /app
+              node --version
+              pg_dump --version
+              test -s dist/main.js
+              test -f node_modules/@prisma/client/package.json
+              for tool in \
+                node_modules/@nestjs/cli \
+                node_modules/@nestjs/schematics \
+                node_modules/@swc/cli \
+                node_modules/@xhmikosr/bin-wrapper \
+                node_modules/@xhmikosr/downloader; do
+                if [ -d "$tool" ]; then
+                  echo "DISALLOWED_PRODUCTION_BUILD_TOOL $tool"
+                  exit 1
+                fi
+              done
+              node -e "
+                const fs=require(\"fs\");
+                const b=require(\"bcrypt\");
+                const p=require(\"@prisma/client/package.json\");
+                if(p.version!==\"6.19.3\")throw Error(\"Wrong Prisma Client version\");
+                (async()=>{
+                  const h=await b.hash(\"test-only synthetic Docker authentication\",10);
+                  if(!(await b.compare(\"test-only synthetic Docker authentication\",h))
+                     ||await b.compare(\"incorrect synthetic password\",h))
+                    throw Error(\"bcrypt native addon incompatible with tested container\");
+                  const {PrismaClient}=require(\"@prisma/client\");
+                  const client=new PrismaClient();
+                  await client.$disconnect();
+                  console.log(\"DOCKER_RUNTIME_NATIVE_AUTH_AND_PRISMA_CLIENT_PASS\");
+                })().catch(e=>{console.error(e.message);process.exitCode=1;});
+              "
+              echo COPIED_BUILDER_PRISMA_MODULES
+              find node_modules/@prisma -mindepth 1 -maxdepth 1 -type d | sort
+              echo DOCKER_OFFLINE_RUNTIME_IMAGE_INSPECTION_PASS
+            '
+      - name: Independently audit installed dependencies in final physical image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --entrypoint /bin/sh \
+            carmazium-synthetic-staging-preflight:pr \
+            -ec '
+              cd /app
+              npm audit --omit=dev --json > /tmp/image-production-audit.json || true
+              node -e "
+                const f=require(\"fs\");
+                const a=JSON.parse(f.readFileSync(\"/tmp/image-production-audit.json\",\"utf8\"));
+                const c=a.metadata?.vulnerabilities;
+                if(!c||!Number.isInteger(c.critical)||!Number.isInteger(c.high))
+                  throw Error(\"Final image npm audit unavailable\");
+                console.log(\"DOCKER_IMAGE_NPM_AUDIT \"+JSON.stringify(c));
+                if(c.critical || c.high)throw Error(\"Critical/high findings remain in assembled image npm audit\");
+              "
+              for name in @nestjs/cli @nestjs/schematics @swc/cli; do
+                test ! -d "node_modules/$name" || exit 1
+              done
+              echo DOCKER_IMAGE_AUDIT_REPORT_COMPLETE
+            '
+      - name: Reiterate preflight limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Success validates the candidate container under Node 22 only. The unmodified default Fly Dockerfile Node 20.10.0 is NOT certified."
+          echo "No Fly staging app, Supabase paid branch, database, login endpoint, real vehicle valuation provider, Stripe payment, cloud resource or production deployment was used."
