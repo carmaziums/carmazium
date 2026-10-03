@@ -16,6 +16,7 @@ on:
   pull_request:
     branches:
       - security/simpledms-dependency-fixes
+      - test/simpledms-synthetic-contract-gates-20261003
     paths:
       - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
       - backend/src/partner-api/simpledms.service.ts
