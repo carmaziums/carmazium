@@ -326,6 +326,14 @@ export class AdminService {
                             dealerProfile: { select: { companyName: true, isVerified: true } },
                         },
                     },
+                    auction: {
+                        select: {
+                            id: true,
+                            status: true,
+                            reservePrice: true,
+                            deletedAt: true,
+                        },
+                    },
                 },
             }),
             this.prisma.listing.count({ where }),
@@ -431,7 +439,7 @@ export class AdminService {
             }
 
             const normaliseVrm = (vrm?: string | null) =>
-                (vrm ?? '').replace(/\\s/g, '').toUpperCase();
+                (vrm ?? '').replace(/\s/g, '').toUpperCase();
             const vrm = normaliseVrm(listing.vrm);
             const sibling = otherListings.find(other =>
                 vrm && normaliseVrm(other.vrm) === vrm
