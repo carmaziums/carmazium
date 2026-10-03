@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { UserRole } from '@prisma/client';
+import { ListingStatus, UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
@@ -312,9 +312,23 @@ export class AdminService {
      */
     async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string) {
         const skip = (page - 1) * limit;
+        const selectedStatus = status?.toUpperCase();
+        // Deleted listings retain their prior lifecycle status; use deletedAt.
+        if (
+            selectedStatus
+            && selectedStatus !== 'ALL'
+            && selectedStatus !== 'DELETED'
+            && !Object.values(ListingStatus).includes(selectedStatus as ListingStatus)
+        ) {
+            throw new BadRequestException('Invalid listing status filter');
+        }
         const where = {
-            ...(sellerRole ? { seller: { role: sellerRole as any } } : {}),
-            ...(status === 'DRAFT' ? { status: 'DRAFT' as const } : {}),
+            ...(sellerRole ? { seller: { role: sellerRole as UserRole } } : {}),
+            ...(selectedStatus === 'DELETED'
+                ? { deletedAt: { not: null } }
+                : selectedStatus && selectedStatus !== 'ALL'
+                    ? { status: selectedStatus as ListingStatus, deletedAt: null }
+                    : {}),
         };
         const [data, total] = await Promise.all([
             this.prisma.listing.findMany({
