@@ -132,8 +132,14 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
     """Fail closed. COMPLETE sentinel written last, after real restore reads."""
     if len(mac_key) < 32 or min_objects < 1:
         raise BackupUnsafe("Private manifest signing key and minimum object count required")
-    if getattr(source.meta, "endpoint_url", "") == getattr(dest.meta, "endpoint_url", ""):
-        raise BackupUnsafe("Storage backup vault must be an independent endpoint")
+    from urllib.parse import urlsplit
+    source_host = urlsplit(getattr(source.meta, "endpoint_url", "")).hostname
+    dest_host = urlsplit(getattr(dest.meta, "endpoint_url", "")).hostname
+    if source_host != LIVE_PROJECT_REF + ".supabase.co" or \
+       not (dest_host == "s3.amazonaws.com" or \
+            (dest_host or "").startswith("s3.") and \
+            (dest_host or "").endswith(".amazonaws.com")):
+        raise BackupUnsafe("Exact production Supabase source and independent AWS S3 vault are required")
     expected_vault(dest, vault_bucket, kms_arn)
     inventory = enumerate_source(source)
     if len(inventory) < min_objects:
