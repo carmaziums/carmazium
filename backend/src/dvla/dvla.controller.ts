@@ -49,4 +49,16 @@ export class DvlaController {
     async lookup(@Body() dto: DvlaLookupDto): Promise<DvlaLookupResult> {
         return this.dvlaService.lookupVrm(dto.vrm, dto.allowAiEnrichment === true);
     }
+    // Optional consented research runs *after* the first core DVLA response.
+    // This endpoint never holds up the seller's main registration analysis.
+    @Post('enrich')
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 4, ttl: 60000 } })
+    @HttpCode(HttpStatus.OK)
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    @ApiOperation({ summary: 'Optional consented live-web vehicle specification enrichment' })
+    async enrich(@Body() dto: DvlaLookupDto): Promise<DvlaLookupResult> {
+        return this.dvlaService.enrichVrm(dto.vrm, dto.allowAiEnrichment === true);
+    }
+
 }
