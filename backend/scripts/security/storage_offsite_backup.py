@@ -202,6 +202,66 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
             "bucket_counts": counts}
 
 
+def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix):
+    """Disaster drill: verify every vaulted byte without any Supabase access.
+
+    This does not write production objects, fetch live credentials or create
+    any restore infrastructure. The bytes remain in encrypted private memory.
+    """
+    import re
+    if len(mac_key) < 32 or not re.fullmatch(
+        r"carmazium-storage/v1/\d{8}T\d{6}Z-[a-f0-9]{24}", prefix
+    ):
+        raise BackupUnsafe("Valid private key and immutable snapshot identifier required")
+    expected_vault(dest, vault_bucket, kms_arn)
+    try:
+        complete_body = dest.get_object(Bucket=vault_bucket, Key=prefix + "/COMPLETE.json")
+        completion_raw = read_bounded(complete_body["Body"], complete_body["ContentLength"])
+        completion = json.loads(completion_raw)
+        manifest_body = dest.get_object(Bucket=vault_bucket, Key=prefix + "/manifest.json")
+        manifest_raw = read_bounded(manifest_body["Body"], manifest_body["ContentLength"])
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Snapshot is incomplete or manifest cannot be retrieved") from None
+    if completion.get("schema") != 1 or \
+       not hmac.compare_digest(completion.get("manifest_sha256", ""),
+                               hashlib.sha256(manifest_raw).hexdigest()) or \
+       not hmac.compare_digest(completion.get("manifest_hmac_sha256", ""),
+                               hmac.new(mac_key, manifest_raw, hashlib.sha256).hexdigest()):
+        raise BackupUnsafe("Independent backup manifest failed integrity/authenticity checks")
+    try:
+        manifest = json.loads(manifest_raw)
+        objects = manifest["objects"]
+        if manifest["schema"] != 1 or manifest["snapshot"] != prefix or \
+           manifest["buckets"] != {k: {"private": v} for k, v in sorted(BUCKET_PRIVACY.items())} \
+           or not objects or len(objects) != completion["objects"]:
+            raise BackupUnsafe("Independent backup manifest schema, scope or count invalid")
+        seen = set()
+        verified_bytes = 0
+        counts = {k: 0 for k in BUCKET_PRIVACY}
+        for item in objects:
+            bucket, key = item["bucket"], item["key"]
+            if bucket not in BUCKET_PRIVACY or item["private"] is not BUCKET_PRIVACY[bucket] \
+               or not isinstance(key, str) or not key or (bucket, key) in seen \
+               or item["vault_key"] != vault_key(prefix, bucket, key) \
+               or item["bytes"] < 0 or item["bytes"] > MAX_SINGLE_OBJECT:
+                raise BackupUnsafe("Independent backup manifest object entry invalid")
+            seen.add((bucket, key))
+            assert_restorable(dest, vault_bucket, item["vault_key"],
+                              item["sha256"], item["bytes"])
+            verified_bytes += item["bytes"]
+            counts[bucket] += 1
+        if verified_bytes != completion["verified_bytes"] or counts != manifest["counts"]:
+            raise BackupUnsafe("Independent backup inventory or byte totals do not match")
+        return {"status": "RESTORE_BYTES_VERIFIED", "objects": len(objects),
+                "verified_bytes": verified_bytes, "bucket_counts": counts}
+    except BackupUnsafe:
+        raise
+    except Exception:
+        raise BackupUnsafe("Independent recovery verification failed") from None
+
+
 def load_config(env):
     """No secrets are accepted on the command line or written to any logs."""
     required = ("BACKUP_APPROVED_LIVE_RUN", "BACKUP_ENCRYPTED_PRIVATE_RUNNER",
@@ -231,31 +291,59 @@ def load_config(env):
 
 def main():
     try:
-        key, minimum = load_config(os.environ)
-        # Only import the isolated runner's dependency AFTER fail-closed env checks.
-        import boto3
-        from botocore.config import Config
-        source = boto3.client(
-            "s3",
-            endpoint_url=f"https://{LIVE_PROJECT_REF}.supabase.co/storage/v1/s3",
-            region_name="eu-west-2",
-            aws_access_key_id=os.environ["SUPABASE_S3_ACCESS_KEY_ID"],
-            aws_secret_access_key=os.environ["SUPABASE_S3_SECRET_ACCESS_KEY"],
-            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
-        )
-        # Use the separately secured AWS identity/role on a private, encrypted runner.
-        dest = boto3.client("s3", region_name=os.environ["AWS_REGION"])
-        result = make_snapshot(source, dest, os.environ["BACKUP_DEST_BUCKET"],
-                               os.environ["BACKUP_DEST_KMS_KEY_ARN"], key, minimum)
-        # No customer object names, document contents, account secrets or source URLs logged.
-        print(json.dumps({"status": "VERIFIED", "objects": result["objects"],
-                          "verified_bytes": result["verified_bytes"],
-                          "bucket_counts": result["bucket_counts"]}, sort_keys=True))
+        mode = os.environ.get("BACKUP_MODE", "backup")
+        if mode == "verify":
+            if os.environ.get("BACKUP_ENCRYPTED_PRIVATE_RUNNER") != "yes" or \
+               os.environ.get("BACKUP_APPROVED_VERIFY_ONLY") != "yes" or \
+               any(os.environ.get(k) for k in (
+                   "SUPABASE_S3_SECRET_ACCESS_KEY", "SUPABASE_SERVICE_ROLE_KEY",
+                   "DATABASE_URL", "BACKUP_DATABASE_URL", "STRIPE_SECRET_KEY")):
+                raise BackupUnsafe("Independent restore drill requires a separate private runner without live secrets")
+            cfg = os.environ
+            try:
+                signing = base64.b64decode(cfg["BACKUP_MANIFEST_HMAC_KEY_B64"], validate=True)
+                if len(signing) < 32:
+                    raise ValueError()
+                from botocore.config import Config  # only after private checks
+                import boto3
+                dest = boto3.client("s3", region_name=cfg["AWS_REGION"],
+                                    config=Config(signature_version="s3v4"))
+                out = verify_without_source(dest, cfg["BACKUP_DEST_BUCKET"],
+                                            cfg["BACKUP_DEST_KMS_KEY_ARN"],
+                                            signing, cfg["BACKUP_VERIFY_SNAPSHOT"])
+            except (KeyError, ValueError):
+                raise BackupUnsafe("Independent restore drill configuration incomplete") from None
+        elif mode == "backup":
+            key, minimum = load_config(os.environ)
+            import boto3
+            from botocore.config import Config
+            source = boto3.client(
+                "s3",
+                endpoint_url=f"https://{LIVE_PROJECT_REF}.supabase.co/storage/v1/s3",
+                region_name="eu-west-2",
+                aws_access_key_id=os.environ["SUPABASE_S3_ACCESS_KEY_ID"],
+                aws_secret_access_key=os.environ["SUPABASE_S3_SECRET_ACCESS_KEY"],
+                config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+            )
+            dest = boto3.client("s3", region_name=os.environ["AWS_REGION"])
+            out = make_snapshot(source, dest, os.environ["BACKUP_DEST_BUCKET"],
+                                os.environ["BACKUP_DEST_KMS_KEY_ARN"], key, minimum)
+            out["status"] = "VERIFIED"
+            # Record the immutable snapshot ID ONLY in protected operator logs.
+            # Do not log paths, raw keys or the signed manifest to CI artifacts.
+            if os.environ.get("BACKUP_PRINT_SNAPSHOT_ID") == "yes":
+                print("INDEPENDENT_SNAPSHOT_ID=" + out["snapshot"])
+        else:
+            raise BackupUnsafe("Unsupported backup operation")
+        print(json.dumps({"status": out["status"], "objects": out["objects"],
+                          "verified_bytes": out["verified_bytes"],
+                          "bucket_counts": out["bucket_counts"]}, sort_keys=True))
     except BackupUnsafe as exc:
         print("STORAGE_BACKUP_FAILED: " + str(exc), file=sys.stderr)
         sys.exit(1)
     except Exception:
-        print("STORAGE_BACKUP_FAILED: private-runner failure; inspect protected logs", file=sys.stderr)
+        print("STORAGE_BACKUP_FAILED: private-runner failure; inspect protected logs",
+              file=sys.stderr)
         sys.exit(1)
 
 
