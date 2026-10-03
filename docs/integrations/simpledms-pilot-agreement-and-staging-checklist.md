@@ -109,9 +109,8 @@ training restrictions remain in force until a field-specific Schedule B is signe
       retention/training and lawful-basis checks. No raw VRM to OpenAI by default.
 - [ ] Agree final signed data schedule, launch date, contact points, deletion
       SLA, photo rights and account/referral privacy disclosures.
-- [ ] Verify actual managed database-backup recovery points and independent
-      Storage file restoration under issue #364; CI-only synthetic tests are
-      not evidence of the live project having a recoverable point.
+- [x] Account owner reports seeing a Supabase-managed database backup dated **2 October 2026 at 11:59 pm** in the dashboard (confirmed in conversation on 3 October 2026). Dashboard time zone, backup success/restoreability and separate PITR entitlement have **not** been independently verified. Record this as *owner-confirmed available backup*, not demonstrated recoverability.
+- [ ] Prove actual managed database-backup recovery via a safe non-production restore/recovery exercise (do not restore over the live database); independently protect and test restoration of Storage object bytes, including private KYC and handover files, under issue #364. CI-only synthetic Storage restoration does not prove live object coverage.
 - [ ] Issue a dedicated **staging-only** credential through a secure channel,
       not email body, code, logs or documentation.
 - [ ] After joint written sign-off, separately approve the production deploy,
