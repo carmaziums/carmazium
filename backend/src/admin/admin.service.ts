@@ -19,6 +19,7 @@ import {
     AUCTION_DURATION_MS,
     BUY_IT_NOW_BELOW_RESERVE_MESSAGE,
     buyItNowViolatesReserve,
+    calculatePlatformOpeningBid,
 } from '../auctions/auction-pricing';
 
 @Injectable()
@@ -309,9 +310,12 @@ export class AdminService {
      * only the rows would leave the total describing a different set, and the
      * pager would offer pages that come back empty.
      */
-    async getAllListings(page = 1, limit = 20, sellerRole?: string) {
+    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string) {
         const skip = (page - 1) * limit;
-        const where = sellerRole ? { seller: { role: sellerRole as any } } : {};
+        const where = {
+            ...(sellerRole ? { seller: { role: sellerRole as any } } : {}),
+            ...(status === 'DRAFT' ? { status: 'DRAFT' as const } : {}),
+        };
         const [data, total] = await Promise.all([
             this.prisma.listing.findMany({
                 where,
@@ -325,11 +329,315 @@ export class AdminService {
                             dealerProfile: { select: { companyName: true, isVerified: true } },
                         },
                     },
+                    auction: {
+                        select: {
+                            id: true,
+                            status: true,
+                            reservePrice: true,
+                            deletedAt: true,
+                        },
+                    },
                 },
             }),
             this.prisma.listing.count({ where }),
         ]);
         return { data, total };
+    }
+
+
+    /**
+     * Staff-only, one-click recovery of a customer-requested DRAFT into a fresh
+     * 24-hour auction. A repeat request cannot duplicate a run: the same
+     * listing advisory lock guards both state validation and the DB transition.
+     *
+     * Previous seller reserve is preserved when available. A retail-only
+     * draft's own listed price becomes its conservative initial reserve; staff
+     * should act only after the seller has requested the relist.
+     */
+    async relistDraftAsAuction(id: string, adminId: string) {
+        const result = await this.prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))::text`;
+
+            const listing = await tx.listing.findUnique({
+                where: { id },
+                include: {
+                    auction: true,
+                    seller: { select: { id: true, deletedAt: true } },
+                },
+            });
+            if (!listing || listing.deletedAt) {
+                throw new NotFoundException('Listing not found');
+            }
+            if (listing.status !== 'DRAFT') {
+                throw new BadRequestException('Only DRAFT listings can use one-click auction relisting.');
+            }
+            if (!listing.sellerId || !listing.seller || listing.seller.deletedAt) {
+                throw new BadRequestException('A valid seller account is required before relisting.');
+            }
+
+            const missing = getListingSubmissionReadiness(listing).missingFields;
+            if (missing.length) {
+                throw new BadRequestException(
+                    'Complete the seller draft before relisting. Missing: ' + missing.join(', ') + '.',
+                );
+            }
+            // An AUCTION draft may be paired with a genuine active retail
+            // source. Changing the type of a linked retail source itself would
+            // corrupt that reciprocal relationship, so reject it instead.
+            if (listing.type === 'CLASSIFIED' && listing.linkedListingId) {
+                throw new BadRequestException(
+                    'This retail draft is linked to another auction. Resolve that link before relisting.',
+                );
+            }
+
+            const current = listing.auction;
+            if (current && (
+                current.deletedAt
+                || !['SCHEDULED', 'ENDED', 'CANCELLED'].includes(current.status)
+                || current.winnerId || current.wonAt
+                || current.provisionalOfferBidId
+                || current.stripePayoutTransferId || current.manualPayoutConfirmedAt
+                || current.sellerBonusReleasedAt || current.sellerFundsConfirmedAt
+                || current.buyerRefusedAt || current.handoverRejectedAt
+                || current.buyerFeePaid || current.buyerFeeTransactionId
+                || current.handoverSubmittedAt || current.handoverProofPath
+                || current.handoverProofUrl || current.sellerBonusReleased
+                || current.buyItNowPendingBuyerId
+            )) {
+                throw new BadRequestException(
+                    'This auction has an unresolved or completed sale, provisional offer, or handover. Use the controlled sale workflow before relisting.',
+                );
+            }
+
+            const [sale, acceptedOffer, unarchivedBids, otherListings] = await Promise.all([
+                tx.sale.findFirst({ where: { listingId: id }, select: { id: true } }),
+                tx.offer.findFirst({ where: { listingId: id, status: 'ACCEPTED' }, select: { id: true } }),
+                tx.bid.count({
+                    where: {
+                        listingId: id,
+                        deletedAt: null,
+                        cancelledAt: null,
+                        archivedAt: null,
+                    },
+                }),
+                tx.listing.findMany({
+                    where: {
+                        sellerId: listing.sellerId,
+                        id: { not: id },
+                        deletedAt: null,
+                        status: { in: ['ACTIVE', 'PENDING_REVIEW'] },
+                    },
+                    select: {
+                        id: true, type: true, vrm: true, status: true,
+                        linkedListingId: true,
+                    },
+                }),
+            ]);
+            if (sale || acceptedOffer) {
+                throw new BadRequestException(
+                    'This vehicle has sale or accepted-offer history that must be resolved before relisting.',
+                );
+            }
+            if (current?.status === 'SCHEDULED' && unarchivedBids) {
+                throw new BadRequestException(
+                    'Existing scheduled auction contains active bids. Resolve it before relisting.',
+                );
+            }
+
+            const normaliseVrm = (vrm?: string | null) =>
+                (vrm ?? '').replace(/\s/g, '').toUpperCase();
+            const vrm = normaliseVrm(listing.vrm);
+            const matchingSiblings = otherListings.filter(other =>
+                vrm && normaliseVrm(other.vrm) === vrm,
+            );
+            // An older no-sale auction may have been turned into a CLASSIFIED
+            // draft while its retail sibling stayed live. The canonical seller
+            // re-auction path heals precisely one unlinked retail counterpart.
+            // Apply the same narrow recovery here without letting an arbitrary
+            // retail draft silently create an additional unlinked live vehicle.
+            const legacyRetailSource = listing.type === 'CLASSIFIED'
+                && !listing.linkedListingId
+                && current && ['ENDED', 'CANCELLED'].includes(current.status)
+                && matchingSiblings.length === 1
+                && matchingSiblings[0].type === 'CLASSIFIED'
+                && matchingSiblings[0].status === 'ACTIVE'
+                && !matchingSiblings[0].linkedListingId
+                ? matchingSiblings[0] : null;
+            const sibling = matchingSiblings.find(other =>
+                other.id !== legacyRetailSource?.id
+                && !(
+                    listing.type === 'AUCTION'
+                    && listing.linkedListingId === other.id
+                    && other.linkedListingId === listing.id
+                    && other.type === 'CLASSIFIED'
+                    && other.status === 'ACTIVE'
+                ),
+            );
+            if (sibling) {
+                throw new BadRequestException(
+                    'Another active or pending listing for this seller and registration exists. Resolve it or use the linked-auction journey.',
+                );
+            }
+            if (listing.linkedListingId && !otherListings.some(other =>
+                other.id === listing.linkedListingId
+                && other.linkedListingId === listing.id
+                && other.type === 'CLASSIFIED'
+                && other.status === 'ACTIVE'
+            )) {
+                throw new BadRequestException(
+                    'Linked retail listing is no longer active and correctly paired. Repair the link before relisting.',
+                );
+            }
+
+            if (legacyRetailSource) {
+                const claimed = await tx.listing.updateMany({
+                    where: {
+                        id: legacyRetailSource.id,
+                        sellerId: listing.sellerId,
+                        type: 'CLASSIFIED',
+                        status: 'ACTIVE',
+                        linkedListingId: null,
+                        deletedAt: null,
+                    },
+                    data: { linkedListingId: id },
+                });
+                if (claimed.count !== 1) {
+                    throw new BadRequestException(
+                        'The matching retail listing changed. Refresh before relisting.',
+                    );
+                }
+            }
+
+            const marketValue = Number(listing.price);
+            const previousReserve = Number(current?.reservePrice);
+            if (!Number.isFinite(marketValue) || marketValue <= 0) {
+                throw new BadRequestException('The draft needs a valid listed price before relisting.');
+            }
+            const reserveSource = current && Number.isFinite(previousReserve) && previousReserve > 0
+                ? 'PREVIOUS_RESERVE' : 'DRAFT_LISTED_PRICE';
+            const reservePrice = reserveSource === 'PREVIOUS_RESERVE'
+                ? previousReserve : marketValue;
+            const previousBin = current?.buyItNowPrice == null
+                ? null : Number(current.buyItNowPrice);
+            const buyItNowPrice = previousBin != null
+                && Number.isFinite(previousBin)
+                && previousBin >= reservePrice
+                ? previousBin : null;
+            const previousIncrement = Number(current?.minIncrement);
+            const minIncrement = Number.isFinite(previousIncrement) && previousIncrement > 0
+                ? previousIncrement : 100;
+            const startTime = new Date();
+            const endTime = new Date(startTime.getTime() + AUCTION_DURATION_MS);
+            const archivedAt = startTime;
+
+            // Old bid amounts remain available as history but cannot enter the
+            // new run or affect its opening/minimum bids.
+            await tx.bid.updateMany({
+                where: { listingId: id, archivedAt: null },
+                data: { archivedAt },
+            });
+            const auctionData = {
+                startTime,
+                endTime,
+                reservePrice,
+                startingBid: calculatePlatformOpeningBid(marketValue),
+                minIncrement,
+                buyItNowPrice,
+                status: 'SCHEDULED' as const,
+                winnerId: null,
+                winningBidAmount: null,
+                wonAt: null,
+                provisionalOfferBidId: null,
+                provisionalOfferedAt: null,
+                buyerFeeReminder24SentAt: null,
+                buyerFeeReminder6SentAt: null,
+                buyerFeePaid: false,
+                buyerFeeTransactionId: null,
+                sellerFundsConfirmedAt: null,
+                sellerFundsConfirmedById: null,
+                sellerFundsConfirmationRequired: true,
+                handoverProofUrl: null,
+                handoverProofPath: null,
+                handoverSubmittedAt: null,
+                handoverRejectedAt: null,
+                handoverRejectionReason: null,
+                sellerBonusReleased: false,
+                sellerBonusReleasedAt: null,
+                sellerBonusPayoutNoticeSentAt: null,
+                buyItNowPendingBuyerId: null,
+                buyItNowPendingAt: null,
+            };
+            const auction = current
+                ? await tx.auction.update({
+                    where: { id: current.id },
+                    data: auctionData,
+                })
+                : await tx.auction.create({
+                    data: { listingId: id, ...auctionData },
+                });
+
+            await tx.listing.update({
+                where: { id },
+                data: {
+                    ...buildListingActivationData('FREE'),
+                    type: 'AUCTION',
+                    badgeTier: 'FREE',
+                    ...(legacyRetailSource
+                        ? { linkedListingId: legacyRetailSource.id }
+                        : {}),
+                },
+            });
+            // The actor (not the seller) is deliberately recorded: this is a
+            // privileged admin intervention rather than an ordinary seller action.
+            await tx.analyticsEvent.create({
+                data: {
+                    type: 'admin_draft_auction_relist',
+                    userId: adminId,
+                    payload: {
+                        listingId: id,
+                        auctionId: auction.id,
+                        previousListingType: listing.type,
+                        reserveSource,
+                        reservePrice,
+                    },
+                },
+            });
+            return {
+                auctionId: auction.id,
+                listingId: id,
+                sellerId: listing.sellerId,
+                title: listing.title,
+                reservePrice,
+                reserveSource,
+            };
+        }, { timeout: 15000 });
+
+        // Non-critical delivery failures must not undo the committed auction.
+        const notification = await this.notificationsService.create({
+            userId: result.sellerId,
+            type: 'SYSTEM',
+            title: 'Your vehicle has been relisted in auction',
+            message: 'CarMazium relisted "' + result.title
+                + '" at your request. Your auction reserve is £'
+                + result.reservePrice.toLocaleString('en-GB')
+                + '. Review your live auction in your dashboard.',
+            link: '/dashboard/seller/auctions',
+            entityType: 'AUCTION',
+            entityId: result.auctionId,
+        }).catch(error => {
+            this.logger.error('Could not notify seller about admin auction relisting', error);
+            return null;
+        });
+        if (notification) {
+            this.notificationsGateway.sendNotification(result.sellerId, notification);
+        }
+        return {
+            listingId: result.listingId,
+            auctionId: result.auctionId,
+            reservePrice: result.reservePrice,
+            reserveSource: result.reserveSource,
+            status: 'SCHEDULED',
+        };
     }
 
     async deleteListing(id: string) {

@@ -5,14 +5,14 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
-import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, ClipboardList, Pencil, Gauge, FileWarning } from "lucide-react"
+import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, ClipboardList, Pencil, Gauge, FileWarning, RotateCcw } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
 import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
-import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing } from "@/lib/adminApi"
+import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -41,13 +41,15 @@ export default function AdminListingsPage() {
     const [listings, setListings] = React.useState<any[]>([])
     const [loading, setLoading] = React.useState(true)
     const [deleting, setDeleting] = React.useState<string | null>(null)
+    const [relisting, setRelisting] = React.useState<string | null>(null)
+    const [relistFeedback, setRelistFeedback] = React.useState<{ kind: 'success' | 'error'; text: string } | null>(null)
     const [error, setError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
     // "CarMazium" = listings created by an ADMIN account. Admins can list
     // directly now, so their own vehicles would otherwise be buried among
     // every seller's in this table.
-    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
+    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN' | 'DRAFT'>('ALL')
     const limit = 20
 
     // ── Pending review ──
@@ -82,7 +84,7 @@ export default function AdminListingsPage() {
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined)
+            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined, ownerFilter === 'DRAFT' ? 'DRAFT' : undefined)
             setListings(result.data || [])
             setTotal(result.pagination?.total || 0)
         } catch (err: any) {
@@ -158,6 +160,35 @@ export default function AdminListingsPage() {
         }
     }
 
+    const handleRelistAuction = async (listingId: string) => {
+        if (relisting) return
+        setRelistFeedback(null)
+        setRelisting(listingId)
+        try {
+            const result = await relistAdminDraftAsAuction(listingId)
+            setRelistFeedback({
+                kind: 'success',
+                text: 'Auction scheduled to start now. Reserve: ' + formatPrice(result.reservePrice)
+                    + (result.reserveSource === 'PREVIOUS_RESERVE'
+                        ? ' (previous reserve retained).'
+                        : ' (draft listed price used as the initial reserve).'),
+            })
+            await fetchListings()
+        } catch (err: any) {
+            setRelistFeedback({
+                kind: 'error',
+                text: err.message === 'AUTH_REDIRECT'
+                    ? 'Please refresh your secure admin session, then try again.'
+                    : (err.message || 'Could not relist this draft. No new auction was confirmed.'),
+            })
+            // A timeout can occur after a successful commit: always refresh to
+            // prevent an administrator accidentally repeating the action.
+            await fetchListings()
+        } finally {
+            setRelisting(null)
+        }
+    }
+
     const handleDelete = async (listingId: string) => {
         if (!window.confirm("Are you sure you want to forcefully delete this listing? This action cannot be undone.")) return;
 
@@ -207,6 +238,17 @@ export default function AdminListingsPage() {
                     {error && (
                         <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200">
                             <strong>System Error:</strong> {error}
+                        </div>
+                    )}
+                    {relistFeedback && (
+                        <div
+                            role={relistFeedback.kind === 'error' ? 'alert' : 'status'}
+                            aria-live="polite"
+                            className={`rounded-xl border p-4 text-sm ${relistFeedback.kind === 'error'
+                                ? 'border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-300'
+                                : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}
+                        >
+                            {relistFeedback.text}
                         </div>
                     )}
 
@@ -463,6 +505,7 @@ export default function AdminListingsPage() {
                     <div className="flex items-center gap-2">
                         {([
                             ['ALL', 'All listings'],
+                            ['DRAFT', 'Drafts'],
                             ['ADMIN', 'CarMazium'],
                         ] as const).map(([value, label]) => (
                             <button
@@ -512,6 +555,18 @@ export default function AdminListingsPage() {
                                                 <p className="text-xs text-[var(--text-muted)] truncate hover:text-primary transition-colors cursor-pointer" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
                                                 <p className="text-sm font-bold ml-2 shrink-0">{formatPrice(l.price)}</p>
                                             </div>
+                                            {l.status === 'DRAFT' && !l.deletedAt && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRelistAuction(l.id)}
+                                                    disabled={!!relisting || deleting === l.id}
+                                                    title="Seller-requested relist. Uses previous reserve or the draft's listed price."
+                                                    className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {relisting === l.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                                    Relist in Auction
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="flex flex-col gap-1 shrink-0 ml-1">
                                             <Link
@@ -602,6 +657,18 @@ export default function AdminListingsPage() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    {l.status === 'DRAFT' && !l.deletedAt && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRelistAuction(l.id)}
+                                                            disabled={!!relisting || deleting === l.id}
+                                                            title="Seller-requested relist. Uses previous reserve or the draft's listed price."
+                                                            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold whitespace-nowrap text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            {relisting === l.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                                                            Relist in Auction
+                                                        </button>
+                                                    )}
                                                     <Link href={`/buy-cars/${l.slug}`} target="_blank" className="p-2.5 hover:bg-white/10 rounded-lg transition-colors text-blue-400 hover:text-primary dark:hover:" title="View Listing">
                                                         <Eye size={18} />
                                                     </Link>
