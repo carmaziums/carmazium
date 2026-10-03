@@ -534,7 +534,7 @@ export class AuctionsService {
             auction = await this.prisma.$transaction(async (tx) => {
                 // Serialize re-auctioning against a concurrent seller acceptance.
                 // Both mutate the same listing and must re-check after the shared lock.
-                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createAuctionDto.listingId}, 0))`;
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createAuctionDto.listingId}, 0))::text`;
                 const [lockedExisting, lockedListing] = await Promise.all([
                     tx.auction.findUnique({ where: { id: existing.id },
                         select: { status: true, winnerId: true, wonAt: true, deletedAt: true } }),
@@ -1275,7 +1275,7 @@ export class AuctionsService {
         }
 
         const accepted = await this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))::text`;
 
             const auction = await tx.auction.findUnique({
                 where: { id: auctionId },
