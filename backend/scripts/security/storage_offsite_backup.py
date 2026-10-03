@@ -100,9 +100,15 @@ def enumerate_source(source):
         raise BackupUnsafe("Source Storage inventory was not fully accessible") from None
 
 
-def vault_key(prefix, bucket, key):
-    # Obscures customer filenames/VRMs from independent vault *object keys*.
-    digest = hashlib.sha256((bucket + "\0" + key).encode()).hexdigest()
+def vault_key(prefix, bucket, key, mac_key):
+    # HMAC prevents guessing customer filenames/VRMs from vault object keys.
+    # Domain-separate from the HMAC used to authenticate manifest bytes.
+    if len(mac_key) < 32:
+        raise BackupUnsafe("Strong secret required for private object-key derivation")
+    digest = hmac.new(
+        mac_key, b"carmazium-vault-object-key-v2\0" + (bucket + "\0" + key).encode(),
+        hashlib.sha256,
+    ).hexdigest()
     category = base64.urlsafe_b64encode(bucket.encode()).decode().rstrip("=")
     return f"{prefix}/objects/{category}/{digest}"
 
@@ -156,7 +162,7 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
             raise BackupUnsafe("Source inventory fell below approved per-bucket minimum")
     instant = now or datetime.now(timezone.utc)
     nonce = nonce or secrets.token_hex(12)
-    prefix = f"carmazium-storage/v1/{instant.strftime('%Y%m%dT%H%M%SZ')}-{nonce}"
+    prefix = f"carmazium-storage/v2/{instant.strftime('%Y%m%dT%H%M%SZ')}-{nonce}"
     try:
         preexisting = dest.list_objects_v2(Bucket=vault_bucket, Prefix=prefix + "/", MaxKeys=1)
         if preexisting.get("Contents"):
@@ -166,7 +172,8 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
     except Exception:
         raise BackupUnsafe("Could not confirm an unused independent-vault snapshot path") from None
     kwargs = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_arn}
-    manifest = {"schema": 1, "snapshot": prefix, "captured_utc": instant.isoformat(),
+    manifest = {"schema": 2, "object_key_algorithm": "HMAC-SHA256-v2",
+                "snapshot": prefix, "captured_utc": instant.isoformat(),
                 "complete": True, "source": "CarMazium Supabase Storage",
                 "buckets": {k: {"private": v} for k, v in sorted(BUCKET_PRIVACY.items())},
                 "objects": []}
@@ -181,7 +188,7 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
             if observed.get("ContentLength") != size or (etag and observed.get("ETag") != etag):
                 raise BackupUnsafe("Source object changed while being backed up")
             sha = hashlib.sha256(payload).hexdigest()
-            output_key = vault_key(prefix, bucket, key)
+            output_key = vault_key(prefix, bucket, key, mac_key)
             dest.put_object(Bucket=vault_bucket, Key=output_key, Body=payload, **kwargs)
             # This is an actual independent restore read, not a metadata-only HEAD.
             assert_restorable(dest, vault_bucket, output_key, sha, size)
@@ -203,7 +210,7 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
         saved = dest.get_object(Bucket=vault_bucket, Key=manifest_key)
         if read_bounded(saved["Body"], len(raw)) != raw:
             raise BackupUnsafe("Manifest read-back failed")
-        completion = canonical({"schema": 1, "manifest_sha256": hashlib.sha256(raw).hexdigest(),
+        completion = canonical({"schema": 2, "manifest_sha256": hashlib.sha256(raw).hexdigest(),
                                 "manifest_hmac_sha256": signature, "objects": len(inventory),
                                 "verified_bytes": sum(x[2] for x in inventory)})
         dest.put_object(Bucket=vault_bucket, Key=prefix + "/COMPLETE.json",
@@ -227,7 +234,7 @@ def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix,
     """
     import re
     if len(mac_key) < 32 or not re.fullmatch(
-        r"carmazium-storage/v1/\d{8}T\d{6}Z-[a-f0-9]{24}", prefix
+        r"carmazium-storage/v2/\d{8}T\d{6}Z-[a-f0-9]{24}", prefix
     ):
         raise BackupUnsafe("Valid private key and immutable snapshot identifier required")
     expected_vault(dest, vault_bucket, kms_arn)
@@ -241,7 +248,7 @@ def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix,
         raise
     except Exception:
         raise BackupUnsafe("Snapshot is incomplete or manifest cannot be retrieved") from None
-    if completion.get("schema") != 1 or \
+    if completion.get("schema") != 2 or \
        not hmac.compare_digest(completion.get("manifest_sha256", ""),
                                hashlib.sha256(manifest_raw).hexdigest()) or \
        not hmac.compare_digest(completion.get("manifest_hmac_sha256", ""),
@@ -250,7 +257,8 @@ def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix,
     try:
         manifest = json.loads(manifest_raw)
         objects = manifest["objects"]
-        if manifest["schema"] != 1 or manifest["snapshot"] != prefix or \
+        if manifest["schema"] != 2 or manifest.get("object_key_algorithm") != "HMAC-SHA256-v2" or \
+           manifest["snapshot"] != prefix or \
            manifest["buckets"] != {k: {"private": v} for k, v in sorted(BUCKET_PRIVACY.items())} \
            or not objects or len(objects) != completion["objects"]:
             raise BackupUnsafe("Independent backup manifest schema, scope or count invalid")
@@ -261,7 +269,7 @@ def verify_without_source(dest, vault_bucket, kms_arn, mac_key, prefix,
             bucket, key = item["bucket"], item["key"]
             if bucket not in BUCKET_PRIVACY or item["private"] is not BUCKET_PRIVACY[bucket] \
                or not isinstance(key, str) or not key or (bucket, key) in seen \
-               or item["vault_key"] != vault_key(prefix, bucket, key) \
+               or item["vault_key"] != vault_key(prefix, bucket, key, mac_key) \
                or item["bytes"] < 0 or item["bytes"] > MAX_SINGLE_OBJECT:
                 raise BackupUnsafe("Independent backup manifest object entry invalid")
             seen.add((bucket, key))
