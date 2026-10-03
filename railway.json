@@ -1,11 +1,11 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "RAILPACK",
-    "buildCommand": "cd backend && npm ci --include=dev && npm run build"
+    "builder": "DOCKERFILE",
+    "buildCommand": null
   },
   "deploy": {
-    "startCommand": "cd backend && node dist/partner-api/staging.main.js",
+    "startCommand": "node dist/partner-api/staging.main.js",
     "healthcheckPath": "/health/live",
     "healthcheckTimeout": 90,
     "restartPolicyType": "ON_FAILURE",
