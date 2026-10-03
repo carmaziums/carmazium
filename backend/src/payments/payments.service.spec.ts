@@ -1245,3 +1245,65 @@ describe('PaymentsService — TradeXchange SERVICE_JOB webhook', () => {
         ).rejects.toThrow('temporary database failure');
     });
 });
+
+
+describe('PaymentsService — seller HPI checkout and Payment Sheet ownership', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockCheckoutSessionsCreate.mockReset();
+        mockPaymentIntentsCreate.mockReset();
+        mockEphemeralKeysCreate.mockReset();
+        mockCheckoutSessionsCreate.mockResolvedValue({ id: 'cs_hpi_test', url: 'https://checkout.stripe.test/hpi' });
+        mockPaymentIntentsCreate.mockResolvedValue({ id: 'pi_hpi_test', client_secret: 'pi_hpi_test_secret' });
+        mockEphemeralKeysCreate.mockResolvedValue({ secret: 'ek_hpi_test' });
+        prisma = buildPrismaMock();
+        const module = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    it('prevents another account purchasing HPI against somebody else\'s vehicle in either channel', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ sellerId: 'different-owner' }));
+        await expect(service.createHpiSession('AB12CDE', 'user-1', 'listing-1')).rejects.toThrow(/permission/i);
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 9.99, 'HPI_REPORT', 'gbp', undefined, 'AB12CDE'),
+        ).rejects.toThrow(/permission/i);
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a spoofed/mismatched vehicle registration before creating either payment', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ sellerId: 'user-1' }));
+        await expect(service.createHpiSession('CD34 EFG', 'user-1', 'listing-1')).rejects.toThrow(/registration/i);
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 9.99, 'HPI_REPORT', 'gbp', undefined, 'CD34EFG'),
+        ).rejects.toThrow(/registration/i);
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+        expect(prisma.transaction.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleted or missing listings before creating HPI payments', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ deletedAt: new Date() }));
+        await expect(service.createHpiSession('AB12CDE', 'user-1', 'listing-1')).rejects.toThrow(/not found/i);
+        await expect(
+            service.createPaymentSheet('listing-1', 'user-1', 9.99, 'HPI_REPORT', 'gbp', undefined, 'AB12CDE'),
+        ).rejects.toThrow(/not found/i);
+        expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+        expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    });
+
+    it('uses the persisted canonical vehicle registration for the real seller in web and native sessions', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing({ sellerId: 'user-1', vrm: 'AB12 CDE' }));
+        await service.createHpiSession('ab12cde', 'user-1', 'listing-1');
+        expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({
+            metadata: expect.objectContaining({ vrm: 'AB12CDE', listingId: 'listing-1' }),
+        }));
+        await service.createPaymentSheet('listing-1', 'user-1', 9.99, 'HPI_REPORT', 'gbp', undefined, 'ab12cde');
+        expect(mockPaymentIntentsCreate).toHaveBeenCalledWith(expect.objectContaining({
+            amount: 999, metadata: expect.objectContaining({ vrm: 'AB12CDE', type: 'HPI_REPORT' }),
+        }));
+    });
+});
