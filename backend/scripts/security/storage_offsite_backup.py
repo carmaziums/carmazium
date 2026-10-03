@@ -128,7 +128,7 @@ def assert_restorable(dest, bucket, key, expected_sha, expected_size):
 
 
 def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
-                  now=None, nonce=None):
+                  now=None, nonce=None, min_bucket_counts=None):
     """Fail closed. COMPLETE sentinel written last, after real restore reads."""
     if len(mac_key) < 32 or min_objects < 1:
         raise BackupUnsafe("Private manifest signing key and minimum object count required")
@@ -138,6 +138,14 @@ def make_snapshot(source, dest, vault_bucket, kms_arn, mac_key, min_objects,
     inventory = enumerate_source(source)
     if len(inventory) < min_objects:
         raise BackupUnsafe("Source inventory fell below approved minimum object count")
+    source_counts = {bucket: sum(1 for entry in inventory if entry[0] == bucket)
+                     for bucket in BUCKET_PRIVACY}
+    if min_bucket_counts is not None:
+        if set(min_bucket_counts) != set(BUCKET_PRIVACY) or any(
+            type(v) is not int or v < 0 or source_counts[k] < v
+            for k, v in min_bucket_counts.items()
+        ):
+            raise BackupUnsafe("Source inventory fell below approved per-bucket minimum")
     instant = now or datetime.now(timezone.utc)
     nonce = nonce or secrets.token_hex(12)
     prefix = f"carmazium-storage/v1/{instant.strftime('%Y%m%dT%H%M%SZ')}-{nonce}"
@@ -268,7 +276,7 @@ def load_config(env):
                 "SUPABASE_S3_ACCESS_KEY_ID", "SUPABASE_S3_SECRET_ACCESS_KEY",
                 "BACKUP_DEST_BUCKET", "BACKUP_DEST_KMS_KEY_ARN",
                 "BACKUP_MANIFEST_HMAC_KEY_B64", "BACKUP_MIN_OBJECTS",
-                "BACKUP_SOURCE_PROJECT_REF", "AWS_REGION")
+                "BACKUP_MIN_BUCKET_COUNTS_JSON", "BACKUP_SOURCE_PROJECT_REF", "AWS_REGION")
     if any(not env.get(k) for k in required) or env["BACKUP_APPROVED_LIVE_RUN"] != "yes" \
        or env["BACKUP_ENCRYPTED_PRIVATE_RUNNER"] != "yes" \
        or env["BACKUP_SOURCE_PROJECT_REF"] != LIVE_PROJECT_REF:
@@ -279,14 +287,18 @@ def load_config(env):
     try:
         key = base64.b64decode(env["BACKUP_MANIFEST_HMAC_KEY_B64"], validate=True)
         minimum = int(env["BACKUP_MIN_OBJECTS"])
-        if len(key) < 32 or minimum < 1:
+        minima = json.loads(env["BACKUP_MIN_BUCKET_COUNTS_JSON"])
+        if len(key) < 32 or minimum < 1 or not isinstance(minima, dict) or \
+           set(minima) != set(BUCKET_PRIVACY) or any(
+               type(v) is not int or v < 0 for v in minima.values()
+           ):
             raise ValueError()
     except (ValueError, TypeError):
         raise BackupUnsafe("Invalid private manifest signing key or minimum inventory") from None
     arn = env["BACKUP_DEST_KMS_KEY_ARN"]
     if not arn.startswith("arn:aws:kms:") or env["BACKUP_DEST_BUCKET"] in BUCKET_PRIVACY:
         raise BackupUnsafe("Independent AWS S3 bucket and KMS key required")
-    return key, minimum
+    return key, minimum, minima
 
 
 def main():
@@ -314,7 +326,7 @@ def main():
             except (KeyError, ValueError):
                 raise BackupUnsafe("Independent restore drill configuration incomplete") from None
         elif mode == "backup":
-            key, minimum = load_config(os.environ)
+            key, minimum, minima = load_config(os.environ)
             import boto3
             from botocore.config import Config
             source = boto3.client(
@@ -327,7 +339,8 @@ def main():
             )
             dest = boto3.client("s3", region_name=os.environ["AWS_REGION"])
             out = make_snapshot(source, dest, os.environ["BACKUP_DEST_BUCKET"],
-                                os.environ["BACKUP_DEST_KMS_KEY_ARN"], key, minimum)
+                                os.environ["BACKUP_DEST_KMS_KEY_ARN"], key, minimum,
+                                min_bucket_counts=minima)
             out["status"] = "VERIFIED"
             # Record the immutable snapshot ID ONLY in protected operator logs.
             # Do not log paths, raw keys or the signed manifest to CI artifacts.
