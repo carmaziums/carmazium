@@ -157,6 +157,8 @@ export class DvlaService {
     private readonly aiOptionalTimeoutMs: number;
     // Short-lived same-process cache is only for the separate optional AI call.
     private readonly coreCache = new Map<string, { value: DvlaLookupResult; expiresAt: number }>();
+    private motTokenCache: { token: string; expiresAt: number } | null = null;
+    private motTokenInFlight: Promise<string> | null = null;
 
     private async withDeadline<T>(
         name: string,
@@ -257,7 +259,7 @@ export class DvlaService {
         if (this.coreCache.size >= 200) this.coreCache.clear();
         this.coreCache.set(normalised, {
             value: { ...combined, motHistory: combined.motHistory?.slice() },
-            expiresAt: Date.now() + 2 * 60_000,
+            expiresAt: Date.now() + (combined.model ? 2 * 60_000 : 20_000),
         });
         return allowAiEnrichment
             ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
@@ -410,46 +412,148 @@ export class DvlaService {
         });
     }
 
-    // ─── MOT History API REST request ─────────────────────────────────────────
+    // ─── Current DVSA MOT History API (v1) ────────────────────────────────────
 
-    private async motApiRequest(normalised: string): Promise<{ motTests: MotTestResult[], model?: string, primaryColour?: string, firstUsedDate?: string } | null> {
+    private hasCurrentMotCredentials(): boolean {
+        return [
+            'MOT_HISTORY_API_KEY', 'MOT_HISTORY_CLIENT_ID',
+            'MOT_HISTORY_CLIENT_SECRET', 'MOT_HISTORY_SCOPE', 'MOT_HISTORY_TOKEN_URL',
+        ].every(key => !!this.configService.get<string>(key));
+    }
+
+    private async motHistoryAccessToken(signal: AbortSignal): Promise<string> {
+        const saved = this.motTokenCache;
+        if (saved && saved.expiresAt > Date.now() + 60_000) return saved.token;
+        if (this.motTokenInFlight) return this.motTokenInFlight;
+
+        const tokenUrl = this.configService.get<string>('MOT_HISTORY_TOKEN_URL')!;
+        if (!tokenUrl.startsWith('https://')) throw new Error('DVSA MOT token URL must use HTTPS');
+        const form = new URLSearchParams({
+            grant_type: 'client_credentials',
+            client_id: this.configService.get<string>('MOT_HISTORY_CLIENT_ID')!,
+            client_secret: this.configService.get<string>('MOT_HISTORY_CLIENT_SECRET')!,
+            scope: this.configService.get<string>('MOT_HISTORY_SCOPE')!,
+        });
+        this.motTokenInFlight = (async () => {
+            const response = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: form.toString(),
+                signal,
+            });
+            if (!response.ok) throw new Error('DVSA MOT OAuth returned HTTP ' + response.status);
+            const body = await response.json() as { access_token?: string; expires_in?: number };
+            if (!body.access_token || typeof body.access_token !== 'string') {
+                throw new Error('DVSA MOT OAuth response did not include an access token');
+            }
+            const expiresIn = Number(body.expires_in);
+            this.motTokenCache = {
+                token: body.access_token,
+                expiresAt: Date.now() + (Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 1200) * 1000,
+            };
+            return body.access_token;
+        })();
+        try {
+            return await this.motTokenInFlight;
+        } finally {
+            this.motTokenInFlight = null;
+        }
+    }
+
+    private async currentMotHistoryRequest(
+        normalised: string,
+    ): Promise<{ motTests: MotTestResult[], model?: string, primaryColour?: string, firstUsedDate?: string } | null> {
+        const timeout = Number(this.configService.get<string>('MOT_HISTORY_TIMEOUT_MS'));
+        const maxWait = Number.isFinite(timeout) && timeout >= 1000
+            ? Math.min(timeout, 8000) : 5500;
+        const baseUrl = this.configService.get<string>('MOT_HISTORY_API_URL')
+            || 'https://history.mot.api.gov.uk';
+        if (!baseUrl.startsWith('https://')) {
+            this.logger.warn('DVSA MOT v1 URL must use HTTPS');
+            return null;
+        }
+
+        try {
+            // Authentication and lookup share one deadline. Never hold up
+            // core registration data indefinitely while MOT is unavailable.
+            return await this.withDeadline('DVSA MOT v1', maxWait, async signal => {
+                const accessToken = await this.motHistoryAccessToken(signal);
+                const url = baseUrl.replace(/\/$/, '')
+                    + '/v1/trade/vehicles/registration/' + encodeURIComponent(normalised);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: 'Bearer ' + accessToken,
+                        'X-API-Key': this.configService.get<string>('MOT_HISTORY_API_KEY')!,
+                        Accept: 'application/json',
+                    },
+                    signal,
+                });
+                if (response.status === 404) return { motTests: [] };
+                if (!response.ok) {
+                    // Do not log tokens, headers, or registration details.
+                    this.logger.warn('DVSA MOT v1 returned HTTP ' + response.status);
+                    if (response.status === 401) this.motTokenCache = null;
+                    return null;
+                }
+                const data = await response.json() as Record<string, unknown> | unknown[];
+                const vehicle = Array.isArray(data) ? data[0] : data;
+                if (!vehicle || typeof vehicle !== 'object') return { motTests: [] };
+                const entry = vehicle as Record<string, unknown>;
+                return {
+                    motTests: Array.isArray(entry.motTests) ? entry.motTests as MotTestResult[] : [],
+                    model: typeof entry.model === 'string' ? entry.model : undefined,
+                    primaryColour: typeof entry.primaryColour === 'string' ? entry.primaryColour : undefined,
+                    firstUsedDate: typeof entry.firstUsedDate === 'string' ? entry.firstUsedDate : undefined,
+                };
+            });
+        } catch (error) {
+            this.logger.warn('DVSA MOT v1 optional lookup unavailable: '
+                + (error instanceof Error ? error.message : 'unknown'));
+            return null;
+        }
+    }
+
+    // Existing legacy integration is retained only for environments that have
+    // not yet received DVSA v1 OAuth credentials. DVSA deprecated v6 in 2025;
+    // do not treat the legacy response as guaranteed or use it for new setups.
+    private async motApiRequest(
+        normalised: string,
+    ): Promise<{ motTests: MotTestResult[], model?: string, primaryColour?: string, firstUsedDate?: string } | null> {
+        if (this.hasCurrentMotCredentials()) {
+            return this.currentMotHistoryRequest(normalised);
+        }
+
         const motApiKey = this.configService.get<string>('MOT_API_KEY');
         if (!motApiKey) {
-            this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
+            this.logger.warn('DVSA MOT v1 credentials missing and legacy MOT_API_KEY is not configured');
             return null;
         }
         const url = `https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=${normalised}`;
         try {
-            // Both the HTTP request and its response body share one deadline.
-            // A stalled optional MOT service must not hold back core DVLA data.
-            return await this.withDeadline('MOT history', this.motTimeoutMs, async signal => {
+            return await this.withDeadline('MOT legacy history', this.motTimeoutMs, async signal => {
                 const response = await fetch(url, {
                     method: 'GET',
-                    headers: {
-                        'x-api-key': motApiKey,
-                        'Accept': 'application/json+v6',
-                    },
+                    headers: { 'x-api-key': motApiKey, Accept: 'application/json+v6' },
                     signal,
                 });
+                if (response.status === 404) return { motTests: [] };
                 if (!response.ok) {
-                    if (response.status === 404) return { motTests: [] };
-                    this.logger.warn('MOT lookup returned HTTP ' + response.status);
+                    this.logger.warn('Legacy MOT lookup returned HTTP ' + response.status);
                     return null;
                 }
                 const data = await response.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    const vehicle = data[0];
-                    return {
-                        motTests: vehicle.motTests || [],
-                        model: vehicle.model,
-                        primaryColour: vehicle.primaryColour,
-                        firstUsedDate: vehicle.firstUsedDate,
-                    };
-                }
-                return { motTests: [] };
+                const vehicle = Array.isArray(data) ? data[0] : null;
+                return vehicle ? {
+                    motTests: vehicle.motTests || [],
+                    model: vehicle.model,
+                    primaryColour: vehicle.primaryColour,
+                    firstUsedDate: vehicle.firstUsedDate,
+                } : { motTests: [] };
             });
         } catch (error) {
-            this.logger.warn('Optional MOT lookup unavailable: ' + (error instanceof Error ? error.message : 'unknown'));
+            this.logger.warn('Optional legacy MOT unavailable: '
+                + (error instanceof Error ? error.message : 'unknown'));
             return null;
         }
     }
