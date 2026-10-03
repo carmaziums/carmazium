@@ -18,6 +18,9 @@ export interface SellWizardDraft {
 
   // Already-uploaded public URLs only; never temporary local file:// URIs.
   exteriorImages: string[]; interiorImages: string[]; damageImages: string[];
+  auctionStartMode: 'NOW' | 'SCHEDULED'; auctionStartDate: string;
+  reservePrice: string; startingBid: string; minIncrement: string;
+  buyItNowPrice: string;
   lastStep: number;
   clearDraft: () => void;
   updateDraft: (partial: Partial<Omit<SellWizardDraft, 'clearDraft' | 'updateDraft'>>) => void;
@@ -35,6 +38,8 @@ export const EMPTY_SELL_DRAFT = {
   isDepartedSale: false, departedRelationship: '',
   departedRelSelect: '', departedRelOther: '', declAcknowledged: false,
   exteriorImages: [] as string[], interiorImages: [] as string[], damageImages: [] as string[],
+  auctionStartMode: 'NOW' as const, auctionStartDate: '',
+  reservePrice: '', startingBid: '', minIncrement: '100', buyItNowPrice: '',
   lastStep: 1,
 };
 
@@ -72,6 +77,9 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         declAcknowledged: state.declAcknowledged,
         exteriorImages: state.exteriorImages,
         interiorImages: state.interiorImages, damageImages: state.damageImages,
+        auctionStartMode: state.auctionStartMode, auctionStartDate: state.auctionStartDate,
+        reservePrice: state.reservePrice, startingBid: state.startingBid,
+        minIncrement: state.minIncrement, buyItNowPrice: state.buyItNowPrice,
         lastStep: state.lastStep,
       }),
     },

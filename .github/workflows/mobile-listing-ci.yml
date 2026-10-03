@@ -16,6 +16,7 @@ on:
       - "carmazium app/carmazium app/src/lib/sellerVehicleSpecs.ts"
       - "carmazium app/carmazium app/src/lib/sellWizardStore.ts"
       - "carmazium app/carmazium app/src/lib/nativeSellerDraftReadiness.ts"
+      - "carmazium app/carmazium app/src/lib/nativeAuctionDraft.ts"
       - "carmazium app/carmazium app/src/store/authStore.ts"
       - "carmazium app/carmazium app/scripts/test-seller-vehicle-specs.test.mjs"
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
@@ -66,7 +67,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(store/authStore|screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(nativeSellerDraftReadiness|sellWizardStore|sellerVehicleSpecs|listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E 'src/(store/authStore|screens/(sell/SellCarFlowScreen|seller/(SellerAuctionsScreen|SellerListingsScreen)|main/(PricingScreen|PurchaseFlowScreen)|vehicle/AuctionDetailScreen)|navigation/MainStackNavigator|components/ImportListingModal|hooks/useListingFeePayment|constants/pricing|lib/(nativeAuctionDraft|nativeSellerDraftReadiness|sellWizardStore|sellerVehicleSpecs|listingsApi|paymentsApi|storageHelper|vehicleImageMetadata|auctionPricing|valuationApi))\.tsx?' || true)"
           if [ -n "$LISTING_ERRORS" ]; then
             echo
             echo "TypeScript errors were found in mobile listing/auction files changed by this PR:"

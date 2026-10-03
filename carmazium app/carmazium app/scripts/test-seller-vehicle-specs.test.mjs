@@ -115,3 +115,50 @@ test('typing a new full registration triggers lookup without stale dvlaLoading/d
   assert.match(screen, /const registrationChanged = cleaned !== currentVrmRef\.current/);
   assert.match(screen, /registrationChanged \|\| \(!dvlaFetched && !dvlaLoading\)/);
 });
+
+
+const auctionSource = readFileSync(new URL('../src/lib/nativeAuctionDraft.ts', import.meta.url), 'utf8');
+const auctionJs = ts.transpileModule(auctionSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  reportDiagnostics: true,
+});
+assert.equal(auctionJs.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0);
+const auction = {};
+runInNewContext(auctionJs.outputText, { exports: auction });
+const nativeAuctionValid = {
+  auctionStartMode: 'NOW', auctionStartDate: '',
+  reservePrice: '5000', startingBid: '3500', minIncrement: '100', buyItNowPrice: '',
+};
+test('native scheduled starts reject malformed formats, impossible dates and past times', () => {
+  assert.equal(auction.parseNativeAuctionLocalStart('not-a-date'), null);
+  assert.equal(auction.parseNativeAuctionLocalStart('2027-02-30 14:00'), null);
+  assert.equal(auction.parseNativeAuctionLocalStart('2027-13-01 14:00'), null);
+  assert.equal(auction.parseNativeAuctionLocalStart('2027-04-01 25:00'), null);
+  const local = auction.parseNativeAuctionLocalStart('2027-04-01 14:00');
+  assert.equal(local.getFullYear(), 2027);
+  assert.equal(local.getMonth(), 3);
+  assert.equal(auction.nativeScheduledStartIsValid('2027-04-01 14:00', local.getTime() - 2 * 60_000), true);
+  assert.equal(auction.nativeScheduledStartIsValid('2027-04-01 14:00', local.getTime()), false);
+});
+test('a stored auction only resumes Review if its schedule and pricing survived restart', () => {
+  assert.equal(auction.nativeAuctionDraftReady(nativeAuctionValid), true);
+  assert.equal(auction.nativeAuctionDraftReady({ ...nativeAuctionValid, reservePrice: '' }), false);
+  assert.equal(auction.nativeAuctionDraftReady({ ...nativeAuctionValid, startingBid: '' }), false);
+  assert.equal(auction.nativeAuctionDraftReady({ ...nativeAuctionValid, minIncrement: '-1' }), false);
+  assert.equal(auction.nativeAuctionDraftReady({ ...nativeAuctionValid, buyItNowPrice: 'xyz' }), false);
+  assert.equal(auction.nativeAuctionDraftReady({
+    ...nativeAuctionValid, auctionStartMode: 'SCHEDULED', auctionStartDate: 'bad',
+  }), false);
+});
+test('native user-scoped draft saves auction settings and publishes only a validated start', () => {
+  const store = readFileSync(new URL('../src/lib/sellWizardStore.ts', import.meta.url), 'utf8');
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  for (const field of ['auctionStartMode', 'auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice']) {
+    assert.match(store, new RegExp(field + ': state\\.' + field));
+  }
+  assert.match(screen, /nativeAuctionDraftReady\(store\)/);
+  assert.match(screen, /if \(!auctionReady && wantedStep > 3\)/);
+  assert.match(screen, /nativeScheduledStartIsValid\(auctionStartDate\)/);
+  assert.match(screen, /parseNativeAuctionLocalStart\(auctionStartDate\)!\.toISOString\(\)/);
+  assert.match(screen, /validateStep\(4\)/);
+});

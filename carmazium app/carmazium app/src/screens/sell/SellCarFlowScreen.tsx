@@ -22,6 +22,7 @@ import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, deletePublicStorageObject, uploadToStorage } from '../../lib/storageHelper';
 import { useSellWizardStore, loadSellWizardDraftForUser } from '../../lib/sellWizardStore';
 import { nativeDraftStepOneComplete } from '../../lib/nativeSellerDraftReadiness';
+import { parseNativeAuctionLocalStart, nativeScheduledStartIsValid, nativeAuctionDraftReady } from '../../lib/nativeAuctionDraft';
 import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
@@ -989,11 +990,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setExteriorImages(store.exteriorImages ?? []);
             setInteriorImages(store.interiorImages ?? []);
             setDamageImages(store.damageImages ?? []);
+            setAuctionStartMode(store.auctionStartMode || 'NOW');
+            setAuctionStartDate(store.auctionStartDate || '');
+            setReservePrice(store.reservePrice || '');
+            setStartingBid(store.startingBid || '');
+            setMinIncrement(store.minIncrement || '100');
+            setBuyItNowPrice(store.buyItNowPrice || '');
             const detailsReady = nativeDraftStepOneComplete(store,
               normalizeNativeTransmission, normalizeNativeBodyType);
-            if (detailsReady && store.lastStep >= 1 && store.lastStep <= (store.listingType === 'AUCTION' ? 5 : 4)) {
-              setStep(store.lastStep as Step);
-            } else {
+            const wantedStep = Math.min(Math.max(store.lastStep || 1, 1), store.listingType === 'AUCTION' ? 5 : 4);
+            const auctionReady = store.listingType !== 'AUCTION' || nativeAuctionDraftReady(store);
+            if (!detailsReady) {
               setStep(1);
               setTouched(prev => ({
                 ...prev, vrm: true, make: true, model: true, year: true,
@@ -1004,6 +1011,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 isLegalKeeper: true, notOwnerRelationship: true,
                 departedRelationship: true, declAcknowledged: true,
               }));
+            } else if (!auctionReady && wantedStep > 3) {
+              setStep(4);
+              setTouched(prev => ({
+                ...prev, auctionStartDate: true, reservePrice: true,
+                startingBid: true, minIncrement: true, buyItNowPrice: true,
+              }));
+            } else {
+              setStep(wantedStep as Step);
             }
           },
         },
@@ -1200,12 +1215,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     if (key === 'isLegalKeeper' && isLegalKeeper === null) return 'Required';
     if (key === 'notOwnerRelationship' && isLegalKeeper === false && !notOwnerRelationship.trim()) return 'Please select your relationship to the registered keeper.';
     if (key === 'declAcknowledged' && !declAcknowledged) return 'You must acknowledge this declaration to continue';
-    if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED' && !auctionStartDate.trim()) return 'Required';
+    if (key === 'auctionStartDate' && auctionStartMode === 'SCHEDULED'
+      && !nativeScheduledStartIsValid(auctionStartDate)) return 'Enter a valid future start: YYYY-MM-DD HH:MM';
     if (key === 'reservePrice' && (!reservePrice.trim() || parseFloat(reservePrice) <= 0)) return 'Enter a valid reserve price';
     if (key === 'startingBid' && platformOpeningBid <= 0) {
       return 'Enter a valid Dealer Auction Value first';
     }
-    if (key === 'minIncrement' && (!minIncrement.trim() || parseFloat(minIncrement) <= 0)) return 'Enter a valid minimum increment';
+    if (key === 'minIncrement' && (!minIncrement.trim() || !Number.isFinite(Number(minIncrement)) || Number(minIncrement) <= 0)) return 'Enter a valid minimum increment';
+    if (key === 'buyItNowPrice' && buyItNowPrice.trim()
+      && (!Number.isFinite(Number(buyItNowPrice)) || Number(buyItNowPrice) <= 0)) return 'Enter a valid Buy It Now price';
     return null;
   };
 
@@ -1222,7 +1240,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // (mark touched) when Next is tapped, and to know which keys to check.
   const STEP1_FIELD_KEYS = ['vrm', 'make', 'model', 'year', 'mileage', 'title', 'location', 'fuelType', 'description', 'transmission', 'bodyType', 'condition', 'owners', 'departedRelationship', 'writeOffCat', 'stolenRecovered', 'outstandingFinance', 'isLegalKeeper', 'notOwnerRelationship', 'declAcknowledged'];
   const STEP3_FIELD_KEYS = ['priceAsking'];
-  const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement'];
+  const STEP4_AUCTION_FIELD_KEYS = ['auctionStartDate', 'reservePrice', 'startingBid', 'minIncrement', 'buyItNowPrice'];
 
   // Border color helper
   const fieldBorderColor = (key: string): string => {
@@ -2060,7 +2078,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         } else {
           const auctionStartTime = auctionStartMode === 'NOW'
             ? new Date().toISOString()
-            : new Date(auctionStartDate).toISOString();
+            : parseNativeAuctionLocalStart(auctionStartDate)!.toISOString();
 
           const createPayload: Record<string, any> = {
             ...payload,
@@ -2250,6 +2268,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: nextStep,
     });
     if (step < totalSteps) setStep(nextStep);
@@ -2293,6 +2312,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: step,
     });
     haptics.light();
@@ -3497,7 +3517,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 label="START DATE & TIME"
                 value={auctionStartDate}
                 onChange={v => { setAuctionStartDate(v); if (touched.auctionStartDate) setTouched(prev => ({ ...prev, auctionStartDate: true })); }}
-                placeholder="e.g. 2025-12-25 14:00"
+                placeholder="YYYY-MM-DD HH:MM"
                 required
                 error={fieldError('auctionStartDate') ?? undefined}
               />
