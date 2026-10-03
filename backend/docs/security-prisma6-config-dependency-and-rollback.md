@@ -43,3 +43,5 @@ Until a separate security deployment has been approved, the published `main` bra
 - The successfully audited lockfile was committed to the independent security draft branch. The temporary **write-enabled generator workflow was deleted** after generating the file. Full ordinary, read-only GitHub CI on the exact final head and an isolated Fly staging rehearsal remain separate acceptance gates. Do not claim an actual production Prisma fix is deployed.
 
 To preserve the requested whole-system rollback: keep these dependency fixes separate from the ten-block valuation 51-file manifest. Any future single-squash valuation release must be rebased and reverified against the then-current independent security main branch; a user-requested valuation rollback must not erase independently deployed security patches.
+
+**Scope of audit:** The measured zero-critical/zero-high result is specific to npm's `--omit=dev` advisory inventory for the proposed backend lockfile. It is not a complete container-image or all-development-tools vulnerability assessment. This security fix remains separate from the ten-block valuation system's reversible release.
