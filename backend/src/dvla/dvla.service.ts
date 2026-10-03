@@ -151,6 +151,34 @@ export class DvlaService {
     private readonly logger = new Logger(DvlaService.name);
     private readonly apiKey: string | undefined;
     private readonly baseUrl: string;
+    private readonly dvlaTimeoutMs: number;
+    private readonly motTimeoutMs: number;
+    private readonly aiSyncTimeoutMs: number;
+    private readonly aiOptionalTimeoutMs: number;
+    // Short-lived same-process cache is only for the separate optional AI call.
+    private readonly coreCache = new Map<string, { value: DvlaLookupResult; expiresAt: number }>();
+
+    private async withDeadline<T>(
+        name: string,
+        timeoutMs: number,
+        task: (signal: AbortSignal) => Promise<T>,
+    ): Promise<T> {
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([
+                task(controller.signal),
+                new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => {
+                        controller.abort();
+                        reject(new Error(name + ' deadline exceeded'));
+                    }, timeoutMs);
+                }),
+            ]);
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
 
     constructor(
         private configService: ConfigService,
@@ -158,6 +186,15 @@ export class DvlaService {
     ) {
         this.apiKey = this.configService.get<string>('DVLA_API_KEY');
         this.baseUrl = this.configService.get<string>('DVLA_API_URL') ?? DVLA_PROD_URL;
+        const budget = (name: string, fallback: number, ceiling: number) => {
+            const configured = Number(this.configService.get<string>(name));
+            return Number.isFinite(configured) && configured >= 20
+                ? Math.min(configured, ceiling) : fallback;
+        };
+        this.dvlaTimeoutMs = budget('DVLA_CORE_TIMEOUT_MS', 8_000, 15_000);
+        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 2_500, 6_000);
+        this.aiSyncTimeoutMs = budget('DVLA_SYNC_AI_TIMEOUT_MS', 3_000, 6_000);
+        this.aiOptionalTimeoutMs = budget('DVLA_OPTIONAL_AI_TIMEOUT_MS', 18_000, 22_000);
 
         if (!this.apiKey) {
             this.logger.warn('DVLA_API_KEY is not set — VRM lookups will fail');
@@ -180,9 +217,18 @@ export class DvlaService {
             );
         }
 
+        const cached = this.coreCache.get(normalised);
+        if (cached && cached.expiresAt > Date.now()) {
+            const core = { ...cached.value, motHistory: cached.value.motHistory?.slice() };
+            return allowAiEnrichment
+                ? this.enrichCore(normalised, core, this.aiSyncTimeoutMs)
+                : core;
+        }
+        // Optional MOT can stall independently, but never longer than its
+        // own 2.5-second budget. The core DVLA request has an 8-second cap.
         const [dvlaResult, motResult] = await Promise.allSettled([
             this.dvlaRequest(normalised),
-            this.motApiRequest(normalised)
+            this.motApiRequest(normalised),
         ]);
 
         if (dvlaResult.status === 'rejected') {
@@ -207,12 +253,31 @@ export class DvlaService {
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
 
-        // Optional AI-backed live specification enrichment. The registration
-        // and vehicle profile are only sent to OpenAI after the client confirms
-        // the seller has explicitly accepted AI data sharing. Core DVLA/MOT
-        // lookup works without this path.
-        const enrichment = allowAiEnrichment
-            ? await this.aiService.enrichVehicleSpecification({
+        // Only authoritative DVLA/MOT facts are cached, not AI output.
+        if (this.coreCache.size >= 200) this.coreCache.clear();
+        this.coreCache.set(normalised, {
+            value: { ...combined, motHistory: combined.motHistory?.slice() },
+            expiresAt: Date.now() + 2 * 60_000,
+        });
+        return allowAiEnrichment
+            ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
+            : combined;
+    }
+
+    /** Dedicated, explicit-consent optional enrichment; core lookup does not wait for it. */
+    async enrichVrm(vrm: string, consent = false): Promise<DvlaLookupResult> {
+        if (!consent) throw new BadRequestException('Explicit AI data sharing consent is required');
+        const core = await this.lookupVrm(vrm, false);
+        return this.enrichCore(vrm.replace(/\s+/g, '').toUpperCase(), core, this.aiOptionalTimeoutMs);
+    }
+
+    private async enrichCore(
+        normalised: string, combined: DvlaLookupResult, timeoutMs: number,
+    ): Promise<DvlaLookupResult> {
+        const enrichment = await this.withDeadline(
+            'Optional live vehicle specification',
+            timeoutMs,
+            () => this.aiService.enrichVehicleSpecification({
                 vrm: normalised,
                 make: combined.make,
                 model: combined.model,
@@ -221,8 +286,11 @@ export class DvlaService {
                 fuelType: combined.fuelType,
                 colour: combined.primaryColour || combined.colour,
                 firstUsedDate: combined.firstUsedDate,
-            })
-            : null;
+            }),
+        ).catch(error => {
+            this.logger.warn('Optional specification enrichment unavailable: ' + (error?.message ?? 'unknown'));
+            return null;
+        });
 
         if (enrichment) {
             combined.specEnrichment = {
