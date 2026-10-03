@@ -40,6 +40,7 @@ import { VehicleValuationCard } from "./VehicleValuationCard"
 import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
 import { saveSellerHandoff, readSellerHandoff, clearSellerHandoff } from "@/lib/pendingSellerHandoff"
 import { sellerDraftKeys, discardUnownedLegacySellerDraft, createHpiBinding, parseHpiBinding, matchesHpiReturn } from "@/lib/sellerDraftIsolation"
+import { getMissingSellerDeclarations, sellerDeclarationErrorMessage } from "@/lib/sellerDeclarationValidation"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1023,6 +1024,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         )
     }, [isAuction, platformOpeningBid])
 
+    const missingSellerDeclarations = getMissingSellerDeclarations(formData)
+    const declarationError = hasAttemptedNext
+        ? sellerDeclarationErrorMessage(missingSellerDeclarations)
+        : null
+    const confirmCheckboxMissing = hasAttemptedNext && !formData.declarationAcknowledged
+
     const totalSteps = isAuction ? 5 : 4
     // "Method" is a cosmetic-only leading step representing the Retail/Auction choice
     // already made on the landing screen — it doesn't participate in currentStep/
@@ -1123,19 +1130,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (!formData.owners) missing.push('previous keepers')
                 if (!formData.description.trim()) missing.push('description')
                 if (!formData.condition) missing.push('condition')
-                if (formData.writeOffCategory === '') missing.push('write-off status')
-                if (formData.stolenRecovered === null) missing.push('stolen/recovered declaration')
-                if (formData.hasOutstandingFinance === null) missing.push('outstanding finance declaration')
-                if (formData.isLegalRegisteredKeeper === null) missing.push('registered keeper declaration')
-                if (formData.isLegalRegisteredKeeper === false && !(formData.notOwnerRelationship ?? '').trim()) {
-                    missing.push('relationship/authority to sell')
-                }
-                if (formData.isDepartedSale && !(formData.departedRelationship ?? '').trim()) {
-                    missing.push('estate/departed-sale relationship')
-                }
-                if (!formData.declarationAcknowledged) missing.push('seller declaration')
+                missing.push(...missingSellerDeclarations)
                 if ((formData.writeOffCategory === 'CAT_A' || formData.writeOffCategory === 'CAT_B') && formData.listingType !== 'AUCTION') {
                     return 'Category A and Category B vehicles can only be listed in Auction. Switch this listing to Auction to continue.'
+                }
+                if (missing.length === 1 && missing[0] === "confirmation checkbox") {
+                    return "Please tick the confirmation box to continue."
                 }
                 return missing.length > 0
                     ? `Please complete: ${missing.join(', ')}.`
@@ -1236,6 +1236,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         behavior: 'smooth',
                         block: 'center',
                     })
+                }, 50)
+            } else if (currentStep === 1 && validationError === "Please tick the confirmation box to continue.") {
+                // Bring the actual native checkbox into view for the common
+                // case shown on Android, instead of displaying a generic alert.
+                window.setTimeout(() => {
+                    const checkbox = document.getElementById("seller-declaration-acknowledged") as HTMLInputElement | null
+                    checkbox?.closest("label")?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    checkbox?.focus({ preventScroll: true })
                 }, 50)
             }
             alert(validationError ?? "Please complete the required information before proceeding.")
@@ -3452,13 +3460,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
 
                             {/* ── Write-Off & Legal Declaration ──────────────── */}
-                            <div className="border border-red-500/30 bg-red-500/5 rounded-xl p-6 space-y-6">
+                            <div id="seller-declarations-section" className={`rounded-xl border-2 p-4 sm:p-6 space-y-6 bg-[var(--bg-card)] ${declarationError ? "border-red-500/70" : "border-[var(--border-default)]"}`}>
                                 <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 shrink-0">
-                                        <AlertTriangle className="text-red-400 w-5 h-5" />
+                                    <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/30 shrink-0">
+                                        <AlertTriangle className="text-amber-700 dark:text-amber-300 w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="text-base font-bold text-red-300 uppercase tracking-wider">Write-Off &amp; Legal Declaration</h3>
+                                        <h3 className="text-base font-bold text-[var(--text-primary)] uppercase tracking-wide">Write-Off &amp; Legal Declaration</h3>
                                         <p className="text-xs text-[var(--text-muted)] mt-1">Required by law. False declarations void the listing and may be reported to relevant authorities.</p>
                                     </div>
                                 </div>
@@ -3499,9 +3507,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     onClick={() => set("writeOffCategory", opt.value)}
                                                     className={`p-3 rounded-xl border text-center transition-all flex flex-col gap-0.5 ${active
                                                         ? isAuctionOnly
-                                                            ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                                                            : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                            ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100"
+                                                            : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                        : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                                 >
                                                     <span className="text-sm font-bold">{opt.label}</span>
@@ -3531,8 +3539,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("stolenRecovered", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.stolenRecovered === val
-                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? val ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100" : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3549,8 +3557,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("hasOutstandingFinance", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.hasOutstandingFinance === val
-                                                    ? val ? "border-amber-500 bg-amber-500/10 text-amber-300" : "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? val ? "border-amber-600 bg-amber-50 text-amber-900 dark:border-amber-400 dark:bg-amber-500/15 dark:text-amber-100" : "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3572,8 +3580,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("isLegalRegisteredKeeper", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isLegalRegisteredKeeper === val
-                                                    ? val ? "border-emerald-500 bg-emerald-500/10 text-emerald-300" : "border-red-500 bg-red-500/10 text-red-300"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? val ? "border-emerald-600 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-100" : "border-blue-600 bg-blue-50 text-blue-900 dark:border-sky-400 dark:bg-sky-500/15 dark:text-sky-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3617,8 +3625,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             <button key={label} type="button"
                                                 onClick={() => set("isImported", val)}
                                                 className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${formData.isImported === val
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/30"
+                                                    ? "border-blue-600 bg-blue-50 text-blue-900 dark:border-sky-400 dark:bg-sky-500/15 dark:text-sky-100"
+                                                    : "border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-secondary)] hover:border-blue-500/60"
                                                     }`}
                                             >
                                                 {label}
@@ -3627,22 +3635,46 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </div>
                                 </div>
 
-                                {/* Declaration Acknowledgment */}
-                                <label className="flex items-start gap-3 cursor-pointer group">
-                                    <div
-                                        onClick={() => set("declarationAcknowledged", !formData.declarationAcknowledged)}
-                                        className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-all ${formData.declarationAcknowledged ? "bg-emerald-500 border-emerald-500" : "border-[var(--border-default)] bg-[var(--bg-input)] group-hover:border-primary/40"}`}
+                                {/* Native checkbox: the entire label is the click target, including mobile. */}
+                                <label
+                                    htmlFor="seller-declaration-acknowledged"
+                                    className={`group flex w-full items-start gap-3 sm:gap-4 rounded-xl border-2 p-3 sm:p-4 cursor-pointer transition-colors
+                                        ${formData.declarationAcknowledged
+                                            ? "border-emerald-600 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-500/15"
+                                            : confirmCheckboxMissing
+                                                ? "border-red-600 bg-red-50 dark:border-red-400 dark:bg-red-500/10"
+                                                : "border-slate-400 bg-white dark:border-slate-400 dark:bg-slate-800/60 hover:border-blue-600 dark:hover:border-sky-400"}`}
+                                >
+                                    <input
+                                        id="seller-declaration-acknowledged"
+                                        type="checkbox"
+                                        checked={formData.declarationAcknowledged}
+                                        onChange={event => set("declarationAcknowledged", event.target.checked)}
+                                        aria-invalid={confirmCheckboxMissing}
+                                        aria-describedby={declarationError ? "seller-declaration-error" : "seller-declaration-help"}
+                                        className="peer sr-only"
+                                    />
+                                    <span
+                                        aria-hidden="true"
+                                        className={`mt-0.5 flex h-7 w-7 min-w-7 shrink-0 items-center justify-center rounded-md border-[3px] transition-all
+                                            peer-focus-visible:outline peer-focus-visible:outline-4 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-blue-500
+                                            ${formData.declarationAcknowledged
+                                                ? "border-emerald-700 bg-emerald-600 dark:border-emerald-300 dark:bg-emerald-600"
+                                                : "border-slate-700 bg-white dark:border-slate-100 dark:bg-slate-900"}`}
                                     >
-                                        {formData.declarationAcknowledged && <CheckCircle size={12} className="text-white" />}
-                                    </div>
-                                    <span className="text-xs text-[var(--text-muted)] leading-relaxed">
+                                        {formData.declarationAcknowledged && <CheckCircle size={19} strokeWidth={3} className="text-white" />}
+                                    </span>
+                                    <span id="seller-declaration-help" className="text-sm sm:text-base font-medium leading-relaxed text-[var(--text-primary)]">
+                                        <strong className="block mb-1 font-bold">I confirm these declarations *</strong>
                                         I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action.
+                                        {!formData.declarationAcknowledged && <span className="block mt-2 text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">Tick this box to continue.</span>}
                                     </span>
                                 </label>
 
-                                {hasAttemptedNext && (formData.writeOffCategory === '' || formData.stolenRecovered === null || formData.hasOutstandingFinance === null || formData.isLegalRegisteredKeeper === null || (formData.isLegalRegisteredKeeper === false && !(formData.notOwnerRelationship ?? '').trim()) || !formData.declarationAcknowledged) && (
-                                    <p className="text-xs text-red-400 flex items-center gap-1.5">
-                                        <AlertTriangle size={12} /> Please complete all declarations above before proceeding.
+                                {declarationError && (
+                                    <p id="seller-declaration-error" role="alert" className="flex items-start gap-2 rounded-lg border border-red-500/50 bg-red-50 px-3 py-2.5 text-sm font-semibold leading-relaxed text-red-800 dark:bg-red-500/15 dark:text-red-200">
+                                        <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                                        <span>{declarationError}</span>
                                     </p>
                                 )}
                             </div>
