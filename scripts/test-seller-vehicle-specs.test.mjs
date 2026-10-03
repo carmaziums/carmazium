@@ -190,3 +190,53 @@ test("wizard persists guest handoff and blocks invalid restored details before s
     assert.match(wizard, /const detailsError = getStepValidationError\(1\)/)
     assert.ok(wizard.indexOf("const detailsError = getStepValidationError(1)") < wizard.indexOf("setIsSubmitting(true)"))
 })
+
+
+const isolationSrc = readFileSync(new URL("../src/lib/sellerDraftIsolation.ts", import.meta.url), "utf8")
+const isolationJs = ts.transpileModule(isolationSrc, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+})
+const isolation = {}
+runInNewContext(isolationJs.outputText, {
+    exports: isolation,
+    require: id => {
+        assert.equal(id, "./sellerVehicleSpecs")
+        return exports
+    },
+})
+test("browser drafts are scoped to separate authenticated accounts and legacy keys are never transferred", () => {
+    const a = isolation.sellerDraftKeys("seller-a")
+    const b = isolation.sellerDraftKeys("seller-b")
+    assert.notEqual(a.draft, b.draft)
+    assert.notEqual(a.hpiDraftId, b.hpiDraftId)
+    assert.equal(isolation.sellerDraftKeys(""), null)
+    const store = new Map([
+        ["carmazium_listing_draft", "old user vehicle details"],
+        ["carmazium_listing_draft_step", "4"],
+        ["carmazium_hpi_draft_id", "another person's listing"],
+        [a.draft, "seller A's own draft"],
+    ])
+    isolation.discardUnownedLegacySellerDraft({ removeItem: key => store.delete(key) })
+    assert.equal(store.has("carmazium_listing_draft"), false)
+    assert.equal(store.get(a.draft), "seller A's own draft")
+    assert.equal(store.has(b.draft), false)
+})
+test("HPI return must match checkout, draft, URL and the same saved listing", () => {
+    const binding = isolation.createHpiBinding("AB12 CDE", "listing-1", 1000)
+    assert.equal(isolation.matchesHpiReturn(binding, "AB12CDE", "ab12 cde", "listing-1", 1001), true)
+    assert.equal(isolation.matchesHpiReturn(binding, "CD34EFG", "AB12CDE", "listing-1", 1001), false)
+    assert.equal(isolation.matchesHpiReturn(binding, "AB12CDE", "CD34EFG", "listing-1", 1001), false)
+    assert.equal(isolation.matchesHpiReturn(binding, "AB12CDE", "AB12CDE", "listing-2", 1001), false)
+    assert.equal(isolation.matchesHpiReturn(binding, "AB12CDE", "AB12CDE", "listing-1", 1000 + 3 * 3600000), false)
+    assert.equal(isolation.matchesHpiReturn(null, "AB12CDE", "AB12CDE", "listing-1", 1001), false)
+    assert.equal(isolation.parseHpiBinding(JSON.stringify(binding)).listingId, "listing-1")
+    assert.equal(isolation.parseHpiBinding("{nope"), null)
+})
+test("seller wizard never writes the previous account's draft while identity changes", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /readyDraftOwner === user\.id && activeDraftOwnerRef\.current === user\.id/)
+    assert.match(wizard, /discardUnownedLegacySellerDraft\(localStorage\)/)
+    assert.match(wizard, /matchesHpiReturn\(binding, parsed\.vrm, urlVrm, savedDraftId\)/)
+    assert.match(wizard, /sessionStorage\.setItem\(draftKeys\.hpiCheckout, JSON\.stringify\(binding\)\)/)
+    assert.doesNotMatch(wizard, /localStorage\.getItem\('carmazium_listing_draft'\)/)
+})
