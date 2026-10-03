@@ -11,6 +11,8 @@ on:
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
       - "src/lib/dvlaApi.ts"
+      - "src/lib/apiClient.ts"
+      - "src/lib/fetchWithRetry.ts"
       - "scripts/test-dvla-retail-lookup.test.mjs"
       - "src/lib/sellerVehicleSpecs.ts"
       - "src/lib/pendingSellerHandoff.ts"
@@ -63,7 +65,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|dvlaApi)\.ts)' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|dvlaApi|apiClient|fetchWithRetry)\.ts)' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo
