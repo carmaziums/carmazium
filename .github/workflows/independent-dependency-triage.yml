@@ -46,3 +46,24 @@ jobs:
           (cd "$TARGET_DIR" && npm audit --package-lock-only --omit=dev --json > "$temp") || true
           node scripts/security-advisory-report.mjs "$temp" "$PROJECT"
           rm -f "$temp"
+      - name: Simulate safe in-range fixes in this disposable runner only
+        shell: bash
+        env:
+          TARGET_DIR: ${{ matrix.directory }}
+          PROJECT: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          # Intentional: no --force, no production changes, no git push.
+          # This identifies the safe subset; the actual fix PR requires
+          # reproducible committed lockfiles and all application tests.
+          (cd "$TARGET_DIR" && npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund > /dev/null 2>&1) || true
+          after="$(mktemp)"
+          (cd "$TARGET_DIR" && npm audit --package-lock-only --omit=dev --json > "$after") || true
+          node "$GITHUB_WORKSPACE/scripts/security-advisory-report.mjs" "$after" "$PROJECT-after-nonbreaking-simulation" \
+            | grep -E '^SECURITY_AUDIT_DETAIL |^::warning::' \
+            | sed -E 's/,"highOrCriticalPackages":\[.*\],"state":/,"highOrCriticalPackages":"OMITTED_IN_SIMULATION","state":/'
+          # Only show the count of changed manifests; no modified file is
+          # ever pushed, uploaded or merged by this workflow.
+          echo "SIMULATED_MANIFEST_DIFF for $PROJECT:"
+          git diff --numstat -- "$TARGET_DIR/package.json" "$TARGET_DIR/package-lock.json" | head -n 4 || true
+          rm -f "$after"
