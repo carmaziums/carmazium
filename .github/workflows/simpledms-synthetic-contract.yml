@@ -1,0 +1,64 @@
+name: SimpleDMS synthetic staging contract and hosted access checks
+on:
+  push:
+    branches:
+      - test/simpledms-synthetic-contract-gates-20261003
+    paths:
+      - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
+      - backend/src/partner-api/simpledms.service.ts
+      - backend/src/partner-api/simpledms.guard.ts
+      - backend/src/partner-api/staging.main.ts
+      - .github/workflows/simpledms-synthetic-contract.yml
+  pull_request:
+    branches:
+      - security/simpledms-dependency-fixes
+    paths:
+      - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
+      - backend/src/partner-api/simpledms.service.ts
+      - backend/src/partner-api/simpledms.guard.ts
+      - backend/src/partner-api/staging.main.ts
+      - .github/workflows/simpledms-synthetic-contract.yml
+permissions:
+  contents: read
+jobs:
+  isolated-local-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Locked backend install, no external staging secrets
+        run: npm ci
+      - name: Validate TypeScript, partner regression tests, and compiled isolated service
+        run: |
+          npm run typecheck
+          npx jest partner-api --runInBand
+          npm run build
+      - name: Exercise real HTTP controller and guard on disposable synthetic localhost
+        run: node scripts/security/ci-only-simpledms-staging-contract.cjs
+  public-hosted-anonymous-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check existing synthetic Railway host without a key
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin="https://partner-api-synthetic-production.up.railway.app"
+          health="$(curl -fsS --retry 2 --retry-delay 1 --connect-timeout 8 --max-time 20 "$origin/health/live")"
+          echo "$health" | grep -Eq '"syntheticOnly"[[:space:]]*:[[:space:]]*true'
+          asset="$(curl -fsS --retry 2 --retry-delay 1 --connect-timeout 8 --max-time 20 "$origin/staging-assets/demo-vehicle.svg")"
+          echo "$asset" | grep -q 'SYNTHETIC TEST VEHICLE'
+          status="$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' "$origin/partners/v1/simpledms/auctions")"
+          if [[ "$status" != '401' && "$status" != '404' ]]; then
+            echo "SECURITY FAILURE: anonymous staging feed unexpected HTTP $status"
+            exit 1
+          fi
+          echo "PASS: existing hosted synthetic readiness, demo image, anonymous denial ($status)."
