@@ -1173,7 +1173,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         ? 'Please enter a valid estimated market value before continuing.'
                         : 'Please enter a valid asking price before continuing.'
                 }
-                if (formData.priceMin && !isNaN(pMin) && pMin > pAsk) {
+                if (formData.priceMin && (!Number.isFinite(pMin) || pMin <= 0)) {
+                    return 'Please enter a valid minimum price.'
+                }
+                if (formData.priceMin && pMin > pAsk) {
                     return 'The minimum price cannot be higher than the asking price.'
                 }
                 return null
@@ -1189,10 +1192,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         return 'Please enter a valid future auction start date and time.'
                     }
                 }
-                if (!auctionSchedule.reservePrice || parseFloat(auctionSchedule.reservePrice) <= 0) {
+                if (!auctionSchedule.reservePrice.trim() || !Number.isFinite(Number(auctionSchedule.reservePrice)) || Number(auctionSchedule.reservePrice) <= 0) {
                     return 'Please enter a valid reserve price.'
                 }
-                if (!auctionSchedule.startingBid || parseFloat(auctionSchedule.startingBid) <= 0) {
+                if (!auctionSchedule.startingBid.trim() || !Number.isFinite(Number(auctionSchedule.startingBid)) || Number(auctionSchedule.startingBid) <= 0) {
                     return 'Please enter a valid opening bid.'
                 }
                 if (!auctionSchedule.minIncrement || !Number.isFinite(Number(auctionSchedule.minIncrement)) || Number(auctionSchedule.minIncrement) <= 0) {
