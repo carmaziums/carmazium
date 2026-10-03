@@ -240,3 +240,74 @@ test("seller wizard never writes the previous account's draft while identity cha
     assert.match(wizard, /sessionStorage\.setItem\(draftKeys\.hpiCheckout, JSON\.stringify\(binding\)\)/)
     assert.doesNotMatch(wizard, /localStorage\.getItem\('carmazium_listing_draft'\)/)
 })
+
+
+const declarationSource = readFileSync(new URL("../src/lib/sellerDeclarationValidation.ts", import.meta.url), "utf8")
+const declarationJS = ts.transpileModule(declarationSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    reportDiagnostics: true,
+})
+assert.equal(declarationJS.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0)
+const declarations = {}
+runInNewContext(declarationJS.outputText, { exports: declarations })
+const { getMissingSellerDeclarations, sellerDeclarationErrorMessage } = declarations
+const completedDeclarations = {
+    writeOffCategory: "NONE",
+    stolenRecovered: false,
+    hasOutstandingFinance: false,
+    isLegalRegisteredKeeper: true,
+    notOwnerRelationship: "",
+    isDepartedSale: false,
+    departedRelationship: "",
+    declarationAcknowledged: true,
+}
+
+test("completed retail and auction declaration choices show no error, including valid No answers", () => {
+    const missing = getMissingSellerDeclarations(completedDeclarations)
+    assert.equal(missing.length, 0)
+    assert.equal(sellerDeclarationErrorMessage(missing), null)
+})
+test("an otherwise completed seller only sees the exact missing confirmation-checkbox warning", () => {
+    const missing = getMissingSellerDeclarations({ ...completedDeclarations, declarationAcknowledged: false })
+    assert.deepEqual(Array.from(missing), ["confirmation checkbox"])
+    assert.equal(sellerDeclarationErrorMessage(missing), "Please tick the confirmation box to continue.")
+})
+test("selling on behalf of another keeper is allowed only after their relationship is specified", () => {
+    const ownerMissing = getMissingSellerDeclarations({
+        ...completedDeclarations, isLegalRegisteredKeeper: false, notOwnerRelationship: "",
+    })
+    assert.deepEqual(Array.from(ownerMissing), ["relationship to the registered keeper"])
+    const authorised = getMissingSellerDeclarations({
+        ...completedDeclarations, isLegalRegisteredKeeper: false, notOwnerRelationship: "Family member",
+    })
+    assert.equal(authorised.length, 0)
+})
+test("multiple missing declarations identify required answers without treating import No as an error", () => {
+    const missing = getMissingSellerDeclarations({
+        ...completedDeclarations,
+        stolenRecovered: null,
+        hasOutstandingFinance: null,
+        declarationAcknowledged: false,
+    })
+    assert.deepEqual(Array.from(missing), [
+        "stolen/recovered answer", "outstanding finance answer", "confirmation checkbox",
+    ])
+    assert.match(sellerDeclarationErrorMessage(missing), /outstanding finance answer/)
+    assert.equal(getMissingSellerDeclarations({
+        ...completedDeclarations, isDepartedSale: true, departedRelationship: "",
+    })[0], "estate/departed-sale relationship")
+})
+test("both web selling methods use one accessible high-contrast native checkbox and shared validation", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /<input\\s+id="seller-declaration-acknowledged"\\s+type="checkbox"/)
+    assert.match(wizard, /onChange=\\{event => set\\("declarationAcknowledged", event\\.target\\.checked\\)\\}/)
+    assert.match(wizard, /htmlFor="seller-declaration-acknowledged"/)
+    assert.match(wizard, /peer-focus-visible:outline/)
+    assert.match(wizard, /border-slate-700 bg-white dark:border-slate-100 dark:bg-slate-900/)
+    assert.match(wizard, /text-sm sm:text-base font-medium leading-relaxed text-\\[var\\(--text-primary\\)\\]/)
+    assert.match(wizard, /missing\\.push\\(\\.\\.\\.missingSellerDeclarations\\)/)
+    assert.match(wizard, /sellerDeclarationErrorMessage\\(missingSellerDeclarations\\)/)
+    assert.equal((wizard.match(/id="seller-declaration-acknowledged"/g) || []).length, 1)
+    assert.doesNotMatch(wizard, /onClick=\\{\\(\\) => set\\("declarationAcknowledged"/)
+    assert.doesNotMatch(wizard, /Please complete all declarations above before proceeding/)
+})
