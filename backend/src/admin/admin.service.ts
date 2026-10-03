@@ -447,8 +447,24 @@ export class AdminService {
             const normaliseVrm = (vrm?: string | null) =>
                 (vrm ?? '').replace(/\s/g, '').toUpperCase();
             const vrm = normaliseVrm(listing.vrm);
-            const sibling = otherListings.find(other =>
-                vrm && normaliseVrm(other.vrm) === vrm
+            const matchingSiblings = otherListings.filter(other =>
+                vrm && normaliseVrm(other.vrm) === vrm,
+            );
+            // An older no-sale auction may have been turned into a CLASSIFIED
+            // draft while its retail sibling stayed live. The canonical seller
+            // re-auction path heals precisely one unlinked retail counterpart.
+            // Apply the same narrow recovery here without letting an arbitrary
+            // retail draft silently create an additional unlinked live vehicle.
+            const legacyRetailSource = listing.type === 'CLASSIFIED'
+                && !listing.linkedListingId
+                && current && ['ENDED', 'CANCELLED'].includes(current.status)
+                && matchingSiblings.length === 1
+                && matchingSiblings[0].type === 'CLASSIFIED'
+                && matchingSiblings[0].status === 'ACTIVE'
+                && !matchingSiblings[0].linkedListingId
+                ? matchingSiblings[0] : null;
+            const sibling = matchingSiblings.find(other =>
+                other.id !== legacyRetailSource?.id
                 && !(
                     listing.type === 'AUCTION'
                     && listing.linkedListingId === other.id
@@ -471,6 +487,25 @@ export class AdminService {
                 throw new BadRequestException(
                     'Linked retail listing is no longer active and correctly paired. Repair the link before relisting.',
                 );
+            }
+
+            if (legacyRetailSource) {
+                const claimed = await tx.listing.updateMany({
+                    where: {
+                        id: legacyRetailSource.id,
+                        sellerId: listing.sellerId,
+                        type: 'CLASSIFIED',
+                        status: 'ACTIVE',
+                        linkedListingId: null,
+                        deletedAt: null,
+                    },
+                    data: { linkedListingId: id },
+                });
+                if (claimed.count !== 1) {
+                    throw new BadRequestException(
+                        'The matching retail listing changed. Refresh before relisting.',
+                    );
+                }
             }
 
             const marketValue = Number(listing.price);
@@ -547,6 +582,9 @@ export class AdminService {
                     ...buildListingActivationData('FREE'),
                     type: 'AUCTION',
                     badgeTier: 'FREE',
+                    ...(legacyRetailSource
+                        ? { linkedListingId: legacyRetailSource.id }
+                        : {}),
                 },
             });
             // The actor (not the seller) is deliberately recorded: this is a
