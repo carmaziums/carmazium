@@ -114,6 +114,22 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(Number(url.searchParams.get('expires'))).toBeGreaterThan(Date.now());
   });
 
+  it('never advertises an untrackable or misconfigured direct URL as a signed referral', async () => {
+    const cases = [
+      { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com' },
+      { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com', PARTNER_API_REFERRAL_SIGNING_SECRET: 'short' },
+      { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://outside.example', PARTNER_API_REFERRAL_SIGNING_SECRET: 'test-referral-signing-secret-with-32-characters' },
+      { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com:8443', PARTNER_API_REFERRAL_SIGNING_SECRET: 'test-referral-signing-secret-with-32-characters' },
+      { PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'false', PARTNER_API_REFERRAL_BACKEND_URL: 'https://api.carmazium.com', PARTNER_API_REFERRAL_SIGNING_SECRET: 'test-referral-signing-secret-with-32-characters' },
+    ];
+    for (const env of cases) {
+      const { service } = harness(env);
+      const { auction } = await service.detail('auction-1');
+      expect(auction).not.toHaveProperty('referralUrl');
+      expect(auction.url).toContain('carmazium.com/auctions/live/');
+    }
+  });
+
   it('exposes current bid only when opted in and queries current-run non-cancelled bids', async () => {
     const { service, prisma } = harness({ PARTNER_API_SIMPLEDMS_SHARE_CURRENT_BID: 'true' });
     const result = await service.detail('auction-1');
@@ -121,6 +137,8 @@ describe('SimpleDmsService partner data boundary', () => {
     const query = prisma.bid.findFirst.mock.calls[0][0];
     expect(query.select).toEqual({ amount: true });
     expect(query.where.createdAt.gte).toEqual(SAMPLE.startTime);
+    expect(query.where.createdAt.lte).toBeInstanceOf(Date);
+    expect(query.where.createdAt.lte.getTime()).toBeLessThanOrEqual(Date.now());
     expect(query.where).toMatchObject({ cancelledAt: null, archivedAt: null, deletedAt: null });
   });
 
