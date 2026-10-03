@@ -337,8 +337,10 @@ export class DvlaService {
     private async dvlaRequest(normalised: string): Promise<DvlaLookupResult> {
         this.logger.log(`DVLA lookup for VRM: ${normalised}`);
 
+        return this.withDeadline('DVLA VES', this.dvlaTimeoutMs, async signal => {
         const response = await fetch(this.baseUrl, {
             method: 'POST',
+            signal,
             headers: {
                 'x-api-key': this.apiKey!,
                 'Content-Type': 'application/json',
@@ -383,6 +385,11 @@ export class DvlaService {
             transmission: (data as any).transmission,
             dataSource: 'DVLA',
         };
+        }).catch(error => {
+            if (error instanceof BadRequestException || error instanceof ServiceUnavailableException) throw error;
+            this.logger.error('DVLA transport deadline/failure: ' + (error instanceof Error ? error.message : 'unknown'));
+            throw new ServiceUnavailableException('DVLA is responding slowly. Please retry your registration lookup.');
+        });
     }
 
     // ─── MOT History API REST request ─────────────────────────────────────────
@@ -393,44 +400,38 @@ export class DvlaService {
             this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
             return null;
         }
-
         const url = `https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=${normalised}`;
-        
         try {
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'x-api-key': motApiKey,
-                    'Accept': 'application/json+v6',
-                },
-            });
-
-            if (!response.ok) {
-                if (response.status === 404) {
-                    this.logger.log(`No MOT history found for ${normalised}`);
-                    return { motTests: [] };
+            // Both the HTTP request and its response body share one deadline.
+            // A stalled optional MOT service must not hold back core DVLA data.
+            return await this.withDeadline('MOT history', this.motTimeoutMs, async signal => {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': motApiKey,
+                        'Accept': 'application/json+v6',
+                    },
+                    signal,
+                });
+                if (!response.ok) {
+                    if (response.status === 404) return { motTests: [] };
+                    this.logger.warn('MOT lookup returned HTTP ' + response.status);
+                    return null;
                 }
-                const text = await response.text().catch(() => '');
-                this.logger.error(`MOT API error ${response.status}: ${text}`);
-                return null;
-            }
-
-            const data = await response.json();
-            
-            // The API returns an array of vehicles (usually just one) with motTests
-            if (Array.isArray(data) && data.length > 0) {
-                const vehicle = data[0];
-                return {
-                    motTests: vehicle.motTests || [],
-                    model: vehicle.model,
-                    primaryColour: vehicle.primaryColour,
-                    firstUsedDate: vehicle.firstUsedDate
-                };
-            }
-            
-            return { motTests: [] };
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const vehicle = data[0];
+                    return {
+                        motTests: vehicle.motTests || [],
+                        model: vehicle.model,
+                        primaryColour: vehicle.primaryColour,
+                        firstUsedDate: vehicle.firstUsedDate,
+                    };
+                }
+                return { motTests: [] };
+            });
         } catch (error) {
-            this.logger.error(`MOT API request failed:`, error);
+            this.logger.warn('Optional MOT lookup unavailable: ' + (error instanceof Error ? error.message : 'unknown'));
             return null;
         }
     }
