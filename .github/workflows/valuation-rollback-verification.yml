@@ -36,6 +36,52 @@ jobs:
         run: node --test scripts/test-valuation-rollback.mjs
       - name: Refuse undeclared changes or modified legacy source anchors
         run: node scripts/valuation-rollback.mjs --check-candidate --base-ref origin/main
+      - name: Rehearse reverting the ACTUAL complete ten-block source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline="741aaa35d605c151bfe31ad071fee279058c563f"
+          candidate="$(git rev-parse HEAD)"
+          scratch="$(mktemp -d)"
+          rehearsal="$scratch/actual-release"
+          cp backend/docs/valuation-release-manifest.json "$scratch/manifest.json"
+          trap 'git worktree remove --force "$rehearsal" >/dev/null 2>&1 || true; rm -rf "$scratch"' EXIT
+          git worktree add --detach "$rehearsal" "$baseline"
+          # Construct a throwaway real-source version of the one-squash
+          # commit we require on the future approved main release.
+          git -C "$rehearsal" merge --squash "$candidate"
+          git -C "$rehearsal" -c user.name='Valuation CI' \
+            -c user.email='valuation-ci@example.invalid' \
+            commit -m 'CarMazium valuation release blocks 1-10: real source rehearsal'
+          release="$(git -C "$rehearsal" rev-parse HEAD)"
+          short="$(printf '%s' "$release" | cut -c1-8)"
+          git -C "$rehearsal" switch -c "valuation-rollback/$short"
+          # Unrelated work after release MUST survive the rollback.
+          printf 'new unrelated development after the valuation release\n' \
+            > "$rehearsal/ci-rehearsal-unrelated-only.txt"
+          git -C "$rehearsal" add ci-rehearsal-unrelated-only.txt
+          git -C "$rehearsal" -c user.name='Valuation CI' \
+            -c user.email='valuation-ci@example.invalid' \
+            commit -m 'Keep unrelated post-release development'
+          node "$rehearsal/scripts/valuation-rollback.mjs" --verify-release "$release"
+          node "$rehearsal/scripts/valuation-rollback.mjs" --prepare-revert "$release"
+          # Compare ALL 51 real programme files against the untouched
+          # pre-Block-1 Git tree, not just a few backend anchors.
+          node --input-type=module - "$rehearsal" "$baseline" "$scratch/manifest.json" <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          const [folder, baseline, file] = process.argv.slice(2);
+          const manifest = JSON.parse(fs.readFileSync(file,'utf8'));
+          const actual = execFileSync('git', ['diff','--name-only',baseline,'--',...manifest.allowedReleasePaths], {cwd:folder,encoding:'utf8'}).trim();
+          assert.equal(actual,'','Not every real valuation programme file returned to its exact original content');
+          assert.equal(fs.readFileSync(path.join(folder,'ci-rehearsal-unrelated-only.txt'),'utf8'),
+            'new unrelated development after the valuation release\n');
+          const staged = execFileSync('git',['diff','--cached','--name-only','-z'],{cwd:folder,encoding:'utf8'}).split('\0').filter(Boolean).sort();
+          assert.deepEqual(staged, [...manifest.allowedReleasePaths].sort());
+          console.log('REAL_TEN_BLOCK_SOURCE_ROLLBACK_PASS: all 51 files restored; later unrelated commit preserved');
+          NODE
       - name: Explain remaining external release gates
         run: |
           echo "Validated ONLY source scope and synthetic whole-programme reversal."
