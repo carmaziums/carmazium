@@ -227,3 +227,106 @@ describe('DvlaService AI specification enrichment', () => {
         );
     });
 });
+
+
+describe('DvlaService — retail seller timeout and optional upstream isolation', () => {
+    const config = {
+        get: (key: string) => ({
+            DVLA_API_KEY: 'dvla-test-key',
+            MOT_API_KEY: 'mot-test-key',
+            DVLA_CORE_TIMEOUT_MS: '40',
+            DVLA_MOT_TIMEOUT_MS: '30',
+            DVLA_SYNC_AI_TIMEOUT_MS: '35',
+            DVLA_OPTIONAL_AI_TIMEOUT_MS: '50',
+        } as Record<string, string>)[key],
+    };
+    const corePayload = {
+        registrationNumber: 'LL67YAG', make: 'FORD', colour: 'BLUE',
+        yearOfManufacture: 2017, fuelType: 'PETROL',
+    };
+    let fetchMock: jest.Mock;
+
+    beforeEach(() => {
+        fetchMock = jest.fn(async (url: string) => {
+            if (url.includes('driver-vehicle-licensing')) {
+                return { ok: true, status: 200, json: async () => corePayload };
+            }
+            return { ok: true, status: 200, json: async () => [] };
+        });
+        (global as any).fetch = fetchMock;
+    });
+
+    it('returns DVLA details when optional MOT hangs indefinitely', async () => {
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes('driver-vehicle-licensing')) {
+                return { ok: true, status: 200, json: async () => corePayload };
+            }
+            return new Promise(() => {});
+        });
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        const start = Date.now();
+        const result = await service.lookupVrm(' LL67 YAG ');
+        expect(result.make).toBe('FORD');
+        expect(result.vrm).toBe('LL67YAG');
+        expect(Date.now() - start).toBeLessThan(1500);
+    });
+
+    it('retries one transient DVLA failure without repeating a write', async () => {
+        let count = 0;
+        fetchMock.mockImplementation(async (url: string) => {
+            if (url.includes('driver-vehicle-licensing')) {
+                count++;
+                if (count === 1) throw new Error('temporary connection reset');
+                return { ok: true, status: 200, json: async () => corePayload };
+            }
+            return { ok: true, status: 200, json: async () => [] };
+        });
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        const result = await service.lookupVrm('LL67YAG');
+        expect(count).toBe(2);
+        expect(result.make).toBe('FORD');
+    });
+
+    it('rejects core DVLA transport stalls after the bounded retry budget', async () => {
+        fetchMock.mockImplementation(async (url: string) =>
+            url.includes('driver-vehicle-licensing')
+                ? new Promise(() => {})
+                : { ok: true, status: 200, json: async () => [] },
+        );
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        await expect(service.lookupVrm('LL67YAG')).rejects.toThrow(/DVLA is responding slowly/i);
+        expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('driver-vehicle-licensing')).length).toBe(2);
+    });
+
+    it('never sends registration to optional AI without explicit consent', async () => {
+        const aiService = { enrichVehicleSpecification: jest.fn() };
+        const service = new DvlaService(config as any, aiService as any);
+        await service.lookupVrm('LL67YAG', false);
+        await expect(service.enrichVrm('LL67YAG', false)).rejects.toThrow(/consent/i);
+        expect(aiService.enrichVehicleSpecification).not.toHaveBeenCalled();
+    });
+
+    it('returns core details despite a stalled consented live-web specification search', async () => {
+        const aiService = { enrichVehicleSpecification: jest.fn(() => new Promise(() => {})) };
+        const service = new DvlaService(config as any, aiService as any);
+        const start = Date.now();
+        const core = await service.lookupVrm('LL67YAG', false);
+        expect(core.make).toBe('FORD');
+        const optional = await service.enrichVrm('LL67YAG', true);
+        expect(optional.make).toBe('FORD');
+        expect(optional.specEnrichment).toBeUndefined();
+        expect(aiService.enrichVehicleSpecification).toHaveBeenCalledTimes(1);
+        expect(Date.now() - start).toBeLessThan(1500);
+    });
+
+    it('does not retry invalid registrations or non-retryable upstream authorization errors', async () => {
+        fetchMock.mockImplementation(async (url: string) =>
+            url.includes('driver-vehicle-licensing')
+                ? { ok: false, status: 401, text: async () => 'invalid key' }
+                : { ok: true, status: 200, json: async () => [] },
+        );
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        await expect(service.lookupVrm('LL67YAG')).rejects.toThrow(/DVLA API returned 401/);
+        expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('driver-vehicle-licensing')).length).toBe(1);
+    });
+});
