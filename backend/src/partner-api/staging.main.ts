@@ -1,12 +1,12 @@
 import { Controller, Get, Header, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import helmet from 'helmet';
 import { SimpleDmsGuard } from './simpledms.guard';
 import { SimpleDmsController } from './simpledms.controller';
 import { SimpleDmsService } from './simpledms.service';
-import { proofHealth, proofInstance, runHostedProof, stagingGuard } from './staging-hosted-auth-proof';
+import { installHostedProofDigest, proofHealth, proofInstance, runHostedProof } from './staging-hosted-auth-proof';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -14,6 +14,8 @@ import { PrismaService } from '../prisma/prisma.service';
  * No AppModule, Supabase DB, payment credentials, cron jobs, or live inventory.
  * Reuses the exact production guard/controller/service on synthetic fixtures.
  */
+// Install only in synthetic staging, before ConfigModule and the standard guard.
+installHostedProofDigest();
 const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const STAGING_LISTING_ID = '22222222-2222-4222-8222-222222222222';
 function fixtures() {
@@ -90,7 +92,7 @@ class SyntheticAuctionController {
   }])],
   controllers: [SimpleDmsController, SyntheticAssetsController, SyntheticAuctionController, SyntheticHealthController],
   providers: [
-    { provide: SimpleDmsGuard, useFactory: stagingGuard, inject: [ConfigService] },
+    SimpleDmsGuard,
     SimpleDmsService,
     { provide: PrismaService, useValue: syntheticPrisma },
   ],
