@@ -20,6 +20,7 @@ on:
       - "src/lib/sellerDeclarationValidation.ts"
       - "src/lib/sellerAuctionDraft.ts"
       - "scripts/test-seller-vehicle-specs.test.mjs"
+      - "scripts/test-mazium-description.test.mjs"
       - "src/lib/pricingConfig.ts"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
@@ -50,6 +51,9 @@ jobs:
 
       - name: Retail and auction DVLA timeout regression tests
         run: node --test scripts/test-dvla-retail-lookup.test.mjs
+
+      - name: MaziuM description contrast and mobile overflow regressions
+        run: node --test scripts/test-mazium-description.test.mjs
 
       - name: Typecheck web listing surfaces
         shell: bash
