@@ -366,3 +366,11 @@ test("web HPI return never unlocks when backend refuses entitlement or checkout 
     const guarded = wizard.slice(wizard.indexOf("return applyHpiFee(sessionId).then(result =>"), wizard.indexOf("sessionStorage.removeItem(draftKeys.hpiCheckout)", wizard.indexOf("return applyHpiFee(sessionId).then(result =>")))
     assert.ok(guarded.indexOf("if (!result.applied)") < guarded.indexOf("setIsHpiUnlocked(true)"))
 })
+
+
+test("final web auction validation refuses nonnumeric prices rather than trusting parseFloat NaN", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /!Number\.isFinite\(Number\(auctionSchedule\.reservePrice\)\)/)
+    assert.match(wizard, /!Number\.isFinite\(Number\(auctionSchedule\.startingBid\)\)/)
+    assert.match(wizard, /!Number\.isFinite\(pMin\)/)
+})
