@@ -2563,7 +2563,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                                 doors: prev.doors || (suggestion.doors != null ? String(suggestion.doors) : ""),
                                                                 seats: prev.seats || (suggestion.seats != null ? String(suggestion.seats) : ""),
                                                                 bhp: prev.bhp || (suggestion.bhp != null ? String(suggestion.bhp) : ""),
-                                                                engineDescription: prev.engineDescription || suggestion.engineDescription || "",
                                                             }
                                                         })
                                                     }).catch(() => {
