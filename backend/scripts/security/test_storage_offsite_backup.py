@@ -79,8 +79,12 @@ class FakeVault:
         self.public = False
         self.versioning = "Enabled"
         self.kms = KMS
+        self.region = 'eu-west-2'
         self.corrupt_new_read = False
         self.deny_new_read = False
+
+    def get_bucket_location(self, **kwargs):
+        return {'LocationConstraint': self.region}
 
     def get_bucket_versioning(self, **kwargs):
         return {"Status": self.versioning}
@@ -184,7 +188,7 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
             self.assertEqual(vault.objects, {})
 
     def test_independent_vault_privacy_versioning_and_kms_are_required(self):
-        for key, bad in (("public", True), ("versioning", "Suspended"), ("kms", "AES256")):
+        for key, bad in (("public", True), ("versioning", "Suspended"), ("kms", "AES256"), ("region", "us-east-1")):
             vault = FakeVault()
             setattr(vault, key, bad)
             with self.assertRaises(BackupUnsafe):
