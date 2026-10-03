@@ -23,7 +23,7 @@ import {
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
-import { dvlaLookup } from "@/lib/dvlaApi"
+import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS, HGV_BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
@@ -2458,7 +2458,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                             const lookupId = ++lookupRequestRef.current
                                             setDvlaLoading(true); setDvlaError(null); setDvlaSuccess(false)
                                             try {
-                                                const r = await dvlaLookup(formData.vrm, hasAiSharingConsent())
+                                                const r = await dvlaLookup(formData.vrm, false)
                                                 if (lookupId !== lookupRequestRef.current) return
                                                 // Core vehicle fields — normalize make/model to canonical casing
                                                 if (r.make) {
@@ -2542,6 +2542,34 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     set("ulezCompliant", false)
                                                 }
                                                 setDvlaSuccess(true)
+                                                // Follow-up, consented live-web specification research
+                                                // is optional. Do not hold the Analyze DVLA spinner,
+                                                // block completion, or overwrite manual seller choices.
+                                                if (hasAiSharingConsent()) {
+                                                    void dvlaEnrich(requestedVrm).then(suggestion => {
+                                                        if (lookupId !== lookupRequestRef.current) return
+                                                        setFormData(prev => {
+                                                            if (normalizeVehicleRegistration(prev.vrm) !== requestedVrm) return prev
+                                                            const specs = resolveSellerVehicleSpecs(
+                                                                prev,
+                                                                { vrm: requestedVrm, transmission: suggestion.transmission, bodyType: suggestion.bodyType },
+                                                                getBodyTypeKeysForVehicleType(prev.vehicleType),
+                                                            )
+                                                            return {
+                                                                ...prev,
+                                                                ...specs,
+                                                                variant: prev.variant || suggestion.variant || "",
+                                                                driveType: prev.driveType || suggestion.driveType || "",
+                                                                doors: prev.doors || (suggestion.doors != null ? String(suggestion.doors) : ""),
+                                                                seats: prev.seats || (suggestion.seats != null ? String(suggestion.seats) : ""),
+                                                                bhp: prev.bhp || (suggestion.bhp != null ? String(suggestion.bhp) : ""),
+                                                            }
+                                                        })
+                                                    }).catch(() => {
+                                                        // Optional enrichment is best-effort. Core
+                                                        // DVLA success must remain visible.
+                                                    })
+                                                }
                                                 // Vehicle lookup is distinct from valuation. The actual
                                                 // valuation_requested event fires only after the valuation
                                                 // endpoint returns successfully (see valuation effect above).
@@ -2555,14 +2583,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     fuel_type: r.fuelType || undefined,
                                                 })
                                             } catch (err: any) {
+                                                if (lookupId !== lookupRequestRef.current) return
                                                 setDvlaError(err.message || "Lookup failed")
-                                                trackEvent('valuation_failed', {
+                                                trackEvent('vehicle_lookup_failed', {
                                                     listing_type: listingTypeLabel(formData.listingType),
                                                     registration: formData.vrm.replace(/\s/g, "").toUpperCase() || undefined,
                                                     mileage: Number(formData.mileage) || undefined,
                                                     reason: err?.message || 'lookup_failed',
                                                 })
-                                            } finally { setDvlaLoading(false) }
+                                            } finally {
+                                                if (lookupId === lookupRequestRef.current) setDvlaLoading(false)
+                                            }
                                         }}
                                     >
                                         {dvlaLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
@@ -2570,7 +2601,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </Button>
                                 </div>
                                 <p className="text-xs text-[var(--text-secondary)]">UK number plate — click Look Up to auto-fill vehicle details.</p>
-                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> Vehicle data loaded — DVLA/MOT details plus verified live specification matches have been applied where available. Review and edit below.</p>}
+                                {dvlaSuccess && <p className="text-xs text-emerald-400 flex items-center gap-1"><BadgeCheck size={12} /> DVLA and available MOT details loaded. Optional specification suggestions will appear if available. Review and edit below.</p>}
                                 {dvlaError && <p className="text-xs text-red-400">{dvlaError}</p>}
                             </div>
 

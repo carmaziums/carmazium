@@ -66,3 +66,14 @@ export async function dvlaLookup(
         body: JSON.stringify({ vrm, allowAiEnrichment }),
     });
 }
+
+/**
+ * Optional consented live specification suggestions, separate from the core
+ * registration lookup so a slow web search cannot block form auto-fill.
+ */
+export async function dvlaEnrich(vrm: string): Promise<DvlaLookupResult> {
+    return apiClient<DvlaLookupResult>('/dvla/enrich', {
+        method: 'POST',
+        body: JSON.stringify({ vrm, allowAiEnrichment: true }),
+    });
+}

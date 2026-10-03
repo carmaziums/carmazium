@@ -151,6 +151,34 @@ export class DvlaService {
     private readonly logger = new Logger(DvlaService.name);
     private readonly apiKey: string | undefined;
     private readonly baseUrl: string;
+    private readonly dvlaTimeoutMs: number;
+    private readonly motTimeoutMs: number;
+    private readonly aiSyncTimeoutMs: number;
+    private readonly aiOptionalTimeoutMs: number;
+    // Short-lived same-process cache is only for the separate optional AI call.
+    private readonly coreCache = new Map<string, { value: DvlaLookupResult; expiresAt: number }>();
+
+    private async withDeadline<T>(
+        name: string,
+        timeoutMs: number,
+        task: (signal: AbortSignal) => Promise<T>,
+    ): Promise<T> {
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            return await Promise.race([
+                task(controller.signal),
+                new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => {
+                        controller.abort();
+                        reject(new Error(name + ' deadline exceeded'));
+                    }, timeoutMs);
+                }),
+            ]);
+        } finally {
+            if (timer) clearTimeout(timer);
+        }
+    }
 
     constructor(
         private configService: ConfigService,
@@ -158,6 +186,15 @@ export class DvlaService {
     ) {
         this.apiKey = this.configService.get<string>('DVLA_API_KEY');
         this.baseUrl = this.configService.get<string>('DVLA_API_URL') ?? DVLA_PROD_URL;
+        const budget = (name: string, fallback: number, ceiling: number) => {
+            const configured = Number(this.configService.get<string>(name));
+            return Number.isFinite(configured) && configured >= 20
+                ? Math.min(configured, ceiling) : fallback;
+        };
+        this.dvlaTimeoutMs = budget('DVLA_CORE_TIMEOUT_MS', 8_000, 15_000);
+        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 2_500, 6_000);
+        this.aiSyncTimeoutMs = budget('DVLA_SYNC_AI_TIMEOUT_MS', 3_000, 6_000);
+        this.aiOptionalTimeoutMs = budget('DVLA_OPTIONAL_AI_TIMEOUT_MS', 18_000, 22_000);
 
         if (!this.apiKey) {
             this.logger.warn('DVLA_API_KEY is not set — VRM lookups will fail');
@@ -180,9 +217,18 @@ export class DvlaService {
             );
         }
 
+        const cached = this.coreCache.get(normalised);
+        if (cached && cached.expiresAt > Date.now()) {
+            const core = { ...cached.value, motHistory: cached.value.motHistory?.slice() };
+            return allowAiEnrichment
+                ? this.enrichCore(normalised, core, this.aiSyncTimeoutMs)
+                : core;
+        }
+        // Optional MOT can stall independently, but never longer than its
+        // own 2.5-second budget. The core DVLA request has an 8-second cap.
         const [dvlaResult, motResult] = await Promise.allSettled([
-            this.dvlaRequest(normalised),
-            this.motApiRequest(normalised)
+            this.dvlaWithRetry(normalised),
+            this.motApiRequest(normalised),
         ]);
 
         if (dvlaResult.status === 'rejected') {
@@ -207,12 +253,31 @@ export class DvlaService {
             if (motResult.value.firstUsedDate) combined.firstUsedDate = motResult.value.firstUsedDate;
         }
 
-        // Optional AI-backed live specification enrichment. The registration
-        // and vehicle profile are only sent to OpenAI after the client confirms
-        // the seller has explicitly accepted AI data sharing. Core DVLA/MOT
-        // lookup works without this path.
-        const enrichment = allowAiEnrichment
-            ? await this.aiService.enrichVehicleSpecification({
+        // Only authoritative DVLA/MOT facts are cached, not AI output.
+        if (this.coreCache.size >= 200) this.coreCache.clear();
+        this.coreCache.set(normalised, {
+            value: { ...combined, motHistory: combined.motHistory?.slice() },
+            expiresAt: Date.now() + 2 * 60_000,
+        });
+        return allowAiEnrichment
+            ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
+            : combined;
+    }
+
+    /** Dedicated, explicit-consent optional enrichment; core lookup does not wait for it. */
+    async enrichVrm(vrm: string, consent = false): Promise<DvlaLookupResult> {
+        if (!consent) throw new BadRequestException('Explicit AI data sharing consent is required');
+        const core = await this.lookupVrm(vrm, false);
+        return this.enrichCore(vrm.replace(/\s+/g, '').toUpperCase(), core, this.aiOptionalTimeoutMs);
+    }
+
+    private async enrichCore(
+        normalised: string, combined: DvlaLookupResult, timeoutMs: number,
+    ): Promise<DvlaLookupResult> {
+        const enrichment = await this.withDeadline(
+            'Optional live vehicle specification',
+            timeoutMs,
+            () => this.aiService.enrichVehicleSpecification({
                 vrm: normalised,
                 make: combined.make,
                 model: combined.model,
@@ -221,8 +286,11 @@ export class DvlaService {
                 fuelType: combined.fuelType,
                 colour: combined.primaryColour || combined.colour,
                 firstUsedDate: combined.firstUsedDate,
-            })
-            : null;
+            }),
+        ).catch(error => {
+            this.logger.warn('Optional specification enrichment unavailable: ' + (error?.message ?? 'unknown'));
+            return null;
+        });
 
         if (enrichment) {
             combined.specEnrichment = {
@@ -264,13 +332,33 @@ export class DvlaService {
         return combined;
     }
 
+    /**
+     * DVLA's POST /vehicles endpoint only reads vehicle information, so one
+     * transient transport retry is safe. Never repeat invalid registrations,
+     * permission/configuration errors or arbitrary application mutations.
+     */
+    private async dvlaWithRetry(vrm: string): Promise<DvlaLookupResult> {
+        try {
+            return await this.dvlaRequest(vrm);
+        } catch (error) {
+            if (!(error instanceof ServiceUnavailableException)) throw error;
+            const message = error.message || '';
+            if (/DVLA API returned (400|401|403|404|422)\b/.test(message)) throw error;
+            this.logger.warn('DVLA temporary upstream failure; retrying lookup once');
+            await new Promise(resolve => setTimeout(resolve, 250));
+            return this.dvlaRequest(vrm);
+        }
+    }
+
     // ─── DVLA REST request ────────────────────────────────────────────────────
 
     private async dvlaRequest(normalised: string): Promise<DvlaLookupResult> {
         this.logger.log(`DVLA lookup for VRM: ${normalised}`);
 
+        return this.withDeadline('DVLA VES', this.dvlaTimeoutMs, async signal => {
         const response = await fetch(this.baseUrl, {
             method: 'POST',
+            signal,
             headers: {
                 'x-api-key': this.apiKey!,
                 'Content-Type': 'application/json',
@@ -313,8 +401,13 @@ export class DvlaService {
             dateOfLastV5CIssued: data.dateOfLastV5CIssued,
             realDrivingEmissions: data.realDrivingEmissions,
             transmission: (data as any).transmission,
-            dataSource: 'DVLA',
+            dataSource: 'DVLA' as const,
         };
+        }).catch(error => {
+            if (error instanceof BadRequestException || error instanceof ServiceUnavailableException) throw error;
+            this.logger.error('DVLA transport deadline/failure: ' + (error instanceof Error ? error.message : 'unknown'));
+            throw new ServiceUnavailableException('DVLA is responding slowly. Please retry your registration lookup.');
+        });
     }
 
     // ─── MOT History API REST request ─────────────────────────────────────────
@@ -325,44 +418,38 @@ export class DvlaService {
             this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
             return null;
         }
-
         const url = `https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=${normalised}`;
-        
         try {
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'x-api-key': motApiKey,
-                    'Accept': 'application/json+v6',
-                },
-            });
-
-            if (!response.ok) {
-                if (response.status === 404) {
-                    this.logger.log(`No MOT history found for ${normalised}`);
-                    return { motTests: [] };
+            // Both the HTTP request and its response body share one deadline.
+            // A stalled optional MOT service must not hold back core DVLA data.
+            return await this.withDeadline('MOT history', this.motTimeoutMs, async signal => {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'x-api-key': motApiKey,
+                        'Accept': 'application/json+v6',
+                    },
+                    signal,
+                });
+                if (!response.ok) {
+                    if (response.status === 404) return { motTests: [] };
+                    this.logger.warn('MOT lookup returned HTTP ' + response.status);
+                    return null;
                 }
-                const text = await response.text().catch(() => '');
-                this.logger.error(`MOT API error ${response.status}: ${text}`);
-                return null;
-            }
-
-            const data = await response.json();
-            
-            // The API returns an array of vehicles (usually just one) with motTests
-            if (Array.isArray(data) && data.length > 0) {
-                const vehicle = data[0];
-                return {
-                    motTests: vehicle.motTests || [],
-                    model: vehicle.model,
-                    primaryColour: vehicle.primaryColour,
-                    firstUsedDate: vehicle.firstUsedDate
-                };
-            }
-            
-            return { motTests: [] };
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const vehicle = data[0];
+                    return {
+                        motTests: vehicle.motTests || [],
+                        model: vehicle.model,
+                        primaryColour: vehicle.primaryColour,
+                        firstUsedDate: vehicle.firstUsedDate,
+                    };
+                }
+                return { motTests: [] };
+            });
         } catch (error) {
-            this.logger.error(`MOT API request failed:`, error);
+            this.logger.warn('Optional MOT lookup unavailable: ' + (error instanceof Error ? error.message : 'unknown'));
             return null;
         }
     }
