@@ -10,6 +10,8 @@ on:
       - "src/app/dashboard/seller/auctions/**"
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
+      - "src/lib/dvlaApi.ts"
+      - "scripts/test-dvla-retail-lookup.test.mjs"
       - "src/lib/sellerVehicleSpecs.ts"
       - "src/lib/pendingSellerHandoff.ts"
       - "src/lib/sellerDraftIsolation.ts"
@@ -44,6 +46,9 @@ jobs:
       - name: Seller gearbox and body-type regression tests
         run: npm run test:seller-specs
 
+      - name: Retail and auction DVLA timeout regression tests
+        run: node --test scripts/test-dvla-retail-lookup.test.mjs
+
       - name: Typecheck web listing surfaces
         shell: bash
         run: |
@@ -58,7 +63,7 @@ jobs:
             exit 0
           fi
 
-          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft)\.ts)' || true)"
+          LISTING_ERRORS="$(printf '%s\n' "$OUTPUT" | grep -E '^src/(components/(listing/|features/ImportListingModal\.tsx|dashboard/ListingEditModal\.tsx)|app/(pricing/|dashboard/(seller/auctions/|dealer/inventory/))|lib/(listingApi|pricingConfig|auctionApi|auctionPricing|sellerVehicleSpecs|pendingSellerHandoff|sellerDraftIsolation|sellerDeclarationValidation|sellerAuctionDraft|dvlaApi)\.ts)' || true)"
 
           if [ -n "$LISTING_ERRORS" ]; then
             echo
