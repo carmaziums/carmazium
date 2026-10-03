@@ -37,7 +37,8 @@ import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPrici
 import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
-import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
+import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
+import { saveSellerHandoff, readSellerHandoff, clearSellerHandoff } from "@/lib/pendingSellerHandoff"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -552,6 +553,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     React.useEffect(() => {
         if (draftRestoreAttemptedRef.current) return
         if (editId || searchParams.get('hpi_success') === 'true' || searchParams.get('sellMode')) return
+        // Pending sign-in handoff has priority over an unrelated historical browser draft.
+        if (!isDashboard && readSellerHandoff(sessionStorage)) return
         draftRestoreAttemptedRef.current = true
 
         const saved = localStorage.getItem('carmazium_listing_draft')
@@ -574,11 +577,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
             const savedStep = Number(localStorage.getItem('carmazium_listing_draft_step'))
             const maxStep = parsed.listingType === 'AUCTION' ? 5 : 4
-            setCurrentStep(
-                Number.isInteger(savedStep) && savedStep >= 1
-                    ? Math.min(savedStep, maxStep)
-                    : 1
+            const specsValid = hasCompleteSellerVehicleSpecs(
+                parsed,
+                getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR'),
             )
+            setCurrentStep(specsValid && Number.isInteger(savedStep) && savedStep >= 1
+                ? Math.min(savedStep, maxStep) : 1)
+            if (!specsValid) setHasAttemptedNext(true)
 
             const savedDraftId = localStorage.getItem('carmazium_hpi_draft_id')
             if (savedDraftId) setDraftListingId(savedDraftId)
@@ -587,7 +592,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             localStorage.removeItem('carmazium_listing_draft')
             localStorage.removeItem('carmazium_listing_draft_step')
         }
-    }, [editId, searchParams])
+    }, [editId, searchParams, isDashboard])
 
     // Handle Stripe return for HPI — verify the session actually completed
     // instead of trusting the bare `hpi_success` URL flag (which anyone could
@@ -613,7 +618,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     bodyType: normalizeSellerBodyType(parsed.bodyType, getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR')),
                 })
                 setSellingMethod('list')
-                setCurrentStep(2) // Return to media step where HPI is
+                // An older checkout draft can contain invalid or missing specs;
+                // correct those before allowing media/review progression.
+                const specsValid = hasCompleteSellerVehicleSpecs(
+                    parsed,
+                    getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR'),
+                )
+                setCurrentStep(specsValid ? 2 : 1)
+                if (!specsValid) setHasAttemptedNext(true)
             } catch (e) {
                 console.error("Failed to parse saved draft", e)
             }
@@ -1074,8 +1086,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     // ─── Navigation ─────────────────────────────────────────────────────────────
 
-    const getStepValidationError = (): string | null => {
-        switch (currentStep) {
+    const getStepValidationError = (step = currentStep): string | null => {
+        switch (step) {
             case 1: {
                 const missing: string[] = []
                 if (!formData.vrm) missing.push('registration')
@@ -1261,13 +1273,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }>).detail
 
             if (!detail?.listingType || !detail.vehicle) return
-            if (!isAuthenticated) {
-                setShowLoginModal(true)
-                return
-            }
-            if (!isEmailVerified) {
-                alert("Please verify your email address before creating a listing.")
-                router.push("/auth/onboarding")
+            if (!isAuthenticated || !isEmailVerified) {
+                const saved = saveSellerHandoff(
+                    sessionStorage,
+                    detail.listingType,
+                    detail.vehicle as Record<string, unknown>,
+                    detail.valuationId,
+                    detail.dvlaVerified !== false,
+                )
+                if (!saved) {
+                    alert("We could not temporarily save your vehicle details. Please enable session storage and try again.")
+                    return
+                }
+                if (!isAuthenticated) setShowLoginModal(true)
+                else router.push("/auth/onboarding")
                 return
             }
             if (profile?.role === "DEALER" && !isVerifiedDealer) {
@@ -1333,6 +1352,53 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         trackEvent,
         editId,
     ])
+
+    // Resume only the intentionally selected vehicle in this tab after a successful
+    // sign-in/signup redirect. No market prices or user records were stored.
+    React.useEffect(() => {
+        if (isDashboard || editId || !isAuthenticated || !isEmailVerified) return
+        if (profile?.role === "DEALER" && !isVerifiedDealer) return
+        const pending = readSellerHandoff(sessionStorage)
+        if (!pending) return
+
+        const vehicle = pending.vehicle as Partial<FormData>
+        draftRestoreAttemptedRef.current = true
+        setFormData(prev => {
+            const sameVehicle = !!normalizeVehicleRegistration(prev.vrm)
+                && normalizeVehicleRegistration(prev.vrm) === normalizeVehicleRegistration(vehicle.vrm)
+            const nextVehicleType = vehicle.vehicleType ?? (sameVehicle ? prev.vehicleType : "CAR")
+            const specs = resolveSellerVehicleSpecs(
+                prev,
+                { vrm: vehicle.vrm || "", transmission: vehicle.transmission, bodyType: vehicle.bodyType },
+                getBodyTypeKeysForVehicleType(nextVehicleType),
+            )
+            return {
+                ...(sameVehicle ? prev : INITIAL_FORM),
+                ...vehicle,
+                ...specs,
+                vehicleType: nextVehicleType,
+                listingType: pending.listingType,
+                badgeTier: pending.listingType === "AUCTION" ? "FREE" : "BASIC",
+                status: "ACTIVE",
+            }
+        })
+        if (pending.valuationId) {
+            valuationJourneyIdRef.current = pending.valuationId
+            valuationJourneyBaseKeyRef.current = getValuationBaseKey(vehicle, editId)
+        }
+        setDvlaSuccess(pending.dvlaVerified)
+        setDvlaError(pending.dvlaVerified ? null : "Review your vehicle details before continuing.")
+        setSellingMethod("list")
+        setCurrentStep(1)
+        setHasAttemptedNext(false)
+        clearSellerHandoff(sessionStorage)
+        trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
+            listing_type: pending.listingType === "AUCTION" ? "auction" : "retail",
+            seller_role: profile?.role || "UNKNOWN",
+            entry_point: "post_auth_seller_resume",
+            valuation_id: pending.valuationId,
+        })
+    }, [isDashboard, editId, isAuthenticated, isEmailVerified, isVerifiedDealer, profile?.role, trackEvent])
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
 
@@ -1403,6 +1469,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const handleSubmit = async () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
         if (!isEmailVerified) { router.push("/auth/onboarding"); return }
+
+        // Review can be reached through a historical draft or return from HPI,
+        // so never send invalid details to create/checkout or spend a listing grant.
+        const detailsError = getStepValidationError(1)
+        if (detailsError) {
+            setCurrentStep(1)
+            setHasAttemptedNext(true)
+            setSubmitError("Review your vehicle details before submitting.")
+            alert(detailsError)
+            return
+        }
 
         setIsSubmitting(true)
         setSubmitError(null)
