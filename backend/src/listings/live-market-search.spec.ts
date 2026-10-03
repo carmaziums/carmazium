@@ -151,9 +151,9 @@ describe('sanitizeLiveUkComparables', () => {
         const input = { make: 'BMW', model: '2 Series Gran Tourer', year: 2019, mileage: 67000 };
         const rows = sanitizeLiveUkComparables(input, [
             {
-                title: '2019 BMW 220i Gran Tourer 7 seat',
+                title: '2020 BMW 220i Gran Tourer 7 seat',
                 url: 'https://www.cargurus.co.uk/Cars/gran-tourer',
-                priceGBP: 13995, year: 2019, mileage: 67000,
+                priceGBP: 13995, year: 2020, mileage: 67000,
                 make: 'BMW', model: '220i', variant: 'Gran Tourer',
             },
             {
