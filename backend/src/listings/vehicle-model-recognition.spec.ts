@@ -3,10 +3,10 @@ import { recogniseVehicleModel } from './vehicle-model-recognition';
 describe('make-aware vehicle-model recognition', () => {
     test.each([
         ['HONDA', 'Honda Jazz', 2018, 'Jazz', undefined],
-        ['HONDA', 'Jazz 1.3 i-VTEC SE', 2018, 'Jazz', '1 3 I VTEC SE'],
-        ['NISSAN', 'Nissan leaf tekna 2014', 2014, 'Leaf', 'TEKNA'],
+        ['HONDA', 'Jazz 1.3 i-VTEC SE', 2018, 'Jazz', '1.3 i-VTEC SE'],
+        ['NISSAN', 'Nissan leaf tekna 2014', 2014, 'Leaf', 'tekna'],
         ['AUDI', 'Audi A1', 2018, 'A1', undefined],
-        ['TOYOTA', '2022 Toyota Yaris Cross Design', 2022, 'Yaris Cross', 'DESIGN'],
+        ['TOYOTA', '2022 Toyota Yaris Cross Design', 2022, 'Yaris Cross', 'Design'],
         ['HONDA', 'Honda Civic Type R GT', 2020, 'Civic Type R', 'GT'],
         ['BMW', 'BMW 220i gran tourer', 2019, '2 Series Gran Tourer', '220I'],
         ['VOLKSWAGEN', 'Golf', 2010, 'Golf', undefined],
@@ -23,7 +23,7 @@ describe('make-aware vehicle-model recognition', () => {
             variant: 'SE', year: 2017,
         });
         expect(result).toEqual(expect.objectContaining({
-            model: 'Jazz', variant: '1 3 SE', recognised: true,
+            model: 'Jazz', variant: '1.3 SE', recognised: true,
         }));
     });
 
