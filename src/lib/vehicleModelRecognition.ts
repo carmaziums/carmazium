@@ -18,7 +18,7 @@ function makeCatalog(make: string): string[] {
 }
 
 function editDistanceOne(a: string, b: string): boolean {
-    if (Math.min(a.length, b.length) < 4 || Math.abs(a.length - b.length) > 1) return false;
+    if (Math.min(a.length, b.length) < 3 || Math.abs(a.length - b.length) > 1) return false;
     let i = 0, j = 0, edits = 0;
     while (i < a.length && j < b.length) {
         if (a[i] === b[j]) { i++; j++; continue; }
