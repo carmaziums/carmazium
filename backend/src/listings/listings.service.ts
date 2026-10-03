@@ -312,7 +312,7 @@ export class ListingsService {
             // different catalogue models that share a prefix (Focus / Focus RS).
             rows = rows.filter(row => {
                 const candidate = recogniseVehicleModel({
-                    make: row.make, model: row.model, year: row.year,
+                    make: row.make ?? '', model: row.model ?? '', year: row.year ?? undefined,
                 });
                 return candidate.recognised && candidate.model.toUpperCase() === model.toUpperCase();
             });
