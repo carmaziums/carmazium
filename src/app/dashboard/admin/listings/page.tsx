@@ -106,7 +106,7 @@ export default function AdminListingsPage() {
         try {
             setPendingLoading(true)
             const data = await getPendingListingReviews()
-            setPendingListings(data || [])
+            setPendingListings((data || []).filter((listing: any) => listing.status === 'PENDING_REVIEW'))
         } catch (err) {
             console.error('Failed to load pending listing reviews:', err)
         } finally {
@@ -253,8 +253,8 @@ export default function AdminListingsPage() {
                     )}
 
                     {/* ── Pending Review ────────────────────────────────────────── */}
-                    <div className="glass-card border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-6">
-                        <div className="flex items-center justify-between mb-5">
+                    <div className="glass-card min-w-0 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl p-4 sm:p-6">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-5">
                             <h2 className="text-xl font-black font-heading uppercase tracking-tight flex items-center gap-2.5">
                                 <ClipboardList className="text-amber-400" size={22} />
                                 Pending Review
@@ -286,14 +286,14 @@ export default function AdminListingsPage() {
                             <div className="space-y-3">
                                 {pendingListings.map((l) => {
                                     const isExpanded = expandedId === l.id
-                                    const isRejectedResubmit = l.status === 'REJECTED'
+                                    
                                     // Seller paid for an HPI report that hasn't been produced.
                                     // Informational only — this no longer blocks approval; the
                                     // listing goes live and the report is attached afterwards
                                     // from the HPI queue.
                                     const hpiPending = l.hpiReport?.status === 'PENDING'
                                     return (
-                                        <div key={l.id} className={`border rounded-xl overflow-hidden ${isRejectedResubmit ? 'border-red-500/30' : 'border-[var(--border-default)]'}`}>
+                                        <div key={l.id} className="border border-[var(--border-default)] rounded-xl overflow-hidden">
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedId(isExpanded ? null : l.id)}
@@ -315,8 +315,8 @@ export default function AdminListingsPage() {
                                                         <FileWarning size={12} /> HPI outstanding
                                                     </span>
                                                 )}
-                                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${isRejectedResubmit ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
-                                                    {isRejectedResubmit ? 'Rejected' : 'Pending'}
+                                                <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
+                                                    Pending
                                                 </span>
                                                 <span className="text-sm font-bold shrink-0 hidden sm:inline">{formatPrice(l.price)}</span>
                                                 <ChevronDown size={18} className={`text-[var(--text-muted)] transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -324,12 +324,6 @@ export default function AdminListingsPage() {
 
                                             {isExpanded && (
                                                 <div className="p-4 pt-0 border-t border-[var(--border-default)] bg-[var(--bg-input)]/40">
-                                                    {isRejectedResubmit && l.rejectionReason && (
-                                                        <div className="my-4 p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-xs text-red-300">
-                                                            <strong>Previous rejection reason:</strong> {l.rejectionReason}
-                                                        </div>
-                                                    )}
-
                                                     {l.images?.length > 0 && (
                                                         <div className="flex gap-2 overflow-x-auto py-4">
                                                             {l.images.map((img: string, i: number) => (
@@ -463,13 +457,13 @@ export default function AdminListingsPage() {
                                                                 </div>
                                                             )}
 
-                                                            <div className="flex gap-3 mt-4">
+                                                            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleApprove(l.id)}
                                                                     disabled={actionLoading === l.id}
                                                                     title={hpiPending ? 'Goes live with its HPI report still outstanding — attach it later from the HPI queue' : undefined}
-                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                    className="min-w-0 w-full min-h-11 px-3 sm:px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
                                                                 >
                                                                     {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                                                                     Approve — Go Live
@@ -477,7 +471,7 @@ export default function AdminListingsPage() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setEditListingId(l.id)}
-                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-xs uppercase tracking-widest hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                    className="min-w-0 w-full min-h-11 px-3 sm:px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold text-xs uppercase tracking-widest hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                                                                 >
                                                                     <Pencil size={14} />
                                                                     Edit Details
@@ -486,7 +480,7 @@ export default function AdminListingsPage() {
                                                                     type="button"
                                                                     onClick={() => handleReject(l.id)}
                                                                     disabled={actionLoading === l.id}
-                                                                    className="flex-1 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                                                    className="min-w-0 w-full min-h-11 px-3 sm:px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-widest hover:bg-red-500/20 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
                                                                 >
                                                                     {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
                                                                     Reject
