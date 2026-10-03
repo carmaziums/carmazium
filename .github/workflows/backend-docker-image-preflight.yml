@@ -8,6 +8,7 @@ on:
       - 'backend/Dockerfile'
       - 'backend/package.json'
       - 'backend/package-lock.json'
+      - 'backend/scripts/verify-backend-docker-image.cjs'
   workflow_dispatch:
 
 permissions:
@@ -71,24 +72,7 @@ jobs:
                   exit 1
                 fi
               done
-              node -e "
-                const fs=require(\"fs\");
-                const b=require(\"bcrypt\");
-                const p=require(\"@prisma/client/package.json\");
-                if(p.version!==\"6.19.3\")throw Error(\"Wrong Prisma Client version\");
-                (async()=>{
-                  const h=await b.hash(\"test-only synthetic Docker authentication\",10);
-                  if(!(await b.compare(\"test-only synthetic Docker authentication\",h))
-                     ||await b.compare(\"incorrect synthetic password\",h))
-                    throw Error(\"bcrypt native addon incompatible with tested container\");
-                  const {PrismaClient}=require(\"@prisma/client\");
-                  const client=new PrismaClient();
-                  await client.$disconnect();
-                  console.log(\"DOCKER_RUNTIME_NATIVE_AUTH_AND_PRISMA_CLIENT_PASS\");
-                })().catch(e=>{console.error(e.message);process.exitCode=1;});
-              "
-              echo COPIED_BUILDER_PRISMA_MODULES
-              find node_modules/@prisma -mindepth 1 -maxdepth 1 -type d | sort
+              node scripts/verify-backend-docker-image.cjs
               echo DOCKER_OFFLINE_RUNTIME_IMAGE_INSPECTION_PASS
             '
       - name: Independently audit installed dependencies in final physical image
