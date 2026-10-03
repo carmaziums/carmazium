@@ -28,7 +28,7 @@ jobs:
                     const x=JSON.parse(s);
                     if(x.syntheticOnly!==true){process.exitCode=2;return;}
                     if(x.hostedAuthProof?.state==="passed" &&
-                       x.hostedAuthProof?.checksPassed===6 &&
+                       x.hostedAuthProof?.checksPassed===7 &&
                        x.hostedAuthProof?.disposableCredentialAccepted===false)
                       console.log("passed");
                     else console.log(x.hostedAuthProof?.state||"unavailable");
