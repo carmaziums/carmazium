@@ -130,8 +130,9 @@ export class AdminController {
         @Query('page') page = 1,
         @Query('limit') limit = 20,
         @Query('sellerRole') sellerRole?: string,
+        @Query('status') status?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole);
+        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole, status);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
