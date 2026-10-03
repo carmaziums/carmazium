@@ -1,4 +1,4 @@
 -- Historical ENDED auctions remain NULL and cannot be retroactively accepted.
 ALTER TABLE "auctions"
-    ADD COLUMN "provisionalOfferBidId" TEXT,
-    ADD COLUMN "provisionalOfferedAt" TIMESTAMP(3);
+    ADD COLUMN IF NOT EXISTS "provisionalOfferBidId" TEXT,
+    ADD COLUMN IF NOT EXISTS "provisionalOfferedAt" TIMESTAMP(3);
