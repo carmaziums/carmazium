@@ -114,3 +114,79 @@ test("seller wizard uses the policy at validation, lookup, landing merge and sub
     assert.match(wizard, /transmission: normalizeSellerTransmission\(formData\.transmission\) \|\| undefined/)
     assert.match(wizard, /bodyType: normalizeSellerBodyType\(formData\.bodyType, bodyTypeKeys\) \|\| undefined/)
 })
+
+
+const pendingSource = readFileSync(new URL("../src/lib/pendingSellerHandoff.ts", import.meta.url), "utf8")
+const pendingOutput = ts.transpileModule(pendingSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    reportDiagnostics: true,
+})
+assert.equal(pendingOutput.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0)
+const handoff = {}
+runInNewContext(pendingOutput.outputText, {
+    exports: handoff,
+    require: id => {
+        assert.equal(id, "./sellerVehicleSpecs")
+        return exports
+    },
+}, { filename: "pendingSellerHandoff.js" })
+const { createSellerHandoff, parseSellerHandoff, saveSellerHandoff, readSellerHandoff, clearSellerHandoff, SELLER_HANDOFF_KEY } = handoff
+
+test("guest FREE Auction and £1 Retail handoffs retain selected vehicle, normalized VRM and journey only", () => {
+    for (const listingType of ["AUCTION", "CLASSIFIED"]) {
+        const saved = createSellerHandoff(listingType, {
+            vrm: "AB12 CDE", make: "Ford", model: "Focus", year: "2019", mileage: "45000",
+            transmission: "MANUAL", bodyType: "HATCHBACK", fuelType: "PETROL",
+            email: "private@example.test", priceAsking: "19999", images: ["private-photo"],
+        }, "550e8400-e29b-41d4-a716-446655440000", true, 100)
+        assert.equal(saved.listingType, listingType)
+        assert.equal(saved.vehicle.vrm, "AB12CDE")
+        assert.equal(saved.vehicle.transmission, "MANUAL")
+        assert.equal(saved.vehicle.bodyType, "HATCHBACK")
+        assert.equal(saved.vehicle.email, undefined)
+        assert.equal(saved.vehicle.priceAsking, undefined)
+        assert.equal(saved.vehicle.images, undefined)
+        assert.equal(parseSellerHandoff(JSON.stringify(saved), 101)?.valuationId, "550e8400-e29b-41d4-a716-446655440000")
+    }
+})
+
+test("handoff is tab-scoped, consumable and expires after twenty minutes", () => {
+    const memory = new Map()
+    const storage = {
+        getItem: k => memory.get(k) ?? null,
+        setItem: (k, v) => memory.set(k, v),
+        removeItem: k => memory.delete(k),
+    }
+    assert.equal(saveSellerHandoff(storage, "AUCTION", {
+        vrm: "AB12CDE", make: "Ford", model: "Focus", year: "2019", mileage: "50000",
+    }), true)
+    assert.equal(readSellerHandoff(storage).listingType, "AUCTION")
+    clearSellerHandoff(storage)
+    assert.equal(memory.has(SELLER_HANDOFF_KEY), false)
+    const candidate = createSellerHandoff("CLASSIFIED", {
+        vrm: "AB12CDE", make: "Ford", model: "Focus", year: "2019", mileage: "50000",
+    }, undefined, true, 200)
+    assert.equal(parseSellerHandoff(JSON.stringify(candidate), 200 + 21 * 60_000), null)
+    assert.equal(parseSellerHandoff(JSON.stringify(candidate), 199), null)
+    assert.equal(parseSellerHandoff(JSON.stringify({ ...candidate, vehicle: { ...candidate.vehicle, vrm: "INVALID !!!" } }), 201), null)
+})
+
+test("restored historical invalid specs require details; motorcycles never need hidden body type", () => {
+    const { hasCompleteSellerVehicleSpecs } = exports
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "MANUAL", bodyType: "SUV", vehicleType: "CAR" }, carBodies), true)
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "", bodyType: "SUV", vehicleType: "CAR" }, carBodies), false)
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "MANUAL", bodyType: "HGV_BOX", vehicleType: "CAR" }, carBodies), false)
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "CVT", vehicleType: "MOTORCYCLE" }, []), true)
+    assert.equal(hasCompleteSellerVehicleSpecs({ transmission: "", vehicleType: "MOTORCYCLE" }, []), false)
+})
+
+test("wizard persists guest handoff and blocks invalid restored details before submitting", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /saveSellerHandoff\(/)
+    assert.match(wizard, /readSellerHandoff\(sessionStorage\)/)
+    assert.match(wizard, /clearSellerHandoff\(sessionStorage\)/)
+    assert.match(wizard, /const specsValid = hasCompleteSellerVehicleSpecs\(/)
+    assert.match(wizard, /setCurrentStep\(specsValid \? 2 : 1\)/)
+    assert.match(wizard, /const detailsError = getStepValidationError\(1\)/)
+    assert.ok(wizard.indexOf("const detailsError = getStepValidationError(1)") < wizard.indexOf("setIsSubmitting(true)"))
+})
