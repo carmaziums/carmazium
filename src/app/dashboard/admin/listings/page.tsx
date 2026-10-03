@@ -13,6 +13,7 @@ import { HpiReportForm } from "@/components/admin/HpiReportForm"
 import { HpiPdfUpload } from "@/components/admin/HpiPdfUpload"
 import { useAuth } from "@/context/AuthContext"
 import { getAdminListings, deleteListingForce, getPendingListingReviews, approveListing, rejectListing, relistAdminDraftAsAuction } from "@/lib/adminApi"
+import type { AdminListingStatus } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 
 const STATUS_STYLES: Record<string, string> = {
@@ -25,6 +26,18 @@ const STATUS_STYLES: Record<string, string> = {
     WITHDRAWN: "bg-gray-500/10 text-[var(--text-muted)] border-gray-500/25",
     DELETED: "bg-red-500/10 text-red-400 border-red-500/25",
 }
+
+const STATUS_TABS: { value: AdminListingStatus; label: string }[] = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'PENDING_REVIEW', label: 'Under review' },
+    { value: 'DRAFT', label: 'Drafts' },
+    { value: 'OFFER_ACCEPTED', label: 'Offers accepted' },
+    { value: 'SOLD', label: 'Sold' },
+    { value: 'REJECTED', label: 'Rejected' },
+    { value: 'WITHDRAWN', label: 'Withdrawn' },
+    { value: 'DELETED', label: 'Deleted' },
+    { value: 'ALL', label: 'All listings' },
+]
 
 function StatusPill({ status }: { status: string }) {
     return (
@@ -49,7 +62,9 @@ export default function AdminListingsPage() {
     // "CarMazium" = listings created by an ADMIN account. Admins can list
     // directly now, so their own vehicles would otherwise be buried among
     // every seller's in this table.
-    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN' | 'DRAFT'>('ALL')
+    const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
+    const [statusFilter, setStatusFilter] = React.useState<AdminListingStatus>('ACTIVE')
+    const listingsRequestId = React.useRef(0)
     const limit = 20
 
     // ── Pending review ──
@@ -81,17 +96,25 @@ export default function AdminListingsPage() {
     }, [user, profile, authLoading, router])
 
     const fetchListings = async () => {
+        const requestId = ++listingsRequestId.current
         try {
             setLoading(true)
             setError(null)
-            const result = await getAdminListings(page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined, ownerFilter === 'DRAFT' ? 'DRAFT' : undefined)
+            const result = await getAdminListings(
+                page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined, statusFilter,
+            )
+            // A slow response for a previous tab must not replace the current tab.
+            if (requestId !== listingsRequestId.current) return
             setListings(result.data || [])
             setTotal(result.pagination?.total || 0)
         } catch (err: any) {
+            if (requestId !== listingsRequestId.current) return
             console.error('Failed to fetch admin listings:', err)
+            setListings([])
+            setTotal(0)
             setError(err.message || "Failed to load system listings.")
         } finally {
-            setLoading(false)
+            if (requestId === listingsRequestId.current) setLoading(false)
         }
     }
 
@@ -100,7 +123,7 @@ export default function AdminListingsPage() {
             fetchListings()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile, page, ownerFilter])
+    }, [profile, page, ownerFilter, statusFilter])
 
     const loadPending = async () => {
         try {
@@ -129,6 +152,7 @@ export default function AdminListingsPage() {
             setPendingListings(prev => prev.filter(l => l.id !== id))
             setExpandedId(null)
             setSuccessMsg('Listing approved and is now live.')
+            await fetchListings()
         } catch (err: any) {
             const message = err.message === 'AUTH_REDIRECT'
                 ? 'Your secure admin session needs to be refreshed. Please try the approval again.'
@@ -153,6 +177,7 @@ export default function AdminListingsPage() {
             setPendingListings(prev => prev.filter(l => l.id !== id))
             setExpandedId(null)
             setSuccessMsg('Listing rejected — the seller has been notified.')
+            await fetchListings()
         } catch (err: any) {
             setActionError(err.message || 'Failed to reject listing')
         } finally {
@@ -195,8 +220,13 @@ export default function AdminListingsPage() {
         try {
             setDeleting(listingId)
             await deleteListingForce(listingId)
-            setListings(listings.filter(l => l.id !== listingId))
-            setTotal(t => t - 1)
+            setPendingListings(prev => prev.filter(l => l.id !== listingId))
+            // Deletion is soft; it should stay visible under All or Deleted.
+            if (listings.length === 1 && page > 1 && statusFilter !== 'ALL') {
+                setPage(p => p - 1)
+            } else {
+                await fetchListings()
+            }
         } catch (err: any) {
             alert(err.message || 'Failed to delete listing')
         } finally {
@@ -231,7 +261,7 @@ export default function AdminListingsPage() {
                                 <Car className="text-primary hidden sm:block" size={28} />
                                 Listing Moderation
                             </h1>
-                            <p className="text-[var(--text-muted)] text-sm mt-1">{total} total listings on the platform</p>
+                            <p className="text-[var(--text-muted)] text-sm mt-1">Manage seller submissions, active vehicles and listing history</p>
                         </div>
                     </div>
 
@@ -496,37 +526,64 @@ export default function AdminListingsPage() {
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {([
-                            ['ALL', 'All listings'],
-                            ['DRAFT', 'Drafts'],
-                            ['ADMIN', 'CarMazium'],
-                        ] as const).map(([value, label]) => (
-                            <button
-                                key={value}
-                                type="button"
-                                onClick={() => {
-                                    // Page 1: the current page number almost
-                                    // certainly doesn't exist in the smaller set.
-                                    setPage(1)
-                                    setOwnerFilter(value)
-                                }}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest border transition-colors cursor-pointer ${ownerFilter === value
-                                    ? 'bg-primary text-white border-primary'
-                                    : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-default)] hover:text-[var(--text-primary)] hover:border-primary/40'}`}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                        {!loading && (
-                            <span className="text-xs text-[var(--text-muted)] ml-1">
-                                {total} {total === 1 ? 'listing' : 'listings'}
-                            </span>
-                        )}
+                    <div className="space-y-3" aria-label="Listing filters">
+                        <div role="group" aria-label="Filter by listing status" className="flex flex-wrap gap-2">
+                            {STATUS_TABS.map(({ value, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-pressed={statusFilter === value}
+                                    onClick={() => {
+                                        setPage(1)
+                                        setStatusFilter(value)
+                                    }}
+                                    className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${statusFilter === value
+                                        ? 'border-primary bg-primary text-white'
+                                        : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/40 hover:text-[var(--text-primary)]'}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {([
+                                ['ALL', 'All sellers'],
+                                ['ADMIN', 'CarMazium'],
+                            ] as const).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-pressed={ownerFilter === value}
+                                    onClick={() => {
+                                        setPage(1)
+                                        setOwnerFilter(value)
+                                    }}
+                                    className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${ownerFilter === value
+                                        ? 'border-primary bg-primary/15 text-primary'
+                                        : 'border-[var(--border-default)] bg-[var(--bg-input)] text-[var(--text-muted)] hover:border-primary/40 hover:text-[var(--text-primary)]'}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                            {!loading && (
+                                <span role="status" className="text-xs text-[var(--text-muted)]">
+                                    {total} {total === 1 ? 'listing' : 'listings'} in this view
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     <div className="glass-card overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
 
+                        {loading ? (
+                            <div role="status" className="flex items-center justify-center gap-2 p-10 text-sm text-[var(--text-muted)]">
+                                <Loader2 size={18} className="animate-spin" /> Loading listings…
+                            </div>
+                        ) : listings.length === 0 ? (
+                            <div className="p-10 text-center text-sm text-[var(--text-muted)]">
+                                {error ? 'Unable to load listings.' : 'No listings in this view.'}
+                            </div>
+                        ) : (<>
                         {/* ── Mobile cards (< sm) ── */}
                         <div className="sm:hidden divide-y divide-[var(--border-default)]">
                             {listings.map((l) => {
@@ -706,6 +763,7 @@ export default function AdminListingsPage() {
                                 >Next</button>
                             </div>
                         </div>
+                        </>)}
                     </div>
 
                 </main>

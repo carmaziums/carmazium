@@ -21,3 +21,19 @@ test('mobile admin review uses stacked, fully visible action buttons', () => {
         assert.ok(group.includes(label), label + ' remains accessible');
     }
 });
+
+test('admin inventory offers distinct responsive status views rather than mixing every lifecycle by default', () => {
+    const statuses = [
+        'ACTIVE', 'PENDING_REVIEW', 'DRAFT', 'OFFER_ACCEPTED',
+        'SOLD', 'REJECTED', 'WITHDRAWN', 'DELETED', 'ALL',
+    ];
+    for (const status of statuses) {
+        assert.ok(source.includes(`{ value: '${status}'`), `${status} has a dedicated view`);
+    }
+    assert.match(source, /useState<AdminListingStatus>\('ACTIVE'\)/, 'default is active vehicles');
+    assert.match(source, /STATUS_TABS\.map/, 'tabs render from known statuses');
+    assert.match(source, /Filter by listing status" className="flex flex-wrap gap-2"/, 'mobile status buttons wrap');
+    assert.match(source, /setStatusFilter\(value\)/, 'tabs change the selected status');
+    assert.match(source, /setPage\(1\)/, 'switching filters resets pagination');
+    assert.match(source, /ownerFilter === 'ADMIN' \? 'ADMIN' : undefined, statusFilter/, 'status reaches server-side pagination');
+});

@@ -775,7 +775,11 @@ export async function getAdminDealersKycArchive(page = 1, limit = 20) {
   return result;
 }
 
-export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: 'DRAFT') {
+export type AdminListingStatus =
+  | 'ACTIVE' | 'PENDING_REVIEW' | 'DRAFT' | 'OFFER_ACCEPTED'
+  | 'SOLD' | 'REJECTED' | 'WITHDRAWN' | 'DELETED' | 'ALL';
+
+export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: AdminListingStatus) {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (sellerRole) query.set('sellerRole', sellerRole);
   if (status) query.set('status', status);

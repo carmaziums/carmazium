@@ -7,6 +7,7 @@ describe('AdminService listing approval readiness', () => {
             listing: {
                 findUnique: jest.fn().mockResolvedValue(listing),
                 findMany: jest.fn(),
+                count: jest.fn(),
                 update: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
@@ -92,6 +93,57 @@ describe('AdminService listing approval readiness', () => {
             hpiReport: { id: 'hpi-source-1' },
         },
     };
+
+    describe('admin inventory status filters', () => {
+        it.each(['ACTIVE', 'PENDING_REVIEW', 'DRAFT', 'OFFER_ACCEPTED', 'SOLD', 'REJECTED', 'WITHDRAWN'])(
+            'filters and paginates non-deleted %s listings on the server',
+            async (status) => {
+                const { service, prisma } = makeService(validLinkedAuction);
+                prisma.listing.findMany.mockResolvedValue([]);
+                prisma.listing.count.mockResolvedValue(3);
+
+                await expect(service.getAllListings(2, 10, 'ADMIN', status))
+                    .resolves.toEqual({ data: [], total: 3 });
+                const where = {
+                    seller: { role: 'ADMIN' },
+                    status,
+                    deletedAt: null,
+                };
+                expect(prisma.listing.findMany).toHaveBeenCalledWith(
+                    expect.objectContaining({ where, skip: 10, take: 10 }),
+                );
+                expect(prisma.listing.count).toHaveBeenCalledWith({ where });
+            },
+        );
+
+        it('shows only soft-deleted listings even when they retain ACTIVE or DRAFT status', async () => {
+            const { service, prisma } = makeService(validLinkedAuction);
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(2);
+            await expect(service.getAllListings(1, 20, undefined, 'DELETED'))
+                .resolves.toEqual({ data: [], total: 2 });
+            expect(prisma.listing.count).toHaveBeenCalledWith({
+                where: { deletedAt: { not: null } },
+            });
+        });
+
+        it('keeps the complete inventory accessible through All while default callers stay compatible', async () => {
+            const { service, prisma } = makeService(validLinkedAuction);
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(5);
+            await service.getAllListings(1, 20, undefined, 'ALL');
+            await service.getAllListings(1, 20);
+            expect(prisma.listing.count).toHaveBeenNthCalledWith(1, { where: {} });
+            expect(prisma.listing.count).toHaveBeenNthCalledWith(2, { where: {} });
+        });
+
+        it('rejects unsupported filters without running a listing query', async () => {
+            const { service, prisma } = makeService(validLinkedAuction);
+            await expect(service.getAllListings(1, 20, undefined, 'ARCHIVED'))
+                .rejects.toBeInstanceOf(BadRequestException);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+    });
 
     it('returns only listings awaiting a decision, leaving rejected listings in history until resubmitted', async () => {
         const { service, prisma } = makeService(validLinkedAuction);
