@@ -36,6 +36,37 @@ jobs:
           (cd backend && npm audit --package-lock-only --omit=dev --json > "$before") || true
           node backend/scripts/security-moderate-advisory-report.cjs "$before" before
           rm -f "$before"
+      - name: Verify actual production-only installation and live npm advisory tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          # Do not run prisma postinstall or touch any database. This runner is
+          # disposable: the only writes are its own local node_modules.
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npm ls --omit=dev --all --json > /tmp/backend-prod-tree.json 2>/tmp/npm-ls-warnings || true
+          node -e '
+            const fs=require("fs"),p=require("./package.json");
+            const target=["@swc/cli","@swc/core","@nestjs/cli",
+              "@nestjs/swagger","@xhmikosr/bin-wrapper","@xhmikosr/decompress",
+              "file-type","js-yaml","prisma","@prisma/client"];
+            const tree=JSON.parse(fs.readFileSync("/tmp/backend-prod-tree.json","utf8"));
+            const matches=[];
+            function visit(deps,parent,depth){
+              if(depth>14||!deps)return;
+              for(const [name,pkg] of Object.entries(deps)){
+                if(target.includes(name))
+                  matches.push({pkg:name,version:pkg.version,path:parent+"/"+name,
+                    markedDev:!!pkg.dev,missing:!!pkg.missing});
+                visit(pkg.dependencies,parent+"/"+name,depth+1);
+              }
+            }
+            visit(tree.dependencies,"root",0);
+            console.log("ACTUAL_PRODUCTION_DEPENDENCY_PATHS "+JSON.stringify(matches));
+          '
+          npm audit --omit=dev --json > /tmp/backend-installed-prod-audit.json || true
+          node scripts/security-moderate-advisory-report.cjs             /tmp/backend-installed-prod-audit.json before
+          cd ..
       - name: Simulate compatible dependency fixes, without force, on disposable CI runner only
         shell: bash
         run: |
