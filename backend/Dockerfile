@@ -1,6 +1,7 @@
 # Syntax=docker/dockerfile:1
 
-ARG NODE_VERSION=20.10.0
+# Pinned supported Node 22 image validated by isolated Docker CI; old 20.10 is below Nest CLI minimum.
+ARG NODE_VERSION=22.23.3
 
 # ── Stage 1: Build ──────────────────────────────────────────────
 FROM node:${NODE_VERSION}-alpine AS builder
