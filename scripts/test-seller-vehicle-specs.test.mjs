@@ -311,3 +311,58 @@ test("both web selling methods use one accessible high-contrast native checkbox 
     assert.doesNotMatch(wizard, /onClick=\{\(\) => set\("declarationAcknowledged"/)
     assert.doesNotMatch(wizard, /Please complete all declarations above before proceeding/)
 })
+
+
+const auctionSrc = readFileSync(new URL("../src/lib/sellerAuctionDraft.ts", import.meta.url), "utf8")
+const auctionCompiled = ts.transpileModule(auctionSrc, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    reportDiagnostics: true,
+})
+assert.equal(auctionCompiled.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0)
+const auctionHelper = {}
+runInNewContext(auctionCompiled.outputText, { exports: auctionHelper })
+const { parseSellerAuctionDraft, sellerAuctionDraftReady } = auctionHelper
+const auctionFixture = {
+    startTime: "NOW", reservePrice: "5500",
+    startingBid: "4000", minIncrement: "100", buyItNowPrice: "",
+}
+
+test("saved auction schedule accepts a valid immediate or future start", () => {
+    const parsed = parseSellerAuctionDraft(JSON.stringify(auctionFixture))
+    assert.equal(parsed.reservePrice, "5500")
+    assert.equal(sellerAuctionDraftReady(parsed, 1000), true)
+    assert.equal(sellerAuctionDraftReady({ ...parsed, startTime: "2027-04-10T12:00:00" }, 1000), true)
+})
+test("missing, corrupt, expired or invalid saved auctions cannot jump to Review", () => {
+    assert.equal(parseSellerAuctionDraft("{no"), null)
+    assert.equal(sellerAuctionDraftReady(null, 1000), false)
+    assert.equal(sellerAuctionDraftReady({ ...auctionFixture, reservePrice: "" }, 1000), false)
+    assert.equal(sellerAuctionDraftReady({ ...auctionFixture, minIncrement: "-1" }, 1000), false)
+    assert.equal(sellerAuctionDraftReady({ ...auctionFixture, startTime: "bad-date" }, 1000), false)
+    assert.equal(sellerAuctionDraftReady({ ...auctionFixture, startTime: "1970-01-01T00:00:02" }, 10_000), false)
+    assert.equal(sellerAuctionDraftReady({ ...auctionFixture, buyItNowPrice: "bad" }, 1000), false)
+})
+test("retail and auction draft keys are isolated between authenticated sellers", () => {
+    const a = isolation.sellerDraftKeys("seller-a")
+    const b = isolation.sellerDraftKeys("seller-b")
+    assert.notEqual(a.auctionSchedule, b.auctionSchedule)
+    assert.notEqual(a.auctionSchedule, a.draft)
+})
+test("web Review always gates photos, prices and auction schedule before API or payment", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const submit = wizard.slice(wizard.indexOf("const handleSubmit = async () =>"), wizard.indexOf("setIsSubmitting(true)", wizard.indexOf("const handleSubmit = async ()")))
+    assert.match(submit, /\[1, 2, 3, 4\]/)
+    assert.match(submit, /\[1, 2, 3\]/)
+    assert.match(submit, /getStepValidationError\(step\)/)
+    assert.match(wizard, /localStorage\.setItem\(draftKeys\.auctionSchedule, JSON\.stringify\(auctionSchedule\)\)/)
+    assert.match(wizard, /sellerAuctionDraftReady\(savedAuction\)/)
+    assert.match(wizard, /setAuctionSchedule\(returnedAuction \?\? \{ \.\.\.EMPTY_SELLER_AUCTION_DRAFT \}\)/)
+})
+test("web HPI return never unlocks when backend refuses entitlement or checkout vehicle differs", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /status\.metadata\?\.listingId !== savedDraftId/)
+    assert.match(wizard, /normalizeVehicleRegistration\(status\.metadata\?\.vrm\) !== binding\?\.vrm/)
+    assert.match(wizard, /if \(!result\.applied\)/)
+    const guarded = wizard.slice(wizard.indexOf("return applyHpiFee(sessionId).then(result =>"), wizard.indexOf("sessionStorage.removeItem(draftKeys.hpiCheckout)", wizard.indexOf("return applyHpiFee(sessionId).then(result =>")))
+    assert.ok(guarded.indexOf("if (!result.applied)") < guarded.indexOf("setIsHpiUnlocked(true)"))
+})
