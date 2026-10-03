@@ -52,7 +52,7 @@ test('native screen uses request guards, valid edit/draft specs and inline contr
   assert.match(screen, /setBodyType\(prev => normalizeNativeBodyType\(prev, currentType\) \|\| incomingBodyType\)/);
   assert.match(screen, /if \(key === 'bodyType' && vehicleType !== 'MOTORCYCLE'/);
   assert.match(screen, /if \(key === 'transmission' && !normalizeNativeTransmission\(transmission\)\)/);
-  assert.match(screen, /const draftSpecsValid =/);
+  assert.match(screen, /const detailsReady = nativeDraftStepOneComplete\(store,/);
   assert.match(screen, /vrm, vehicleType, make, model/);
 });
 
