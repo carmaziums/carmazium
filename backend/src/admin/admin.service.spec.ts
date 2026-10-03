@@ -6,6 +6,7 @@ describe('AdminService listing approval readiness', () => {
         const prisma: any = {
             listing: {
                 findUnique: jest.fn().mockResolvedValue(listing),
+                findMany: jest.fn(),
                 update: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
             },
@@ -91,6 +92,23 @@ describe('AdminService listing approval readiness', () => {
             hpiReport: { id: 'hpi-source-1' },
         },
     };
+
+    it('returns only listings awaiting a decision, leaving rejected listings in history until resubmitted', async () => {
+        const { service, prisma } = makeService(validLinkedAuction);
+        prisma.listing.findMany.mockResolvedValue([validLinkedAuction]);
+
+        await expect(service.getPendingListingReviews()).resolves.toEqual([validLinkedAuction]);
+
+        expect(prisma.listing.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { status: 'PENDING_REVIEW', deletedAt: null },
+                include: expect.objectContaining({
+                    seller: expect.any(Object),
+                    auction: true,
+                }),
+            }),
+        );
+    });
 
     it('accepts linked-source HPI as satisfying the linked auction HPI gate', async () => {
         const { service, prisma } = makeService(validLinkedAuction);
