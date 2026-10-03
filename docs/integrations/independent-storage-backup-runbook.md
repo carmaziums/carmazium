@@ -14,11 +14,11 @@ A 3 October **read-only** SQL inventory found **seven** production Storage bucke
 | `auction-handover-documents` | **private** | 9 |
 | `chat-attachments` | **private** | 0 |
 | `dealer-kyc-documents` | **private** | 59 |
-| `listings` | public | 12,128 |
+| `listings` | public | 12,160 |
 | `sale-cancellation-evidence` | **private** | 0 |
 | `tradexchange-documents` | **private** | 0 |
 
-Total **12,196** at the inspection. The actual inventory may change during operation. A verified snapshot must contain **every expected bucket** and meet a freshly checked, deliberately approved *per-bucket minimum*, not just an overall count. Lower a baseline only after checking legitimate removals; never lower it merely to make a failed backup succeed.
+Total **12,228** at the latest read-only inspection on 3 October, up from 12,196 earlier the same day. The actual inventory may change during operation. A verified snapshot must contain **every expected bucket** and meet a freshly checked, deliberately approved *per-bucket minimum*, not just an overall count. Lower a baseline only after checking legitimate removals; never lower it merely to make a failed backup succeed.
 
 The old in-app weekly DB backup runner is separately broken (no `backups` Storage bucket, no runtime service key and old deployed PostgreSQL client in earlier live configuration). **Do not equate that failing runner with the separately owner-confirmed managed backup**. Do not disable it until the replacement and notification flow are tested. Track full recovery through [issue #364](https://github.com/carmaziums/carmazium/issues/364).
 
@@ -51,11 +51,11 @@ GROUP BY b.id, b.public
 ORDER BY b.id;
 ```
 
-Review the seven actual buckets, privacy classification, any newly created buckets and the latest legitimate removals. Approve a new baseline in a **private operator configuration** (not GitHub). The example below reflects the point-in-time 3 October inspection only:
+Review the seven actual buckets, privacy classification, any newly created buckets and the latest legitimate removals. Approve a new baseline in a **private operator configuration** (not GitHub). The example below reflects the latest point-in-time 3 October inspection only; refresh it at the actual backup run:
 
 ```text
-BACKUP_MIN_OBJECTS=12196
-BACKUP_MIN_BUCKET_COUNTS_JSON={"admin-broadcasts":0,"auction-handover-documents":9,"chat-attachments":0,"dealer-kyc-documents":59,"listings":12128,"sale-cancellation-evidence":0,"tradexchange-documents":0}
+BACKUP_MIN_OBJECTS=12228
+BACKUP_MIN_BUCKET_COUNTS_JSON={"admin-broadcasts":0,"auction-handover-documents":9,"chat-attachments":0,"dealer-kyc-documents":59,"listings":12160,"sale-cancellation-evidence":0,"tradexchange-documents":0}
 ```
 
 Any new or missing bucket requires a reviewed update to the exact seven-bucket allowlist and privacy status in the script; such a change must pass fresh tests before live execution.
