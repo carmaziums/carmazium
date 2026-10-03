@@ -60,6 +60,14 @@ export class OffersService {
         let auctionCancellation: RetailDealAuctionCancellation | null = null;
 
         const updatedOffer = await this.prisma.$transaction(async (tx) => {
+            const source = await tx.listing.findUnique({
+                where: { id: offer.listingId }, select: { linkedListingId: true },
+            });
+            if (source?.linkedListingId) {
+                // Shares the auction's lock so Retail acceptance and a provisional
+                // auction acceptance cannot both win the same vehicle.
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${source.linkedListingId}, 0))::text`;
+            }
             const reserved = await tx.listing.updateMany({
                 where: {
                     id: offer.listingId,

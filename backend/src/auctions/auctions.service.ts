@@ -1150,7 +1150,10 @@ export class AuctionsService {
         const auction = await db.auction.findFirst({
             where: {
                 listingId: auctionListingId,
-                status: { in: ['ACTIVE', 'SCHEDULED'] },
+                OR: [
+                    { status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                    { status: 'ENDED', provisionalOfferBidId: { not: null }, winnerId: null },
+                ],
                 deletedAt: null,
             },
             select: {
@@ -1185,9 +1188,16 @@ export class AuctionsService {
             where: { id: auction.id },
             data: {
                 status: 'CANCELLED',
+                provisionalOfferBidId: null,
+                provisionalOfferedAt: null,
                 buyItNowPendingBuyerId: null,
                 buyItNowPendingAt: null,
             },
+        });
+
+        await db.bid.updateMany({
+            where: { listingId: auctionListingId, deletedAt: null, archivedAt: null },
+            data: { archivedAt: new Date() },
         });
 
         await db.listing.update({
@@ -1360,10 +1370,13 @@ export class AuctionsService {
                 data: { status: 'SOLD' },
             });
             if (linkedListingId) {
-                await tx.listing.update({
-                    where: { id: linkedListingId },
+                const linkedReserved = await tx.listing.updateMany({
+                    where: { id: linkedListingId, status: { in: ['ACTIVE', 'DRAFT', 'PENDING_REVIEW'] }, deletedAt: null },
                     data: { status: 'SOLD' },
                 });
+                if (linkedReserved.count !== 1) {
+                    throw new ConflictException('A linked Retail buyer has already secured this vehicle. The auction offer cannot be accepted.');
+                }
             }
             await tx.sale.create({
                 data: {
