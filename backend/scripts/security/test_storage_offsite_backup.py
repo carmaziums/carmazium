@@ -217,7 +217,7 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
         src.change_head = True
         with self.assertRaisesRegex(BackupUnsafe, "changed"):
             make_snapshot(src, vault, VAULT, KMS, MAC, 7, now=WHEN, nonce=NONCE)
-        self.assertNotIn(f"carmazium-storage/v1/20261003T100000Z-{NONCE}/COMPLETE.json",
+        self.assertNotIn(f"carmazium-storage/v2/20261003T100000Z-{NONCE}/COMPLETE.json",
                          vault.objects)
 
     def test_vault_download_corruption_never_marks_backup_complete(self):
@@ -233,6 +233,15 @@ class IndependentOffsiteBackupTests(unittest.TestCase):
         with self.assertRaisesRegex(BackupUnsafe, "Could not retrieve"):
             make_snapshot(src, vault, VAULT, KMS, MAC, 7, now=WHEN, nonce=NONCE)
         self.assertFalse(any(x.endswith("COMPLETE.json") for x in vault.objects))
+
+    def test_vault_filenames_use_secret_hmac_not_guessable_plain_hash(self):
+        prefix = "carmazium-storage/v2/20261003T100000Z-0123456789abcdeffedcba98"
+        bucket, key = "dealer-kyc-documents", "fictional/nested/test-vrm.jpg"
+        guessed = hashlib.sha256((bucket + "\\0" + key).encode()).hexdigest()
+        actual = vault_key(prefix, bucket, key, MAC)
+        self.assertNotEqual(actual.split("/")[-1], guessed)
+        self.assertNotEqual(actual, vault_key(prefix, bucket, key, b"independent-different-secret-key-1234567"))
+        self.assertEqual(actual, vault_key(prefix, bucket, key, MAC))
 
     def test_tampered_manifest_or_blob_is_detected_on_offsite_drill(self):
         _, vault, report = snapshot()
