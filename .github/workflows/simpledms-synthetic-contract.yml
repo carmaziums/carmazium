@@ -5,12 +5,18 @@ on:
       - test/simpledms-synthetic-contract-gates-20261003
     paths:
       - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
+      - backend/src/partner-api/simpledms.service.ts
+      - backend/src/partner-api/simpledms.guard.ts
+      - backend/src/partner-api/staging.main.ts
       - .github/workflows/simpledms-synthetic-contract.yml
   pull_request:
     branches:
       - security/simpledms-dependency-fixes
     paths:
       - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
+      - backend/src/partner-api/simpledms.service.ts
+      - backend/src/partner-api/simpledms.guard.ts
+      - backend/src/partner-api/staging.main.ts
       - .github/workflows/simpledms-synthetic-contract.yml
 permissions:
   contents: read
