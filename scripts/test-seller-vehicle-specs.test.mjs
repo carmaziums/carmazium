@@ -187,8 +187,8 @@ test("wizard persists guest handoff and blocks invalid restored details before s
     assert.match(wizard, /clearSellerHandoff\(sessionStorage\)/)
     assert.match(wizard, /const specsValid = hasCompleteSellerVehicleSpecs\(/)
     assert.match(wizard, /setCurrentStep\(specsValid \? 2 : 1\)/)
-    assert.match(wizard, /const detailsError = getStepValidationError\(1\)/)
-    assert.ok(wizard.indexOf("const detailsError = getStepValidationError(1)") < wizard.indexOf("setIsSubmitting(true)"))
+    assert.match(wizard, /const error = getStepValidationError\(step\)/)
+    assert.ok(wizard.indexOf("const error = getStepValidationError(step)") < wizard.indexOf("setIsSubmitting(true)"))
 })
 
 
