@@ -403,6 +403,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const searchParams = useSearchParams()
     const draftRestoreAttemptedRef = React.useRef(false)
     const activeDraftOwnerRef = React.useRef<string | null>(null)
+    const [readyDraftOwner, setReadyDraftOwner] = React.useState<string | null>(null)
     const draftKeys = React.useMemo(
         () => sellerDraftKeys(user?.id || "") ?? sellerDraftKeys("not-authenticated")!,
         [user?.id],
@@ -414,6 +415,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         const nextOwner = user?.id || null
         if (activeDraftOwnerRef.current === nextOwner) return
         activeDraftOwnerRef.current = nextOwner
+        setReadyDraftOwner(nextOwner)
         draftRestoreAttemptedRef.current = false
         setFormData({ ...INITIAL_FORM })
         setSellingMethod(null)
@@ -678,12 +680,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // Persist the form and the seller's current step so a normal browser
     // refresh resumes where they were instead of dropping back to method choice.
     React.useEffect(() => {
-        if (!authLoading && user?.id && activeDraftOwnerRef.current === user.id
+        if (!authLoading && user?.id && readyDraftOwner === user.id && activeDraftOwnerRef.current === user.id
             && sellingMethod === 'list' && formData.vrm) {
             localStorage.setItem(draftKeys.draft, JSON.stringify(formData))
             localStorage.setItem(draftKeys.step, String(currentStep))
         }
-    }, [formData, sellingMethod, currentStep, draftKeys, user?.id, authLoading])
+    }, [formData, sellingMethod, currentStep, draftKeys, user?.id, authLoading, readyDraftOwner])
 
     const handleStartFresh = () => {
         const confirmed = window.confirm(
