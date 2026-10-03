@@ -1192,6 +1192,8 @@ export class ListingsService {
         const archivedAt = new Date();
         const result = await this.prisma.$transaction(async (tx) => {
             await this.lockVehicleCreation(tx, sellerId, normalizedVrm);
+            // Conversion must serialize with auction acceptance and re-auction.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${listingId}, 0))::text`;
 
             const source = await tx.listing.findUnique({
                 where: { id: listingId },
@@ -1284,9 +1286,18 @@ export class ListingsService {
                     where: { id: auction.id },
                     data: {
                         status: 'CANCELLED',
+                        provisionalOfferBidId: null,
+                        provisionalOfferedAt: null,
                         buyItNowPendingBuyerId: null,
                         buyItNowPendingAt: null,
                     },
+                });
+            } else if (auction?.provisionalOfferBidId) {
+                // Choosing Retail explicitly retires the recorded provisional bid;
+                // seller cannot both convert and accept it after the conversion.
+                await tx.auction.update({
+                    where: { id: auction.id },
+                    data: { provisionalOfferBidId: null, provisionalOfferedAt: null },
                 });
             }
 
@@ -1383,6 +1394,7 @@ export class ListingsService {
                 listing: updated,
                 auctionId: auction?.id ?? null,
                 auctionWasCancelled: !!auction && ['ACTIVE', 'SCHEDULED'].includes(auction.status),
+                provisionalWithdrawn: !!auction?.provisionalOfferBidId,
                 bidderIds: bidderRows.map((row: any) => row.bidderId),
                 legacyAuctionDraftReplaced: !auction && source.type === 'AUCTION',
             };
@@ -1390,7 +1402,7 @@ export class ListingsService {
 
         // Best-effort bidder notice after the transaction commits. Payment and
         // conversion must never depend on push delivery succeeding.
-        if ((result.auctionWasCancelled || result.legacyAuctionDraftReplaced) && result.bidderIds.length > 0) {
+        if ((result.auctionWasCancelled || result.legacyAuctionDraftReplaced || result.provisionalWithdrawn) && result.bidderIds.length > 0) {
             for (const bidderId of result.bidderIds) {
                 try {
                     const notification = await this.notificationsService.create({

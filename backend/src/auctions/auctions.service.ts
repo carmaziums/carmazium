@@ -2459,9 +2459,10 @@ export class AuctionsService {
             outcome_type:
                 | 'RESERVE_MET_SALE'
                 | 'SELLER_EARLY_CLOSE_UNSOLD'
-                | 'BELOW_RESERVE_UNSOLD'
+                | 'BELOW_RESERVE_SELLER_DECISION'
                 | 'NO_BIDS_UNSOLD'
                 | null;
+            provisional_offer_bid_id: string | null;
             updated_count: number;
         };
 
