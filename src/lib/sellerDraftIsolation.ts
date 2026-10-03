@@ -12,6 +12,7 @@ export function sellerDraftKeys(userId: string) {
         step: `${prefix}:step`,
         hpiDraftId: `${prefix}:hpi_draft_id`,
         hpiCheckout: `${prefix}:hpi_checkout`,
+        auctionSchedule: `${prefix}:auction_schedule`,
     }
 }
 
