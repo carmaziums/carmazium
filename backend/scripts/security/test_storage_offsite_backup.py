@@ -37,7 +37,7 @@ class FakeSource:
             for bucket in BUCKET_PRIVACY
         }
         self.buckets = set(BUCKET_PRIVACY)
-        self.meta = SimpleNamespace(endpoint_url="https://fictional.supabase.co/storage/v1/s3")
+        self.meta = SimpleNamespace(endpoint_url="https://bwtnzmevjlowwronylxm.supabase.co/storage/v1/s3")
         self.change_head = False
         self.duplicate_page = False
 
