@@ -1572,6 +1572,16 @@ describe('AuctionsService — create', () => {
     });
 
 
+    it('rejects re-auctioning if the seller accepted the provisional offer during a concurrent restart', async () => {
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null })
+            .mockResolvedValueOnce({ id: 'auction-1', status: 'ENDED', winnerId: 'dealer-1', wonAt: new Date() });
+        await expect(service.create(makeDto(), 'seller-1'))
+            .rejects.toThrow(/changed.*re-listing/i);
+        expect(prisma.bid.updateMany).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     it('archives bids from the completed auction before re-auctioning the same listing', async () => {
         prisma.auction.findUnique.mockResolvedValue({
             id: 'auction-1',

@@ -532,6 +532,24 @@ export class AuctionsService {
         if (existing) {
             const archivedAt = new Date();
             auction = await this.prisma.$transaction(async (tx) => {
+                // Serialize re-auctioning against a concurrent seller acceptance.
+                // Both mutate the same listing and must re-check after the shared lock.
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createAuctionDto.listingId}, 0))`;
+                const [lockedExisting, lockedListing] = await Promise.all([
+                    tx.auction.findUnique({ where: { id: existing.id },
+                        select: { status: true, winnerId: true, wonAt: true, deletedAt: true } }),
+                    tx.listing.findUnique({ where: { id: createAuctionDto.listingId },
+                        select: { status: true, type: true, sellerId: true, deletedAt: true } }),
+                ]);
+                if (!lockedExisting || lockedExisting.deletedAt || lockedExisting.winnerId || lockedExisting.wonAt
+                    || !['ENDED', 'CANCELLED'].includes(lockedExisting.status)
+                    || !lockedListing || lockedListing.deletedAt
+                    || lockedListing.status !== listing.status || lockedListing.type !== listing.type
+                    || lockedListing.sellerId !== sellerId) {
+                    throw new ConflictException(
+                        'The auction or listing changed. Refresh before re-listing this vehicle.',
+                    );
+                }
                 if (shouldHealLegacyLink && linkedRetailSource) {
                     const claimed = await tx.listing.updateMany({
                         where: {
