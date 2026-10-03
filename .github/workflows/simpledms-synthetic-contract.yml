@@ -4,6 +4,7 @@ on:
     branches:
       - test/simpledms-synthetic-contract-gates-20261003
       - fix/simpledms-live-feed-attribution-20261003
+      - integration/simpledms-staging-candidate-20261003
     paths:
       - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
       - backend/src/partner-api/simpledms.service.ts
@@ -15,6 +16,7 @@ on:
       - .github/workflows/simpledms-synthetic-contract.yml
   pull_request:
     branches:
+      - feature/simpledms-partner-auction-feed
       - security/simpledms-dependency-fixes
       - test/simpledms-synthetic-contract-gates-20261003
     paths:
