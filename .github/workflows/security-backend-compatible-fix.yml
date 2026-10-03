@@ -1,0 +1,124 @@
+name: Temporary Scoped Backend Dependency Remediation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/security-backend-compatible-fix.yml'
+      - 'backend/package-lock.json'
+      - 'backend/package.json'
+
+permissions:
+  contents: write
+
+jobs:
+  safe-backend-updates:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.head.ref == 'security-backend-compatible-lockfile-20261003'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact audited backend security branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Confirm no backend package or application source modifications
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "" || true
+          node -e '
+            const p=require("./backend/package.json");
+            if(p.dependencies.bcrypt!=="^5.1.1" || p.devDependencies.prisma!=="^6.19.2"
+              || p.dependencies["@prisma/client"]!=="^6.19.2") {
+              throw Error("Unexpected bcrypt/Prisma baseline; stop before lockfile fixes");
+            }
+          '
+      - name: Apply ONLY compatible safe npm lockfile fixes (no --force)
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund \
+            > /tmp/backend-safe-audit-fix.txt 2>&1) || true
+          # Never accept unreviewed direct package changes, unrelated edits,
+          # a Prisma downgrade or forced bcrypt major upgrade.
+          node -e '
+            const fs=require("fs"), cp=require("child_process");
+            const p=JSON.parse(fs.readFileSync("backend/package.json","utf8"));
+            const l=JSON.parse(fs.readFileSync("backend/package-lock.json","utf8"));
+            if(p.dependencies.bcrypt!=="^5.1.1" || p.devDependencies.prisma!=="^6.19.2"
+              || l.packages[""].dependencies.bcrypt!==p.dependencies.bcrypt
+              || l.packages[""].devDependencies.prisma!==p.devDependencies.prisma)
+                throw Error("Unauthorized major dependency change");
+            const diff=cp.execFileSync("git",["diff","--name-only"],{encoding:"utf8"})
+              .trim().split("\n").filter(Boolean);
+            if(diff.length!==1 || diff[0]!=="backend/package-lock.json")
+              throw Error("Changes were not restricted to backend/package-lock.json: "+diff.join(","));
+          '
+      - name: Prove safer critical/high production-dependency inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit --package-lock-only --omit=dev --json \
+            > /tmp/backend-after-audit.json) || true
+          node -e '
+            const fs=require("fs");
+            const x=JSON.parse(fs.readFileSync("/tmp/backend-after-audit.json","utf8"));
+            const v=x.metadata?.vulnerabilities;
+            if(!v || typeof v.critical!=="number" || typeof v.high!=="number") {
+              throw Error("Audit incomplete; fail closed");
+            }
+            const remaining=Object.entries(x.vulnerabilities||{})
+              .filter(([name,r])=>["critical","high"].includes(r.severity))
+              .map(([name,r])=>({name,severity:r.severity,direct:!!r.isDirect,
+                fixAvailable:r.fixAvailable===false?"NO_KNOWN_FIX":true}));
+            console.log("SAFE_BACKEND_PATCH_AUDIT "+JSON.stringify({
+              critical:v.critical,high:v.high,moderate:v.moderate,low:v.low,remaining}));
+            if(v.critical>1 || v.high>6)throw Error("Safe patch did not achieve the prior verified threshold");
+            if(!remaining.some(x=>x.name==="tar" && x.severity==="critical"))
+              console.log("The bcrypt-related critical may have changed; manually verify before approval");
+          '
+      - name: Fully install pinned patched backend dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+      - name: Check runtime advisories again after clean npm ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd backend && npm audit --package-lock-only --omit=dev --json \
+            > /tmp/backend-after-install-audit.json) || true
+          node -e '
+            const fs=require("fs"), a=JSON.parse(fs.readFileSync("/tmp/backend-after-install-audit.json","utf8"));
+            const v=a.metadata?.vulnerabilities;
+            if(!v || v.critical>1 || v.high>6)throw Error("Unexpected vulnerability regression");
+            console.log("SAFE_BACKEND_AFTER_BUILD_AUDIT "+JSON.stringify({
+              critical:v.critical,high:v.high,moderate:v.moderate,low:v.low}));
+          '
+      - name: Commit only tested lockfile to designated unmerged security branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="security-backend-compatible-lockfile-20261003"
+          actual="$(git ls-remote origin "refs/heads/$target" | cut -f1)"
+          test "$actual" = "$(git rev-parse HEAD)"
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "backend/package-lock.json"
+          git add -- backend/package-lock.json
+          git -c user.name='CarMazium Security CI' \
+            -c user.email='security-ci@users.noreply.github.com' \
+            commit -m 'Security backend: verified compatible transitive lockfile patches'
+          git push origin "HEAD:refs/heads/$target"
+          echo SAFE_BACKEND_LOCKFILE_TESTED_AND_COMMITTED
