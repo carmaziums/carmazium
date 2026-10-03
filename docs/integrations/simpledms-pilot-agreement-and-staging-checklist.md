@@ -56,6 +56,26 @@
    may be shared. Use a separate *staging* credential, then rotate to a
    production key only after sign-off.
 
+## Stephen's 3 October 2026 reply: new legal/data requirements still PENDING
+
+Stephen has confirmed in email: company **SIMPLEDMS LTD**, number **17167272**,
+a stated Peterborough registered office, proposed signatory **Patricia Jean Abel**,
+and technical/security contact **Stephen Abel, info@simpledms.co.uk**.
+The current Companies House address and signing authority must be independently
+confirmed prior to execution; CarMazium's own contracting entity is also pending.
+Expected providers are Vercel, Supabase and optional OpenAI for BuySmart reporting.
+These are disclosed names, not evidence of actual processing region, subcontractor
+contracts or API retention settings. See the [separate Schedule B historical and
+processor negotiation draft](simpledms-historical-data-and-subprocessors-PROPOSAL.md).
+
+Stephen requests a **distinct historical-vehicle evidence licence** in addition to
+live inventory caching. We can negotiate useful limited history without confusing
+an observed bid with a final sale price, or automatically licensing raw VRM-linked
+records, images or an indefinite CarMazium auction archive. No historical event
+fields, repeat-appearance matching, photo retention, post-termination vehicle-level
+use or CarMazium-to-OpenAI transfer is authorised yet. Existing no-history/no-onward-
+training restrictions remain in force until a field-specific Schedule B is signed.
+
 ## Staging release gates
 
 - [ ] Confirm independent staging backend and frontend origins; neither test
@@ -79,8 +99,18 @@
       and no PII in reports. Confirm staff/business attribution limitations.
 - [ ] Monitor 15-minute freshness and backend rate/DB load using simulated
       periodic full-feed reconciliation.
+- [ ] Independently verify both companies' registered details/signing authority
+      and execute the final initial free pilot terms.
+- [ ] Explicitly negotiate Schedule B: distinguish live vs historical fields,
+      repeated-vehicle matching requirements, historical data purposes/duration,
+      already-delivered reports, derived-output licensing and deletion proof.
+- [ ] Verify Vercel/Supabase hosting regions, processors/DPAs and transfers;
+      approve a minimal optional OpenAI input schedule only after account-level
+      retention/training and lawful-basis checks. No raw VRM to OpenAI by default.
 - [ ] Agree final signed data schedule, launch date, contact points, deletion
       SLA, photo rights and account/referral privacy disclosures.
+- [x] Account owner reports seeing a Supabase-managed database backup dated **2 October 2026 at 11:59 pm** in the dashboard (confirmed in conversation on 3 October 2026). Dashboard time zone, backup success/restoreability and separate PITR entitlement have **not** been independently verified. Record this as *owner-confirmed available backup*, not demonstrated recoverability.
+- [ ] Prove actual managed database-backup recovery via a safe non-production restore/recovery exercise (do not restore over the live database); independently protect and test restoration of Storage object bytes, including private KYC and handover files, under issue #364. CI-only synthetic Storage restoration does not prove live object coverage.
 - [ ] Issue a dedicated **staging-only** credential through a secure channel,
       not email body, code, logs or documentation.
 - [ ] After joint written sign-off, separately approve the production deploy,

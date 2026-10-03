@@ -189,7 +189,7 @@ export class SimpleDmsReferralService {
       }),
       this.prisma.auction.findMany({
         where: { id: { in: all.map(c => c.auctionId) } },
-        select: { id: true, listingId: true, buyerFeePaid: true,
+        select: { id: true, listingId: true, winnerId: true, buyerFeePaid: true,
           sellerBonusReleased: true, buyerRefusedAt: true, status: true },
       }),
     ]);
@@ -214,8 +214,12 @@ export class SimpleDmsReferralService {
       }
       // A Sale row alone is NOT a completed purchase. Require approved
       // handover plus fee lifecycle completion, and exclude buyer refusals.
-      if (auction.status === 'ENDED' && auction.buyerFeePaid &&
-          auction.sellerBonusReleased && !auction.buyerRefusedAt) {
+      // Only a completed handover for the canonical winning business can
+      // establish a completed referred purchase. A historical Sale row for a
+      // different buyer on the same listing must not be counted.
+      if (auction.status === 'ENDED' && auction.winnerId === c.buyerId &&
+          auction.buyerFeePaid && auction.sellerBonusReleased &&
+          !auction.buyerRefusedAt) {
         for (const sale of sales) {
           if (sale.buyerId === c.buyerId && sale.listingId === c.listingId &&
               sale.createdAt >= c.clickedAt &&

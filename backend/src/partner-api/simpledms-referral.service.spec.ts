@@ -26,7 +26,7 @@ function harness(overrides: Record<string, string> = {}) {
       findFirst: jest.fn().mockResolvedValue({ id: AUCTION }),
       findUnique: jest.fn().mockResolvedValue({ id: AUCTION, listingId: 'listing-1' }),
       findMany: jest.fn().mockResolvedValue([{
-        id: AUCTION, listingId: 'listing-1', buyerFeePaid: true,
+        id: AUCTION, listingId: 'listing-1', winnerId: 'dealer-1', buyerFeePaid: true,
         sellerBonusReleased: true, buyerRefusedAt: null, status: 'ENDED',
       }]),
     },
@@ -144,10 +144,20 @@ describe('SimpleDmsReferralService security and attribution', () => {
       newDealerAccounts: 1, bids: 1, completedPurchases: 1,
     });
     prisma.auction.findMany.mockResolvedValue([{
-      id: AUCTION, listingId: 'listing-1', buyerFeePaid: true,
+      id: AUCTION, listingId: 'listing-1', winnerId: 'dealer-1', buyerFeePaid: true,
       sellerBonusReleased: false, buyerRefusedAt: null, status: 'ENDED',
     }]);
     const pending = await service.report();
     expect(pending.completedPurchases).toBe(0);
+
+    // A sale row on the same listing is not proof the referred business won.
+    prisma.auction.findMany.mockResolvedValue([{
+      id: AUCTION, listingId: 'listing-1', winnerId: 'other-dealer',
+      buyerFeePaid: true, sellerBonusReleased: true,
+      buyerRefusedAt: null, status: 'ENDED',
+    }]);
+    const wrongWinner = await service.report();
+    expect(wrongWinner.bids).toBe(1); // legitimate referred bid still counted
+    expect(wrongWinner.completedPurchases).toBe(0);
   });
 });

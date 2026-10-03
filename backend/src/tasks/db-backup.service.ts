@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { createClient } from '@supabase/supabase-js';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { gzipSync } from 'zlib';
 import { EmailService } from '../email/email.service';
+import { backupPgEnvironment } from './backup-connection';
 
 @Injectable()
 export class DbBackupService {
@@ -14,24 +15,62 @@ export class DbBackupService {
   // Every Sunday at 2 AM UTC
   @Cron('0 2 * * 0')
   async handleWeeklyBackup(): Promise<void> {
+    // A separately approved private backup runner can disable the legacy
+    // in-process cron after independent restoration has been demonstrated.
+    if (process.env.BACKUP_JOB_ENABLED === 'false') return;
     const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const filename = `db-backup-${date}.sql.gz`;
 
     try {
-      // 1. Run pg_dump (DATABASE_URL is set on Fly.io at runtime)
-      const dumpBuffer = execSync(`pg_dump "${process.env.DATABASE_URL}"`, {
+      // 1. Backups need a separately authorised, adequately privileged
+      // connection BEFORE switching the application to a restricted DB login.
+      // Preserve the legacy URL fallback until the cutover gate is enabled.
+      const separateBackupUrl = process.env.BACKUP_DATABASE_URL;
+      if (
+        process.env.REQUIRE_SEPARATE_BACKUP_ROLE === 'true' &&
+        !separateBackupUrl
+      ) {
+        throw new Error('BACKUP_ROLE_NOT_CONFIGURED');
+      }
+      const backupUrl = separateBackupUrl || process.env.DATABASE_URL;
+      if (!backupUrl) {
+        throw new Error('BACKUP_ROLE_NOT_CONFIGURED');
+      }
+
+      // Fail before creating any dump when the exact configured private
+      // upload destination cannot be accessed. Never log the service key,
+      // bucket metadata or returned provider error.
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('BACKUP_UPLOAD_CREDENTIALS_MISSING');
+      }
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+      );
+      const { data: buckets, error: bucketError } =
+        await supabase.storage.listBuckets();
+      if (
+        bucketError ||
+        !buckets?.some((bucket) => bucket.id === 'backups' && bucket.public === false)
+      ) {
+        throw new Error('BACKUP_PRIVATE_BUCKET_UNAVAILABLE');
+      }
+
+      // Keep credentials out of command arguments, shell interpolation and
+      // unrelated subprocess environment variables. PostgreSQL 17 pg_dump
+      // receives only validated, supported libpq PG* connection parameters.
+      const dumpBuffer = execFileSync('pg_dump', ['--format=plain'], {
+        env: backupPgEnvironment(backupUrl),
         maxBuffer: 200 * 1024 * 1024, // 200 MB safety ceiling
+        stdio: ['ignore', 'pipe', 'pipe'],
       });
 
       // 2. gzip in-memory — avoids ephemeral disk writes (Fly.io restarts wipe disk)
       const compressed = gzipSync(dumpBuffer);
 
-      // 3. Upload to private 'backups' bucket via service role key (bypasses RLS)
-      const supabase = createClient(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      );
-
+      // 3. Use ONLY the previously verified private destination. The
+      // public app's service role credential is legacy architecture; moving
+      // backups to an isolated runner remains a separate release gate.
       const { error } = await supabase.storage
         .from('backups')
         .upload(`backups/${filename}`, compressed, {
@@ -39,19 +78,31 @@ export class DbBackupService {
           upsert: false,
         });
 
-      if (error) throw new Error(`Storage upload failed: ${error.message}`);
+      if (error) throw new Error('BACKUP_STORAGE_UPLOAD_FAILED');
 
       // 4. Retention cleanup: delete files older than 30 days
       await this.pruneOldBackups(supabase);
 
       this.logger.log(`[DbBackup] Weekly backup complete: ${filename}`);
     } catch (err: any) {
-      this.logger.error(`[DbBackup] FAILED: ${err.message}`);
+      // pg_dump/libpq failures may include network metadata; never echo
+      // the exception's raw message (or a database URL) into logs or email.
+      const diagnostic =
+        err?.message === 'BACKUP_UPLOAD_CREDENTIALS_MISSING'
+          ? 'Private backup upload credentials unavailable'
+          : err?.message === 'BACKUP_PRIVATE_BUCKET_UNAVAILABLE'
+            ? 'Private backup bucket unavailable'
+            : err?.message === 'BACKUP_ROLE_NOT_CONFIGURED'
+              ? 'Dedicated backup database connection not configured'
+          : err?.message === 'BACKUP_STORAGE_UPLOAD_FAILED'
+            ? 'Private storage upload failed'
+            : 'Backup failed; investigate securely within the application host';
+      this.logger.error(`[DbBackup] FAILED: ${diagnostic}`);
       await this.emailService.sendBrandedEmail({
         to: process.env.ADMIN_BACKUP_EMAIL || 'airafadil619@gmail.com',
         subject: 'ALERT: CarMazium weekly DB backup failed',
         bodyHtml: `<p>The weekly database backup cron failed at ${new Date().toISOString()}.</p>
-                   <p><strong>Error:</strong> ${err.message}</p>`,
+                   <p><strong>Status:</strong> ${diagnostic}</p>`,
       });
     }
   }

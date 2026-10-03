@@ -1,0 +1,177 @@
+name: Verify isolated Prisma maintenance and public API Docker images
+on:
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/Dockerfile'
+      - 'backend/package*.json'
+      - 'backend/src/partner-api/**'
+      - '.github/workflows/simpledms-prisma-image-isolation.yml'
+  push:
+    branches: [security/simpledms-prisma-image-split]
+    paths:
+      - 'backend/Dockerfile'
+      - '.github/workflows/simpledms-prisma-image-isolation.yml'
+permissions:
+  contents: read
+jobs:
+  test-separate-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify separately pinned Prisma CLI matches backend lock
+        run: |
+          node - <<'NODE'
+          const backend=require('./backend/package-lock.json');
+          const privateCli=require('./backend/prisma-maintenance/package-lock.json');
+          const a=backend.packages?.['node_modules/prisma']?.version;
+          const b=privateCli.packages?.['node_modules/prisma']?.version;
+          const root=privateCli.packages?.['']?.dependencies||{};
+          if(a!==b||b!=='6.19.3'||Object.keys(root).length!==1||root.prisma!==b)
+            throw Error('Separate maintenance Prisma CLI has drifted from app lockfile');
+          console.log('Verified lockfile-aligned Prisma CLI '+a);
+          NODE
+      - uses: docker/setup-buildx-action@v3
+      - name: Build pinned supported Node 24 Alpine public API runtime
+        run: docker build --target runtime -t carmazium-simpledms-api-ci -f backend/Dockerfile backend
+      - name: Build separate on-demand Prisma maintenance image
+        run: docker build --target prisma-maintenance -t carmazium-prisma-maintenance-ci -f backend/Dockerfile backend
+      - name: Check image purposes and locked client compatibility
+        run: |
+          docker run --rm --network none --entrypoint node carmazium-simpledms-api-ci -e "
+            const fs=require('node:fs');
+            if(!process.versions.node.startsWith('24.'))throw Error('Unexpected unsupported Node runtime: '+process.version);
+            for(const name of ['prisma','@prisma/config','deepmerge-ts','@nestjs/cli','@nestjs/schematics']) {
+              if(fs.existsSync('node_modules/'+name+'/package.json'))throw Error('Forbidden HTTP runtime package: '+name);
+            }
+            if(fs.existsSync('/usr/local/lib/node_modules/npm'))throw Error('Bundled npm CLI present in public API');
+            if(fs.existsSync('/usr/local/bin/npm')||fs.existsSync('/usr/local/bin/npx'))throw Error('CLI tools retained');
+            if(!fs.existsSync('node_modules/.prisma/client'))throw Error('Generated Prisma query client absent');
+            const c=require('@prisma/client');
+            const db=new c.PrismaClient();
+            if(typeof db.user.findMany !== 'function')throw Error('Prisma client schema invalid');
+            console.log('Public API image excludes CLI; generated Prisma client usable');
+          "
+          docker run --rm --network none carmazium-prisma-maintenance-ci --version
+          docker image inspect carmazium-prisma-maintenance-ci --format '{{.Config.User}}' | grep -Fx node
+          docker run --rm --network none --entrypoint sh carmazium-prisma-maintenance-ci -ec \
+            'test ! -e /app/dist/main.js && test ! -e /app/src && test -e /app/prisma/schema.prisma && test -x /app/node_modules/.bin/prisma'
+          docker image inspect carmazium-prisma-maintenance-ci --format '{{json .Config.ExposedPorts}}' | grep -Fx null
+          docker image inspect carmazium-simpledms-api-ci --format '{{json .Config.Cmd}}' | grep -F 'dist/main'
+      - name: Exercise maintenance CLI against an isolated ephemeral PostgreSQL database
+        run: |
+          set -eu
+          network="cm-prisma-maint-test-${GITHUB_RUN_ID}"
+          db="cm-prisma-test-${GITHUB_RUN_ID}"
+          docker network create "$network"
+          trap 'docker rm -f "$db" >/dev/null 2>&1 || true; docker network rm "$network" >/dev/null 2>&1 || true' EXIT
+          docker run -d --name "$db" --network "$network" \
+            -e POSTGRES_USER=ci -e POSTGRES_PASSWORD=synthetic-only-password \
+            -e POSTGRES_DB=ci postgres:16-alpine >/dev/null
+          ready=0
+          for i in $(seq 1 35); do
+            if docker exec "$db" pg_isready -U ci -d ci >/dev/null 2>&1; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          connection="postgresql://ci:synthetic-only-password@$db:5432/ci"
+          printf '%s\n' 'CREATE TABLE prisma_maintenance_isolation_test (id integer PRIMARY KEY);' \
+            | docker run --rm -i --network "$network" \
+                -e DATABASE_URL="$connection" -e DIRECT_URL="$connection" \
+                carmazium-prisma-maintenance-ci db execute --schema prisma/schema.prisma --stdin
+          count="$(docker exec "$db" psql -U ci -d ci -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='prisma_maintenance_isolation_test'")"
+          echo "Isolated maintenance image successfully executed a synthetic SQL statement"
+          test "$count" = 1
+      - name: Run public API image in isolated synthetic mode
+        run: |
+          set -eu
+          id="$(docker run -d --network bridge -p 127.0.0.1:18080:8080 \
+            -e STAGING_SYNTHETIC_ONLY=true -e STAGING_PUBLIC_HOST=synthetic-test.up.railway.app \
+            -e PARTNER_API_ENABLED=false -e PARTNER_API_SIMPLEDMS_ENABLED=false \
+            --entrypoint node carmazium-simpledms-api-ci dist/partner-api/staging.main.js)"
+          trap 'docker logs "$id" || true; docker rm -f "$id" || true' EXIT
+          ready=0
+          for n in $(seq 1 30); do
+            if curl --max-time 2 -fsS http://127.0.0.1:18080/health/live > /tmp/simpledms-health.json; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          node -e "let h=require('/tmp/simpledms-health.json');if(!h.syntheticOnly||!h.ok)process.exit(1)"
+          code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/partners/v1/simpledms/auctions)"
+          echo "Disabled partner access returns HTTP $code"
+          test "$code" = 404
+      # Informational first-pass filesystem scan, not a waiver of outstanding
+      # advisories. Keep the PR draft until the findings have been reviewed.
+      - name: Scan the built API image's actual installed filesystem
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-simpledms-api-ci
+          format: json
+          output: trivy-simpledms-api-image.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Summarise actual image vulnerability findings
+        if: always()
+        run: |
+          if [ ! -s trivy-simpledms-api-image.json ]; then
+            echo 'Image scan did not produce a report; this verification is incomplete.'
+            exit 1
+          fi
+          node - <<'NODE'
+          const v=require('./trivy-simpledms-api-image.json');
+          const rows=(v.Results||[]).flatMap(r=>(r.Vulnerabilities||[]).map(x=>({
+            target:r.Target, severity:x.Severity, pkg:x.PkgName,
+            installed:x.InstalledVersion, fix:x.FixedVersion||null,
+          })));
+          const counts={};
+          for(const r of rows)counts[r.severity]=(counts[r.severity]||0)+1;
+          console.log('ACTUAL API IMAGE SCAN '+JSON.stringify(counts));
+          if((counts.CRITICAL||0)+(counts.HIGH||0)>0){console.error('Public image has unresolved critical or high vulnerabilities');process.exitCode=1;}
+          for(const r of rows.filter(x=>x.severity==='CRITICAL'||x.severity==='HIGH').slice(0,16))
+            console.log('FINDING '+JSON.stringify(r));
+          NODE
+      - name: Upload actual image vulnerability report for security review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-prisma-isolated-api-image-scan
+          path: trivy-simpledms-api-image.json
+          retention-days: 7
+      - name: Scan separate, non-public Prisma maintenance image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: carmazium-prisma-maintenance-ci
+          format: json
+          output: trivy-prisma-maintenance-image.json
+          scanners: vuln
+          severity: CRITICAL,HIGH,MEDIUM
+          exit-code: '0'
+      - name: Report restricted maintenance image findings separately
+        run: |
+          node - <<'NODE'
+          const r=require('./trivy-prisma-maintenance-image.json');
+          const a=(r.Results||[]).flatMap(t=>(t.Vulnerabilities||[]).map(v=>({target:t.Target,severity:v.Severity,pkg:v.PkgName})));
+          const c={};for(const x of a)c[x.severity]=(c[x.severity]||0)+1;
+          console.log('RESTRICTED MAINTENANCE IMAGE SCAN '+JSON.stringify(c));
+          for(const x of a.filter(v=>v.severity==='CRITICAL'||v.severity==='HIGH').slice(0,18))
+            console.log('RESTRICTED IMAGE FINDING '+JSON.stringify(x));
+          NODE
+      - name: Archive restricted-image security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpledms-restricted-prisma-maintenance-image-scan
+          path: trivy-prisma-maintenance-image.json
+          retention-days: 7
+      - name: Collect image inventory without production secrets
+        run: |
+          docker image inspect carmazium-simpledms-api-ci --format 'API size bytes: {{.Size}}'
+          docker image inspect carmazium-prisma-maintenance-ci --format 'Maintenance size bytes: {{.Size}}'
+          docker run --rm --network none --entrypoint node carmazium-simpledms-api-ci -e "
+            const fs=require('fs');
+            const modules=['@prisma/client','@prisma/config','prisma','deepmerge-ts','bcrypt','@nestjs/core'];
+            for(const m of modules)console.log(m+': '+(fs.existsSync('node_modules/'+m+'/package.json')?'PRESENT':'ABSENT'));
+          "

@@ -65,7 +65,7 @@ export class SimpleDmsService {
     // auctions, even if production defaults are left elsewhere in the repo.
     if (this.isEnabled('STAGING_SYNTHETIC_ONLY')) {
       const host = this.config.get<string>('STAGING_PUBLIC_HOST') || '';
-      if (!/^[a-z0-9.-]+\\.up\\.railway\\.app$/.test(host))
+      if (!/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.up\.railway\.app$/.test(host))
         throw new Error('Synthetic staging requires a Railway synthetic-only host');
       return 'https://' + host + '/staging-auctions/' + encodeURIComponent(id);
     }
@@ -82,24 +82,27 @@ export class SimpleDmsService {
     return origin + '/auctions/live/' + encodeURIComponent(id) + '?utm_source=simpledms&utm_medium=partner_api';
   }
 
-  private referralLink(id: string): string {
+  // An ordinary auction URL is never presented as an attributable referral.
+  // Misconfigured signing/host settings must not silently overstate conversion tracking.
+  private referralLink(id: string): string | null {
     const raw = this.config.get<string>('PARTNER_API_REFERRAL_BACKEND_URL') || '';
-    if (!raw) return this.publicAuctionUrl(id);
+    if (!raw) return null;
     try {
       const url = new URL(raw);
       // Never generate links to arbitrary endpoints supplied by configuration.
-      if (url.protocol !== 'https:' || url.username || url.password ||
+      if (url.protocol !== 'https:' || url.username || url.password || url.port ||
+          url.pathname !== '/' || url.search || url.hash ||
           !(['carmazium-hjoh9w.fly.dev', 'api.carmazium.com'].includes(url.hostname)
-            || url.hostname.endsWith('.carmazium.com'))) return this.publicAuctionUrl(id);
+            || url.hostname.endsWith('.carmazium.com'))) return null;
       const secret = this.config.get<string>('PARTNER_API_REFERRAL_SIGNING_SECRET') || '';
-      if (secret.length < 32) return this.publicAuctionUrl(id);
+      if (secret.length < 32) return null;
       // The link is issued only inside an authenticated partner feed.
       const expires = Date.now() + 24 * 60 * 60 * 1000;
       const signature = signSimpleDmsLink(id, expires, secret);
       return url.origin + '/partners/referrals/simpledms/go/' + encodeURIComponent(id) +
         '?expires=' + expires + '&signature=' + encodeURIComponent(signature);
     } catch {
-      return this.publicAuctionUrl(id);
+      return null;
     }
   }
 
@@ -143,6 +146,8 @@ export class SimpleDmsService {
 
   private async mapAuction(auction: SelectedAuction) {
     const listing = auction.listing;
+    const referral = this.isEnabled('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED')
+      ? this.referralLink(auction.id) : null;
     const output: Record<string, unknown> = {
       id: auction.id,
       listingId: auction.listingId,
@@ -172,9 +177,7 @@ export class SimpleDmsService {
       url: this.publicAuctionUrl(auction.id),
       // Optional signed redirect: the direct URL remains the fallback while
       // partner referral tracking is not configured/enabled.
-      ...(this.isEnabled('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED') &&
-        this.config.get<string>('PARTNER_API_REFERRAL_BACKEND_URL')
-        ? { referralUrl: this.referralLink(auction.id) } : {}),
+      ...(referral ? { referralUrl: referral } : {}),
     };
 
     if (this.isEnabled('PARTNER_API_SIMPLEDMS_SHARE_REGISTRATION')) {
@@ -187,7 +190,8 @@ export class SimpleDmsService {
       const highest = await this.prisma.bid.findFirst({
         where: {
           listingId: auction.listingId,
-          createdAt: { gte: auction.startTime },
+          // Ignore clock-invalid future bids and all older auction runs.
+          createdAt: { gte: auction.startTime, lte: new Date() },
           deletedAt: null,
           cancelledAt: null,
           archivedAt: null,
