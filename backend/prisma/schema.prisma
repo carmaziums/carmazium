@@ -1021,6 +1021,10 @@ model Auction {
   // admin assignment). Used to measure the grace window before an unpaid win
   // auto-reverts — see UnpaidAuctionFeeExpiryService.
   wonAt                   DateTime?
+  // Only auctions closed under the new policy carry a provisional offer.
+  // Historical ended auctions remain ineligible.
+  provisionalOfferBidId   String?
+  provisionalOfferedAt    DateTime?
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
   buyerFeeReminder24SentAt DateTime?

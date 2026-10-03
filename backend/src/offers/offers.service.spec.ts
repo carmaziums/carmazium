@@ -50,6 +50,7 @@ describe('OffersService — private retail negotiations', () => {
             dealerProfile: { findUnique: jest.fn() },
             dealerStaff: { findFirst: jest.fn() },
             user: { findUnique: jest.fn() },
+            $queryRaw: jest.fn().mockResolvedValue([{ lock_result: '' }]),
             $transaction: jest.fn((fn: any) => fn(prisma)),
         };
         auctionsService = {
@@ -325,6 +326,7 @@ describe('OffersService — private retail negotiations', () => {
         );
 
         expect(result.status).toBe('ACCEPTED');
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
         expect(auctionsService.cancelLinkedAuctionForRetailDeal).toHaveBeenCalledWith(
             'auction-listing-1',
             'listing-1',
@@ -380,6 +382,7 @@ describe('OffersService — accepted offer remains visible after sale', () => {
             },
             dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
+            $queryRaw: jest.fn().mockResolvedValue([{ lock_result: '' }]),
             $transaction: jest.fn((fn: any) => fn(prisma)),
         };
 

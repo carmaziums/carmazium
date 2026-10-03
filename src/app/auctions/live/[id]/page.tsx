@@ -577,8 +577,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     // ── Accept bid (seller) ───────────────────────────────────────────────────
     const handleConfirmAccept = React.useCallback(async () => {
         if (!auction || !acceptingBid?.bidId) return
-        if (endTime && Date.now() >= endTime.getTime()) {
-            setAcceptError("This auction has ended and is being finalised.")
+        if (auction.status === "ACTIVE" && endTime && Date.now() >= endTime.getTime()) {
+            setAcceptError("This auction has ended and is being finalised. Refresh for the seller decision.")
             return
         }
         setAcceptLoading(true)
@@ -586,6 +586,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         try {
             await acceptBidEarly(auction.id, acceptingBid.bidId)
             setAcceptingBid(null)
+            const refreshed = await getAuction(auction.id)
+            setAuction(refreshed)
         } catch (err: any) {
             setAcceptError(err.message ?? "Failed to accept bid. Please try again.")
         } finally {
@@ -777,6 +779,10 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const showBin = isBiddingOpen && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
+    const provisionalOfferPending = isEnded && !auction.winnerId
+        && !!auction.provisionalOfferBidId && auction.provisionalOfferBidId === bidHistory[0]?.bidId
+        && auction.listing.status === 'DRAFT' && topBidAmount !== null
+        && topBidAmount > 0 && !reserveMet
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -817,7 +823,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm">Accept this bid?</p>
-                                    <p className="text-[var(--text-muted)] text-xs">This will end the auction immediately</p>
+                                    <p className="text-[var(--text-muted)] text-xs">{isEnded ? 'This confirms the provisional sale' : 'This will end the auction immediately'}</p>
                                 </div>
                             </div>
 
@@ -828,7 +834,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             </div>
 
                             <p className="text-[var(--text-muted)] text-xs leading-relaxed text-center">
-                                Accepting the current highest offer will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.
+                                {isEnded
+                                    ? 'Accepting this provisional offer makes the dealer the auction winner and starts the normal buyer-fee and handover process. This cannot be undone.'
+                                    : 'Accepting the current highest offer will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.'}
                             </p>
 
                             {acceptError && (
@@ -1103,6 +1111,11 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                         )}
                                     </div>
                                 </>
+                            ) : provisionalOfferPending ? (
+                                <div className="flex items-center gap-2 text-amber-300 text-sm">
+                                    <Handshake size={15} className="shrink-0" />
+                                    <p>Provisionally sold — the highest below-reserve offer awaits your decision. No completed sale yet.</p>
+                                </div>
                             ) : endedPayload?.reserveMet === false ? (
                                 <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                     <AlertCircle size={15} className="text-amber-400 shrink-0" />
@@ -2164,17 +2177,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
 
                     {/* Highest below-reserve bid is a live offer the seller can accept */}
-                    {canManageSellerAuction && isBiddingOpen && !reserveMet && bidHistory[0]?.bidId && (
+                    {canManageSellerAuction && (isBiddingOpen || provisionalOfferPending) && !reserveMet && bidHistory[0]?.bidId && (
                         <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4 space-y-3">
                             <div className="flex items-start gap-3">
                                 <div className="w-9 h-9 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
                                     <Handshake size={16} className="text-emerald-400" />
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="text-sm font-black text-emerald-300">Highest offer received</p>
+                                    <p className="text-sm font-black text-emerald-300">{provisionalOfferPending ? 'Provisionally sold — seller decision needed' : 'Highest offer received'}</p>
                                     <p className="text-2xl font-black font-mono text-[var(--text-primary)] mt-0.5">£{bidHistory[0].amount.toLocaleString("en-GB")}</p>
                                     <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                                        Reserve: £{Number(auction.reservePrice).toLocaleString("en-GB")} · You can accept now or keep the auction running.
+                                        Reserve: £{Number(auction.reservePrice).toLocaleString("en-GB")} · {provisionalOfferPending ? 'Accept this offer or choose where to re-list.' : 'You can accept now or keep the auction running.'}
                                     </p>
                                 </div>
                             </div>
@@ -2183,11 +2196,23 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                 onClick={() => { setAcceptingBid(bidHistory[0]); setAcceptError(null) }}
                                 className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-2.5 text-sm font-black text-white transition-colors"
                             >
-                                Accept £{bidHistory[0].amount.toLocaleString("en-GB")} & End Auction
+                                {provisionalOfferPending ? 'Accept £' + bidHistory[0].amount.toLocaleString('en-GB') + ' & Confirm Sale' : 'Accept £' + bidHistory[0].amount.toLocaleString('en-GB') + ' & End Auction'}
                             </button>
                             <p className="text-[10px] text-emerald-300/70 text-center">
-                                If you wait, other verified dealers can continue increasing the bid normally.
+                                {provisionalOfferPending
+                                    ? 'This is not a completed sale until you accept. Your vehicle remains yours to re-list.'
+                                    : 'If you wait, other verified dealers can continue increasing the bid normally.'}
                             </p>
+                            {provisionalOfferPending && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Link href={'/dashboard/seller/auctions?listingId=' + auction.listingId}
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">Re-list in Auction</Link>
+                                    <Link href={auction.listing.linkedListingId
+                                        ? '/dashboard/seller/listings'
+                                        : '/sell?editId=' + auction.listingId + '&sellMode=retail'}
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">{auction.listing.linkedListingId ? 'Manage Live Retail' : 'List on Retail (£1)'}</Link>
+                                </div>
+                            )}
                         </div>
                     )}
 

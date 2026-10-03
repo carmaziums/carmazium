@@ -881,13 +881,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleAcceptBid = useCallback((bid: BidEntry) => {
     if (!auction || !canManageSellerAuction) return;
-    if (endTime && Date.now() >= endTime.getTime()) {
-      Alert.alert('Auction ended', 'This offer can no longer be accepted while the result is being finalised.');
+    if (auction.status === 'ACTIVE' && endTime && Date.now() >= endTime.getTime()) {
+      Alert.alert('Auction ended', 'This auction is being finalised. Refresh to review your provisional offer.');
       return;
     }
     Alert.alert(
       'Accept current highest offer?',
-      `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
+      auction.status === 'ENDED'
+        ? `Accepting ${fmt(bid.amount)} confirms the provisional sale. The dealer becomes the winner and must complete the £125 buyer fee process. This cannot be undone.`
+        : `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -900,7 +902,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 body: JSON.stringify({ bidId: bid.id }),
               });
               haptics.success();
-              setAuction(p => p ? { ...p, status: 'ENDED', winnerId: bid.bidderId ?? null } : p);
+              setAuction(p => p ? { ...p, status: 'ENDED', winnerId: bid.bidderId ?? null,
+                listing: { ...p.listing, status: 'SOLD' } } : p);
             } catch (err: any) {
               Alert.alert('Failed', err?.message ?? 'Could not accept bid. Please try again.');
             } finally {
@@ -973,6 +976,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     : 0;
   const displayBidAmount = hasRealBids ? currentBid : startingBidAmount;
   const reserveMet = hasRealBids && currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
+  const provisionalPending = isEnded && !auction?.winnerId && !!auction?.provisionalOfferBidId
+    && auction.provisionalOfferBidId === bidHistory[0]?.id
+    && auction?.listing?.status === 'DRAFT' && hasRealBids && currentBid > 0 && !reserveMet;
   const quickBidAmounts = hasRealBids
     ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
     : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
@@ -1142,15 +1148,15 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-      {canManageSellerAuction && isBiddingOpen && !reserveMet && bidHistory[0]?.id && (
+      {canManageSellerAuction && (isBiddingOpen || provisionalPending) && !reserveMet && bidHistory[0]?.id && (
         <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
             <View style={{ flex: 1 }}>
-              <Text style={[s.binSellerTitle, { color: Colors.accentGreen }]}>Highest offer received</Text>
+              <Text style={[s.binSellerTitle, { color: Colors.accentGreen }]}>{provisionalPending ? 'Provisionally sold — your decision' : 'Highest offer received'}</Text>
               <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono, marginTop: 2 }]}>{fmt(bidHistory[0].amount)}</Text>
               <Text style={[s.muted, { marginTop: 2 }]}>
-                Your reserve is {fmt(reservePrice)}. Accept this offer now or keep the auction running for more bids.
+                Your reserve is {fmt(reservePrice)}. {provisionalPending ? 'Accept this offer or re-list in auction or Retail. No sale is final yet.' : 'Accept this offer now or keep the auction running for more bids.'}
               </Text>
             </View>
           </View>
@@ -1162,12 +1168,26 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           >
             {acceptingBidId === bidHistory[0].id
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={s.binSellerConfirmText}>Accept {fmt(bidHistory[0].amount)} & End Auction</Text>
+              : <Text style={s.binSellerConfirmText}>{provisionalPending ? `Accept ${fmt(bidHistory[0].amount)} & Confirm Sale` : `Accept ${fmt(bidHistory[0].amount)} & End Auction`}</Text>
             }
           </TouchableOpacity>
           <Text style={[s.muted, { textAlign: 'center', marginTop: 6, fontSize: FontSize.size10 }]}>
-            If you wait, verified dealers can continue increasing the bid normally.
+            {provisionalPending ? 'Accepting declares a winner; the £125 buyer fee remains required before handover.' : 'If you wait, verified dealers can continue increasing the bid normally.'}
           </Text>
+          {provisionalPending && (
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={s.sellerCloseBtn}
+                onPress={() => navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
+                <Text style={s.sellerCloseBtnText}>Re-list in Auction</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.sellerCloseBtn}
+                onPress={() => auction?.listing?.linkedListingId
+                  ? navigation.navigate('SellerListings')
+                  : navigation.navigate('SellCarFlow', { listingId: auction!.listingId })}>
+                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
       {isScheduled && !isSeller && startTime && (
@@ -1302,6 +1322,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={s.bannerBtnText}>Pay £125 Fee</Text>
                 </TouchableOpacity>
               )}
+            </>
+          ) : provisionalPending ? (
+            <>
+              <Ionicons name="hand-left-outline" size={14} color={Colors.warning} />
+              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>Provisionally sold — seller decision pending. No completed sale yet.</Text>
             </>
           ) : endedPayload?.reserveMet === false ? (
             <>

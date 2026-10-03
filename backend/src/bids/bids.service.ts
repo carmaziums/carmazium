@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { buyerFeeDeadlineAt } from '../auctions/buyer-fee-deadline';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 import { CreateBidDto } from './dto/create-bid.dto';
 import { Bid } from '@prisma/client';
 import {
@@ -34,6 +35,7 @@ export class BidsService {
         private readonly prisma: PrismaService,
         private readonly auctionGateway: AuctionGateway,
         private readonly notificationsService: NotificationsService,
+        private readonly emailService: EmailService,
     ) { }
 
     private auctionRunKey(auction: { id: string; startTime?: Date | string | null }): string {
@@ -521,7 +523,23 @@ export class BidsService {
                     reservePrice,
                     belowReserve: true,
                 },
-            }).catch(() => { /* notification failure must not fail the bid */ });
+            }).catch(error => this.logger.error('Below-reserve offer notification failed', error));
+            this.prisma.user.findUnique({
+                where: { id: lockedListing.sellerId },
+                select: { email: true, firstName: true },
+            }).then(seller => {
+                if (!seller?.email) return;
+                return this.emailService.sendAuctionProvisionalOfferEmail({
+                    toEmail: seller.email,
+                    sellerName: seller.firstName || 'there',
+                    vehicleTitle: vehicle,
+                    amount: bidAmount,
+                    reservePrice,
+                    auctionId: lockedAuction.id,
+                    listingId: lockedListing.id,
+                    ended: false,
+                });
+            }).catch(error => this.logger.error('Below-reserve offer email failed', error));
         }
 
         if (highestBid && highestBid.bidderId !== businessBidderId) {

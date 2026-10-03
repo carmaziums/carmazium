@@ -1236,6 +1236,51 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
+    it('accepts a provisional below-reserve offer after auction closure, but never marks it sold before consent', async () => {
+        const ended = {
+            id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null,
+            provisionalOfferBidId: 'bid-current',
+            endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT',
+                linkedListingId: null, year: 2020, make: 'Test', model: 'Car' },
+        };
+        const topBid = { id: 'bid-current', listingId: 'listing-1', bidderId: 'dealer-1',
+            amount: 8200, deletedAt: null, cancelledAt: null, archivedAt: null };
+        prisma.auction.findUnique.mockResolvedValue(ended);
+        prisma.bid.findUnique.mockResolvedValue(topBid);
+        prisma.bid.findFirst.mockResolvedValue(topBid);
+        await service.acceptBid('auction-1', topBid.id, 'seller-1');
+        expect(prisma.auction.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ status: 'ENDED', winnerId: 'dealer-1', winningBidAmount: 8200 }),
+        }));
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' }, data: { status: 'SOLD' },
+        });
+        expect(prisma.sale.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('never resurrects a historical below-reserve bid into a provisional sale', async () => {
+        prisma.auction.findUnique.mockResolvedValue({ id: 'old-auction', listingId: 'listing-1',
+            status: 'ENDED', winnerId: null, wonAt: null, reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT' },
+        });
+        await expect(service.acceptBid('old-auction', 'bid-current', 'seller-1'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/no provisional offer/i) });
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired provisional offer if the vehicle has been re-listed or moved to Retail', async () => {
+        prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
+            status: 'ENDED', winnerId: null, wonAt: null,
+            provisionalOfferBidId: 'bid-current',
+            endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', linkedListingId: null },
+        });
+        await expect(service.acceptBid('auction-1', 'bid-current', 'seller-1'))
+            .rejects.toMatchObject({ message: expect.stringMatching(/no provisional offer/i) });
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+    });
+
     it('allows the seller to accept the current highest offer even when it is below reserve', async () => {
         const auction = {
             id: 'auction-1',
@@ -1539,6 +1584,16 @@ describe('AuctionsService — create', () => {
     });
 
 
+    it('rejects re-auctioning if the seller accepted the provisional offer during a concurrent restart', async () => {
+        prisma.auction.findUnique
+            .mockResolvedValueOnce({ id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null })
+            .mockResolvedValueOnce({ id: 'auction-1', status: 'ENDED', winnerId: 'dealer-1', wonAt: new Date() });
+        await expect(service.create(makeDto(), 'seller-1'))
+            .rejects.toThrow(/changed.*re-listing/i);
+        expect(prisma.bid.updateMany).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     it('archives bids from the completed auction before re-auctioning the same listing', async () => {
         prisma.auction.findUnique.mockResolvedValue({
             id: 'auction-1',
@@ -1800,6 +1855,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                     provide: EmailService,
                     useValue: {
                         sendAuctionReserveNotMetEmail: jest.fn().mockResolvedValue(undefined),
+                        sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined),
                     },
                 },
                 {
@@ -1922,7 +1978,8 @@ describe('AuctionsService — final lifecycle consistency', () => {
             winner_id: null,
             winning_amount: null,
             sale_completed: false,
-            outcome_type: 'BELOW_RESERVE_UNSOLD',
+            outcome_type: 'BELOW_RESERVE_SELLER_DECISION',
+            provisional_offer_bid_id: 'bid-1',
             updated_count: 1,
         }]);
         prisma.auction.findUnique.mockResolvedValueOnce({
@@ -1944,7 +2001,18 @@ describe('AuctionsService — final lifecycle consistency', () => {
             },
         });
 
+        prisma.user.findUnique.mockResolvedValue({ email: 'seller@example.com', firstName: 'Seller' });
         await service.closeAuction('auction-below-reserve');
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'seller-1', type: 'AUCTION_OFFER_RECEIVED',
+            title: expect.stringMatching(/provisionally sold/i),
+            actionType: 'ACCEPT_OR_RELIST',
+            data: expect.objectContaining({ provisional: true, amount: 7000, reservePrice: 10000 }),
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                toEmail: 'seller@example.com', ended: true, amount: 7000, reservePrice: 10000,
+            }));
 
         expect(prisma.$transaction).not.toHaveBeenCalled();
         expect(prisma.sale.create).not.toHaveBeenCalled();
@@ -1961,7 +2029,7 @@ describe('AuctionsService — final lifecycle consistency', () => {
                 type: 'auction_outcome',
                 payload: expect.objectContaining({
                     auction_id: 'auction-below-reserve',
-                    outcome: 'BELOW_RESERVE_UNSOLD',
+                    outcome: 'BELOW_RESERVE_SELLER_DECISION',
                     highest_bid_amount: 7000,
                 }),
             }),

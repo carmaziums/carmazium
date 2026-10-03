@@ -777,6 +777,46 @@ export class EmailService {
 
     // ─── Auction Emails ──────────────────────────────────────────────
 
+    /** A live below-reserve bid is an offer, not a sale. Once bidding ends,
+     * present all three seller decisions without promising an actual buyer. */
+    async sendAuctionProvisionalOfferEmail(options: {
+        toEmail: string; sellerName: string; vehicleTitle: string;
+        amount: number; reservePrice: number; auctionId: string;
+        listingId?: string; ended: boolean; retailAlreadyLive?: boolean;
+    }) {
+        const escape = (s: string) => String(s).replace(/[&<>]/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as Record<string, string>)[c]);
+        const vehicle = escape(options.vehicleTitle);
+        const amount = options.amount.toLocaleString('en-GB');
+        const reserve = options.reservePrice.toLocaleString('en-GB');
+        const auctionUrl = this.frontendUrl + '/auctions/live/' + encodeURIComponent(options.auctionId);
+        const reauctionUrl = this.frontendUrl + '/dashboard/seller/auctions?listingId=' + encodeURIComponent(options.listingId || '');
+        const retailUrl = options.retailAlreadyLive
+            ? this.frontendUrl + '/dashboard/seller/listings'
+            : this.frontendUrl + '/sell?editId=' + encodeURIComponent(options.listingId || '') + '&sellMode=retail';
+        const bodyHtml = '<h1>' + (options.ended ? 'Provisionally sold — your decision is needed' : 'New below-reserve auction offer') + '</h1>'
+            + '<p>Hello ' + escape(options.sellerName) + ',</p>'
+            + '<p>Highest offer for <strong>' + vehicle + '</strong>: <strong>£' + amount + '</strong>.'
+            + ' Your reserve: <strong>£' + reserve + '</strong>.</p>'
+            + (options.ended
+                ? '<p>Your auction has ended. This is a <strong>provisional offer, not a completed sale</strong>.'
+                    + ' No dealer is declared the winner and no buyer fee is payable unless you accept.</p>'
+                : '<p>Your auction is still live. You can accept the latest highest offer or continue bidding.'
+                    + ' A later bid may replace this offer.</p>')
+            + '<p><a href="' + auctionUrl + '"><strong>Review offer and accept if you wish</strong></a></p>'
+            + (options.ended
+                ? '<p>Other options: <a href="' + reauctionUrl + '">Re-list in auction</a>'
+                    + ' or <a href="' + retailUrl + '">List on Retail</a> (£1 basic listing if not already live).</p>'
+                : '')
+            + '<p>Acceptance is confirmed securely in your CarMazium account; this email cannot complete a sale.</p>';
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: (options.ended ? 'Action required: provisional auction sale — ' : 'New below-reserve offer — ') + options.vehicleTitle + ' — CarMazium',
+            bodyHtml,
+        });
+    }
+
+
     async sendAuctionWonEmail(
         buyerEmail: string,
         buyerName: string,

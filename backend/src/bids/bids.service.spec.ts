@@ -4,6 +4,7 @@ import { BidsService } from './bids.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuctionGateway } from '../auctions/auction.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { EmailService } from '../email/email.service';
 
 describe('BidsService — incremental bidding', () => {
     let service: BidsService;
@@ -202,6 +203,7 @@ describe('BidsService — incremental bidding', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 {
                     provide: AuctionGateway,
@@ -300,6 +302,27 @@ describe('BidsService — incremental bidding', () => {
                 }),
             }),
         });
+    });
+
+    it('emails and notifies the seller for a new highest below-reserve offer', async () => {
+        prisma.listing.findUnique.mockResolvedValue(auctionListing);
+        prisma.user.findUnique.mockImplementation(({ where }: any) => Promise.resolve(
+            where.id === 'seller-1'
+                ? { email: 'seller@example.com', firstName: 'Seller' }
+                : { role: 'DEALER', firstName: 'Test', lastName: 'User', dealerProfile: { isVerified: true } },
+        ));
+        prisma.bid.findFirst.mockResolvedValue(null);
+        prisma.bid.create.mockResolvedValue({ id: 'bid-first', listingId: 'listing-1',
+            bidderId: 'bidder-A', amount: 3500, timestamp: new Date() });
+        await service.create('bidder-A', { listingId: 'listing-1', amount: 3500 } as any);
+        await new Promise(resolve => setImmediate(resolve));
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'seller-1', type: 'AUCTION_OFFER_RECEIVED', actionType: 'ACCEPT_OR_WAIT',
+        }));
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail)
+            .toHaveBeenCalledWith(expect.objectContaining({
+                toEmail: 'seller@example.com', amount: 3500, reservePrice: 9000, ended: false,
+            }));
     });
 
     it.each([5000, 6700, 13000])(
@@ -794,6 +817,7 @@ describe('BidsService — cancelBid', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 { provide: AuctionGateway, useValue: auctionGateway },
                 { provide: NotificationsService, useValue: notificationsService },
@@ -1036,6 +1060,7 @@ describe('BidsService — current auction positions', () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BidsService,
+                { provide: EmailService, useValue: { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) } },
                 { provide: PrismaService, useValue: prisma },
                 { provide: AuctionGateway, useValue: { broadcastBid: jest.fn(), broadcastBidCancelled: jest.fn() } },
                 { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },

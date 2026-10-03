@@ -32,6 +32,10 @@ function getResultTips(auction: Auction): string[] {
     const topBid = getCurrentBid(auction)
     const reserve = Number(auction.reservePrice)
 
+    if (auction.status === 'ENDED' && !auction.winnerId && !!auction.provisionalOfferBidId
+        && auction.listing.status === 'DRAFT' && bidCount > 0 && topBid > 0 && topBid < reserve) {
+        return ['Your highest offer is provisional. Accept it to declare a winner, or choose a fresh auction or Retail listing.'];
+    }
     if (bidCount === 0) {
         return [
             "No bids were placed — a lower starting bid or reserve price tends to spark early interest.",
@@ -61,6 +65,10 @@ export function AuctionResultsModal({
 }: AuctionResultsModalProps) {
     const listing = auction.listing
     const tips = getResultTips(auction)
+    const topOffer = getCurrentBid(auction)
+    const provisionalPending = auction.status === 'ENDED' && !auction.winnerId
+        && !!auction.provisionalOfferBidId && listing.status === 'DRAFT' && getBidCount(auction) > 0
+        && topOffer > 0 && topOffer < Number(auction.reservePrice)
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -119,6 +127,13 @@ export function AuctionResultsModal({
                                         : "Anonymous Bidder"}
                                 </span></p>
                                 <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageLabel(getSellerAuctionStage(auction))}</p>
+                            </div>
+                        </div>
+                    ) : provisionalPending ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                            <Gavel size={20} className="text-amber-400 shrink-0" />
+                            <div><p className="font-bold text-amber-300 text-sm">Provisionally sold — action required</p>
+                                <p className="text-xs text-[var(--text-muted)]">Highest offer £{topOffer.toLocaleString('en-GB')} · Reserve £{Number(auction.reservePrice).toLocaleString('en-GB')}. No sale until you accept.</p>
                             </div>
                         </div>
                     ) : (
@@ -211,6 +226,17 @@ export function AuctionResultsModal({
                             <span className="flex-1 flex items-center justify-center px-3 py-2.5 rounded-xl border border-[var(--border-default)] text-[var(--text-muted)] text-xs text-center">
                                 {auction.buyerRefusedAt ? 'Inspection refused' : 'Waiting for buyer platform fee'}
                             </span>
+                        ) : provisionalPending ? (
+                            <div className="flex-1 grid grid-cols-1 gap-2">
+                                <Link href={'/auctions/live/' + auction.id} onClick={onClose}
+                                    className="text-center rounded-xl bg-emerald-600 text-white text-sm font-bold py-2.5">Review & Accept £{topOffer.toLocaleString('en-GB')}</Link>
+                                <button onClick={() => onReauction(auction)}
+                                    className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>
+                                <Link href={listing.linkedListingId ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
+                                    onClick={onClose} className="text-center rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">
+                                    {listing.linkedListingId ? 'Continue Existing Retail Listing' : 'List on Retail (£1)'}
+                                </Link>
+                            </div>
                         ) : (
                             <button
                                 onClick={() => onReauction(auction)}

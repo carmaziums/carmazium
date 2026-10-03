@@ -532,6 +532,24 @@ export class AuctionsService {
         if (existing) {
             const archivedAt = new Date();
             auction = await this.prisma.$transaction(async (tx) => {
+                // Serialize re-auctioning against a concurrent seller acceptance.
+                // Both mutate the same listing and must re-check after the shared lock.
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${createAuctionDto.listingId}, 0))::text`;
+                const [lockedExisting, lockedListing] = await Promise.all([
+                    tx.auction.findUnique({ where: { id: existing.id },
+                        select: { status: true, winnerId: true, wonAt: true, deletedAt: true } }),
+                    tx.listing.findUnique({ where: { id: createAuctionDto.listingId },
+                        select: { status: true, type: true, sellerId: true, deletedAt: true } }),
+                ]);
+                if (!lockedExisting || lockedExisting.deletedAt || lockedExisting.winnerId || lockedExisting.wonAt
+                    || !['ENDED', 'CANCELLED'].includes(lockedExisting.status)
+                    || !lockedListing || lockedListing.deletedAt
+                    || lockedListing.status !== listing.status || lockedListing.type !== listing.type
+                    || lockedListing.sellerId !== sellerId) {
+                    throw new ConflictException(
+                        'The auction or listing changed. Refresh before re-listing this vehicle.',
+                    );
+                }
                 if (shouldHealLegacyLink && linkedRetailSource) {
                     const claimed = await tx.listing.updateMany({
                         where: {
@@ -584,6 +602,8 @@ export class AuctionsService {
                         winnerId: null,
                         winningBidAmount: null,
                         wonAt: null,
+                        provisionalOfferBidId: null,
+                        provisionalOfferedAt: null,
                         buyerFeeReminder24SentAt: null,
                         buyerFeeReminder6SentAt: null,
                         buyerFeePaid: false,
@@ -1130,7 +1150,10 @@ export class AuctionsService {
         const auction = await db.auction.findFirst({
             where: {
                 listingId: auctionListingId,
-                status: { in: ['ACTIVE', 'SCHEDULED'] },
+                OR: [
+                    { status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                    { status: 'ENDED', provisionalOfferBidId: { not: null }, winnerId: null },
+                ],
                 deletedAt: null,
             },
             select: {
@@ -1165,9 +1188,16 @@ export class AuctionsService {
             where: { id: auction.id },
             data: {
                 status: 'CANCELLED',
+                provisionalOfferBidId: null,
+                provisionalOfferedAt: null,
                 buyItNowPendingBuyerId: null,
                 buyItNowPendingAt: null,
             },
+        });
+
+        await db.bid.updateMany({
+            where: { listingId: auctionListingId, deletedAt: null, archivedAt: null },
+            data: { archivedAt: new Date() },
         });
 
         await db.listing.update({
@@ -1245,7 +1275,7 @@ export class AuctionsService {
         }
 
         const accepted = await this.prisma.$transaction(async (tx) => {
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))`;
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lookup.listingId}, 0))::text`;
 
             const auction = await tx.auction.findUnique({
                 where: { id: auctionId },
@@ -1271,15 +1301,17 @@ export class AuctionsService {
             if (auction.listing.sellerId !== businessSellerId) {
                 throw new ForbiddenException('You do not own this auction');
             }
-            if (auction.status !== 'ACTIVE') {
-                throw new BadRequestException('Only ACTIVE auctions can have a bid accepted');
+            const activeAcceptance = auction.status === 'ACTIVE' && auction.listing.status === 'ACTIVE';
+            const provisionalAcceptance = auction.status === 'ENDED'
+                && !auction.winnerId && !auction.wonAt
+                && !!auction.provisionalOfferBidId
+                && auction.listing.status === 'DRAFT';
+            if (!activeAcceptance && !provisionalAcceptance) {
+                throw new BadRequestException('This auction has no provisional offer available to accept');
             }
-            if (auction.listing.status !== 'ACTIVE') {
-                throw new BadRequestException('This auction vehicle is no longer active');
-            }
-            if (Date.now() >= auction.endTime.getTime()) {
+            if (activeAcceptance && Date.now() >= auction.endTime.getTime()) {
                 throw new BadRequestException(
-                    'This auction has ended. The offer can no longer be accepted while the result is being finalised',
+                    'This auction has ended and is being finalised. Refresh for the seller decision.',
                 );
             }
 
@@ -1298,6 +1330,9 @@ export class AuctionsService {
 
             if (!bid || bid.listingId !== auction.listingId || bid.deletedAt || bid.cancelledAt || bid.archivedAt) {
                 throw new NotFoundException('Bid not found in this auction');
+            }
+            if (provisionalAcceptance && auction.provisionalOfferBidId !== bid.id) {
+                throw new BadRequestException('This is not the recorded provisional offer for this auction');
             }
             if (!highestBid || highestBid.id !== bid.id) {
                 throw new BadRequestException(
@@ -1335,10 +1370,13 @@ export class AuctionsService {
                 data: { status: 'SOLD' },
             });
             if (linkedListingId) {
-                await tx.listing.update({
-                    where: { id: linkedListingId },
+                const linkedReserved = await tx.listing.updateMany({
+                    where: { id: linkedListingId, status: { in: ['ACTIVE', 'DRAFT', 'PENDING_REVIEW'] }, deletedAt: null },
                     data: { status: 'SOLD' },
                 });
+                if (linkedReserved.count !== 1) {
+                    throw new ConflictException('A linked Retail buyer has already secured this vehicle. The auction offer cannot be accepted.');
+                }
             }
             await tx.sale.create({
                 data: {
@@ -2434,9 +2472,10 @@ export class AuctionsService {
             outcome_type:
                 | 'RESERVE_MET_SALE'
                 | 'SELLER_EARLY_CLOSE_UNSOLD'
-                | 'BELOW_RESERVE_UNSOLD'
+                | 'BELOW_RESERVE_SELLER_DECISION'
                 | 'NO_BIDS_UNSOLD'
                 | null;
+            provisional_offer_bid_id: string | null;
             updated_count: number;
         };
 
@@ -2542,7 +2581,7 @@ export class AuctionsService {
                         WHEN ${sellerEarlyClose}::boolean
                             THEN 'SELLER_EARLY_CLOSE_UNSOLD'
                         WHEN d.top_bid_id IS NOT NULL
-                            THEN 'BELOW_RESERVE_UNSOLD'
+                            THEN 'BELOW_RESERVE_SELLER_DECISION'
                         ELSE 'NO_BIDS_UNSOLD'
                     END AS outcome_type
                 FROM decision d
@@ -2554,6 +2593,8 @@ export class AuctionsService {
                     "winnerId" = o.winner_id,
                     "winningBidAmount" = o.winning_amount,
                     "wonAt" = CASE WHEN o.sale_completed THEN NOW() ELSE NULL END,
+                    "provisionalOfferBidId" = CASE WHEN NOT o.sale_completed AND NOT o.reserve_met AND o.top_bid_id IS NOT NULL THEN o.top_bid_id ELSE NULL END,
+                    "provisionalOfferedAt" = CASE WHEN NOT o.sale_completed AND NOT o.reserve_met AND o.top_bid_id IS NOT NULL THEN NOW() ELSE NULL END,
                     "buyItNowPendingBuyerId" = NULL,
                     "buyItNowPendingAt" = NULL,
                     "updatedAt" = NOW()
@@ -2658,6 +2699,7 @@ export class AuctionsService {
                 o.winning_amount,
                 o.sale_completed,
                 o.outcome_type,
+                CASE WHEN o.decision_code = 'OK' AND NOT o.sale_completed AND NOT o.reserve_met THEN o.top_bid_id ELSE NULL END AS provisional_offer_bid_id,
                 (SELECT COUNT(*)::int FROM auction_updated) AS updated_count
             FROM outcome o
         `;
@@ -2731,6 +2773,8 @@ export class AuctionsService {
             row.winner_id,
             winningAmount,
             saleCompleted,
+            highestBidAmount,
+            Boolean(row.provisional_offer_bid_id),
         );
     }
 
@@ -2739,6 +2783,8 @@ export class AuctionsService {
         winnerId: string | null,
         winningAmount: number | null,
         reserveMet: boolean,
+        highestBidAmount: number | null = null,
+        provisionalOfferRecorded = false,
     ): Promise<void> {
         const listing = auction.listing;
         const vehicle = `${listing.year ?? ''} ${listing.make ?? ''} ${listing.model ?? ''}`.trim();
@@ -2822,6 +2868,39 @@ export class AuctionsService {
                     auction.id,
                     buyerFeeWaived,
                 ).catch(console.error);
+            }
+        } else if (provisionalOfferRecorded && highestBidAmount !== null && highestBidAmount > 0
+            && highestBidAmount < Number(auction.reservePrice) && listing.sellerId) {
+            // The auction is ENDED but no winner/Sale exists until the seller accepts.
+            const retailAlreadyLive = Boolean(listing.linkedListingId);
+            const seller = await this.prisma.user.findUnique({
+                where: { id: listing.sellerId }, select: { email: true, firstName: true },
+            });
+            const retailUrl = retailAlreadyLive
+                ? '/dashboard/seller/listings'
+                : '/sell?editId=' + auction.listingId + '&sellMode=retail';
+            await this.notificationsService.create({
+                userId: listing.sellerId,
+                type: 'AUCTION_OFFER_RECEIVED',
+                title: 'Provisionally sold — choose what happens next',
+                message: 'Highest offer: £' + highestBidAmount.toLocaleString('en-GB')
+                    + ' for ' + (vehicle || listing.title) + '. Reserve: £'
+                    + Number(auction.reservePrice).toLocaleString('en-GB')
+                    + '. Accept the offer, re-list in auction or list on Retail.',
+                entityType: 'AUCTION', entityId: auction.id,
+                actionType: 'ACCEPT_OR_RELIST',
+                link: '/auctions/live/' + auction.id,
+                data: { auctionId: auction.id, listingId: auction.listingId,
+                    amount: highestBidAmount, reservePrice: Number(auction.reservePrice),
+                    provisional: true, retailAlreadyLive, retailUrl },
+            }).catch(error => this.logger.error('Provisional sale notification failed', error));
+            if (seller?.email) {
+                this.emailService.sendAuctionProvisionalOfferEmail({
+                    toEmail: seller.email, sellerName: seller.firstName || 'there',
+                    vehicleTitle: vehicle || listing.title, amount: highestBidAmount,
+                    reservePrice: Number(auction.reservePrice), auctionId: auction.id,
+                    listingId: auction.listingId, ended: true, retailAlreadyLive,
+                }).catch(error => this.logger.error('Provisional sale email failed', error));
             }
         } else {
             // No winner — give the seller a clear next step instead of simply
