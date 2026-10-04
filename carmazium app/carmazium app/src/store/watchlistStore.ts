@@ -25,6 +25,7 @@ interface WatchlistState {
 // permission for any in-flight request to update the next account's state.
 let accountGeneration = 0;
 let mutationSequence = 0;
+let hydrationSequence = 0;
 const lastMutationById = new Map<string, number>();
 // Network writes for the same saved car must be ordered. A slow POST followed
 // by a fast DELETE must not leave the car saved on the server while its native
@@ -60,6 +61,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     if (next === get().accountId) return;
     accountGeneration++;
     mutationSequence++;
+    hydrationSequence++;
     lastMutationById.clear();
     pendingWrites.clear();
     set({
@@ -78,6 +80,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     if (!account) return;
     const generation = accountGeneration;
     const firstMutation = mutationSequence;
+    // A later focus/refresh response must win if several requests overlap.
+    const hydration = ++hydrationSequence;
     set({ isLoading: true, loadError: null });
     try {
       const pageSize = 50;
@@ -87,7 +91,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       let total = 0;
       do {
         const result = await getWatchlist(page, pageSize);
-        if (generation !== accountGeneration || account !== get().accountId) return;
+        if (generation !== accountGeneration || account !== get().accountId ||
+            hydration !== hydrationSequence) return;
         total = result.total;
         for (const item of result.items) {
           if (item.mappedListing && !seen.has(item.mappedListing.id)) {
@@ -102,18 +107,20 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       // A save/remove that arrived during an in-flight hydrate wins over
       // the stale snapshot. On the next focus/refresh it will sync again.
       if (generation !== accountGeneration || account !== get().accountId ||
-          firstMutation !== mutationSequence) return;
+          hydration !== hydrationSequence || firstMutation !== mutationSequence) return;
       set({
         savedListings: allListings,
         savedIds: new Set(allListings.map(l => l.id)),
       });
     } catch (error: any) {
-      if (generation === accountGeneration && account === get().accountId) {
+      if (generation === accountGeneration && account === get().accountId &&
+          hydration === hydrationSequence) {
         set({ loadError: error?.message || 'Could not refresh saved cars. Please try again.' });
       }
       // Keep existing saved items on transient failure.
     } finally {
-      if (generation === accountGeneration && account === get().accountId) {
+      if (generation === accountGeneration && account === get().accountId &&
+          hydration === hydrationSequence) {
         set({ isLoading: false });
       }
     }
