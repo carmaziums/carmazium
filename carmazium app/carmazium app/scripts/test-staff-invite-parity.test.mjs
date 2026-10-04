@@ -80,3 +80,10 @@ test('both clients require typed DELETE and submit to the authenticated account 
   assert.match(mobile, /method: 'DELETE'/);
   assert.match(mobile, /confirmation: 'DELETE'/);
 });
+
+test('legacy SELLER query on web signup selects Personal without creating a hidden third role', () => {
+  const web = read('../../src/app/auth/signup/page.tsx');
+  assert.match(web, /const VALID_SIGNUP_ROLES = \["BUYER", "DEALER"\] as const/);
+  assert.match(web, /rawRoleParam === "SELLER" \? "BUYER" : rawRoleParam/);
+  assert.doesNotMatch(web, /\["BUYER", "SELLER", "DEALER"\]/);
+});
