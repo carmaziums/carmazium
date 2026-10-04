@@ -231,9 +231,14 @@ export function useAnalytics() {
                 // gtag.js and no-op when the event has no conversion label.
                 trackAdsConversion(type, payload)
 
-                // Our own analytics uses sessionStorage, so unlike Google's
-                // Consent Mode requests it must wait for explicit consent.
-                if (granted) {
+                // Storage consent is authoritative even before React's
+                // ConsentProvider has completed hydration. Stripe may return
+                // quickly enough that this callback still closes over the
+                // initial "granted=false" render; don't lose that paid event.
+                // Read the stored explicit choice synchronously and lazily
+                // initialize a session only after the user has opted in.
+                if (hasTrackingConsent()) {
+                    if (!sessionId.current) sessionId.current = getSessionId()
                     fetch(`${API_URL}/analytics/event`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
