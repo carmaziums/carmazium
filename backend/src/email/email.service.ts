@@ -185,6 +185,33 @@ export class EmailService {
         return data?.id || null;
     }
 
+
+    /**
+     * A number of transactional emails still use bare h1/p/a markup. Gmail
+     * does not reliably inherit the dark card's foreground from its container:
+     * in light mode those tags render BLACK on the dark card. Apply inline
+     * defaults only when the element has no existing inline design.
+     *
+     * This is deliberately performed in the shared email shell so that new
+     * unstyled messages cannot silently repeat the readability regression.
+     */
+    private styleUnstyledEmailContent(bodyHtml: string): string {
+        return bodyHtml.replace(/<(h[1-6]|p|a)\b([^>]*)>/gi, (tag, name: string, attributes: string) => {
+            if (/\sstyle\s*=/i.test(attributes)) return tag;
+
+            const element = name.toLowerCase();
+            const style = element === 'a'
+                ? 'color: #93c5fd; font-weight: 600; text-decoration: underline;'
+                : element === 'p'
+                    ? 'margin: 0 0 18px; font-size: 15px; line-height: 1.65; color: #e2e8f0;'
+                    : 'margin: 0 0 18px; font-family: Arial, sans-serif; font-size: '
+                        + (element === 'h1' ? '26px' : element === 'h2' ? '21px' : '18px')
+                        + '; line-height: 1.3; font-weight: 800; color: #ffffff;';
+
+            return '<' + name + attributes + ' style="' + style + '">';
+        });
+    }
+
     // ─── Brand Template Shell ────────────────────────────────────────
 
     /**
@@ -199,9 +226,15 @@ export class EmailService {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CarMazium</title>
+    <style type="text/css">
+        @media only screen and (max-width: 480px) {
+            .carmazium-email-shell { padding: 16px 10px !important; }
+            .carmazium-email-content { padding: 28px 20px !important; }
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-    <div style="max-width: 640px; margin: 0 auto; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; color: #e2e8f0; background-color: #0f172a; font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <div class="carmazium-email-shell" style="max-width: 640px; margin: 0 auto; padding: 40px 20px;">
 
         <!-- Header with Logo -->
         <div style="text-align: center; padding: 32px 0 24px;">
@@ -211,14 +244,14 @@ export class EmailService {
         </div>
 
         <!-- Main Card -->
-        <div style="background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+        <div style="background-color: #1e293b; background-image: linear-gradient(145deg, #1e293b 0%, #0f172a 100%); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
 
             <!-- Red Accent Strip -->
             <div style="height: 4px; background: linear-gradient(90deg, #ed1c24, #ff4d4d, #ed1c24);"></div>
 
             <!-- Body Content -->
-            <div style="padding: 48px 40px 40px;">
-                ${bodyHtml}
+            <div class="carmazium-email-content" style="padding: 48px 40px 40px; color: #e2e8f0;">
+                ${this.styleUnstyledEmailContent(bodyHtml)}
             </div>
         </div>
 
@@ -233,10 +266,10 @@ export class EmailService {
                 <a href="${this.frontendUrl}/pricing" style="display: inline-block; margin: 0 10px; color: #94a3b8; text-decoration: none; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">Pricing</a>
             </div>
 
-            <p style="font-size: 11px; color: #475569; margin: 0 0 8px; line-height: 1.5;">
+            <p style="font-size: 11px; color: #94a3b8; margin: 0 0 8px; line-height: 1.5;">
                 &copy; ${new Date().getFullYear()} CarMazium Ltd. All rights reserved.
             </p>
-            <p style="font-size: 10px; color: #334155; margin: 0;">
+            <p style="font-size: 10px; color: #94a3b8; margin: 0;">
                 The premier platform to buy, sell, and auction vehicles.
             </p>
         </div>
