@@ -274,6 +274,7 @@ export const SearchScreen: React.FC = () => {
   );
 
   const debounceRef = useRef<any>(null);
+  const textSearchBootstrappedRef = useRef(false);
 
   // When navigating to this screen from Home with params (e.g. pill chips), apply
   // new filters even if the tab was already mounted. The _t timestamp ensures this
@@ -429,14 +430,15 @@ export const SearchScreen: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
-  // Initial load
-  useEffect(() => { fetch(true); }, []);
-
-  // Text query: debounce to avoid hitting the API on every keystroke.
-  // All other filter/sort changes are instant (fired by the non-text useEffect below).
+  // The non-text filter effect below performs the initial fetch. Avoid
+  // starting two more initial calls (including a 350-ms delayed radius scan).
+  // That was wasteful when a user has hundreds of nearby candidates.
   useEffect(() => {
-    // Invalidate the old query immediately, not after the debounce delay:
-    // a late old postcode/keyword response cannot impersonate the new query.
+    if (!textSearchBootstrappedRef.current) {
+      textSearchBootstrappedRef.current = true;
+      return;
+    }
+    // A newly typed query revokes in-flight results during the debounce.
     radiusSearchEpochRef.current++;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
