@@ -37,6 +37,15 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any; isRootRecovery?: 
   const confirmRef = useRef<TextInput>(null);
   const logout = useAuthStore((state) => state.logout);
   const insets = useSafeAreaInsets();
+  const handleBackToSignIn = () => {
+    if (isRootRecovery) {
+      // A recovery-only session must be destroyed before returning to Login;
+      // otherwise a restricted recovery token could survive the back button.
+      void logout();
+    } else {
+      navigation?.navigate('Login');
+    }
+  };
 
   const validate = (): string | null => {
     if (newPassword.length < 8) return 'Password must be at least 8 characters';
@@ -117,7 +126,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any; isRootRecovery?: 
                 </Text>
                 <TouchableOpacity
                   style={styles.signInBtn}
-                  onPress={() => navigation?.navigate('Login')}
+                  onPress={handleBackToSignIn}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.signInBtnText}>Sign in</Text>
@@ -205,7 +214,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any; isRootRecovery?: 
             )}
 
             <View style={styles.backRow}>
-              <TouchableOpacity onPress={() => navigation?.navigate('Login')} activeOpacity={0.7}>
+              <TouchableOpacity onPress={handleBackToSignIn} activeOpacity={0.7}>
                 <Text style={styles.backLink}>Back to sign in</Text>
               </TouchableOpacity>
             </View>
