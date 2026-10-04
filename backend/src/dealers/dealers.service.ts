@@ -1688,9 +1688,14 @@ export class DealersService {
         // Do not claim "invitation sent" if delivery failed: free the failed
         // token for retry while ensuring a concurrent rotation is not removed.
         try {
-            await this.emailService.sendStaffInviteEmail(
+            const delivery = await this.emailService.sendStaffInviteEmail(
                 email, profile.companyName, dto.role, newToken,
             );
+            // EmailService.dispatch catches provider failures and returns
+            // null when Gmail AND Resend fail, instead of throwing.
+            if (!delivery?.id) {
+                throw new Error('No email provider accepted the invitation');
+            }
         } catch {
             await this.prisma.dealerInvite.deleteMany({
                 where: { id: invite.id, token: newToken },
