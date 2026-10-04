@@ -30,7 +30,7 @@ export async function addAuctionToShortlist(listingId: string): Promise<void> {
   try {
     await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: 'POST' });
   } catch (error: any) {
-    if (/(?:\\b409\\b|already in watchlist)/i.test(String(error?.message ?? ''))) return;
+    if (/(?:\b409\b|already in watchlist)/i.test(String(error?.message ?? ''))) return;
     throw error;
   }
 }
@@ -39,7 +39,7 @@ export async function removeAuctionFromShortlist(listingId: string): Promise<voi
   try {
     await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: 'DELETE' });
   } catch (error: any) {
-    if (/(?:\\b404\\b|not shortlisted)/i.test(String(error?.message ?? ''))) return;
+    if (/(?:\b404\b|not shortlisted)/i.test(String(error?.message ?? ''))) return;
     throw error;
   }
 }
