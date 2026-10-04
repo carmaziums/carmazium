@@ -732,7 +732,7 @@ export const GlobalAIChatBot: React.FC = () => {
               style={styles.botImage}
               contentFit="contain"
               cachePolicy="memory-disk"
-              accessibilityLabel="MaziuM mascot"
+              accessible={false}
             />
           </TouchableOpacity>
         </View>
