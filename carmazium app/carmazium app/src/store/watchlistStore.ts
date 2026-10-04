@@ -6,6 +6,9 @@ import {
   removeFromWatchlist,
 } from '../lib/watchlistApi';
 
+// Cancel stale hydration results across logouts/account changes.
+let hydrateEpoch = 0;
+
 interface WatchlistState {
   savedIds: Set<string>;
   savedListings: CarListing[];
@@ -17,6 +20,7 @@ interface WatchlistState {
   unsave: (id: string) => void;
   toggle: (listing: CarListing) => void;
   isSaved: (id: string) => boolean;
+  reset: () => void;
 }
 
 export const useWatchlistStore = create<WatchlistState>((set, get) => ({
@@ -24,7 +28,13 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   savedListings: [],
   isLoading: false,
 
+  reset: () => {
+    hydrateEpoch += 1;
+    set({ savedIds: new Set(), savedListings: [], isLoading: false });
+  },
+
   hydrateFromApi: async () => {
+    const thisHydration = ++hydrateEpoch;
     // This store drives every heart icon across Search, Home and VehicleDetail,
     // so it must hydrate the complete watchlist rather than silently stopping
     // at an arbitrary first-page limit.
@@ -48,11 +58,11 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
         .filter((item) => item.mappedListing != null)
         .map((item) => item.mappedListing!);
       const ids = new Set(listings.map((l) => l.id));
-      set({ savedListings: listings, savedIds: ids });
+      if (thisHydration === hydrateEpoch) set({ savedListings: listings, savedIds: ids });
     } catch {
-      // Keep existing state on network failure
+      // Keep existing state on network failure, including previous hearts.
     } finally {
-      set({ isLoading: false });
+      if (thisHydration === hydrateEpoch) set({ isLoading: false });
     }
   },
 
