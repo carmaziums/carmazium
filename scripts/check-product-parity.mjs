@@ -1435,6 +1435,36 @@ if (!nativeShortlistNavigator.includes('withDealerGate(DealerAuctionShortlistScr
   ok('Native shortlist is KYC-gated and reachable via drawer and live auctions');
 }
 
+// Keep native dealer shortlist runtime behavior consistent with web: refresh
+// active statuses/prices, recover after last-page deletion, and keep cross-device
+// hearts fresh. These source guards supplement (not replace) device/E2E tests.
+const mobileWatchlistApi = read('carmazium app/carmazium app/src/lib/watchlistApi.ts');
+const mobileWatchlistStore = read('carmazium app/carmazium app/src/store/watchlistStore.ts');
+const mobileSavedScreen = read('carmazium app/carmazium app/src/screens/main/SavedScreen.tsx');
+const mobileAuthStoreForWatchlist = read('carmazium app/carmazium app/src/store/authStore.ts');
+if (!nativeShortlistScreen.includes("AUTO_REFRESH_MS = 20_000") ||
+    !nativeShortlistScreen.includes("AppState.currentState === 'active'") ||
+    !nativeShortlistScreen.includes('setInterval(') ||
+    !nativeShortlistScreen.includes('remainingUntil(a.endTime, now)') ||
+    !nativeShortlistScreen.includes('page > nextTotalPages') ||
+    !nativeShortlistScreen.includes('setPage(nextTotalPages)') ||
+    !nativeShortlistScreen.includes("item.listing.status === 'ACTIVE'")) {
+  fail('Native shortlist must refresh foreground prices/status, show time remaining and recover pagination');
+} else {
+  ok('Native shortlist guards match website freshness and last-page behavior');
+}
+if (!nativeLiveAuctions.includes('useFocusEffect(useCallback(') ||
+    !nativeLiveAuctions.includes('void hydrateWatchlist()') ||
+    !mobileSavedScreen.includes('useFocusEffect(useCallback(') ||
+    !mobileSavedScreen.includes('void hydrateFromApi()') ||
+    !mobileWatchlistStore.includes('thisHydration === hydrateEpoch') ||
+    !mobileWatchlistApi.includes('throw error;') ||
+    !mobileAuthStoreForWatchlist.includes('useWatchlistStore.getState().reset()')) {
+  fail('Native saved cars must sync on focus, retain offline state and purge account data on signout');
+} else {
+  ok('Native watchlist cross-device refresh, offline and signout isolation are guarded');
+}
+
 if (process.exitCode) {
   console.error('\nOne-product parity guard failed.');
   process.exit(process.exitCode);
