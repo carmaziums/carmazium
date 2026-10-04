@@ -26,6 +26,27 @@ interface WatchlistState {
 let accountGeneration = 0;
 let mutationSequence = 0;
 const lastMutationById = new Map<string, number>();
+// Network writes for the same saved car must be ordered. A slow POST followed
+// by a fast DELETE must not leave the car saved on the server while its native
+// heart icon says it was removed.
+const pendingWrites = new Map<string, Promise<void>>();
+
+function enqueueWrite(
+  listingId: string,
+  generation: number,
+  account: string,
+  operation: () => Promise<void>,
+  rollback: () => void,
+) {
+  const previous = pendingWrites.get(listingId) ?? Promise.resolve();
+  const next = previous.catch(() => {}).then(async () => {
+    if (generation !== accountGeneration || account !== useWatchlistStore.getState().accountId) return;
+    await operation();
+  }).catch(rollback).finally(() => {
+    if (pendingWrites.get(listingId) === next) pendingWrites.delete(listingId);
+  });
+  pendingWrites.set(listingId, next);
+}
 
 export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   accountId: null,
@@ -40,6 +61,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     accountGeneration++;
     mutationSequence++;
     lastMutationById.clear();
+    pendingWrites.clear();
     set({
       accountId: next,
       savedIds: new Set(),
@@ -108,7 +130,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       savedIds.add(listing.id);
       return { savedIds, savedListings: [listing, ...state.savedListings], loadError: null };
     });
-    void addToWatchlist(listing.id).catch(() => {
+    enqueueWrite(listing.id, generation, account, () => addToWatchlist(listing.id), () => {
       // A failed earlier save cannot undo a newer remove/save, and an old
       // account's response may never change the next account's watchlist.
       if (generation !== accountGeneration || account !== get().accountId ||
@@ -141,7 +163,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
         loadError: null,
       };
     });
-    void removeFromWatchlist(id).catch(() => {
+    enqueueWrite(id, generation, account, () => removeFromWatchlist(id), () => {
       if (generation !== accountGeneration || account !== get().accountId ||
           lastMutationById.get(id) !== mutation) return;
       set(state => {
