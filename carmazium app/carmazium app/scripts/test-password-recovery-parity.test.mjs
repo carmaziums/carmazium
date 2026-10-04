@@ -160,3 +160,38 @@ test('canceling root recovery signs out restricted recovery session', () => {
   assert.match(screen, /if \(isRootRecovery\) \{[\s\S]*?void logout\(\);/);
   assert.match(screen, /onPress=\{handleBackToSignIn\}/);
 });
+
+test('recovery hides previously authenticated dealer identity and ignores cleanup signout', async () => {
+  const h = authHarness({
+    auth: {
+      signInWithPassword: async () => ({
+        data: { user: { email_confirmed_at: 'confirmed' }, session: { access_token: 'prior-account' } },
+        error: null,
+      }),
+    },
+    api: async url => url === '/users/me'
+      ? { success: true, data: {
+          id: 'owner1', email: 'owner@example.invalid', role: 'DEALER',
+          firstName: 'Example', lastName: 'Owner', phone: '000', location: 'London', postcode: 'SW1',
+        } }
+      : { success: true },
+  });
+  await h.auth().login('owner@example.invalid', 'test-only');
+  assert.equal(h.auth().isAuthenticated, true);
+  assert.equal(h.auth().accountRole, 'dealer');
+  h.auth().subscribeToAuthChanges();
+  h.auth().startPasswordRecovery();
+  assert.equal(h.auth().isAuthenticated, false);
+  assert.equal(h.auth().user, null);
+  assert.equal(h.auth().accountRole, 'buyer');
+  await h.emit('SIGNED_OUT', null);
+  assert.equal(h.calls.signOut, 0, 'Cleanup event must not re-enter forceLogout');
+  assert.equal(h.auth().passwordRecoveryStatus, 'opening');
+});
+
+test('recovery timeout retains isolation until SDK exchange settles and rejects late sessions', () => {
+  const app = read('App.tsx');
+  assert.match(app, /if \(recoveryFlow\) await supabase\.auth\.signOut\(\);/);
+  assert.match(app, /Keep the\s*\/\/ recovery guard active until it settles/);
+  assert.doesNotMatch(app, /if \(recoveryFlow\) useAuthStore\.getState\(\)\.clearPasswordRecovery\(\);\s*Alert\.alert\('Sign-in link timed out'/);
+});
