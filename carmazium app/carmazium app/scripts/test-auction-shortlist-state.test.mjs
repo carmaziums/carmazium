@@ -1,0 +1,149 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
+
+// Run actual compiled Zustand store actions against a deterministic test
+// store and mocked REST requests. Source-string checks alone cannot reproduce
+// slow requests, failed mutations or accidental cross-account resurrection.
+const source = readFileSync(new URL('../src/store/watchlistStore.ts', import.meta.url), 'utf8');
+const compiled = ts.transpileModule(source, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  reportDiagnostics: true,
+});
+assert.equal(compiled.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0);
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+const tick = () => new Promise(resolve => setImmediate(resolve));
+const item = id => ({ id: 'saved-' + id, listingId: id, mappedListing: { id, make: 'Ford', model: id } });
+const page = (items, total = items.length) => ({ items, total });
+
+function harness(overrides = {}) {
+  const api = {
+    getWatchlist: async () => page([]),
+    addToWatchlist: async () => {},
+    removeFromWatchlist: async () => {},
+    ...overrides,
+  };
+  const zustand = {
+    create: initialize => {
+      let value;
+      const set = change => {
+        const updated = typeof change === 'function' ? change(value) : change;
+        value = { ...value, ...updated };
+      };
+      value = initialize(set, () => value);
+      return { getState: () => value };
+    },
+  };
+  const exports = {};
+  runInNewContext(compiled.outputText, {
+    exports,
+    require: name => {
+      if (name === 'zustand') return zustand;
+      if (name === '../lib/watchlistApi') return api;
+      throw Error('Unexpected module: ' + name);
+    },
+  }, { filename: 'compiled-native-watchlist.js' });
+  return exports.useWatchlistStore;
+}
+
+test('all paginated saved cars hydrate instead of truncating after the first page', async () => {
+  const ids = Array.from({ length: 51 }, (_, i) => String(i));
+  const calls = [];
+  const s = harness({
+    getWatchlist: async (p, size) => {
+      calls.push([p, size]);
+      return page(ids.slice((p - 1) * size, p * size).map(item), 51);
+    },
+  });
+  await s.getState().hydrateFromApi();
+  assert.equal(s.getState().savedIds.size, 51);
+  assert.deepEqual(calls, [[1, 50], [2, 50]]);
+  assert.equal(s.getState().isLoading, false);
+});
+
+test('offline or failed refresh preserves previously hydrated watchlist', async () => {
+  let offline = false;
+  const s = harness({
+    getWatchlist: async () => {
+      if (offline) throw Error('offline');
+      return page([item('A')]);
+    },
+  });
+  await s.getState().hydrateFromApi();
+  offline = true;
+  await s.getState().hydrateFromApi();
+  assert.equal(s.getState().savedIds.has('A'), true);
+  assert.equal(s.getState().savedListings.length, 1);
+  assert.equal(s.getState().isLoading, false);
+});
+
+test('slow hydration cannot overwrite an optimistic save started later', async () => {
+  const olderRequest = deferred();
+  const s = harness({ getWatchlist: () => olderRequest.promise });
+  const loading = s.getState().hydrateFromApi();
+  s.getState().save({ id: 'new', make: 'Ford' });
+  olderRequest.resolve(page([item('old')]));
+  await loading;
+  assert.deepEqual([...s.getState().savedIds], ['new']);
+  assert.equal(s.getState().isLoading, false);
+});
+
+test('slow hydration stops pagination and cannot re-fill a signed-out account', async () => {
+  const olderRequest = deferred();
+  let pages = 0;
+  const s = harness({ getWatchlist: async () => { pages += 1; return olderRequest.promise; } });
+  const loading = s.getState().hydrateFromApi();
+  s.getState().reset();
+  olderRequest.resolve(page([item('prior')], 52));
+  await loading;
+  assert.equal(pages, 1);
+  assert.equal(s.getState().savedIds.size, 0);
+  assert.equal(s.getState().isLoading, false);
+});
+
+test('late failed removal cannot resurrect prior-account car after sign-out', async () => {
+  const removing = deferred();
+  const s = harness({
+    getWatchlist: async () => page([item('prior')]),
+    removeFromWatchlist: () => removing.promise,
+  });
+  await s.getState().hydrateFromApi();
+  s.getState().unsave('prior');
+  s.getState().reset();
+  removing.reject(Error('old account network failure'));
+  await tick();
+  assert.equal(s.getState().savedIds.size, 0);
+  assert.equal(s.getState().savedListings.length, 0);
+});
+
+test('late failed save cannot remove new-account car with same listing ID', async () => {
+  const saving = deferred();
+  const s = harness({
+    getWatchlist: async () => page([item('shared')]),
+    addToWatchlist: () => saving.promise,
+  });
+  s.getState().save({ id: 'shared', make: 'Ford' });
+  s.getState().reset();
+  await s.getState().hydrateFromApi();
+  saving.reject(Error('old account failed save'));
+  await tick();
+  assert.equal(s.getState().savedIds.has('shared'), true);
+});
+
+test('failed removal for current account rolls back optimistic state', async () => {
+  const s = harness({
+    getWatchlist: async () => page([item('A')]),
+    removeFromWatchlist: async () => { throw Error('not connected'); },
+  });
+  await s.getState().hydrateFromApi();
+  s.getState().unsave('A');
+  await tick();
+  assert.equal(s.getState().savedIds.has('A'), true);
+});
