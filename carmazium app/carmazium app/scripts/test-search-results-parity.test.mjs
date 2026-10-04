@@ -132,3 +132,15 @@ test('newer filters invalidate stale search/pagination and preserve retryable er
   assert.match(screen, /setSearchError\(error\?\.message/);
   assert.match(screen, /setTransmissions\(\[\]\)/);
 });
+
+test('resetting all filters also clears quick filters, search text and sorting', () => {
+  const screen = read('src/screens/main/SearchScreen.tsx');
+  const start = screen.indexOf('  const resetFilters = () => {');
+  const end = screen.indexOf('  const handleSavePostcode = async', start);
+  assert.ok(start !== -1 && end > start);
+  const reset = screen.slice(start, end);
+  for (const action of ["setQuickFilter('all')", "setQuery('')",
+                       "setSortId('newest')", "setTransmissions([])"]) {
+    assert.ok(reset.includes(action), 'Clear filters must execute ' + action);
+  }
+});
