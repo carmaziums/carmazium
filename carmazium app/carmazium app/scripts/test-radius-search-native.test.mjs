@@ -78,7 +78,7 @@ test('old non-radius callers keep their existing best-effort fallback', async ()
 
 test('native Search passes radius strict mode and ignores previous postcode and page responses', () => {
   const screen = read('src/screens/main/SearchScreen.tsx');
-  assert.match(screen, /searchListings\(\s*params, \{ propagateErrors: maxDistanceMi != null \}/);
+  assert.match(screen, /searchListings\(\s*params, \{ propagateErrors: true \}/);
   assert.match(screen, /const epoch = reset \? \+\+radiusSearchEpochRef\.current/);
   assert.match(screen, /if \(epoch !== radiusSearchEpochRef\.current\) return/);
   assert.match(screen, /if \(!reset && radiusPageBusyRef\.current\) return/);
