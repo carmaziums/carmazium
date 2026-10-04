@@ -78,22 +78,49 @@ test('unpaid/draft/invalid/admin/anonymous conversions never fire', () => {
     assert.equal(ctx.sent.length, 0)
 })
 
-test('existing paid retail action continues to work and deduplicates per Stripe session', () => {
+test('paid retail keeps its existing Ads action but uses a stable short ID, never an oversized Stripe session', () => {
     const ctx = setup()
-    const paid = { transaction_id: 'cs_123', value: 1, currency: 'GBP', seller_role: 'SELLER' }
+    const id1 = 'f3e1a204-5c3b-4261-87c0-d4231acdd130'
+    const id2 = 'e0bd4aba-204a-4bbb-9b42-49eb6721187c'
+    const stripe = 'cs_live_' + 'A'.repeat(85)
+    const paid = { listing_id: id1, transaction_id: stripe, value: 1, currency: 'GBP', seller_role: 'SELLER' }
     ctx.trackAdsConversion('listing_fee_paid', paid)
-    ctx.trackAdsConversion('listing_fee_paid', paid)
-    assert.equal(ctx.sent.length, 1)
+    // Reload/repaid checkout with a new Stripe ID must not recount a vehicle.
+    ctx.trackAdsConversion('listing_fee_paid', { ...paid, transaction_id: stripe + '-another-session' })
+    ctx.trackAdsConversion('listing_fee_paid', { ...paid, listing_id: id2 })
+    assert.equal(ctx.sent.length, 2)
     assert.equal(ctx.sent[0].send_to, 'AW-TEST/EXISTING_PAID_LABEL')
-    assert.equal(ctx.sent[0].transaction_id, 'cs_123')
-    assert.equal(ctx.sent[0].value, 1)
+    assert.equal(ctx.sent[0].transaction_id, 'listing_fee:' + id1)
+    assert.equal(ctx.sent[1].transaction_id, 'listing_fee:' + id2)
+    assert.ok(ctx.sent.every(x => x.transaction_id.length <= 64))
+    assert.ok(ctx.sent.every(x => x.value === 1 && x.currency === 'GBP'))
+})
+
+test('missing and oversized listing IDs never create malformed paid conversion hits', () => {
+    const ctx = setup()
+    const checkout = { transaction_id: 'cs_live_' + 'B'.repeat(95), value: 1, currency: 'GBP' }
+    ctx.trackAdsConversion('listing_fee_paid', checkout)
+    ctx.trackAdsConversion('listing_fee_paid', { ...checkout, listing_id: 'A'.repeat(49) })
+    ctx.trackAdsConversion('listing_fee_paid', { ...checkout, listing_id: 'invalid/id' })
+    assert.equal(ctx.sent.length, 0)
+    assert.equal(ctx.listingFeeTrackingId('5ce31506-c6ba-4e9e-b5bc-51cb2106ea25'),
+        'listing_fee:5ce31506-c6ba-4e9e-b5bc-51cb2106ea25')
+    assert.equal(ctx.listingFeeTrackingId(null), null)
+})
+
+test('unexpected oversized qualified listing IDs are also rejected', () => {
+    const ctx = setup()
+    ctx.trackAdsConversion('qualified_seller_listing', auction('X'.repeat(60)))
+    assert.equal(ctx.sent.length, 0)
 })
 
 test('unconfigured new label makes no Ads changes, preserving old bidding until explicitly activated', () => {
     const ctx = setup({ qualifiedLabel: null })
     ctx.trackAdsConversion('qualified_seller_listing', auction())
     assert.equal(ctx.sent.length, 0)
-    ctx.trackAdsConversion('listing_fee_paid', { transaction_id: 'cs_456', value: 1 })
+    ctx.trackAdsConversion('listing_fee_paid', {
+        listing_id: 'abc-456', transaction_id: 'cs_live_' + 'X'.repeat(90), value: 1,
+    })
     assert.equal(ctx.sent.length, 1)
     assert.equal(ctx.sent[0].send_to, 'AW-TEST/EXISTING_PAID_LABEL')
     assert.equal(Array.from(ctx.configuredAdsConversions()).includes('qualified_seller_listing'), false)
@@ -111,6 +138,7 @@ test('retail goal only follows verified Stripe LISTING_FEE payment, and retains 
     assert.match(checkoutSource, /data\?\.paymentStatus === 'paid'/)
     assert.match(checkoutSource, /data\.metadata\?\.type === 'LISTING_FEE'/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.LISTING_FEE_PAID/)
+    assert.match(checkoutSource, /listingFeeTrackingId\(data\.metadata\?\.listingId\)/)
     assert.match(checkoutSource, /if \(data\.metadata\?\.listingId && profile\?\.role !== 'ADMIN'\)/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.QUALIFIED_SELLER_LISTING/)
 })

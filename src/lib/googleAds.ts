@@ -19,6 +19,16 @@ const QUALIFIED_SELLER_CONVERSION_LABEL =
     process.env.NEXT_PUBLIC_GADS_LABEL_QUALIFIED_SELLER?.trim()
 const QUALIFIED_EVENT = 'qualified_seller_listing'
 
+// Ads transaction IDs must be at most 64 characters. Stripe session IDs can
+// exceed this. Since the listing fee is paid once per vehicle until sold, the
+// stable server listing ID gives one short, deduplicated transaction identity.
+export function listingFeeTrackingId(listingId: unknown): string | null {
+    if (typeof listingId !== 'string') return null
+    const id = listingId.trim()
+    if (!/^[A-Za-z0-9_-]{1,48}$/.test(id)) return null
+    return 'listing_fee:' + id
+}
+
 const CONVERSION_LABELS: Record<string, string | undefined> = {
     listing_fee_paid: LISTING_FEE_CONVERSION_LABEL,
     [QUALIFIED_EVENT]: QUALIFIED_SELLER_CONVERSION_LABEL,
@@ -63,6 +73,8 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
             && params.payment_status === 'paid'
         if (typeof params.listing_id !== 'string' || !params.listing_id
             || (!validAuction && !validRetail)) return
+        // Also guard against oversized IDs for the new conversion action.
+        if (('qualified_listing:' + params.listing_id).length > 64) return
     }
 
     // Google Consent Mode v2 is configured separately. The presence of gtag is
@@ -74,10 +86,13 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
         // resubmitted, refreshed or converted from auction to retail.
         const transactionId = event === QUALIFIED_EVENT
             ? `qualified_listing:${params.listing_id}`
-            : params.transaction_id
-        if (typeof transactionId === 'string' && transactionId) {
-            if (alreadyReported(`${event}:${transactionId}`)) return
-        }
+            : event === 'listing_fee_paid'
+                ? listingFeeTrackingId(params.listing_id)
+                : null
+        // Fail closed if server listing metadata is unavailable or malformed,
+        // rather than sending Google's invalid IDs or undeduplicated hits.
+        if (!transactionId || transactionId.length > 64) return
+        if (alreadyReported(`${event}:${transactionId}`)) return
 
         const payload: Record<string, unknown> = {
             send_to: `${GOOGLE_ADS_ID}/${label}`,

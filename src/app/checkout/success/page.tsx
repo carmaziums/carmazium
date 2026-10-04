@@ -14,6 +14,7 @@ import { useAuth } from "@/context/AuthContext"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { SELLER_FUNNEL } from "@/lib/gtm"
+import { listingFeeTrackingId } from "@/lib/googleAds"
 
 export default function CheckoutSuccessPage() {
     return (
@@ -71,7 +72,11 @@ function CheckoutSuccessContent() {
                     // and deposits must not contaminate seller-acquisition
                     // optimisation.
                     trackEvent('purchase', {
-                        transaction_id: sessionId,
+                        // Retail purchases must also use a short, stable ID.
+                        // Leave other fee types' analytics untouched.
+                        transaction_id: data.metadata?.type === 'LISTING_FEE'
+                            ? listingFeeTrackingId(data.metadata?.listingId) || undefined
+                            : sessionId,
                         value,
                         currency,
                         fee_type: data.metadata?.type,
@@ -87,7 +92,7 @@ function CheckoutSuccessContent() {
                             content_name: "LISTING_FEE",
                         })
                         trackEvent(SELLER_FUNNEL.LISTING_FEE_PAID, {
-                            transaction_id: sessionId,
+                            transaction_id: listingFeeTrackingId(data.metadata?.listingId) || undefined,
                             value,
                             currency,
                             listing_type: 'retail',
