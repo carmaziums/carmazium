@@ -43,3 +43,21 @@ export async function getAuctionShortlist(
         { cache: "no-store" },
     )
 }
+
+
+/** These three operations are guarded by current verified dealer KYC on the API. */
+export async function addAuctionToShortlist(listingId: string): Promise<void> {
+    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "POST" })
+}
+
+export async function removeAuctionFromShortlist(listingId: string): Promise<void> {
+    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "DELETE" })
+}
+
+export async function isAuctionShortlisted(listingId: string): Promise<boolean> {
+    const response = await apiClient<{ data: { inWatchlist: boolean } }>(
+        `/watchlist/auctions/check/${encodeURIComponent(listingId)}`,
+        { cache: "no-store" },
+    )
+    return response.data?.inWatchlist === true
+}
