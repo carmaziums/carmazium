@@ -2094,15 +2094,17 @@ describe('ListingsService', () => {
         it('handles 4,000 deterministic candidates and page 2 without dropping later-page matches', async () => {
             const rows = Array.from({ length: 4000 }, (_, index) => ({
                 id: String(index).padStart(6, '0'),
-                latitude: index % 4 === 0 ? 51.51 : 52.7,
-                longitude: -0.13,
+                // Both points lie in the conservative bounding rectangle;
+                // only the first lies inside the ten-mile spherical circle.
+                latitude: index % 4 === 0 ? 51.51 : 51.63,
+                longitude: index % 4 === 0 ? -0.13 : -0.30,
             }));
             const exact = rows.filter(row => row.latitude === 51.51);
             prisma.listing.findMany.mockImplementation(async ({ select, cursor, take, where, skip }: any) => {
                 if (select?.latitude) {
                     const from = cursor ? rows.findIndex(row => row.id === cursor.id) + 1 : 0;
-                    // Simulate the database returning bounded coordinate
-                    // batches. Non-matching points test spherical refinement.
+                    // Simulate database cursor batches from the bounding
+                    // rectangle, including real circle false positives.
                     return rows.slice(from, from + take);
                 }
                 const eligible = new Set(where.id.in);
