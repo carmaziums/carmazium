@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -37,6 +37,7 @@ import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
+import { useWatchlistStore } from '../../store/watchlistStore';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -85,6 +86,10 @@ export const LiveScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { user: currentUser } = useAuthStore();
   const accountRole = useAuthStore((s) => s.accountRole);
+  const hydrateWatchlist = useWatchlistStore((s) => s.hydrateFromApi);
+  // A dealer who shortlisted auctions on web should immediately see filled
+  // hearts when opening Live on either app, even without visiting Saved first.
+  useFocusEffect(useCallback(() => { void hydrateWatchlist(); }, [hydrateWatchlist]));
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
