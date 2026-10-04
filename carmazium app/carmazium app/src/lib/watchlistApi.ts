@@ -35,8 +35,10 @@ export async function getWatchlist(
         }))
       : [];
     return { items, total: res?.pagination?.total ?? 0 };
-  } catch {
-    return { items: [], total: 0 };
+  } catch (error) {
+    // Never turn a network/server failure into an apparently empty saved list.
+    // The store preserves the previously hydrated user's items on errors.
+    throw error;
   }
 }
 
