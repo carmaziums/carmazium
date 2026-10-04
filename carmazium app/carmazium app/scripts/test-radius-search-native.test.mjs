@@ -86,6 +86,8 @@ test('native Search passes radius strict mode and ignores previous postcode and 
   assert.match(screen, /setRadiusError\(error\?\.message/);
   assert.match(screen, /setHasMore\(p \* 20 < t\)/);
   assert.match(screen, /hasMore && !loading && !loadingMore/);
+  assert.match(screen, /if \(!textSearchBootstrappedRef\.current\)/);
+  assert.doesNotMatch(screen, /useEffect\(\(\) => \{ fetch\(true\); \}, \[\]\)/);
 });
 
 test('website rejects previous postcode results and never restores radius caches', () => {
