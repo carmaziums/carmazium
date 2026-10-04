@@ -52,7 +52,15 @@ export async function addToWatchlist(listingId: string): Promise<void> {
 }
 
 export async function removeFromWatchlist(listingId: string): Promise<void> {
-  await apiClient<unknown>(`/watchlist/${listingId}`, { method: 'DELETE' });
+  try {
+    await apiClient<unknown>(`/watchlist/${listingId}`, { method: 'DELETE' });
+  } catch (error: any) {
+    // An earlier optimistic POST may have failed before the user tapped
+    // remove. The backend returns 404 "Listing not in watchlist" in that
+    // case; our intended final state (not saved) is already achieved.
+    if (error?.message === 'Listing not in watchlist') return;
+    throw error;
+  }
 }
 
 export async function checkWatchlistStatus(listingId: string): Promise<boolean> {
