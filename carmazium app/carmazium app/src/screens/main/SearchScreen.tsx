@@ -357,7 +357,10 @@ export const SearchScreen: React.FC = () => {
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
-      transmissions: transmissions.length ? transmissions : undefined,
+      // Explicit advanced transmission choice wins; otherwise the Manual
+      // quick chip must actually restrict backend inventory.
+      transmissions: transmissions.length ? transmissions :
+        qf?.params.transmission ? [qf.params.transmission] : undefined,
       ulezCompliant: ulezCompliant === 'yes' ? true : ulezCompliant === 'no' ? false : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
@@ -396,10 +399,11 @@ export const SearchScreen: React.FC = () => {
     }
     try {
       const params = buildParams(p);
-      // Radius requests MUST preserve 400/503/network failures as an error.
-      // Historical non-radius callers can retain best-effort fetch behaviour.
+      // This public Search screen always needs strict errors. An HTTP or
+      // network failure must never impersonate an empty inventory, whether
+      // or not a radius is selected.
       const { listings: rawItems, total: t } = await searchListings(
-        params, { propagateErrors: maxDistanceMi != null },
+        params, { propagateErrors: true },
       );
       if (epoch !== radiusSearchEpochRef.current) return;
       setRadiusError(null);
@@ -415,8 +419,8 @@ export const SearchScreen: React.FC = () => {
       // Use the server's complete post-radius count, not a local-page guess.
       setHasMore(p * 20 < t);
     } catch (error: any) {
-      if (epoch === radiusSearchEpochRef.current && maxDistanceMi != null) {
-        setRadiusError(error?.message || 'Could not load nearby vehicles. Please retry.');
+      if (epoch === radiusSearchEpochRef.current) {
+        setRadiusError(error?.message || 'Could not load vehicle results. Please retry.');
       }
       // Preserve last good inventory and make failures explicitly retryable.
     } finally {
@@ -485,6 +489,11 @@ export const SearchScreen: React.FC = () => {
   ].filter(Boolean).length;
 
   const resetFilters = () => {
+    // Reset both quick and advanced filters. Otherwise a hidden Manual
+    // quick chip can survive Clear and silently constrain later searches.
+    setQuickFilter('all');
+    setQuery('');
+    setSortId('newest');
     setSelectedMakes([]);
     setMinPrice(0);
     setMaxPrice(150000);
@@ -538,6 +547,7 @@ export const SearchScreen: React.FC = () => {
       setSelectedFuels([]);
       setMinYear('Any');
       setMaxMiles('Any');
+      setTransmissions([]);
     }
   };
 
@@ -756,11 +766,11 @@ export const SearchScreen: React.FC = () => {
         )}
       </View>
 
-      {radiusError && maxDistanceMi != null && (
+      {radiusError && (
         <TouchableOpacity
           onPress={() => { void fetch(true); }}
           accessibilityRole="button"
-          accessibilityLabel="Retry nearby vehicle search"
+          accessibilityLabel="Retry loading vehicle search results"
           style={{ marginHorizontal: 24, padding: 12, borderRadius: 8,
             backgroundColor: Colors.bgSecondaryAlt }}
         >
@@ -782,6 +792,15 @@ export const SearchScreen: React.FC = () => {
             </View>
           ))}
         </View>
+      ) : radiusError && listings.length === 0 ? (
+        <EmptyState
+          icon="alert-circle-outline"
+          eyebrow="Search unavailable"
+          title="Could not refresh vehicles"
+          subtitle={radiusError}
+          ctaLabel="Retry"
+          onCtaPress={() => { void fetch(true); }}
+        />
       ) : listings.length === 0 ? (
         // No-results is the most-hit dead end in the app and had no way out —
         // the user had to work out for themselves that a filter was the cause.
