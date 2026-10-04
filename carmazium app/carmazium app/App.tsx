@@ -22,6 +22,7 @@ import { Colors } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
+import { useAuctionShortlistStore } from './src/store/auctionShortlistStore';
 import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { addNotificationListeners, registerForPushNotifications } from './src/lib/pushNotifications';
@@ -43,6 +44,16 @@ export default function App() {
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
+
+  useEffect(() => {
+    const bindShortlistIdentity = (auth: ReturnType<typeof useAuthStore.getState>) => {
+      useAuctionShortlistStore.getState().bindAccount(
+        auth.isAuthenticated ? auth.user?.id ?? null : null,
+      );
+    };
+    bindShortlistIdentity(useAuthStore.getState());
+    return useAuthStore.subscribe(bindShortlistIdentity);
+  }, []);
 
   // ── OTA Updates ────────────────────────────────────────────────
   useEffect(() => {
