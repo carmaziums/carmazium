@@ -1398,6 +1398,43 @@ if (
   ok('Vercel lhr1 and Fly lhr keep server-side auction traffic in London');
 }
 
+// A feature-file manifest cannot prove that dealers can actually reach a
+// workflow. Verify the native screen uses the same secured shortlist endpoint,
+// that navigation is KYC-gated, and that both entry paths remain reachable.
+const nativeShortlistApi = read('carmazium app/carmazium app/src/lib/auctionShortlistApi.ts');
+const webShortlistApi = read('src/lib/auctionShortlistApi.ts');
+const nativeShortlistScreen = read('carmazium app/carmazium app/src/screens/main/DealerAuctionShortlistScreen.tsx');
+const nativeShortlistNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
+const nativeShortlistDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const nativeLiveAuctions = read('carmazium app/carmazium app/src/screens/main/LiveScreen.tsx');
+const shortlistController = read('backend/src/watchlist/watchlist.controller.ts');
+for (const [client, source] of [['web', webShortlistApi], ['native', nativeShortlistApi]]) {
+  if (!source.includes('/watchlist/auctions?page=')) fail(client + ' dealer shortlist uses a different API contract');
+  else ok(client + ' shortlist uses the canonical dealer-only API');
+}
+if (!shortlistController.includes('@UseGuards(SessionAuthGuard, VerifiedDealerGuard)')) {
+  fail('Dealer shortlist endpoint must retain server-side verified dealer access');
+} else {
+  ok('Backend protects auction shortlist with verified dealer access');
+}
+if (!nativeShortlistScreen.includes('getAuctionShortlist(') ||
+    !nativeShortlistScreen.includes("view === 'live'") ||
+    !nativeShortlistScreen.includes("view === 'all'") ||
+    !nativeShortlistScreen.includes('removeFromWatchlist(') ||
+    !nativeShortlistScreen.includes("navigation.navigate('LiveAuctionDetailed'")) {
+  fail('Native dealer shortlist missing live/all, remove or open-to-bid workflow');
+} else {
+  ok('Native dealer shortlist includes live/all, removal and bid-later navigation');
+}
+if (!nativeShortlistNavigator.includes('withDealerGate(DealerAuctionShortlistScreen)') ||
+    !nativeShortlistNavigator.includes('name="DealerAuctionShortlist"') ||
+    !nativeShortlistDrawer.includes("stackScreen: 'DealerAuctionShortlist'") ||
+    !nativeLiveAuctions.includes("navigation.navigate('DealerAuctionShortlist')")) {
+  fail('Native shortlist must be gated and reachable from dealer navigation and live auctions');
+} else {
+  ok('Native shortlist is KYC-gated and reachable via drawer and live auctions');
+}
+
 if (process.exitCode) {
   console.error('\nOne-product parity guard failed.');
   process.exit(process.exitCode);
