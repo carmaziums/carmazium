@@ -130,6 +130,7 @@ Use a unique row per feature, and record the **web**, **signed iOS** and **signe
 |---|---|---|---|
 | Verified dealer auction shortlist | Live to Bid and All Saved, paginated and server-filtered | Implemented with shared `GET /watchlist/auctions` and KYC-gated route | Same dealer account on web, iOS, Android; verify trade gate, data isolation and route access |
 | Add/remove a shortlist item | All public live auction cards link to the account watchlist | Existing native auction hearts and new shortlist removal | Save on web -> visible on both apps; remove in one app -> refresh both others |
+| Dealer My Auction Bids | Website Buy & Bid navigation exposes My Auction Bids for VIEW_TRADE accounts | Existing native BuyerBids route added to dealer menu under VIEW_TRADE | Matched authorised owner/staff account sees own/dealership's bids; excluded staff cannot access trade data |
 | Auction freshness | Website refreshes when visible every 20 seconds | Draft native foreground/focused 20s server refresh, separate clock update | Place test bid or end an auction; confirm price, count, live eligibility update on all three |
 | Pagination after last-item removal | Website returns to last nonempty page | Native draft automatically clamps page | Add >12 saved items and remove the only item on the last page |
 | Countdown and statuses | Live, Upcoming, Cancelled, Ended/unavailable and time remaining | Native draft uses listing+auction status, live/upcoming countdown | Simulate / observe auction expiration while shortlist is open; cannot bid after cutoff |
