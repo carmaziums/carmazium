@@ -65,6 +65,8 @@ test('web auction hearts and dealer dashboard distinguish auction from retail en
   assert.match(web, /await addAuctionToShortlist\(listingId\)/);
   assert.match(web, /await removeAuctionFromShortlist\(listingId\)/);
   assert.match(web, /identityRef\.current === identity/);
+  assert.match(web, /changedAccountOrListing/);
+  assert.match(web, /disabled=\{loading \|\| \(!!user && \(!hydrated \|\| !validIdentity\)\)\}/);
   assert.match(dealer, /await removeAuctionFromShortlist\(listingId\)/);
   assert.doesNotMatch(dealer, /import \{ removeFromWatchlist \}/);
 });
