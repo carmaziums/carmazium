@@ -413,6 +413,23 @@ export const DealerProfileScreen: React.FC = () => {
 
 
             )}
+            {/* Saved live auctions use the same server-backed shortlist as web. */}
+            <TouchableOpacity
+              style={styles.attentionRow}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('DealerAuctionShortlist')}
+            >
+              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
+                <Ionicons name="heart-outline" size={18} color={Colors.accent} />
+              </View>
+              <View style={styles.attentionTextCol}>
+                <Text style={styles.attentionTitle}>Shortlisted auctions</Text>
+                <Text style={styles.attentionSub}>Save cars now and bid when you are free</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+            </TouchableOpacity>
+
             {/* Finance applications */}
             <TouchableOpacity
               style={styles.attentionRow}
