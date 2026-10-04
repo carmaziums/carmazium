@@ -22,7 +22,7 @@ import { Radius } from '../../constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../components/IconButton';
-export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const ResetPasswordScreen: React.FC<{ navigation?: any; isRootRecovery?: boolean }> = ({ navigation, isRootRecovery = false }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -64,9 +64,12 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
       }
       setSucceeded(true);
       await logout();
-      setTimeout(() => {
-        navigation?.navigate('Login');
-      }, 1800);
+      // Root's dedicated recovery screen disappears on sign-out. Navigating
+      // into an Auth navigator that has not mounted yet would be a no-op.
+      // Only the nested Auth fallback needs an explicit Login navigation.
+      if (!isRootRecovery) {
+        setTimeout(() => navigation?.navigate('Login'), 1800);
+      }
     } catch (err: any) {
       setSubmitError(err.message || 'Something went wrong. Please try again.');
     } finally {
