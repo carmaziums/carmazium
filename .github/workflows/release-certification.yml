@@ -210,6 +210,8 @@ jobs:
       - name: Resolve Expo production config
         run: npx expo config --type public > /tmp/carmazium-expo-config.json
       - run: npm run typescript
+      - name: Runtime test: native saved-auction state and account isolation
+        run: node --test scripts/test-auction-shortlist-state.test.mjs
 
   backend:
     name: Backend typecheck + tests + build
