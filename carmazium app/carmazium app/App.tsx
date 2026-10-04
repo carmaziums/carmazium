@@ -214,6 +214,20 @@ export default function App() {
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
       const code = queryParams.get('code');
+      // Supabase PKCE recovery redirects can lack ?type=recovery. The native
+      // reset-password destination itself is authoritative when it carries
+      // the exchange code; a recovery hash may instead carry the type.
+      const isRecovery =
+        type === 'recovery' ||
+        queryParams.get('type') === 'recovery' ||
+        /^carmazium:\/\/reset-password(?:[?#]|$)/i.test(url);
+      const auth = useAuthStore.getState();
+      // Duplicate delivery from both the cold URL and an email-app event must
+      // not re-use a consumed one-time code or kick the already-open form out.
+      if (isRecovery && auth.passwordRecoveryStatus === 'ready') return;
+      const recoveryFlow = isRecovery && !!((accessToken && refreshToken) || code);
+      if (recoveryFlow) auth.startPasswordRecovery();
+
       const callbackRoleRaw = queryParams.get('role');
       const callbackRole =
         callbackRoleRaw === 'BUYER' || callbackRoleRaw === 'DEALER'
@@ -224,8 +238,11 @@ export default function App() {
       // staring at a splash screen forever — web keeps a 15s safety timer for
       // the same reason.
       let settled = false;
+      let timedOut = false;
       const safety = setTimeout(() => {
         if (!settled) {
+          timedOut = true;
+          if (recoveryFlow) useAuthStore.getState().clearPasswordRecovery();
           Alert.alert('Sign-in link timed out', 'Please try opening the link again, or sign in manually.');
         }
       }, 15000);
@@ -233,13 +250,17 @@ export default function App() {
       try {
         // 2. Implicit flow — tokens in the hash (email links, Google OAuth).
         if (accessToken && refreshToken) {
-          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-          if (type === 'recovery') {
-            // Recovery tokens are restricted: bridging them to the backend
-            // 401s, so go straight to the reset screen without rehydrating.
-            setTimeout(() => {
-              (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
-            }, 300);
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+          if (timedOut) return;
+          if (recoveryFlow) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
+            if (timedOut) return;
+            useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
           }
@@ -248,7 +269,12 @@ export default function App() {
 
         // 3. PKCE — exchange the code, with the two rescues web needs.
         if (code) {
-          const isRecovery = type === 'recovery' || queryParams.get('type') === 'recovery';
+          // An already-signed-in user may open a stale recovery URL. Never
+          // interpret their pre-existing session as proof that a bad recovery
+          // code was successfully redeemed.
+          const priorAccessToken = recoveryFlow
+            ? (await supabase.auth.getSession()).data.session?.access_token
+            : undefined;
           try {
             const { error } = await supabase.auth.exchangeCodeForSession(code);
             if (error) {
@@ -256,9 +282,8 @@ export default function App() {
               // onAuthStateChange subscription (AUTH-013) racing us to it. A
               // session existing is success, not failure.
               const { data: { session } } = await supabase.auth.getSession();
-              if (!session?.user) {
-                Alert.alert('Could not complete sign-in', error.message);
-                return;
+              if (!session?.user || (recoveryFlow && session.access_token === priorAccessToken)) {
+                throw new Error(error.message);
               }
             }
           } catch (exchangeErr: any) {
@@ -266,19 +291,19 @@ export default function App() {
             const aborted =
               exchangeErr?.name === 'AbortError' || String(exchangeErr?.message ?? '').includes('aborted');
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) {
-              Alert.alert(
-                'Could not complete sign-in',
+            if (!session?.user || (recoveryFlow && session.access_token === priorAccessToken)) {
+              throw new Error(
                 aborted ? 'Please try opening the link again.' : (exchangeErr?.message ?? 'Unknown error'),
               );
-              return;
             }
           }
 
-          if (isRecovery) {
-            setTimeout(() => {
-              (navigationRef.current as any)?.navigate('Auth', { screen: 'ResetPassword' });
-            }, 300);
+          if (timedOut) return;
+          if (recoveryFlow) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
+            if (timedOut) return;
+            useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
           }
@@ -289,8 +314,14 @@ export default function App() {
         //    redundant, which is fine. Otherwise it is not ours to handle and
         //    React Navigation's linking config will have taken it.
       } catch (err: any) {
+        if (recoveryFlow) useAuthStore.getState().clearPasswordRecovery();
         Alert.alert('Could not complete sign-in', err?.message ?? 'Please try again.');
       } finally {
+        // Invalid and expired recovery links must never leave a loading screen
+        // or be mistaken for a verified ordinary sign-in.
+        if (recoveryFlow && useAuthStore.getState().passwordRecoveryStatus === 'opening') {
+          useAuthStore.getState().clearPasswordRecovery();
+        }
         settled = true;
         clearTimeout(safety);
       }
