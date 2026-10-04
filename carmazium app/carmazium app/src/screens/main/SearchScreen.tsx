@@ -253,6 +253,8 @@ export const SearchScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [radiusError, setRadiusError] = useState<string | null>(null);
+  const radiusSearchEpochRef = useRef(0);
+  const radiusPageBusyRef = useRef(false);
 
   // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
   // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
@@ -376,34 +378,51 @@ export const SearchScreen: React.FC = () => {
   }
 
   const fetch = useCallback(async (reset = true) => {
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
+    // Two postcode/radius searches can overlap while geocoding or changing
+    // filters. Only the newest query may publish results, error or total.
+    if (!reset && radiusPageBusyRef.current) return;
+    const epoch = reset ? ++radiusSearchEpochRef.current : radiusSearchEpochRef.current;
     const p = reset ? 1 : page;
-    try {
-      const { listings: rawItems, total: t } = await searchListings(buildParams(p));
+    if (reset) {
+      setLoading(true);
       setRadiusError(null);
-      // Full-inventory radius filtering, true count and "closest first"
-      // pagination now come directly from the authoritative backend.
-      const items = rawItems;
+      radiusPageBusyRef.current = false;
+    } else {
+      radiusPageBusyRef.current = true;
+      setLoadingMore(true);
+    }
+    try {
+      const params = buildParams(p);
+      // Radius requests MUST preserve 400/503/network failures as an error.
+      // Historical non-radius callers can retain best-effort fetch behaviour.
+      const { listings: rawItems, total: t } = await searchListings(
+        params, { propagateErrors: maxDistanceMi != null },
+      );
+      if (epoch !== radiusSearchEpochRef.current) return;
+      setRadiusError(null);
       if (reset) {
-        setListings(items);
+        setListings(rawItems);
         setPage(2);
         setTotal(t);
       } else {
-        setListings(prev => [...prev, ...items]);
+        setListings(prev => [...prev, ...rawItems]);
         setPage(prev => prev + 1);
         setTotal(t);
       }
+      // Use the server's complete post-radius count, not a local-page guess.
       setHasMore(p * 20 < t);
     } catch (error: any) {
-      if (maxDistanceMi != null) {
+      if (epoch === radiusSearchEpochRef.current && maxDistanceMi != null) {
         setRadiusError(error?.message || 'Could not load nearby vehicles. Please retry.');
       }
-      // Keep existing results if the server/geocode is temporarily unavailable.
+      // Preserve last good inventory and make failures explicitly retryable.
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (epoch === radiusSearchEpochRef.current) {
+        radiusPageBusyRef.current = false;
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
@@ -414,6 +433,9 @@ export const SearchScreen: React.FC = () => {
   // Text query: debounce to avoid hitting the API on every keystroke.
   // All other filter/sort changes are instant (fired by the non-text useEffect below).
   useEffect(() => {
+    // Invalidate the old query immediately, not after the debounce delay:
+    // a late old postcode/keyword response cannot impersonate the new query.
+    radiusSearchEpochRef.current++;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
     return () => clearTimeout(debounceRef.current);
