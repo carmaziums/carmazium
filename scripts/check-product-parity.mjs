@@ -72,6 +72,16 @@ function same(label, values) {
 }
 
 const manifest = JSON.parse(read('product-parity.json'));
+// A newly added feature must appear in the human-auditable web/iOS/Android
+// checklist as well as the machine manifest. This prevents unreviewed drift.
+const octoberMatrix = read('docs/ONE_PRODUCT_OCT2026_AUDIT_MATRIX.md');
+for (const feature of manifest.features) {
+  if (!octoberMatrix.includes('`' + feature.id + '`')) {
+    fail('October options audit lacks manifest entry: ' + feature.id);
+  }
+}
+ok('Every registered feature has an audit matrix row');
+
 for (const feature of manifest.features) {
   const webMissing = (feature.web || []).filter((p) => !exists(p));
   const mobileMissing = (feature.mobile || []).filter((p) => !exists(p));
