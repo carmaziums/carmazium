@@ -198,6 +198,7 @@ const DEALER_ITEMS: MenuItem[] = [
   },
   {
     id: 'dealer-shortlist',
+    requiredPermission: 'VIEW_TRADE',
     label: 'Shortlisted auctions',
     icon: 'heart-outline',
     iconLib: 'ion',
