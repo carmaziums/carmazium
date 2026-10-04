@@ -11,6 +11,8 @@ on:
       - 'scripts/check-product-parity.mjs'
       - 'scripts/test-radius-search-parity.test.mjs'
       - 'carmazium app/carmazium app/scripts/test-radius-search-native.test.mjs'
+      - 'carmazium app/carmazium app/scripts/test-search-results-parity.test.mjs'
+      - 'carmazium app/carmazium app/scripts/test-saved-cars-account-isolation.test.mjs'
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
       - 'docs/native/**'
@@ -211,8 +213,8 @@ jobs:
       - run: npm ci
       - name: Resolve Expo production config
         run: npx expo config --type public > /tmp/carmazium-expo-config.json
-      - name: Native radius API and stale-query regressions
-        run: node --test scripts/test-radius-search-native.test.mjs
+      - name: Integrated radius, Manual search and Saved Cars regressions
+        run: node --test scripts/test-radius-search-native.test.mjs scripts/test-search-results-parity.test.mjs scripts/test-saved-cars-account-isolation.test.mjs
       - run: npm run typescript
 
   backend:
