@@ -27,6 +27,8 @@ on:
       - "carmazium app/carmazium app/scripts/test-password-recovery-parity.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/AcceptInviteScreen.tsx"
       - "carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/auth/PostSignupOnboardingScreen.tsx"
+      - "carmazium app/carmazium app/src/screens/auth/VerifyEmailScreen.tsx"
       - "carmazium app/carmazium app/scripts/test-staff-invite-parity.test.mjs"
       - "carmazium app/carmazium app/scripts/test-seller-vehicle-specs.test.mjs"
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
