@@ -47,11 +47,24 @@ export async function getAuctionShortlist(
 
 /** These three operations are guarded by current verified dealer KYC on the API. */
 export async function addAuctionToShortlist(listingId: string): Promise<void> {
-    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "POST" })
+    try {
+        await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "POST" })
+    } catch (error: any) {
+        // Already saved in another web/native session: the desired final
+        // state is saved. Other errors (especially 403 KYC) still surface.
+        if (/(?:\\b409\\b|already in watchlist)/i.test(String(error?.message ?? ""))) return
+        throw error
+    }
 }
 
 export async function removeAuctionFromShortlist(listingId: string): Promise<void> {
-    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "DELETE" })
+    try {
+        await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "DELETE" })
+    } catch (error: any) {
+        // Another device already removed it: preserve not-saved end state.
+        if (/(?:\\b404\\b|not shortlisted)/i.test(String(error?.message ?? ""))) return
+        throw error
+    }
 }
 
 export async function isAuctionShortlisted(listingId: string): Promise<boolean> {
