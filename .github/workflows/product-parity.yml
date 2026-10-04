@@ -12,6 +12,7 @@ on:
       - 'next.config.ts'
       - 'product-parity.json'
       - 'docs/ONE_PRODUCT_OCT2026_AUDIT_MATRIX.md'
+      - 'docs/ONE_PRODUCT_BLOCK1_DEVICE_ACCEPTANCE.md'
       - 'scripts/check-product-parity.mjs'
       - '.github/workflows/product-parity.yml'
 
