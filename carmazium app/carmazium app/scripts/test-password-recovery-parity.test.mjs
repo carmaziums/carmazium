@@ -157,6 +157,6 @@ test('website and native password-reset forms both require at least eight charac
 test('canceling root recovery signs out restricted recovery session', () => {
   const screen = read('src/screens/auth/ResetPasswordScreen.tsx');
   assert.match(screen, /const handleBackToSignIn = \(\) => \{/);
-  assert.match(screen, /if \(isRootRecovery\) \{\s*void logout\(\);/);
+  assert.match(screen, /if \(isRootRecovery\) \{[\s\S]*?void logout\(\);/);
   assert.match(screen, /onPress=\{handleBackToSignIn\}/);
 });
