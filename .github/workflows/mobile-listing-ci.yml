@@ -18,6 +18,10 @@ on:
       - "carmazium app/carmazium app/src/lib/nativeSellerDraftReadiness.ts"
       - "carmazium app/carmazium app/src/lib/nativeAuctionDraft.ts"
       - "carmazium app/carmazium app/src/store/authStore.ts"
+      - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/src/navigation/RootNavigator.tsx"
+      - "carmazium app/carmazium app/src/screens/auth/ResetPasswordScreen.tsx"
+      - "carmazium app/carmazium app/scripts/test-password-recovery-parity.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/AcceptInviteScreen.tsx"
       - "carmazium app/carmazium app/src/screens/auth/SignupScreen.tsx"
       - "carmazium app/carmazium app/scripts/test-staff-invite-parity.test.mjs"
@@ -58,6 +62,8 @@ jobs:
 
       - name: Dealer staff invite website/native parity regression
         run: node --test scripts/test-staff-invite-parity.test.mjs
+      - name: Native recovery-link and session-isolation regressions
+        run: node --test scripts/test-password-recovery-parity.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash
