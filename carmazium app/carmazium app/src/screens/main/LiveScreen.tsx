@@ -38,6 +38,7 @@ import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { useWatchlistStore } from '../../store/watchlistStore';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -86,6 +87,8 @@ export const LiveScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { user: currentUser } = useAuthStore();
   const accountRole = useAuthStore((s) => s.accountRole);
+  const dealerIdentity = accountRole === 'dealer' || !!currentUser?.isDealerStaff;
+  const { hasPermission: hasDealerPermission } = useDealerAccess(dealerIdentity);
   const hydrateWatchlist = useWatchlistStore((s) => s.hydrateFromApi);
   // A dealer who shortlisted auctions on web should immediately see filled
   // hearts when opening Live on either app, even without visiting Saved first.
@@ -345,7 +348,7 @@ export const LiveScreen: React.FC = () => {
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
         </TouchableOpacity>
 
-        {(accountRole === 'dealer' || currentUser?.isDealerStaff) && (
+        {dealerIdentity && hasDealerPermission('VIEW_TRADE') && (
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Open my shortlisted auctions"
