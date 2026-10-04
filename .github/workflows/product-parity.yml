@@ -9,6 +9,7 @@ on:
       - 'carmazium app/carmazium app/src/**'
       - 'carmazium app/carmazium app/App.tsx'
       - 'carmazium app/carmazium app/scripts/test-password-recovery-parity.test.mjs'
+      - 'carmazium app/carmazium app/scripts/test-dealer-invite-link.test.mjs'
       - 'carmazium app/carmazium app/assets/**'
       - 'carmazium app/carmazium app/app.json'
       - 'carmazium app/carmazium app/plugins/**'
@@ -66,6 +67,8 @@ jobs:
       - run: npm run typescript
       - name: Native recovery-link and session-isolation regressions
         run: node --test scripts/test-password-recovery-parity.test.mjs
+      - name: Signed-out dealership invitation deferral regressions
+        run: node --test scripts/test-dealer-invite-link.test.mjs
 
   backend-typecheck:
     name: Backend typecheck
