@@ -37,7 +37,7 @@ test('strict Search-screen API rejects offline failures rather than fabricating 
 
 test('strict API rejects malformed pagination instead of showing an empty inventory', async () => {
   const h = apiHarness(async () => ({ success: true, data: [] }));
-  await assert.rejects(h.api.searchListings({}, { propagateErrors: true }), /Could not load vehicle results/);
+  await assert.rejects(h.api.searchListings({}, { propagateErrors: true }), /Could not load (nearby )?vehicle results/);
 });
 
 test('other legacy home callers retain best-effort search fallback', async () => {
@@ -77,6 +77,7 @@ function nativeBuildParams({ quickFilter, transmissions = [] }) {
     deliveryAvailable: false, sellerType: '', colorFilter: '', minDoors: '',
     minSeats: '', euroStandard: '', selectedFeatures: [], isImported: '',
     sortId: 'newest', quickFilter, transmissions,
+    maxDistanceMi: null, userLat: null, userLng: null,
   };
   runInNewContext(transpile(source.slice(start, stop) + '\nexports.builder = buildParams;'), {
     ...vars, exports,
@@ -122,14 +123,14 @@ test('filter and sort options exposed on web also exist in native search', () =>
 
 test('newer filters invalidate stale search/pagination and preserve retryable errors', () => {
   const screen = read('src/screens/main/SearchScreen.tsx');
-  assert.match(screen, /const epoch = reset \? \+\+requestEpochRef\.current : requestEpochRef\.current/);
-  assert.match(screen, /if \(epoch !== requestEpochRef\.current\) return/);
-  assert.match(screen, /pageLoadingRef\.current \|\| !hasMore/);
-  assert.match(screen, /searchListings\(\s*buildParams\(p\), \{ propagateErrors: true \}/);
+  assert.match(screen, /const epoch = reset \? \+\+radiusSearchEpochRef\.current : radiusSearchEpochRef\.current/);
+  assert.match(screen, /if \(epoch !== radiusSearchEpochRef\.current\) return/);
+  assert.match(screen, /if \(!reset && radiusPageBusyRef\.current\) return/);
+  assert.match(screen, /searchListings\(\s*params, \{ propagateErrors: true \}/);
   assert.match(screen, /setHasMore\(p \* 20 < t\)/);
   assert.match(screen, /accessibilityLabel="Retry loading vehicle search results"/);
   assert.match(screen, /Search unavailable/);
-  assert.match(screen, /setSearchError\(error\?\.message/);
+  assert.match(screen, /setRadiusError\(error\?\.message/);
   assert.match(screen, /setTransmissions\(\[\]\)/);
 });
 
