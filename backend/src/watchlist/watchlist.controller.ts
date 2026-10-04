@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { WatchlistService } from './watchlist.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
+import { VerifiedDealerGuard } from '../auth/guards/verified-dealer.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { StandardResponse, PaginatedResponse } from '../listings/dto/response.dto';
 
@@ -50,6 +51,30 @@ export class WatchlistController {
             limitNum,
         );
         return new PaginatedResponse(data, total, pageNum, limitNum);
+    }
+
+    /**
+     * This endpoint exposes trade-auction state only after dealer verification.
+     * The general watchlist endpoint intentionally remains retail-safe.
+     */
+    @Get('auctions')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Get my saved trade auctions (verified dealers)' })
+    async findAuctionShortlist(
+        @CurrentUser() user: any,
+        @Query('page') page?: string,
+        @Query('limit') limit?: string,
+        @Query('view') view?: string,
+    ) {
+        const safePage = Number.isSafeInteger(Number(page)) && Number(page) > 0 ? Number(page) : 1;
+        const safeLimit = Number.isSafeInteger(Number(limit)) && Number(limit) > 0
+            ? Math.min(Number(limit), 50)
+            : 12;
+        const result = await this.watchlistService.findAuctionShortlist(
+            user.id, safePage, safeLimit, view !== 'all',
+        );
+        return new PaginatedResponse(result.data, result.total, result.page, result.limit);
     }
 
     /**
