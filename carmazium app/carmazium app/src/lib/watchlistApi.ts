@@ -60,7 +60,16 @@ export async function addToWatchlist(listingId: string): Promise<void> {
 }
 
 export async function removeFromWatchlist(listingId: string): Promise<void> {
-  await apiClient<unknown>(`/watchlist/${listingId}`, { method: 'DELETE' });
+  try {
+    await apiClient<unknown>(`/watchlist/${listingId}`, { method: 'DELETE' });
+  } catch (error: any) {
+    // A previous optimistic add may have failed, or another device may have
+    // removed the item already. "Not in watchlist" means the requested final
+    // state (unsaved) is already true, so avoid reverting the last user tap.
+    if (error?.status === 404 ||
+        /(?:\\b404\\b|not in watchlist)/i.test(String(error?.message ?? ''))) return;
+    throw error;
+  }
 }
 
 export async function checkWatchlistStatus(listingId: string): Promise<boolean> {
