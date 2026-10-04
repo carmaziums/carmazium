@@ -7,6 +7,7 @@ on:
       - 'backend/src/**'
       - 'backend/prisma/**'
       - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/scripts/test-auction-shortlist-state.test.mjs'
       - 'carmazium app/carmazium app/app.json'
       - 'carmazium app/carmazium app/plugins/**'
       - 'next.config.ts'
