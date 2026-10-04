@@ -385,6 +385,8 @@ export const SearchScreen: React.FC = () => {
     const p = reset ? 1 : page;
     if (reset) {
       setLoading(true);
+      setLoadingMore(false);
+      setHasMore(false);
       setRadiusError(null);
       radiusPageBusyRef.current = false;
     } else {
@@ -802,7 +804,7 @@ export const SearchScreen: React.FC = () => {
           }
           renderItem={renderListingItem}
           ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-          onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
+          onEndReached={() => { if (hasMore && !loading && !loadingMore) fetch(false); }}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             loadingMore ? (
