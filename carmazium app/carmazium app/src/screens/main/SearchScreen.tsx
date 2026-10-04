@@ -252,6 +252,7 @@ export const SearchScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [radiusError, setRadiusError] = useState<string | null>(null);
 
   // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
   // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
@@ -380,6 +381,7 @@ export const SearchScreen: React.FC = () => {
     const p = reset ? 1 : page;
     try {
       const { listings: rawItems, total: t } = await searchListings(buildParams(p));
+      setRadiusError(null);
       // Full-inventory radius filtering, true count and "closest first"
       // pagination now come directly from the authoritative backend.
       const items = rawItems;
@@ -393,8 +395,11 @@ export const SearchScreen: React.FC = () => {
         setTotal(t);
       }
       setHasMore(p * 20 < t);
-    } catch {
-      // keep existing
+    } catch (error: any) {
+      if (maxDistanceMi != null) {
+        setRadiusError(error?.message || 'Could not load nearby vehicles. Please retry.');
+      }
+      // Keep existing results if the server/geocode is temporarily unavailable.
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -419,7 +424,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -724,6 +729,18 @@ export const SearchScreen: React.FC = () => {
           </View>
         )}
       </View>
+
+      {radiusError && maxDistanceMi != null && (
+        <TouchableOpacity
+          onPress={() => { void fetch(true); }}
+          accessibilityRole="button"
+          accessibilityLabel="Retry nearby vehicle search"
+          style={{ marginHorizontal: 24, padding: 12, borderRadius: 8,
+            backgroundColor: Colors.bgSecondaryAlt }}
+        >
+          <Text style={{ color: Colors.warning }}>{radiusError} Tap to retry.</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Results ── */}
       {loading && listings.length === 0 ? (
