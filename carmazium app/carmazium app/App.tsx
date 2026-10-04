@@ -244,8 +244,14 @@ export default function App() {
       const safety = setTimeout(() => {
         if (!settled) {
           timedOut = true;
-          if (recoveryFlow) useAuthStore.getState().clearPasswordRecovery();
-          Alert.alert('Sign-in link timed out', 'Please try opening the link again, or sign in manually.');
+          if (recoveryFlow) {
+            // An in-flight SDK exchange cannot be aborted reliably. Keep the
+            // recovery guard active until it settles; a late SIGNED_IN event
+            // must never hydrate recovery credentials as normal auth.
+            Alert.alert('Recovery link is slow', 'The secure link is still being checked. If it completes too late, request a fresh reset link.');
+          } else {
+            Alert.alert('Sign-in link timed out', 'Please try opening the link again, or sign in manually.');
+          }
         }
       }, 15000);
 
@@ -257,11 +263,21 @@ export default function App() {
             refresh_token: refreshToken,
           });
           if (error) throw error;
-          if (timedOut) return;
+          if (timedOut) {
+            // A late successful exchange is invalid after the deadline.
+            // Dispose of its session before releasing recovery isolation.
+            if (recoveryFlow) await supabase.auth.signOut();
+            return;
+          }
           if (recoveryFlow) {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
-            if (timedOut) return;
+            if (timedOut) {
+            // A late successful exchange is invalid after the deadline.
+            // Dispose of its session before releasing recovery isolation.
+            if (recoveryFlow) await supabase.auth.signOut();
+            return;
+          }
             useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
@@ -300,11 +316,21 @@ export default function App() {
             }
           }
 
-          if (timedOut) return;
+          if (timedOut) {
+            // A late successful exchange is invalid after the deadline.
+            // Dispose of its session before releasing recovery isolation.
+            if (recoveryFlow) await supabase.auth.signOut();
+            return;
+          }
           if (recoveryFlow) {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
-            if (timedOut) return;
+            if (timedOut) {
+            // A late successful exchange is invalid after the deadline.
+            // Dispose of its session before releasing recovery isolation.
+            if (recoveryFlow) await supabase.auth.signOut();
+            return;
+          }
             useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
@@ -316,7 +342,12 @@ export default function App() {
         //    redundant, which is fine. Otherwise it is not ours to handle and
         //    React Navigation's linking config will have taken it.
       } catch (err: any) {
-        if (recoveryFlow) useAuthStore.getState().clearPasswordRecovery();
+        if (recoveryFlow) {
+          // A partial/invalid recovery exchange must not leave a restricted
+          // Supabase session usable after the recovery guard is removed.
+          await supabase.auth.signOut().catch(() => {});
+          useAuthStore.getState().clearPasswordRecovery();
+        }
         Alert.alert('Could not complete sign-in', err?.message ?? 'Please try again.');
       } finally {
         // Invalid and expired recovery links must never leave a loading screen
