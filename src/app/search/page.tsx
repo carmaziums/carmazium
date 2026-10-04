@@ -950,7 +950,17 @@ function SearchPageContent() {
                                     )}
                                     <select
                                         value={filters.maxDistanceMi ?? ''}
-                                        onChange={(e) => set('maxDistanceMi', e.target.value === '' ? null : Number(e.target.value))}
+                                        onChange={(e) => {
+                                            const miles = e.target.value === '' ? null : Number(e.target.value)
+                                            setFilters(prev => ({
+                                                ...prev,
+                                                maxDistanceMi: miles,
+                                                sortBy: miles != null && prev.sortBy === 'newest'
+                                                    ? 'distance_asc'
+                                                    : miles == null && prev.sortBy === 'distance_asc'
+                                                        ? 'newest' : prev.sortBy,
+                                            }))
+                                        }}
                                         disabled={!userLocation?.lat}
                                         className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:border-primary/50"
                                     >
