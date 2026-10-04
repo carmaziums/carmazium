@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
 import { navigationRef } from '../lib/navigationRef';
 import { detachSellWizardDraft } from '../lib/sellWizardStore';
+import { useWatchlistStore } from './watchlistStore';
 
 /** Post-signup wizard only: name -> verify -> postcode -> preferences.
  *  Key deliberately unchanged so existing installs that already have it are not
@@ -220,6 +221,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Offline or already invalid — the local reset below is what matters.
     }
     await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+    // Personal saved cars must never be visible to the next account on this device.
+    useWatchlistStore.getState().reset();
 
     set({
       isAuthenticated: false,
@@ -636,6 +639,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('Supabase logout error:', e);
     } finally {
       await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+      useWatchlistStore.getState().reset();
       set({
         isAuthenticated: false,
         pendingEmailVerification: false,
