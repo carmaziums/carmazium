@@ -282,7 +282,9 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
 
                     {/* Top-right stack: wishlist, bid count, grade */}
                     <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
-                        <WishlistButton listingId={auction.listing.id} variant="shortlist" />
+                        {isActive && new Date(auction.endTime).getTime() > Date.now() && (
+                            <WishlistButton listingId={auction.listing.id} variant="shortlist" />
+                        )}
                         <div className="flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-[var(--border-default)] text-white text-[10px] font-bold">
                             <Users size={10} className="text-slate-400" /> {bidCount}
                         </div>
