@@ -84,6 +84,7 @@ export const LiveScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser } = useAuthStore();
+  const accountRole = useAuthStore((s) => s.accountRole);
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
@@ -338,6 +339,20 @@ export const LiveScreen: React.FC = () => {
           </View>
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
         </TouchableOpacity>
+
+        {(accountRole === 'dealer' || currentUser?.isDealerStaff) && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Open my shortlisted auctions"
+            onPress={() => navigation.navigate('DealerAuctionShortlist')}
+            activeOpacity={0.8}
+            style={{ marginBottom: 12, padding: 14, borderRadius: 12, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.accent, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+          >
+            <Ionicons name="heart-outline" size={20} color={Colors.accent} />
+            <Text style={{ flex: 1, color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>My shortlisted auctions</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
         <View style={styles.alertBanner}>
