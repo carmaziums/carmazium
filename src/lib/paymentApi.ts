@@ -122,3 +122,37 @@ export async function getPaymentHistory(): Promise<PaymentTransaction[]> {
     })
     return data.data
 }
+
+
+/**
+ * Stripe webhooks may complete slightly after the browser returns from
+ * Checkout. An early pending response or a transient network failure must
+ * not permanently suppress a genuine paid conversion.
+ *
+ * Returns null when no authoritative paid session can be confirmed.
+ * This helper never infers payment success from reaching the return URL.
+ */
+export async function waitForPaidCheckoutSession(
+    sessionId: string,
+    lookup: (id: string) => Promise<SessionStatus> = getSessionStatus,
+    attempts = 5,
+    pauseMs = 1200,
+): Promise<SessionStatus | null> {
+    if (!sessionId || attempts < 1 || attempts > 10) return null
+    let lastStatus: SessionStatus | null = null
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+            lastStatus = await lookup(sessionId)
+            if (lastStatus?.paymentStatus === 'paid') return lastStatus
+        } catch {
+            // Transient session-status failures are retryable. We do not
+            // attribute or publish a payment without Stripe confirmation.
+        }
+        if (attempt + 1 < attempts) {
+            await new Promise<void>((resolve) => setTimeout(resolve, pauseMs))
+        }
+    }
+
+    return lastStatus
+}

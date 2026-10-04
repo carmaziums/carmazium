@@ -7,7 +7,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { CheckCircle, ArrowRight, Home, Car, Loader2, PartyPopper, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { getSessionStatus, applyAuctionFee, applyKycFee } from "@/lib/paymentApi"
+import { waitForPaidCheckoutSession, applyAuctionFee, applyKycFee } from "@/lib/paymentApi"
 import type { SessionStatus } from "@/lib/paymentApi"
 import { publishListing } from "@/lib/listingApi"
 import { useAuth } from "@/context/AuthContext"
@@ -39,17 +39,26 @@ function CheckoutSuccessContent() {
 
     const [sessionData, setSessionData] = useState<SessionStatus | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [confirmationPending, setConfirmationPending] = useState(false)
     const trackedSessionId = useRef<string | null>(null)
 
     useEffect(() => {
         if (!sessionId) {
+            setConfirmationPending(true)
             setIsLoading(false)
             return
         }
         const poll = async () => {
             try {
-                const data = await getSessionStatus(sessionId)
+                const data = await waitForPaidCheckoutSession(sessionId)
                 setSessionData(data)
+                // Never publish or report an unverified/temporarily pending
+                // checkout. Stripe confirmation may arrive on a later retry.
+                if (data?.paymentStatus !== 'paid') {
+                    setConfirmationPending(true)
+                    return
+                }
+                setConfirmationPending(false)
                 // Webhook fallback: activate listing or apply auction fee if webhook was delayed
                 if (data?.metadata?.type === 'LISTING_FEE' && data?.metadata?.listingId) {
                     publishListing(data.metadata.listingId).catch(() => {})
@@ -134,7 +143,8 @@ function CheckoutSuccessContent() {
                     }
                 }
             } catch {
-                // Silently fail — show generic success
+                // A failed verification is pending, never a reported purchase.
+                setConfirmationPending(true)
             } finally {
                 setIsLoading(false)
             }
@@ -189,7 +199,9 @@ function CheckoutSuccessContent() {
                     transition={{ delay: 0.3 }}
                 >
                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-white">
-                        {sessionData?.metadata?.type === 'LISTING_FEE'
+                        {confirmationPending
+                            ? 'Payment Confirmation Pending'
+                            : sessionData?.metadata?.type === 'LISTING_FEE'
                             ? 'Submitted for Review'
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Buyer Fee Paid!'
@@ -200,7 +212,9 @@ function CheckoutSuccessContent() {
                             : 'Payment Successful!'}
                     </h1>
                     <p className="mt-3 text-lg text-gray-300">
-                        {sessionData?.metadata?.type === 'LISTING_FEE'
+                        {confirmationPending
+                            ? 'We have not yet received final confirmation from Stripe. Please refresh this page shortly or check your dashboard before retrying payment.'
+                            : sessionData?.metadata?.type === 'LISTING_FEE'
                             ? "Payment confirmed. Your vehicle details are now under review and will be listed shortly — we'll notify you once it's approved."
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
