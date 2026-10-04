@@ -38,13 +38,16 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
     // and the app's apiClient auto-redirects to /login on 401. An anonymous
     // page visit must not bounce every card into a redirect on mount.
     React.useEffect(() => {
-        if (identityRef.current !== identity) {
+        const changedAccountOrListing = identityRef.current !== identity
+        if (changedAccountOrListing) {
             identityRef.current = identity
             setSaved(false)
             setHydrated(false)
-            return
         }
-        if (hydrated || !user) return
+        // If auth changed while the previous request was still in flight,
+        // start the new account's check immediately; otherwise a redundant
+        // state update to false may never trigger another effect.
+        if ((hydrated && !changedAccountOrListing) || !user) return
         let cancelled = false
         ;(async () => {
             try {
@@ -113,6 +116,7 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
             type="button"
             aria-label={label}
             aria-pressed={displayedSaved}
+            disabled={loading || (!!user && (!hydrated || !validIdentity))}
             title={label}
             onClick={handleClick}
             onPointerDown={stop}
