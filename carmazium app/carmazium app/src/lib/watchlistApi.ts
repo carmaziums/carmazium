@@ -28,13 +28,19 @@ export async function getWatchlist(
     const res = await apiClient<BackendPaginatedResponse<WatchlistItem>>(
       `/watchlist?page=${page}&limit=${limit}`
     );
-    const items: WatchlistItem[] = Array.isArray(res?.data)
-      ? res.data.map((item) => ({
-          ...item,
-          mappedListing: item.listing ? mapApiListingToCarListing(item.listing) : undefined,
-        }))
-      : [];
-    return { items, total: res?.pagination?.total ?? 0 };
+    // A malformed response is not evidence that the user has zero saved cars.
+    // Reject it so hydration leaves the current saved state untouched.
+    if (!Array.isArray(res?.data) ||
+        !res.pagination ||
+        !Number.isSafeInteger(res.pagination.total) ||
+        res.pagination.total < 0) {
+      throw new Error('Invalid saved-car response. Please refresh and try again.');
+    }
+    const items: WatchlistItem[] = res.data.map((item) => ({
+      ...item,
+      mappedListing: item.listing ? mapApiListingToCarListing(item.listing) : undefined,
+    }));
+    return { items, total: res.pagination.total };
   } catch (error) {
     // Never turn a network/server failure into an apparently empty saved list.
     // The store preserves the previously hydrated user's items on errors.
