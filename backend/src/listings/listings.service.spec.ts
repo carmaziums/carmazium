@@ -2037,7 +2037,7 @@ describe('ListingsService', () => {
             prisma.listing.findMany.mockImplementation(async ({ select, where }: any) =>
                 select?.latitude ? [near, far] : [near]);
             prisma.listing.count.mockResolvedValue(1);
-            const result = await service.findAll({ ...centre, maxDistanceMi: 20, page: 1, limit: 10 });
+            const result = await service.findAll({ ...centre, maxDistanceMi: 10, page: 1, limit: 10 });
             expect(result.data.map(item => item.id)).toEqual([near.id]);
             expect(result.total).toBe(1);
             const candidate = prisma.listing.findMany.mock.calls[0][0];
