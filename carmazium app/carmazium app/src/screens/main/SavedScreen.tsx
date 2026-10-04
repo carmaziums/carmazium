@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -46,11 +46,13 @@ export const SavedScreen: React.FC = () => {
   const [viewMode,   setViewMode]   = useState<ViewMode>('grid');
   const [refreshing, setRefreshing] = useState(false);
 
-  const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
+  const { savedListings, isLoading, loadError, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
-  useEffect(() => {
-    hydrateFromApi();
-  }, []);
+  // Re-fetch on every return to Saved. A vehicle saved/removed on the
+  // website or another device should not need a manual app restart to show.
+  useFocusEffect(useCallback(() => {
+    void hydrateFromApi();
+  }, [hydrateFromApi]));
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -79,7 +81,15 @@ export const SavedScreen: React.FC = () => {
 
   // ─── Empty State ───────────────────────────────────────────────────────────
 
-  const renderEmptyState = () => (
+  const renderEmptyState = () => loadError ? (
+    <EmptyState
+      icon="alert-circle-outline"
+      title="Could not refresh saved cars"
+      subtitle={loadError}
+      ctaLabel="Retry"
+      onCtaPress={() => { void hydrateFromApi(); }}
+    />
+  ) : (
     <EmptyState
       icon="heart-outline"
       title="Nothing saved yet"
@@ -252,6 +262,20 @@ export const SavedScreen: React.FC = () => {
           />
         </View>
       </View>
+
+      {/* Failed refresh does not erase already saved vehicles. Give a retry
+          without hiding the user's last known saved-car list. */}
+      {loadError && savedListings.length > 0 && (
+        <TouchableOpacity
+          onPress={() => { void hydrateFromApi(); }}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading saved cars"
+          style={{ marginHorizontal: 24, marginBottom: 12, padding: 12,
+            borderRadius: 8, backgroundColor: Colors.bgSecondaryAlt }}
+        >
+          <Text style={{ color: Colors.warning }}>{loadError} Tap to retry.</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Content */}
       {isLoading && savedListings.length === 0 ? (
