@@ -222,8 +222,6 @@ export default function App() {
         queryParams.get('type') === 'recovery' ||
         /^carmazium:\/\/reset-password(?:[?#]|$)/i.test(url);
       const auth = useAuthStore.getState();
-      // Duplicate delivery from both the cold URL and an email-app event must
-      // not re-use a consumed one-time code or kick the already-open form out.
       // A cold URL and a foreground URL event can deliver the SAME one-time
       // code. Suppress a second redemption while the first is still opening.
       if (isRecovery && auth.passwordRecoveryStatus !== 'idle') return;
@@ -255,6 +253,14 @@ export default function App() {
         }
       }, 15000);
 
+      const discardLateExchange = async (): Promise<boolean> => {
+        if (!timedOut) return false;
+        // Never let a recovery session arriving after the safety deadline
+        // become an ordinary authenticated dashboard session.
+        if (recoveryFlow) await supabase.auth.signOut();
+        return true;
+      };
+
       try {
         // 2. Implicit flow — tokens in the hash (email links, Google OAuth).
         if (accessToken && refreshToken) {
@@ -263,21 +269,11 @@ export default function App() {
             refresh_token: refreshToken,
           });
           if (error) throw error;
-          if (timedOut) {
-            // A late successful exchange is invalid after the deadline.
-            // Dispose of its session before releasing recovery isolation.
-            if (recoveryFlow) await supabase.auth.signOut();
-            return;
-          }
+          if (await discardLateExchange()) return;
           if (recoveryFlow) {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
-            if (timedOut) {
-            // A late successful exchange is invalid after the deadline.
-            // Dispose of its session before releasing recovery isolation.
-            if (recoveryFlow) await supabase.auth.signOut();
-            return;
-          }
+            if (await discardLateExchange()) return;
             useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
@@ -316,21 +312,11 @@ export default function App() {
             }
           }
 
-          if (timedOut) {
-            // A late successful exchange is invalid after the deadline.
-            // Dispose of its session before releasing recovery isolation.
-            if (recoveryFlow) await supabase.auth.signOut();
-            return;
-          }
+          if (await discardLateExchange()) return;
           if (recoveryFlow) {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user || !session.access_token) throw new Error('Recovery session unavailable. Request a new link.');
-            if (timedOut) {
-            // A late successful exchange is invalid after the deadline.
-            // Dispose of its session before releasing recovery isolation.
-            if (recoveryFlow) await supabase.auth.signOut();
-            return;
-          }
+            if (await discardLateExchange()) return;
             useAuthStore.getState().finishPasswordRecovery();
           } else {
             await reinitializeAuth(callbackRole);
