@@ -187,3 +187,45 @@ test('valid empty and populated saved-car responses still hydrate correctly', as
   assert.equal(populated.total, 1);
   assert.equal(populated.items[0].mappedListing.id, 'A');
 });
+
+test('older failed save does not undo a newer removal on the same account', async () => {
+  const saving = deferred();
+  const store = harness({ addToWatchlist: () => saving.promise });
+  store.getState().save({ id: 'A', make: 'Ford' });
+  store.getState().unsave('A');
+  saving.reject(Error('earlier save failed'));
+  await tick();
+  assert.equal(store.getState().savedIds.has('A'), false);
+  assert.equal(store.getState().savedListings.length, 0);
+});
+
+test('older failed removal does not resurrect a duplicate after newer save', async () => {
+  const removing = deferred();
+  const store = harness({
+    getWatchlist: async () => page([item('A')]),
+    removeFromWatchlist: () => removing.promise,
+  });
+  await store.getState().hydrateFromApi();
+  store.getState().unsave('A');
+  store.getState().save({ id: 'A', make: 'Ford' });
+  removing.reject(Error('earlier remove failed'));
+  await tick();
+  assert.equal(store.getState().savedIds.has('A'), true);
+  assert.equal(store.getState().savedListings.length, 1);
+});
+
+test('repeated saves/removes without a state change do not issue duplicate requests', async () => {
+  let adds = 0, removes = 0;
+  const store = harness({
+    addToWatchlist: async () => { adds += 1; },
+    removeFromWatchlist: async () => { removes += 1; },
+  });
+  const listing = { id: 'A', make: 'Ford' };
+  store.getState().save(listing);
+  store.getState().save(listing);
+  store.getState().unsave('A');
+  store.getState().unsave('A');
+  await tick();
+  assert.equal(adds, 1);
+  assert.equal(removes, 1);
+});
