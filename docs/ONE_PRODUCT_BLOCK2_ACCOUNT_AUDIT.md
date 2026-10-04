@@ -19,7 +19,7 @@
 
 - PR #419: accepted dealer invite now opens the real dealer workspace (`Tabs > Profile`) after `initializeAuth()` refreshes backend role. The backend's matching-email check remains authoritative; no privilege is granted by native navigation alone.
 - PR #419: displayed native signup choices now match website's Personal Account and Dealer / Sole Trader / Partner Account language without changing signup role IDs.
-- `scripts/test-staff-invite-parity.test.mjs`: five checks for invite identity/destination, website correspondence, server membership guard and signup option equality. Wired into Mobile Listing CI. These are source-contract tests and cannot replace real signed-device tests.
+- `scripts/test-staff-invite-parity.test.mjs`: eight source-contract checks for invite identity/destination, website correspondence, server membership guard, signup options, login providers, recovery email requests and deletion confirmation. Wired into Mobile Listing CI. These are source-contract tests and cannot replace real signed-device tests.
 
 ## Manual and integration acceptance, still NOT TESTED
 
