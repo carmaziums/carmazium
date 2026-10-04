@@ -218,6 +218,8 @@ test('saved tab re-fetches on focus and displays a retryable offline state', () 
   const app = read('App.tsx');
   assert.match(saved, /useFocusEffect\(useCallback\(/);
   assert.match(saved, /Could not refresh saved cars/);
+  assert.match(saved, /SORTED BY: RECENTLY SAVED/);
+  assert.doesNotMatch(saved, /<Text style=\{styles.listSortChangeText\}>Change<\/Text>/);
   assert.match(saved, /accessibilityLabel="Retry loading saved cars"/);
   assert.match(app, /useAuthStore\.subscribe\(synchronizeWatchlistAccount\)/);
   assert.match(app, /state\.isAuthenticated \? state\.user\?\.id \?\? null : null/);
