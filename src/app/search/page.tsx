@@ -214,6 +214,7 @@ function SearchPageContent() {
     const [currentPage, setCurrentPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
     const resultsTopRef = React.useRef<HTMLDivElement>(null)
+    const radiusSearchEpochRef = React.useRef(0)
     const [featuredListings, setFeaturedListings] = React.useState<Listing[]>([])
 
     // Fetch featured listings once on mount
@@ -272,7 +273,10 @@ function SearchPageContent() {
     // Save state to sessionStorage on unmount (navigation away from search page)
     React.useEffect(() => {
         return () => {
-            if (searchCacheRef.current.listings.length === 0) return
+            // Radius result pages depend on voluntary location context;
+            // do not restore another postcode/GPS origin from session cache.
+            if (searchCacheRef.current.listings.length === 0 ||
+                searchCacheRef.current.filters.maxDistanceMi != null) return
             try {
                 sessionStorage.setItem('search_listings_cache', JSON.stringify({
                     qs: window.location.search,
@@ -390,12 +394,14 @@ function SearchPageContent() {
 
     // Fetch listings
     const fetchListings = React.useCallback(async (filterState: FilterState, page = 1) => {
+        const epoch = ++radiusSearchEpochRef.current
         try {
             setLoading(true)
             setError(null)
             const apiFilters = buildApiFilters(filterState)
             apiFilters.page = page
             const response = await getListings(apiFilters)
+            if (epoch !== radiusSearchEpochRef.current) return
 
             // Backend now returns ONLY vehicles in the complete requested
             // radius, paginated after distance filtering with an exact total.
@@ -404,10 +410,12 @@ function SearchPageContent() {
             setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
         } catch (err) {
-            console.error('Failed to fetch listings:', err)
-            setError(err instanceof Error ? err.message : 'Failed to load listings')
+            if (epoch === radiusSearchEpochRef.current) {
+                console.error('Failed to fetch listings:', err)
+                setError(err instanceof Error ? err.message : 'Failed to load listings')
+            }
         } finally {
-            setLoading(false)
+            if (epoch === radiusSearchEpochRef.current) setLoading(false)
         }
     }, [buildApiFilters])
 
@@ -433,7 +441,8 @@ function SearchPageContent() {
                 const raw = sessionStorage.getItem('search_listings_cache')
                 if (raw) {
                     const cache = JSON.parse(raw)
-                    if (cache.qs === window.location.search) {
+                    if (cache.qs === window.location.search &&
+                        cache.filters?.maxDistanceMi == null) {
                         sessionStorage.removeItem('search_listings_cache')
                         setListings(cache.listings)
                         setTotalCount(cache.totalCount)
