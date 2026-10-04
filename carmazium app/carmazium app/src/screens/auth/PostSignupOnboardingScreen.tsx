@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -158,6 +158,10 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   // Step 1 state
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendLabel, setResendLabel] = useState('Resend email');
+  const resendTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => () => {
+    if (resendTimer.current) clearInterval(resendTimer.current);
+  }, []);
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyWarning, setVerifyWarning] = useState('');
   // Step 2 state — same required account details as web onboarding.
@@ -269,7 +273,8 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   const handleResend = useCallback(async () => {
     if (!user?.email || resendDisabled) return;
     setResendDisabled(true);
-    setResendLabel('Sent!');
+    setResendLabel('Sending…');
+    setVerifyWarning('');
     try {
       await apiClient('/auth/send-verification', {
         method: 'POST',
@@ -278,14 +283,21 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           redirectTo: 'carmazium://auth/callback',
         }),
       });
-    } catch {
-      // silently ignore — user can try again after cooldown
+    } catch (err: any) {
+      // Do not claim delivery or rate-limit a resend that was rejected.
+      setVerifyWarning(err?.message || 'Could not resend verification email. Please try again.');
+      setResendDisabled(false);
+      setResendLabel('Resend email');
+      return;
     }
-    let remaining = 30;
-    const interval = setInterval(() => {
+    let remaining = 60; // Same successful-resend cooldown as web.
+    setResendLabel(`Resend in ${remaining}s`);
+    if (resendTimer.current) clearInterval(resendTimer.current);
+    resendTimer.current = setInterval(() => {
       remaining -= 1;
       if (remaining <= 0) {
-        clearInterval(interval);
+        if (resendTimer.current) clearInterval(resendTimer.current);
+        resendTimer.current = null;
         setResendDisabled(false);
         setResendLabel('Resend email');
       } else {
