@@ -82,6 +82,7 @@ const SORT_OPTIONS = [
     { label: 'Mileage: High → Low', value: 'mileage_desc' },
     { label: 'Year: Newest', value: 'year_desc' },
     { label: 'Year: Oldest', value: 'year_asc' },
+    { label: 'Distance: Closest first', value: 'distance_asc' },
 ]
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -373,8 +374,19 @@ function SearchPageContent() {
         if (state.deliveryAvailable) f.deliveryAvailable = true
         if (state.isImported === 'yes') f.isImported = true
         else if (state.isImported === 'no') f.isImported = false
+        if (state.maxDistanceMi != null) {
+            // Full-inventory radius search must be done BEFORE backend
+            // pagination. Never filter just the current browser page.
+            if (userLocation.lat == null || userLocation.lng == null ||
+                !Number.isFinite(userLocation.lat) || !Number.isFinite(userLocation.lng)) {
+                throw new Error('Choose a valid postcode or allow location to search by distance.')
+            }
+            f.latitude = userLocation.lat
+            f.longitude = userLocation.lng
+            f.maxDistanceMi = state.maxDistanceMi
+        }
         return f
-    }, [])
+    }, [userLocation.lat, userLocation.lng])
 
     // Fetch listings
     const fetchListings = React.useCallback(async (filterState: FilterState, page = 1) => {
@@ -385,19 +397,9 @@ function SearchPageContent() {
             apiFilters.page = page
             const response = await getListings(apiFilters)
 
-            let filtered = response.data
-            if (filterState.maxDistanceMi && userLocation?.lat && userLocation?.lng) {
-                filtered = filtered.filter(l =>
-                    l.latitude != null && l.longitude != null &&
-                    haversineDistanceMiles(userLocation.lat!, userLocation.lng!, l.latitude, l.longitude) <= filterState.maxDistanceMi!
-                )
-                filtered.sort((a, b) => {
-                    const dA = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, a.latitude!, a.longitude!)
-                    const dB = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, b.latitude!, b.longitude!)
-                    return dA - dB
-                })
-            }
-            setListings(filtered)
+            // Backend now returns ONLY vehicles in the complete requested
+            // radius, paginated after distance filtering with an exact total.
+            setListings(response.data)
             setTotalCount(response.pagination.total)
             setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
@@ -1057,9 +1059,7 @@ function SearchPageContent() {
                     {/* Sort Bar */}
                     <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
                         <p className="text-[var(--text-muted)] text-sm">
-                            {loading ? <span>Loading...</span> : appliedFilters.maxDistanceMi ? (
-                                <span className="text-xs text-[var(--text-muted)]">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
-                            ) : totalCount === 0 ? (
+                            {loading ? <span>Loading...</span> : totalCount === 0 ? (
                                 <>Showing <span className="font-bold">0</span> vehicles</>
                             ) : (
                                 <>Showing <span className="font-bold">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of <span className="font-bold">{totalCount}</span> vehicles</>
@@ -1067,7 +1067,8 @@ function SearchPageContent() {
                         </p>
                         <select value={appliedFilters.sortBy} onChange={(e) => handleSortChange(e.target.value)}
                             className="bg-transparent border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm font-bold cursor-pointer outline-none hover:border-primary/30">
-                            {SORT_OPTIONS.map(opt => (
+                            {SORT_OPTIONS.filter(opt => opt.value !== 'distance_asc' ||
+                                appliedFilters.maxDistanceMi != null).map(opt => (
                                 <option key={opt.value} value={opt.value} className="bg-[var(--bg-dropdown)] text-[var(--text-primary)]">{opt.label}</option>
                             ))}
                         </select>
