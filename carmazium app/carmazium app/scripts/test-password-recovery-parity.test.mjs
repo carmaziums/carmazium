@@ -143,3 +143,19 @@ test('implicit and PKCE recovery are selected before opening Supabase sessions',
   assert.match(app, /clearPasswordRecovery\(\)/);
   assert.match(app, /session\.access_token === priorAccessToken/);
 });
+
+test('website and native password-reset forms both require at least eight characters', () => {
+  const web = read('../../src/app/auth/reset-password/page.tsx');
+  const native = read('src/screens/auth/ResetPasswordScreen.tsx');
+  assert.match(web, /formData\.password\.length < 8/);
+  assert.match(web, /Password must be at least 8 characters/);
+  assert.match(native, /newPassword\.length < 8/);
+  assert.match(native, /Password must be at least 8 characters/);
+});
+
+test('canceling root recovery signs out restricted recovery session', () => {
+  const screen = read('src/screens/auth/ResetPasswordScreen.tsx');
+  assert.match(screen, /const handleBackToSignIn = \(\) => \{/);
+  assert.match(screen, /if \(isRootRecovery\) \{\s*void logout\(\);/);
+  assert.match(screen, /onPress=\{handleBackToSignIn\}/);
+});
