@@ -116,6 +116,7 @@ test('late failed removal cannot resurrect prior-account car after sign-out', as
   });
   await s.getState().hydrateFromApi();
   s.getState().unsave('prior');
+  await tick(); // Ensure the first mutation genuinely reached the network.
   s.getState().reset();
   removing.reject(Error('old account network failure'));
   await tick();
@@ -130,6 +131,7 @@ test('late failed save cannot remove new-account car with same listing ID', asyn
     addToWatchlist: () => saving.promise,
   });
   s.getState().save({ id: 'shared', make: 'Ford' });
+  await tick(); // Old request starts before the identity changes.
   s.getState().reset();
   await s.getState().hydrateFromApi();
   saving.reject(Error('old account failed save'));
@@ -193,6 +195,7 @@ test('older failed save does not undo a newer removal on the same account', asyn
   const store = harness({ addToWatchlist: () => saving.promise });
   store.getState().save({ id: 'A', make: 'Ford' });
   store.getState().unsave('A');
+  await tick();
   saving.reject(Error('earlier save failed'));
   await tick();
   assert.equal(store.getState().savedIds.has('A'), false);
@@ -208,6 +211,7 @@ test('older failed removal does not resurrect a duplicate after newer save', asy
   await store.getState().hydrateFromApi();
   store.getState().unsave('A');
   store.getState().save({ id: 'A', make: 'Ford' });
+  await tick();
   removing.reject(Error('earlier remove failed'));
   await tick();
   assert.equal(store.getState().savedIds.has('A'), true);
@@ -228,4 +232,79 @@ test('repeated saves/removes without a state change do not issue duplicate reque
   await tick();
   assert.equal(adds, 1);
   assert.equal(removes, 1);
+});
+
+test('rapid heart taps serialize server writes per car instead of racing', async () => {
+  const first = deferred();
+  const order = [];
+  const s = harness({
+    addToWatchlist: () => { order.push('add'); return first.promise; },
+    removeFromWatchlist: async () => { order.push('remove'); },
+  });
+  s.getState().save({ id: 'A', make: 'Ford' });
+  s.getState().unsave('A');
+  await tick();
+  assert.deepEqual(order, ['add']);
+  first.resolve();
+  await tick();
+  assert.deepEqual(order, ['add', 'remove']);
+  assert.equal(s.getState().savedIds.has('A'), false);
+});
+
+test('hydration waits for pending writes before fetching authoritative saved cars', async () => {
+  const first = deferred();
+  const calls = [];
+  const s = harness({
+    addToWatchlist: () => { calls.push('add-start'); return first.promise; },
+    getWatchlist: async () => { calls.push('get'); return page([item('A')]); },
+  });
+  s.getState().save({ id: 'A', make: 'Ford' });
+  const hydrate = s.getState().hydrateFromApi();
+  await tick();
+  assert.deepEqual(calls, ['add-start']);
+  first.resolve();
+  await hydrate;
+  assert.deepEqual(calls, ['add-start', 'get']);
+  assert.equal(s.getState().savedIds.has('A'), true);
+});
+
+test('queued prior-account removals never execute after sign-out', async () => {
+  const first = deferred();
+  const calls = [];
+  const s = harness({
+    addToWatchlist: () => { calls.push('old-add'); return first.promise; },
+    removeFromWatchlist: async () => { calls.push('old-remove'); },
+  });
+  s.getState().save({ id: 'A', make: 'Ford' });
+  s.getState().unsave('A');
+  await tick();
+  s.getState().reset();
+  first.resolve();
+  await tick();
+  assert.deepEqual(calls, ['old-add']);
+  assert.equal(s.getState().savedIds.size, 0);
+});
+
+test('404 on removal is idempotent, other server errors remain failures', async () => {
+  const missing = watchlistApiHarness({ success: true, data: [], pagination: { total: 0 } });
+  // Use compiled API client and inject the DELETE response/error separately.
+  const src = readFileSync(new URL('../src/lib/watchlistApi.ts', import.meta.url), 'utf8');
+  const compiledApi = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  });
+  const getApi = (message) => {
+    const exports = {};
+    runInNewContext(compiledApi.outputText, {
+      exports,
+      require: name => {
+        if (name === './apiClient') return { apiClient: async () => { throw Error(message); } };
+        if (name === './listingsApi') return { mapApiListingToCarListing: l => l };
+        throw Error('Unexpected import: ' + name);
+      },
+    });
+    return exports;
+  };
+  await assert.doesNotReject(getApi('404 Not Found').removeFromWatchlist('A'));
+  await assert.doesNotReject(getApi('Listing not in watchlist').removeFromWatchlist('A'));
+  await assert.rejects(getApi('Network unreachable').removeFromWatchlist('A'), /Network unreachable/);
 });
