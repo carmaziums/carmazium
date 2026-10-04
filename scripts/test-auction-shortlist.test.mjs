@@ -23,7 +23,8 @@ test("live browsing and the auction room offer explicit shortlist controls", () 
 })
 
 test("shortlists reuse the server-backed account watchlist", () => {
-    assert.match(button, /addToWatchlist\(listingId\)/)
+    assert.match(button, /addAuctionToShortlist\(listingId\)/)
+    assert.match(controller, /@Post\('auctions\/:listingId'\)/)
     assert.match(service, /where:\s*\{?\s*userId/)
     assert.match(controller, /@Get\('auctions'\)/)
     assert.match(controller, /@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/)
@@ -38,7 +39,7 @@ test("live saved auctions are filtered by authoritative deadline and publication
 
 test("ended saved vehicles stay removable and never show an active bid CTA", () => {
     assert.match(shortlist, /All Saved/)
-    assert.match(shortlist, /removeFromWatchlist\(listingId\)/)
+    assert.match(shortlist, /removeAuctionFromShortlist\(listingId\)/)
     assert.match(shortlist, /ENDED \/ UNAVAILABLE/)
 })
 
