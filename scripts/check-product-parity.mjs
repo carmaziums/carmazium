@@ -1416,6 +1416,8 @@ const webShortlistApi = read('src/lib/auctionShortlistApi.ts');
 const nativeShortlistScreen = read('carmazium app/carmazium app/src/screens/main/DealerAuctionShortlistScreen.tsx');
 const nativeShortlistNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const nativeShortlistDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const nativeDealerDashboard = read('carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx');
+const backendDealerGuard = read('backend/src/auth/guards/verified-dealer.guard.ts');
 const nativeLiveAuctions = read('carmazium app/carmazium app/src/screens/main/LiveScreen.tsx');
 const shortlistController = read('backend/src/watchlist/watchlist.controller.ts');
 for (const [client, source] of [['web', webShortlistApi], ['native', nativeShortlistApi]]) {
@@ -1436,13 +1438,17 @@ if (!nativeShortlistScreen.includes('getAuctionShortlist(') ||
 } else {
   ok('Native dealer shortlist includes live/all, removal and bid-later navigation');
 }
-if (!nativeShortlistNavigator.includes('withDealerGate(DealerAuctionShortlistScreen)') ||
+if (!nativeShortlistNavigator.includes("withDealerGate(DealerAuctionShortlistScreen, 'VIEW_TRADE')") ||
     !nativeShortlistNavigator.includes('name="DealerAuctionShortlist"') ||
+    !nativeShortlistDrawer.includes("id: 'dealer-shortlist'") ||
+    !nativeShortlistDrawer.includes("requiredPermission: 'VIEW_TRADE'") ||
     !nativeShortlistDrawer.includes("stackScreen: 'DealerAuctionShortlist'") ||
-    !nativeLiveAuctions.includes("navigation.navigate('DealerAuctionShortlist')")) {
-  fail('Native shortlist must be gated and reachable from dealer navigation and live auctions');
+    !nativeLiveAuctions.includes("hasDealerPermission('VIEW_TRADE')") ||
+    !nativeDealerDashboard.includes("hasPermission('VIEW_TRADE')") ||
+    !backendDealerGuard.includes("'VIEW_TRADE'")) {
+  fail('Native shortlist must enforce VIEW_TRADE and be reachable only to authorised dealers');
 } else {
-  ok('Native shortlist is KYC-gated and reachable via drawer and live auctions');
+  ok('Native shortlist uses VIEW_TRADE across backend, screen gate and native navigation');
 }
 
 // Keep native dealer shortlist runtime behavior consistent with web: refresh
