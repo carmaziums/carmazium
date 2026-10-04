@@ -224,7 +224,9 @@ export default function App() {
       const auth = useAuthStore.getState();
       // Duplicate delivery from both the cold URL and an email-app event must
       // not re-use a consumed one-time code or kick the already-open form out.
-      if (isRecovery && auth.passwordRecoveryStatus === 'ready') return;
+      // A cold URL and a foreground URL event can deliver the SAME one-time
+      // code. Suppress a second redemption while the first is still opening.
+      if (isRecovery && auth.passwordRecoveryStatus !== 'idle') return;
       const recoveryFlow = isRecovery && !!((accessToken && refreshToken) || code);
       if (recoveryFlow) auth.startPasswordRecovery();
 
