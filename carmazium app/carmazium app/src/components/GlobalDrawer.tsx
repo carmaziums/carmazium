@@ -197,6 +197,14 @@ const DEALER_ITEMS: MenuItem[] = [
     stackScreen: 'SellerAuctions',
   },
   {
+    id: 'dealer-my-auction-bids',
+    requiredPermission: 'VIEW_TRADE',
+    label: 'My Auction Bids',
+    icon: 'gavel',
+    iconLib: 'mci',
+    stackScreen: 'BuyerBids',
+  },
+  {
     id: 'dealer-shortlist',
     requiredPermission: 'VIEW_TRADE',
     label: 'Shortlisted auctions',
