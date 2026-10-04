@@ -1443,6 +1443,9 @@ if (!nativeShortlistNavigator.includes("withDealerGate(DealerAuctionShortlistScr
     !nativeShortlistDrawer.includes("id: 'dealer-shortlist'") ||
     !nativeShortlistDrawer.includes("requiredPermission: 'VIEW_TRADE'") ||
     !nativeShortlistDrawer.includes("stackScreen: 'DealerAuctionShortlist'") ||
+    !nativeShortlistDrawer.includes("id: 'dealer-my-auction-bids'") ||
+    !nativeShortlistDrawer.includes("stackScreen: 'BuyerBids'") ||
+    !nativeShortlistNavigator.includes('name="BuyerBids"') ||
     !nativeLiveAuctions.includes("hasDealerPermission('VIEW_TRADE')") ||
     !nativeDealerDashboard.includes("hasPermission('VIEW_TRADE')") ||
     !backendDealerGuard.includes("'VIEW_TRADE'")) {
