@@ -1,0 +1,106 @@
+name: Expo native delivery diagnostics
+
+# A one-time read-only diagnostic on installation of this workflow.
+# Later reruns are manual; it does NOT build, publish or alter OTA channels.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/expo-native-delivery-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Check Expo credentials, channels, binaries and updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check whether Expo release access is configured
+        id: auth
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN and EAS_TOKEN GitHub secrets are not configured."
+            echo "Release is not possible from GitHub without Expo access."
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '### Expo delivery: blocked' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Neither EXPO_TOKEN nor EAS_TOKEN is configured. No OTA publish was attempted.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+            echo 'Expo credential is present. Running read-only diagnostics.'
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.auth.outputs.configured == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Install native release dependencies
+        if: steps.auth.outputs.configured == 'true'
+        run: npm ci
+      - name: Verify configured Expo project
+        if: steps.auth.outputs.configured == 'true'
+        run: |
+          npx --yes eas-cli@16.18.0 whoami --non-interactive
+          node -e "const a=require('./app.json').expo; console.log('Expo project configured:', Boolean(a.extra?.eas?.projectId), 'runtime:', JSON.stringify(a.runtimeVersion), 'updates:', Boolean(a.updates?.enabled));"
+      - name: Inspect release channels and last Android builds
+        if: steps.auth.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set +e
+          npx --yes eas-cli@16.18.0 channel:list --json --non-interactive > "$RUNNER_TEMP/channels.json" 2> "$RUNNER_TEMP/channels.err"
+          CHANNEL_EXIT=$?
+          npx --yes eas-cli@16.18.0 build:list --platform android --limit 10 --json --non-interactive > "$RUNNER_TEMP/android-builds.json" 2> "$RUNNER_TEMP/builds.err"
+          BUILD_EXIT=$?
+          npx --yes eas-cli@16.18.0 update:list --all --limit 10 --json --non-interactive > "$RUNNER_TEMP/updates.json" 2> "$RUNNER_TEMP/updates.err"
+          UPDATE_EXIT=$?
+          node - "$RUNNER_TEMP" "$CHANNEL_EXIT" "$BUILD_EXIT" "$UPDATE_EXIT" <<'NODE'
+          const fs = require('fs');
+          const [dir, c, b, u] = process.argv.slice(2);
+          function read(filename) {
+            try { return JSON.parse(fs.readFileSync(dir + '/' + filename, 'utf8')); }
+            catch { return null; }
+          }
+          const channels = read('channels.json');
+          const builds = read('android-builds.json');
+          const updates = read('updates.json');
+          const ch = Array.isArray(channels) ? channels : channels?.channels ?? [];
+          const bs = Array.isArray(builds) ? builds : builds?.builds ?? [];
+          const us = Array.isArray(updates) ? updates : updates?.updates ?? [];
+          const lines = [
+            '### Expo native delivery inspection (read-only)',
+            '| Inspection | Status |',
+            '|---|---|',
+            '| EAS channels | ' + (c === '0' ? 'Available' : 'Unavailable (review workflow logs)') + ' |',
+            '| Android build metadata | ' + (b === '0' ? 'Available' : 'Unavailable (review workflow logs)') + ' |',
+            '| Previous OTA updates | ' + (u === '0' ? 'Available' : 'Unavailable (review workflow logs)') + ' |',
+            '',
+            '**Channels:** ' + (ch.map(x => x.name).join(', ') || '(none visible)'),
+            '',
+            '**Recent Android builds:**',
+          ];
+          for (const x of bs.slice(0, 8)) {
+            lines.push('- ' + [x.buildProfile || x.profile || '?', x.channel || '?', x.status || '?', x.appVersion || '?', x.runtimeVersion || '?'].join(' | '));
+          }
+          lines.push('', '**Previous update groups:**');
+          for (const x of us.slice(0, 8)) {
+            lines.push('- ' + [x.branch || '?', x.runtimeVersion || '?', x.createdAt || x.created_at || '?'].join(' | '));
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          console.log(lines.join('\n'));
+          NODE
+          # Fail if essential diagnostics cannot be read. NEVER publish from this workflow.
+          if [ "$CHANNEL_EXIT" != "0" ] || [ "$BUILD_EXIT" != "0" ]; then
+            echo 'Expo access or native-build metadata is unavailable. Publishing remains blocked.'
+            exit 1
+          fi
