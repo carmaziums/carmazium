@@ -23,6 +23,12 @@ on:
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       - "scripts/test-radius-search-parity.test.mjs"
       - "carmazium app/carmazium app/scripts/test-radius-search-native.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-search-results-parity.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-saved-cars-account-isolation.test.mjs"
+      - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/src/store/watchlistStore.ts"
+      - "carmazium app/carmazium app/src/lib/watchlistApi.ts"
+      - "carmazium app/carmazium app/src/screens/main/SavedScreen.tsx"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
@@ -60,6 +66,11 @@ jobs:
         run: node --test ../../scripts/test-radius-search-parity.test.mjs
       - name: Execute native radius API and stale-query failure regression
         run: node --test scripts/test-radius-search-native.test.mjs
+
+      - name: Integrated search quick-filter and radius regressions
+        run: node --test scripts/test-search-results-parity.test.mjs
+      - name: Saved Cars isolation and cross-account regressions
+        run: node --test scripts/test-saved-cars-account-isolation.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash
