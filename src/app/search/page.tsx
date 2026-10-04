@@ -411,6 +411,19 @@ function SearchPageContent() {
         }
     }, [buildApiFilters])
 
+    // The visitor may select a radius before postcode geocoding finishes.
+    // Refresh automatically when a new centre becomes available, using the
+    // same currently applied filters instead of leaving an incomplete result.
+    const radiusOriginRef = React.useRef(`${userLocation.lat}:${userLocation.lng}`)
+    React.useEffect(() => {
+        const origin = `${userLocation.lat}:${userLocation.lng}`
+        if (origin === radiusOriginRef.current) return
+        radiusOriginRef.current = origin
+        if (didInitialHydrate.current && appliedFilters.maxDistanceMi != null) {
+            void fetchListings(appliedFilters, 1)
+        }
+    }, [userLocation.lat, userLocation.lng, appliedFilters, fetchListings])
+
     React.useEffect(() => {
         if (!didInitialHydrate.current) {
             didInitialHydrate.current = true
