@@ -67,7 +67,7 @@ export async function removeFromWatchlist(listingId: string): Promise<void> {
     // removed the item already. "Not in watchlist" means the requested final
     // state (unsaved) is already true, so avoid reverting the last user tap.
     if (error?.status === 404 ||
-        /(?:\\b404\\b|not in watchlist)/i.test(String(error?.message ?? ''))) return;
+        /(?:\b404\b|not in watchlist)/i.test(String(error?.message ?? ''))) return;
     throw error;
   }
 }
