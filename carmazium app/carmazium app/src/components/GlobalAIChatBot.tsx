@@ -18,6 +18,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
+// Bundle the exact approved transparent mascot used by the website widget.
+// This avoids a network-dependent icon or any visual placeholder.
+const MAZIUM_MASCOT = require('../../assets/images/mazium-bot-3d.png');
+const MAZIUM_TRIGGER_SIZE = 64;
+const MAZIUM_TAB_CLEARANCE = 96;
+const MAZIUM_CHAT_GAP = 12;
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -148,7 +155,7 @@ class ChatErrorBoundary extends React.Component<
 
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUserId = useAuthStore((s) => s.user?.id || '');
   const aiConsentKey = authUserId ? `mazium_ai_consent_v1:${authUserId}` : '';
@@ -399,12 +406,14 @@ export const GlobalAIChatBot: React.FC = () => {
     setAiReportDetails('');
   };
 
-  // Chat box sits above the floating button (button at insets.bottom + 70, height 64px)
-  const chatBottom = (insets.bottom || 16) + 145;
+  // Clear the native tab bar and anchor chat directly above the mascot.
+  const floatingBottom = Math.max(insets.bottom, 16) + MAZIUM_TAB_CLEARANCE;
+  const chatBottom = floatingBottom + MAZIUM_TRIGGER_SIZE + MAZIUM_CHAT_GAP;
   const isKeyboardVisible = keyboardHeight > 0;
   const dynamicBottom = isKeyboardVisible ? keyboardHeight + 8 : chatBottom;
   const maxBoxHeight = windowHeight - insets.top - dynamicBottom - 24;
-  const dynamicHeight = isKeyboardVisible ? Math.min(420, maxBoxHeight) : 420;
+  const dynamicHeight = Math.max(0, Math.min(540, maxBoxHeight));
+  const chatWidth = Math.max(0, Math.min(340, windowWidth - 32));
 
   return (
     <>
@@ -415,9 +424,9 @@ export const GlobalAIChatBot: React.FC = () => {
         statusBarTranslucent
         onRequestClose={() => setIsOpen(false)}
       >
-        <Pressable style={{ flex: 1 }} onPress={() => setIsOpen(false)}>
+        <Pressable style={styles.chatBackdrop} onPress={() => setIsOpen(false)}>
           <Pressable
-            style={[styles.chatBox, { bottom: dynamicBottom, height: dynamicHeight }]}
+            style={[styles.chatBox, { bottom: dynamicBottom, height: dynamicHeight, width: chatWidth }]}
             onPress={() => {}}
           >
             <ChatErrorBoundary onReset={() => setIsOpen(false)}>
@@ -426,11 +435,12 @@ export const GlobalAIChatBot: React.FC = () => {
               <View style={styles.chatHeader}>
                 <View style={styles.chatHeaderLeft}>
                   <View style={styles.chatAvatar}>
-                    <Text style={styles.chatAvatarText}>M</Text>
+                    <Image source={MAZIUM_MASCOT} style={styles.chatAvatarImage} contentFit="contain" />
+                    <View style={styles.onlineDot} />
                   </View>
                   <View>
                     <Text style={styles.chatTitle}>MaziuM AI</Text>
-                    <Text style={styles.chatStatus}>Always online</Text>
+                    <Text style={styles.chatStatus}>Car-buying assistant</Text>
                   </View>
                 </View>
                 <View style={styles.chatHeaderActions}>
@@ -584,6 +594,17 @@ export const GlobalAIChatBot: React.FC = () => {
 
             </ChatErrorBoundary>
           </Pressable>
+          {!isKeyboardVisible && (
+            <TouchableOpacity
+              style={[styles.openCloseButton, { bottom: floatingBottom }]}
+              onPress={() => setIsOpen(false)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Close MaziuM AI assistant"
+            >
+              <Ionicons name="close" size={24} color={Colors.white} />
+            </TouchableOpacity>
+          )}
         </Pressable>
       </Modal>
 
@@ -694,39 +715,41 @@ export const GlobalAIChatBot: React.FC = () => {
         </View>
       </Modal>
 
-      {/* Floating bot button */}
-      <View style={[styles.container, { bottom: (insets.bottom || 16) + 70 }]} pointerEvents="box-none">
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => setIsOpen((v) => !v)}
-          style={[styles.botButton, isOpen ? styles.botButtonActive : styles.botButtonInactive]}
-          accessibilityRole="button"
-          accessibilityLabel={isOpen ? 'Close MaziuM AI assistant' : 'Open MaziuM AI assistant'}
-          accessibilityState={{ expanded: isOpen }}
-        >
-          {isOpen && <View style={styles.glowEffect} />}
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=200&q=80' }}
-            style={styles.botImage}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-          />
-          <View style={styles.overlayDesign}>
-            <Text style={styles.mockFace}>M</Text>
-            <View style={styles.mockSmileRow}>
-              <View style={styles.mockEye} />
-              <View style={styles.mockSmile} />
-              <View style={styles.mockEye} />
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
+      {/* The same standalone 3D PNG used by the website. */}
+      {!isOpen && (
+        <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setIsOpen(true)}
+            style={styles.botButton}
+            accessibilityRole="button"
+            accessibilityLabel="Open MaziuM AI assistant"
+            accessibilityHint="Opens the CarMazium car-buying assistant"
+            accessibilityState={{ expanded: false }}
+          >
+            <Image
+              source={MAZIUM_MASCOT}
+              style={styles.botImage}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              accessibilityLabel="MaziuM mascot"
+            />
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
 };
 
 const styles = StyleSheet.create({
   container: { position: 'absolute', right: 16, zIndex: 9999, alignItems: 'flex-end' },
+  chatBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)' },
+  openCloseButton: {
+    position: 'absolute', right: 16, width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.deepBlue_1e1e28, alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45, shadowRadius: 12, elevation: 8,
+  },
 
   chatBox: {
     position: 'absolute', right: 16, width: 320,
@@ -757,10 +780,15 @@ const styles = StyleSheet.create({
   },
   chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   chatAvatar: {
-    width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.accent,
-    alignItems: 'center', justifyContent: 'center', marginRight: 10,
+    width: 40, height: 40, marginRight: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
-  chatAvatarText: { fontFamily: FontFamily.black, fontSize: FontSize.base, color: Colors.white },
+  chatAvatarImage: { width: 40, height: 40 },
+  onlineDot: {
+    position: 'absolute', right: 0, bottom: 0, width: 11, height: 11,
+    borderRadius: 6, backgroundColor: Colors.accentGreen,
+    borderWidth: 2, borderColor: Colors.deepBlue_1e1e28,
+  },
   chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.accentGreen },
   chatHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -1035,23 +1063,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  // Bot button
   botButton: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.black,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 },
-    elevation: 8, borderWidth: 1, borderColor: Colors.accentAlpha20, overflow: 'visible',
+    width: MAZIUM_TRIGGER_SIZE, height: MAZIUM_TRIGGER_SIZE,
+    backgroundColor: 'transparent', borderWidth: 0,
+    alignItems: 'center', justifyContent: 'center', overflow: 'visible',
   },
-  botButtonActive: { opacity: 1, shadowOpacity: 0.8, shadowRadius: 16, transform: [{ scale: 1.05 }] },
-  botButtonInactive: { opacity: 0.45, shadowOpacity: 0, shadowRadius: 0 },
-  glowEffect: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.accentAlpha15, zIndex: -1 },
-  botImage: { width: 60, height: 60, borderRadius: 30, position: 'absolute', opacity: 0.2 },
-  overlayDesign: {
-    width: 48, height: 38, backgroundColor: Colors.white, borderRadius: 16,
-    borderWidth: 3, borderColor: Colors.accent, alignItems: 'center', paddingTop: 2,
-  },
-  mockFace: { color: Colors.accent, fontWeight: '900', fontSize: FontSize.size14, lineHeight: 16 },
-  mockSmileRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, marginTop: 2 },
-  mockEye: { width: 8, height: 4, backgroundColor: Colors.black, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  mockSmile: { width: 6, height: 3, backgroundColor: Colors.black, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, marginBottom: 1 },
+  botImage: { width: MAZIUM_TRIGGER_SIZE, height: MAZIUM_TRIGGER_SIZE },
+
 });
