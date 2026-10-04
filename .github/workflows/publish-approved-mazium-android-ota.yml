@@ -64,6 +64,36 @@ jobs:
         run: |
           npm ci
           npm run typescript
+      - name: Match production build's public configuration for Expo SDK 54
+        shell: bash
+        run: |
+          # SDK 54 uses local process env when --environment is omitted.
+          # The pinned production build's eas.json is the source of truth;
+          # do not ship a new bundle using empty/fallback API endpoints.
+          node <<'NODE'
+          const fs = require('fs');
+          const cfg = require('./eas.json').build?.production?.env ?? {};
+          const required = [
+            'EXPO_PUBLIC_API_URL',
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY'
+          ];
+          for (const k of required) {
+            if (!cfg[k]) {
+              console.error('Missing public production build variable ' + k + '. Aborting OTA.');
+              process.exitCode = 1;
+            }
+          }
+          if (!process.exitCode) {
+            for (const [k,v] of Object.entries(cfg)) {
+              if (/^EXPO_PUBLIC_[A-Z0-9_]+$/.test(k) && typeof v === 'string' && v) {
+                fs.appendFileSync(process.env.GITHUB_ENV, k + '=' + v + '\n');
+              }
+            }
+            console.log('Bundler configuration matches public variables in approved EAS production profile.');
+          }
+          NODE
       - name: Inspect Expo runtime and release channel without publishing
         shell: bash
         run: |
@@ -104,7 +134,7 @@ jobs:
           # Deliberately Android-only; the pictured issue is on Android.
           # A signed native binary rebuild is not needed for this bundled JS/image change
           # if a compatible production binary is already installed.
-          npx --yes eas-cli@16.18.0 update --channel production --platform android --message 'Approved MaziuM website-matching icon - PR 415' --non-interactive --json > "$RUNNER_TEMP/mazium-ota-result.json"
+          npx --yes eas-cli@16.18.0 update --channel production --platform android --clear-cache --message 'Approved MaziuM website-matching icon - PR 415' --non-interactive --json > "$RUNNER_TEMP/mazium-ota-result.json"
           node - "$RUNNER_TEMP/mazium-ota-result.json" <<'NODE'
           const fs = require('fs');
           const p = process.argv[2];
