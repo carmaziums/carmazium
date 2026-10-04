@@ -177,11 +177,9 @@ export const SavedScreen: React.FC = () => {
 
   const renderListSortRow = () => (
     <View style={styles.listSortRow}>
+      {/* The backend and website both return watchlist items most recent
+          first. Don't show a dead "Change" sort button. */}
       <Text style={styles.listSortLabel}>SORTED BY: RECENTLY SAVED</Text>
-      <TouchableOpacity style={styles.listSortChange} activeOpacity={0.7}>
-        <Text style={styles.listSortChangeText}>Change</Text>
-        <Ionicons name="chevron-down" size={12} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
-      </TouchableOpacity>
     </View>
   );
 
