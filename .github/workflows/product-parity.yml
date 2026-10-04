@@ -10,6 +10,7 @@ on:
       - 'carmazium app/carmazium app/App.tsx'
       - 'carmazium app/carmazium app/scripts/test-password-recovery-parity.test.mjs'
       - 'carmazium app/carmazium app/scripts/test-dealer-invite-link.test.mjs'
+      - 'carmazium app/carmazium app/scripts/test-staff-invite-parity.test.mjs'
       - 'carmazium app/carmazium app/assets/**'
       - 'carmazium app/carmazium app/app.json'
       - 'carmazium app/carmazium app/plugins/**'
@@ -69,6 +70,8 @@ jobs:
         run: node --test scripts/test-password-recovery-parity.test.mjs
       - name: Signed-out dealership invitation deferral regressions
         run: node --test scripts/test-dealer-invite-link.test.mjs
+      - name: Native and website onboarding and staff-invite parity regressions
+        run: node --test scripts/test-staff-invite-parity.test.mjs
 
   backend-typecheck:
     name: Backend typecheck
