@@ -4,6 +4,7 @@ import * as React from "react"
 import { Heart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/listingApi"
+import { addAuctionToShortlist, removeAuctionFromShortlist, isAuctionShortlisted } from "@/lib/auctionShortlistApi"
 import { useAuth } from "@/context/AuthContext"
 
 interface Props {
@@ -28,16 +29,31 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
     const [saved, setSaved] = React.useState<boolean>(!!initialIsSaved)
     const [loading, setLoading] = React.useState(false)
     const [hydrated, setHydrated] = React.useState(initialIsSaved !== undefined)
+    const identity = `${user?.id ?? "anonymous"}:${listingId}:${variant}`
+    const identityRef = React.useRef(identity)
+    // Never display a prior account's trade shortlist after auth changes.
+    const validIdentity = identityRef.current === identity
 
     // Only hydrate when authenticated — /watchlist/check requires a session,
     // and the app's apiClient auto-redirects to /login on 401. An anonymous
     // page visit must not bounce every card into a redirect on mount.
     React.useEffect(() => {
-        if (hydrated || !user) return
+        const changedAccountOrListing = identityRef.current !== identity
+        if (changedAccountOrListing) {
+            identityRef.current = identity
+            setSaved(false)
+            setHydrated(false)
+        }
+        // If auth changed while the previous request was still in flight,
+        // start the new account's check immediately; otherwise a redundant
+        // state update to false may never trigger another effect.
+        if ((hydrated && !changedAccountOrListing) || !user) return
         let cancelled = false
         ;(async () => {
             try {
-                const v = await isInWatchlist(listingId)
+                const v = variant === "shortlist"
+                    ? await isAuctionShortlisted(listingId)
+                    : await isInWatchlist(listingId)
                 if (!cancelled) {
                     setSaved(v)
                     setHydrated(true)
@@ -49,7 +65,7 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         return () => {
             cancelled = true
         }
-    }, [listingId, hydrated, user])
+    }, [listingId, hydrated, user?.id, variant, identity])
 
     const stop = (e: React.SyntheticEvent) => {
         e.preventDefault()
@@ -67,11 +83,16 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
             return
         }
         setLoading(true)
-        const next = !saved
+        const next = !(validIdentity && saved)
         setSaved(next)
         try {
-            if (next) await addToWatchlist(listingId)
-            else await removeFromWatchlist(listingId)
+            if (variant === "shortlist") {
+                if (next) await addAuctionToShortlist(listingId)
+                else await removeAuctionFromShortlist(listingId)
+            } else {
+                if (next) await addToWatchlist(listingId)
+                else await removeFromWatchlist(listingId)
+            }
         } catch (err) {
             const msg = (err as Error).message
             if (msg === "AUTH_REDIRECT") return
@@ -85,23 +106,25 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
     const isShortlist = variant === "shortlist"
     const size = isShortlist ? "min-h-11 px-3 gap-2" : variant === "card" ? "h-8 w-8" : "h-10 w-10"
     const iconSize = variant === "card" ? 15 : 18
+    const displayedSaved = validIdentity && saved
     const label = isShortlist
-        ? (saved ? "Remove from shortlist" : "Shortlist for later bidding")
-        : (saved ? "Remove from wishlist" : "Add to wishlist")
+        ? (displayedSaved ? "Remove from shortlist" : "Shortlist for later bidding")
+        : (displayedSaved ? "Remove from wishlist" : "Add to wishlist")
 
     return (
         <button
             type="button"
             aria-label={label}
-            aria-pressed={saved}
+            aria-pressed={displayedSaved}
+            disabled={loading || (!!user && (!hydrated || !validIdentity))}
             title={label}
             onClick={handleClick}
             onPointerDown={stop}
             onPointerUp={stop}
-            className={`${size} inline-flex items-center justify-center ${isShortlist ? "rounded-lg text-xs font-bold" : "rounded-full"} backdrop-blur border transition-colors ${saved ? "bg-red-500/90 border-red-400/60 text-white" : "bg-black/50 border-white/10 text-white/85 hover:text-white hover:bg-black/60"} ${loading ? "opacity-70 cursor-progress" : ""} ${className}`}
+            className={`${size} inline-flex items-center justify-center ${isShortlist ? "rounded-lg text-xs font-bold" : "rounded-full"} backdrop-blur border transition-colors ${displayedSaved ? "bg-red-500/90 border-red-400/60 text-white" : "bg-black/50 border-white/10 text-white/85 hover:text-white hover:bg-black/60"} ${loading ? "opacity-70 cursor-progress" : ""} ${className}`}
         >
-            <Heart size={iconSize} className={saved ? "fill-white" : ""} />
-            {isShortlist && <span>{saved ? "Shortlisted" : "Shortlist"}</span>}
+            <Heart size={iconSize} className={displayedSaved ? "fill-white" : ""} />
+            {isShortlist && <span>{displayedSaved ? "Shortlisted" : "Shortlist"}</span>}
         </button>
     )
 }

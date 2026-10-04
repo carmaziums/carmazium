@@ -20,6 +20,12 @@ on:
       - "carmazium app/carmazium app/src/store/authStore.ts"
       - "carmazium app/carmazium app/scripts/test-seller-vehicle-specs.test.mjs"
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
+      - "carmazium app/carmazium app/src/lib/auctionShortlistApi.ts"
+      - "carmazium app/carmazium app/src/store/auctionShortlistStore.ts"
+      - "carmazium app/carmazium app/src/components/WishlistHeart.tsx"
+      - "carmazium app/carmazium app/src/screens/main/LiveScreen.tsx"
+      - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/scripts/test-guarded-auction-shortlist-clients.test.mjs"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
@@ -52,6 +58,9 @@ jobs:
 
       - name: Native seller gearbox and body-type regression suite
         run: npm run test:seller-specs
+
+      - name: Guarded web and native auction shortlist client regressions
+        run: node --test scripts/test-guarded-auction-shortlist-clients.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash

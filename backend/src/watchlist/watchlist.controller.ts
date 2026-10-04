@@ -78,7 +78,48 @@ export class WatchlistController {
     }
 
     /**
-     * Add listing to watchlist.
+     * Auction shortlist mutations are separate from retail Saved Cars and
+     * require approved trade access. The verify guard reads current KYC and
+     * staff permissions rather than trusting a cached DEALER role.
+     */
+    @Post('auctions/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Shortlist a live auction (verified dealer only)' })
+    async addAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ) {
+        return new StandardResponse(await this.watchlistService.addAuction(user.id, listingId));
+    }
+
+    @Delete('auctions/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Remove a saved auction (verified dealer only)' })
+    async removeAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ): Promise<void> {
+        await this.watchlistService.removeAuction(user.id, listingId);
+    }
+
+    @Get('auctions/check/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Check auction shortlist status (verified dealer only)' })
+    async checkAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ) {
+        const inWatchlist = await this.watchlistService.isInAuctionShortlist(user.id, listingId);
+        return new StandardResponse({ inWatchlist });
+    }
+
+    /**
+     * Add classified retail listing to watchlist.
      */
     @Post(':listingId')
     @UseGuards(SessionAuthGuard)
