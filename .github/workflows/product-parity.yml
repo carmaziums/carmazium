@@ -7,6 +7,7 @@ on:
       - 'backend/src/**'
       - 'backend/prisma/**'
       - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/scripts/test-search-results-parity.test.mjs'
       - 'carmazium app/carmazium app/assets/**'
       - 'carmazium app/carmazium app/app.json'
       - 'carmazium app/carmazium app/plugins/**'
@@ -62,6 +63,8 @@ jobs:
           cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
       - run: npm ci
       - run: npm run typescript
+      - name: Native search API/filter regressions
+        run: node --test scripts/test-search-results-parity.test.mjs
 
   backend-typecheck:
     name: Backend typecheck
