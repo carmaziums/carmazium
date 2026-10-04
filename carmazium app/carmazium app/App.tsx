@@ -26,6 +26,7 @@ import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { addNotificationListeners, registerForPushNotifications } from './src/lib/pushNotifications';
 import { navigationRef } from './src/lib/navigationRef';
+import { isDealerInviteUrl, extractDealerInviteToken } from './src/lib/dealerInviteLink';
 import { markNotificationRead } from './src/lib/notificationsApi';
 import { resolveMobileNotificationTarget } from './src/lib/notificationRouting';
 
@@ -193,6 +194,20 @@ export default function App() {
     // feedback at all (AUTH-019). The branch order below mirrors web's.
     const handleDeepLink = async (url: string | null) => {
       if (!url) return;
+
+      // On cold start the Auth navigator is the only mounted stack for a
+      // signed-out user. Save trusted dealer-invite links until that invited
+      // account has signed in and finished its required onboarding. Linking's
+      // filter routes these links exclusively here to avoid duplicate dispatch.
+      if (isDealerInviteUrl(url)) {
+        const token = extractDealerInviteToken(url);
+        if (token) {
+          useAuthStore.getState().captureDealerInviteToken(token);
+        } else {
+          Alert.alert('Invalid invitation', 'Use the complete link from your invitation email.');
+        }
+        return;
+      }
 
       const hashFragment = url.includes('#') ? url.split('#')[1] : '';
       const queryFragment = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
