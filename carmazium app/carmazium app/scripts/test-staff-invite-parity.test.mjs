@@ -92,7 +92,7 @@ test('post-signup verification resend cooldown matches website and only begins a
   const web = read('../../src/app/auth/onboarding/page.tsx');
   const native = read('src/screens/auth/PostSignupOnboardingScreen.tsx');
   assert.match(web, /const startCooldown = \(seconds = 60\)/);
-  assert.match(web, /setResendSuccess\(true\);\s*startCooldown\(60\)/);
+  assert.match(web, /setResendSuccess\(true\);?\s*startCooldown\(60\)/);
   assert.match(native, /let remaining = 60/);
   assert.ok(native.indexOf("await apiClient('/auth/send-verification'") <
             native.indexOf('let remaining = 60'), 'Must await the actual email response before applying a cooldown');
