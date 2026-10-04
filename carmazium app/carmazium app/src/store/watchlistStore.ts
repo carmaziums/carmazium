@@ -11,6 +11,14 @@ import {
 // user's saved cars after a logout/account switch.
 let hydrateEpoch = 0;
 let accountEpoch = 0;
+// Each listing gets its own revision so a failed older request can never
+// revert a more recent tap on that same saved-car heart.
+const listingRevisions = new Map<string, number>();
+const nextListingRevision = (id: string): number => {
+  const revision = (listingRevisions.get(id) ?? 0) + 1;
+  listingRevisions.set(id, revision);
+  return revision;
+};
 
 interface WatchlistState {
   savedIds: Set<string>;
@@ -34,6 +42,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   reset: () => {
     hydrateEpoch += 1;
     accountEpoch += 1;
+    listingRevisions.clear();
     set({ savedIds: new Set(), savedListings: [], isLoading: false });
   },
 
@@ -73,6 +82,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   },
 
   save: (listing) => {
+    if (get().savedIds.has(listing.id)) return;
+    const operationRevision = nextListingRevision(listing.id);
     // A pre-save hydration must not overwrite a newer local user action.
     hydrateEpoch += 1;
     const operationAccount = accountEpoch;
@@ -86,7 +97,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     // Fire-and-forget sync with API
     addToWatchlist(listing.id).catch(() => {
       // Ignore a response from an account that has since signed out.
-      if (operationAccount !== accountEpoch) return;
+      if (operationAccount !== accountEpoch ||
+          listingRevisions.get(listing.id) !== operationRevision) return;
       // Revert optimistic update on failure
       set((state) => {
         const newIds = new Set(state.savedIds);
@@ -100,6 +112,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
   },
 
   unsave: (id) => {
+    if (!get().savedIds.has(id)) return;
+    const operationRevision = nextListingRevision(id);
     hydrateEpoch += 1;
     const operationAccount = accountEpoch;
     set({ isLoading: false });
@@ -115,7 +129,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     });
     // Fire-and-forget sync with API
     removeFromWatchlist(id).catch(() => {
-      if (operationAccount !== accountEpoch) return;
+      if (operationAccount !== accountEpoch ||
+          listingRevisions.get(id) !== operationRevision) return;
       // Revert optimistic update on failure
       if (removedListing) {
         set((state) => {
