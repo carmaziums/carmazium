@@ -89,6 +89,7 @@ export const DealerProfileScreen: React.FC = () => {
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
   const { access, hasPermission } = useDealerAccess(true);
+  const canViewTrade = hasPermission('VIEW_TRADE');
   const canManageCrm = hasPermission('MANAGE_CRM');
   const canManageOffers = hasPermission('MANAGE_OFFERS');
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
@@ -414,7 +415,7 @@ export const DealerProfileScreen: React.FC = () => {
 
             )}
             {/* Saved live auctions use the same server-backed shortlist as web. */}
-            <TouchableOpacity
+            {canViewTrade && <TouchableOpacity
               style={styles.attentionRow}
               activeOpacity={0.8}
               accessibilityRole="button"
@@ -428,7 +429,7 @@ export const DealerProfileScreen: React.FC = () => {
                 <Text style={styles.attentionSub}>Save cars now and bid when you are free</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
-            </TouchableOpacity>
+            </TouchableOpacity>}
 
             {/* Finance applications */}
             <TouchableOpacity
