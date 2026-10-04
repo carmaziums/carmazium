@@ -77,6 +77,11 @@ test('native auction hearts cannot corrupt generic retail Saved Cars state', () 
   assert.match(app, /useAuthStore\.subscribe\(bindShortlistIdentity\)/);
   assert.match(live, /useFocusEffect\(React\.useCallback/);
   assert.match(live, /void store\.hydrateFromApi\(\)/);
+  // Upcoming/scheduled auction cards cannot display an active-only
+  // shortlist button that would inevitably return HTTP 404.
+  const upcoming = live.slice(live.indexOf('style={styles.upcomingImage}'));
+  assert.doesNotMatch(upcoming.slice(0, upcoming.indexOf('style={styles.upcomingInfo}')),
+    /<WishlistHeart/);
 });
 
 function createStoreHarness() {
