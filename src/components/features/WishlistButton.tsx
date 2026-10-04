@@ -12,7 +12,7 @@ interface Props {
     initialIsSaved?: boolean
     className?: string
     /** Compact `card` variant for card overlays. */
-    variant?: "card" | "default"
+    variant?: "card" | "default" | "shortlist"
 }
 
 /**
@@ -82,9 +82,12 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         }
     }
 
-    const size = variant === "card" ? "h-8 w-8" : "h-10 w-10"
+    const isShortlist = variant === "shortlist"
+    const size = isShortlist ? "min-h-11 px-3 gap-2" : variant === "card" ? "h-8 w-8" : "h-10 w-10"
     const iconSize = variant === "card" ? 15 : 18
-    const label = saved ? "Remove from wishlist" : "Add to wishlist"
+    const label = isShortlist
+        ? (saved ? "Remove from shortlist" : "Shortlist for later bidding")
+        : (saved ? "Remove from wishlist" : "Add to wishlist")
 
     return (
         <button
@@ -95,9 +98,10 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
             onClick={handleClick}
             onPointerDown={stop}
             onPointerUp={stop}
-            className={`${size} inline-flex items-center justify-center rounded-full backdrop-blur border transition-colors ${saved ? "bg-red-500/90 border-red-400/60 text-white" : "bg-black/50 border-white/10 text-white/85 hover:text-white hover:bg-black/60"} ${loading ? "opacity-70 cursor-progress" : ""} ${className}`}
+            className={`${size} inline-flex items-center justify-center ${isShortlist ? "rounded-lg text-xs font-bold" : "rounded-full"} backdrop-blur border transition-colors ${saved ? "bg-red-500/90 border-red-400/60 text-white" : "bg-black/50 border-white/10 text-white/85 hover:text-white hover:bg-black/60"} ${loading ? "opacity-70 cursor-progress" : ""} ${className}`}
         >
             <Heart size={iconSize} className={saved ? "fill-white" : ""} />
+            {isShortlist && <span>{saved ? "Shortlisted" : "Shortlist"}</span>}
         </button>
     )
 }

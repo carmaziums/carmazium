@@ -95,6 +95,65 @@ export class WatchlistService {
     }
 
     /**
+     * Dealer-only auction shortlist. Reuses the existing per-user watchlist,
+     * but does not expose trade auction data from the general watchlist route.
+     * Include cancelled/ended items in All so they can be removed deliberately.
+     */
+    async findAuctionShortlist(userId: string, page = 1, limit = 12, liveOnly = true) {
+        const validPage = Number.isSafeInteger(page) && page > 0 ? page : 1;
+        const validLimit = Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 50) : 12;
+        const now = new Date();
+        const where = {
+            userId,
+            listing: {
+                deletedAt: null,
+                ...(liveOnly ? { status: 'ACTIVE' as const } : {}),
+                auction: {
+                    is: {
+                        deletedAt: null,
+                        ...(liveOnly ? { status: 'ACTIVE' as const, endTime: { gt: now } } : {}),
+                    },
+                },
+            },
+        };
+        const activeBidWhere = { deletedAt: null, cancelledAt: null, archivedAt: null };
+        const [items, total] = await Promise.all([
+            this.prisma.watchlistItem.findMany({
+                where,
+                select: {
+                    id: true,
+                    listingId: true,
+                    createdAt: true,
+                    listing: {
+                        select: {
+                            id: true, title: true, images: true, make: true, model: true,
+                            year: true, mileage: true, status: true,
+                            auction: {
+                                select: {
+                                    id: true, status: true, startTime: true,
+                                    endTime: true, startingBid: true, minIncrement: true,
+                                },
+                            },
+                            bids: {
+                                where: activeBidWhere,
+                                orderBy: { amount: 'desc' },
+                                take: 1,
+                                select: { amount: true },
+                            },
+                            _count: { select: { bids: { where: activeBidWhere } } },
+                        },
+                    },
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (validPage - 1) * validLimit,
+                take: validLimit,
+            }),
+            this.prisma.watchlistItem.count({ where }),
+        ]);
+        return { data: items, total, page: validPage, limit: validLimit };
+    }
+
+    /**
      * Check if a listing is in user's watchlist
      */
     async isInWatchlist(userId: string, listingId: string): Promise<boolean> {

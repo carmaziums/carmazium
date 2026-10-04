@@ -282,7 +282,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
 
                     {/* Top-right stack: wishlist, bid count, grade */}
                     <div className="absolute top-3 right-3 z-20 flex flex-col items-end gap-1.5">
-                        <WishlistButton listingId={auction.listing.id} />
+                        <WishlistButton listingId={auction.listing.id} variant="shortlist" />
                         <div className="flex items-center gap-1 bg-black/50 backdrop-blur px-2.5 py-1 rounded-full border border-[var(--border-default)] text-white text-[10px] font-bold">
                             <Users size={10} className="text-slate-400" /> {bidCount}
                         </div>
@@ -861,6 +861,13 @@ export default function AuctionsBrowsePage() {
                             </button>
                         ))}
                     </div>
+
+                    <Link
+                        href="/dashboard/dealer/auctions/shortlisted"
+                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/20"
+                    >
+                        <Star size={15} /> My Shortlist
+                    </Link>
 
                     {/* Search + filters toggle + refresh — full width on mobile, capped on md+ */}
                     <div className="flex items-center gap-2 w-full md:w-auto md:flex-1 md:max-w-lg">

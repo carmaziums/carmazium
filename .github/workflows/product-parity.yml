@@ -40,6 +40,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: node scripts/check-auction-seller-sequencing.mjs
+      - name: Auction shortlist web regressions
+        run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
 
   mobile-typecheck:
@@ -75,3 +77,5 @@ jobs:
       - run: npm run typecheck
       - name: Test self-service account role boundary
         run: npm test -- --runInBand src/core/account-roles.spec.ts
+      - name: Test dealer-only saved auction shortlist
+        run: npm test -- --runInBand src/watchlist/watchlist.service.spec.ts

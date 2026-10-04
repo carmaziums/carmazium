@@ -19,6 +19,7 @@ import {
 import { BlurredPhone } from "@/components/shared/BlurredPhone"
 import { BlurredEmail } from "@/components/shared/BlurredEmail"
 import { CountdownTimer } from "@/components/features/CountdownTimer"
+import { WishlistButton } from "@/components/features/WishlistButton"
 import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
@@ -999,6 +1000,18 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                     </div>
                 </div>
             </div>
+
+            {!isSeller && (profile?.role === "DEALER" || profile?.role === "ADMIN") && (
+                <div className="container mx-auto px-6 py-2 flex flex-wrap items-center gap-3">
+                    <WishlistButton listingId={auction.listing.id} variant="shortlist" />
+                    <Link
+                        href="/dashboard/dealer/auctions/shortlisted"
+                        className="min-h-11 inline-flex items-center text-xs font-bold text-primary hover:underline"
+                    >
+                        View my shortlist →
+                    </Link>
+                </div>
+            )}
 
             {/* ── Cancelled Banner ──────────────────────────────────────────── */}
             {isCancelled && (
