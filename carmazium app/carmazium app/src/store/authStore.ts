@@ -137,6 +137,11 @@ interface AuthState {
    *  of the app having lost what they were looking at (AUTH-034). Web does
    *  this with `?redirect=`. */
   postLoginRedirect: { name: string; params?: object } | null;
+  /** A validated dealership invitation received before login or onboarding.
+   * In-memory only: backend verifies the invited email and token on acceptance. */
+  pendingDealerInviteToken: string | null;
+  captureDealerInviteToken: (token: string) => void;
+  clearDealerInviteToken: () => void;
   // The real, backend-sourced account role — unlike `role`, this is never
   // touched by setRole()'s "preview as buyer" toggle (DealerProfileScreen's
   // "VIEW MY PROFILE"). Screens that need to know whether the underlying
@@ -172,6 +177,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   authInitialized: false,
   postLoginRedirect: null,
+  pendingDealerInviteToken: null,
+  captureDealerInviteToken: (token) => {
+    if (/^[a-f0-9]{64}$/i.test(token)) {
+      set({ pendingDealerInviteToken: token.toLowerCase() });
+    }
+  },
+  clearDealerInviteToken: () => set({ pendingDealerInviteToken: null }),
   hasCompletedOnboarding: false,
   // Starts false and is hydrated by initializeAuth. A fresh install has not
   // seen the carousel; an install that has will skip it after that first read.
