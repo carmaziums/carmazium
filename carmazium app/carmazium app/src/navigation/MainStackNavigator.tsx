@@ -79,7 +79,7 @@ import { Colors } from '../constants/colors';
 // render.
 
 const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen, 'VIEW_ANALYTICS');
-const GatedDealerAuctionShortlistScreen = withDealerGate(DealerAuctionShortlistScreen);
+const GatedDealerAuctionShortlistScreen = withDealerGate(DealerAuctionShortlistScreen, 'VIEW_TRADE');
 const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
 const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
 const GatedDealerKYCScreen = withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true);
