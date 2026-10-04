@@ -9,6 +9,7 @@ on:
       - 'carmazium app/carmazium app/**'
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
+      - 'scripts/test-radius-search-parity.test.mjs'
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
       - 'docs/native/**'
@@ -155,6 +156,8 @@ jobs:
           node-version: 20
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
+      - name: Full-inventory radius search parity contracts
+        run: node --test scripts/test-radius-search-parity.test.mjs
       - name: Check code-controlled release readiness
         run: node scripts/check-release-readiness.mjs
       - name: Self-test signed-evidence validator
