@@ -583,10 +583,8 @@ export const LiveScreen: React.FC = () => {
                     onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
                     showIndicator={false}
                   />
-                  <WishlistHeart
-                    listing={mappedListing}
-                    style={{ top: 2, right: 2, width: 20, height: 20, borderRadius: 6 }}
-                  />
+                  {/* Dealer shortlist POST accepts only ACTIVE live auctions.
+                      Do not render an inoperative save button on scheduled cars. */}
                 </View>
                 <View style={styles.upcomingInfo}>
                   <View style={styles.upcomingTitleRow}>
