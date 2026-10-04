@@ -104,7 +104,7 @@ async function acceptance() {
       'saved vehicle make consistent');
     for (const field of ['fuelType', 'transmission', 'bodyType', 'color',
       'location', 'latitude', 'longitude']) {
-      assert(Object.hasOwn(projection, field), 'native mapping field omitted from shared backend projection: ' + field);
+      assert(Object.prototype.hasOwnProperty.call(projection, field), 'native mapping field omitted from shared backend projection: ' + field);
     }
     assert(projection.latitude === matched[0].latitude &&
       projection.longitude === matched[0].longitude,
@@ -147,7 +147,7 @@ async function acceptance() {
       'native complete refresh should see all 26 website-created saves');
     assert(new Set(nativeAll.body.data.map((x: any) => x.listingId)).size === 26,
       'native complete refresh duplicate item');
-    const webPages = [];
+    const webPages: string[] = [];
     for (const page of [1, 2, 3]) {
       const res = await browser('get', '/watchlist').query({ page, limit: 12 });
       assert(res.status === 200 && res.body.pagination.total === 26,
