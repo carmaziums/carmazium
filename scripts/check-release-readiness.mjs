@@ -724,7 +724,9 @@ if (
 
 if (
   !aiChatSource.includes('useReduceMotionPreference') ||
-  !aiChatSource.includes("accessibilityLabel={isOpen ? 'Close MaziuM AI assistant' : 'Open MaziuM AI assistant'}") ||
+  !aiChatSource.includes('accessibilityLabel="Open MaziuM AI assistant"') ||
+  !aiChatSource.includes('accessibilityLabel="Close MaziuM AI assistant"') ||
+  !aiChatSource.includes('accessibilityRole="button"') ||
   !aiChatSource.includes('accessibilityLiveRegion="polite"')
 ) {
   fail('MaziuM AI must expose assistant controls/status and reduced-motion handling');

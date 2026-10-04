@@ -7,6 +7,7 @@ on:
       - 'backend/src/**'
       - 'backend/prisma/**'
       - 'carmazium app/carmazium app/src/**'
+      - 'carmazium app/carmazium app/assets/**'
       - 'carmazium app/carmazium app/scripts/test-auction-shortlist-state.test.mjs'
       - 'carmazium app/carmazium app/app.json'
       - 'carmazium app/carmazium app/plugins/**'
@@ -30,6 +31,8 @@ jobs:
         run: node scripts/check-product-parity.mjs
       - name: Verify authoritative auction buyer-fee deadline parity
         run: node scripts/check-auction-fee-deadline.mjs
+      - name: Assert exact native and web MaziuM visual parity
+        run: node --test scripts/test-mazium-native-visual-parity.test.mjs
 
   web-typecheck:
     name: Web typecheck
