@@ -492,6 +492,12 @@ export const SearchScreen: React.FC = () => {
   ].filter(Boolean).length;
 
   const resetFilters = () => {
+    // Clearing filters must also clear the selected quick-chip, search text
+    // and sort. Otherwise "Manual" remains effective but invisible to the
+    // user after they tap Clear, unlike website's INITIAL_FILTERS reset.
+    setQuickFilter('all');
+    setQuery('');
+    setSortId('newest');
     setSelectedMakes([]);
     setMinPrice(0);
     setMaxPrice(150000);
