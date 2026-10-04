@@ -142,6 +142,7 @@ test('implicit and PKCE recovery are selected before opening Supabase sessions',
   assert.match(app, /finishPasswordRecovery\(\)/);
   assert.match(app, /clearPasswordRecovery\(\)/);
   assert.match(app, /session\.access_token === priorAccessToken/);
+  assert.match(app, /if \(isRecovery && auth\.passwordRecoveryStatus !== 'idle'\) return/);
 });
 
 test('website and native password-reset forms both require at least eight characters', () => {
