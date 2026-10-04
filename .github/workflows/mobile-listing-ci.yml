@@ -20,6 +20,9 @@ on:
       - "carmazium app/carmazium app/src/store/authStore.ts"
       - "carmazium app/carmazium app/App.tsx"
       - "carmazium app/carmazium app/src/navigation/RootNavigator.tsx"
+      - "carmazium app/carmazium app/src/navigation/linking.ts"
+      - "carmazium app/carmazium app/src/lib/dealerInviteLink.ts"
+      - "carmazium app/carmazium app/scripts/test-dealer-invite-link.test.mjs"
       - "carmazium app/carmazium app/src/screens/auth/ResetPasswordScreen.tsx"
       - "carmazium app/carmazium app/scripts/test-password-recovery-parity.test.mjs"
       - "carmazium app/carmazium app/src/screens/main/AcceptInviteScreen.tsx"
@@ -64,6 +67,8 @@ jobs:
         run: node --test scripts/test-staff-invite-parity.test.mjs
       - name: Native recovery-link and session-isolation regressions
         run: node --test scripts/test-password-recovery-parity.test.mjs
+      - name: Signed-out dealership invitation deferral regressions
+        run: node --test scripts/test-dealer-invite-link.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash
