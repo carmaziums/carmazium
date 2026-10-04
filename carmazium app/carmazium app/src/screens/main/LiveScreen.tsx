@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -37,6 +37,7 @@ import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
+import { useAuctionShortlistStore } from '../../store/auctionShortlistStore';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -176,9 +177,18 @@ export const LiveScreen: React.FC = () => {
     fetchData();
   }, []);
 
+  // Reconcile the current authenticated account and refresh saved auction
+  // hearts when returning from web or from the shortlist detail screen.
+  useFocusEffect(React.useCallback(() => {
+    const store = useAuctionShortlistStore.getState();
+    store.bindAccount(currentUser?.id ?? null);
+    void store.hydrateFromApi();
+  }, [currentUser?.id]));
+
   const onRefresh = () => {
     setIsRefreshing(true);
-    fetchData();
+    void fetchData();
+    void useAuctionShortlistStore.getState().hydrateFromApi();
   };
 
   useEffect(() => {
