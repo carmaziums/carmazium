@@ -39,3 +39,16 @@ test('web accepted invitation opens the same dealer workspace', () => {
   const website = read('../../src/app/auth/accept-invite/page.tsx');
   assert.match(website, /router\.push\("\/dashboard\/dealer"\)/);
 });
+
+test('native and website offer the same Personal versus Dealer/Sole Trader signup choices', () => {
+  const mobile = read('src/screens/auth/SignupScreen.tsx');
+  const website = read('../../src/app/auth/signup/page.tsx');
+  for (const label of ['Personal Account', 'Dealer / Sole Trader / Partner Account']) {
+    assert.ok(mobile.includes(label), 'Native missing signup label: ' + label);
+    assert.ok(website.includes(label), 'Website missing signup label: ' + label);
+  }
+  assert.match(mobile, /value: 'BUYER' as const/);
+  assert.match(mobile, /value: 'DEALER' as const/);
+  assert.match(website, /id: "BUYER" as SignupRole/);
+  assert.match(website, /id: "DEALER" as SignupRole/);
+});
