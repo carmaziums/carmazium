@@ -208,6 +208,8 @@ jobs:
       - name: Resolve Expo production config
         run: npx expo config --type public > /tmp/carmazium-expo-config.json
       - run: npm run typescript
+      - name: Native search API/filter regressions
+        run: node --test scripts/test-search-results-parity.test.mjs
 
   backend:
     name: Backend typecheck + tests + build
