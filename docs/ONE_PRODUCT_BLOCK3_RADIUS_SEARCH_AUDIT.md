@@ -23,9 +23,22 @@ Additional tests in `backend/src/listings/listings.service.spec.ts` verify the f
 
 `scripts/test-radius-search-parity.test.mjs` enforces web/native query serialization and server-side filtering/count contracts. These checks are wired into Mobile Listing CI, One Product Parity and Release Certification.
 
+## Real isolated PostgreSQL acceptance (4 October 2026)
+
+[GitHub Actions PostgreSQL acceptance run](https://github.com/carmaziums/carmazium/actions/runs/37230421663) **PASSED** using `.github/workflows/radius-postgres-ci.yml`. This pull-request workflow provisions a disposable PostgreSQL 16 service on the GitHub runner, `prisma db push` from **the current branch schema into that disposable DB only**, and seeds **8,400 fictional/geocoded listings** using `backend/scripts/radius-postgres-load.ts`. The script refuses any non-loopback host, non-test database name, nonempty starting table, or absent explicit `RADIUS_LOAD_TEST=ephemeral-postgres-only` guard. It reads no Supabase secret, existing customer data or live database.
+
+The exact production `ListingsService.findAll` and Prisma client were exercised against that real PostgreSQL schema; an **independent spherical law-of-cosines oracle**, not the backend's Haversine code, checked full-inventory counts and global closest-first vehicle IDs. **All 16 scenarios passed**: London, Birmingham and Manchester across 10, 25, 50, 100 and 200 miles, plus a combined Honda / £10,000 filter; page 2+ contained eligible, nonduplicated results. Missing coordinates, sold/draft/auction/deleted listings and featured records are present in the synthetic dataset. Previously added isolated Jest tests separately cover >20,000 candidate safety failure.
+
+GitHub runner measurements, **not production latency guarantees**:
+- 8,400 synthetic rows; busiest measured case: Manchester at 200 miles, **7,089 matching vehicles**; first page **228 ms** and closest-first page **218 ms**.
+- Additional broad-radius cases: London 200 miles, 5,906 matches and 187 ms first page; Birmingham 100 miles, 5,142 matches and 181 ms first page.
+- Sampled PostgreSQL `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` candidate query: **3.625 ms execution**, 0.089 ms planning, 323 shared cache hits, 0 shared reads on the small ephemeral test.
+
+**Remaining real release acceptance:** test the exact *combined* PR code on an installed signed Android build and signed iOS build against the same known nonprivate dataset as a staging/browser session; verify postcode/GPS privacy, denied/invalid location recovery, backend 503 retry UI, correct page 2 counts and contact privacy. Confirm likely production-sized volume, concurrent writers and real query-plan/index behaviour in a schema-compatible non-production environment. The currently connected CarMazium Development Supabase database has only one row in `public.listings` and no latitude/longitude columns, so it is not suitable for this test without prohibited schema changes. Do not infer production SLOs or sign off a store release from ephemeral CI results.
+
 ## Remaining proof before approval
 
-The draft is **code-only** until exact-head CI and real production-equivalent DB load tests pass. Required non-production acceptance: UK test coordinates/postcodes in both clients, 10/25/50/100/200-mile choices; verify matching IDs, result counts and page 2+ against the same backend seed; combined model/price/condition/seller filters; default and closest-first ordering; absent listing coordinates; signed Android/iPhone; GPS/postcode consent and failed geocoding; multi-thousand inventory performance and concurrent writes.
+**Code and disposable database acceptance are complete.** Physical-device and production-equivalent operational acceptance above remains outstanding.
 
 Potential concern: broad-radius scanning and large `id IN (...)` lists may not scale indefinitely. If the 20k safety threshold is approached, optimize on existing PostgreSQL using a reviewable, parameterized database query rather than silently truncating results. The result's physical distance is derived from listing-level general coordinates; never reveal private seller address/contact through this endpoint.
 
