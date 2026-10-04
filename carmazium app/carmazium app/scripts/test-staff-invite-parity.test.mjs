@@ -87,3 +87,24 @@ test('legacy SELLER query on web signup selects Personal without creating a hidd
   assert.match(web, /rawRoleParam === "SELLER" \? "BUYER" : rawRoleParam/);
   assert.doesNotMatch(web, /\["BUYER", "SELLER", "DEALER"\]/);
 });
+
+test('post-signup verification resend cooldown matches website and only begins after success', () => {
+  const web = read('../../src/app/auth/onboarding/page.tsx');
+  const native = read('src/screens/auth/PostSignupOnboardingScreen.tsx');
+  assert.match(web, /const startCooldown = \(seconds = 60\)/);
+  assert.match(web, /setResendSuccess\(true\);\s*startCooldown\(60\)/);
+  assert.match(native, /let remaining = 60/);
+  assert.ok(native.indexOf("await apiClient('/auth/send-verification'") <
+            native.indexOf('let remaining = 60'), 'Must await the actual email response before applying a cooldown');
+  assert.match(native, /catch \(err: any\) \{[\s\S]*?setVerifyWarning\([\s\S]*?setResendDisabled\(false\)/);
+  assert.match(native, /if \(resendTimer\.current\) clearInterval\(resendTimer\.current\)/);
+});
+
+test('both native email verification entry points show failed resend instead of false success', () => {
+  const postSignup = read('src/screens/auth/PostSignupOnboardingScreen.tsx');
+  const verifyEmail = read('src/screens/auth/VerifyEmailScreen.tsx');
+  assert.match(postSignup, /Could not resend verification email\. Please try again\./);
+  assert.match(verifyEmail, /setResendError\(err\?\.message \|\| 'Could not resend verification email\. Please try again\.'/);
+  assert.match(verifyEmail, /\{resendError && \(/);
+  assert.match(verifyEmail, /setCooldownSec\(60\)/);
+});
