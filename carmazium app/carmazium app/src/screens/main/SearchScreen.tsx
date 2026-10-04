@@ -252,6 +252,11 @@ export const SearchScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  // A previous request (e.g. "All" followed by "Manual") must never
+  // overwrite results belonging to a more recent filter selection.
+  const requestEpochRef = useRef(0);
+  const pageLoadingRef = useRef(false);
 
   // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
   // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
@@ -346,7 +351,10 @@ export const SearchScreen: React.FC = () => {
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
-      transmissions: transmissions.length ? transmissions : undefined,
+      // A quick-filter transmission MUST reach the real backend filter.
+      // Before this, tapping "Manual" changed only the highlighted chip.
+      transmissions: transmissions.length ? transmissions :
+        qf?.params.transmission ? [qf.params.transmission] : undefined,
       ulezCompliant: ulezCompliant === 'yes' ? true : ulezCompliant === 'no' ? false : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
       maxBhp: maxBhp ? parseInt(maxBhp) : undefined,
@@ -368,11 +376,26 @@ export const SearchScreen: React.FC = () => {
   }
 
   const fetch = useCallback(async (reset = true) => {
-    if (reset) setLoading(true);
-    else setLoadingMore(true);
+    if (!reset && (pageLoadingRef.current || !hasMore)) return;
+    // Reset requests invalidate all previous pages and outdated filters.
+    // Pagination keeps the same epoch and is protected against duplicate
+    // onEndReached events while a page is in flight.
+    const epoch = reset ? ++requestEpochRef.current : requestEpochRef.current;
+    if (reset) {
+      setLoading(true);
+      setSearchError(null);
+      setHasMore(false);
+      pageLoadingRef.current = false;
+    } else {
+      pageLoadingRef.current = true;
+      setLoadingMore(true);
+    }
     const p = reset ? 1 : page;
     try {
-      const { listings: rawItems, total: t } = await searchListings(buildParams(p));
+      const { listings: rawItems, total: t } = await searchListings(
+        buildParams(p), { propagateErrors: true },
+      );
+      if (epoch !== requestEpochRef.current) return;
       // Backend has no lat/lng/radius filter param — same client-side
       // haversine filter+sort web's search page does on the already-fetched
       // page (doesn't reach across pagination, matching web's actual, if
@@ -395,16 +418,25 @@ export const SearchScreen: React.FC = () => {
         setPage(prev => prev + 1);
         setTotal(t);
       }
-      setHasMore(rawItems.length === 20);
-    } catch {
-      // keep existing
+      // Backend total is authoritative; a full final page does not imply
+      // an extra page exists, and local distance filtering cannot decide it.
+      setHasMore(p * 20 < t);
+      setSearchError(null);
+    } catch (error: any) {
+      if (epoch === requestEpochRef.current) {
+        // Preserve last good inventory rather than reporting "0 results".
+        setSearchError(error?.message || 'Could not load vehicle results. Please retry.');
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (epoch === requestEpochRef.current) {
+        pageLoadingRef.current = false;
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page, hasMore]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -412,6 +444,9 @@ export const SearchScreen: React.FC = () => {
   // Text query: debounce to avoid hitting the API on every keystroke.
   // All other filter/sort changes are instant (fired by the non-text useEffect below).
   useEffect(() => {
+    // Stop an in-flight response for the previous text from overwriting the
+    // screen during the 350 ms debounce of the user's newest search text.
+    requestEpochRef.current++;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
     return () => clearTimeout(debounceRef.current);
@@ -510,6 +545,7 @@ export const SearchScreen: React.FC = () => {
       setSelectedFuels([]);
       setMinYear('Any');
       setMaxMiles('Any');
+      setTransmissions([]);
     }
   };
 
@@ -727,6 +763,21 @@ export const SearchScreen: React.FC = () => {
         )}
       </View>
 
+      {/* A failed request must not masquerade as zero available cars. */}
+      {searchError && (
+        <TouchableOpacity
+          onPress={() => { void fetch(true); }}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading vehicle search results"
+          style={{ marginHorizontal: 24, marginVertical: 12, padding: 12,
+            borderRadius: 8, backgroundColor: Colors.bgSecondaryAlt }}
+        >
+          <Text style={{ color: Colors.warning }}>
+            {searchError} Tap to retry.
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* ── Results ── */}
       {loading && listings.length === 0 ? (
         <View style={s.skeletonList}>
@@ -741,6 +792,15 @@ export const SearchScreen: React.FC = () => {
             </View>
           ))}
         </View>
+      ) : searchError && listings.length === 0 ? (
+        <EmptyState
+          icon="alert-circle-outline"
+          eyebrow="Search unavailable"
+          title="Could not refresh vehicles"
+          subtitle={searchError}
+          ctaLabel="Retry"
+          onCtaPress={() => { void fetch(true); }}
+        />
       ) : listings.length === 0 ? (
         // No-results is the most-hit dead end in the app and had no way out —
         // the user had to work out for themselves that a filter was the cause.
