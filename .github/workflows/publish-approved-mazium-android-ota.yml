@@ -1,0 +1,120 @@
+name: Publish approved MaziuM Android OTA
+
+# Controlled, manual-only release. No code change triggers a production OTA.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type PUBLISH_MAZIUM to authorise the Android production update"
+        type: string
+        required: true
+      runtime_version:
+        description: "Installed Android app runtime version (check diagnostics)"
+        type: string
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expo-mazium-production-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify and publish Android OTA to Expo production
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: '1'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      EXPECTED_RUNTIME: ${{ inputs.runtime_version }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Enforce explicit release approval and Expo credentials
+        shell: bash
+        run: |
+          if [ "$RELEASE_CONFIRMATION" != 'PUBLISH_MAZIUM' ]; then
+            echo 'Incorrect confirmation. No release attempted.'
+            exit 1
+          fi
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo 'Expo credentials missing: configure EXPO_TOKEN as a GitHub Actions secret.'
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          # PR #415 is the exact approved, parity-tested mascot fix.
+          # Prevent unrelated later main-branch changes from being shipped.
+          ref: e9a89ac80d1660440b46f6a4427a4b9fc4911a97
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Confirm source matches approved MaziuM design
+        working-directory: .
+        run: node --test scripts/test-mazium-native-visual-parity.test.mjs
+      - name: Install and validate exact approved native code
+        run: |
+          npm ci
+          npm run typescript
+      - name: Inspect Expo runtime and release channel without publishing
+        shell: bash
+        run: |
+          node - "$EXPECTED_RUNTIME" <<'NODE'
+          const app = require('./app.json').expo;
+          const expected = process.argv[2];
+          if (!expected || app.runtimeVersion?.policy !== 'appVersion' || app.version !== expected ||
+              app.updates?.enabled !== true || app.updates?.requestHeaders?.['expo-channel-name'] !== 'production') {
+            console.error('Runtime or Expo channel differs from the requested compatible production build. Aborting.');
+            process.exit(1);
+          }
+          console.log('Validated matching Expo app runtime and production update configuration.');
+          NODE
+          npx --yes eas-cli@16.18.0 whoami
+          npx --yes eas-cli@16.18.0 channel:view production --json --non-interactive > "$RUNNER_TEMP/expo-production-channel.json"
+          npx --yes eas-cli@16.18.0 build:list --platform android --limit 50 --json --non-interactive > "$RUNNER_TEMP/expo-android-builds.json"
+          node - "$RUNNER_TEMP/expo-android-builds.json" "$EXPECTED_RUNTIME" <<'NODE'
+          const fs = require('fs');
+          const [filepath, expected] = process.argv.slice(2);
+          const body = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+          const builds = Array.isArray(body) ? body : body.builds ?? [];
+          // A matching signed production Android binary must exist before OTA is safe.
+          // Do not mistake a preview APK or other runtime for the installed production app.
+          const match = builds.find(b =>
+            b.status === 'FINISHED' && b.platform === 'ANDROID' &&
+            (b.channel === 'production' || b.buildProfile === 'production') &&
+            (b.runtimeVersion === expected || b.appVersion === expected)
+          );
+          if (!match) {
+            console.error('No finished matching production Android EAS build was found for runtime ' + expected + '. Refusing OTA.');
+            process.exit(1);
+          }
+          console.log('Matching Android production build metadata verified. EAS Build ID: ' + match.id);
+          NODE
+      - name: Publish approved MaziuM update to compatible Android production builds
+        shell: bash
+        run: |
+          # Deliberately Android-only; the pictured issue is on Android.
+          # A signed native binary rebuild is not needed for this bundled JS/image change
+          # if a compatible production binary is already installed.
+          npx --yes eas-cli@16.18.0 update --channel production --platform android --message 'Approved MaziuM website-matching icon - PR 415' --non-interactive --json > "$RUNNER_TEMP/mazium-ota-result.json"
+          node - "$RUNNER_TEMP/mazium-ota-result.json" <<'NODE'
+          const fs = require('fs');
+          const p = process.argv[2];
+          const result = JSON.parse(fs.readFileSync(p, 'utf8'));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '### Approved MaziuM Android OTA published\n' +
+            'Source: e9a89ac80d1660440b46f6a4427a4b9fc4911a97 (PR #415)\n' +
+            'Channel: production\n' +
+            'Runtime: ' + process.env.EXPECTED_RUNTIME + '\n' +
+            'Group/result: ' + JSON.stringify(result).slice(0, 1500) + '\n'
+          );
+          console.log('Expo returned an update result. Review Actions summary and EAS Update dashboard for rollout and rollback group.');
+          NODE
