@@ -116,6 +116,12 @@ interface AuthState {
   isAuthenticated: boolean;
   hasCompletedOnboarding: boolean;
   pendingEmailVerification: boolean;
+  /** Dedicated recovery session. Supabase emits SIGNED_IN while exchanging
+   * a recovery link; this state must win over the ordinary dashboard router. */
+  passwordRecoveryStatus: 'idle' | 'opening' | 'ready';
+  startPasswordRecovery: () => void;
+  finishPasswordRecovery: () => void;
+  clearPasswordRecovery: () => void;
   user: User | null;
   isLoading: boolean;
   role: PreviewRole;
@@ -171,6 +177,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // seen the carousel; an install that has will skip it after that first read.
   hasSeenIntro: false,
   pendingEmailVerification: false,
+  passwordRecoveryStatus: 'idle',
+  startPasswordRecovery: () => set({
+    passwordRecoveryStatus: 'opening',
+    pendingEmailVerification: false,
+    // A cold-start recovery link must reach the navigator even if another
+    // initial session check was still running.
+    authInitialized: true,
+  }),
+  finishPasswordRecovery: () => set((state) =>
+    state.passwordRecoveryStatus === 'opening'
+      ? { passwordRecoveryStatus: 'ready' }
+      : {}),
+  clearPasswordRecovery: () => set({ passwordRecoveryStatus: 'idle' }),
   user: null,
   isLoading: false,
   role: 'buyer' as PreviewRole,
@@ -192,7 +211,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   forceLogout: async () => {
     // Already signed out — nothing to tear down, and navigating would yank a
     // user who is legitimately sitting on the Login screen.
-    if (!get().isAuthenticated) return;
+    if (!get().isAuthenticated && get().passwordRecoveryStatus === 'idle') return;
 
     // Remember where they were before the stacks swap. getCurrentRoute() is
     // read now because RootNavigator is about to unmount the whole Main stack.
@@ -224,6 +243,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       isAuthenticated: false,
       pendingEmailVerification: false,
+      passwordRecoveryStatus: 'idle',
       user: null,
       role: 'buyer',
       accountRole: 'buyer',
@@ -264,6 +284,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (event === 'SIGNED_IN') {
+        // setSession/exchangeCodeForSession emits SIGNED_IN for recovery links
+        // before the password reset form is ready. Never bridge restricted
+        // recovery tokens into the backend or replace the recovery route.
+        if (get().passwordRecoveryStatus !== 'idle') return;
         resetAuthRedirectLatch();
         // VerifyEmailScreen runs its own SIGNED_IN handler so it can show a
         // spinner while the account is confirmed. Standing aside here avoids
@@ -274,6 +298,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (event === 'TOKEN_REFRESHED') {
+        if (get().passwordRecoveryStatus !== 'idle') return;
         // The backend session outlives a token refresh, so there is nothing to
         // re-bridge in the normal case. The one case worth catching is a
         // refresh arriving while local state thinks it is signed out — a cold
@@ -292,6 +317,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: (updates) => set((state) => ({ user: state.user ? { ...state.user, ...updates } : state.user })),
 
   initializeAuth: async (signupRole) => {
+    if (get().passwordRecoveryStatus !== 'idle') return;
     set({ isLoading: true });
     try {
       // Read first and unconditionally: the carousel gate matters precisely
@@ -300,6 +326,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ hasSeenIntro: introSeen === '1' });
 
       const { data: { session } } = await supabase.auth.getSession();
+      // Cold-start initialisation may have begun before Linking.getInitialURL
+      // identified this as a recovery link. Do not turn it into a normal login.
+      if (get().passwordRecoveryStatus !== 'idle') return;
       if (session?.user && session.access_token) {
         // Match web: no dashboard session is considered complete until the
         // Supabase email has actually been confirmed.
@@ -331,6 +360,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         // Fetch user profile info
+        if (get().passwordRecoveryStatus !== 'idle') return;
         let response = await apiClient<UserProfileResponse>('/users/me');
         if (response.success && response.data) {
           let profile = response.data;
@@ -355,6 +385,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
           }
 
+          if (get().passwordRecoveryStatus !== 'idle') return;
           const accountRole = mapAccountRole(profile.role);
           const mappedRole = previewRoleForAccount(accountRole);
           const hasCompletedOnboarding = hasRequiredAccountDetails(profile);
@@ -381,11 +412,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             },
           });
         }
-      } else {
+      } else if (get().passwordRecoveryStatus === 'idle') {
         set({ isAuthenticated: false, pendingEmailVerification: false, user: null });
       }
     } catch (err) {
       console.warn('Failed to initialize auth state:', err);
+      if (get().passwordRecoveryStatus !== 'idle') return;
       // Also reset role: a failed init must never leave a stale 'dealer'
       // preview-toggle value in memory (it would otherwise survive into the
       // next login/signup attempt and contaminate persisted account data).
@@ -639,6 +671,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         isAuthenticated: false,
         pendingEmailVerification: false,
+        passwordRecoveryStatus: 'idle',
         user: null,
         role: 'buyer',
         accountRole: 'buyer',
