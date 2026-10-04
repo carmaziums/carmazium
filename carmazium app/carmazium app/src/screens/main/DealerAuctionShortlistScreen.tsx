@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, RefreshControl, StatusBar,
+  ActivityIndicator, Alert, AppState, FlatList, RefreshControl, StatusBar,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -19,15 +19,29 @@ import { useWatchlistStore } from '../../store/watchlistStore';
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 type ViewMode = 'live' | 'all';
 const PAGE_SIZE = 12;
+const AUTO_REFRESH_MS = 20_000;
+
+function remainingUntil(iso: string, now: number): string {
+  const diff = new Date(iso).getTime() - now;
+  if (!Number.isFinite(diff) || diff <= 0) return 'Ended';
+  const mins = Math.ceil(diff / 60_000);
+  if (mins < 60) return mins + 'm left';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + 'h ' + (mins % 60) + 'm left';
+  return Math.floor(hours / 24) + 'd ' + (hours % 24) + 'h left';
+}
 
 const money = (value: number | string) =>
   '£' + Number(value).toLocaleString('en-GB', { maximumFractionDigits: 0 });
 
-const statusLabel = (item: ShortlistedAuction) => {
+const statusLabel = (item: ShortlistedAuction, now: number) => {
   const auction = item.listing.auction;
   if (!auction) return 'Unavailable';
-  if (auction.status === 'ACTIVE' && new Date(auction.endTime).getTime() <= Date.now()) return 'Ended';
-  return auction.status.charAt(0) + auction.status.slice(1).toLowerCase();
+  const live = item.listing.status === 'ACTIVE' && auction.status === 'ACTIVE' && new Date(auction.endTime).getTime() > now;
+  if (live) return 'LIVE';
+  if (auction.status === 'SCHEDULED' && new Date(auction.startTime).getTime() > now) return 'UPCOMING';
+  if (auction.status === 'CANCELLED') return 'CANCELLED';
+  return 'ENDED / UNAVAILABLE';
 };
 
 /** Uses the same dealer-only API and saved watchlist as the website. */
@@ -45,6 +59,7 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
   const requestId = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
@@ -57,7 +72,14 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
       if (request !== requestId.current) return;
       setItems(response.data);
       setTotal(response.pagination.total);
-      setTotalPages(Math.max(1, response.pagination.totalPages));
+      const nextTotalPages = Math.max(1, response.pagination.totalPages);
+      setTotalPages(nextTotalPages);
+      // Match the website: deleting the final item on page N must return to
+      // the last non-empty page instead of showing a false empty shortlist.
+      if (page > nextTotalPages) {
+        setPage(nextTotalPages);
+        return;
+      }
     } catch (err: any) {
       if (request === requestId.current) {
         setError(err?.message || 'Could not load shortlisted auctions.');
@@ -72,7 +94,20 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
 
   useFocusEffect(useCallback(() => {
     void load();
-    return () => { requestId.current += 1; };
+    // Website refreshes authoritative price/status every 20s. Do the same
+    // while this screen is focused and the app is foregrounded. Never poll
+    // an unfocused screen or wake a backgrounded phone unnecessarily.
+    const refreshTimer = setInterval(() => {
+      if (AppState.currentState === 'active') void load(true);
+    }, AUTO_REFRESH_MS);
+    const clockTimer = setInterval(() => {
+      if (AppState.currentState === 'active') setNow(Date.now());
+    }, 15_000);
+    return () => {
+      clearInterval(refreshTimer);
+      clearInterval(clockTimer);
+      requestId.current += 1;
+    };
   }, [load]));
 
   const changeView = (next: ViewMode) => {
@@ -124,7 +159,8 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
 
   const renderItem = ({ item }: { item: ShortlistedAuction }) => {
     const a = item.listing.auction;
-    const isLive = a?.status === 'ACTIVE' && new Date(a.endTime).getTime() > Date.now();
+    const isLive = item.listing.status === 'ACTIVE' && a?.status === 'ACTIVE' && new Date(a.endTime).getTime() > now;
+    const upcoming = a?.status === 'SCHEDULED' && new Date(a.startTime).getTime() > now;
     const highest = item.listing.bids[0]?.amount;
     const bidAmount = highest != null ? highest : a?.startingBid ?? 0;
     return (
@@ -149,14 +185,15 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
               {[item.listing.year, item.listing.mileage == null ? null : item.listing.mileage.toLocaleString('en-GB') + ' miles']
                 .filter(Boolean).join(' · ')}
             </Text>
-            <Text style={[styles.status, isLive && styles.liveStatus]}>{statusLabel(item)}</Text>
+            <Text style={[styles.status, isLive && styles.liveStatus]}>{statusLabel(item, now)}</Text>
             <Text style={styles.price}>{money(bidAmount)}</Text>
             <Text style={styles.meta}>
               {item.listing._count?.bids || 0} bids · {highest != null ? 'Current bid' : 'Starting bid'}
             </Text>
             {!!a && <Text style={styles.meta}>
-              {isLive ? 'Ends ' : 'Scheduled end '}
-              {new Date(a.endTime).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {isLive ? 'Ends in ' + remainingUntil(a.endTime, now)
+                : upcoming ? 'Starts in ' + remainingUntil(a.startTime, now)
+                  : statusLabel(item, now)}
             </Text>}
           </View>
         </TouchableOpacity>
@@ -179,7 +216,7 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
             onPress={() => a && void openAuction(a.id)}
           >
             {opening === a?.id && <ActivityIndicator size="small" color={Colors.textPrimary} />}
-            <Text style={styles.bidText}>{isLive ? 'Open to bid' : 'View auction'}</Text>
+            <Text style={styles.bidText}>{isLive ? 'Open auction to bid' : 'View auction'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -201,7 +238,7 @@ export const DealerAuctionShortlistScreen: React.FC = () => {
       <View style={styles.toolbar}>
         <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: view === 'live' }}
           style={[styles.pill, view === 'live' && styles.pillSelected]} onPress={() => changeView('live')}>
-          <Text style={[styles.pillText, view === 'live' && styles.pillTextSelected]}>Live</Text>
+          <Text style={[styles.pillText, view === 'live' && styles.pillTextSelected]}>Live to bid</Text>
         </TouchableOpacity>
         <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: view === 'all' }}
           style={[styles.pill, view === 'all' && styles.pillSelected]} onPress={() => changeView('all')}>
