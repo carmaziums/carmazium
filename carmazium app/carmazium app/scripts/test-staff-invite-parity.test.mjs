@@ -52,3 +52,31 @@ test('native and website offer the same Personal versus Dealer/Sole Trader signu
   assert.match(website, /id: "BUYER" as SignupRole/);
   assert.match(website, /id: "DEALER" as SignupRole/);
 });
+
+test('login entry points support password, Google and Apple on both clients', () => {
+  const web = read('../../src/app/auth/login/page.tsx');
+  const mobile = read('src/screens/auth/LoginScreen.tsx');
+  assert.match(web, /signInWithPassword\(/);
+  assert.match(web, /provider: "google"/);
+  assert.match(web, /provider: "apple"/);
+  assert.match(mobile, /'google' \| 'apple'/);
+  assert.match(mobile, /signInWithOAuth\(/);
+});
+
+test('both clients offer password-recovery email requests, without claiming reset-callback QA', () => {
+  const web = read('../../src/app/auth/forgot-password/page.tsx');
+  const mobile = read('src/screens/auth/ForgotPasswordScreen.tsx');
+  assert.match(web, /resetPasswordForEmail\(/);
+  assert.match(web, /auth\/callback\?redirect_to=\/auth\/reset-password/);
+  assert.match(mobile, /resetPasswordForEmail\(/);
+  assert.match(mobile, /carmazium:\/\/reset-password/);
+});
+
+test('both clients require typed DELETE and submit to the authenticated account endpoint', () => {
+  const web = read('../../src/components/dashboard/DeleteAccountSection.tsx');
+  const mobile = read('src/screens/main/SettingsScreen.tsx');
+  assert.match(web, /confirmText\.trim\(\)\.toUpperCase\(\) !== "DELETE"/);
+  assert.match(mobile, /deleteConfirmText\.trim\(\)\.toUpperCase\(\) === 'DELETE'/);
+  assert.match(mobile, /method: 'DELETE'/);
+  assert.match(mobile, /confirmation: 'DELETE'/);
+});
