@@ -117,7 +117,10 @@ export const AcceptInviteScreen: React.FC = () => {
             </View>
             <Text style={styles.successText}>{successMessage}</Text>
             <View style={{ marginTop: 24, width: '100%' }}>
-              <Button label="GO TO DASHBOARD" onPress={() => navigation.navigate('SellerDashboard')} size="lg" fullWidth />
+              // Match web: accepting a dealer-team invite leads to the dealer workspace,
+              // not the generic seller listing dashboard. Profile dynamically
+              // renders DealerProfile for the refreshed DEALER account role.
+              <Button label="GO TO DASHBOARD" onPress={() => navigation.navigate('Tabs', { screen: 'Profile' })} size="lg" fullWidth />
             </View>
           </View>
         ) : (
