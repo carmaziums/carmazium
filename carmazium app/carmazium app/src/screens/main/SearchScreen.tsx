@@ -16,7 +16,6 @@ import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
-import { haversineDistanceMiles } from '../../lib/distance';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
@@ -113,6 +112,7 @@ const SORT_OPTIONS = [
   { id: 'mileage_desc', label: 'Mileage: high → low' },
   { id: 'year_asc', label: 'Year: oldest first' },
   { id: 'year_desc', label: 'Year: newest first' },
+  { id: 'distance_asc', label: 'Distance: closest first' },
 ];
 const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'];
 const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
@@ -319,6 +319,10 @@ export const SearchScreen: React.FC = () => {
   // ── Build API params ──
 
   function buildParams(p = 1) {
+    if (maxDistanceMi != null && (userLat == null || userLng == null ||
+        !Number.isFinite(userLat) || !Number.isFinite(userLng))) {
+      throw new Error('Enter a valid postcode before searching by distance.');
+    }
     const qf = QUICK_FILTERS.find(f => f.id === quickFilter);
     const parseMi = (s: string) => {
       if (s === 'Any') return undefined;
@@ -330,6 +334,9 @@ export const SearchScreen: React.FC = () => {
       model: modelFilter.trim() || undefined,
       vehicleType: vehicleType || undefined,
       location: locationFilter.trim() || undefined,
+      latitude: maxDistanceMi != null ? userLat! : undefined,
+      longitude: maxDistanceMi != null ? userLng! : undefined,
+      maxDistanceMi: maxDistanceMi ?? undefined,
       maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
       minPrice: minPrice > 0 ? minPrice : undefined,
       bodyType: selectedBody || qf?.params.bodyType,
@@ -373,19 +380,9 @@ export const SearchScreen: React.FC = () => {
     const p = reset ? 1 : page;
     try {
       const { listings: rawItems, total: t } = await searchListings(buildParams(p));
-      // Backend has no lat/lng/radius filter param — same client-side
-      // haversine filter+sort web's search page does on the already-fetched
-      // page (doesn't reach across pagination, matching web's actual, if
-      // imperfect, behavior).
-      let items = rawItems;
-      if (maxDistanceMi != null && userLat != null && userLng != null) {
-        items = rawItems
-          .filter(l => l.latitude != null && l.longitude != null &&
-            haversineDistanceMiles(userLat, userLng, l.latitude, l.longitude) <= maxDistanceMi)
-          .sort((a, b) =>
-            haversineDistanceMiles(userLat, userLng, a.latitude!, a.longitude!) -
-            haversineDistanceMiles(userLat, userLng, b.latitude!, b.longitude!));
-      }
+      // Full-inventory radius filtering, true count and "closest first"
+      // pagination now come directly from the authoritative backend.
+      const items = rawItems;
       if (reset) {
         setListings(items);
         setPage(2);
@@ -395,7 +392,7 @@ export const SearchScreen: React.FC = () => {
         setPage(prev => prev + 1);
         setTotal(t);
       }
-      setHasMore(rawItems.length === 20);
+      setHasMore(p * 20 < t);
     } catch {
       // keep existing
     } finally {
@@ -712,7 +709,8 @@ export const SearchScreen: React.FC = () => {
         {/* Sort dropdown */}
         {showSortMenu && (
           <View style={s.sortDropdown}>
-            {SORT_OPTIONS.map(o => (
+            {SORT_OPTIONS.filter(o => o.id !== 'distance_asc' ||
+              (maxDistanceMi != null && userLat != null && userLng != null)).map(o => (
               <TouchableOpacity
                 key={o.id}
                 style={[s.sortOption, o.id === sortId && s.sortOptionActive]}
@@ -1434,7 +1432,11 @@ export const SearchScreen: React.FC = () => {
         <View style={{ padding: 8 }}>
           <TouchableOpacity
             style={[s.sortOption, maxDistanceMi == null && s.sortOptionActive]}
-            onPress={() => { setMaxDistanceMi(null); setDistancePickerVisible(false); }}
+            onPress={() => {
+              setMaxDistanceMi(null);
+              if (sortId === 'distance_asc') setSortId('newest');
+              setDistancePickerVisible(false);
+            }}
             activeOpacity={0.7}
           >
             <Text style={[s.sortOptionText, maxDistanceMi == null && { color: Colors.accent }]}>Any distance</Text>
@@ -1444,7 +1446,11 @@ export const SearchScreen: React.FC = () => {
             <TouchableOpacity
               key={mi}
               style={[s.sortOption, maxDistanceMi === mi && s.sortOptionActive]}
-              onPress={() => { setMaxDistanceMi(mi); setDistancePickerVisible(false); }}
+              onPress={() => {
+                setMaxDistanceMi(mi);
+                if (sortId === 'newest') setSortId('distance_asc');
+                setDistancePickerVisible(false);
+              }}
               activeOpacity={0.7}
             >
               <Text style={[s.sortOptionText, maxDistanceMi === mi && { color: Colors.accent }]}>{mi} mi</Text>
