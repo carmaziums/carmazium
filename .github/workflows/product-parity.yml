@@ -61,6 +61,8 @@ jobs:
           cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
       - run: npm ci
       - run: npm run typescript
+      - name: Runtime test: native saved-auction state and account isolation
+        run: node --test scripts/test-auction-shortlist-state.test.mjs
 
   backend-typecheck:
     name: Backend typecheck
