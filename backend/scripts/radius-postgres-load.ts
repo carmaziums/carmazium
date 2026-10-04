@@ -13,6 +13,15 @@ import { randomUUID } from 'node:crypto';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { ListingsService } from '../src/listings/listings.service';
 import { distanceMiles, radiusBoundingBox } from '../src/listings/listing-radius-search';
+import { Test } from '@nestjs/testing';
+import { ValidationPipe } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { ListingsController } from '../src/listings/listings.controller';
+import { SessionAuthGuard } from '../src/auth/guards/session-auth.guard';
+import { OptionalSessionAuthGuard } from '../src/auth/guards/optional-session-auth.guard';
+import { TradeListingAccessGuard } from '../src/auctions/trade-access.guard';
+// CJS form deliberately matches the backend's ts-node execution mode.
+const http = require('supertest') as typeof import('supertest');
 
 type SeedRow = {
   id: string;
@@ -35,6 +44,15 @@ if (!['127.0.0.1', 'localhost'].includes(url.hostname) ||
 }
 
 const prisma = new PrismaClient();
+// Clearly fictional sentinel values; HTTP response assertions ensure the
+// public API never exposes account/payment credentials or negotiation ranges.
+const fakeSeller = {
+  id: randomUUID(), email: 'radius-privacy-canary@example.invalid',
+  passwordHash: 'PRIVATE_HASH_CANARY',
+  phone: 'PRIVATE_PHONE_CANARY',
+  bankAccountNumber: 'PRIVATE_BANK_CANARY',
+  role: 'BUYER' as const, firstName: 'Synthetic', lastName: 'Seller',
+};
 const sample: SeedRow[] = [];
 const city = [
   { name: 'London', lat: 51.5074, lng: -0.1278 },
@@ -81,6 +99,7 @@ async function seed() {
   // local test database. CI always starts from an empty postgres service.
   const existing = await prisma.listing.count();
   assert(existing === 0, 'refusing to seed nonempty database');
+  await prisma.user.create({ data: fakeSeller });
   for (let i = 0; i < 8400; i++) {
     const centre = city[i % city.length];
     const lat = centre.lat + (((i * 13) % 71) - 35) * .006;
@@ -104,6 +123,7 @@ async function seed() {
         data: rows.map(r => ({
           id: r.id, title: 'Synthetic geography load test', slug: 'synthetic-radius-' + r.id,
           price: r.price, make: r.make, model: 'Synthetic',
+          sellerId: fakeSeller.id, priceMin: 100, priceMax: 999999,
           type: r.type, status: r.status, isFeatured: r.isFeatured,
           images: [], videoUrls: [], latitude: r.latitude,
           longitude: r.longitude, deletedAt: r.deletedAt,
@@ -174,6 +194,99 @@ async function exercise(label: string, coordinates: { lat: number; lng: number }
   audit.push({ label, radius, expected: expected.length, firstMs, nearestMs });
 }
 
+async function exercisePublicHttp() {
+  // The production route and its DTO validation execute inside Nest's real
+  // HTTP adapter. Only non-geographic, unrelated guards are replaced so the
+  // full application does not require Stripe, Redis or production sessions.
+  const module = await Test.createTestingModule({
+    controllers: [ListingsController],
+    providers: [{ provide: ListingsService, useValue: service }],
+  })
+    .overrideGuard(SessionAuthGuard).useValue({ canActivate: () => false })
+    .overrideGuard(OptionalSessionAuthGuard).useValue({ canActivate: () => true })
+    .overrideGuard(TradeListingAccessGuard).useValue({ canActivate: () => false })
+    .overrideGuard(ThrottlerGuard).useValue({ canActivate: () => true })
+    .compile();
+  const app = module.createNestApplication();
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+    transformOptions: { enableImplicitConversion: true },
+  }));
+  await app.init();
+  const agent = http(app.getHttpServer());
+  let checked = 0;
+  try {
+    for (const site of [city[0], city[1], city[2]]) {
+      const opts = { latitude: site.lat, longitude: site.lng, maxDistanceMi: 25 };
+      const expected = expectedMatches(site.lat, site.lng, 25);
+      const result = await agent.get('/listings').query({ ...opts, page: 1, limit: 20 });
+      assert(result.status === 200, site.name + ' guest radius HTTP 200, got ' + result.status);
+      assert(result.body?.success === true, 'public pagination response success');
+      assert(result.body.pagination.total === expected.length, site.name + ' HTTP count');
+      assert(result.body.pagination.totalPages === Math.ceil(expected.length / 20),
+        site.name + ' HTTP total pages');
+      assert(result.body.data.every((row: any) => expected.some(x => x.id === row.id)),
+        site.name + ' guest page has only authorized eligible results');
+      // All synthetic listings have the same fake owner and confidential
+      // negotiation limits. Confirm they are deliberately omitted, not just
+      // absent because a fixture failed to create a seller row.
+      assert(result.body.data.length > 0, site.name + ' radius fixture has no rows');
+      for (const listing of result.body.data) {
+        assert(listing.seller?.id === fakeSeller.id, 'expected privacy canary seller');
+        for (const prop of ['email', 'phone', 'passwordHash',
+                            'bankAccountNumber', 'bankSortCode']) {
+          assert(listing.seller[prop] === undefined, 'public seller leaked ' + prop);
+        }
+        assert(listing.priceMin === undefined && listing.priceMax === undefined,
+          'public listing exposed confidential negotiation limits');
+      }
+      const all = JSON.stringify(result.body);
+      assert(!all.includes('PRIVATE_') && !all.includes(fakeSeller.email),
+        site.name + ' sensitive canary found in HTTP response');
+      if (expected.length > 20) {
+        const second = await agent.get('/listings').query({ ...opts, page: 2, limit: 20 });
+        assert(second.status === 200, site.name + ' page2 HTTP code');
+        assert(second.body.pagination.total === result.body.pagination.total,
+          site.name + ' HTTP pagination inconsistent');
+        const firstIds = new Set(result.body.data.map((x: any) => x.id));
+        assert(second.body.data.every((x: any) => !firstIds.has(x.id)),
+          site.name + ' HTTP duplicate across two pages');
+      }
+      checked++;
+    }
+    // Real route-level protections: direct ?listingType=AUCTION cannot
+    // turn an anonymous public request into a Trade Exchange inventory feed.
+    const trade = await agent.get('/listings')
+      .query({ listingType: 'AUCTION', ...{ latitude: city[0].lat,
+        longitude: city[0].lng, maxDistanceMi: 25 } });
+    assert(trade.status === 403, 'guest auction query should be forbidden');
+    checked++;
+    const invalid = [
+      { latitude: 51.5, maxDistanceMi: 25 }, // missing longitude
+      { latitude: 'not-a-number', longitude: -0.12, maxDistanceMi: 25 },
+      { latitude: 51.5, longitude: -0.12, maxDistanceMi: -1 },
+      { latitude: 51.5, longitude: -0.12, maxDistanceMi: 201 },
+      { latitude: 94, longitude: -0.12, maxDistanceMi: 25 },
+    ];
+    for (const params of invalid) {
+      const rejected = await agent.get('/listings').query(params);
+      assert(rejected.status === 400,
+        'HTTP query validation returned ' + rejected.status + ' for ' + JSON.stringify(params));
+      checked++;
+    }
+    console.log('RADIUS_PUBLIC_HTTP_ACCEPTANCE', JSON.stringify({
+      cases: checked, guestRadiusCities: ['London', 'Birmingham', 'Manchester'],
+      privacy: 'seller email/phone/bank/password and listing negotiation limits absent',
+      tradeAuction: 'anonymous forbidden', malformedOrIncompleteRadius: 'HTTP 400',
+      response: 'real NestJS controller + ValidationPipe + actual Prisma service',
+    }));
+  } finally {
+    await app.close();
+  }
+}
+
 async function explainSql() {
   const centre = city[0], bbox = radiusBoundingBox({
     latitude: centre.lat, longitude: centre.lng, maxDistanceMi: 100,
@@ -210,6 +323,7 @@ async function main() {
       }
     }
     await exercise('London Honda under £10k', city[0], 100, { make: 'Honda', maxPrice: 10000 });
+    await exercisePublicHttp();
     await explainSql();
     const sorted = [...audit].sort((a, b) =>
       Number(b.nearestMs) - Number(a.nearestMs));
