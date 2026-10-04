@@ -52,7 +52,7 @@ export async function addAuctionToShortlist(listingId: string): Promise<void> {
     } catch (error: any) {
         // Already saved in another web/native session: the desired final
         // state is saved. Other errors (especially 403 KYC) still surface.
-        if (/(?:\\b409\\b|already in watchlist)/i.test(String(error?.message ?? ""))) return
+        if (/(?:\b409\b|already in watchlist)/i.test(String(error?.message ?? ""))) return
         throw error
     }
 }
@@ -62,7 +62,7 @@ export async function removeAuctionFromShortlist(listingId: string): Promise<voi
         await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: "DELETE" })
     } catch (error: any) {
         // Another device already removed it: preserve not-saved end state.
-        if (/(?:\\b404\\b|not shortlisted)/i.test(String(error?.message ?? ""))) return
+        if (/(?:\b404\b|not shortlisted)/i.test(String(error?.message ?? ""))) return
         throw error
     }
 }
