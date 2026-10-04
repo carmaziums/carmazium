@@ -8,8 +8,13 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const compile = path => ts.transpileModule(read(path), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+// Cross-realm Promise queues (transpiled store runs in VM) need an event-loop
+// checkpoint, not an arbitrary number of microtask awaits. Drain both the
+// network operation and its catch/finally rollback chain before assertions.
 const flush = async () => {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
+  for (let i = 0; i < 3; i++) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
 };
 function deferred() {
   let resolve, reject;
