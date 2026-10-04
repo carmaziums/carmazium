@@ -121,7 +121,7 @@ test('force-logout clears a recovery session even before normal login', async ()
 
 test('root recovery screen takes precedence over pending verification, auth and dashboard', () => {
   const root = read('src/navigation/RootNavigator.tsx');
-  const app = read('../../App.tsx');
+  const app = read('App.tsx');
   const reset = read('src/screens/auth/ResetPasswordScreen.tsx');
   assert.ok(root.indexOf("{passwordRecoveryStatus !== 'idle' ? (") <
             root.indexOf(") : pendingEmailVerification ? ("), 'Recovery route must win over all other root states');
@@ -133,7 +133,7 @@ test('root recovery screen takes precedence over pending verification, auth and 
 });
 
 test('implicit and PKCE recovery are selected before opening Supabase sessions', () => {
-  const app = read('../../App.tsx');
+  const app = read('App.tsx');
   assert.match(app, /type === 'recovery'/);
   assert.match(app, /reset-password/);
   assert.match(app, /if \(recoveryFlow\) auth\.startPasswordRecovery\(\)/);
