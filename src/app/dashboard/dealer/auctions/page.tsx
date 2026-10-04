@@ -409,6 +409,12 @@ function DealerAuctionsPage() {
                                 Live Auctions
                             </Link>
                             <Link
+                                href="/dashboard/dealer/auctions/shortlisted"
+                                className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
+                            >
+                                <Star size={16} /> Shortlisted
+                            </Link>
+                            <Link
                                 href="/dashboard/dealer/bids"
                                 className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
                             >
