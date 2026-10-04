@@ -100,6 +100,8 @@ test('slow hydration stops pagination and cannot re-fill a signed-out account', 
   let pages = 0;
   const s = harness({ getWatchlist: async () => { pages += 1; return olderRequest.promise; } });
   const loading = s.getState().hydrateFromApi();
+  await tick(); // Wait until /watchlist is in flight, not merely scheduled.
+  assert.equal(pages, 1);
   s.getState().reset();
   olderRequest.resolve(page([item('prior')], 52));
   await loading;
@@ -286,7 +288,6 @@ test('queued prior-account removals never execute after sign-out', async () => {
 });
 
 test('404 on removal is idempotent, other server errors remain failures', async () => {
-  const missing = watchlistApiHarness({ success: true, data: [], pagination: { total: 0 } });
   // Use compiled API client and inject the DELETE response/error separately.
   const src = readFileSync(new URL('../src/lib/watchlistApi.ts', import.meta.url), 'utf8');
   const compiledApi = ts.transpileModule(src, {
