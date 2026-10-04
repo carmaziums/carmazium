@@ -19,7 +19,7 @@
 
 - PR #419: accepted dealer invite now opens the real dealer workspace (`Tabs > Profile`) after `initializeAuth()` refreshes backend role. The backend's matching-email check remains authoritative; no privilege is granted by native navigation alone.
 - PR #419: displayed native signup choices now match website's Personal Account and Dealer / Sole Trader / Partner Account language without changing signup role IDs.
-- `scripts/test-password-recovery-parity.test.mjs`: eight additional checks (four in-process auth-store lifecycle/late-initialization scenarios and four source-contract coverage cases) for recovery-only routing, implicit/PKCE ordering, minimum password policy and signout cancellation. Runs in Mobile Listing CI, One Product Parity and Release Certification.
+- `scripts/test-password-recovery-parity.test.mjs`: ten additional checks covering in-process auth lifecycle, cold-start races, previously signed-in dealer isolation, late signout events and timeout behaviour, plus source-contract coverage for recovery-only routing, implicit/PKCE ordering, minimum password policy and signout cancellation. Runs in Mobile Listing CI, One Product Parity and Release Certification.
 - `scripts/test-staff-invite-parity.test.mjs`: eight source-contract checks for invite identity/destination, website correspondence, server membership guard, signup options, login providers, recovery email requests and deletion confirmation. Wired into Mobile Listing CI. These are source-contract tests and cannot replace real signed-device tests.
 
 ## Manual and integration acceptance, still NOT TESTED
