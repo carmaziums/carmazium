@@ -181,6 +181,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   startPasswordRecovery: () => set({
     passwordRecoveryStatus: 'opening',
     pendingEmailVerification: false,
+    // Recovery links can target a different account from the session already
+    // open on this device. Never display that prior user's private dashboard
+    // or retain role-based privileges while the reset is in progress.
+    isAuthenticated: false,
+    user: null,
+    role: 'buyer',
+    accountRole: 'buyer',
+    hasCompletedOnboarding: false,
+    postLoginRedirect: null,
     // A cold-start recovery link must reach the navigator even if another
     // initial session check was still running.
     authInitialized: true,
@@ -268,6 +277,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const state = get();
 
       if (event === 'SIGNED_OUT') {
+        // Late recovery exchange cleanup signs out deliberately while the
+        // isolated recovery route is still active. Do not re-enter forceLogout.
+        if (get().passwordRecoveryStatus !== 'idle') return;
         // Fired by a remote sign-out, or by our own logout()/forceLogout().
         // Guarded so it is a no-op in the latter case rather than a second
         // teardown racing the first.
