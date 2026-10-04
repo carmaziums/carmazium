@@ -2091,6 +2091,52 @@ describe('ListingsService', () => {
             expect(prisma.listing.findMany).not.toHaveBeenCalled();
         });
 
+        it('handles 4,000 deterministic candidates and page 2 without dropping later-page matches', async () => {
+            const rows = Array.from({ length: 4000 }, (_, index) => ({
+                id: String(index).padStart(6, '0'),
+                latitude: index % 4 === 0 ? 51.51 : 52.7,
+                longitude: -0.13,
+            }));
+            const exact = rows.filter(row => row.latitude === 51.51);
+            prisma.listing.findMany.mockImplementation(async ({ select, cursor, take, where, skip }: any) => {
+                if (select?.latitude) {
+                    const from = cursor ? rows.findIndex(row => row.id === cursor.id) + 1 : 0;
+                    // Simulate the database returning bounded coordinate
+                    // batches. Non-matching points test spherical refinement.
+                    return rows.slice(from, from + take);
+                }
+                const eligible = new Set(where.id.in);
+                return exact.filter(row => eligible.has(row.id)).slice(skip, skip + take);
+            });
+            prisma.listing.count.mockImplementation(async ({ where }: any) => where.id.in.length);
+            const result = await service.findAll({
+                ...centre, maxDistanceMi: 10, page: 2, limit: 20,
+            });
+            expect(result.total).toBe(1000);
+            expect(result.data.map(row => row.id)).toEqual(exact.slice(20, 40).map(row => row.id));
+            expect(prisma.listing.findMany.mock.calls.filter(([args]: any[]) => args.select?.latitude))
+                .toHaveLength(11); // Ten 400-row pages + final empty page.
+            const eligible = prisma.listing.count.mock.calls[0][0].where.id.in;
+            expect(eligible).toHaveLength(1000);
+            expect(eligible).toContain('003996'); // matching car in final scan batch
+        });
+
+        it('fails explicitly rather than returning an incomplete result after the candidate safety cap', async () => {
+            prisma.listing.findMany.mockImplementation(async ({ select, cursor, take }: any) => {
+                if (!select?.latitude) throw new Error('Should never run final query after safety failure');
+                const from = cursor ? Number(cursor.id) + 1 : 0;
+                return Array.from({ length: take }, (_, index) => ({
+                    id: String(from + index).padStart(6, '0'),
+                    latitude: centre.latitude, longitude: centre.longitude,
+                }));
+            });
+            await expect(service.findAll({
+                ...centre, maxDistanceMi: 200, page: 1, limit: 20,
+            })).rejects.toThrow('Too many nearby candidates');
+            expect(prisma.listing.count).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany.mock.calls.length).toBe(51);
+        });
+
         it('preserves the historical non-geographic query path without extra scans', async () => {
             prisma.listing.findMany.mockResolvedValue([]);
             prisma.listing.count.mockResolvedValue(0);
