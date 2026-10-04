@@ -31,3 +31,11 @@ Client-side Google Ads/GA4 emissions require the user's browser to reach the suc
 ## Rollback
 
 The legacy `listing_fee_paid` action and label have not changed. To disable only the new Ads event immediately, remove `NEXT_PUBLIC_GADS_LABEL_QUALIFIED_SELLER` from Vercel and redeploy; then switch Google Ads Primary back to `Listing Fee Paid` if it had been changed. The feature branch/merge commit can be reverted independently without data migrations.
+
+## Google Tag Manager ownership migration — 4 October 2026
+
+- The owner created and published the replacement container **GTM-KK242C67**, version **2** ("CarMazium Google Tracking V1"). It contains a Google Tag for the existing GA4 measurement `G-MR12LCBSXY` using `send_page_view=false`, firing on **Initialization — All Pages**, and a Google Ads Conversion Linker firing on **All Pages**.
+- Vercel's `NEXT_PUBLIC_GTM_ID` environment value was updated from **GTM-PVHM3RR2** to **GTM-KK242C67**, retaining both original environment targets (production and preview). This documentation commit forces a fresh Next.js deployment so the new public GTM ID is embedded in the generated JavaScript.
+- Retain old **GTM-PVHM3RR2** as the exact rollback value until live Tag Assistant confirms the new container and Google Ads/GA4 destinations. Do not delete the old container until the replacement is verified.
+- The existing qualified seller Google Ads conversion ID/label and existing paid-listing conversion remain unchanged. The new action must stay **Secondary** until real successful seller listing signals are verified. No test or artificial listing should be counted as a business conversion.
+- After the new deployment is READY, check Tag Assistant using the owner's account, validate that both GA4 `G-MR12LCBSXY` and Google Ads `AW-18328618718` destinations load once and consent defaults precede tags, and confirm Google Ads reports a real qualified seller listing. A published GTM version and a READY deployment alone do **not** prove the entire attribution pipeline.
