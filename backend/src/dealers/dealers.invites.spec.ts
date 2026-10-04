@@ -38,7 +38,7 @@ describe('Dealership invitations — opt-in and expiry policy', () => {
             $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
         };
         email = {
-            sendStaffInviteEmail: jest.fn().mockResolvedValue(undefined),
+            sendStaffInviteEmail: jest.fn().mockResolvedValue({ id: 'mock-mail-provider-id' }),
             sendStaffAddedEmail: jest.fn().mockResolvedValue(undefined),
         };
         notifications = { create: jest.fn().mockResolvedValue({}) };
@@ -133,6 +133,15 @@ describe('Dealership invitations — opt-in and expiry policy', () => {
             where: { id: invite.id, token: invite.token },
         });
         expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('also treats a null EmailService delivery result as failed and permits a safe retry', async () => {
+        email.sendStaffInviteEmail.mockResolvedValue(null);
+        await expect(send()).rejects.toThrow('Could not email the invitation');
+        const created = await prisma.dealerInvite.create.mock.results[0].value;
+        expect(prisma.dealerInvite.deleteMany).toHaveBeenCalledWith({
+            where: { id: created.id, token: created.token },
+        });
     });
 
     it('rejects a dealer staff member without MANAGE_TEAM permissions', async () => {
