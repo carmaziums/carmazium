@@ -419,7 +419,7 @@ export async function searchListings(params: {
   sortBy?: string;
   page?: number;
   limit?: number;
-}): Promise<{ listings: CarListing[]; total: number }> {
+}, options: { propagateErrors?: boolean } = {}): Promise<{ listings: CarListing[]; total: number }> {
   try {
     const query = new URLSearchParams();
 
@@ -480,12 +480,20 @@ export async function searchListings(params: {
       `/listings${qs ? `?${qs}` : ''}`
     );
 
+    if (options.propagateErrors &&
+        (!Array.isArray(res?.data) || !res?.pagination ||
+          !Number.isFinite(res.pagination.total))) {
+      throw new Error('Could not load vehicle results. Please retry.');
+    }
     const items = Array.isArray(res?.data) ? res.data : [];
     return {
       listings: items.map(mapApiListingToCarListing),
       total: res?.pagination?.total ?? 0,
     };
-  } catch {
+  } catch (error) {
+    // Public Search must distinguish a true zero-result search from a lost
+    // connection. Other callers keep their previous best-effort behaviour.
+    if (options.propagateErrors) throw error;
     return { listings: [], total: 0 };
   }
 }
