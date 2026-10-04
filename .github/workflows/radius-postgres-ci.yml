@@ -7,6 +7,7 @@ on:
       - 'backend/src/listings/**'
       - 'backend/prisma/schema.prisma'
       - 'backend/scripts/radius-postgres-load.ts'
+      - 'backend/scripts/watchlist-cross-client-postgres.ts'
       - 'docs/ONE_PRODUCT_BLOCK3_RADIUS_SEARCH_AUDIT.md'
       - 'backend/package*.json'
       - '.github/workflows/radius-postgres-ci.yml'
@@ -62,3 +63,5 @@ jobs:
         run: npx prisma db push --skip-generate
       - name: Verify genuine PostgreSQL query, synthetic counts, pagination and EXPLAIN
         run: npx ts-node --transpile-only scripts/radius-postgres-load.ts
+      - name: Verify shared web/native Saved Cars via actual account-bound HTTP + PostgreSQL
+        run: npx ts-node --transpile-only scripts/watchlist-cross-client-postgres.ts
