@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -122,6 +122,19 @@
       ],
       "mobile": [
         "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "marketplace.saved_cars",
+      "web": [
+        "src/app/dashboard/buyer/watchlist/page.tsx",
+        "src/lib/listingApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/SavedScreen.tsx",
+        "carmazium app/carmazium app/src/store/watchlistStore.ts",
+        "carmazium app/carmazium app/src/lib/watchlistApi.ts"
       ],
       "status": "required"
     },
