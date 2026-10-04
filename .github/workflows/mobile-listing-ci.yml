@@ -22,6 +22,7 @@ on:
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
       - "carmazium app/carmazium app/src/screens/main/SearchScreen.tsx"
       - "scripts/test-radius-search-parity.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-radius-search-native.test.mjs"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
       - "carmazium app/carmazium app/src/lib/storageHelper.ts"
       - "carmazium app/carmazium app/src/lib/vehicleImageMetadata.ts"
@@ -57,6 +58,8 @@ jobs:
 
       - name: Radius search website/backend/native contract
         run: node --test ../../scripts/test-radius-search-parity.test.mjs
+      - name: Execute native radius API and stale-query failure regression
+        run: node --test scripts/test-radius-search-native.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash
