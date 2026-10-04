@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
@@ -6,6 +7,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { MainStackNavigator, MainStackParamList } from './MainStackNavigator';
 import { PostSignupOnboardingScreen } from '../screens/auth/PostSignupOnboardingScreen';
 import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
+import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { Colors } from '../constants/colors';
 import { navigationRef } from '../lib/navigationRef';
 
@@ -13,23 +15,47 @@ export type RootStackParamList = {
   Auth: undefined;
   VerifyEmail: undefined;
   PostSignupOnboarding: undefined;
+  PasswordRecovery: undefined;
   Main: NavigatorScreenParams<MainStackParamList> | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// A recovery link creates a Supabase session before ordinary auth hydration
+// can finish. Give recovery its own root route: Auth and Main are mutually
+// exclusive, so navigating to Auth > ResetPassword after a timeout can
+// silently target an unmounted stack or be replaced by the home dashboard.
+const PasswordRecoveryRoute: React.FC = () => {
+  const status = useAuthStore((s) => s.passwordRecoveryStatus);
+  if (status !== 'ready') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgPrimary }}>
+        <ActivityIndicator size="large" color={Colors.accent} />
+        <Text style={{ color: Colors.textPrimary, marginTop: 16 }}>Opening secure password reset…</Text>
+      </View>
+    );
+  }
+  // ResetPasswordScreen signs out after a successful reset. The root then
+  // automatically replaces this route with Auth; no stale navigate('Login').
+  return <ResetPasswordScreen isRootRecovery />;
+};
+
 export const RootNavigator: React.FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const pendingEmailVerification = useAuthStore((s) => s.pendingEmailVerification);
+  const passwordRecoveryStatus = useAuthStore((s) => s.passwordRecoveryStatus);
   const postLoginRedirect = useAuthStore((s) => s.postLoginRedirect);
+  const pendingDealerInviteToken = useAuthStore((s) => s.pendingDealerInviteToken);
+  const clearDealerInviteToken = useAuthStore((s) => s.clearDealerInviteToken);
   const consumePostLoginRedirect = useAuthStore((s) => s.consumePostLoginRedirect);
 
   // Restore the screen the user was on when their session expired, once the
   // Main stack actually exists to navigate within (AUTH-034). Web does this
   // with `?redirect=`; here the destination is captured in forceLogout() and
   // consumed exactly once.
-  const canRestore = isAuthenticated && hasCompletedOnboarding && !!postLoginRedirect;
+  const canRestore = isAuthenticated && hasCompletedOnboarding &&
+    passwordRecoveryStatus === 'idle' && !pendingDealerInviteToken && !!postLoginRedirect;
   useEffect(() => {
     if (!canRestore) return;
     // One frame after the stack swap: navigating in the same tick targets the
@@ -51,6 +77,44 @@ export const RootNavigator: React.FC = () => {
     return () => clearTimeout(id);
   }, [canRestore, consumePostLoginRedirect]);
 
+  // Website preserves /auth/accept-invite?token=... through its login redirect.
+  // Native must do the same, but Auth and Main are mutually exclusive roots:
+  // dispatch only when this account is signed in, has completed onboarding,
+  // and the Main navigator has actually mounted.
+  const canOpenInvite = isAuthenticated && hasCompletedOnboarding &&
+    passwordRecoveryStatus === 'idle' && !!pendingDealerInviteToken;
+  useEffect(() => {
+    if (!canOpenInvite || !pendingDealerInviteToken) return;
+    let canceled = false;
+    let retries = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const openWhenReady = () => {
+      if (canceled) return;
+      if (!navigationRef.isReady()) {
+        if (++retries < 20) timer = setTimeout(openWhenReady, 250);
+        return;
+      }
+      try {
+        (navigationRef.navigate as (name: string, params?: object) => void)(
+          'Main', { screen: 'AcceptInvite', params: { token: pendingDealerInviteToken } },
+        );
+        // An expired-session return route must never override this new
+        // explicit invitation after navigating to the target screen.
+        consumePostLoginRedirect();
+        clearDealerInviteToken();
+      } catch {
+        // Keep the pending token: the user may recover through the manual
+        // paste option if this exact native navigation is unavailable.
+      }
+    };
+    timer = setTimeout(openWhenReady, 250);
+    return () => {
+      canceled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [canOpenInvite, pendingDealerInviteToken,
+      consumePostLoginRedirect, clearDealerInviteToken]);
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -59,7 +123,9 @@ export const RootNavigator: React.FC = () => {
         contentStyle: { backgroundColor: Colors.bgPrimary },
       }}
     >
-      {pendingEmailVerification ? (
+      {passwordRecoveryStatus !== 'idle' ? (
+        <Stack.Screen name="PasswordRecovery" component={PasswordRecoveryRoute} />
+      ) : pendingEmailVerification ? (
         // Signed up but email not yet verified — no real Supabase session exists.
         // Show VerifyEmail screen; it subscribes to onAuthStateChange and calls
         // initializeAuth() automatically when the user clicks the link.

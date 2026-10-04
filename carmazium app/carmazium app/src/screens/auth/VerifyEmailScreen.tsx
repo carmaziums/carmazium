@@ -21,6 +21,7 @@ export const VerifyEmailScreen: React.FC = () => {
   const { user, initializeAuth, logout } = useAuthStore();
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [notVerifiedYet, setNotVerifiedYet] = useState(false);
   // Matches web's onboarding/page.tsx 60s cooldown between resend taps to
@@ -51,6 +52,7 @@ export const VerifyEmailScreen: React.FC = () => {
   const handleResend = async () => {
     if (!user?.email || resending || cooldownSec > 0) return;
     setResending(true);
+    setResendError(null);
     try {
       await apiClient('/auth/send-verification', {
         method: 'POST',
@@ -61,8 +63,10 @@ export const VerifyEmailScreen: React.FC = () => {
       });
       setResent(true);
       setCooldownSec(60);
-    } catch {
-      // Silent — resend is best-effort
+    } catch (err: any) {
+      setResent(false);
+      // Keep resend enabled if the request was rejected, matching website.
+      setResendError(err?.message || 'Could not resend verification email. Please try again.');
     } finally {
       setResending(false);
     }
@@ -144,6 +148,13 @@ export const VerifyEmailScreen: React.FC = () => {
           </Text>
         )}
       </TouchableOpacity>
+
+      {resendError && (
+        <View style={styles.notVerifiedRow}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
+          <Text style={styles.notVerifiedText}>{resendError}</Text>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.backBtn} onPress={logout} activeOpacity={0.7}>
         <Ionicons name="arrow-back" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />

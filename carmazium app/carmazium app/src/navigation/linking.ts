@@ -1,6 +1,7 @@
 import type { LinkingOptions } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import type { RootStackParamList } from './RootNavigator';
+import { isDealerInviteUrl } from '../lib/dealerInviteLink';
 
 /**
  * React Navigation linking config (AUTH-020).
@@ -49,7 +50,10 @@ function isAuthCallbackUrl(url: string): boolean {
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes,
 
-  filter: (url) => !isAuthCallbackUrl(url),
+  // Dealer invites are handled by App.tsx so signed-out recipients retain
+  // their token while completing login/onboarding. Letting both handlers run
+  // would dispatch a non-existent Main route before authentication.
+  filter: (url) => !isAuthCallbackUrl(url) && !isDealerInviteUrl(url),
 
   config: {
     screens: {
@@ -60,9 +64,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
       Main: {
         initialRouteName: 'Tabs',
         screens: {
-          // The invite link web sends is /auth/accept-invite?token=... — mapped
-          // here so the token arrives as a route param instead of being pasted
-          // by hand (AUTH-030).
+          // The App-level handler queues new inbound invitations through
+          // authentication. Keep the Main route for internal navigation and
+          // existing staff opening invites while already authenticated.
           AcceptInvite: {
             path: 'auth/accept-invite',
             parse: { token: (token: string) => token },

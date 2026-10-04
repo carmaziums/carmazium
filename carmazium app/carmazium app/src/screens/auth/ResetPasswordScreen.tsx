@@ -22,7 +22,7 @@ import { Radius } from '../../constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../components/IconButton';
-export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const ResetPasswordScreen: React.FC<{ navigation?: any; isRootRecovery?: boolean }> = ({ navigation, isRootRecovery = false }) => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -37,6 +37,15 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
   const confirmRef = useRef<TextInput>(null);
   const logout = useAuthStore((state) => state.logout);
   const insets = useSafeAreaInsets();
+  const handleBackToSignIn = () => {
+    if (isRootRecovery) {
+      // A recovery-only session must be destroyed before returning to Login;
+      // otherwise a restricted recovery token could survive the back button.
+      void logout();
+    } else {
+      navigation?.navigate('Login');
+    }
+  };
 
   const validate = (): string | null => {
     if (newPassword.length < 8) return 'Password must be at least 8 characters';
@@ -64,9 +73,12 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
       }
       setSucceeded(true);
       await logout();
-      setTimeout(() => {
-        navigation?.navigate('Login');
-      }, 1800);
+      // Root's dedicated recovery screen disappears on sign-out. Navigating
+      // into an Auth navigator that has not mounted yet would be a no-op.
+      // Only the nested Auth fallback needs an explicit Login navigation.
+      if (!isRootRecovery) {
+        setTimeout(() => navigation?.navigate('Login'), 1800);
+      }
     } catch (err: any) {
       setSubmitError(err.message || 'Something went wrong. Please try again.');
     } finally {
@@ -114,7 +126,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                 </Text>
                 <TouchableOpacity
                   style={styles.signInBtn}
-                  onPress={() => navigation?.navigate('Login')}
+                  onPress={handleBackToSignIn}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.signInBtnText}>Sign in</Text>
@@ -202,7 +214,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
             )}
 
             <View style={styles.backRow}>
-              <TouchableOpacity onPress={() => navigation?.navigate('Login')} activeOpacity={0.7}>
+              <TouchableOpacity onPress={handleBackToSignIn} activeOpacity={0.7}>
                 <Text style={styles.backLink}>Back to sign in</Text>
               </TouchableOpacity>
             </View>

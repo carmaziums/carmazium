@@ -13,7 +13,9 @@ import { friendlyAuthError } from "@/lib/authErrors"
 // New business signups use one Partner Account. DEALER remains the internal
 // compatibility role so existing auctions, KYC and staff rules keep working;
 // TradeXchange provider services are capabilities added after signup, not account roles.
-const VALID_SIGNUP_ROLES = ["BUYER", "SELLER", "DEALER"] as const
+// Only two public account choices. Old /signup?role=SELLER links now choose
+// Personal Account, which still includes every seller listing capability.
+const VALID_SIGNUP_ROLES = ["BUYER", "DEALER"] as const
 
 type SignupRole = typeof VALID_SIGNUP_ROLES[number]
 
@@ -36,7 +38,8 @@ export default function SignupPage() {
 function SignupForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const roleParam = searchParams.get("role")?.toUpperCase()
+    const rawRoleParam = searchParams.get("role")?.toUpperCase()
+    const roleParam = rawRoleParam === "SELLER" ? "BUYER" : rawRoleParam
     const initialRole = (VALID_SIGNUP_ROLES as readonly string[]).includes(roleParam ?? "")
         ? roleParam as SignupRole
         : ""
