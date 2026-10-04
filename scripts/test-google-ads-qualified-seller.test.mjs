@@ -7,6 +7,8 @@ import ts from 'typescript'
 const adsSource = readFileSync(new URL('../src/lib/googleAds.ts', import.meta.url), 'utf8')
 const wizardSource = readFileSync(new URL('../src/components/listing/ListingWizard.tsx', import.meta.url), 'utf8')
 const checkoutSource = readFileSync(new URL('../src/app/checkout/success/page.tsx', import.meta.url), 'utf8')
+const paymentsSource = readFileSync(new URL('../src/lib/paymentApi.ts', import.meta.url), 'utf8')
+const analyticsHookSource = readFileSync(new URL('../src/hooks/useAnalytics.ts', import.meta.url), 'utf8')
 const funnelSource = readFileSync(new URL('../src/lib/gtm.ts', import.meta.url), 'utf8')
 
 function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL' } = {}) {
@@ -141,4 +143,66 @@ test('retail goal only follows verified Stripe LISTING_FEE payment, and retains 
     assert.match(checkoutSource, /listingFeeTrackingId\(data\.metadata\?\.listingId\)/)
     assert.match(checkoutSource, /if \(data\.metadata\?\.listingId && profile\?\.role !== 'ADMIN'\)/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.QUALIFIED_SELLER_LISTING/)
+})
+
+
+function paymentStatusRunner() {
+    const exports = {}
+    const js = ts.transpileModule(paymentsSource, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    runInNewContext(js, {
+        exports,
+        require: () => ({ apiClient: () => { throw Error('Do not make network calls in tests') } }),
+        setTimeout,
+    })
+    return exports.waitForPaidCheckoutSession
+}
+
+test('Stripe success retries pending status and sends no paid signal before verified status', async () => {
+    const waitForPaid = paymentStatusRunner()
+    const seen = []
+    const states = [
+        { paymentStatus: 'unpaid', metadata: { type: 'LISTING_FEE' } },
+        { paymentStatus: 'paid', metadata: { type: 'LISTING_FEE', listingId: 'verified-123' } },
+    ]
+    const confirmed = await waitForPaid('cs_test_123', async (id) => {
+        seen.push(id)
+        return states.shift()
+    }, 3, 0)
+    assert.equal(seen.length, 2)
+    assert.equal(confirmed.paymentStatus, 'paid')
+    assert.equal(confirmed.metadata.listingId, 'verified-123')
+})
+
+test('transient Stripe session-status failure does not permanently lose paid conversion', async () => {
+    const waitForPaid = paymentStatusRunner()
+    let attempts = 0
+    const confirmed = await waitForPaid('cs_test_456', async () => {
+        if (++attempts === 1) throw Error('502 upstream')
+        return { paymentStatus: 'paid' }
+    }, 3, 0)
+    assert.equal(attempts, 2)
+    assert.equal(confirmed.paymentStatus, 'paid')
+})
+
+test('never mark checkout paid without Stripe confirmation; bounded polling', async () => {
+    const waitForPaid = paymentStatusRunner()
+    let attempts = 0
+    const pending = await waitForPaid('cs_test_789', async () => {
+        attempts += 1
+        return { paymentStatus: 'unpaid' }
+    }, 3, 0)
+    assert.equal(attempts, 3)
+    assert.equal(pending.paymentStatus, 'unpaid')
+    assert.equal(await waitForPaid('', async () => ({ paymentStatus: 'paid' }), 3, 0), null)
+    assert.match(checkoutSource, /if \(data\?\.paymentStatus !== 'paid'\)/)
+    assert.match(checkoutSource, /setConfirmationPending\(true\)/)
+    assert.match(checkoutSource, /if \(data\?\.paymentStatus === 'paid' && trackedSessionId\.current !== sessionId\)/)
+})
+
+test('already-consented users are not lost during React consent hydration', () => {
+    assert.match(analyticsHookSource, /if \(hasTrackingConsent\(\)\) \{/)
+    assert.match(analyticsHookSource, /if \(!sessionId\.current\) sessionId\.current = getSessionId\(\)/)
+    assert.match(analyticsHookSource, /trackAdsConversion\(type, payload\)/)
 })
