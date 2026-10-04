@@ -386,6 +386,9 @@ export async function searchListings(params: {
   model?: string;
   vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE';
   location?: string;
+  latitude?: number;
+  longitude?: number;
+  maxDistanceMi?: number;
   minPrice?: number;
   maxPrice?: number;
   minYear?: number;
@@ -428,6 +431,9 @@ export async function searchListings(params: {
     if (params.model)     query.set('model',     params.model);
     if (params.vehicleType) query.set('vehicleType', params.vehicleType);
     if (params.location) query.set('location', params.location);
+    if (params.latitude != null) query.set('latitude', String(params.latitude));
+    if (params.longitude != null) query.set('longitude', String(params.longitude));
+    if (params.maxDistanceMi != null) query.set('maxDistanceMi', String(params.maxDistanceMi));
     if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
     if (params.maxPrice != null) query.set('maxPrice', String(params.maxPrice));
     if (params.minYear  != null) query.set('minYear',  String(params.minYear));
