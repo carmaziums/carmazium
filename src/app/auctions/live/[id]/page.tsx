@@ -1003,7 +1003,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
             {!isSeller && (profile?.role === "DEALER" || profile?.role === "ADMIN") && (
                 <div className="container mx-auto px-6 py-2 flex flex-wrap items-center gap-3">
-                    <WishlistButton listingId={auction.listing.id} variant="shortlist" />
+                    {isBiddingOpen && (
+                        <WishlistButton listingId={auction.listing.id} variant="shortlist" />
+                    )}
                     <Link
                         href="/dashboard/dealer/auctions/shortlisted"
                         className="min-h-11 inline-flex items-center text-xs font-bold text-primary hover:underline"
