@@ -27,13 +27,19 @@ export async function getAuctionShortlist(page = 1, limit = 50) {
 }
 
 export async function addAuctionToShortlist(listingId: string): Promise<void> {
-  await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, {
-    method: 'POST',
-  });
+  try {
+    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: 'POST' });
+  } catch (error: any) {
+    if (/(?:\\b409\\b|already in watchlist)/i.test(String(error?.message ?? ''))) return;
+    throw error;
+  }
 }
 
 export async function removeAuctionFromShortlist(listingId: string): Promise<void> {
-  await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, {
-    method: 'DELETE',
-  });
+  try {
+    await apiClient(`/watchlist/auctions/${encodeURIComponent(listingId)}`, { method: 'DELETE' });
+  } catch (error: any) {
+    if (/(?:\\b404\\b|not shortlisted)/i.test(String(error?.message ?? ''))) return;
+    throw error;
+  }
 }
