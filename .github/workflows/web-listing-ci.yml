@@ -10,6 +10,8 @@ on:
       - "src/app/dashboard/seller/auctions/**"
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
+      - "src/app/dashboard/buyer/watchlist/page.tsx"
+      - "scripts/test-web-saved-cars-parity.test.mjs"
       - "src/lib/googleAds.ts"
       - "src/lib/gtm.ts"
       - "src/app/checkout/success/page.tsx"
@@ -61,6 +63,9 @@ jobs:
 
       - name: Qualified seller Google Ads tracking regression suite
         run: node --test scripts/test-google-ads-qualified-seller.test.mjs
+
+      - name: Website saved-car account and cross-device refresh contracts
+        run: node --test scripts/test-web-saved-cars-parity.test.mjs
 
       - name: Typecheck web listing surfaces
         shell: bash
