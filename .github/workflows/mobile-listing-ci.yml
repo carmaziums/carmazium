@@ -25,6 +25,7 @@ on:
       - "carmazium app/carmazium app/scripts/test-radius-search-native.test.mjs"
       - "carmazium app/carmazium app/scripts/test-search-results-parity.test.mjs"
       - "carmazium app/carmazium app/scripts/test-saved-cars-account-isolation.test.mjs"
+      - "carmazium app/carmazium app/scripts/test-block3-integrated-journey.test.mjs"
       - "carmazium app/carmazium app/App.tsx"
       - "carmazium app/carmazium app/src/store/watchlistStore.ts"
       - "carmazium app/carmazium app/src/lib/watchlistApi.ts"
@@ -71,6 +72,9 @@ jobs:
         run: node --test scripts/test-search-results-parity.test.mjs
       - name: Saved Cars isolation and cross-account regressions
         run: node --test scripts/test-saved-cars-account-isolation.test.mjs
+
+      - name: Integrated search-to-saved multi-account customer journey
+        run: node --test scripts/test-block3-integrated-journey.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash
