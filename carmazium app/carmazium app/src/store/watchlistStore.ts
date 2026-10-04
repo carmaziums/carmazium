@@ -14,6 +14,24 @@ let accountEpoch = 0;
 // Each listing gets its own revision so a failed older request can never
 // revert a more recent tap on that same saved-car heart.
 const listingRevisions = new Map<string, number>();
+// Serialize writes per vehicle. Without this, rapid save -> remove taps can
+// reach the server out of order even if the heart shows the last action.
+const pendingListingWrites = new Map<string, Promise<void>>();
+function orderedWrite(id: string, operationAccount: number, write: () => Promise<void>): Promise<void> {
+  const previous = pendingListingWrites.get(id) ?? Promise.resolve();
+  const current = previous.catch(() => {}).then(() => {
+    // Never send an old account's still-queued write after an account switch.
+    if (accountEpoch !== operationAccount) return;
+    return write();
+  });
+  const settled = current.then(() => {}, () => {});
+  pendingListingWrites.set(id, settled);
+  void settled.then(() => {
+    if (pendingListingWrites.get(id) === settled) pendingListingWrites.delete(id);
+  });
+  return current;
+}
+
 const nextListingRevision = (id: string): number => {
   const revision = (listingRevisions.get(id) ?? 0) + 1;
   listingRevisions.set(id, revision);
@@ -43,6 +61,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     hydrateEpoch += 1;
     accountEpoch += 1;
     listingRevisions.clear();
+    pendingListingWrites.clear();
     set({ savedIds: new Set(), savedListings: [], isLoading: false });
   },
 
@@ -53,6 +72,11 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
     // at an arbitrary first-page limit.
     set({ isLoading: true });
     try {
+      // If a heart write is in flight, read AFTER it commits. Otherwise a
+      // focus refresh can overwrite the newest optimistic state with an old
+      // server snapshot from before the POST/DELETE finished.
+      await Promise.all([...pendingListingWrites.values()]);
+      if (thisHydration !== hydrateEpoch) return;
       const pageSize = 50;
       let page = 1;
       let total = 0;
@@ -95,7 +119,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       return { savedIds: newIds, savedListings: [listing, ...state.savedListings] };
     });
     // Fire-and-forget sync with API
-    addToWatchlist(listing.id).catch(() => {
+    orderedWrite(listing.id, operationAccount, () => addToWatchlist(listing.id)).catch(() => {
       // Ignore a response from an account that has since signed out.
       if (operationAccount !== accountEpoch ||
           listingRevisions.get(listing.id) !== operationRevision) return;
@@ -128,7 +152,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => ({
       };
     });
     // Fire-and-forget sync with API
-    removeFromWatchlist(id).catch(() => {
+    orderedWrite(id, operationAccount, () => removeFromWatchlist(id)).catch(() => {
       if (operationAccount !== accountEpoch ||
           listingRevisions.get(id) !== operationRevision) return;
       // Revert optimistic update on failure
