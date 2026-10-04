@@ -14,6 +14,7 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - 'scripts/test-radius-search-parity.test.mjs'
+      - 'scripts/test-web-saved-cars-parity.test.mjs'
       - 'carmazium app/carmazium app/scripts/test-radius-search-native.test.mjs'
       - 'carmazium app/carmazium app/scripts/test-search-results-parity.test.mjs'
       - 'carmazium app/carmazium app/scripts/test-saved-cars-account-isolation.test.mjs'
@@ -33,6 +34,8 @@ jobs:
         run: node scripts/check-product-parity.mjs
       - name: Full-inventory radius search parity contracts
         run: node --test scripts/test-radius-search-parity.test.mjs
+      - name: Website/native Saved Cars account and refresh parity
+        run: node --test scripts/test-web-saved-cars-parity.test.mjs
       - name: Verify authoritative auction buyer-fee deadline parity
         run: node scripts/check-auction-fee-deadline.mjs
       - name: Assert exact native and web MaziuM visual parity
