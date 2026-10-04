@@ -9,7 +9,7 @@ const transpile = source => ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function apiHarness(source) {
+function apiHarness(source, errors = {}) {
   const calls = [];
   const exports = {};
   runInNewContext(transpile(source), {
@@ -18,6 +18,9 @@ function apiHarness(source) {
       if (name === './apiClient') return {
         apiClient: async (url, opts) => {
           calls.push({ url, method: opts?.method || 'GET' });
+          if (errors[opts?.method || 'GET']) {
+            throw Error(errors[opts?.method || 'GET']);
+          }
           return url.includes('/check/')
             ? { data: { inWatchlist: true } }
             : { data: [], pagination: { total: 0, page: 1, limit: 50 } };
@@ -132,4 +135,18 @@ test('trade store preserves same-account saves, clears on logout and isolates ne
   await h.get().hydrateFromApi();
   assert.deepEqual(Array.from(h.get().savedIds), ['trade-2']);
   assert.equal(h.get().savedIds.has('trade-3'), false);
+});
+
+test('web/native cross-device duplicate save and already-removed delete are idempotent but 403 is not', async () => {
+  for (const source of [
+    read('../../src/lib/auctionShortlistApi.ts'),
+    read('src/lib/auctionShortlistApi.ts'),
+  ]) {
+    const duplicate = apiHarness(source, { POST: '409 Conflict' });
+    await duplicate.api.addAuctionToShortlist('already-saved');
+    const removed = apiHarness(source, { DELETE: '404 Auction not shortlisted' });
+    await removed.api.removeAuctionFromShortlist('already-removed');
+    const forbidden = apiHarness(source, { POST: '403 Verification required' });
+    await assert.rejects(forbidden.api.addAuctionToShortlist('trade-id'), /403/);
+  }
 });
