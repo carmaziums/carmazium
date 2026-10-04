@@ -38,7 +38,8 @@ test('website and native screens never filter the already paginated result page 
   assert.doesNotMatch(webSearch, /filtered = filtered\.filter\(l =>[\s\S]*haversineDistanceMiles/);
   assert.doesNotMatch(nativeSearch, /rawItems[\s\S]{0,120}\.filter\(l => l\.latitude/);
   assert.match(webSearch, /setListings\(response\.data\)/);
-  assert.match(nativeSearch, /const items = rawItems/);
+  assert.match(nativeSearch, /setListings\(rawItems\)/);
+  assert.match(nativeSearch, /setListings\(prev => \[\.\.\.prev, \.\.\.rawItems\]\)/);
   assert.match(webSearch, /setTotalCount\(response\.pagination\.total\)/);
   assert.match(nativeSearch, /setTotal\(t\)/);
 });
