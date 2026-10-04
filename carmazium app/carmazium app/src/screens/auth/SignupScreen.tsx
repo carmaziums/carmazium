@@ -175,8 +175,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.fieldLabel}>I AM A</Text>
               <View style={styles.roleRow}>
                 {([
-                  { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
-                  { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade vehicles; bidding and services require approval', icon: 'business-outline' as const },
+                  { value: 'BUYER' as const, label: 'Personal Account', hint: 'Buy and sell vehicles as an individual', icon: 'person-outline' as const },
+                  { value: 'DEALER' as const, label: 'Dealer / Sole Trader / Partner Account', hint: 'For motor dealers and businesses; bidding requires KYC approval', icon: 'business-outline' as const },
                 ]).map(opt => {
                   const selected = role === opt.value;
                   return (
