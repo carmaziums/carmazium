@@ -22,6 +22,7 @@ import { Colors } from './src/constants/colors';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
+import { useWatchlistStore } from './src/store/watchlistStore';
 import { supabase } from './src/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { addNotificationListeners, registerForPushNotifications } from './src/lib/pushNotifications';
@@ -43,6 +44,19 @@ export default function App() {
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
+
+  useEffect(() => {
+    // Saved cars are private to the authenticated backend user, not to the
+    // device. Bind on initial auth hydration and every logout/account switch;
+    // bindAccount also invalidates any older in-flight watchlist requests.
+    const synchronizeWatchlistAccount = (state: ReturnType<typeof useAuthStore.getState>) => {
+      useWatchlistStore.getState().bindAccount(
+        state.isAuthenticated ? state.user?.id ?? null : null,
+      );
+    };
+    synchronizeWatchlistAccount(useAuthStore.getState());
+    return useAuthStore.subscribe(synchronizeWatchlistAccount);
+  }, []);
 
   // ── OTA Updates ────────────────────────────────────────────────
   useEffect(() => {

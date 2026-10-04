@@ -208,6 +208,8 @@ jobs:
       - name: Resolve Expo production config
         run: npx expo config --type public > /tmp/carmazium-expo-config.json
       - run: npm run typescript
+      - name: Native saved cars cross-account regressions
+        run: node --test scripts/test-saved-cars-account-isolation.test.mjs
 
   backend:
     name: Backend typecheck + tests + build
