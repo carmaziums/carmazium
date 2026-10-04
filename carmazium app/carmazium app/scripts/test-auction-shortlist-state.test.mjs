@@ -147,3 +147,43 @@ test('failed removal for current account rolls back optimistic state', async () 
   await tick();
   assert.equal(s.getState().savedIds.has('A'), true);
 });
+
+function watchlistApiHarness(response) {
+  const source = readFileSync(new URL('../src/lib/watchlistApi.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  });
+  const exports = {};
+  runInNewContext(compiled.outputText, {
+    exports,
+    require: name => {
+      if (name === './apiClient') return { apiClient: async () => response };
+      if (name === './listingsApi') return { mapApiListingToCarListing: l => l };
+      throw Error('Unexpected module: ' + name);
+    },
+  }, { filename: 'compiled-native-watchlist-api.js' });
+  return exports;
+}
+
+test('malformed saved-car server response is an error, not an empty watchlist', async () => {
+  for (const malformed of [
+    { success: true, data: null, pagination: { total: 0 } },
+    { success: true, data: [], pagination: undefined },
+    { success: true, data: [], pagination: { total: -1 } },
+  ]) {
+    await assert.rejects(watchlistApiHarness(malformed).getWatchlist(), /Invalid saved-car response/);
+  }
+});
+
+test('valid empty and populated saved-car responses still hydrate correctly', async () => {
+  const empty = await watchlistApiHarness({ success: true, data: [], pagination: { total: 0 } }).getWatchlist();
+  assert.equal(empty.total, 0);
+  assert.equal(empty.items.length, 0);
+  const populated = await watchlistApiHarness({
+    success: true,
+    data: [{ id: 'w1', listingId: 'A', listing: { id: 'A' } }],
+    pagination: { total: 1 },
+  }).getWatchlist();
+  assert.equal(populated.total, 1);
+  assert.equal(populated.items[0].mappedListing.id, 'A');
+});
