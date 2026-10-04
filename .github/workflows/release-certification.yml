@@ -212,6 +212,8 @@ jobs:
         run: node --test scripts/test-password-recovery-parity.test.mjs
       - name: Signed-out dealership invitation deferral regressions
         run: node --test scripts/test-dealer-invite-link.test.mjs
+      - name: Native and website onboarding and staff-invite parity regressions
+        run: node --test scripts/test-staff-invite-parity.test.mjs
 
   backend:
     name: Backend typecheck + tests + build
