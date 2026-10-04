@@ -4,6 +4,7 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
+    ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -17,6 +18,7 @@ import {
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { VehicleValuationDto } from './dto/vehicle-valuation.dto';
 import { ListingFilterDto } from './dto/listing-filter.dto';
+import { distanceMiles, radiusBoundingBox, requireRadiusCoordinates } from './listing-radius-search';
 import { AlsoAuctionDto } from './dto/also-auction.dto';
 import { ConvertAuctionToRetailDto } from './dto/convert-auction-to-retail.dto';
 // These types come from @prisma/client and are available once `prisma generate` has run.
@@ -1889,6 +1891,7 @@ export class ListingsService {
             minBhp, maxBhp,
             sellerType, location, listingType,
             sortBy, search, features,
+            latitude, longitude, maxDistanceMi,
             page = 1, limit = 20,
         } = filterDto;
         const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD', 'OFFER_ACCEPTED'] } };
@@ -2012,13 +2015,78 @@ export class ListingsService {
 
         const skip = (page - 1) * limit;
 
-        // Execute query with count
-        const [data, total] = await Promise.all([
+        // Radius filtering MUST run before count and page selection.
+        // Prisma's existing vehicle, status, classified-only and seller
+        // filters are applied to the geographic scan, so private/trade rows
+        // never enter its candidate set. Scan id/coordinates only in bounded
+        // batches rather than materialising complete seller/listing records.
+        let radius: ReturnType<typeof requireRadiusCoordinates>;
+        try {
+            radius = requireRadiusCoordinates({ latitude, longitude, maxDistanceMi });
+        } catch (error: any) {
+            throw new BadRequestException(error.message);
+        }
+        let nearestIds: string[] | null = null;
+        if (radius) {
+            const bbox = radiusBoundingBox(radius);
+            const locationWhere: any = {
+                AND: [
+                    { latitude: { gte: bbox.minLat, lte: bbox.maxLat } },
+                    { OR: bbox.lonRanges.map(r => ({
+                        longitude: { gte: r.min, lte: r.max },
+                    })) },
+                ],
+            };
+            const candidateWhere = { AND: [where, locationWhere] };
+            const matching: Array<{ id: string; miles: number }> = [];
+            let after: string | undefined;
+            const batchSize = 400;
+            // Explicit capacity protection. Never silently truncate and
+            // return a false total: clients receive a retryable 503 instead.
+            const candidateSafetyLimit = 20000;
+            let examined = 0;
+            while (true) {
+                const batch = await this.prisma.listing.findMany({
+                    where: candidateWhere,
+                    select: { id: true, latitude: true, longitude: true },
+                    orderBy: { id: 'asc' },
+                    take: batchSize,
+                    ...(after ? { cursor: { id: after }, skip: 1 } : {}),
+                });
+                examined += batch.length;
+                if (examined > candidateSafetyLimit) {
+                    throw new ServiceUnavailableException(
+                        'Too many nearby candidates to search safely. Use a smaller radius or more filters.',
+                    );
+                }
+                for (const candidate of batch) {
+                    if (candidate.latitude == null || candidate.longitude == null) continue;
+                    const miles = distanceMiles(
+                        radius.latitude, radius.longitude,
+                        candidate.latitude, candidate.longitude,
+                    );
+                    if (miles <= radius.maxDistanceMi + 1e-9) {
+                        matching.push({ id: candidate.id, miles });
+                    }
+                }
+                if (batch.length < batchSize) break;
+                after = batch[batch.length - 1].id;
+            }
+            if (sortBy === 'distance_asc') {
+                matching.sort((a, b) => a.miles - b.miles || a.id.localeCompare(b.id));
+                nearestIds = matching.map(m => m.id);
+            }
+            where.id = { in: matching.map(m => m.id) };
+        }
+
+        // "Closest first" is globally sorted across ALL matching eligible
+        // vehicles, not sorted within the current page. Other sorts preserve
+        // the existing status/featured/price/newest business ordering.
+        const pageIds = nearestIds?.slice(skip, skip + limit);
+        const [queriedData, total] = await Promise.all([
             this.prisma.listing.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy,
+                where: pageIds ? { AND: [where, { id: { in: pageIds } }] } : where,
+                ...(pageIds ? {} : { skip, take: limit, orderBy }),
                 include: {
                     seller: {
                         select: {
@@ -2047,6 +2115,10 @@ export class ListingsService {
             }),
             this.prisma.listing.count({ where }),
         ]);
+
+        const data = pageIds
+            ? queriedData.sort((a, b) => pageIds.indexOf(a.id) - pageIds.indexOf(b.id))
+            : queriedData;
 
         // Admin-created listings are presented as CarMazium's own rather than
         // under the staff member's personal name — see admin-seller-branding.ts.

@@ -1,0 +1,64 @@
+name: Radius Search Isolated PostgreSQL Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/src/listings/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/scripts/radius-postgres-load.ts'
+      - 'docs/ONE_PRODUCT_BLOCK3_RADIUS_SEARCH_AUDIT.md'
+      - 'backend/package*.json'
+      - '.github/workflows/radius-postgres-ci.yml'
+
+permissions:
+  contents: read
+
+# Test only on pull requests. Never use a push-to-main trigger, deployment
+# secrets, Supabase credentials, hosted staging databases or paid branches.
+concurrency:
+  group: radius-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  radius-postgres:
+    name: Real Prisma/PostgreSQL radius, pagination and query-plan test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: radius_test
+          POSTGRES_PASSWORD: ephemeral_test_only
+          POSTGRES_DB: carmazium_radius_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U radius_test -d carmazium_radius_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Hard-coded disposable loopback database. Script refuses nonlocal hosts
+      # or any name other than carmazium_radius_ci.
+      DATABASE_URL: postgresql://radius_test:ephemeral_test_only@127.0.0.1:5432/carmazium_radius_ci?schema=public
+      DIRECT_URL: postgresql://radius_test:ephemeral_test_only@127.0.0.1:5432/carmazium_radius_ci?schema=public
+      RADIUS_LOAD_TEST: ephemeral-postgres-only
+      NODE_ENV: test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install locked dependencies and generate Prisma client
+        run: npm ci
+      - name: Create current Prisma schema in disposable test database ONLY
+        run: npx prisma db push --skip-generate
+      - name: Verify genuine PostgreSQL query, synthetic counts, pagination and EXPLAIN
+        run: npx ts-node --transpile-only scripts/radius-postgres-load.ts

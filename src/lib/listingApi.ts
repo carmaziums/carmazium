@@ -372,6 +372,10 @@ export interface ListingFilters {
     page?: number
     limit?: number
     deliveryAvailable?: boolean
+    /** Latitude, longitude and radius must be supplied together for complete geospatial filtering. */
+    latitude?: number
+    longitude?: number
+    maxDistanceMi?: number
 }
 
 /**
@@ -416,6 +420,9 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.page) params.append('page', filters.page.toString())
         if (filters.limit) params.append('limit', filters.limit.toString())
         if (filters.deliveryAvailable !== undefined) params.append('deliveryAvailable', String(filters.deliveryAvailable))
+        if (filters.latitude !== undefined) params.append('latitude', String(filters.latitude))
+        if (filters.longitude !== undefined) params.append('longitude', String(filters.longitude))
+        if (filters.maxDistanceMi !== undefined) params.append('maxDistanceMi', String(filters.maxDistanceMi))
     }
 
     return apiClient<ListingsResponse>(`/listings${params.toString() ? `?${params.toString()}` : ''}`, {
