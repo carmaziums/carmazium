@@ -1489,6 +1489,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 outcome: 'pending_review',
                 seller_role: common.seller_role,
                 transaction_id: `qualified_listing:${listingId}`,
+            }, {
+                // The email is passed only to Google Ads' Enhanced Conversion
+                // path; it is never added to GA4, GTM or first-party analytics.
+                googleAdsUserData: { email: user?.email || undefined },
             })
         }
         // Gate the path-specific events on listing_type, not on outcome —
