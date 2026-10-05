@@ -215,7 +215,7 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 - exact location;
 - CarMazium source code or internal-system data.
 
-11.5 SimpleDMS has stated that, under its existing provider configuration, submitted inputs and outputs **may be made available to OpenAI for service improvement/model training**. This agreement does not require SimpleDMS to change that configuration. CarMazium's permission is limited strictly to the approved minimised AI input set above and does not extend to the raw feed or excluded fields.
+11.5 OpenAI's currently published API data-control policy states that API data is **not used to train or improve models by default unless the customer explicitly opts in to sharing**. SimpleDMS has stated that its existing provider configuration may enable such sharing. This agreement does not require SimpleDMS to change that configuration; if that opt-in/sharing configuration is enabled, CarMazium expressly permits it **only for the approved minimised AI input set above**, not the raw feed or excluded fields. Before signature, SimpleDMS will record the relevant account setting in Schedule C. Reference: https://developers.openai.com/api/docs/guides/your-data
 
 11.6 Before signature/production use, Schedule C must record in proportionate, redacted form:
 - the OpenAI product/API pathway used;
