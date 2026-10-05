@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useConsent } from "@/context/ConsentContext"
 import { pushToDataLayer, SELLER_FUNNEL } from "@/lib/gtm"
-import { trackAdsConversion } from "@/lib/googleAds"
+import { trackAdsConversion, type AdsEnhancedUserData } from "@/lib/googleAds"
 import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { hasTrackingConsent } from "@/lib/trackingConsent"
@@ -175,6 +175,10 @@ const DATALAYER_EXCLUDED = new Set(["page_view"])
  * This keeps the cookie banner truthful and prevents non-essential browser
  * storage from being created before the visitor accepts.
  */
+type TrackEventOptions = {
+    googleAdsUserData?: AdsEnhancedUserData
+}
+
 export function useAnalytics() {
     const { user } = useAuth()
     const { granted } = useConsent()
@@ -196,7 +200,7 @@ export function useAnalytics() {
     }, [granted])
 
     const trackEvent = useCallback(
-        (type: string, payload: Record<string, unknown> = {}) => {
+        (type: string, payload: Record<string, unknown> = {}, options: TrackEventOptions = {}) => {
             try {
                 // The search page can report the same user action once from its
                 // submit handler and again when the URL synchronises. Suppress
@@ -229,7 +233,11 @@ export function useAnalytics() {
 
                 // Google Ads conversions use the same Consent Mode state as
                 // gtag.js and no-op when the event has no conversion label.
-                trackAdsConversion(type, payload)
+                trackAdsConversion(
+                    type,
+                    payload,
+                    hasTrackingConsent() ? options.googleAdsUserData : undefined,
+                )
 
                 // Storage consent is authoritative even before React's
                 // ConsentProvider has completed hydration. Stripe may return

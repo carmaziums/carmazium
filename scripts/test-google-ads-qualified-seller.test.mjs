@@ -98,6 +98,38 @@ test('paid retail keeps its existing Ads action but uses a stable short ID, neve
     assert.ok(ctx.sent.every(x => x.value === 1 && x.currency === 'GBP'))
 })
 
+
+test('consented enhanced conversions send a normalised email immediately before the Ads conversion', () => {
+    const ctx = setup()
+    const paid = {
+        listing_id: 'vehicle-email-1',
+        value: 1,
+        currency: 'GBP',
+        seller_role: 'SELLER',
+    }
+    ctx.trackAdsConversion('listing_fee_paid', paid, { email: ' Seller.Example@Example.COM ' })
+    assert.equal(ctx.sent.length, 2)
+    assert.deepEqual(ctx.sent[0], {
+        action: 'set',
+        type: 'user_data',
+        email: 'seller.example@example.com',
+    })
+    assert.equal(ctx.sent[1].action, 'event')
+    assert.equal(ctx.sent[1].type, 'conversion')
+    assert.equal(ctx.sent[1].send_to, 'AW-TEST/EXISTING_PAID_LABEL')
+})
+
+test('analytics boundary withholds enhanced-conversion identifiers without tracking consent', () => {
+    assert.match(
+        analyticsHookSource,
+        /hasTrackingConsent\(\) \? options\.googleAdsUserData : undefined/,
+    )
+    assert.match(
+        analyticsHookSource,
+        /trackAdsConversion\([\s\S]*options\.googleAdsUserData[\s\S]*\)/,
+    )
+})
+
 test('missing and oversized listing IDs never create malformed paid conversion hits', () => {
     const ctx = setup()
     const checkout = { transaction_id: 'cs_live_' + 'B'.repeat(95), value: 1, currency: 'GBP' }
@@ -132,6 +164,7 @@ test('auction goal only follows confirmed publish-to-review result, not merely w
     assert.match(funnelSource, /QUALIFIED_SELLER_LISTING: 'qualified_seller_listing'/)
     assert.match(wizardSource, /listing_type === 'auction' && outcome === 'pending_review'/)
     assert.match(wizardSource, /SELLER_FUNNEL\.QUALIFIED_SELLER_LISTING/)
+    assert.match(wizardSource, /googleAdsUserData: \{ email: user\?\.email \|\| undefined \}/)
     assert.equal((wizardSource.match(/const auctionSubmission = await publishListing\(/g) || []).length, 3)
     assert.equal((wizardSource.match(/auctionSubmission\.pendingReview \? 'pending_review' : 'published'/g) || []).length, 3)
 })
@@ -140,6 +173,7 @@ test('retail goal only follows verified Stripe LISTING_FEE payment, and retains 
     assert.match(checkoutSource, /data\?\.paymentStatus === 'paid'/)
     assert.match(checkoutSource, /data\.metadata\?\.type === 'LISTING_FEE'/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.LISTING_FEE_PAID/)
+    assert.match(checkoutSource, /googleAdsUserData: \{ email: data\.customerEmail \|\| undefined \}/)
     assert.match(checkoutSource, /listingFeeTrackingId\(data\.metadata\?\.listingId\)/)
     assert.match(checkoutSource, /if \(data\.metadata\?\.listingId && profile\?\.role !== 'ADMIN'\)/)
     assert.match(checkoutSource, /trackEvent\(SELLER_FUNNEL\.QUALIFIED_SELLER_LISTING/)
@@ -204,5 +238,5 @@ test('never mark checkout paid without Stripe confirmation; bounded polling', as
 test('already-consented users are not lost during React consent hydration', () => {
     assert.match(analyticsHookSource, /if \(hasTrackingConsent\(\)\) \{/)
     assert.match(analyticsHookSource, /if \(!sessionId\.current\) sessionId\.current = getSessionId\(\)/)
-    assert.match(analyticsHookSource, /trackAdsConversion\(type, payload\)/)
+    assert.match(analyticsHookSource, /hasTrackingConsent\(\) \? options\.googleAdsUserData : undefined/)
 })
