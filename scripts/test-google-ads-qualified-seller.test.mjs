@@ -11,7 +11,7 @@ const paymentsSource = readFileSync(new URL('../src/lib/paymentApi.ts', import.m
 const analyticsHookSource = readFileSync(new URL('../src/hooks/useAnalytics.ts', import.meta.url), 'utf8')
 const funnelSource = readFileSync(new URL('../src/lib/gtm.ts', import.meta.url), 'utf8')
 
-function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL', consented = true } = {}) {
+function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL' } = {}) {
     const sent = []
     const exports = {}
     const env = {
@@ -25,12 +25,6 @@ function setup({ qualifiedLabel = 'NEW_QUALIFIED_LABEL', consented = true } = {}
     runInNewContext(js, {
         exports,
         process: { env },
-        require: (specifier) => {
-            if (specifier === '@/lib/trackingConsent') {
-                return { hasTrackingConsent: () => consented }
-            }
-            throw new Error(`Unexpected require: ${specifier}`)
-        },
         window: { gtag: (action, type, payload) => sent.push({ action, type, ...payload }) },
     })
     return { sent, ...exports }
@@ -106,7 +100,7 @@ test('paid retail keeps its existing Ads action but uses a stable short ID, neve
 
 
 test('consented enhanced conversions send a normalised email immediately before the Ads conversion', () => {
-    const ctx = setup({ consented: true })
+    const ctx = setup()
     const paid = {
         listing_id: 'vehicle-email-1',
         value: 1,
@@ -125,18 +119,15 @@ test('consented enhanced conversions send a normalised email immediately before 
     assert.equal(ctx.sent[1].send_to, 'AW-TEST/EXISTING_PAID_LABEL')
 })
 
-test('enhanced conversion identifiers are withheld when tracking consent is absent', () => {
-    const ctx = setup({ consented: false })
-    ctx.trackAdsConversion('listing_fee_paid', {
-        listing_id: 'vehicle-email-2',
-        value: 1,
-        currency: 'GBP',
-        seller_role: 'SELLER',
-    }, { email: 'seller@example.com' })
-    assert.equal(ctx.sent.length, 1)
-    assert.equal(ctx.sent[0].action, 'event')
-    assert.equal(ctx.sent[0].type, 'conversion')
-    assert.equal(ctx.sent[0].email, undefined)
+test('analytics boundary withholds enhanced-conversion identifiers without tracking consent', () => {
+    assert.match(
+        analyticsHookSource,
+        /hasTrackingConsent\(\) \? options\.googleAdsUserData : undefined/,
+    )
+    assert.match(
+        analyticsHookSource,
+        /trackAdsConversion\([\s\S]*options\.googleAdsUserData[\s\S]*\)/,
+    )
 })
 
 test('missing and oversized listing IDs never create malformed paid conversion hits', () => {
@@ -247,5 +238,5 @@ test('never mark checkout paid without Stripe confirmation; bounded polling', as
 test('already-consented users are not lost during React consent hydration', () => {
     assert.match(analyticsHookSource, /if \(hasTrackingConsent\(\)\) \{/)
     assert.match(analyticsHookSource, /if \(!sessionId\.current\) sessionId\.current = getSessionId\(\)/)
-    assert.match(analyticsHookSource, /trackAdsConversion\(type, payload, options\.googleAdsUserData\)/)
+    assert.match(analyticsHookSource, /hasTrackingConsent\(\) \? options\.googleAdsUserData : undefined/)
 })
