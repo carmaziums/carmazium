@@ -233,7 +233,11 @@ export function useAnalytics() {
 
                 // Google Ads conversions use the same Consent Mode state as
                 // gtag.js and no-op when the event has no conversion label.
-                trackAdsConversion(type, payload, options.googleAdsUserData)
+                trackAdsConversion(
+                    type,
+                    payload,
+                    hasTrackingConsent() ? options.googleAdsUserData : undefined,
+                )
 
                 // Storage consent is authoritative even before React's
                 // ConsentProvider has completed hydration. Stripe may return
