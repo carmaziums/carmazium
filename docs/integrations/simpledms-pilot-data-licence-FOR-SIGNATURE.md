@@ -1,3 +1,5 @@
+> **SUPERSEDED FOR NEGOTIATION — 5 October 2026.** The current consolidated counter-draft is [simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md](simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md). This older document is retained only for audit/history and should not be used as the current signature candidate.
+
 # CARMAZIUM × SIMPLEDMS — EARLY LAUNCH INTEGRATION AND DATA LICENCE
 **Draft for signature — not effective until duly agreed by both parties**
 
