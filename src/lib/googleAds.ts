@@ -1,3 +1,5 @@
+import { hasTrackingConsent } from "@/lib/trackingConsent"
+
 /**
  * Google Ads conversion tracking.
  *
@@ -18,6 +20,10 @@ const LISTING_FEE_CONVERSION_LABEL =
 const QUALIFIED_SELLER_CONVERSION_LABEL =
     process.env.NEXT_PUBLIC_GADS_LABEL_QUALIFIED_SELLER?.trim()
 const QUALIFIED_EVENT = 'qualified_seller_listing'
+
+export type AdsEnhancedUserData = {
+    email?: string
+}
 
 // Ads transaction IDs must be at most 64 characters. Stripe session IDs can
 // exceed this. Since the listing fee is paid once per vehicle until sold, the
@@ -50,8 +56,19 @@ function alreadyReported(key: string): boolean {
     return false
 }
 
-/** Reports a Google Ads conversion when the Ads destination is configured. */
-export function trackAdsConversion(event: string, params: Record<string, unknown> = {}): void {
+/**
+ * Reports a Google Ads conversion when the Ads destination is configured.
+ *
+ * `userData` is intentionally separate from `params` so first-party identifiers
+ * never leak into GA4, GTM dataLayer events or CarMazium's generic analytics store.
+ * Enhanced-conversion data is only attached after explicit tracking consent;
+ * Google hashes the normalised email before transmission.
+ */
+export function trackAdsConversion(
+    event: string,
+    params: Record<string, unknown> = {},
+    userData: AdsEnhancedUserData = {},
+): void {
     if (typeof window === 'undefined') return
     if (!GOOGLE_ADS_ID) return
 
@@ -105,6 +122,14 @@ export function trackAdsConversion(event: string, params: Record<string, unknown
         }
         if (typeof transactionId === 'string' && transactionId) {
             payload.transaction_id = transactionId
+        }
+
+        const normalizedEmail = typeof userData.email === 'string'
+            ? userData.email.trim().toLowerCase()
+            : ''
+        if (normalizedEmail && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)
+            && hasTrackingConsent()) {
+            window.gtag('set', 'user_data', { email: normalizedEmail })
         }
 
         window.gtag('event', 'conversion', payload)
