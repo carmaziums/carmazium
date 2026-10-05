@@ -106,6 +106,10 @@ function CheckoutSuccessContent() {
                             currency,
                             listing_type: 'retail',
                             listing_id: data.metadata?.listingId,
+                        }, {
+                            // Keep first-party identifiers out of GA4/dataLayer;
+                            // only Google Ads receives this for Enhanced Conversions.
+                            googleAdsUserData: { email: data.customerEmail || undefined },
                         })
                         // Only confirmed paid retail listings qualify. The
                         // listing ID prevents another Ads conversion for the
@@ -118,6 +122,8 @@ function CheckoutSuccessContent() {
                                 payment_status: 'paid',
                                 seller_role: profile?.role || 'UNKNOWN',
                                 transaction_id: `qualified_listing:${data.metadata.listingId}`,
+                            }, {
+                                googleAdsUserData: { email: data.customerEmail || undefined },
                             })
                         }
                     } else if (data.metadata?.type === 'COMMISSION') {
