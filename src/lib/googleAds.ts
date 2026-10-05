@@ -127,7 +127,7 @@ export function trackAdsConversion(
         const normalizedEmail = typeof userData.email === 'string'
             ? userData.email.trim().toLowerCase()
             : ''
-        if (normalizedEmail && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(normalizedEmail)
+        if (normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
             && hasTrackingConsent()) {
             window.gtag('set', 'user_data', { email: normalizedEmail })
         }
