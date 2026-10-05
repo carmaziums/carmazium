@@ -1,5 +1,3 @@
-import { hasTrackingConsent } from "@/lib/trackingConsent"
-
 /**
  * Google Ads conversion tracking.
  *
@@ -61,8 +59,8 @@ function alreadyReported(key: string): boolean {
  *
  * `userData` is intentionally separate from `params` so first-party identifiers
  * never leak into GA4, GTM dataLayer events or CarMazium's generic analytics store.
- * Enhanced-conversion data is only attached after explicit tracking consent;
- * Google hashes the normalised email before transmission.
+ * The caller is responsible for passing userData only after explicit tracking
+ * consent. Google hashes the normalised email before transmission.
  */
 export function trackAdsConversion(
     event: string,
@@ -127,8 +125,7 @@ export function trackAdsConversion(
         const normalizedEmail = typeof userData.email === 'string'
             ? userData.email.trim().toLowerCase()
             : ''
-        if (normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
-            && hasTrackingConsent()) {
+        if (normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
             window.gtag('set', 'user_data', { email: normalizedEmail })
         }
 
