@@ -4,7 +4,7 @@ Implemented: 3 October 2026. This change is deliberately **two-stage** so existi
 
 ## Current state
 
-- Website sends confirmed retail `listing_fee_paid` to the existing live **Listing Fee Paid** action. This event and its label are unchanged.
+- Website sends confirmed retail `listing_fee_paid` to the existing live **Listing Fee Paid** action. This event and its label are unchanged. When the seller has explicitly accepted tracking and Stripe returns a customer email, the Ads-only path also supplies the normalised email through Google's `user_data` interface for Enhanced Conversions; the email is never added to GA4, GTM dataLayer events or CarMazium's generic analytics payload.
 - Website sends `qualified_seller_listing` to first-party analytics, GTM's consent-gated dataLayer and GA4 when either:
   1. A non-admin **auction** listing has successfully been submitted to the actual admin-review queue by the backend `publishListing` call; or
   2. Stripe session status returns **paid** and its metadata identifies a **retail listing fee** and a listing ID.
@@ -23,6 +23,14 @@ The connected Windsor.ai and Supermetrics integrations expose conversion-action 
 5. Verify the new action's destination in a live, consensual test for a **genuine** non-admin auction submission to review and a **genuine paid** retail session with different listing IDs. Check the Ads/Tag Assistant diagnostics, the exact `send_to` value, valid transaction IDs, and that the old paid-retail hit still fires exactly once. Never fabricate live customer conversions or claim that a test conversion is organic revenue.
 6. Ensure both Search and Performance Max campaigns use the intended *account-default* qualified goal, or their own intentionally selected goals. Only **after** the action is receiving real valid conversions, change the **new action to Primary** and **Listing Fee Paid to Secondary** in one coordinated rollout. Otherwise every retail payment will count twice in Maximise Conversions.
 7. Allow normal attribution/reporting delay and monitor paid clicks, qualified conversions (split auction/retail in GA4), spend per qualified listing, conversion diagnostics and Smart Bidding's learning status. Compare with server-created listings; a user who pays but never returns from Stripe may not trigger client-only conversion tracking.
+
+
+## Account audit — 5 October 2026
+
+- **Qualified Seller Listing** is now **ENABLED + Primary** and has recorded a real conversion.
+- **Listing Fee Paid** is also still **ENABLED + Primary**. This is no longer the intended end state: a paid retail listing emits both `listing_fee_paid` and `qualified_seller_listing`, so keeping both Primary can train Maximise Conversions on two outcomes for one retail seller. Once Qualified Seller Listing is the chosen optimisation signal, change **Listing Fee Paid to Secondary** while leaving it enabled for reporting/value measurement.
+- Google Ads shows **"Issues detected with your enhanced conversion setup"** on Listing Fee Paid. The root cause in the application was that the conversion event carried value/currency/transaction ID but no first-party `user_data`. This branch supplies a consented Stripe customer email only to the Ads conversion call. Google hashes it before transmission.
+- Enhanced-conversion diagnostics are delayed and based on recent eligible conversion volume. After deployment, validate with a genuine consensual paid listing and allow reporting time before judging the diagnostic as cleared.
 
 ## Known limitation and follow-up
 
