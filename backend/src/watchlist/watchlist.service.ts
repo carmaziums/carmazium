@@ -289,4 +289,20 @@ export class WatchlistService {
         await this.prisma.watchlistItem.delete({ where: { id: item.id } });
         return { success: true };
     }
+
+    async isInAuctionShortlist(userId: string, listingId: string): Promise<boolean> {
+        const item = await this.prisma.watchlistItem.findFirst({
+            where: {
+                userId,
+                listingId,
+                listing: {
+                    type: ListingType.AUCTION,
+                    deletedAt: null,
+                    auction: { is: { deletedAt: null } },
+                },
+            },
+            select: { id: true },
+        });
+        return !!item;
+    }
 }
