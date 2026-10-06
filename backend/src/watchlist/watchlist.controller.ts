@@ -77,6 +77,20 @@ export class WatchlistController {
         return new PaginatedResponse(result.data, result.total, result.page, result.limit);
     }
 
+    @Get('auctions/check/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Check auction shortlist status (verified dealers)' })
+    async checkAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ) {
+        const inWatchlist = await this.watchlistService.isInAuctionShortlist(
+            user.id, listingId,
+        );
+        return new StandardResponse({ inWatchlist });
+    }
+
     /**
      * Save an auction to the verified-dealer shortlist.
      * Deliberately separate from generic Saved Cars so a normal buyer cannot
