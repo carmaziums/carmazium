@@ -5,6 +5,8 @@ import * as SecureStore from 'expo-secure-store';
 import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
 import { navigationRef } from '../lib/navigationRef';
 import { detachSellWizardDraft } from '../lib/sellWizardStore';
+import { useWatchlistStore } from './watchlistStore';
+import { clearDealerAccessCache } from '../lib/dealerAccessApi';
 
 /** Post-signup wizard only: name -> verify -> postcode -> preferences.
  *  Key deliberately unchanged so existing installs that already have it are not
@@ -220,6 +222,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Offline or already invalid — the local reset below is what matters.
     }
     await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+    // Personal saved cars must never be visible to the next account on this device.
+    useWatchlistStore.getState().reset();
+    clearDealerAccessCache();
 
     set({
       isAuthenticated: false,
@@ -334,6 +339,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         let response = await apiClient<UserProfileResponse>('/users/me');
         if (response.success && response.data) {
           let profile = response.data;
+          // A restored session for a different person must not inherit the
+          // previous account's in-memory watchlist or cached dealership role.
+          if (get().user?.id && get().user?.id !== profile.id) {
+            useWatchlistStore.getState().reset();
+            clearDealerAccessCache();
+          }
 
           // OAuth signup carries the selected account type on the callback URL,
           // exactly like the web client. It is therefore single-use and bound
@@ -448,6 +459,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await apiClient<UserProfileResponse>('/users/me');
       if (response.success && response.data) {
         const profile = response.data;
+        // Explicit sign-in is a new identity boundary even if the previous
+        // session ended abnormally before the normal logout teardown.
+        useWatchlistStore.getState().reset();
+        clearDealerAccessCache();
         const accountRole = mapAccountRole(profile.role);
         const mappedRole = previewRoleForAccount(accountRole);
         const hasCompletedOnboarding = hasRequiredAccountDetails(profile);
@@ -636,6 +651,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('Supabase logout error:', e);
     } finally {
       await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+      useWatchlistStore.getState().reset();
+      clearDealerAccessCache();
       set({
         isAuthenticated: false,
         pendingEmailVerification: false,

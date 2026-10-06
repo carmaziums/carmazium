@@ -72,6 +72,16 @@ function same(label, values) {
 }
 
 const manifest = JSON.parse(read('product-parity.json'));
+// A newly added feature must appear in the human-auditable web/iOS/Android
+// checklist as well as the machine manifest. This prevents unreviewed drift.
+const octoberMatrix = read('docs/ONE_PRODUCT_OCT2026_AUDIT_MATRIX.md');
+for (const feature of manifest.features) {
+  if (!octoberMatrix.includes('`' + feature.id + '`')) {
+    fail('October options audit lacks manifest entry: ' + feature.id);
+  }
+}
+ok('Every registered feature has an audit matrix row');
+
 for (const feature of manifest.features) {
   const webMissing = (feature.web || []).filter((p) => !exists(p));
   const mobileMissing = (feature.mobile || []).filter((p) => !exists(p));
@@ -1396,6 +1406,82 @@ if (
   fail('Vercel server functions and Fly backend must remain co-located in London');
 } else {
   ok('Vercel lhr1 and Fly lhr keep server-side auction traffic in London');
+}
+
+// A feature-file manifest cannot prove that dealers can actually reach a
+// workflow. Verify the native screen uses the same secured shortlist endpoint,
+// that navigation is KYC-gated, and that both entry paths remain reachable.
+const nativeShortlistApi = read('carmazium app/carmazium app/src/lib/auctionShortlistApi.ts');
+const webShortlistApi = read('src/lib/auctionShortlistApi.ts');
+const nativeShortlistScreen = read('carmazium app/carmazium app/src/screens/main/DealerAuctionShortlistScreen.tsx');
+const nativeShortlistNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
+const nativeShortlistDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const nativeDealerDashboard = read('carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx');
+const backendDealerGuard = read('backend/src/auth/guards/verified-dealer.guard.ts');
+const nativeLiveAuctions = read('carmazium app/carmazium app/src/screens/main/LiveScreen.tsx');
+const shortlistController = read('backend/src/watchlist/watchlist.controller.ts');
+for (const [client, source] of [['web', webShortlistApi], ['native', nativeShortlistApi]]) {
+  if (!source.includes('/watchlist/auctions?page=')) fail(client + ' dealer shortlist uses a different API contract');
+  else ok(client + ' shortlist uses the canonical dealer-only API');
+}
+if (!shortlistController.includes('@UseGuards(SessionAuthGuard, VerifiedDealerGuard)')) {
+  fail('Dealer shortlist endpoint must retain server-side verified dealer access');
+} else {
+  ok('Backend protects auction shortlist with verified dealer access');
+}
+if (!nativeShortlistScreen.includes('getAuctionShortlist(') ||
+    !nativeShortlistScreen.includes("view === 'live'") ||
+    !nativeShortlistScreen.includes("view === 'all'") ||
+    !nativeShortlistScreen.includes('removeFromWatchlist(') ||
+    !nativeShortlistScreen.includes("navigation.navigate('LiveAuctionDetailed'")) {
+  fail('Native dealer shortlist missing live/all, remove or open-to-bid workflow');
+} else {
+  ok('Native dealer shortlist includes live/all, removal and bid-later navigation');
+}
+if (!nativeShortlistNavigator.includes("withDealerGate(DealerAuctionShortlistScreen, 'VIEW_TRADE')") ||
+    !nativeShortlistNavigator.includes('name="DealerAuctionShortlist"') ||
+    !nativeShortlistDrawer.includes("id: 'dealer-shortlist'") ||
+    !nativeShortlistDrawer.includes("requiredPermission: 'VIEW_TRADE'") ||
+    !nativeShortlistDrawer.includes("stackScreen: 'DealerAuctionShortlist'") ||
+    !nativeShortlistDrawer.includes("id: 'dealer-my-auction-bids'") ||
+    !nativeShortlistDrawer.includes("stackScreen: 'BuyerBids'") ||
+    !nativeShortlistNavigator.includes('name="BuyerBids"') ||
+    !nativeLiveAuctions.includes("hasDealerPermission('VIEW_TRADE')") ||
+    !nativeDealerDashboard.includes("hasPermission('VIEW_TRADE')") ||
+    !backendDealerGuard.includes("'VIEW_TRADE'")) {
+  fail('Native shortlist must enforce VIEW_TRADE and be reachable only to authorised dealers');
+} else {
+  ok('Native shortlist uses VIEW_TRADE across backend, screen gate and native navigation');
+}
+
+// Keep native dealer shortlist runtime behavior consistent with web: refresh
+// active statuses/prices, recover after last-page deletion, and keep cross-device
+// hearts fresh. These source guards supplement (not replace) device/E2E tests.
+const mobileWatchlistApi = read('carmazium app/carmazium app/src/lib/watchlistApi.ts');
+const mobileWatchlistStore = read('carmazium app/carmazium app/src/store/watchlistStore.ts');
+const mobileSavedScreen = read('carmazium app/carmazium app/src/screens/main/SavedScreen.tsx');
+const mobileAuthStoreForWatchlist = read('carmazium app/carmazium app/src/store/authStore.ts');
+if (!nativeShortlistScreen.includes("AUTO_REFRESH_MS = 20_000") ||
+    !nativeShortlistScreen.includes("AppState.currentState === 'active'") ||
+    !nativeShortlistScreen.includes('setInterval(') ||
+    !nativeShortlistScreen.includes('remainingUntil(a.endTime, now)') ||
+    !nativeShortlistScreen.includes('page > nextTotalPages') ||
+    !nativeShortlistScreen.includes('setPage(nextTotalPages)') ||
+    !nativeShortlistScreen.includes("item.listing.status === 'ACTIVE'")) {
+  fail('Native shortlist must refresh foreground prices/status, show time remaining and recover pagination');
+} else {
+  ok('Native shortlist guards match website freshness and last-page behavior');
+}
+if (!nativeLiveAuctions.includes('useFocusEffect(useCallback(') ||
+    !nativeLiveAuctions.includes('void hydrateWatchlist()') ||
+    !mobileSavedScreen.includes('useFocusEffect(useCallback(') ||
+    !mobileSavedScreen.includes('void hydrateFromApi()') ||
+    !mobileWatchlistStore.includes('thisHydration === hydrateEpoch') ||
+    !mobileWatchlistApi.includes('throw error;') ||
+    !mobileAuthStoreForWatchlist.includes('useWatchlistStore.getState().reset()')) {
+  fail('Native saved cars must sync on focus, retain offline state and purge account data on signout');
+} else {
+  ok('Native watchlist cross-device refresh, offline and signout isolation are guarded');
 }
 
 if (process.exitCode) {

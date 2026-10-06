@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "purpose": "CarMazium one-product parity contract",
   "policy": {
     "backend_is_source_of_truth": true,
@@ -294,6 +294,18 @@
       ],
       "mobile": [
         "carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx"
+      ],
+      "status": "required"
+    },
+    {
+      "id": "dealer.auction_shortlist",
+      "web": [
+        "src/app/dashboard/dealer/auctions/shortlisted/page.tsx",
+        "src/lib/auctionShortlistApi.ts"
+      ],
+      "mobile": [
+        "carmazium app/carmazium app/src/screens/main/DealerAuctionShortlistScreen.tsx",
+        "carmazium app/carmazium app/src/lib/auctionShortlistApi.ts"
       ],
       "status": "required"
     },

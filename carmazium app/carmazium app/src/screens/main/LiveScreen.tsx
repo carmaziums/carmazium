@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -37,6 +37,8 @@ import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
+import { useWatchlistStore } from '../../store/watchlistStore';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -84,6 +86,13 @@ export const LiveScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser } = useAuthStore();
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const dealerIdentity = accountRole === 'dealer' || !!currentUser?.isDealerStaff;
+  const { hasPermission: hasDealerPermission } = useDealerAccess(dealerIdentity);
+  const hydrateWatchlist = useWatchlistStore((s) => s.hydrateFromApi);
+  // A dealer who shortlisted auctions on web should immediately see filled
+  // hearts when opening Live on either app, even without visiting Saved first.
+  useFocusEffect(useCallback(() => { void hydrateWatchlist(); }, [hydrateWatchlist]));
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
@@ -338,6 +347,20 @@ export const LiveScreen: React.FC = () => {
           </View>
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
         </TouchableOpacity>
+
+        {dealerIdentity && hasDealerPermission('VIEW_TRADE') && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Open my shortlisted auctions"
+            onPress={() => navigation.navigate('DealerAuctionShortlist')}
+            activeOpacity={0.8}
+            style={{ marginBottom: 12, padding: 14, borderRadius: 12, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.accent, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+          >
+            <Ionicons name="heart-outline" size={20} color={Colors.accent} />
+            <Text style={{ flex: 1, color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>My shortlisted auctions</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
         <View style={styles.alertBanner}>

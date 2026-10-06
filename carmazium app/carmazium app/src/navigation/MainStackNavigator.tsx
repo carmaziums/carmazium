@@ -11,6 +11,7 @@ import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
 import { DealerAnalyticsScreen } from '../screens/main/DealerAnalyticsScreen';
+import { DealerAuctionShortlistScreen } from '../screens/main/DealerAuctionShortlistScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
 import { DealerKYCScreen } from '../screens/main/DealerKYCScreen';
@@ -78,6 +79,7 @@ import { Colors } from '../constants/colors';
 // render.
 
 const GatedDealerAnalyticsScreen = withDealerGate(DealerAnalyticsScreen, 'VIEW_ANALYTICS');
+const GatedDealerAuctionShortlistScreen = withDealerGate(DealerAuctionShortlistScreen, 'VIEW_TRADE');
 const GatedDealerInventoryScreen = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
 const GatedDealerLeadsScreen = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
 const GatedDealerKYCScreen = withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true);
@@ -105,6 +107,7 @@ export type MainStackParamList = {
   Compare: { initialListing?: CarListing } | undefined;
   Settings: undefined;
   DealerAnalytics: undefined;
+  DealerAuctionShortlist: undefined;
   DealerInventory: undefined;
   DealerLeads: undefined;
   DealerKYC: {
@@ -233,6 +236,11 @@ export const MainStackNavigator: React.FC = () => {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
+        options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="DealerAuctionShortlist"
+        component={GatedDealerAuctionShortlistScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen

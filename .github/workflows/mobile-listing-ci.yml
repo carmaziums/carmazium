@@ -18,6 +18,11 @@ on:
       - "carmazium app/carmazium app/src/lib/nativeSellerDraftReadiness.ts"
       - "carmazium app/carmazium app/src/lib/nativeAuctionDraft.ts"
       - "carmazium app/carmazium app/src/store/authStore.ts"
+      - "carmazium app/carmazium app/src/store/watchlistStore.ts"
+      - "carmazium app/carmazium app/src/lib/watchlistApi.ts"
+      - "carmazium app/carmazium app/src/lib/auctionShortlistApi.ts"
+      - "carmazium app/carmazium app/src/screens/main/DealerAuctionShortlistScreen.tsx"
+      - "carmazium app/carmazium app/scripts/test-auction-shortlist-state.test.mjs"
       - "carmazium app/carmazium app/scripts/test-seller-vehicle-specs.test.mjs"
       - "carmazium app/carmazium app/src/lib/listingsApi.ts"
       - "carmazium app/carmazium app/src/lib/paymentsApi.ts"
@@ -53,6 +58,9 @@ jobs:
       - name: Native seller gearbox and body-type regression suite
         run: npm run test:seller-specs
 
+      - name: Native saved-auction watchlist runtime regressions
+        run: node --test scripts/test-auction-shortlist-state.test.mjs
+
       - name: Typecheck mobile listing surfaces
         shell: bash
         run: |
@@ -78,3 +86,101 @@ jobs:
           echo
           echo "Full mobile TypeScript has pre-existing errors outside the listing scope."
           echo "No TypeScript errors were reported in the mobile listing/auction files changed by this PR."
+
+  # Temporary, tightly scoped full-certification fallback. GitHub accepts
+  # Mobile Listing CI on this PR but is not scheduling the standard One
+  # Product Parity / Release Certification checks on its latest head.
+  # These independent jobs execute those same CODE checks on the actual
+  # PR SHA. They do NOT replace signed-device, production or store gates.
+  # Before merging, move this reusable coverage into the canonical workflows.
+  block1-parity-contract:
+    name: Block 1 exact-head parity + release contract
+    if: github.head_ref == 'feat/native-dealer-auction-shortlist-parity-20261004'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Contract parity and auction fee deadline
+        run: |
+          node scripts/check-product-parity.mjs
+          node scripts/check-auction-fee-deadline.mjs
+      - name: Current native MaziuM visual regression
+        run: node --test scripts/test-mazium-native-visual-parity.test.mjs
+      - name: Release readiness code contract
+        run: node scripts/check-release-readiness.mjs
+      - name: Evidence validator self-test (NOT actual signed build proof)
+        env:
+          CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
+          CARMAZIUM_IOS_BUILD_ID: ci-ios-build
+          CARMAZIUM_IOS_ARTIFACT_SHA256: '0000000000000000000000000000000000000000000000000000000000000000'
+          CARMAZIUM_IOS_XCODE_VERSION: '26.0'
+          CARMAZIUM_IOS_SDK_VERSION: '26.0'
+          CARMAZIUM_ANDROID_BUILD_ID: ci-android-build
+          CARMAZIUM_ANDROID_ARTIFACT_SHA256: '1111111111111111111111111111111111111111111111111111111111111111'
+          CARMAZIUM_ANDROID_SIGNED_AAB_CONFIRMED: 'true'
+          CARMAZIUM_ANDROID_16KB_PAGE_SIZE_CONFIRMED: 'true'
+          CARMAZIUM_IOS_SIGNED_ARCHIVE_CONFIRMED: 'true'
+          CARMAZIUM_DEVICE_QA_CONFIRMED: 'true'
+          CARMAZIUM_ACCESSIBILITY_QA_CONFIRMED: 'true'
+          CARMAZIUM_PUSH_QA_CONFIRMED: 'true'
+          CARMAZIUM_PAYMENT_QA_CONFIRMED: 'true'
+          CARMAZIUM_DEEP_LINK_QA_CONFIRMED: 'true'
+          CARMAZIUM_TESTFLIGHT_UPLOAD_CONFIRMED: 'true'
+          CARMAZIUM_PLAY_INTERNAL_UPLOAD_CONFIRMED: 'true'
+        run: node scripts/check-release-candidate-evidence.mjs
+
+  block1-web:
+    name: Block 1 exact-head website regressions and typecheck
+    if: github.head_ref == 'feat/native-dealer-auction-shortlist-parity-20261004'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/check-auction-seller-sequencing.mjs
+      - run: node --test scripts/test-auction-shortlist.test.mjs
+      - run: npx tsc --noEmit
+
+  block1-native-release:
+    name: Block 1 exact-head Expo config, types and state tests
+    if: github.head_ref == 'feat/native-dealer-auction-shortlist-parity-20261004'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - run: npm ci
+      - run: npx expo config --type public > /tmp/carmazium-expo-config.json
+      - run: npm run typescript
+      - run: node --test scripts/test-auction-shortlist-state.test.mjs
+
+  block1-backend:
+    name: Block 1 exact-head backend typecheck, tests and build
+    if: github.head_ref == 'feat/native-dealer-auction-shortlist-parity-20261004'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --runInBand
+      - run: npm run build
