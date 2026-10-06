@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-    title: "Sell My Car Online | Free Car Valuation",
+    title: "Sell My Car Online UK | Free Car Valuation | CarMazium",
     description:
-        "Get a free car valuation and sell your car online with CarMazium. List in our dealer auction for £0 or advertise retail for £1. Verified dealers compete and qualifying auction sales can receive a £100 seller incentive.",
+        "Sell your car online in the UK with CarMazium. Get a free car valuation, choose a £0 verified-dealer auction or a £1 retail listing, and get paid directly by the buyer.",
     keywords: [
         "sell my car",
         "sell my car online",
@@ -43,9 +43,9 @@ const sellPageJsonLd = {
             "@type": "WebPage",
             "@id": "https://www.carmazium.com/sell#webpage",
             url: "https://www.carmazium.com/sell",
-            name: "Sell My Car Online | Free Car Valuation | CarMazium",
+            name: "Sell My Car Online UK | Free Car Valuation | CarMazium",
             description:
-                "Get a free car valuation, choose a £0 dealer auction or £1 retail listing, and sell your car online with CarMazium.",
+                "Sell your car online in the UK. Get a free car valuation, choose a £0 verified-dealer auction or £1 retail listing, and get paid directly by the buyer.",
             inLanguage: "en-GB",
             isPartOf: { "@id": "https://www.carmazium.com/#website" },
         },
