@@ -112,6 +112,7 @@ describe('Saved Cars / dealer shortlist access boundary', () => {
     describe('verified-dealer auction mutations', () => {
         it.each([
             ['findAuctionShortlist', WatchlistController.prototype.findAuctionShortlist],
+            ['checkAuction', WatchlistController.prototype.checkAuction],
             ['addAuction', WatchlistController.prototype.addAuction],
             ['removeAuction', WatchlistController.prototype.removeAuction],
         ])('%s requires VerifiedDealerGuard', (_name, handler) => {
@@ -134,6 +135,23 @@ describe('Saved Cars / dealer shortlist access boundary', () => {
             expect(prisma.watchlistItem.create).toHaveBeenCalledWith({
                 data: { userId: 'dealer-one', listingId: 'auction-one' },
                 include: { listing: true },
+            });
+        });
+
+        it('dealer auction status check is account-bound and auction-only', async () => {
+            prisma.watchlistItem.findFirst.mockResolvedValue({ id: 'saved-auction' });
+            expect(await service.isInAuctionShortlist('dealer-one', 'auction-one')).toBe(true);
+            expect(prisma.watchlistItem.findFirst).toHaveBeenCalledWith({
+                where: {
+                    userId: 'dealer-one',
+                    listingId: 'auction-one',
+                    listing: {
+                        type: 'AUCTION',
+                        deletedAt: null,
+                        auction: { is: { deletedAt: null } },
+                    },
+                },
+                select: { id: true },
             });
         });
 
