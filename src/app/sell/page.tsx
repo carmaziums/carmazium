@@ -2,9 +2,8 @@
 
 import * as React from "react"
 import { Suspense } from "react"
-import { ListingWizard } from "@/components/listing/ListingWizard"
-import { dvlaLookup } from "@/lib/dvlaApi"
-import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import dynamic from "next/dynamic"
+import type { VehicleValuation } from "@/lib/valuationApi"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
@@ -23,6 +22,16 @@ import {
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { SELLER_FUNNEL } from "@/lib/gtm"
+
+const ListingWizard = dynamic(
+    () => import("@/components/listing/ListingWizard").then((mod) => mod.ListingWizard),
+    {
+        ssr: false,
+        loading: () => <FormFallback />,
+    },
+)
+
+type DvlaLookupResult = Awaited<ReturnType<typeof import("@/lib/dvlaApi").dvlaLookup>>
 
 function scrollToSellerOptions() {
     document.getElementById("sell-options")?.scrollIntoView({
@@ -136,11 +145,16 @@ function QuickValuationForm() {
     const [manualModel, setManualModel] = React.useState("")
     const [manualYear, setManualYear] = React.useState("")
     const [manualMode, setManualMode] = React.useState(false)
-    const [pendingVehicle, setPendingVehicle] = React.useState<Awaited<ReturnType<typeof dvlaLookup>> | null>(null)
+    const [pendingVehicle, setPendingVehicle] = React.useState<DvlaLookupResult | null>(null)
     const [loading, setLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [result, setResult] = React.useState<LandingValuationResult | null>(null)
     const valuationJourneyIdRef = React.useRef<string | null>(null)
+
+    const warmValuationModules = React.useCallback(() => {
+        void import("@/lib/dvlaApi")
+        void import("@/lib/valuationApi")
+    }, [])
 
     const beginValuationJourney = () => {
         const valuationId = valuationJourneyIdRef.current ?? crypto.randomUUID()
@@ -189,6 +203,7 @@ function QuickValuationForm() {
                 }
 
                 const valuationId = beginValuationJourney()
+                const { getVehicleValuation } = await import("@/lib/valuationApi")
                 const valuation = await getVehicleValuation({
                     make,
                     model: manualResolvedModel,
@@ -268,6 +283,7 @@ function QuickValuationForm() {
             // Changing the registration clears pendingVehicle, so if one is
             // present it belongs to the current VRM and can be reused without
             // another DVLA request.
+            const { dvlaLookup } = await import("@/lib/dvlaApi")
             const vehicle = pendingVehicle ?? await dvlaLookup(cleanVrm)
 
             if (!vehicle.make || !vehicle.year) {
@@ -295,6 +311,7 @@ function QuickValuationForm() {
             // mileage. Fuel, gearbox, trim, condition and other seller answers
             // adjust this base later in the listing wizard without another
             // market search.
+            const { getVehicleValuation } = await import("@/lib/valuationApi")
             const valuation = await getVehicleValuation({
                 make: vehicle.make,
                 model: resolvedModel,
@@ -432,6 +449,7 @@ function QuickValuationForm() {
                             }}
                             inputMode="text"
                             autoComplete="off"
+                            onFocus={warmValuationModules}
                             placeholder="AB12 CDE"
                             aria-label="Vehicle registration"
                             className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 font-mono text-base font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -448,6 +466,7 @@ function QuickValuationForm() {
                             }}
                             inputMode="numeric"
                             autoComplete="off"
+                            onFocus={warmValuationModules}
                             placeholder="45,000"
                             aria-label="Current vehicle mileage"
                             className="h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-4 text-base font-bold text-[var(--text-primary)] outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
