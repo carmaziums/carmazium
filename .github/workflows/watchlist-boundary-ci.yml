@@ -1,0 +1,61 @@
+name: Watchlist Retail/Trade Boundary CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/src/watchlist/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/scripts/watchlist-access-boundary-postgres.ts'
+      - 'backend/package*.json'
+      - '.github/workflows/watchlist-boundary-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watchlist-boundary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  watchlist-boundary:
+    name: Retail Saved Cars vs verified-dealer auction shortlist
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: watchlist_test
+          POSTGRES_PASSWORD: ephemeral_test_only
+          POSTGRES_DB: carmazium_watchlist_boundary_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U watchlist_test -d carmazium_watchlist_boundary_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://watchlist_test:ephemeral_test_only@127.0.0.1:5432/carmazium_watchlist_boundary_ci?schema=public
+      DIRECT_URL: postgresql://watchlist_test:ephemeral_test_only@127.0.0.1:5432/carmazium_watchlist_boundary_ci?schema=public
+      WATCHLIST_BOUNDARY_TEST: ephemeral-postgres-only
+      NODE_ENV: test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install locked backend dependencies
+        run: npm ci
+      - name: Build exact current Prisma schema in disposable database
+        run: npx prisma db push --skip-generate
+      - name: Unit-test watchlist access boundary
+        run: npm test -- --runInBand src/watchlist/watchlist.service.spec.ts
+      - name: Real HTTP + Prisma retail/trade boundary acceptance
+        run: npx ts-node --transpile-only scripts/watchlist-access-boundary-postgres.ts
