@@ -52,9 +52,18 @@ test('web and native use the same watchlist endpoints and account-bound backend 
     assert.ok(webApi.includes(field), 'Website missing watchlist transport ' + field);
     assert.ok(nativeApi.includes(field), 'Native missing watchlist transport ' + field);
   }
-  assert.match(backend, /where: \{ userId \}/);
+  // Generic Saved Cars must remain account-bound AND retail-only. The old
+  // unrestricted `where: { userId }` contract would re-expose dealer auction
+  // shortlist rows through the buyer Saved Cars endpoint.
+  assert.match(backend, /const where = \{\s*userId,\s*listing: \{/);
+  assert.match(backend, /type: ListingType\.CLASSIFIED/);
+  assert.match(backend, /ListingStatus\.ACTIVE/);
+  assert.match(backend, /ListingStatus\.SOLD/);
+  assert.match(backend, /ListingStatus\.OFFER_ACCEPTED/);
   assert.match(backend, /userId_listingId: \{ userId, listingId \}/);
   assert.match(controller, /@UseGuards\(SessionAuthGuard\)/);
+  assert.match(controller, /@Post\('auctions\/:listingId'\)[\s\S]*@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/);
+  assert.match(controller, /@Delete\('auctions\/:listingId'\)[\s\S]*@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/);
 });
 
 test('the Saved Cars response includes native-needed transmission and search coordinates', () => {
