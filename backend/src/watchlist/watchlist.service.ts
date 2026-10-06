@@ -2,6 +2,12 @@ import { Injectable, ConflictException, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { ListingStatus, ListingType } from '@prisma/client';
 
+const RETAIL_SAVED_STATUSES: ListingStatus[] = [
+    ListingStatus.ACTIVE,
+    ListingStatus.SOLD,
+    ListingStatus.OFFER_ACCEPTED,
+];
+
 @Injectable()
 export class WatchlistService {
     constructor(private readonly prisma: PrismaService) { }
@@ -21,8 +27,7 @@ export class WatchlistService {
         // draft/rejected row; expose the same not-found response instead.
         if (!listing || listing.deletedAt ||
             listing.type !== ListingType.CLASSIFIED ||
-            ![ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.OFFER_ACCEPTED]
-                .includes(listing.status)) {
+            !RETAIL_SAVED_STATUSES.includes(listing.status)) {
             throw new NotFoundException('Listing not found');
         }
 
@@ -60,8 +65,7 @@ export class WatchlistService {
 
         if (!item || item.listing.deletedAt ||
             item.listing.type !== ListingType.CLASSIFIED ||
-            ![ListingStatus.ACTIVE, ListingStatus.SOLD, ListingStatus.OFFER_ACCEPTED]
-                .includes(item.listing.status)) {
+            !RETAIL_SAVED_STATUSES.includes(item.listing.status)) {
             throw new NotFoundException('Listing not in watchlist');
         }
 
