@@ -9,8 +9,11 @@ import { PageHeader } from "@/components/dashboard/PageHeader"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { useAuth } from "@/context/AuthContext"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
-import { getAuctionShortlist, type ShortlistedAuction } from "@/lib/auctionShortlistApi"
-import { removeFromWatchlist } from "@/lib/listingApi"
+import {
+    getAuctionShortlist,
+    removeAuctionFromShortlist,
+    type ShortlistedAuction,
+} from "@/lib/auctionShortlistApi"
 
 const PAGE_SIZE = 12
 
@@ -96,7 +99,7 @@ export default function DealerAuctionShortlistPage() {
         setRemoving(listingId)
         setError(null)
         try {
-            await removeFromWatchlist(listingId)
+            await removeAuctionFromShortlist(listingId)
             setItems(previous => previous.filter(item => item.listingId !== listingId))
             await load(true)
         } catch (err) {
