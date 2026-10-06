@@ -2028,4 +2028,126 @@ describe('ListingsService', () => {
             });
         });
     });
+    describe('full-inventory radius search before pagination', () => {
+        const centre = { latitude: 51.5074, longitude: -0.1278 };
+        const near = { id: 'near-london', latitude: 51.52, longitude: -0.14, type: 'CLASSIFIED' };
+        const far = { id: 'outside-circle', latitude: 51.63, longitude: -0.35, type: 'CLASSIFIED' };
+
+        it('checks exact spherical distance, accurate total, and existing public listing security', async () => {
+            prisma.listing.findMany.mockImplementation(async ({ select, where }: any) =>
+                select?.latitude ? [near, far] : [near]);
+            prisma.listing.count.mockResolvedValue(1);
+            const result = await service.findAll({ ...centre, maxDistanceMi: 10, page: 1, limit: 10 });
+            expect(result.data.map(item => item.id)).toEqual([near.id]);
+            expect(result.total).toBe(1);
+            const candidate = prisma.listing.findMany.mock.calls[0][0];
+            expect(candidate.select).toEqual({ id: true, latitude: true, longitude: true });
+            expect(candidate.where.AND[0]).toEqual(expect.objectContaining({
+                deletedAt: null, type: 'CLASSIFIED',
+                status: { in: ['ACTIVE', 'SOLD', 'OFFER_ACCEPTED'] },
+            }));
+            expect(candidate.where.AND[1].AND[0].latitude.gte).toBeLessThan(centre.latitude);
+            const resultWhere = prisma.listing.findMany.mock.calls[1][0].where;
+            expect(resultWhere.id.in).toEqual(expect.arrayContaining([near.id]));
+            expect(prisma.listing.count).toHaveBeenCalledWith({ where: resultWhere });
+        });
+
+        it('does not stop after the first matching coordinate batch', async () => {
+            const batch = Array.from({ length: 400 }, (_, i) => ({
+                id: String(i).padStart(6, '0'),
+                latitude: 51.56, longitude: -0.13,
+            }));
+            const last = { id: 'final-near-car', latitude: centre.latitude, longitude: centre.longitude };
+            prisma.listing.findMany.mockImplementation(async ({ select, cursor }: any) =>
+                select?.latitude ? cursor ? [last] : batch : [last]);
+            prisma.listing.count.mockResolvedValue(401);
+            const result = await service.findAll({ ...centre, maxDistanceMi: 10, page: 2, limit: 20 });
+            expect(result.total).toBe(401);
+            expect(prisma.listing.findMany).toHaveBeenCalledTimes(3);
+            expect(prisma.listing.findMany.mock.calls[1][0].cursor).toEqual({ id: batch[399].id });
+            expect(prisma.listing.findMany.mock.calls[1][0].skip).toBe(1);
+            expect(prisma.listing.findMany.mock.calls[2][0].skip).toBe(20);
+        });
+
+        it('performs globally closest-first pagination before loading page details', async () => {
+            const first = { id: 'close', latitude: 51.51, longitude: -0.13 };
+            const second = { id: 'farther', latitude: 51.55, longitude: -0.13 };
+            prisma.listing.findMany.mockImplementation(async ({ select }: any) =>
+                select?.latitude ? [second, first] : [first]);
+            prisma.listing.count.mockResolvedValue(2);
+            const result = await service.findAll({
+                ...centre, maxDistanceMi: 20, sortBy: 'distance_asc', page: 1, limit: 1,
+            });
+            expect(result.total).toBe(2);
+            const query = prisma.listing.findMany.mock.calls[1][0];
+            expect(query.where.AND[1].id.in).toEqual([first.id]);
+            expect(query.skip).toBeUndefined();
+            expect(query.take).toBeUndefined();
+        });
+
+        it('rejects incomplete geolocation instead of returning unfiltered vehicles', async () => {
+            await expect(service.findAll({ latitude: 51.5, maxDistanceMi: 10 }))
+                .rejects.toThrow('Provide valid latitude');
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('handles 4,000 deterministic candidates and page 2 without dropping later-page matches', async () => {
+            const rows = Array.from({ length: 4000 }, (_, index) => ({
+                id: String(index).padStart(6, '0'),
+                // Both points lie in the conservative bounding rectangle;
+                // only the first lies inside the ten-mile spherical circle.
+                latitude: index % 4 === 0 ? 51.51 : 51.63,
+                longitude: index % 4 === 0 ? -0.13 : -0.30,
+            }));
+            const exact = rows.filter(row => row.latitude === 51.51);
+            prisma.listing.findMany.mockImplementation(async ({ select, cursor, take, where, skip }: any) => {
+                if (select?.latitude) {
+                    const from = cursor ? rows.findIndex(row => row.id === cursor.id) + 1 : 0;
+                    // Simulate database cursor batches from the bounding
+                    // rectangle, including real circle false positives.
+                    return rows.slice(from, from + take);
+                }
+                const eligible = new Set(where.id.in);
+                return exact.filter(row => eligible.has(row.id)).slice(skip, skip + take);
+            });
+            prisma.listing.count.mockImplementation(async ({ where }: any) => where.id.in.length);
+            const result = await service.findAll({
+                ...centre, maxDistanceMi: 10, page: 2, limit: 20,
+            });
+            expect(result.total).toBe(1000);
+            expect(result.data.map(row => row.id)).toEqual(exact.slice(20, 40).map(row => row.id));
+            expect(prisma.listing.findMany.mock.calls.filter(([args]: any[]) => args.select?.latitude))
+                .toHaveLength(11); // Ten 400-row pages + final empty page.
+            const eligible = prisma.listing.count.mock.calls[0][0].where.id.in;
+            expect(eligible).toHaveLength(1000);
+            expect(eligible).toContain('003996'); // matching car in final scan batch
+        });
+
+        it('fails explicitly rather than returning an incomplete result after the candidate safety cap', async () => {
+            prisma.listing.findMany.mockImplementation(async ({ select, cursor, take }: any) => {
+                if (!select?.latitude) throw new Error('Should never run final query after safety failure');
+                const from = cursor ? Number(cursor.id) + 1 : 0;
+                return Array.from({ length: take }, (_, index) => ({
+                    id: String(from + index).padStart(6, '0'),
+                    latitude: centre.latitude, longitude: centre.longitude,
+                }));
+            });
+            await expect(service.findAll({
+                ...centre, maxDistanceMi: 200, page: 1, limit: 20,
+            })).rejects.toThrow('Too many nearby candidates');
+            expect(prisma.listing.count).not.toHaveBeenCalled();
+            expect(prisma.listing.findMany.mock.calls.length).toBe(51);
+        });
+
+        it('preserves the historical non-geographic query path without extra scans', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ make: 'Toyota', page: 3, limit: 10 });
+            expect(prisma.listing.findMany).toHaveBeenCalledTimes(1);
+            expect(prisma.listing.findMany.mock.calls[0][0]).toEqual(
+                expect.objectContaining({ skip: 20, take: 10 }),
+            );
+        });
+    });
+
 });

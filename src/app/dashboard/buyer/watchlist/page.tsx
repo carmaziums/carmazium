@@ -16,36 +16,89 @@ export default function SavedCarsPage() {
     const [removing, setRemoving] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [totalPages, setTotalPages] = React.useState(1)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [refreshKey, setRefreshKey] = React.useState(0)
+    const activeUserIdRef = React.useRef<string | null>(null)
+    const fetchEpochRef = React.useRef(0)
+    const accountId = user?.id ?? null
+    // Hide old items synchronously during an account change; effects run
+    // after render and therefore cannot safely be the only privacy gate.
+    const switchingAccounts = activeUserIdRef.current !== accountId
 
     React.useEffect(() => {
-        async function fetchWatchlist() {
-            if (!user) return
-            try {
-                setLoading(true)
-                const data = await getWatchlist(page, 12)
-                setItems(data.data || [])
-                setTotalPages(data.pagination?.totalPages || 1)
-            } catch (err) {
-                console.error('Failed to fetch saved cars:', err)
-            } finally {
-                setLoading(false)
-            }
+        if (activeUserIdRef.current !== accountId) {
+            activeUserIdRef.current = accountId
+            fetchEpochRef.current++
+            setItems([])
+            setTotalPages(1)
+            setPage(1)
+            setLoadError(null)
+        }
+        if (authLoading || !accountId) {
+            setLoading(false)
+            return
         }
 
-        if (!authLoading && user) {
-            fetchWatchlist()
+        let cancelled = false
+        const epoch = ++fetchEpochRef.current
+        setLoading(true)
+        setLoadError(null)
+
+        void getWatchlist(page, 12).then(data => {
+            if (cancelled || epoch !== fetchEpochRef.current ||
+                activeUserIdRef.current !== accountId) return
+            setItems(data.data || [])
+            setTotalPages(data.pagination?.totalPages || 1)
+        }).catch(err => {
+            if (cancelled || epoch !== fetchEpochRef.current ||
+                activeUserIdRef.current !== accountId) return
+            console.error('Failed to fetch saved cars:', err)
+            // Never mislabel HTTP failure as an account with zero cars.
+            setLoadError('Could not refresh saved cars. Please try again.')
+        }).finally(() => {
+            if (!cancelled && epoch === fetchEpochRef.current &&
+                activeUserIdRef.current === accountId) setLoading(false)
+        })
+        return () => {
+            cancelled = true
+            fetchEpochRef.current++
         }
-    }, [user, authLoading, page])
+    }, [accountId, authLoading, page, refreshKey])
+
+    // If a car is saved in the native app, revisiting this website tab
+    // refreshes directly from the shared backend, without a page reload.
+    React.useEffect(() => {
+        if (!accountId) return
+        const refreshOnFocus = () => setRefreshKey(prev => prev + 1)
+        const refreshOnVisible = () => {
+            if (document.visibilityState === 'visible') refreshOnFocus()
+        }
+        window.addEventListener('focus', refreshOnFocus)
+        document.addEventListener('visibilitychange', refreshOnVisible)
+        return () => {
+            window.removeEventListener('focus', refreshOnFocus)
+            document.removeEventListener('visibilitychange', refreshOnVisible)
+        }
+    }, [accountId])
 
     const handleRemove = async (listingId: string) => {
+        if (!accountId) return
+        const removingAccount = accountId
         try {
             setRemoving(listingId)
             await removeFromWatchlist(listingId)
+            if (activeUserIdRef.current !== removingAccount) return
             setItems(prev => prev.filter(item => item.listingId !== listingId))
+            // Reconcile server count/pagination following a removal.
+            if (items.length === 1 && page > 1) setPage(prev => prev - 1)
+            else setRefreshKey(prev => prev + 1)
         } catch (err) {
-            console.error('Failed to remove:', err)
+            if (activeUserIdRef.current === removingAccount) {
+                console.error('Failed to remove saved car:', err)
+                setLoadError('Could not remove this car. Please retry.')
+            }
         } finally {
-            setRemoving(null)
+            if (activeUserIdRef.current === removingAccount) setRemoving(null)
         }
     }
 
@@ -60,14 +113,25 @@ export default function SavedCarsPage() {
                         </h1>
                     </div>
 
-                    {loading ? (
+                    {loadError && !switchingAccounts && (
+                        <div role="alert" className="glass-card mb-4 p-4 flex items-center justify-between gap-3">
+                            <span>{loadError}</span>
+                            <Button variant="outline" onClick={() => setRefreshKey(k => k + 1)}>
+                                Retry
+                            </Button>
+                        </div>
+                    )}
+
+                    {loading || switchingAccounts ? (
                         <div className="glass-card p-12 text-center">
                             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                         </div>
                     ) : items.length === 0 ? (
-                        <div className="glass-card p-12 text-center text-[var(--text-muted)]">
-                            Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
-                        </div>
+                        loadError ? null : (
+                            <div className="glass-card p-12 text-center text-[var(--text-muted)]">
+                                Your Saved Cars list is empty. <Link href="/search" className="text-primary hover:underline">Browse cars to add some!</Link>
+                            </div>
+                        )
                     ) : (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -185,6 +185,25 @@ export class ListingFilterDto {
     @IsOptional()
     vehicleType?: VehicleType;
 
+    // ─── Accurate full-inventory radius (all three parameters required) ─────
+    @ApiPropertyOptional({ description: 'Search centre latitude in decimal degrees; requires longitude and maxDistanceMi' })
+    @Type(() => Number)
+    @IsNumber()
+    @IsOptional()
+    latitude?: number;
+
+    @ApiPropertyOptional({ description: 'Search centre longitude in decimal degrees; requires latitude and maxDistanceMi' })
+    @Type(() => Number)
+    @IsNumber()
+    @IsOptional()
+    longitude?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum spherical distance in miles, >0 and <=200, centre coordinates required' })
+    @Type(() => Number)
+    @IsNumber()
+    @IsOptional()
+    maxDistanceMi?: number;
+
     // ─── Sort & Pagination ─────────────────────────────────────────────────────
     @ApiPropertyOptional({
         description: 'Sort order: newest | price_asc | price_desc | mileage_asc | year_desc',
