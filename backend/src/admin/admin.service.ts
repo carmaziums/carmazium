@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { ListingStatus, UserRole } from '@prisma/client';
+import { ListingStatus, Prisma, UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { RejectListingDto } from './dto/reject-listing.dto';
@@ -310,9 +310,44 @@ export class AdminService {
      * only the rows would leave the total describing a different set, and the
      * pager would offer pages that come back empty.
      */
-    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string) {
+    async getAllListings(page = 1, limit = 20, sellerRole?: string, status?: string, search?: string) {
         const skip = (page - 1) * limit;
         const selectedStatus = status?.toUpperCase();
+        const searchTerms = (search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+        const searchWhere: Prisma.ListingWhereInput | undefined = searchTerms.length
+            ? {
+                  AND: searchTerms.map((term) => ({
+                      OR: [
+                          { vrm: { contains: term, mode: 'insensitive' } },
+                          { title: { contains: term, mode: 'insensitive' } },
+                          { make: { contains: term, mode: 'insensitive' } },
+                          { model: { contains: term, mode: 'insensitive' } },
+                          {
+                              seller: {
+                                  is: {
+                                      OR: [
+                                          { firstName: { contains: term, mode: 'insensitive' } },
+                                          { lastName: { contains: term, mode: 'insensitive' } },
+                                          { email: { contains: term, mode: 'insensitive' } },
+                                          { phone: { contains: term, mode: 'insensitive' } },
+                                          {
+                                              dealerProfile: {
+                                                  is: {
+                                                      companyName: {
+                                                          contains: term,
+                                                          mode: 'insensitive',
+                                                      },
+                                                  },
+                                              },
+                                          },
+                                      ],
+                                  },
+                              },
+                          },
+                      ],
+                  })),
+              }
+            : undefined;
         // Deleted listings retain their prior lifecycle status; use deletedAt.
         if (
             selectedStatus
@@ -322,13 +357,14 @@ export class AdminService {
         ) {
             throw new BadRequestException('Invalid listing status filter');
         }
-        const where = {
-            ...(sellerRole ? { seller: { role: sellerRole as UserRole } } : {}),
+        const where: Prisma.ListingWhereInput = {
+            ...(sellerRole ? { seller: { is: { role: sellerRole as UserRole } } } : {}),
             ...(selectedStatus === 'DELETED'
                 ? { deletedAt: { not: null } }
                 : selectedStatus && selectedStatus !== 'ALL'
                     ? { status: selectedStatus as ListingStatus, deletedAt: null }
                     : {}),
+            ...(searchWhere ?? {}),
         };
         const [data, total] = await Promise.all([
             this.prisma.listing.findMany({
@@ -1319,8 +1355,47 @@ export class AdminService {
         };
     }
 
-    async getAllAuctions(page = 1, limit = 20) {
+    async getAllAuctions(page = 1, limit = 20, search?: string) {
         const skip = (page - 1) * limit;
+        const searchTerms = (search ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+        const auctionWhere: Prisma.AuctionWhereInput = searchTerms.length
+            ? {
+                  AND: searchTerms.map((term) => ({
+                      listing: {
+                          is: {
+                              OR: [
+                                  { vrm: { contains: term, mode: 'insensitive' } },
+                                  { title: { contains: term, mode: 'insensitive' } },
+                                  { make: { contains: term, mode: 'insensitive' } },
+                                  { model: { contains: term, mode: 'insensitive' } },
+                                  {
+                                      seller: {
+                                          is: {
+                                              OR: [
+                                                  { firstName: { contains: term, mode: 'insensitive' } },
+                                                  { lastName: { contains: term, mode: 'insensitive' } },
+                                                  { email: { contains: term, mode: 'insensitive' } },
+                                                  { phone: { contains: term, mode: 'insensitive' } },
+                                                  {
+                                                      dealerProfile: {
+                                                          is: {
+                                                              companyName: {
+                                                                  contains: term,
+                                                                  mode: 'insensitive',
+                                                              },
+                                                          },
+                                                      },
+                                                  },
+                                              ],
+                                          },
+                                      },
+                                  },
+                              ],
+                          },
+                      },
+                  })),
+              }
+            : {};
         const include = {
             listing: {
                 select: {
@@ -1331,6 +1406,7 @@ export class AdminService {
                     make: true,
                     model: true,
                     year: true,
+                    vrm: true,
                     status: true,
                     seller: {
                         select: {
@@ -1360,14 +1436,19 @@ export class AdminService {
         };
 
         const [activeCount, total] = await Promise.all([
-            this.prisma.auction.count({ where: { status: 'ACTIVE' } }),
-            this.prisma.auction.count(),
+            this.prisma.auction.count({
+                where: {
+                    ...auctionWhere,
+                    status: 'ACTIVE',
+                },
+            }),
+            this.prisma.auction.count({ where: auctionWhere }),
         ]);
 
         const data: any[] = [];
         if (skip < activeCount) {
             data.push(...await this.prisma.auction.findMany({
-                where: { status: 'ACTIVE' },
+                where: { ...auctionWhere, status: 'ACTIVE' },
                 skip,
                 take: limit,
                 orderBy: { createdAt: 'desc' },
@@ -1376,7 +1457,7 @@ export class AdminService {
         }
         if (data.length < limit) {
             data.push(...await this.prisma.auction.findMany({
-                where: { status: { not: 'ACTIVE' } },
+                where: { ...auctionWhere, status: { not: 'ACTIVE' } },
                 skip: Math.max(0, skip - activeCount),
                 take: limit - data.length,
                 orderBy: { createdAt: 'desc' },
