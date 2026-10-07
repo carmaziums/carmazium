@@ -3131,29 +3131,17 @@ export class ListingsService {
             const platformStartingBid = calculatePlatformOpeningBid(sourceValue);
             const slug = this.generateSlug(source.title);
 
-            // Compare-and-set the reverse link while every eligibility condition
-            // is still true. Two concurrent requests may both read linkedListingId
-            // as null, but only one can update this row with linkedListingId:null
-            // in the WHERE clause. A stale/sold/withdrawn/deleted source also fails
-            // this claim. Throwing rolls back the entire transaction.
-            const claimed = await tx.listing.updateMany({
-                where: {
-                    id: listingId,
-                    sellerId,
-                    type: 'CLASSIFIED',
-                    status: 'ACTIVE',
-                    linkedListingId: null,
-                    deletedAt: null,
-                },
-                data: { linkedListingId: auctionListingId },
-            });
-
-            if (claimed.count !== 1) {
-                throw new BadRequestException(
-                    'The retail listing changed while the auction was being created. Refresh the listing before trying again.',
-                );
-            }
-
+            // Create the linked AUCTION row first. The new row can safely point
+            // at the already-existing retail source, but the retail source cannot
+            // point at auctionListingId until that row exists because linkedListingId
+            // is protected by a self-referencing foreign key.
+            //
+            // The compare-and-set claim is deliberately performed *after* this
+            // create. Both operations are in the same database transaction, so if
+            // another concurrent request wins the claim the exception below rolls
+            // this newly-created auction back as well. This preserves concurrency
+            // safety without ever violating listings_linkedListingId_fkey.
+            //
             // Nested Auction creation makes the linked AUCTION Listing + Auction
             // row one atomic write. The clone remains PENDING_REVIEW and the
             // Auction remains SCHEDULED; the lifecycle cron cannot activate it
@@ -3216,6 +3204,29 @@ export class ListingsService {
 
             if (!auctionListing.auction) {
                 throw new BadRequestException('Linked auction setup could not be completed');
+            }
+
+            // Now that auctionListingId exists, atomically claim the retail
+            // source and add the reverse link. Two concurrent requests may both
+            // create a candidate child row, but only one can satisfy
+            // linkedListingId:null. The losing transaction throws here and its
+            // candidate child row is rolled back with the transaction.
+            const claimed = await tx.listing.updateMany({
+                where: {
+                    id: listingId,
+                    sellerId,
+                    type: 'CLASSIFIED',
+                    status: 'ACTIVE',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: auctionListingId },
+            });
+
+            if (claimed.count !== 1) {
+                throw new BadRequestException(
+                    'The retail listing changed while the auction was being created. Refresh the listing before trying again.',
+                );
             }
 
             return {
