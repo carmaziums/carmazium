@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
-import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, ClipboardList, Pencil, Gauge, FileWarning, RotateCcw } from "lucide-react"
+import { Car, Loader2, ArrowLeft, Trash2, AlertTriangle, Eye, ChevronDown, Check, X, ClipboardList, Pencil, Gauge, FileWarning, RotateCcw, Search } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
@@ -48,6 +48,26 @@ function StatusPill({ status }: { status: string }) {
     )
 }
 
+function matchesAdminListingSearch(listing: any, query: string) {
+    const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    if (terms.length === 0) return true
+
+    const seller = listing?.seller
+    const haystack = [
+        listing?.vrm,
+        listing?.title,
+        listing?.make,
+        listing?.model,
+        seller?.firstName,
+        seller?.lastName,
+        seller?.email,
+        seller?.phone,
+        seller?.dealerProfile?.companyName,
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    return terms.every(term => haystack.includes(term))
+}
+
 export default function AdminListingsPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
@@ -64,6 +84,8 @@ export default function AdminListingsPage() {
     // every seller's in this table.
     const [ownerFilter, setOwnerFilter] = React.useState<'ALL' | 'ADMIN'>('ALL')
     const [statusFilter, setStatusFilter] = React.useState<AdminListingStatus>('ACTIVE')
+    const [searchInput, setSearchInput] = React.useState('')
+    const [searchQuery, setSearchQuery] = React.useState('')
     const listingsRequestId = React.useRef(0)
     const limit = 20
 
@@ -101,7 +123,11 @@ export default function AdminListingsPage() {
             setLoading(true)
             setError(null)
             const result = await getAdminListings(
-                page, limit, ownerFilter === 'ADMIN' ? 'ADMIN' : undefined, statusFilter,
+                page,
+                limit,
+                searchQuery ? undefined : (ownerFilter === 'ADMIN' ? 'ADMIN' : undefined),
+                searchQuery ? 'ALL' : statusFilter,
+                searchQuery || undefined,
             )
             // A slow response for a previous tab must not replace the current tab.
             if (requestId !== listingsRequestId.current) return
@@ -123,7 +149,7 @@ export default function AdminListingsPage() {
             fetchListings()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile, page, ownerFilter, statusFilter])
+    }, [profile, page, ownerFilter, statusFilter, searchQuery])
 
     const loadPending = async () => {
         try {
@@ -142,6 +168,23 @@ export default function AdminListingsPage() {
             loadPending()
         }
     }, [profile])
+
+    const visiblePendingListings = React.useMemo(
+        () => pendingListings.filter((listing) => matchesAdminListingSearch(listing, searchQuery)),
+        [pendingListings, searchQuery],
+    )
+
+    const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+        setPage(1)
+        setSearchQuery(searchInput.trim())
+    }
+
+    const clearSearch = () => {
+        setSearchInput('')
+        setSearchQuery('')
+        setPage(1)
+    }
 
     const handleApprove = async (id: string) => {
         setActionError(null)
@@ -265,6 +308,43 @@ export default function AdminListingsPage() {
                         </div>
                     </div>
 
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4"
+                        role="search"
+                    >
+                        <label htmlFor="admin-listing-search" className="mb-2 block text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
+                            Search all listings
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <div className="relative flex-1">
+                                <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                                <input
+                                    id="admin-listing-search"
+                                    value={searchInput}
+                                    onChange={(event) => setSearchInput(event.target.value)}
+                                    placeholder="Seller name or vehicle registration"
+                                    className="min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] pl-10 pr-4 text-sm text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-primary"
+                                />
+                            </div>
+                            <Button type="submit" className="min-h-11 sm:px-6">
+                                <Search size={16} className="mr-2" />
+                                Search
+                            </Button>
+                            {searchQuery && (
+                                <Button type="button" variant="outline" onClick={clearSearch} className="min-h-11 sm:px-5">
+                                    <X size={16} className="mr-2" />
+                                    Clear
+                                </Button>
+                            )}
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--text-muted)]">
+                            {searchQuery
+                                ? `Showing matches for “${searchQuery}” across every seller and listing status.`
+                                : 'Search by the seller’s name or a registration number. Search covers the complete listing history.'}
+                        </p>
+                    </form>
+
                     {error && (
                         <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200">
                             <strong>System Error:</strong> {error}
@@ -289,10 +369,10 @@ export default function AdminListingsPage() {
                                 <ClipboardList className="text-amber-400" size={22} />
                                 Pending Review
                             </h2>
-                            {pendingListings.length > 0 && (
+                            {visiblePendingListings.length > 0 && (
                                 <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 rounded-full">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                    {pendingListings.length} awaiting action
+                                    {visiblePendingListings.length} awaiting action
                                 </span>
                             )}
                         </div>
@@ -306,15 +386,15 @@ export default function AdminListingsPage() {
 
                         {pendingLoading ? (
                             <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24} /></div>
-                        ) : pendingListings.length === 0 ? (
+                        ) : visiblePendingListings.length === 0 ? (
                             <div className="flex flex-col items-center py-10 text-center">
                                 <Gauge className="text-[var(--text-faint)] mb-2" size={28} />
                                 <p className="text-sm font-semibold text-[var(--text-secondary)]">All caught up</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">Nothing is waiting for review right now.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">{searchQuery ? 'No pending reviews match this search.' : 'Nothing is waiting for review right now.'}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {pendingListings.map((l) => {
+                                {visiblePendingListings.map((l) => {
                                     const isExpanded = expandedId === l.id
                                     
                                     // Seller paid for an HPI report that hasn't been produced.
@@ -535,6 +615,8 @@ export default function AdminListingsPage() {
                                     aria-pressed={statusFilter === value}
                                     onClick={() => {
                                         setPage(1)
+                                        setSearchInput('')
+                                        setSearchQuery('')
                                         setStatusFilter(value)
                                     }}
                                     className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${statusFilter === value
@@ -556,6 +638,8 @@ export default function AdminListingsPage() {
                                     aria-pressed={ownerFilter === value}
                                     onClick={() => {
                                         setPage(1)
+                                        setSearchInput('')
+                                        setSearchQuery('')
                                         setOwnerFilter(value)
                                     }}
                                     className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${ownerFilter === value
@@ -567,7 +651,7 @@ export default function AdminListingsPage() {
                             ))}
                             {!loading && (
                                 <span role="status" className="text-xs text-[var(--text-muted)]">
-                                    {total} {total === 1 ? 'listing' : 'listings'} in this view
+                                    {total} {total === 1 ? 'listing' : 'listings'} {searchQuery ? 'matching search' : 'in this view'}
                                 </span>
                             )}
                         </div>
@@ -581,7 +665,7 @@ export default function AdminListingsPage() {
                             </div>
                         ) : listings.length === 0 ? (
                             <div className="p-10 text-center text-sm text-[var(--text-muted)]">
-                                {error ? 'Unable to load listings.' : 'No listings in this view.'}
+                                {error ? 'Unable to load listings.' : (searchQuery ? 'No listings match this search.' : 'No listings in this view.')}
                             </div>
                         ) : (<>
                         {/* ── Mobile cards (< sm) ── */}
