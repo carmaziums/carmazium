@@ -1780,7 +1780,7 @@ describe('ListingsService', () => {
             expect(prisma.listing.create).not.toHaveBeenCalled();
         });
 
-        it('atomically claims the active retail source before creating the linked auction', async () => {
+        it('creates the linked auction before linking the active retail source', async () => {
             const result = await service.alsoAuction('listing-1', 'seller-1', {
                 startTime: new Date(Date.now() + 60_000).toISOString(),
                 reservePrice: 9000,
@@ -1788,6 +1788,8 @@ describe('ListingsService', () => {
                 minIncrement: 100,
                 buyItNowPrice: 12000,
             });
+
+            expect(prisma.listing.create.mock.invocationCallOrder[0]).toBeLessThan(prisma.listing.updateMany.mock.invocationCallOrder[0]);
 
             expect(prisma.listing.updateMany).toHaveBeenCalledWith({
                 where: {
@@ -1838,7 +1840,8 @@ describe('ListingsService', () => {
                 }),
             ).rejects.toThrow(/changed while the auction was being created/i);
 
-            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.listing.create).toHaveBeenCalled();
+            expect(prisma.listing.create.mock.invocationCallOrder[0]).toBeLessThan(prisma.listing.updateMany.mock.invocationCallOrder[0]);
         });
 
         it.each([
