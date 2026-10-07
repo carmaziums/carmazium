@@ -14,6 +14,8 @@ describe('AdminService listing approval readiness', () => {
             auction: {
                 update: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                count: jest.fn(),
+                findMany: jest.fn(),
             },
             bid: {
                 updateMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -105,7 +107,7 @@ describe('AdminService listing approval readiness', () => {
                 await expect(service.getAllListings(2, 10, 'ADMIN', status))
                     .resolves.toEqual({ data: [], total: 3 });
                 const where = {
-                    seller: { role: 'ADMIN' },
+                    seller: { is: { role: 'ADMIN' } },
                     status,
                     deletedAt: null,
                 };
@@ -142,6 +144,77 @@ describe('AdminService listing approval readiness', () => {
             await expect(service.getAllListings(1, 20, undefined, 'ARCHIVED'))
                 .rejects.toBeInstanceOf(BadRequestException);
             expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+
+        it('searches listings by every seller-name or registration term on the server', async () => {
+            const { service, prisma } = makeService(validLinkedAuction);
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(1);
+
+            await expect(service.getAllListings(1, 20, undefined, 'ALL', 'Gaurav KU68UDD'))
+                .resolves.toEqual({ data: [], total: 1 });
+
+            const where = prisma.listing.findMany.mock.calls[0][0].where;
+            expect(where.AND).toHaveLength(2);
+            expect(where.AND[0].OR).toEqual(expect.arrayContaining([
+                { vrm: { contains: 'Gaurav', mode: 'insensitive' } },
+                expect.objectContaining({
+                    seller: expect.objectContaining({
+                        is: expect.objectContaining({
+                            OR: expect.arrayContaining([
+                                { firstName: { contains: 'Gaurav', mode: 'insensitive' } },
+                                { lastName: { contains: 'Gaurav', mode: 'insensitive' } },
+                            ]),
+                        }),
+                    }),
+                }),
+            ]));
+            expect(where.AND[1].OR).toEqual(expect.arrayContaining([
+                { vrm: { contains: 'KU68UDD', mode: 'insensitive' } },
+            ]));
+            expect(prisma.listing.count).toHaveBeenCalledWith({ where });
+        });
+    });
+
+    describe('admin auction search', () => {
+        it('applies the same seller-name and registration search to active-first auction pagination', async () => {
+            const { service, prisma } = makeService(validLinkedAuction);
+            prisma.auction.count
+                .mockResolvedValueOnce(1)
+                .mockResolvedValueOnce(1);
+            prisma.auction.findMany.mockResolvedValue([]);
+
+            await expect(service.getAllAuctions(1, 20, 'Jacob AB12CDE'))
+                .resolves.toEqual({ data: [], total: 1 });
+
+            const activeWhere = prisma.auction.count.mock.calls[0][0].where;
+            expect(activeWhere.status).toBe('ACTIVE');
+            expect(activeWhere.AND).toHaveLength(2);
+            expect(activeWhere.AND[0].listing.is.OR).toEqual(expect.arrayContaining([
+                { vrm: { contains: 'Jacob', mode: 'insensitive' } },
+                expect.objectContaining({
+                    seller: expect.objectContaining({
+                        is: expect.objectContaining({
+                            OR: expect.arrayContaining([
+                                { firstName: { contains: 'Jacob', mode: 'insensitive' } },
+                                { lastName: { contains: 'Jacob', mode: 'insensitive' } },
+                            ]),
+                        }),
+                    }),
+                }),
+            ]));
+            expect(activeWhere.AND[1].listing.is.OR).toEqual(expect.arrayContaining([
+                { vrm: { contains: 'AB12CDE', mode: 'insensitive' } },
+            ]));
+
+            expect(prisma.auction.findMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        status: 'ACTIVE',
+                        AND: activeWhere.AND,
+                    }),
+                }),
+            );
         });
     });
 
