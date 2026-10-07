@@ -779,10 +779,11 @@ export type AdminListingStatus =
   | 'ACTIVE' | 'PENDING_REVIEW' | 'DRAFT' | 'OFFER_ACCEPTED'
   | 'SOLD' | 'REJECTED' | 'WITHDRAWN' | 'DELETED' | 'ALL';
 
-export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: AdminListingStatus) {
+export async function getAdminListings(page = 1, limit = 20, sellerRole?: string, status?: AdminListingStatus, search?: string) {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (sellerRole) query.set('sellerRole', sellerRole);
   if (status) query.set('status', status);
+  if (search?.trim()) query.set('search', search.trim());
   const result = await apiClient<any>(`/admin/listings?${query.toString()}`);
   return result;
 }
@@ -863,8 +864,10 @@ export async function getHistoricalAuctionReconciliation(): Promise<HistoricalAu
   return result.data;
 }
 
-export async function getAdminAuctions(page = 1, limit = 20) {
-  const result = await apiClient<any>(`/admin/auctions?page=${page}&limit=${limit}`);
+export async function getAdminAuctions(page = 1, limit = 20, search?: string) {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (search?.trim()) query.set('search', search.trim());
+  const result = await apiClient<any>(`/admin/auctions?${query.toString()}`);
   return result;
 }
 
