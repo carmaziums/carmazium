@@ -126,13 +126,15 @@ export class AdminController {
     @ApiOperation({ summary: 'List all listings (including drafts/deleted)' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false, description: 'Seller name, email, phone, dealer company, vehicle registration or vehicle text' })
     async getAllListings(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
         @Query('sellerRole') sellerRole?: string,
         @Query('status') status?: string,
+        @Query('search') search?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole, status);
+        const { data, total } = await this.adminService.getAllListings(Number(page), Number(limit), sellerRole, status, search);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
@@ -217,11 +219,13 @@ export class AdminController {
     @ApiOperation({ summary: 'List all auctions' })
     @ApiQuery({ name: 'page', required: false })
     @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'search', required: false, description: 'Seller name, email, phone, dealer company, vehicle registration or vehicle text' })
     async getAllAuctions(
         @Query('page') page = 1,
         @Query('limit') limit = 20,
+        @Query('search') search?: string,
     ): Promise<PaginatedResponse<any>> {
-        const { data, total } = await this.adminService.getAllAuctions(Number(page), Number(limit));
+        const { data, total } = await this.adminService.getAllAuctions(Number(page), Number(limit), search);
         return new PaginatedResponse(data, total, Number(page), Number(limit));
     }
 
