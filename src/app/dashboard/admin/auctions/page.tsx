@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle, Pencil, PoundSterling } from "lucide-react"
+import { Gavel, Loader2, ArrowLeft, Eye, Car, UserCheck, X, AlertTriangle, Pencil, PoundSterling, Search } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { UserDetailModal } from "@/components/dashboard/UserDetailModal"
 import { ListingEditModal } from "@/components/dashboard/ListingEditModal"
@@ -28,6 +28,8 @@ export default function AdminAuctionsPage() {
     const [error, setError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
     const [total, setTotal] = React.useState(0)
+    const [searchInput, setSearchInput] = React.useState('')
+    const [searchQuery, setSearchQuery] = React.useState('')
     const limit = 20
 
     // Assign-winner flow
@@ -55,11 +57,15 @@ export default function AdminAuctionsPage() {
     const loadAuctions = React.useCallback(() => {
         setLoading(true)
         setError(null)
-        getAdminAuctions(page, limit)
+        getAdminAuctions(page, limit, searchQuery || undefined)
             .then(r => { setAuctions(r.data || []); setTotal(r.pagination?.total || 0) })
-            .catch(err => setError(err.message || 'Failed to load auctions'))
+            .catch(err => {
+                setAuctions([])
+                setTotal(0)
+                setError(err.message || 'Failed to load auctions')
+            })
             .finally(() => setLoading(false))
-    }, [page])
+    }, [page, searchQuery])
 
     React.useEffect(() => {
         if (profile?.role !== 'ADMIN') return
@@ -70,6 +76,18 @@ export default function AdminAuctionsPage() {
         if (profile?.role !== 'ADMIN') return
         getAllDealers().then(setDealers).catch(() => {})
     }, [profile])
+
+    function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        setPage(1)
+        setSearchQuery(searchInput.trim())
+    }
+
+    function clearSearch() {
+        setSearchInput('')
+        setSearchQuery('')
+        setPage(1)
+    }
 
     function openAssignModal(auction: any) {
         setAssignTarget(auction)
@@ -182,8 +200,54 @@ export default function AdminAuctionsPage() {
                             <Gavel className="text-purple-400 hidden sm:block" size={28} />
                             Auction Management
                         </h1>
-                        <p className="text-[var(--text-muted)] mt-1 text-sm">{total} total auctions across the platform</p>
+                        <p className="text-[var(--text-muted)] mt-1 text-sm">
+                            {searchQuery
+                                ? `${total} auction${total === 1 ? '' : 's'} matching “${searchQuery}”`
+                                : `${total} total auctions across the platform`}
+                        </p>
                     </div>
+
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4"
+                        role="search"
+                    >
+                        <label htmlFor="admin-auction-search" className="mb-2 block text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">
+                            Search auctions
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <div className="relative flex-1">
+                                <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                                <input
+                                    id="admin-auction-search"
+                                    value={searchInput}
+                                    onChange={(event) => setSearchInput(event.target.value)}
+                                    placeholder="Seller name or vehicle registration"
+                                    className="min-h-11 w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] pl-10 pr-4 text-sm text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-faint)] focus:border-primary"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+                            >
+                                <Search size={16} className="mr-2" />
+                                Search
+                            </button>
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-5 text-sm font-bold text-[var(--text-primary)] hover:border-primary/40"
+                                >
+                                    <X size={16} className="mr-2" />
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                        <p className="mt-2 text-xs text-[var(--text-muted)]">
+                            Search the complete auction history by seller name or registration number.
+                        </p>
+                    </form>
 
                     {error && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200"><strong>Error:</strong> {error}</div>}
 
@@ -203,6 +267,13 @@ export default function AdminAuctionsPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--border-default)]/80">
+                                    {!loading && auctions.length === 0 && (
+                                        <tr>
+                                            <td colSpan={8} className="px-6 py-10 text-center text-sm text-[var(--text-muted)]">
+                                                {searchQuery ? 'No auctions match this search.' : 'No auctions found.'}
+                                            </td>
+                                        </tr>
+                                    )}
                                     {auctions.map((a) => (
                                         <tr key={a.id} className="hover:bg-[var(--bg-card)] transition-colors">
                                             <td className="px-6 py-4">
@@ -214,7 +285,7 @@ export default function AdminAuctionsPage() {
                                                     )}
                                                     <div>
                                                         <p className="font-bold text-sm max-w-[180px] truncate">{a.listing?.title}</p>
-                                                        <p className="text-xs text-[var(--text-muted)]">{a.listing?.year} · {a.listing?.make}</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">{a.listing?.vrm || 'No VRM'} · {a.listing?.year} · {a.listing?.make}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -305,7 +376,7 @@ export default function AdminAuctionsPage() {
                             </table>
                         </div>
                         <div className="p-4 border-t border-[var(--border-default)] bg-[var(--bg-input)] flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
-                            <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</span>
+                            <span>{total === 0 ? 'Showing 0 of 0' : `Showing ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`}</span>
                             <div className="flex gap-2">
                                 <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</button>
                                 <button className="px-3 py-1 bg-[var(--bg-input)] hover:bg-[var(--bg-card-hover)] rounded disabled:opacity-50" onClick={() => setPage(p => p + 1)} disabled={page * limit >= total}>Next</button>
