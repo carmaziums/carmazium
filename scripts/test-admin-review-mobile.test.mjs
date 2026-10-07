@@ -35,5 +35,7 @@ test('admin inventory offers distinct responsive status views rather than mixing
     assert.match(source, /Filter by listing status" className="flex flex-wrap gap-2"/, 'mobile status buttons wrap');
     assert.match(source, /setStatusFilter\(value\)/, 'tabs change the selected status');
     assert.match(source, /setPage\(1\)/, 'switching filters resets pagination');
-    assert.match(source, /ownerFilter === 'ADMIN' \? 'ADMIN' : undefined, statusFilter/, 'status reaches server-side pagination');
+    assert.match(source, /searchQuery \? undefined : \(ownerFilter === 'ADMIN' \? 'ADMIN' : undefined\)/, 'owner filter reaches server-side pagination outside global search');
+    assert.match(source, /searchQuery \? 'ALL' : statusFilter/, 'status reaches server-side pagination while global search intentionally spans all statuses');
+    assert.match(source, /searchQuery \|\| undefined/, 'global seller or registration search reaches the server');
 });
