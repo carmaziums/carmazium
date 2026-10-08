@@ -619,12 +619,12 @@ function SellerLanding() {
             <PageHero
                 compact
                 className="sell-hero"
-                eyebrow="Sell my car · UK"
-                title={<>Sell Your Car <span className="text-primary">Online</span></>}
+                eyebrow="Sell my car online · UK"
+                title={<>Sell Your Car Online <span className="text-primary">in the UK</span></>}
                 description={
                     <div className="mx-auto max-w-3xl">
                         <p className="font-bold text-[var(--text-primary)]">
-                            Get your free car valuation first, then choose a FREE dealer auction or £1 retail listing.
+                            Get a free car valuation using your registration and mileage, then sell your car through a £0 dealer auction or £1 retail listing.
                         </p>
 
                         <QuickValuationForm />
