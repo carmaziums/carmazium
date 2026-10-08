@@ -29,6 +29,105 @@ function getDeviceType(): string {
     return "desktop"
 }
 
+const MARKETING_ATTRIBUTION_KEY = "cm_marketing_attribution_v1"
+
+type FirstTouchAttribution = {
+    first_touch_source: string
+    first_touch_medium: string
+    first_touch_campaign?: string
+    first_touch_landing_path: string
+    first_touch_referrer_host?: string
+    google_ads_click: boolean
+}
+
+function referrerHost(): string {
+    if (typeof document === "undefined" || !document.referrer) return ""
+    try {
+        return new URL(document.referrer).hostname.toLowerCase()
+    } catch {
+        return ""
+    }
+}
+
+function hasCookie(name: string): boolean {
+    if (typeof document === "undefined") return false
+    return document.cookie.split(";").some((part) => part.trim().startsWith(`${name}=`))
+}
+
+/**
+ * First-party attribution used only by CarMazium's own analytics store.
+ *
+ * Capture once per browser tab after tracking consent is granted, then keep it
+ * through SPA navigation and external payment round-trips such as Stripe.
+ * Deliberately store only source classification/UTMs and whether a Google Ads
+ * click marker exists — never the gclid/gbraid/wbraid value itself.
+ */
+function getFirstTouchAttribution(): FirstTouchAttribution | null {
+    if (typeof window === "undefined" || !hasTrackingConsent()) return null
+
+    try {
+        const existing = window.sessionStorage.getItem(MARKETING_ATTRIBUTION_KEY)
+        if (existing) {
+            const parsed = JSON.parse(existing) as FirstTouchAttribution
+            if (parsed?.first_touch_source && parsed?.first_touch_medium) return parsed
+        }
+
+        const params = new URLSearchParams(window.location.search)
+        const googleAdsClick =
+            params.has("gclid") ||
+            params.has("gbraid") ||
+            params.has("wbraid") ||
+            hasCookie("_gcl_aw")
+
+        const host = referrerHost()
+        const utmSource = params.get("utm_source")?.trim().toLowerCase() || ""
+        const utmMedium = params.get("utm_medium")?.trim().toLowerCase() || ""
+        const utmCampaign = params.get("utm_campaign")?.trim() || ""
+
+        let source = utmSource
+        let medium = utmMedium
+
+        if (!source) {
+            if (googleAdsClick) {
+                source = "google_ads"
+                medium = medium || "cpc"
+            } else if (host.includes("google.")) {
+                source = "google_organic"
+                medium = medium || "organic"
+            } else if (host.includes("facebook.") || host.includes("fb.")) {
+                source = "facebook"
+                medium = medium || "social"
+            } else if (host.includes("instagram.")) {
+                source = "instagram"
+                medium = medium || "social"
+            } else if (host.includes("tiktok.")) {
+                source = "tiktok"
+                medium = medium || "social"
+            } else if (host) {
+                source = host
+                medium = medium || "referral"
+            } else {
+                source = "direct"
+                medium = medium || "none"
+            }
+        }
+
+        const attribution: FirstTouchAttribution = {
+            first_touch_source: source,
+            first_touch_medium: medium || "unknown",
+            first_touch_campaign: utmCampaign || undefined,
+            first_touch_landing_path: window.location.pathname,
+            first_touch_referrer_host: host || undefined,
+            google_ads_click: googleAdsClick,
+        }
+
+        window.sessionStorage.setItem(MARKETING_ATTRIBUTION_KEY, JSON.stringify(attribution))
+        return attribution
+    } catch {
+        return null
+    }
+}
+
 function compact(params: Record<string, unknown>): Record<string, unknown> {
     return Object.fromEntries(
         Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== ""),
@@ -247,12 +346,13 @@ export function useAnalytics() {
                 // initialize a session only after the user has opted in.
                 if (hasTrackingConsent()) {
                     if (!sessionId.current) sessionId.current = getSessionId()
+                    const firstTouch = getFirstTouchAttribution()
                     fetch(`${API_URL}/analytics/event`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             type,
-                            payload: enriched,
+                            payload: firstTouch ? { ...enriched, ...firstTouch } : enriched,
                             sessionId: sessionId.current,
                             userId: user?.id ?? undefined,
                         }),
