@@ -454,49 +454,78 @@ These fixed-duration rights survive ordinary pilot expiry/termination for lawful
 
 ---
 
-# SCHEDULE C — PROVIDERS AND LIMITED AI INPUTS
+# SCHEDULE C — APPROVED PROVIDERS AND PROCESSING
 
-## C1. Vercel
-Declared purpose: application runtime/server processing.
-Declared primary production application runtime region: **London**.
-Before signature: confirm relevant contractual entity/DPA, material transfer/subprocessor treatment and material logging/retention facts in redacted form.
+## C1 — Vercel
 
-## C2. Supabase
-Declared purpose: production database/backend supporting BuySmart.
-Declared primary production project region: **London**.
-Before signature: confirm relevant contractual entity/DPA, material transfer/subprocessor treatment and backup/logging retention facts in redacted form.
+**Provider and purpose:** Vercel Inc., providing application hosting and server-side processing for the agreed integration and BuySmart functionality.
 
-## C3. OpenAI
-Declared purpose: optional generation of BuySmart explanatory/reporting text.
+**Primary runtime location:** London, United Kingdom. This describes the primary production application runtime. Supporting services, including network delivery, security, support and account administration, may involve processing outside the UK.
 
-Initial permitted CarMazium-derived input scope:
-- non-identifying vehicle characteristics needed for explanation;
-- suitably minimised mileage/market assessment input;
-- structured BuySmart analytical inputs that do not contain CarMazium stable identifiers or excluded source fields.
+**Processing terms and transfers:** Vercel's applicable service terms and Data Processing Addendum govern its processing, including contractual safeguards for restricted international transfers. Relevant subprocessors are those disclosed through Vercel's published subprocessor information. These arrangements do not constitute a blanket UK-only processing commitment. Reference: https://vercel.com/legal/dpa
 
-Explicitly prohibited:
-- VRM;
-- matching identifier/secret;
-- seller/buyer/bidder information;
-- reserve;
-- photographs;
-- raw feed/API response;
-- credentials;
-- private files;
-- exact location;
-- stable CarMazium event identifiers where unnecessary.
+**Logging and retention:** The current service configuration provides a one-day runtime-log retention window. No external Vercel log drain is configured. This runtime-log period is separate from provider-controlled security, account and service metadata retained under Vercel's applicable policies. Reference: https://vercel.com/docs/logs/runtime
 
-SimpleDMS states that its existing provider data-sharing configuration may permit OpenAI to use submitted inputs/outputs for service improvement/model training. CarMazium accepts this **only for the expressly permitted minimised AI inputs above**, not for excluded data or the raw feed.
+For the CarMazium integration, application logging will be restricted to necessary operational and diagnostic information. Raw feed payloads, credentials and excluded source fields will not intentionally be written into application logs. Any application caching remains subject to the agreement's cache, expiry and deletion requirements.
 
-**Provider retention / deletion boundary:** deletion duties in this agreement apply to records and copies under SimpleDMS's control and to provider deletion actions that are reasonably available to SimpleDMS. Where an expressly permitted minimised input has already been processed by an approved provider under the recorded provider configuration, SimpleDMS does not warrant that the information can be removed from model weights or other provider systems where the provider does not technically or contractually offer such removal. This does not expand the permitted input set, excuse retention by SimpleDMS itself, or authorise submission of any excluded CarMazium data.
+## C2 — Supabase
 
-Before signature, record:
-- exact OpenAI product/API route used: **TO BE CONFIRMED BEFORE SIGNATURE**;
-- relevant account data-sharing setting: **TO BE CONFIRMED BEFORE SIGNATURE**;
-- applicable retention arrangement: **TO BE CONFIRMED BEFORE SIGNATURE**;
-- DPA/transfer safeguard reference: **TO BE CONFIRMED BEFORE SIGNATURE**;
-- technical prompt/filter control preventing excluded fields: **TO BE CONFIRMED BEFORE SIGNATURE**.
+**Provider and purpose:** Supabase Pte. Ltd., providing the production database and supporting backend services used for the agreed integration and BuySmart.
 
+**Primary production location:** London, United Kingdom. This describes the production project's primary region. Provider support, account administration, logging infrastructure and other supporting services may involve processing outside that region.
+
+**Processing terms and transfers:** Supabase's applicable service terms and Data Processing Addendum govern its processing, including Standard Contractual Clauses and applicable UK transfer provisions. Relevant subprocessors are those disclosed through Supabase's published list. References:
+- https://supabase.com/legal/customer-resources/data-processing-addendum
+- https://supabase.com/legal/customer-resources/subprocessor-list
+
+**Backups and logs:** SimpleDMS states that its current configuration uses daily database backups with a seven-day recovery window; point-in-time recovery is not enabled. The current plan provides seven-day operational-log retention. Database backups do not include the contents of separately stored Storage objects. References:
+- https://supabase.com/docs/guides/platform/backups
+- https://supabase.com/pricing
+
+**Licensed-data retention:** Live data, permitted historical evidence and issued reports remain subject to their separate retention periods in the agreement. Provider backup arrangements do not extend the permitted commercial use of expired evidence.
+
+Where a deleted or expired record remains temporarily in a protected backup, it will remain unavailable for ordinary use and expire through the normal backup cycle. If recovery is necessary, applicable deletion and expiry controls will be reapplied before the restored data returns to ordinary use.
+
+## C3 — OpenAI
+
+**Provider, product and purpose:** OpenAI OpCo, LLC, using the OpenAI Responses API through server-side requests to generate explanatory text for BuySmart reports from the narrowly permitted inputs described below.
+
+**Permitted input scope:** Only the minimum expressly approved, non-identifying information necessary for that explanation may be submitted:
+- general vehicle characteristics, such as make, model, age, fuel type and transmission;
+- suitably minimised mileage information, using a band where exact mileage is unnecessary;
+- non-identifying assessment values, bands, confidence indicators, risk indicators and aggregate observations required to explain the report.
+
+These inputs must not contain sensitive, confidential or proprietary CarMazium source material, or combinations of detail that unnecessarily identify a particular vehicle, person or auction event.
+
+**Excluded information:** Raw vehicle registrations; stable vehicle or auction-event identifiers; internal matching identifiers or secrets; seller, buyer or bidder information; reserves; photographs; raw feed records or API responses; unfiltered source notes; exact locations; unnecessary precise event timestamps; credentials; private files; source code; and proprietary analytical methods are excluded.
+
+No historical dataset, source document, photograph collection, fine-tuning dataset or evaluation dataset will be uploaded to OpenAI as part of this integration.
+
+**Input controls:** Before production use, SimpleDMS will implement and test a server-side allowlist permitting only the agreed fields, together with validation and rejection of excluded content. Raw source records and uncontrolled source text will not be passed directly into explanation requests. Inputs that cannot meet these restrictions will not be submitted.
+
+The analytical calculations and matching methods remain within SimpleDMS; OpenAI receives only the approved information needed to express the explanation.
+
+**Sharing and model improvement:** SimpleDMS states that input/output sharing is enabled for the relevant OpenAI API usage and will remain enabled. Accordingly, the permitted inputs and resulting outputs may be used by OpenAI for service improvement and model training.
+
+CarMazium's permission for that sharing is limited to the expressly approved input scope above. It does not authorise submission of any excluded information or wider disclosure of the feed.
+
+**Retention and deletion:** The service is not operated on a zero-data-retention basis. SimpleDMS states that OpenAI's published standard Responses API application-state retention is 30 days under the standard stored-response configuration, and abuse-monitoring logs may be retained for up to 30 days subject to the provider's stated legal and security exceptions. Reference: https://developers.openai.com/api/docs/guides/your-data
+
+Those operational retention periods are separate from the expressly permitted model-improvement use. No fixed deletion deadline is represented for information incorporated into that process, and no guarantee is given that information can be removed from trained model weights.
+
+SimpleDMS will comply with the agreement's deletion and expiry obligations for records within its control and use reasonably available provider deletion mechanisms where applicable, consistently with the provider-deletion boundary in section 11.
+
+**Processing terms and transfers:** OpenAI's applicable service terms, data-sharing terms and DPA govern the relevant processing. The DPA includes contractual safeguards for restricted transfers, including the UK Addendum to the Standard Contractual Clauses. Processing may occur outside the UK; no UK-only or European-only processing commitment is made. Reference: https://openai.com/policies/data-processing-addendum/
+
+**Model changes:** SimpleDMS may select, replace or upgrade models within the approved OpenAI service without amending the agreement, provided the permitted purpose, input scope and agreed protections remain unchanged. Any material expansion of data use, sharing, retention or transfer arrangements remains subject to the agreement's applicable notice and approval requirements.
+
+## C4 — Security, confidentiality and contact
+
+These disclosures are limited to information necessary to assess the agreed processing. They do not require disclosure of credentials, account or project identifiers, private endpoints, repositories, source code, detailed system configuration, proprietary prompts, analytical methods or matching secrets.
+
+Each provider will receive only the information needed for its approved role. Any material additional recipient or processing purpose will be addressed under the agreement's change-control requirements.
+
+SimpleDMS's operational contact for provider, security and incident coordination is **Stephen Abel — info@simpledms.co.uk**. Any notification concerning an incident affecting licensed data will follow the agreement's notification requirements.
 ---
 
 # SCHEDULE D — TECHNICAL ACCEPTANCE
