@@ -1,5 +1,6 @@
 "use client"
 import React, { createContext, useContext, useState, useEffect, useRef } from "react"
+import { usePathname } from "next/navigation"
 
 export interface LocationState {
     lat: number | null
@@ -21,6 +22,7 @@ const PC_KEY  = 'carmazium_user_postcode'
 const CACHE_TTL = 10 * 60 * 1000
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname()
     const [location, setLocation] = useState<LocationState>({
         lat: null, lng: null, postcode: null, source: null,
     })
@@ -51,6 +53,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         } catch { /* ignore */ }
 
         // 3. Browser geolocation
+        // Paid-search seller traffic must not receive a permission prompt during
+        // the critical first render. The /sell page only needs registration and
+        // mileage to value a vehicle; location can be collected later in the
+        // seller journey if it is actually required.
+        if (pathname?.startsWith('/sell')) return
+
         if (typeof navigator !== 'undefined' && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 ({ coords }) => {
@@ -64,7 +72,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
                 { timeout: 5000, maximumAge: CACHE_TTL }
             )
         }
-    }, [])
+    }, [pathname])
 
     const setPostcode = (pc: string) => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
