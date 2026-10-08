@@ -130,7 +130,7 @@ export function Header() {
                 <div className="flex-1 flex items-center justify-start gap-6">
                     <Link href="/" className="flex items-center">
                         <Image
-                            src="/assets/images/logo-light.png"
+                            src="/assets/images/logo-light-320.webp"
                             alt="CarMazium"
                             width={160}
                             height={40}
@@ -139,7 +139,7 @@ export function Header() {
                             priority
                         />
                         <Image
-                            src="/assets/images/logo.png"
+                            src="/assets/images/logo-dark-320.webp"
                             alt="CarMazium"
                             width={160}
                             height={40}
