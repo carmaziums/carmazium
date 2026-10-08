@@ -145,7 +145,6 @@ export function Header() {
                             height={40}
                             sizes="160px"
                             className="h-9 md:h-10 w-auto object-contain hidden dark:block"
-                            priority
                         />
                     </Link>
                 </div>
