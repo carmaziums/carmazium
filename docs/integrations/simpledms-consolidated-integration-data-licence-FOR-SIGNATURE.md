@@ -1,5 +1,5 @@
 # CARMAZIUM × SIMPLEDMS — CONSOLIDATED EARLY-LAUNCH INTEGRATION, LIVE-FEED AND HISTORICAL-EVIDENCE LICENCE
-**Consolidated counter-draft for signature — 5 October 2026. Not effective until signed by both parties.**
+**Consolidated counter-draft for signature — revised 8 October 2026. Not effective until signed by both parties.**
 
 This document is intended to replace, on signature, the earlier pilot-data-licence and historical-data proposal drafts. Until signature, the existing production API remains disabled and no production credential or live-data permission is granted. Synthetic staging may continue under separate test-only controls.
 
@@ -7,7 +7,7 @@ This document is intended to replace, on signature, the earlier pilot-data-licen
 
 **(1) CARMAZIUM LTD** ("CarMazium"), company number **17053307**, registered office **181 Hunters Road, Birmingham, United Kingdom, B19 1ES**, acting through its director **Afaq Iftikhar**.
 
-**(2) SIMPLEDMS LTD** ("SimpleDMS"), company number **17167272**, with registered office stated by SimpleDMS as **Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, England, PE2 6XU**, acting through proposed authorised signatory **Patricia Jean Abel, Director**. The parties will confirm SimpleDMS's current registered-office record and signing authority before execution.
+**(2) SIMPLEDMS LTD** ("SimpleDMS"), company number **17167272**, registered office **Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, England, PE2 6XU**, acting through **Patricia Jean Abel, Director**, as its intended authorised signatory.
 
 Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.uk**.
 
@@ -125,6 +125,8 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 7.6 Expired historical event evidence must not be recovered from an older dealer report, backup, cache or derived record to seed new matching, research or report generation.
 
 7.7 Properly anonymised, non-reconstructible aggregate analytics that do not identify or permit reconstruction of a specific vehicle, auction, registration, seller, bidder or substantial CarMazium source dataset may be retained after the relevant event records expire.
+
+7.8 The retention, deletion and expiry restrictions in this agreement apply to **CarMazium-sourced evidence and records derived from that evidence**. They do not restrict data that SimpleDMS independently and lawfully obtains from another source under separate rights. SimpleDMS must not relabel CarMazium-sourced evidence as independently sourced, use another source as a pretext to preserve expired CarMazium evidence, or reconstruct expired CarMazium records from reports, caches or derived CarMazium datasets.
 
 ## 8. Historical permitted fields and practical evidence rules
 
@@ -311,7 +313,9 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 16.5 SimpleDMS receives no ownership or access right in CarMazium's source code, administration systems, credentials or restricted internal datasets.
 
-16.6 Each party grants the other a limited, revocable right to use its name/logo solely as reasonably necessary to identify the integration and source during the agreement, subject to supplied brand guidelines and withdrawal for misuse.
+16.6 During the live integration, each party grants the other a limited, revocable right to use its name/logo solely as reasonably necessary to identify the integration and source, subject to supplied brand guidelines and withdrawal for misuse.
+
+16.7 After live access ends, SimpleDMS may continue to use the **CarMazium name in factual source attribution only** for CarMazium evidence that remains lawfully retained under sections 7 and 10. This surviving attribution right lasts only for the permitted historical/report-retention period, must not imply that CarMazium remains a current live source or partner, and does not include continuing logo/brand-mark use unless separately agreed.
 
 ## 17. Data protection, correction and security
 
@@ -347,11 +351,11 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 - deliberate unlawful disclosure or deliberate misuse of the other party's credentials/data;
 - any liability that cannot legally be limited.
 
-19.2 Subject to 19.1, each party's aggregate liability arising from ordinary breach of this agreement is capped at **£25,000**.
+19.2 Subject to 19.1, each party's aggregate liability for **ordinary breaches** of this agreement is subject to a **£25,000 sub-cap**.
 
-19.3 Subject to 19.1, each party's aggregate liability for breach of confidentiality, data-protection obligations, security obligations or misuse of licensed intellectual property/source data is capped at **£50,000**.
+19.3 Subject to 19.1, claims involving breach of confidentiality, data-protection obligations, security obligations or misuse of licensed intellectual property/source data are subject to the higher **£50,000 cap**.
 
-19.4 The caps are not cumulative: where the £50,000 category applies, it is the applicable aggregate cap for that claim and related claims.
+19.4 The liability caps operate **across this agreement as a whole and are alternative, not cumulative**. Subject to 19.1, each party's total aggregate liability for all claims arising out of or in connection with this agreement will not exceed **£50,000 in total**. The £25,000 ordinary-breach cap sits within, and does not add to, that £50,000 overall cap. Splitting related events into separate claims, claim categories, reporting periods or legal causes of action does not create additional caps.
 
 19.5 Subject to 19.1, neither party is liable for indirect or consequential loss, or for loss of anticipated profit, revenue, goodwill or business opportunity, except to the extent such loss forms part of a third-party claim for which liability is otherwise established under this agreement.
 
@@ -484,6 +488,8 @@ Explicitly prohibited:
 
 SimpleDMS states that its existing provider data-sharing configuration may permit OpenAI to use submitted inputs/outputs for service improvement/model training. CarMazium accepts this **only for the expressly permitted minimised AI inputs above**, not for excluded data or the raw feed.
 
+**Provider retention / deletion boundary:** deletion duties in this agreement apply to records and copies under SimpleDMS's control and to provider deletion actions that are reasonably available to SimpleDMS. Where an expressly permitted minimised input has already been processed by an approved provider under the recorded provider configuration, SimpleDMS does not warrant that the information can be removed from model weights or other provider systems where the provider does not technically or contractually offer such removal. This does not expand the permitted input set, excuse retention by SimpleDMS itself, or authorise submission of any excluded CarMazium data.
+
 Before signature, record:
 - exact OpenAI product/API route used: **TO BE CONFIRMED BEFORE SIGNATURE**;
 - relevant account data-sharing setting: **TO BE CONFIRMED BEFORE SIGNATURE**;
@@ -528,9 +534,8 @@ Technical/security contact: info@carmazium.com
 
 ### SIMPLEDMS LTD
 Company number: 17167272  
-Registered office stated by SimpleDMS: Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, England, PE2 6XU  
-**Current official registered-office record to be confirmed before signature.**  
-Proposed authorised signatory: Patricia Jean Abel, Director  
+Registered office: Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, England, PE2 6XU  
+Authorised signatory: Patricia Jean Abel, Director  
 
 Signature: ______________________________  
 Date: __________________________________  
