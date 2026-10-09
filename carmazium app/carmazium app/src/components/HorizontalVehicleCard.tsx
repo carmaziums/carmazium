@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 // expo-image over react-native's Image: caching/recycling for cards rendered
 // repeatedly in horizontal scroll lists (see VehicleCard.tsx for rationale).
@@ -44,6 +45,10 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
   const toggle = useWatchlistStore((s) => s.toggle);
   const scale = useSharedValue(1);
+  const { width: screenWidth } = useWindowDimensions();
+  // Search uses 24px page gutters and a 1px border on either side.
+  // Native sizing keeps each photo as wide as the web-style result card.
+  const imageWidth = Math.max(200, Math.round(screenWidth - 50));
 
   // Tapping the thumbnail opens a full-screen lightbox instead of
   // navigating — matches web's CarCard.tsx (lightboxOnTap). Navigation
@@ -69,9 +74,6 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   const handlePressOut = () => {
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
   };
-
-  // Specific visual highlight from mockup (e.g. Porsche 911 GT3 has outline box around price)
-  const isOutlinePrice = listing.id === 'l3';
 
   // Real haversine distance when both sides have coords. Fallback to just
   // the year — the previous per-id mock distances ("2.1 M", "4.8 M" etc.)
@@ -100,12 +102,12 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
       onPressOut={handlePressOut}
       activeOpacity={1}
     >
-      {/* Left: Image container */}
+      {/* Full-width photo first: mirrors the readable website listing cards. */}
       <View style={styles.imageContainer}>
         <ImageCarousel
           images={listing.images}
-          width={90}
-          height={90}
+          width={imageWidth}
+          height={196}
           onPress={openLightbox}
         />
 
@@ -124,9 +126,12 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
             <Text style={styles.estateText}>ESTATE</Text>
           </View>
         )}
+        <View style={styles.saveButtonOverlay}>
+          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        </View>
       </View>
 
-      {/* Right: Info container */}
+      {/* Full-width details, with a clear hierarchy and no tiny cramped column. */}
       <View style={styles.infoContainer}>
         {/* Specs Row: Colour & Distance */}
         <Text style={styles.specsText} numberOfLines={1}>
@@ -134,13 +139,13 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         </Text>
 
         {/* Title: Make & Model */}
-        <Text style={styles.titleText} numberOfLines={1}>
+        <Text style={styles.titleText} numberOfLines={2}>
           {listing.make} {listing.model}
         </Text>
 
-        {/* Sub-specs: Year, Odometer, Fuel */}
-        <Text style={styles.subSpecsText} numberOfLines={1}>
-          {listing.year} · {formatMileage(listing.mileage)} · {listing.fuelType}
+        {/* Vehicle details are visible without opening each listing. */}
+        <Text style={styles.subSpecsText} numberOfLines={2}>
+          {[formatMileage(listing.mileage), listing.fuelType, listing.transmission, listing.category].filter(Boolean).join('  ·  ')}
         </Text>
 
         {/* Bottom: Price, Grade & Heart Bookmark */}
@@ -152,7 +157,10 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
             <GradeChip grade={listing.exteriorGrade} />
           </View>
 
-          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+          <View style={styles.viewDetails}>
+            <Text style={styles.viewDetailsText}>View details</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+          </View>
         </View>
       </View>
     </AnimatedTouchable>
@@ -170,19 +178,16 @@ export const HorizontalVehicleCard = React.memo(HorizontalVehicleCardBase);
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
     borderColor: Colors.borderSubtle,
     borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   imageContainer: {
     position: 'relative',
-    width: 90,
-    height: 90,
-    borderRadius: 12,
+    width: '100%',
+    height: 196,
     overflow: 'hidden',
     backgroundColor: Colors.bgTertiary,
   },
@@ -205,11 +210,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     left: 6,
-    maxWidth: 78,
+    maxWidth: 180,
     backgroundColor: 'rgba(59,130,246,0.90)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   bannerText: {
     fontFamily: FontFamily.bold,
@@ -234,28 +239,35 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     letterSpacing: 0.8,
   },
+  saveButtonOverlay: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: Colors.overlay60,
+    borderRadius: 24,
+  },
   infoContainer: {
-    flex: 1,
-    marginLeft: 14,
-    justifyContent: 'space-between',
-    height: 90,
+    padding: 16,
+    gap: 8,
   },
   specsText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.xs - 2,
-    color: Colors.textFaint,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
     letterSpacing: 0.8,
   },
   titleText: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.md,
+    fontSize: FontSize.lg,
     color: Colors.white,
+    lineHeight: 24,
     marginVertical: 2,
   },
   subSpecsText: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     color: Colors.textSecondary,
+    lineHeight: 20,
     marginBottom: 4,
   },
   bottomRow: {
@@ -276,11 +288,21 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontFamily: FontFamily.mono,
-    fontSize: FontSize.base,
+    fontSize: FontSize['2xl'],
     color: Colors.white,
   },
   bookmarkBtn: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
+  },
+  viewDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewDetailsText: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    color: Colors.accent,
   },
 });
