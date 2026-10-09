@@ -926,6 +926,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
+  // Disabled state renders on the next tick. Guard duplicate taps synchronously
+  // so one seller cannot accidentally create two records or start two checkouts.
+  const publishingInFlightRef = useRef(false);
   // editListingId/editMode are derived above from route.params rather than
   // useState so a reused screen instance always follows the current route.
   // Gates the form while the existing listing loads in edit mode — without this,
@@ -1868,6 +1871,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
+    if (publishingInFlightRef.current) return;
     // A restored review screen may not have passed Step 1 in this session.
     // Validate before any mutation, checkout or fee/grant consumption.
     if (!validateStep(1)) {
@@ -1895,6 +1899,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       );
       return;
     }
+    publishingInFlightRef.current = true;
     setIsPublishing(true);
     try {
       const vinTrimmed = vin.trim().toUpperCase();
@@ -2103,7 +2108,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             if (auctionStartMode === 'NOW') {
               auctionPayload.startTime = new Date().toISOString();
             } else {
-              auctionPayload.startTime = new Date(auctionStartDate).toISOString();
+              // Same UK-local parser used by validation and the atomic
+              // creation path; Date(string) could interpret an unzoned date
+              // differently on Android versus iOS and schedule the wrong hour.
+              const parsedStart = parseNativeAuctionLocalStart(auctionStartDate);
+              if (!parsedStart || !nativeScheduledStartIsValid(parsedStart)) {
+                throw new Error('Choose a valid future auction start time.');
+              }
+              auctionPayload.startTime = parsedStart.toISOString();
             }
             Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
             try {
@@ -2233,6 +2245,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     } catch (err: any) {
       Alert.alert('Failed', err.message || 'Could not publish listing.');
     } finally {
+      publishingInFlightRef.current = false;
       setIsPublishing(false);
     }
   }
