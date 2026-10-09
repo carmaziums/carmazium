@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -103,13 +104,14 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [tab, serviceFilter, nextCursor]);
 
-  useEffect(() => {
+  // Refresh work on return from quoting, payment or completion. The reset
+  // path never uses nextCursor; omit it to avoid a refetch loop on pagination.
+  useFocusEffect(useCallback(() => {
     setJobs([]);
     setNextCursor(null);
     void load('reset');
-    // load intentionally changes with tab/filter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, serviceFilter]);
+  }, [tab, serviceFilter]));
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -208,12 +210,18 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.tab, tab === 'open' && styles.tabActive]}
           onPress={() => setTab('open')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'open' }}
+          accessibilityLabel="Available service jobs"
         >
           <Text style={[styles.tabText, tab === 'open' && styles.tabTextActive]}>AVAILABLE</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'assigned' && styles.tabActive]}
           onPress={() => setTab('assigned')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'assigned' }}
+          accessibilityLabel="My assigned service work"
         >
           <Text style={[styles.tabText, tab === 'assigned' && styles.tabTextActive]}>MY WORK</Text>
         </TouchableOpacity>
@@ -225,6 +233,8 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
             key={item}
             style={[styles.filter, filter === item && styles.filterActive]}
             onPress={() => setFilter(item)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: filter === item }}
           >
             <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
               {item === 'ALL' ? 'All' : item === 'DELIVERY' ? 'Delivery' : 'Inspection'}
@@ -232,6 +242,18 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </View>
+
+      <TouchableOpacity
+        style={styles.manageCoverage}
+        onPress={() => navigation.navigate('ProviderCapabilities')}
+        accessibilityRole="button"
+        accessibilityLabel="Manage approved services and job-matching coverage"
+        activeOpacity={0.8}
+      >
+        <Ionicons name="options-outline" size={17} color={Colors.accent} />
+        <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
+        <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+      </TouchableOpacity>
 
       {loading && jobs.length === 0 ? (
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
@@ -317,27 +339,29 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
   tabs: { flexDirection: 'row', marginHorizontal: 18, marginTop: 4, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, padding: 4 },
-  tab: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   tabActive: { backgroundColor: Colors.accent },
   tabText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.7 },
   tabTextActive: { color: Colors.white },
-  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 12 },
-  filter: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingVertical: 12 },
+  manageCoverage: { marginHorizontal: 18, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, marginBottom: 6, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle },
+  manageCoverageText: { flex: 1, color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 15, paddingVertical: 9, borderRadius: 999, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid },
   filterActive: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10 },
   filterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   filterTextActive: { color: Colors.accent },
   list: { padding: 18, gap: 12, paddingBottom: 36 },
   emptyList: { flexGrow: 1, padding: 18, justifyContent: 'center' },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 15, gap: 10 },
+  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
   iconBox: { width: 38, height: 38, borderRadius: 11, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   typeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  title: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginTop: 3 },
+  title: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginTop: 3 },
   statusPill: { borderRadius: 999, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 9, paddingVertical: 5 },
   statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textSecondary },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
+  metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha08, paddingTop: 11, marginTop: 2 },
   trailing: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
