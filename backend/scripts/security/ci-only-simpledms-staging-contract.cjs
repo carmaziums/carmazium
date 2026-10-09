@@ -99,13 +99,19 @@ async function forbiddenCredentialStartup() {
     expect(health.status === 200 && health.data.syntheticOnly === true, 'health identifies synthetic-only process');
     const disabled = await request(41481, '/partners/v1/simpledms/auctions', ephemeralKey);
     expect(disabled.status === 404, 'global kill-switch denies even a correct key');
+    expect((disabled.headers.get('cache-control') || '').includes('no-store'),
+      'disabled partner response is not cacheable');
     await stop(child);
 
     child = await start(41482);
     const missing = await request(41482, '/partners/v1/simpledms/auctions');
     expect(missing.status === 401, 'missing key denied');
+    expect((missing.headers.get('cache-control') || '').includes('no-store'),
+      'missing-credential denial is not cacheable');
     const wrong = await request(41482, '/partners/v1/simpledms/auctions', 'synthetic-incorrect-token-' + 'x'.repeat(40));
     expect(wrong.status === 401, 'incorrect key denied');
+    expect((wrong.headers.get('cache-control') || '').includes('no-store'),
+      'incorrect-credential denial is not cacheable');
     const success = await request(41482, '/partners/v1/simpledms/auctions?page=1&limit=25', ephemeralKey);
     expect(success.status === 200 && success.data.pagination.total === 1 &&
       success.data.auctions?.length === 1, 'authenticated paginated synthetic feed');
