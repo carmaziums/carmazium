@@ -9,6 +9,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
 
@@ -49,6 +50,17 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
     },
     [width, data.length],
   );
+
+  if (data.length === 0) {
+    // Empty media must never be replaced with a stock photo of a different car.
+    return (
+      <Pressable onPress={() => onPress?.(0)} accessibilityLabel="Vehicle photo unavailable"
+        style={{ width, height, backgroundColor: Colors.bgSecondaryAlt, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <Ionicons name="car-outline" size={28} color={Colors.textMuted} />
+        <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12 }}>No photo available</Text>
+      </Pressable>
+    );
+  }
 
   if (data.length <= 1) {
     return (
