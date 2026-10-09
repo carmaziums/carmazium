@@ -24,20 +24,19 @@ export async function getWatchlist(
   page = 1,
   limit = 20
 ): Promise<{ items: WatchlistItem[]; total: number }> {
-  try {
-    const res = await apiClient<BackendPaginatedResponse<WatchlistItem>>(
-      `/watchlist?page=${page}&limit=${limit}`
-    );
-    const items: WatchlistItem[] = Array.isArray(res?.data)
-      ? res.data.map((item) => ({
-          ...item,
-          mappedListing: item.listing ? mapApiListingToCarListing(item.listing) : undefined,
-        }))
-      : [];
-    return { items, total: res?.pagination?.total ?? 0 };
-  } catch {
-    return { items: [], total: 0 };
+  // A failed HTTP read is not an empty watchlist. Propagate it so the store
+  // retains its last successfully hydrated items instead of clearing hearts.
+  const res = await apiClient<BackendPaginatedResponse<WatchlistItem>>(
+    `/watchlist?page=${page}&limit=${limit}`
+  );
+  if (!res?.success || !Array.isArray(res.data) || !Number.isSafeInteger(res.pagination?.total)) {
+    throw new Error('Could not load your saved cars.');
   }
+  const items: WatchlistItem[] = res.data.map(item => ({
+    ...item,
+    mappedListing: item.listing ? mapApiListingToCarListing(item.listing) : undefined,
+  }));
+  return { items, total: res.pagination.total };
 }
 
 export async function addToWatchlist(listingId: string): Promise<void> {
