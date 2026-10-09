@@ -297,7 +297,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Show password' : 'Hide password'} />
+                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
@@ -352,7 +352,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={handleSignup}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Show password' : 'Hide password'} />
+                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'} />
               </View>
               {confirmPassword.length > 0 && !passwordsMatch && (
                 <Text style={styles.fieldError}>Passwords do not match</Text>
