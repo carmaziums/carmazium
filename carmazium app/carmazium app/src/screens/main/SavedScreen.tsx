@@ -161,6 +161,9 @@ export const SavedScreen: React.FC = () => {
           <Text style={styles.cardTitle} numberOfLines={1}>
             {listing.make} {listing.model}
           </Text>
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            {listing.transmission || 'Not specified'} gearbox
+          </Text>
           <View style={styles.gridPriceRow}>
             <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
             <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
@@ -214,7 +217,7 @@ export const SavedScreen: React.FC = () => {
             )}
           </View>
           <Text style={styles.listMeta} numberOfLines={2}>
-            {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, listing.transmission !== 'Not specified' ? listing.transmission : null, listing.location].filter(Boolean).join(' · ')}
+            {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, `Gearbox: ${listing.transmission || 'Not specified'}`, listing.location].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.listPriceRow}>
             <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
