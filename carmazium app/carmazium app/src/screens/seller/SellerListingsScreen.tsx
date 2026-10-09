@@ -488,10 +488,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     // Refresh the listings so the isFeatured pill reflects the new state
     // once the Stripe webhook has fired.
     try {
-      const refreshed = await apiClient<{ success: boolean; data: ApiListing[] }>(
-        '/listings/my?page=1&limit=50',
-      );
-      if (refreshed?.success) setListings(refreshed.data || []);
+      const refreshed = await fetchAllMyListings<ApiListing>();
+      setListings(refreshed);
     } catch { /* non-fatal */ }
   }, []);
 
