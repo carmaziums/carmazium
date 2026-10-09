@@ -47,6 +47,19 @@ export async function apiClient<T>(
   endpoint: string,
   options: ApiClientOptions = {}
 ): Promise<T> {
+  // Build 7's separately installed CarMazium QA package is a read-only
+  // visual review build, not a safe payment/bid testing environment. The
+  // bundled flag is false for every normal production/preview build.
+  // Session bootstrap is allowed so existing test accounts can sign in.
+  if (process.env.EXPO_PUBLIC_QA_READ_ONLY === '1') {
+    const method = (options.method || 'GET').toUpperCase();
+    const sessionBootstrap = ['/auth/supabase-session', '/users/sync', '/auth/logout']
+      .some(path => endpoint.startsWith(path));
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !sessionBootstrap) {
+      throw new Error('QA_READ_ONLY: This installer is for visual review only. Use the website for transactions.');
+    }
+  }
+
   const token = await getAccessToken();
 
   // If there's no session and this isn't a public endpoint, bail out early
