@@ -453,7 +453,7 @@ export const DealerProfileScreen: React.FC = () => {
 
         {/* SWITCH BUTTON (buyer/seller) */}
         <TouchableOpacity style={styles.switchProfileBtn} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>VIEW MY PROFILE</Text>
+          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
@@ -575,7 +575,7 @@ export const DealerProfileScreen: React.FC = () => {
 
         {/* SWITCH BUTTON (buyer/seller) */}
         <TouchableOpacity style={[styles.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>VIEW MY PROFILE</Text>
+          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
