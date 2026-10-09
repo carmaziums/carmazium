@@ -926,6 +926,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ── Publishing ──
   const [isPublishing, setIsPublishing] = useState(false);
+  // Disabled state renders on the next tick. Guard duplicate taps synchronously
+  // so one seller cannot accidentally create two records or start two checkouts.
+  const publishingInFlightRef = useRef(false);
   // editListingId/editMode are derived above from route.params rather than
   // useState so a reused screen instance always follows the current route.
   // Gates the form while the existing listing loads in edit mode — without this,
@@ -1312,8 +1315,55 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const cleaned = normalizeNativeRegistration(raw);
     const registrationChanged = cleaned !== currentVrmRef.current;
     if (registrationChanged) {
+      // Changing a previously complete registration means this is no longer
+      // the same vehicle. Keeping its DVLA model/MOT/specification or a prior
+      // valuation can result in publishing and pricing the *wrong* car.
+      const previousRegistration = currentVrmRef.current;
+      const switchingVehicle = previousRegistration.length >= 7;
       lookupRequestRef.current += 1;
       currentVrmRef.current = cleaned;
+      if (switchingVehicle) {
+        setVin('');
+        setMake('');
+        setModel('');
+        setYear('');
+        setVariant('');
+        setDriveType('');
+        setFuelType('');
+        setColour('');
+        setEngineSize('');
+        setBhp('');
+        setDoors('');
+        setSeats('');
+        setMotStatus('');
+        setMotExpiry('');
+        setMotHistory([]);
+        setTaxStatus('');
+        setTaxDue('');
+        setFirstRegistered('');
+        setLastV5C('');
+        setWheelplan('');
+        setTypeApproval('');
+        setEuroStandard('');
+        setCo2Emissions('');
+        setUlezCompliant(null);
+        setMarkedForExport(false);
+        setMileage('');
+        // A valuation/asking-price guide from the old registration must
+        // never be presented as an offer for the newly entered vehicle.
+        valuationRequestId.current += 1;
+        valuationBaseKeyRef.current = null;
+        valuationJourneyBaseKeyRef.current = null;
+        valuationJourneyIdRef.current = null;
+        setBaseValuation(null);
+        setValuation(null);
+        setValuationLoading(false);
+        setValuationError(null);
+        setPriceAsking('');
+        setPriceMin('');
+        setReservePrice('');
+        setStartingBid('');
+      }
       setTransmission('');
       setBodyType('');
       setDvlaFetched(false);
@@ -1868,6 +1918,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Publish ─────────────────────────────────────────────────────────────────
 
   async function handlePublish() {
+    if (publishingInFlightRef.current) return;
     // A restored review screen may not have passed Step 1 in this session.
     // Validate before any mutation, checkout or fee/grant consumption.
     if (!validateStep(1)) {
@@ -1895,6 +1946,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       );
       return;
     }
+    publishingInFlightRef.current = true;
     setIsPublishing(true);
     try {
       const vinTrimmed = vin.trim().toUpperCase();
@@ -2103,7 +2155,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             if (auctionStartMode === 'NOW') {
               auctionPayload.startTime = new Date().toISOString();
             } else {
-              auctionPayload.startTime = new Date(auctionStartDate).toISOString();
+              // Same UK-local parser used by validation and the atomic
+              // creation path; Date(string) could interpret an unzoned date
+              // differently on Android versus iOS and schedule the wrong hour.
+              const parsedStart = parseNativeAuctionLocalStart(auctionStartDate);
+              if (!parsedStart || !nativeScheduledStartIsValid(auctionStartDate)) {
+                throw new Error('Choose a valid future auction start time.');
+              }
+              auctionPayload.startTime = parsedStart.toISOString();
             }
             Object.keys(auctionPayload).forEach(k => auctionPayload[k] === undefined && delete auctionPayload[k]);
             try {
@@ -2233,6 +2292,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     } catch (err: any) {
       Alert.alert('Failed', err.message || 'Could not publish listing.');
     } finally {
+      publishingInFlightRef.current = false;
       setIsPublishing(false);
     }
   }
@@ -3275,9 +3335,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={applyValuationGuide}
                 activeOpacity={0.8}
               >
-                <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
+                <Text style={s.valuationCardLabel}>{valuation.confidence === 'LOW' ? 'LOW-CONFIDENCE PRICE GUIDE' : 'CURRENT MARKET VALUE'}</Text>
                 <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
+                <Text style={s.valuationCardHint}>
+                  {valuation.confidence === 'LOW'
+                    ? 'Limited market evidence. This is a rough guide, not a verified sale price. You can set your own price.'
+                    : 'Market guide from available evidence, adjusted by the condition and specification you provide.'}
+                </Text>
                 <Text style={s.valuationApplyText}>Use this value</Text>
               </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>

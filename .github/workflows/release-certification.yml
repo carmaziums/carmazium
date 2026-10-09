@@ -167,6 +167,16 @@ jobs:
         run: node --test scripts/test-native-app-audit-block1.test.mjs
       - name: Audit native notification preferences and cross-platform copy
         run: node --test scripts/test-native-notification-settings-audit.test.mjs
+      - name: Audit vehicle cards and truthful transmission mapping
+        run: node --test scripts/test-native-vehicle-card-audit-block2.test.mjs
+      - name: Audit dealer seller inventory and saved auction routes
+        run: node --test scripts/test-native-app-audit-block3.test.mjs
+      - name: Audit valuation DVLA and auction history reliability
+        run: node --test scripts/test-native-app-audit-block4.test.mjs
+      - name: Audit bid confirmation and listing submission
+        run: node --test scripts/test-native-app-audit-block5.test.mjs
+      - name: Confirm integrated native audit guards remain consistent
+        run: node --test scripts/test-native-app-integration-block6.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}

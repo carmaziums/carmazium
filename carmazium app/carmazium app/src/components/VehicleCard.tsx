@@ -208,7 +208,8 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         <View style={styles.specRow}>
           <SpecBadge icon="speedometer-outline" value={formatMileage(listing.mileage)} />
           <SpecBadge icon="calendar-outline" value={String(listing.year)} />
-          <SpecBadge icon="flash-outline" value={`${listing.bhp} bhp`} variant="accent" />
+          <SpecBadge icon="settings-outline" value={`Gearbox: ${listing.transmission || 'Not specified'}`} />
+          {listing.bhp > 0 && <SpecBadge icon="flash-outline" value={`${listing.bhp} bhp`} variant="accent" />}
         </View>
 
         {!compact && (
@@ -226,8 +227,6 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
             </View>
             <View style={styles.fuelRow}>
               <Text style={styles.fuelText}>{listing.fuelType}</Text>
-              <Text style={styles.separator}>·</Text>
-              <Text style={styles.fuelText}>{listing.transmission}</Text>
             </View>
           </View>
         )}
