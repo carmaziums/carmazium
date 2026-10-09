@@ -128,6 +128,10 @@ export const LiveScreen: React.FC = () => {
         return {
           id: a.listing.id,
           auctionId: a.id,
+          // Heart buttons must retain the live-auction identity; otherwise a
+          // saved dealer lot opens the retail purchase screen instead of bids.
+          listingType: 'AUCTION',
+          auction: { id: a.id, status: a.status, endTime: a.endTime },
           make: a.listing.make,
           model: a.listing.model,
           variant: a.listing.variant || '',
@@ -524,7 +528,7 @@ export const LiveScreen: React.FC = () => {
         </View>
 
         {filteredUpcoming.length > 0 ? (
-          filteredUpcoming.map((auc, idx) => {
+          filteredUpcoming.map((auc) => {
             // Reserve price is never shown to buyers — it's enforced
             // server-side (Ground Rules). Show Buy It Now if the seller set
             // one, otherwise just the starting bid.
@@ -540,6 +544,8 @@ export const LiveScreen: React.FC = () => {
             const mappedListing = {
               id: auc.listing.id,
               auctionId: auc.id,
+              listingType: 'AUCTION',
+              auction: { id: auc.id, status: auc.status, endTime: auc.endTime },
               make: auc.listing.make,
               model: auc.listing.model,
               variant: auc.listing.variant || '',
@@ -597,7 +603,7 @@ export const LiveScreen: React.FC = () => {
                     <Text style={styles.upcomingCarName} numberOfLines={1}>
                       {auc.listing.make} {auc.listing.model}
                     </Text>
-                    <Text style={styles.upcomingLot}>LOT {String(idx + 6).padStart(2, '0')}</Text>
+                    {/* No lot number is supplied by this endpoint; never invent one. */}
                   </View>
                   <Text style={styles.upcomingSpecs} numberOfLines={1}>
                     {auc.listing.year} · {auc.listing.colour || 'Verified Spec'}
