@@ -209,6 +209,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // Vehicle Features dropdown — collapsed by default (Prompt M1)
   const [featuresExpanded, setFeaturesExpanded] = useState(false);
+  const [extraSpecsExpanded, setExtraSpecsExpanded] = useState(false);
   const toggleFeatures = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setFeaturesExpanded(prev => !prev);
@@ -854,8 +855,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Car Name & Model */}
           <Text style={styles.carTitle}>
-            {listing.make} {listing.model}
+            {listing.year} {listing.make} {listing.model}
           </Text>
+          {!!listing.variant && <Text style={styles.variantLabel}>{listing.variant}</Text>}
 
           {/* Location row — hidden entirely (not a dangling icon) when the
               listing has no location, same pattern as GradeChip's null case */}
@@ -901,10 +903,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
             <Text style={styles.monthlyText}>
               {listing.monthlyPayment
-                ? `or ${listing.monthlyPayment}`
-                : `or £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo`}
+                ? `Indicative: ${listing.monthlyPayment}`
+                : `Est. £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo*`}
             </Text>
           </View>
+          <Text style={styles.financeDisclaimer}>*Illustrative monthly estimate only, not a finance offer. Terms and eligibility may vary.</Text>
           {/* Buyer's own offer status chip — copy mirrors web's OfferStatusChip
               (VehicleDetailPageClient.tsx L31-90). Hidden on the buyer's own
               listings and when there's no offer yet. */}
@@ -983,7 +986,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           ) : null}
 
-          {/* Horizontal Specifications Badges Row (4 Boxes) */}
+          {/* Show the complete gearbox value: semi-automatic, CVT and missing
+              source data must never be represented as "Manual". */}
           <View style={styles.specBadgesRow}>
             <View style={styles.specBadgeBox}>
               <Text style={styles.specBadgeLabel}>YEAR</Text>
@@ -992,7 +996,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.specBadgeBox}>
               <Text style={styles.specBadgeLabel}>MILEAGE</Text>
               <Text style={styles.specBadgeValue}>
-                {(listing.mileage / 1000).toFixed(1)}k
+                {Number(listing.mileage).toLocaleString('en-GB')} mi
               </Text>
             </View>
             <View style={styles.specBadgeBox}>
@@ -1000,12 +1004,21 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={styles.specBadgeValue}>{listing.fuelType}</Text>
             </View>
             <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>TRANS</Text>
-              <Text style={styles.specBadgeValue}>
-                {listing.transmission === 'Automatic' ? 'Auto' : 'Manual'}
-              </Text>
+              <Text style={styles.specBadgeLabel}>TRANSMISSION</Text>
+              <Text style={styles.specBadgeValue}>{listing.transmission || 'Not specified'}</Text>
             </View>
           </View>
+
+          <View style={styles.buyerJourneyNote}>
+            <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
+            <Text style={styles.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
+          </View>
+          {listing.ulezCompliant === false && (
+            <View style={styles.ulezWarning}>
+              <Ionicons name="alert-circle-outline" size={17} color={Colors.warning} />
+              <Text style={styles.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
+            </View>
+          )}
 
           {/* Dual-channel: linked live auction cross-link */}
           {listing.linkedListing?.auction?.status === 'ACTIVE' && (
@@ -1127,7 +1140,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               entirely instead of printing "Not disclosed" a dozen times; only
               genuinely decision-relevant fields keep an explicit "Not
               disclosed", where the absence is itself information. */}
-          {SPEC_GROUPS.map((group) => {
+          <TouchableOpacity
+            style={styles.extraSpecToggle}
+            activeOpacity={0.8}
+            onPress={() => setExtraSpecsExpanded(v => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: extraSpecsExpanded }}
+            accessibilityLabel={extraSpecsExpanded ? 'Hide extra vehicle specifications' : 'Show extra vehicle specifications'}
+          >
+            <Text style={styles.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
+            <Ionicons name={extraSpecsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={Colors.accent} />
+          </TouchableOpacity>
+          {SPEC_GROUPS.filter(group => extraSpecsExpanded || (group.title !== 'PERFORMANCE' && group.title !== 'RUNNING COSTS')).map((group) => {
             const rows = group.rows(listing).filter((r) => r.value != null && r.value !== '');
             if (rows.length === 0) return null;
             return (
@@ -2476,6 +2500,14 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginBottom: 6,
   },
+  variantLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 8 },
+  financeDisclaimer: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18, marginTop: -12, marginBottom: 16 },
+  buyerJourneyNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, backgroundColor: Colors.infoBlueAlpha08, padding: 13, marginBottom: 16 },
+  buyerJourneyText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 19 },
+  ulezWarning: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, backgroundColor: Colors.warningAlpha08, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.warningAlpha20, padding: 12, marginBottom: 16 },
+  ulezWarningText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.warning, lineHeight: 19 },
+  extraSpecToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 50, paddingHorizontal: 14, borderRadius: Radius.inline, marginBottom: 20, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderHi },
+  extraSpecToggleText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent, flex: 1, paddingRight: 10 },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2491,6 +2523,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 20,
   },
   priceText: {
@@ -2571,12 +2605,14 @@ const styles = StyleSheet.create({
   // Specs boxes row
   specBadgesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   specBadgeBox: {
-    flex: 1,
-    height: 56,
+    flexBasis: '47%',
+    flexGrow: 1,
+    minHeight: 65,
     borderRadius: 12,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
@@ -2595,6 +2631,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.mono,
     fontSize: FontSize.sm,
     color: Colors.white,
+    flexShrink: 1,
   },
   // Sections container
   sectionContainer: {
