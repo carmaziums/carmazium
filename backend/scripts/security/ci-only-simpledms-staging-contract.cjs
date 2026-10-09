@@ -150,6 +150,42 @@ async function forbiddenCredentialStartup() {
       'current valid synthetic bid released only when enabled');
     expect(b.region === 'Birmingham', 'approved exact town only');
     expect(!b.referralUrl, 'no partner referral links without separate approval');
+    await stop(child);
+
+    child = await start(41484, { STAGING_SYNTHETIC_SCENARIO: 'pagination' });
+    const p1 = await request(41484, '/partners/v1/simpledms/auctions?page=1&limit=25', ephemeralKey);
+    const p2 = await request(41484, '/partners/v1/simpledms/auctions?page=2&limit=25', ephemeralKey);
+    const p3 = await request(41484, '/partners/v1/simpledms/auctions?page=3&limit=25', ephemeralKey);
+    expect(p1.status === 200 && p1.data.pagination.total === 51 &&
+      p1.data.auctions.length === 25 && p1.data.pagination.hasMore === true,
+      'pagination scenario page 1 returns first 25 of 51');
+    expect(p2.status === 200 && p2.data.auctions.length === 25 &&
+      p2.data.pagination.hasMore === true,
+      'pagination scenario page 2 returns next 25');
+    expect(p3.status === 200 && p3.data.auctions.length === 1 &&
+      p3.data.pagination.hasMore === false,
+      'pagination scenario page 3 returns final record');
+    const ids = [...p1.data.auctions, ...p2.data.auctions, ...p3.data.auctions].map(v => v.id);
+    expect(new Set(ids).size === 51, 'pagination scenario contains no duplicate auction IDs');
+    await stop(child);
+
+    child = await start(41485, { STAGING_SYNTHETIC_SCENARIO: 'withdrawn' });
+    const withdrawn = await request(41485, '/partners/v1/simpledms/auctions?page=1&limit=25', ephemeralKey);
+    const withdrawnDetail = await request(41485, '/partners/v1/simpledms/auctions/' + STAGING_AUCTION_ID, ephemeralKey);
+    expect(withdrawn.status === 200 && withdrawn.data.pagination.total === 0 &&
+      withdrawn.data.auctions.length === 0,
+      'withdrawn lifecycle is represented by disappearance from full live feed');
+    expect(withdrawnDetail.status === 404, 'withdrawn lifecycle detail is no longer live');
+    await stop(child);
+
+    child = await start(41486, { STAGING_SYNTHETIC_SCENARIO: 'ended' });
+    const ended = await request(41486, '/partners/v1/simpledms/auctions?page=1&limit=25', ephemeralKey);
+    const endedDetail = await request(41486, '/partners/v1/simpledms/auctions/' + STAGING_AUCTION_ID, ephemeralKey);
+    expect(ended.status === 200 && ended.data.pagination.total === 0 &&
+      ended.data.auctions.length === 0,
+      'ended lifecycle is represented by disappearance from full live feed');
+    expect(endedDetail.status === 404, 'ended lifecycle detail is no longer live');
+
     console.log('PASS: ' + checks + ' isolated synthetic partner-staging assertions; no credentials or customer data used.');
   } catch (error) {
     console.error('FAIL: synthetic staging contract check (' + (error && error.message || 'unspecified error') + ')');
