@@ -61,6 +61,7 @@ export const SettingsScreen: React.FC = () => {
   const [showPublicProfile, setShowPublicProfile] = useState(true);
   // Do not overwrite privacy preferences with defaults if /users/me fails.
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [preferencesFetchComplete, setPreferencesFetchComplete] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -94,6 +95,7 @@ export const SettingsScreen: React.FC = () => {
           }
         }
       } catch { /* keep store-derived defaults */ }
+      finally { setPreferencesFetchComplete(true); }
     })();
   }, []);
 
@@ -548,8 +550,11 @@ export const SettingsScreen: React.FC = () => {
 
           <View style={styles.cardDivider} />
 
-          {!preferencesLoaded && (
-            <Text style={styles.preferenceNotice}>Your saved profile preferences could not be confirmed yet. They will not be changed when you save your name or phone number.</Text>
+          {!preferencesFetchComplete && (
+            <Text style={styles.preferenceNotice}>Loading your saved profile preferences…</Text>
+          )}
+          {preferencesFetchComplete && !preferencesLoaded && (
+            <Text style={styles.preferenceNotice}>Your saved profile preferences could not be confirmed. Saving your name or phone number will not change them.</Text>
           )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
