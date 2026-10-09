@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -76,7 +77,13 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [nextCursor]);
 
-  useEffect(() => { void load('reset'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reset pagination after returning from a job/quote/payment on another screen.
+  // The reset branch never reads nextCursor, so stable callback avoids a
+  // refetch loop when the paginated cursor changes.
+  useFocusEffect(useCallback(() => {
+    void load('reset');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []));
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -188,8 +195,16 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
           <Text style={styles.emptyTitle}>No service jobs yet</Text>
           <Text style={styles.emptyText}>
-            Inspection and delivery requests you create through CarMazium will appear here.
+            Post a delivery, recovery or inspection request to receive quotes from approved service providers.
           </Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate('Services')}
+            accessibilityRole="button"
+            accessibilityLabel="Open TradeXchange services to post a job"
+          >
+            <Text style={styles.primaryText}>POST A SERVICE JOB</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -240,9 +255,9 @@ const styles = StyleSheet.create({
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   list: { padding: 18, gap: 12, paddingBottom: 60 },
   card: {
-    backgroundColor: Colors.bgSecondaryAlt,
+    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha08,
+    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
     padding: 16,
     gap: 10,
@@ -256,7 +271,7 @@ const styles = StyleSheet.create({
   typeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textMuted, textTransform: 'uppercase' },
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginTop: 3 },
   statusPill: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: Colors.whiteAlpha06 },
-  statusText: { fontFamily: FontFamily.bold, fontSize: 9, color: Colors.textSecondary },
+  statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary },
   outcome: { flexDirection: 'row', gap: 7, alignItems: 'center', borderRadius: 10, padding: 10, borderWidth: 1 },
@@ -271,7 +286,7 @@ const styles = StyleSheet.create({
   centerCard: { flex: 1, padding: 34, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  primaryButton: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, marginTop: 6 },
+  primaryButton: { backgroundColor: Colors.accent, borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12, minHeight: 48, justifyContent: 'center', marginTop: 6 },
   primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white },
   inlineError: { color: Colors.accent, fontFamily: FontFamily.medium, textAlign: 'center', padding: 12 },
 });
