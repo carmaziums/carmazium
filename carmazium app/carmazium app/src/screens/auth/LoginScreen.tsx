@@ -178,7 +178,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Supabase persists sessions in encrypted AsyncStorage. The old
+            {/* Supabase persists sessions using SecureStore and AsyncStorage. The old
                 Remember me checkbox was visual only, so never imply the
                 user can opt out of persistence by leaving it unticked. */}
             <View style={styles.optionsRow}>
