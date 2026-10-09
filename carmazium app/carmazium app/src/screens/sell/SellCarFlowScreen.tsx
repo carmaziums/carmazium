@@ -2673,7 +2673,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description">
           <View style={{ marginBottom: 16 }}>
-            <SL label="LISTING TITLE" required />
+            <View style={s.titleLabelRow}>
+              <SL label="LISTING TITLE" required />
+              <TouchableOpacity
+                style={s.autoTitleBtn}
+                onPress={() => setTitle([year, make, model, variant].filter(Boolean).join(' ').slice(0, 120))}
+                disabled={!make.trim() || !model.trim()}
+                accessibilityState={{ disabled: !make.trim() || !model.trim() }}
+                accessibilityRole="button"
+                accessibilityLabel="Fill listing title from vehicle details"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="sparkles-outline" size={14} color={Colors.accent} />
+                <Text style={s.autoTitleText}>Auto-fill title</Text>
+              </TouchableOpacity>
+            </View>
             <TextInput
               style={[s.input, { borderColor: fieldBorderColor('title') }]}
               value={title}
@@ -3214,6 +3228,35 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
+        {/* Listing Method — tapping a pricing tier used to silently flip
+            listingType as a side effect (setListingType(badge.listingType)
+            in the tier card's onPress below), so choosing "Premium" from a
+            Retail mindset could silently switch you to a completely
+            different flow with no explicit choice ever made. This is now
+            the one place listingType changes; tier cards only set badgeTier. */}
+        <SectionBox title="Listing Method">
+          <Text style={s.fieldHint}>
+            Choose how you want to sell — a fixed-price retail listing, or a live auction.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            {([
+              { v: 'CLASSIFIED' as const, l: 'Retail Listing' },
+              { v: 'AUCTION' as const, l: 'Auction' },
+            ]).map(opt => (
+              <TouchableOpacity
+                key={opt.v}
+                style={[s.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && s.pillActive]}
+                onPress={() => {
+                  chooseListingMethod(opt.v);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.pillText, listingType === opt.v && s.pillTextActive]}>{opt.l}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </SectionBox>
+
         <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
             <View style={s.valuationLoadingRow}>
@@ -3427,35 +3470,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               })()}
             </View>
           )}
-        </SectionBox>
-
-        {/* Listing Method — tapping a pricing tier used to silently flip
-            listingType as a side effect (setListingType(badge.listingType)
-            in the tier card's onPress below), so choosing "Premium" from a
-            Retail mindset could silently switch you to a completely
-            different flow with no explicit choice ever made. This is now
-            the one place listingType changes; tier cards only set badgeTier. */}
-        <SectionBox title="Listing Method">
-          <Text style={s.fieldHint}>
-            Choose how you want to sell — a fixed-price retail listing, or a live auction.
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-            {([
-              { v: 'CLASSIFIED' as const, l: 'Retail Listing' },
-              { v: 'AUCTION' as const, l: 'Auction' },
-            ]).map(opt => (
-              <TouchableOpacity
-                key={opt.v}
-                style={[s.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && s.pillActive]}
-                onPress={() => {
-                  chooseListingMethod(opt.v);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.pillText, listingType === opt.v && s.pillTextActive]}>{opt.l}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </SectionBox>
 
         {/* Seller Badges — only the tiers relevant to the listing method
@@ -3985,6 +3999,9 @@ const s = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.white },
 
   // Stepper and easy-to-scan selling method
+  titleLabelRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 },
+  autoTitleBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8, backgroundColor: Colors.accentAlpha06 },
+  autoTitleText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
   methodChoices: { gap: 10 },
   methodChoice: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: Colors.bgPrimary, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 12, minHeight: 94 },
   methodChoiceSelected: { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha06 },
