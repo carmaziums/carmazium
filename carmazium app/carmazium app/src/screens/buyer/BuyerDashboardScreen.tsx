@@ -318,7 +318,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. KPI 2×2 Grid ── */
+        {/* ── 2. KPI 2×2 Grid ── */}
         <View style={styles.kpiGrid}>
           <KpiCard
             label="ACTIVE OFFERS"
