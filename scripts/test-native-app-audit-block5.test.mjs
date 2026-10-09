@@ -55,6 +55,10 @@ test('dealer live auctions handle API errors and load the entire scheduled catal
   const live = readMobile('src/screens/main/LiveScreen.tsx');
   const api = readMobile('src/lib/auctionApi.ts');
   assert.ok(live.includes('getAllScheduledAuctions()'));
+  assert.ok(live.includes("listingType: 'AUCTION'"));
+  assert.ok(live.includes('auction: { id: a.id, status: a.status, endTime: a.endTime }'));
+  assert.ok(live.includes('auction: { id: auc.id, status: auc.status, endTime: auc.endTime }'));
+  assert.doesNotMatch(live, /LOT \{String\(idx \+ 6\)/);
   assert.ok(live.includes('Promise.all(['));
   assert.ok(live.includes('auctionLoadError'));
   assert.ok(live.includes('<ErrorBanner message={auctionLoadError}'));
