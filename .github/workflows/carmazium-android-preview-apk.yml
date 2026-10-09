@@ -1,0 +1,95 @@
+name: CarMazium Android UI preview APK
+
+# First installation runs once when this workflow is merged. Afterwards it
+# runs only if someone explicitly dispatches it. No Play Store/OTA publish.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/carmazium-android-preview-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-android-ui-preview
+  cancel-in-progress: false
+
+jobs:
+  build-preview:
+    name: Build shareable Android preview APK (not production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      CI: '1'
+    steps:
+      - name: Confirm Expo credential (never print it)
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::No EXPO_TOKEN or EAS_TOKEN GitHub Actions secret is configured. Android APK could not be built."
+            echo "### Android preview APK — blocked" >> "$GITHUB_STEP_SUMMARY"
+            echo "Connect the team's Expo EAS build account via the EXPO_TOKEN GitHub Actions secret; no app was published." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Install exact native dependencies
+        run: npm ci
+      - name: Verify native types and preview config
+        run: |
+          npm run typescript
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const eas = require('./eas.json');
+          if (app.extra?.eas?.projectId !== 'f0ab914b-3433-4816-80a2-0a94e6c6a066' ||
+              eas.build?.preview?.distribution !== 'internal' ||
+              eas.build?.preview?.android?.buildType !== 'apk' ||
+              eas.build?.preview?.channel !== 'preview' ||
+              app.updates?.requestHeaders?.['expo-channel-name']) {
+            throw new Error('Preview APK profile/channel is not isolated from production');
+          }
+          console.log('Preview build profile and channel verified.');
+          NODE
+      - name: Verify Expo account
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Build internal Android preview APK from exact main commit
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build --platform android --profile preview --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-preview-build.json"
+          node - "$RUNNER_TEMP/carmazium-preview-build.json" <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const build = Array.isArray(raw) ? raw[0] : raw;
+          const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
+          const id = build?.id ?? '(not available)';
+          const lines = [
+            '### CarMazium Android test build (preview only)',
+            '- Source GitHub commit: ' + process.env.GITHUB_SHA,
+            '- EAS Build ID: ' + id,
+            '- Channel: preview (not production)',
+            '- Environment: preview profile',
+            '- Format: Android APK for internal testing',
+            '',
+            '**Important:** The preview profile currently points at the live CarMazium backend and contains a live Stripe publishable key. Do not make real payments, test refunds, or manipulate real customer data in this review build.',
+          ];
+          if (url && url.startsWith('https://')) {
+            lines.push('', '### Install APK on Android', '', '[Open the APK download](' + url + ')', '', 'Open the link on your Android phone, download the APK, then follow Android’s install prompt.');
+            console.log('Preview build APK: ' + url);
+          } else {
+            lines.push('', 'No direct APK URL was in the EAS response. Open EAS Builds and find build ID ' + id + ' to access the install link.');
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          console.log('EAS build result: ' + (build?.status || 'unknown') + '; id: ' + id);
+          NODE
