@@ -103,7 +103,7 @@ export type MainStackParamList = {
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: { initialListing?: CarListing } | undefined;
-  Settings: undefined;
+  Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
   DealerAnalytics: undefined;
   DealerInventory: undefined;
   DealerLeads: undefined;
