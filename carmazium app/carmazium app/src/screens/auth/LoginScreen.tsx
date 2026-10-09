@@ -32,7 +32,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const passwordRef = useRef<TextInput>(null);
@@ -175,24 +174,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Show password' : 'Hide password'} />
+                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
-            {/* Remember Me and Forgot Password */}
+            {/* Supabase persists sessions using SecureStore and AsyncStorage. The old
+                Remember me checkbox was visual only, so never imply the
+                user can opt out of persistence by leaving it unticked. */}
             <View style={styles.optionsRow}>
+              <Text style={styles.sessionNote}>You’ll stay signed in on this device until you sign out.</Text>
               <TouchableOpacity
-                style={styles.checkboxContainer}
-                activeOpacity={0.8}
-                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('ForgotPassword')}
+                accessibilityRole="button"
+                accessibilityLabel="Reset your password"
               >
-                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <Ionicons name="checkmark" size={12} color={Colors.white} />}
-                </View>
-                <Text style={styles.checkboxLabel}>Remember me</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('ForgotPassword')}>
                 <Text style={styles.forgotText}>Forgot?</Text>
               </TouchableOpacity>
             </View>
@@ -348,32 +344,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 16,
     marginTop: 4,
     marginBottom: 28,
   },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: Colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bgSecondary,
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.accent,
-  },
-  checkboxLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.size14,
-    color: Colors.white,
+  sessionNote: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    lineHeight: 19,
   },
   forgotText: {
     fontFamily: FontFamily.bold,

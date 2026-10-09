@@ -161,6 +161,8 @@ jobs:
         run: node --test scripts/test-mobile-redesign-block10.test.mjs
       - name: Verify unified account settings and legacy routes
         run: node --test scripts/test-unified-account-settings.test.mjs
+      - name: Verify native login, signup and password reset controls
+        run: node --test scripts/test-native-auth-controls-audit.test.mjs
       - name: Audit native app settings, startup and payout safeguards
         run: node --test scripts/test-native-app-audit-block1.test.mjs
       - name: Self-test signed-evidence validator
