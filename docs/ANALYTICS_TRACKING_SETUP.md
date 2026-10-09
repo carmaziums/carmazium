@@ -327,13 +327,29 @@ destination on the Google Ads tag — both fire from the same loader
 Admin → Data manager → Google tag → Destinations. Harmless but noisy; worth
 unlinking if nobody reads that property.
 
-### 8. GTM container is empty
+### 8. Meta Event Match Quality
+
+Manual Meta Advanced Matching is now consent-gated and wired to authenticated
+CarMazium profiles. The browser Pixel can match on normalised email, phone,
+first/last name, postcode and the internal account id after the visitor accepts
+Analytics & Marketing tracking.
+
+Seller `Lead` events also carry a stable browser `eventID` derived from the
+listing id. That does not create a second conversion; it prepares the browser
+event for correct deduplication when Meta Conversions API is added later.
+
+**Still outstanding:** no Meta Conversions API access token is currently
+configured in the deployment, so seller Lead is still browser-side only. Do
+not claim CAPI/server-side coverage until a server token is provisioned and a
+matching server event is verified in Events Manager.
+
+### 9. GTM container is empty
 
 `GTM-WJS3K6D2` loads on every pageview and does nothing. Keep it only if
 Meta/TikTok tags will be managed there; otherwise remove the script for a small
 performance win.
 
-### 9. Enhanced Conversions not implemented
+### 10. Enhanced Conversions not implemented
 
 Would improve attribution, but requires sending a hashed email to Google. That
 cuts against the codebase's explicit no-PII rule (`lib/gtm.ts` deliberately
@@ -342,11 +358,18 @@ under UK GDPR). Needs a legal/consent decision before implementing.
 
 ---
 
-## 9. Privacy rules (do not break these)
+## 10. Privacy rules (do not break these)
 
-- No VRM/registration, email, phone or postcode is ever sent to any tag.
-  A plate maps to a keeper and is personal data under UK GDPR; Google's own
-  terms forbid PII in GA4.
+- No VRM/registration, email, phone or postcode is sent in GA4 events,
+  GTM custom-event payloads, or CarMazium's generic first-party analytics
+  payloads. A plate maps to a keeper and is personal data under UK GDPR;
+  Google's own terms forbid PII in GA4.
+- Meta Pixel manual Advanced Matching is a deliberate exception after explicit
+  Analytics & Marketing consent. For signed-in users it may receive normalised
+  email, phone, first/last name, postcode and the internal account id through
+  the Pixel init matching object. Meta's Pixel library hashes the matching
+  identifiers before transport. These values are not copied into event custom
+  data or the dataLayer.
 - Vehicle make/model/year and internal IDs are safe and are what the funnel
   actually needs.
 - Use `listing_id` rather than anything vehicle-identifying when enriching.

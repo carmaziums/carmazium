@@ -6,7 +6,7 @@ import { useConsent } from "@/context/ConsentContext"
 const TRACKERS = [
     { name: "Google Tag Manager", does: "The container that loads everything below — nothing extra of its own." },
     { name: "Google Analytics", does: "Which listings, searches and pages actually get used, so we know what to fix or build next." },
-    { name: "Meta Pixel", does: "Tells us if a Facebook or Instagram ad led to someone actually listing or bidding on a car." },
+    { name: "Meta Pixel", does: "Tells us if a Facebook or Instagram ad led to a real CarMazium action. If you accept marketing tracking and are signed in, Meta may also receive matching identifiers such as email, phone, name, postcode and an internal account ID; its Pixel library hashes matching identifiers before transmission." },
     { name: "TikTok Pixel", does: "Same thing, for TikTok ads." },
 ]
 
