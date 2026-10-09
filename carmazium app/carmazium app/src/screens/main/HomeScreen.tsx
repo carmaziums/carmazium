@@ -520,6 +520,32 @@ export const HomeScreen: React.FC = () => {
           <Text style={s.greetingAccent}>car, {userName}.</Text>
         </View>
 
+        {/* Two familiar website journeys, visible without scrolling past the feeds. */}
+        <View style={s.primaryJourneyRow}>
+          <TouchableOpacity
+            style={s.buyJourneyBtn}
+            onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Browse cars for sale"
+          >
+            <Ionicons name="car-outline" size={20} color={Colors.textPrimary} />
+            <Text style={s.buyJourneyText}>Buy Cars</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.sellJourneyBtn}
+            onPress={() => navigation.navigate('SellCarFlow')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Start selling your car"
+          >
+            <Ionicons name="pricetag-outline" size={20} color={Colors.white} />
+            <Text style={s.sellJourneyText}>Sell a Car</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.white} />
+          </TouchableOpacity>
+        </View>
+
         {/* Stats bar */}
         {!isLoading && (liveAuctions.length > 0 || latestListings.length > 0) && (
           <View style={s.statsBar}>
@@ -870,6 +896,12 @@ const s = StyleSheet.create({
   quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.card, borderWidth: 1 },
   quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
+  // Buyer and seller journeys; stable on small screens.
+  primaryJourneyRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 10, marginBottom: 20 },
+  buyJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
+  sellJourneyBtn: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10, borderRadius: Radius.inline, backgroundColor: Colors.accent },
+  buyJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  sellJourneyText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   // Section
   section: { marginBottom: 36 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 18 },
