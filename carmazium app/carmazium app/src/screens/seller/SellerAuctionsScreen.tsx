@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRoute } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -312,7 +312,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     finally { setWonLoading(false); }
   }, []);
 
-  useEffect(() => { fetchAuctions(); fetchWonAuctions(); }, [fetchAuctions, fetchWonAuctions]);
+  // Refresh both selling and winning status after inspection, seller-funds
+  // confirmation, handover review or the buyer's fee payment. On mount alone
+  // the page showed stale "awaiting fee" / "awaiting approval" stages.
+  useFocusEffect(useCallback(() => {
+    void fetchAuctions();
+    void fetchWonAuctions();
+  }, [fetchAuctions, fetchWonAuctions]));
 
   // ── Tab counts ──
   const counts: Record<TabFilter, number> = {
@@ -333,18 +339,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     }
   })();
 
-  // ── Tap handler — navigate to live room or vehicle detail ──
+  // ── Open auction context (even after it ends), not retail detail ──
   const handleTap = async (item: AuctionItem) => {
     if (editingId === item.id) return; // ignore tap when edit form is open
     setNavigating(item.id);
     try {
       const listing = await getListingById(item.listing.id);
       if (!listing) { Alert.alert('Not available', 'Could not load listing.'); return; }
-      if (item.status === 'ACTIVE' || provisionalPending(item)) {
-        navigation?.navigate('LiveAuctionDetailed', { listing: { ...listing, auctionId: item.id } });
-      } else {
-        navigation?.navigate('VehicleDetail', { listing });
-      }
+      // Ended and provisional auction records retain results, buyer fee and
+      // handover context. Sending them to retail VehicleDetail hides those.
+      navigation?.navigate('LiveAuctionDetailed', { listing: { ...listing, auctionId: item.id } });
     } catch {
       Alert.alert('Error', 'Could not load listing details.');
     } finally {
