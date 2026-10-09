@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -50,9 +50,11 @@ export const SavedScreen: React.FC = () => {
 
   const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
-  useEffect(() => {
-    hydrateFromApi();
-  }, []);
+  // Refresh each time the Saved tab gains focus so web, iOS and Android
+  // watchlist changes appear without requiring an app restart.
+  useFocusEffect(useCallback(() => {
+    void hydrateFromApi();
+  }, [hydrateFromApi]));
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
