@@ -452,7 +452,7 @@ export const GlobalAIChatBot: React.FC = () => {
                     onPress={showAiPrivacyOptions}
                     accessibilityLabel="MaziuM AI privacy options"
                   />
-                  <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close" />
+                  <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close MaziuM AI assistant" />
                 </View>
               </View>
 
