@@ -13,6 +13,13 @@ import {
     ShieldCheck,
     Star,
     User,
+    Bell,
+    CreditCard,
+    LockKeyhole,
+    Palette,
+    Settings2,
+    Landmark,
+    ExternalLink,
 } from "lucide-react"
 import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/context/AuthContext"
@@ -21,8 +28,12 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { ProfileImageUploader } from "@/components/profile/ProfileImageUploader"
 import { ServiceBadgePill } from "@/components/profile/ServiceBadgePill"
 import { KycOverlayForm } from "@/components/dashboard/KycOverlayForm"
+import { DeleteAccountSection } from "@/components/dashboard/DeleteAccountSection"
+import { resetPassword, startStripeConnectOnboarding, getStripeConnectStatus, updateBankDetails, type StripeConnectStatus } from "@/lib/listingApi"
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+type SettingsSection = "personal" | "business" | "verification" | "notifications" | "payouts" | "appearance" | "security" | "reviews" | "account"
+const SETTINGS_SECTIONS = new Set<SettingsSection>(["personal", "business", "verification", "notifications", "payouts", "appearance", "security", "reviews", "account"])
 
 type ServiceBadge = { key: string; label: string; verified: boolean }
 type PublicProfileSummary = {
@@ -50,6 +61,126 @@ export default function ProfilePage() {
     const [publicSummary, setPublicSummary] = React.useState<PublicProfileSummary | null>(null)
     const [receivedReviews, setReceivedReviews] = React.useState<ReviewItem[]>([])
     const [givenReviews, setGivenReviews] = React.useState<ReviewItem[]>([])
+    const [activeSection, setActiveSection] = React.useState<SettingsSection>("personal")
+    const [notificationsReady, setNotificationsReady] = React.useState(false)
+    const [notifyOnSale, setNotifyOnSale] = React.useState(true)
+    const [showPublicProfile, setShowPublicProfile] = React.useState(true)
+    const [notificationSaving, setNotificationSaving] = React.useState(false)
+    const [bankName, setBankName] = React.useState("")
+    const [bankSortCode, setBankSortCode] = React.useState("")
+    const [bankAccountNumber, setBankAccountNumber] = React.useState("")
+    const [bankSaving, setBankSaving] = React.useState(false)
+    const [stripeStatus, setStripeStatus] = React.useState<StripeConnectStatus | null>(null)
+    const [stripeLoading, setStripeLoading] = React.useState(false)
+    const [oldPassword, setOldPassword] = React.useState("")
+    const [newPassword, setNewPassword] = React.useState("")
+    const [confirmPassword, setConfirmPassword] = React.useState("")
+    const [passwordSaving, setPasswordSaving] = React.useState(false)
+
+    React.useEffect(() => {
+        // Bookmarkable single settings destination; back/forward keeps the selected section.
+        const readSection = () => {
+            const value = new URLSearchParams(window.location.search).get("section")
+            if (value && SETTINGS_SECTIONS.has(value as SettingsSection)) setActiveSection(value as SettingsSection)
+            else setActiveSection("personal")
+        }
+        readSection()
+        window.addEventListener("popstate", readSection)
+        return () => window.removeEventListener("popstate", readSection)
+    }, [])
+    const selectSection = (section: SettingsSection) => {
+        setActiveSection(section)
+        window.history.pushState(null, "", `/profile?section=${section}`)
+        window.scrollTo({ top: 0, behavior: "smooth" })
+        setSuccess(null)
+        setRoleError(null)
+    }
+
+    React.useEffect(() => {
+        if (!profile?.id) return
+        let cancelled = false
+        apiClient<{ data: { notifyOnSale?: boolean; showPublicProfile?: boolean; bankAccountName?: string; bankSortCode?: string; bankAccountNumber?: string } }>("/users/me")
+            .then(({ data }) => {
+                if (cancelled) return
+                if (typeof data.notifyOnSale === "boolean" && typeof data.showPublicProfile === "boolean") {
+                    setNotifyOnSale(data.notifyOnSale)
+                    setShowPublicProfile(data.showPublicProfile)
+                    setNotificationsReady(true)
+                }
+                setBankName(data.bankAccountName || "")
+                setBankSortCode(data.bankSortCode || "")
+                setBankAccountNumber(data.bankAccountNumber || "")
+            }).catch(() => {
+                if (!cancelled) setRoleError("Some account preferences could not be loaded. Existing settings will not be overwritten.")
+            })
+        getStripeConnectStatus().then((status) => { if (!cancelled) setStripeStatus(status) }).catch(() => {})
+        return () => { cancelled = true }
+    }, [profile?.id])
+
+    const saveNotifications = async () => {
+        if (!notificationsReady) return
+        setNotificationSaving(true)
+        setRoleError(null)
+        try {
+            await apiClient("/users/me", { method: "PATCH", body: JSON.stringify({ notifyOnSale, showPublicProfile }) })
+            await refreshProfile()
+            setSuccess("Notification and privacy preferences saved.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not save your preferences.")
+        } finally {
+            setNotificationSaving(false)
+        }
+    }
+
+    const saveBank = async () => {
+        if (!bankName.trim() || !bankSortCode.trim() || !bankAccountNumber.trim()) {
+            setRoleError("Complete all three bank details before saving."); return
+        }
+        setBankSaving(true)
+        setRoleError(null)
+        try {
+            await updateBankDetails({ bankAccountName: bankName.trim(), bankSortCode: bankSortCode.trim(), bankAccountNumber: bankAccountNumber.trim() })
+            setSuccess("Payout bank details updated.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not save payout details.")
+        } finally {
+            setBankSaving(false)
+        }
+    }
+
+    const connectStripe = async () => {
+        setStripeLoading(true)
+        setRoleError(null)
+        try {
+            const origin = window.location.origin
+            const { url } = await startStripeConnectOnboarding(
+                `${origin}/profile?section=payouts&stripe_connect=return`,
+                `${origin}/profile?section=payouts&stripe_connect=refresh`,
+            )
+            window.location.assign(url)
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not open secure payout onboarding.")
+            setStripeLoading(false)
+        }
+    }
+
+    const changePassword = async (event: React.FormEvent) => {
+        event.preventDefault()
+        if (!oldPassword || newPassword.length < 8 || newPassword !== confirmPassword) {
+            setRoleError("Enter your current password and a matching new password of at least 8 characters."); return
+        }
+        setPasswordSaving(true)
+        setRoleError(null)
+        try {
+            await resetPassword(oldPassword, newPassword)
+            setOldPassword(""); setNewPassword(""); setConfirmPassword("")
+            setSuccess("Password updated successfully.")
+        } catch (error) {
+            setRoleError(error instanceof Error ? error.message : "Could not update your password.")
+        } finally {
+            setPasswordSaving(false)
+        }
+    }
 
     const dealerKyc = profile?.dealerProfile?.kyc
     const isSoleTraderKyc = dealerKyc?.businessType === "SOLE_PROPRIETORSHIP"
@@ -245,15 +376,30 @@ export default function ProfilePage() {
     const canOwnDealershipProfile = currentRole === "DEALER" || !!profile?.dealerProfile
     const accountLabel = isPersonal ? "Personal Account" : isPartner ? "Partner Account" : currentRole
     const initials = `${profile?.firstName?.[0] || ""}${profile?.lastName?.[0] || ""}` || profile?.email?.[0] || "C"
+    const isSellerEligible = isPersonal || canOwnDealershipProfile
+    const sections: { key: SettingsSection; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+        { key: "personal", label: "Personal details", icon: User },
+        ...(canOwnDealershipProfile ? [
+            { key: "business" as const, label: "Business profile", icon: Building2 },
+            { key: "verification" as const, label: "Verification", icon: ShieldCheck },
+        ] : []),
+        { key: "notifications", label: "Notifications & privacy", icon: Bell },
+        ...(isSellerEligible ? [{ key: "payouts" as const, label: "Payouts", icon: Landmark }] : []),
+        { key: "appearance", label: "Appearance", icon: Palette },
+        { key: "security", label: "Security", icon: LockKeyhole },
+        { key: "reviews", label: "Ratings & reviews", icon: Star },
+        { key: "account", label: "Account type", icon: Settings2 },
+    ]
+    const currentSection = sections.some((section) => section.key === activeSection) ? activeSection : "personal"
 
     return (
-        <div className="max-w-5xl mx-auto py-12 px-4">
+        <div className="max-w-5xl mx-auto pt-24 pb-12 px-4">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                <h1 className="text-3xl font-bold font-heading">Manage Your Profile</h1>
+                <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>One place for your profile, business, notifications, payouts and security.</p></div>
                 {profile?.id && <Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link>}
             </div>
 
-            <div className="glass-card p-8 mb-8">
+            <div className="glass-card p-5 sm:p-8 mb-6">
                 <div className="grid gap-8 md:grid-cols-[auto_1fr] md:items-center">
                     <ProfileImageUploader
                         currentUrl={profile?.profileImage}
@@ -278,11 +424,27 @@ export default function ProfilePage() {
                 </div>
             </div>
 
+            <nav aria-label="Account settings sections" className="glass-card p-3 sm:p-4 mb-7">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {sections.map(({ key, label, icon: Icon }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => selectSection(key)}
+                            aria-current={currentSection === key ? "page" : undefined}
+                            className={`flex min-h-12 items-center gap-2 rounded-xl px-3 py-3 text-left text-xs sm:text-sm font-semibold transition-colors ${currentSection === key ? "bg-primary text-white" : "border border-[var(--border-default)] bg-[var(--bg-input)] hover:border-primary/50"}`}
+                        >
+                            <Icon size={18} className="shrink-0" />
+                            <span>{label}</span>
+                        </button>
+                    ))}
+                </div>
+            </nav>
             {success && <div className="mb-6 p-4 bg-green-500/10 border border-green-500/50 rounded-xl text-green-700 dark:text-green-200 flex items-center gap-3"><CheckCircle2 size={18} /> {success}</div>}
             {roleError && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/40 rounded-xl text-red-600 dark:text-red-300 flex items-start gap-3"><AlertCircle size={18} className="mt-0.5 shrink-0" /> {roleError}</div>}
 
-            <section className="mb-12">
-                <h3 className="text-xl font-bold mb-6">Personal Profile</h3>
+            {currentSection === "personal" && <section className="mb-8">
+                <h3 className="text-xl font-bold mb-6">Personal details</h3>
                 <div className="glass-card p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <Field label="First name" value={personalForm.firstName} onChange={(value) => setPersonalForm({ ...personalForm, firstName: value })} />
@@ -293,17 +455,17 @@ export default function ProfilePage() {
                     </div>
                     <Button className="mt-6" onClick={handleUpdatePersonal} disabled={personalLoading}>{personalLoading && <Loader2 className="animate-spin mr-2" size={16} />}Save Personal Profile</Button>
                 </div>
-            </section>
+            </section>}
 
-            <section className="mb-12">
+            {currentSection === "appearance" && <section className="mb-8">
                 <h3 className="text-xl font-bold mb-6">Appearance</h3>
                 <div className="glass-card p-6 flex items-center justify-between">
                     <div><p className="font-semibold">Theme</p><p className="text-sm" style={{ color: "var(--text-muted)" }}>Switch between light and dark mode</p></div>
                     <ThemeToggle />
                 </div>
-            </section>
+            </section>}
 
-            {isPartner && (
+            {currentSection === "account" && isPartner && (
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Building2 className="text-primary" /> Partner Account</h3>
                     <div className="glass-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -313,7 +475,7 @@ export default function ProfilePage() {
                 </section>
             )}
 
-            {canOwnDealershipProfile && (
+            {currentSection === "business" && canOwnDealershipProfile && (
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Building2 className="text-primary" /> Partner Business Profile</h3>
                     <div className="glass-card p-8 space-y-8">
@@ -391,7 +553,7 @@ export default function ProfilePage() {
                 </section>
             )}
 
-            <section className="mb-12">
+            {currentSection === "reviews" && <section className="mb-8">
                 <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
                     <div><h3 className="text-xl font-bold">Ratings & Reviews</h3><p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>See what others have written about you and the reviews you have given.</p></div>
                     {profile?.id && <Link href={`/profile/${profile.id}`}><Button size="sm">Open public reviews</Button></Link>}
@@ -400,16 +562,16 @@ export default function ProfilePage() {
                     <ReviewPanel title="Reviews received" items={receivedReviews} mode="received" />
                     <ReviewPanel title="Reviews given" items={givenReviews} mode="given" />
                 </div>
-            </section>
+            </section>}
 
-            <section id="upgrade-role" className="scroll-mt-28">
+            {currentSection === "account" && <section id="upgrade-role" className="scroll-mt-28">
                 <h3 className="text-xl font-bold mb-3 flex items-center gap-2"><Car className="text-primary" /> Account Type</h3>
                 <p className="mb-7" style={{ color: "var(--text-muted)" }}>Personal accounts are for individual buyers and sellers. Businesses use one Partner Account and add the services they need from the Partner Dashboard.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {!isPersonal && <AccountCard icon={User} label="Personal Account" sub="Buy and sell vehicles as an individual" button="Switch to Personal Account" loading={loading} onClick={() => handleRoleElevation("BUYER")} />}
                     {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
                 </div>
-            </section>
+            </section>}
         </div>
     )
 }
