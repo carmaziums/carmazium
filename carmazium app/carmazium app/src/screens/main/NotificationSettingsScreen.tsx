@@ -20,6 +20,7 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 type NotifView = 'main' | 'delivery';
 
 // FROM/UNTIL used to be static "22:00"/"08:00" text with a decorative
@@ -51,13 +52,16 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
   // Delivery Toggles
   const [push, setPush] = useState(true);
   const [email, setEmail] = useState(true);
-  const [freq, setFreq] = useState('immediate'); // immediate, 30min, daily
+  // Digest scheduling is not implemented by the notification delivery backend.
   const [quietHours, setQuietHours] = useState(true);
   const [quietStart, setQuietStart] = useState('22:00');
   const [quietEnd, setQuietEnd] = useState('08:00');
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [savedNotifications, setSavedNotifications] = useState<Record<string, any>>({});
 
   // Hydrate toggles from the user's saved preferences so this screen reflects
   // what's actually persisted instead of always showing hardcoded defaults
@@ -66,7 +70,14 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     apiClient<{ success: boolean; data: { preferences?: { notifications?: Record<string, any> } } }>('/users/me')
       .then((res) => {
         if (!mounted) return;
-        const saved = res?.data?.preferences?.notifications;
+        if (res?.success !== true || !res?.data) throw new Error('Preferences unavailable');
+        const saved = res.data.preferences?.notifications;
+        if (saved != null && (typeof saved !== 'object' || Array.isArray(saved))) {
+          throw new Error('Invalid notification preferences');
+        }
+        // Preserve preference keys this screen does not control when PATCHing.
+        setSavedNotifications(saved ?? {});
+        setLoadError(null);
         if (saved) {
           if (typeof saved.muteAll === 'boolean') setMuteAll(saved.muteAll);
           if (typeof saved.outbid === 'boolean') setOutbid(saved.outbid);
@@ -78,39 +89,39 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
           if (typeof saved.offerDeclined === 'boolean') setOfferDeclined(saved.offerDeclined);
           if (typeof saved.push === 'boolean') setPush(saved.push);
           if (typeof saved.email === 'boolean') setEmail(saved.email);
-          if (typeof saved.freq === 'string') setFreq(saved.freq);
           if (typeof saved.quietHours === 'boolean') setQuietHours(saved.quietHours);
           if (typeof saved.quietStart === 'string') setQuietStart(saved.quietStart);
           if (typeof saved.quietEnd === 'string') setQuietEnd(saved.quietEnd);
         }
       })
-      .catch(() => {})
+      .catch(() => { if (mounted) setLoadError('Could not load your saved notification settings. No changes have been made.'); })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, []);
+  }, [loadAttempt]);
 
   const savePreferences = useCallback(async () => {
+    // Never replace real saved choices with guessed defaults if the GET failed.
+    if (loading || loadError || saving) return;
+    const nextNotifications = {
+      ...savedNotifications,
+      muteAll, outbid, winning, endingSoon, newLot,
+      counterOffer, offerAccepted, offerDeclined,
+      push, email, quietHours, quietStart, quietEnd,
+    };
     setSaving(true);
     try {
       await apiClient('/users/me', {
         method: 'PATCH',
-        body: JSON.stringify({
-          preferences: {
-            notifications: {
-              muteAll, outbid, winning, endingSoon, newLot,
-              counterOffer, offerAccepted, offerDeclined,
-              push, email, sms: false, freq, quietHours, quietStart, quietEnd,
-            },
-          },
-        }),
+        body: JSON.stringify({ preferences: { notifications: nextNotifications } }),
       });
+      setSavedNotifications(nextNotifications);
       showToast('Notification preferences saved', 'success');
     } catch {
       showToast('Could not save preferences. Please try again.', 'error');
     } finally {
       setSaving(false);
     }
-  }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, freq, quietHours, quietStart, quietEnd, showToast]);
+  }, [loading, loadError, saving, savedNotifications, muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, quietHours, quietStart, quietEnd, showToast]);
 
   const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent, disabled }: any) => (
     <Switch
@@ -240,7 +251,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         <TouchableOpacity style={styles.deliveryBtn} onPress={() => setView('delivery')} activeOpacity={0.7}>
            <View style={styles.deliveryTextWrap}>
               <Text style={styles.toggleTitle}>Delivery & quiet hours</Text>
-              <Text style={styles.toggleSub}>Manage push, email, SMS and sleep mode</Text>
+              <Text style={styles.toggleSub}>Manage push, email and quiet hours</Text>
            </View>
            <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
@@ -281,7 +292,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               </View>
               <View style={styles.toggleTextWrap}>
                  <Text style={styles.toggleTitle}>Push</Text>
-                 <Text style={styles.toggleSub}>iPhone notifications</Text>
+                 <Text style={styles.toggleSub}>Android and iPhone notifications</Text>
               </View>
               <CustomSwitch value={push} onValueChange={setPush} />
            </View>
@@ -315,39 +326,15 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>BID ALERT FREQUENCY</Text>
-
-        <TouchableOpacity 
-           style={[styles.freqRow, freq === 'immediate' && styles.freqRowActive]} 
-           onPress={() => setFreq('immediate')}
-           activeOpacity={0.8}
-        >
-           <View style={freq === 'immediate' ? styles.radioInnerActive : styles.radioOuter} />
-           <Text style={styles.freqTitle}>Immediately</Text>
-           {freq === 'immediate' && (
-              <View style={styles.recBadge}>
-                 <Text style={styles.recText}>Recommended</Text>
-              </View>
-           )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-           style={[styles.freqRow, freq === '30min' && styles.freqRowActive]} 
-           onPress={() => setFreq('30min')}
-           activeOpacity={0.8}
-        >
-           <View style={freq === '30min' ? styles.radioInnerActive : styles.radioOuter} />
-           <Text style={styles.freqTitle}>Every 30 min</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-           style={[styles.freqRow, freq === 'daily' && styles.freqRowActive]} 
-           onPress={() => setFreq('daily')}
-           activeOpacity={0.8}
-        >
-           <View style={freq === 'daily' ? styles.radioInnerActive : styles.radioOuter} />
-           <Text style={styles.freqTitle}>Daily digest</Text>
-        </TouchableOpacity>
+        <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>ALERT DELIVERY</Text>
+        <View style={styles.cardBlock}>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <Text style={styles.toggleTitle}>Alerts are sent as they happen</Text>
+              <Text style={styles.toggleSub}>30-minute and daily digests are not available yet.</Text>
+            </View>
+          </View>
+        </View>
 
         <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>QUIET HOURS</Text>
 
@@ -395,6 +382,11 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.accent} />
+        </View>
+      ) : loadError ? (
+        <View style={{ paddingHorizontal: 24, paddingTop: insets.top + 32 }}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          <ErrorBanner message={loadError} onRetry={() => { setLoading(true); setLoadAttempt(n => n + 1); }} />
         </View>
       ) : (
         view === 'main' ? renderMainView() : renderDeliveryView()
