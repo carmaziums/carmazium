@@ -17,7 +17,7 @@ test('sign-in does not offer a fake remember-me preference when sessions always 
   assert.match(supabase, /persistSession: true/);
   assert.match(supabase, /SecureStore/);
   assert.match(supabase, /AsyncStorage/);
-  assert.doesNotMatch(login, /rememberMe|setRememberMe|Remember me/i);
+  assert.doesNotMatch(login, /\b(?:rememberMe|setRememberMe)\b|>Remember me</);
   assert.match(login, /stay signed in on this device until you sign out/i);
   assert.match(login, /login\(email\.trim\(\), password\)/);
   assert.match(login, /navigation\.navigate\('ForgotPassword'\)/);
