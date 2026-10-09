@@ -843,6 +843,11 @@ model Listing {
   // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
   bannerLabel              String?
 
+  // Partner distribution acknowledgement — null means this listing must never
+  // leave CarMazium through an external marketplace/dealer-research feed.
+  // Existing/legacy listings remain null by default and therefore fail closed.
+  partnerDistributionAcceptedAt DateTime?
+
   // Admin review — set when status transitions to/from PENDING_REVIEW
   rejectionReason String?
   reviewedAt      DateTime?
