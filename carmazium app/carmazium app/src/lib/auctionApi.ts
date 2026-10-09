@@ -216,6 +216,42 @@ export async function getScheduledAuctions(
   return res.data;
 }
 
+/**
+ * The public dealer upcoming-auction endpoint is paginated. The live screen
+ * must not silently omit every scheduled lot beyond its default first page.
+ * Preserve its verified-dealer server guard; do not fall back to retail data.
+ */
+export async function getAllScheduledAuctions(): Promise<AuctionDetail[]> {
+  const pageSize = 50;
+  const maxPages = 40;
+  const found = new Map<string, AuctionDetail>();
+  let expectedTotal: number | null = null;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const response = await getScheduledAuctions(page, pageSize);
+    if (!response || !Array.isArray(response.data)) {
+      throw new Error('Could not load upcoming auctions.');
+    }
+    const total = Number(response.total);
+    if (!Number.isSafeInteger(total) || total < 0 || total > maxPages * pageSize) {
+      throw new Error('Upcoming-auction inventory is too large; please view the website.');
+    }
+    if (expectedTotal != null && expectedTotal !== total) {
+      throw new Error('Upcoming auctions changed while loading. Refresh to try again.');
+    }
+    expectedTotal = total;
+    for (const auction of response.data) {
+      if (!auction?.id) throw new Error('Invalid auction returned by the server.');
+      found.set(auction.id, auction);
+    }
+    if (found.size === total) return [...found.values()];
+    if (response.data.length === 0) {
+      throw new Error('Incomplete upcoming-auction results. Refresh to try again.');
+    }
+  }
+  throw new Error('Could not load all upcoming auctions; please use the website.');
+}
+
 export async function getAuction(id: string): Promise<AuctionDetail> {
   const res = await apiClient<{ success: boolean; data: AuctionDetail }>(`/auctions/${id}`);
   return res.data;
