@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -140,9 +141,11 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  // A seller can accept or decline while the buyer is elsewhere in the app.
+  // Refresh the authoritative request status whenever this page is revisited.
+  useFocusEffect(useCallback(() => {
+    void fetchAll();
+  }, [fetchAll]));
 
   const onCancel = (req: DeliveryRequest) => {
     Alert.alert(
@@ -176,7 +179,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
   const onComplete = (req: DeliveryRequest) => {
     Alert.alert(
       'Mark delivery complete',
-      'Confirm the vehicle has been delivered? This closes the request.',
+      'Only confirm after the vehicle has physically arrived and you have checked it. This closes the delivery request.',
       [
         { text: 'Not yet', style: 'cancel' },
         {
@@ -327,8 +330,8 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
           ) : (
             <EmptyState
               icon="car-outline"
-              title="No delivery requests yet"
-              subtitle="Once a seller accepts your offer, request delivery from the listing to see it here."
+              title={error ? 'Delivery requests unavailable' : 'No delivery requests yet'}
+              subtitle={error ? 'Try refreshing or checking your connection.' : 'Once a seller accepts your offer, request delivery from the listing to see it here.'}
             />
           )}
         </ScrollView>

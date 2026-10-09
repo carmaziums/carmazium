@@ -274,7 +274,11 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     try {
       const listing = await getListingById(bid.listingId);
       if (listing) {
-        navigation?.navigate('LiveAuctionDetailed', { listing });
+        // Bid history must open the original auction, not a retail-style
+        // listing with no auction id (which cannot load bids/results).
+        navigation?.navigate('LiveAuctionDetailed', {
+          listing: { ...listing, auctionId: bid.auctionId ?? undefined },
+        });
       } else {
         Alert.alert('Not available', 'This auction is no longer accessible.');
       }
@@ -405,7 +409,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   const renderBidCard = useCallback(({ item: bid }: { item: Bid }) => {
     const cfg = STATUS_CFG[bid.auctionStatus] ?? STATUS_CFG.ENDED;
-    const isNavigable = !bid.isArchived && (bid.auctionStatus === 'ACTIVE' || bid.auctionStatus === 'SCHEDULED');
+    const isNavigable = !bid.isArchived && Boolean(bid.auctionId);
     const isNavigating = tappingId === bid.id;
     const isWon = !bid.isArchived && bid.auctionStatus === 'ENDED' && bid.isWinner;
 
@@ -493,7 +497,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               isNavigating ? (
                 <ActivityIndicator size="small" color={Colors.accent} />
               ) : (
-                <Text style={styles.viewText}>View</Text>
+                <Text style={styles.viewText}>{isWon ? 'View result' : bid.auctionStatus === 'ENDED' ? 'View ended auction' : 'View auction'}</Text>
               )
             )}
           </View>

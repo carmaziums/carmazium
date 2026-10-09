@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -93,11 +94,28 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
     }
   }, [jobId]);
 
-  useEffect(() => { void load(); }, [load]);
+  // After messaging a customer or returning from a payment update, re-check
+  // authoritative job/quote status, not the previously visible action.
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const myQuote = job?.quotes?.[0];
   const isMine = job?.viewerRole === 'contractor';
   const canQuote = job?.status === 'OPEN';
+  const nextStep = job?.status === 'OPEN'
+    ? 'Review the vehicle and location, then send a quote. You cannot start work until the customer accepts and pays.'
+    : job?.status === 'ACCEPTED'
+      ? 'Your quote was accepted. Wait for the customer’s service payment before beginning.'
+      : job?.status === 'PAID'
+        ? 'Payment has been confirmed. Start the job when you begin the work.'
+        : job?.status === 'IN_PROGRESS'
+          ? 'Record the inspection outcome or finish the transport, then mark the work complete for customer review.'
+          : job?.status === 'COMPLETED'
+            ? 'The customer can now confirm the work. Payout follows confirmation or the configured auto-release period.'
+            : job?.status === 'DISPUTED'
+              ? 'A dispute is open. Wait for CarMazium to review before taking further payout actions.'
+              : job?.status === 'RELEASED'
+                ? 'The service payout has been released.'
+                : 'Check the service details and current status below.';
   const canMessageCustomer = Boolean(
     isMine && job && ACTIVE_JOB_STATUSES.includes(job.status),
   );
@@ -311,6 +329,14 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
           </View>
         ) : null}
 
+        <View style={styles.nextStepCard}>
+          <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.nextStepLabel}>WHAT HAPPENS NEXT</Text>
+            <Text style={styles.bodyText}>{nextStep}</Text>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.eyebrow}>
             {job.serviceType === 'DELIVERY' && job.isRecovery ? 'RECOVERY' : SERVICE_LABELS[job.serviceType].toUpperCase()}
@@ -510,6 +536,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                       <TouchableOpacity
                         style={[styles.choice, inspectionOutcome === 'PASS' && styles.choiceActive]}
                         onPress={() => setInspectionOutcome('PASS')}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: inspectionOutcome === 'PASS' }}
+                        accessibilityLabel="Inspection passed"
                       >
                         <Text style={[styles.choiceText, inspectionOutcome === 'PASS' && styles.choiceTextActive]}>
                           PASS
@@ -518,6 +547,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                       <TouchableOpacity
                         style={[styles.choice, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceActiveWarning]}
                         onPress={() => setInspectionOutcome('FAULTS_FOUND')}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: inspectionOutcome === 'FAULTS_FOUND' }}
+                        accessibilityLabel="Faults found at inspection"
                       >
                         <Text style={[styles.choiceText, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceTextWarning]}>
                           FAULTS FOUND
@@ -643,7 +675,9 @@ const styles = StyleSheet.create({
   statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textSecondary },
   content: { padding: 18, gap: 12 },
   centerCard: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
+  nextStepCard: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.card, backgroundColor: Colors.bgCardSolid, padding: 15 },
+  nextStepLabel: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs, marginBottom: 5 },
   noticeCard: { borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06, padding: 14 },
   successCard: { flexDirection: 'row', gap: 8, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06, padding: 12 },
   successText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.accentGreen },

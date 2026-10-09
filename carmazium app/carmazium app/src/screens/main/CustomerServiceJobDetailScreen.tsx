@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Linking,
   ScrollView,
   StatusBar,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -39,7 +41,7 @@ const statusText = (status: ServiceJob['status']) => status.replace(/_/g, ' ');
 const providerName = (quote?: ServiceQuote | null) =>
   quote?.contractor?.businessName
   || [quote?.contractor?.user?.firstName, quote?.contractor?.user?.lastName].filter(Boolean).join(' ')
-  || 'Verified provider';
+  || 'Service provider';
 
 export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -62,7 +64,19 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
     }
   }, [jobId]);
 
-  useEffect(() => { void load(); }, [load]);
+  // Checkout leaves the app and job chat opens a separate stack screen.
+  // Re-read server-confirmed payment/completion state when returning; never
+  // infer payment success just because checkout launched.
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => sub.remove();
+  }, [load]);
 
   const activeQuotes = useMemo(
     () => (job?.quotes ?? [])
@@ -137,6 +151,25 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               job.inspectionSummary?.trim() || undefined,
             ),
             'Vehicle refused. Your £125 buyer fee has been refunded and the seller can repair or relist the vehicle.',
+          ),
+        },
+      ],
+    );
+  };
+
+  const confirmJob = () => {
+    if (!job || job.status !== 'COMPLETED') return;
+    Alert.alert(
+      'Confirm service completion?',
+      'Only confirm after checking the completed work. This authorises the provider payout. If something is wrong, raise a dispute instead.',
+      [
+        { text: 'Review again', style: 'cancel' },
+        {
+          text: 'Confirm and release payout',
+          onPress: () => void run(
+            'confirm',
+            () => confirmCustomerServiceJob(job.id),
+            'Service completion confirmed. Provider payout can now be released.',
           ),
         },
       ],
@@ -219,6 +252,21 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   const vehicle = job.vehicles?.[0];
   const isInspection = job.serviceType === 'INSPECTION';
   const paidState = ['PAID', 'IN_PROGRESS', 'COMPLETED', 'RELEASED', 'DISPUTED'].includes(job.status);
+  const nextStep = job.status === 'OPEN'
+    ? 'Compare provider quotes and choose your preferred provider. You only pay after choosing a quote.'
+    : job.status === 'ACCEPTED'
+      ? 'Your provider is reserved. Complete secure checkout to confirm the job.'
+      : job.status === 'PAID'
+        ? 'Service payment is confirmed. The provider can now arrange and start the work.'
+        : job.status === 'IN_PROGRESS'
+          ? 'Your provider is carrying out the work. Contact them from this screen if needed.'
+          : job.status === 'COMPLETED'
+            ? 'Review the completed work. Confirm completion only when satisfied, or raise a dispute.'
+            : job.status === 'DISPUTED'
+              ? 'The service is under review. Do not confirm completion while a dispute is open.'
+              : job.status === 'RELEASED'
+                ? 'Your service is complete and the provider payout has been released.'
+                : 'Review the service status and any messages below.';
   const canMessageProvider = Boolean(job.contractor && paidState);
   const canRefuse = Boolean(
     isInspection
@@ -266,6 +314,14 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
           </View>
         ) : null}
 
+        <View style={styles.nextStepCard}>
+          <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionLabel}>WHAT HAPPENS NEXT</Text>
+            <Text style={styles.bodyText}>{nextStep}</Text>
+          </View>
+        </View>
+
         <View style={styles.card}>
           <View style={styles.titleRow}>
             <View style={styles.serviceIcon}>
@@ -306,6 +362,17 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             job.inspectionOutcome === 'FAULTS_FOUND' ? styles.warningCard : styles.successCard,
           ]}>
             <Text style={styles.sectionLabel}>INSPECTION RESULT</Text>
+          {!!job.sourceAuctionId && (
+            <TouchableOpacity
+              style={styles.auctionLink}
+              onPress={() => navigation.navigate('AuctionDeepLink', { auctionId: job.sourceAuctionId! })}
+              accessibilityRole="button"
+              accessibilityLabel="Open linked vehicle auction"
+            >
+              <Text style={styles.auctionLinkText}>View linked auction</Text>
+              <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
+            </TouchableOpacity>
+          )}
             <View style={styles.resultRow}>
               <Ionicons
                 name={job.inspectionOutcome === 'FAULTS_FOUND' ? 'warning-outline' : 'checkmark-circle-outline'}
@@ -355,7 +422,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
                   <Text style={styles.muted}>
                     {quote.contractor
                       ? `${quote.contractor.rating.toFixed(1)} rating · ${quote.contractor.totalReviews} reviews`
-                      : index === 0 ? 'Lowest current quote' : 'Verified provider'}
+                      : index === 0 ? 'Lowest current quote' : 'Service provider'}
                   </Text>
                   {quote.message ? <Text style={styles.quoteMessage}>{quote.message}</Text> : null}
                 </View>
@@ -454,16 +521,12 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             <Text style={styles.sectionLabel}>CONFIRM SERVICE</Text>
             <Text style={styles.bodyText}>
               The provider marked this {isInspection ? 'inspection' : 'delivery'} complete.
-              Confirm only when you are satisfied.
+              Confirm only when you are satisfied. Confirming authorises provider payout; raise a dispute if the work is incomplete or incorrect.
             </Text>
             <TouchableOpacity
               style={[styles.primaryButton, busy === 'confirm' && styles.disabled]}
               disabled={busy === 'confirm'}
-              onPress={() => void run(
-                'confirm',
-                () => confirmCustomerServiceJob(job.id),
-                `Completion confirmed. Your ${isInspection ? 'inspector' : 'transporter'} can now be paid.`,
-              )}
+              onPress={confirmJob}
             >
               {busy === 'confirm'
                 ? <ActivityIndicator size="small" color={Colors.white} />
@@ -516,6 +579,9 @@ const Info = ({ icon, label, value }: { icon: string; label: string; value: stri
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  nextStepCard: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 15, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid },
+  auctionLink: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, alignSelf: 'flex-start' },
+  auctionLinkText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
