@@ -142,7 +142,7 @@ export const TermsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Last Updated: 13 August 2026</Text>
+        <Text style={styles.lastUpdated}>Last Updated: 9 October 2026</Text>
         <Text style={styles.companyLine}>Company no. 17053307 · England &amp; Wales</Text>
 
         {TERMS_SECTIONS.map((section) => (
