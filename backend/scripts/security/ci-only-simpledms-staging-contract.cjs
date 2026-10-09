@@ -11,6 +11,7 @@ const path = require('node:path');
 
 const binary = path.join(__dirname, '../../dist/partner-api/staging.main.js');
 const host = 'partner-api-synthetic-production.up.railway.app'; // fixture only; no network request
+const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const ephemeralKey = randomBytes(36).toString('hex');
 const digest = createHash('sha256').update(ephemeralKey).digest('hex');
 let checks = 0;
