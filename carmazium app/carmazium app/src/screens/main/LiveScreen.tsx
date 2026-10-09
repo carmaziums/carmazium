@@ -575,7 +575,7 @@ export const LiveScreen: React.FC = () => {
               >
                 <View style={styles.upcomingImage}>
                   <ImageCarousel
-                    images={auc.listing.images?.length ? auc.listing.images : ['https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=500&q=80']}
+                    images={auc.listing.images ?? []}
                     width={58}
                     height={58}
                     onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
