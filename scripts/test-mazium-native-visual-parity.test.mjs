@@ -36,7 +36,7 @@ test('native floating button clears tabs; chat sizes to viewport, safe area and 
   assert.match(native, /MAZIUM_TAB_CLEARANCE = 96/);
   assert.match(native, /floatingBottom = Math\.max\(insets\.bottom, 16\) \+ MAZIUM_TAB_CLEARANCE/);
   assert.match(native, /chatBottom = floatingBottom \+ MAZIUM_TRIGGER_SIZE \+ MAZIUM_CHAT_GAP/);
-  assert.match(native, /chatWidth = Math\.max\(0, Math\.min\(340, windowWidth - 32\)\)/);
+  assert.match(native, /chatWidth = Math\.max\(0, Math\.min\(400, windowWidth - 24\)\)/);
   assert.match(native, /dynamicBottom = isKeyboardVisible \? keyboardHeight \+ 8 : chatBottom/);
   assert.match(native, /activeRoute === 'LiveAuctionDetailed'/);
 });
