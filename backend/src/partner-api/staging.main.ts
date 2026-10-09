@@ -16,11 +16,27 @@ import { PrismaService } from '../prisma/prisma.service';
 const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const STAGING_LISTING_ID = '22222222-2222-4222-8222-222222222222';
 
-type SyntheticScenario = 'single' | 'pagination' | 'withdrawn' | 'ended';
+type SyntheticScenario =
+  | 'single'
+  | 'pagination'
+  | 'withdrawn'
+  | 'ended'
+  | 'history-a'
+  | 'history-bid'
+  | 'history-extended'
+  | 'history-return';
 
 function scenario(): SyntheticScenario {
   const raw = (process.env.STAGING_SYNTHETIC_SCENARIO || 'single').toLowerCase();
-  if (raw === 'pagination' || raw === 'withdrawn' || raw === 'ended') return raw;
+  if (
+    raw === 'pagination' ||
+    raw === 'withdrawn' ||
+    raw === 'ended' ||
+    raw === 'history-a' ||
+    raw === 'history-bid' ||
+    raw === 'history-extended' ||
+    raw === 'history-return'
+  ) return raw;
   return 'single';
 }
 
@@ -43,27 +59,52 @@ function fixtures() {
     ? ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
     : [];
   const count = mode === 'pagination' ? 51 : 1;
+  const returningVehicle = mode === 'history-return';
 
   return Array.from({ length: count }, (_, offset) => {
-    const index = offset + 1;
+    const baseIndex = offset + 1;
+    const index = returningVehicle && baseIndex === 1 ? 2 : baseIndex;
+    const isHistoricalFixture = mode.startsWith('history-');
+    const endOffsetMs = mode === 'history-extended'
+      ? 4 * 3600_000
+      : mode === 'history-return'
+        ? 2 * 3600_000
+        : 3600_000;
+    const mileage = returningVehicle && baseIndex === 1 ? 40125 : 40000 + baseIndex - 1;
     return {
       id: syntheticUuid('1', index),
       listingId: syntheticUuid('2', index),
-      startTime: new Date(now.getTime() - 3600_000),
-      endTime: new Date(now.getTime() + (3600_000 + index * 1_000)),
+      startTime: new Date(now.getTime() - (returningVehicle ? 1800_000 : 3600_000)),
+      endTime: new Date(now.getTime() + endOffsetMs + baseIndex * 1_000),
       updatedAt: now,
-      startingBid: (5000 + index - 1).toFixed(2),
+      startingBid: (5000 + baseIndex - 1).toFixed(2),
       listing: {
-        title: 'SYNTHETIC TEST: Example 2020 Vehicle #' + index,
+        title: isHistoricalFixture
+          ? 'SYNTHETIC HISTORY TEST: Example 2020 Vehicle'
+          : 'SYNTHETIC TEST: Example 2020 Vehicle #' + baseIndex,
         make: 'Example', model: 'Test Vehicle', variant: 'Demonstration',
-        year: 2020, mileage: 40000 + index - 1, vehicleType: 'CAR', fuelType: 'PETROL',
+        year: 2020, mileage, vehicleType: 'CAR', fuelType: 'PETROL',
         transmission: 'AUTOMATIC', bodyType: 'HATCHBACK', color: 'Blue',
         engineSize: 1500, images: image,
-        vrm: index === 1 ? 'STAGING-NOT-A-REAL-VRM' : 'STAGING-FAKE-' + String(index).padStart(3, '0'),
+        // history-return deliberately presents the same fictional registration
+        // under a new auction/listing ID so SimpleDMS can prove repeat matching
+        // without any real customer or vehicle data.
+        vrm: isHistoricalFixture
+          ? 'STAGING-NOT-A-REAL-VRM'
+          : baseIndex === 1
+            ? 'STAGING-NOT-A-REAL-VRM'
+            : 'STAGING-FAKE-' + String(baseIndex).padStart(3, '0'),
         location: 'Birmingham', updatedAt: now,
       },
     };
   });
+}
+
+function currentSyntheticBid(): string {
+  const mode = scenario();
+  if (mode === 'history-bid' || mode === 'history-extended') return '5450.00';
+  if (mode === 'history-return') return '5600.00';
+  return '5200.00';
 }
 
 @Controller('health')
@@ -98,7 +139,7 @@ const syntheticPrisma = {
       return fixtures().find((auction) => auction.id === args?.where?.id) || null;
     },
   },
-  bid: { findFirst: async () => ({ amount: '5200.00' }) },
+  bid: { findFirst: async () => ({ amount: currentSyntheticBid() }) },
 };
 
 @Controller('staging-auctions')
