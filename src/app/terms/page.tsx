@@ -7,7 +7,7 @@ export const metadata = {
 
 // ─── Content model ──────────────────────────────────────────────────────────
 // The source document (CarMazium Ltd, company no. 17053307, "Last Updated:
-// 13 August 2026") is 83 numbered sections. Each is rendered as its own
+// 9 October 2026") is 83 numbered sections. Each is rendered as its own
 // numbered card, matching the section numbering of the source 1:1 so nothing
 // gets renumbered, merged, or reworded out of step with the legal text.
 
@@ -540,7 +540,9 @@ const SECTIONS: LegalSection[] = [
                 "publish the Listing", "operate the Platform", "market the Vehicle", "provide user support",
                 "investigate fraud", "enforce these Terms",
                 "promote CarMazium where reasonably connected to the Listing",
+                "display, transmit or syndicate the Listing and approved public Vehicle photographs through CarMazium-approved automotive marketplace, dealer-research or referral partners where this forms part of the Listing distribution service described in the Privacy Policy",
             ]),
+            p("Partner use of Vehicle photographs is limited to the live Listing/distribution purpose and short operational caching required to provide that service. This licence does not authorise a partner to retain Vehicle photographs as a historical image archive after the Listing is no longer live unless the user separately grants that right."),
         ],
     },
     {
@@ -929,7 +931,7 @@ export default function TermsPage() {
                     <p className="text-[var(--text-muted)] text-lg max-w-2xl mx-auto">
                         These Terms govern your access to and use of the CarMazium website, online marketplace, auction facilities, retail listings, dealer services, Mazium AI features and associated services.
                     </p>
-                    <p className="text-[var(--text-muted)] text-sm mt-3">Last Updated: 13 August 2026</p>
+                    <p className="text-[var(--text-muted)] text-sm mt-3">Last Updated: 9 October 2026</p>
                 </div>
 
                 {/* Company card */}
