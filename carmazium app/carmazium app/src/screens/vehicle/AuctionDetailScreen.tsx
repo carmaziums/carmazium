@@ -718,7 +718,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     // Only plain pounds/pence are allowed; exponent, sign and NaN inputs are
     // rejected before displaying the final confirmation.
     const trimmed = enteredAmount.trim();
-    if (!/^\\d+(?:\\.\\d{1,2})?$/.test(trimmed)) {
+    if (!/^\d+(?:\.\d{1,2})?$/.test(trimmed)) {
       setBidError('Enter a valid bid amount in pounds (up to two decimal places).');
       return;
     }
