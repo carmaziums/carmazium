@@ -145,7 +145,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
 
         {/* Vehicle details are visible without opening each listing. */}
         <Text style={styles.subSpecsText} numberOfLines={2}>
-          {[formatMileage(listing.mileage), listing.fuelType, listing.transmission, listing.category].filter(Boolean).join('  ·  ')}
+          {[`Gearbox: ${listing.transmission || 'Not specified'}`, formatMileage(listing.mileage), listing.fuelType, listing.category].filter(Boolean).join('  ·  ')}
         </Text>
 
         {/* Bottom: Price, Grade & Heart Bookmark */}

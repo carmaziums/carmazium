@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CarListing, formatPrice } from '../../data/listings';
-import { getFeaturedListings, searchListings } from '../../lib/listingsApi';
+import { getFeaturedListings, searchListings, mapTransmission } from '../../lib/listingsApi';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail, auctionToListingParam } from '../../lib/auctionApi';
 import { naturalLanguageSearch, AiSearchResult } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
@@ -99,7 +99,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
       </View>
       <View style={s.cardBody}>
         <Text style={s.cardSpecs}>
-          {l?.year}{l?.transmission ? ` · ${l.transmission === 'MANUAL' ? 'Manual' : 'Auto'}` : ''}
+          {l?.year} · {mapTransmission(l?.transmission)}
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>

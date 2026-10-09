@@ -35,6 +35,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
 import { submitHandoverProof } from '../../lib/auctionApi';
+import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
 import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
@@ -192,6 +193,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [wonLoading, setWonLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [auctionsFetchError, setAuctionsFetchError] = useState<string | null>(null);
+  const [wonFetchError, setWonFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
   const [navigating, setNavigating] = useState<string | null>(null);
 
@@ -270,46 +273,34 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   // ── Fetch auctions from the auction endpoint (gives us auction-level statuses) ──
   const fetchAuctions = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true); else if (!refreshing) setLoading(true);
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setAuctionsFetchError(null);
     try {
-      const res = await apiClient<{ success: boolean; data: { data?: AuctionItem[]; } | AuctionItem[] }>(
-        '/auctions/my/list?page=1&limit=50'
-      );
-      // Endpoint may return { data: AuctionItem[] } or { data: { data: AuctionItem[] } } (paginated)
-      let items: AuctionItem[] = [];
-      if (res.success) {
-        const inner = (res as any).data;
-        if (Array.isArray(inner)) {
-          items = inner;
-        } else if (Array.isArray(inner?.data)) {
-          items = inner.data;
-        }
-      }
+      const items = await fetchAllMyAuctions<AuctionItem>('list');
       setAuctions(items);
-      // A rejected proof is no longer submitted, even if this device uploaded
-      // it earlier in the current session.
+      // An earlier handover upload is not proof of an accepted handover.
       setHandoverUploaded(Object.fromEntries(items
         .filter(item => Boolean(item.handoverSubmittedAt || item.handoverProofUrl))
         .map(item => [item.id, true])));
-    } catch { /* silently fail */ }
-    finally { setLoading(false); setRefreshing(false); }
+    } catch (error: any) {
+      setAuctionsFetchError(error?.message || 'Could not load auctions. Please retry.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   const fetchWonAuctions = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setWonLoading(true);
+    if (isRefresh) setRefreshing(true); else setWonLoading(true);
+    setWonFetchError(null);
     try {
-      const res = await apiClient<{ success: boolean; data: { data?: WonAuctionItem[] } | WonAuctionItem[] }>(
-        '/auctions/my/won?page=1&limit=50'
-      );
-      let items: WonAuctionItem[] = [];
-      if (res.success) {
-        const inner = (res as any).data;
-        if (Array.isArray(inner)) items = inner;
-        else if (Array.isArray(inner?.data)) items = inner.data;
-      }
-      setWonAuctions(items);
-    } catch { /* silently fail — same pattern as fetchAuctions */ }
-    finally { setWonLoading(false); }
+      setWonAuctions(await fetchAllMyAuctions<WonAuctionItem>('won'));
+    } catch (error: any) {
+      setWonFetchError(error?.message || 'Could not load won auctions. Please retry.');
+    } finally {
+      setWonLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   // Refresh both selling and winning status after inspection, seller-funds
@@ -801,21 +792,19 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       // an auction that has just ended, and the ENDED status below is the whole
       // basis for admitting its reverted DRAFT. Web does the same for the same
       // reason (it calls this set `freshAuctions`).
-      const [res, auctionsRes] = await Promise.all([
+      const [res, knownAuctions] = await Promise.all([
         apiClient<{ success: boolean; data: EligibleListing[]; pagination: any }>(
           '/listings/my?page=1&limit=100'
         ),
-        apiClient<{ success: boolean; data: { data?: AuctionItem[] } | AuctionItem[] }>(
-          '/auctions/my/list?page=1&limit=50'
-        ).catch(() => null),
+        // A failed auction read must never be treated as 'no existing
+        // auctions': that would incorrectly offer already-running lots again.
+        fetchAllMyAuctions<AuctionItem>('list'),
       ]);
-      if (res.success) {
-        const items = Array.isArray(res.data) ? res.data : [];
-
-        const inner = (auctionsRes as any)?.data;
-        const knownAuctions: AuctionItem[] = Array.isArray(inner)
-          ? inner
-          : Array.isArray(inner?.data) ? inner.data : [];
+      if (!res.success || !Array.isArray(res.data)) {
+        throw new Error('Could not load eligible listings. Please retry.');
+      }
+      {
+        const items = res.data;
         // A listing already tied to a scheduled or running auction cannot enter
         // another one — offering it just produces a server-side rejection
         // (AUC-030).
@@ -856,8 +845,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           if (match) selectListing(match);
         }
       }
-    } catch { /* show empty state */ }
-    finally { setListingsLoading(false); }
+    } catch (error: any) {
+      setCreateError(error?.message || 'Could not load available vehicles. Please retry.');
+    } finally { setListingsLoading(false); }
   }
 
   // Auto-open the create flow once when arriving with a preselected listing.
@@ -1437,6 +1427,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         ))}
       </ScrollView>
 
+      {/* A failed API request must not appear as an empty auction portfolio. */}
+      {(activeTab === 'WON' ? wonFetchError : auctionsFetchError) && (
+        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+          <ErrorBanner
+            message={(activeTab === 'WON' ? wonFetchError : auctionsFetchError)!}
+            onRetry={() => activeTab === 'WON' ? void fetchWonAuctions(true) : void fetchAuctions(true)}
+          />
+        </View>
+      )}
+
       {/* Content */}
       {(activeTab === 'WON' ? wonLoading : loading) ? (
         <View style={styles.skeletonList}>
@@ -1455,7 +1455,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             </View>
           ))}
         </View>
-      ) : displayed.length === 0 ? (
+      ) : displayed.length === 0 && !(activeTab === 'WON' ? wonFetchError : auctionsFetchError) ? (
         <EmptyState
           icon={activeTab === 'WON' ? 'trophy-outline' : 'hammer-outline'}
           title={activeTab === 'WON' ? 'No auctions won yet' : 'No auctions yet'}
@@ -1849,11 +1849,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Text style={styles.modalSubheading}>
                 Choose an active classified listing to put up for auction.
               </Text>
+              {createError && (
+                <ErrorBanner message={createError} onRetry={() => void openCreateModal(preselectListingId)} />
+              )}
               {listingsLoading ? (
                 <View style={styles.modalCenter}>
                   <ActivityIndicator size="large" color={Colors.accent} />
                 </View>
-              ) : eligibleListings.length === 0 ? (
+              ) : createError ? null : eligibleListings.length === 0 ? (
                 <View style={styles.modalCenter}>
                   <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
                   <Text style={styles.modalEmptyTitle}>No eligible listings</Text>

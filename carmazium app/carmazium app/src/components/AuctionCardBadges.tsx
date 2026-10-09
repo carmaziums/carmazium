@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { formatTransmission } from '../lib/transmission';
 
 // Auction-card ↔ Buy-Cars-card chip/badge parity (Prompt 7.1). All fields are
 // already returned on auction.listing — no API changes, just wiring what was
@@ -33,7 +34,8 @@ export const AuctionCardChips: React.FC<ChipsProps> = ({
     {year != null && <Chip icon="calendar-outline" label={String(year)} />}
     {mileage != null && <Chip icon="speedometer-outline" label={`${Number(mileage).toLocaleString('en-GB')} mi`} />}
     {!!fuelType && <Chip icon="flash-outline" label={String(fuelType).replace(/_/g, ' ')} />}
-    {!!transmission && <Chip icon="settings-outline" label={String(transmission).replace(/_/g, ' ')} />}
+    {/* Gearbox is a primary buying decision. Unknown is explicitly unknown, never assumed auto. */}
+    <Chip icon="settings-outline" label={`Gearbox: ${formatTransmission(transmission)}`} />
     {!!bodyType && <Chip icon="car-outline" label={String(bodyType)} />}
     {!!location && <Chip icon="location-outline" label={String(location).split(',')[0]} />}
     {!!deliveryAvailable && <Chip icon="car-sport-outline" label="Delivery" accent />}

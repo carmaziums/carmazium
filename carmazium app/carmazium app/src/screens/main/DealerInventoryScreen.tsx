@@ -34,6 +34,7 @@ import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -88,7 +89,7 @@ const mapApiListing = (l: any): Listing => ({
   linkedListingId: l.linkedListingId ?? null,
   linkedAuctionStatus: l.linkedListing?.auction?.status ?? null,
   images: l.images || [],
-  offersStatus: '',
+  offersStatus: (l._count?.offers ?? 0) > 0 ? `${l._count.offers} received` : 'No offers yet',
   visibility: l.status ?? '',
 });
 
@@ -113,7 +114,6 @@ const ListingDetail: React.FC<{
 }> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
-  const [offersStatus, setOffersStatus] = useState(listing.offersStatus);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
 
   // Boost — same in-app Stripe checkout pattern already used by
@@ -184,20 +184,13 @@ const ListingDetail: React.FC<{
     }
   };
 
-  const handleEdit = (field: string) => {
-    if (field === 'offers') {
-      Alert.alert('Offers Status', 'Update how you handle incoming offers:', [
-        { text: 'Accepting', onPress: () => setOffersStatus('Accepting') },
-        { text: 'Review needed', onPress: () => setOffersStatus('Review needed') },
-        { text: 'Not accepting', onPress: () => setOffersStatus('Not accepting') },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    } else {
-      Alert.alert(`Edit ${field}`, `Update the ${field} for this listing.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Save', onPress: () => {} },
-      ]);
-    }
+  // Edit the actual listing in the existing, permission-checked wizard.
+  // Remove the inline detail view before navigating, so returning from the
+  // editor refreshes the inventory instead of showing stale figures.
+  const handleEditListing = () => {
+    if (!canManageInventory) return;
+    onBack();
+    navigation?.navigate('SellCarFlow', { listingId: listing.id });
   };
 
   const statusS = STATUS_STYLE[listing.status];
@@ -228,9 +221,7 @@ const ListingDetail: React.FC<{
           </View>
           <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
-                { text: 'Edit listing', onPress: () => {} },
-                { text: 'Duplicate listing', onPress: () => {} },
-                { text: 'Archive', style: 'destructive', onPress: () => {} },
+                ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
                 { text: 'Cancel', style: 'cancel' },
               ])
             } accessibilityLabel="More options" />
@@ -285,7 +276,7 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>List price</Text>
             <TouchableOpacity
               style={styles.detailRowRight}
-              onPress={() => handleEdit('price')}
+              onPress={handleEditListing}
               activeOpacity={0.7}
               disabled={!canManageInventory}
             >
@@ -298,36 +289,18 @@ const ListingDetail: React.FC<{
           {/* Offers */}
           <View style={styles.detailRow}>
             <Text style={styles.detailRowLabel}>Offers</Text>
-            <TouchableOpacity
-              style={styles.detailRowRight}
-              onPress={() => handleEdit('offers')}
-              activeOpacity={0.7}
-              disabled={!canManageInventory}
-            >
-              <Text style={[
-                styles.detailRowValue,
-                offersStatus === 'Accepting' && { color: Colors.accent },
-                offersStatus === 'Not accepting' && { color: Colors.midBlue_6b7280 },
-              ]}>
-                {offersStatus}
-              </Text>
-              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
-            </TouchableOpacity>
+            <View style={styles.detailRowRight}>
+              <Text style={styles.detailRowValue}>{listing.offersStatus}</Text>
+            </View>
           </View>
           <View style={styles.detailDivider} />
 
           {/* Visibility */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Visibility</Text>
-            <TouchableOpacity
-              style={styles.detailRowRight}
-              onPress={() => handleEdit('visibility')}
-              activeOpacity={0.7}
-              disabled={!canManageInventory}
-            >
+            <Text style={styles.detailRowLabel}>Listing status</Text>
+            <View style={styles.detailRowRight}>
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
-              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
-            </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.detailDivider} />
 
@@ -597,8 +570,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     if (isRefresh) setRefreshing(true);
     setFetchError(false);
     try {
-      const res = await apiClient<{ success: boolean; data: any[] }>('/listings/my?page=1&limit=50');
-      if (res.success) setListings((res.data || []).map(mapApiListing));
+      // Include SOLD and every page so counts, search and filter tabs match
+      // the dealership's full stock, not just the first 50 unsold cars.
+      const ownedListings = await fetchAllMyListings<any>();
+      setListings(ownedListings.map(mapApiListing));
     } catch {
       setFetchError(true);
     }
