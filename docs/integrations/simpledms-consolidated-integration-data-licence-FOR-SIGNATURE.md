@@ -409,6 +409,18 @@ Live reconciliation target: **2–5 minutes**. Stale threshold: **15 minutes**.
 
 # SCHEDULE B — HISTORICAL VEHICLE-EVENT EVIDENCE
 
+## B0. Activation condition
+The commercial terms in this Schedule B are agreed in principle, but **historical retention and historical matching do not activate merely because the main agreement is signed**.
+
+Before SimpleDMS stores any CarMazium-sourced event as retained historical evidence, CarMazium must give a separate written Schedule B activation notice confirming that:
+- the applicable privacy notice/transparency update is live;
+- the lawful-basis assessment for the historical purpose is complete;
+- any required DPIA or documented DPIA-screening decision is complete;
+- the protected vehicle-matching design and raw-VRM deletion controls have been verified; and
+- the relevant production feed fields have passed final acceptance.
+
+Until that written activation notice is given, SimpleDMS may use the production partner API only for the live integration and short operational reconciliation/cache permitted by section 5. No Schedule B historical event record may be created. The live 90-day pilot may begin without Schedule B being activated.
+
 ## B1. Purpose
 Permitted only for vehicle matching, repeat-appearance research, market analysis, BuySmart vehicle-history evidence, new BuySmart reports while evidence is in term, corrections and agreed aggregate analytics.
 
