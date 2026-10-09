@@ -1,3 +1,5 @@
+> **SUPERSEDED FOR NEGOTIATION — 5 October 2026.** The current consolidated counter-draft is [simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md](simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md). This older document is retained only for audit/history and should not be used as the current signature candidate.
+
 # SimpleDMS × CarMazium — PROPOSED Schedule B: historical evidence and subprocessors
 **Negotiation draft, 3 October 2026. NOT APPROVED, SIGNED OR AN API PERMISSION.**
 This schedule supplements the [pilot data licence](simpledms-pilot-data-licence-FOR-SIGNATURE.md). The API remains disabled and its optional fields remain OFF until separate written approval and staging sign-off. None of these terms changes the free initial integration, non-exclusive 90-day pilot, or CarMazium's control of registration, bidding, payments and transactions.

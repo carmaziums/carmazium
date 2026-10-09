@@ -1,7 +1,9 @@
+> **SUPERSEDED FOR NEGOTIATION — 5 October 2026.** The current consolidated counter-draft is [simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md](simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md). This older document is retained only for audit/history and should not be used as the current signature candidate.
+
 # CARMAZIUM × SIMPLEDMS — EARLY LAUNCH INTEGRATION AND DATA LICENCE
 **Draft for signature — not effective until duly agreed by both parties**
 
-**Parties:** (1) The legal entity operating CarMazium ("CarMazium"), whose verified legal name, company number, registered address and authorised signatory must still be inserted; and (2) **SIMPLEDMS LTD** ("SimpleDMS"), **company number 17167272**, subject to independently confirming its currently registered address and signing authority against up-to-date official records. Stephen supplied an address and proposed authorised signatory; their details are recorded below but NOT treated as independently verified.
+**Parties:** (1) The legal entity operating CarMazium ("CarMazium"), **CARMAZIUM LTD**, company number **17053307**, registered office **181 Hunters Road, Birmingham, United Kingdom, B19 1ES**, represented for draft purposes by its listed director **Afaq Iftikhar** (signature still required); and (2) **SIMPLEDMS LTD** ("SimpleDMS"), **company number 17167272**, subject to independently confirming its currently registered address and signing authority against up-to-date official records. Stephen supplied an address and proposed authorised signatory; their details are recorded below but NOT treated as independently verified.
 
 **Effective date:** The date of the last signature below. **Pilot launch:** The date the agreed integration passes joint production-acceptance testing and is live for eligible BuySmart dealers. Both parties must confirm that launch date by email. **Pilot expiry:** 90 calendar days after pilot launch unless earlier terminated under this agreement.
 
@@ -49,9 +51,9 @@
 7.2 The parties shall agree contact details for technical operations, privacy/security incidents, contractual notices, and the applicable governing law and dispute-resolution mechanism before signing. Material liability limits, indemnities, photo rights and any necessary controller/processor provisions require the parties' legal approval.
 
 **CarMazium operating entity**
-Legal name: ____________________________
-Company number and registered address: ____________________________
-Authorised signatory / title: ____________________________
+Legal name: CARMAZIUM LTD
+Company number and registered address: 17053307; 181 Hunters Road, Birmingham, United Kingdom, B19 1ES
+Proposed authorised signatory / title: Afaq Iftikhar, Director (signature required)
 Signature / date: ____________________________
 Technical contact: ____________________________
 Privacy/security contact: ____________________________
