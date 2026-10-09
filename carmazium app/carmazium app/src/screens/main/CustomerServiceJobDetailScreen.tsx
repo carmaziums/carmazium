@@ -372,7 +372,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               <Text style={styles.auctionLinkText}>View linked auction</Text>
               <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
             </TouchableOpacity>
-          )
+          )}
             <View style={styles.resultRow}>
               <Ionicons
                 name={job.inspectionOutcome === 'FAULTS_FOUND' ? 'warning-outline' : 'checkmark-circle-outline'}
