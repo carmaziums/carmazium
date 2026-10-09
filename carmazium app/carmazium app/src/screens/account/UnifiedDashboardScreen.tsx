@@ -173,7 +173,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
       <View style={styles.header}>
         <Logo size="sm" />
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('NotificationSettings')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
+          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
             {unreadMessages > 0 && <View style={styles.bellDot} />}
             <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
@@ -193,9 +193,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         <View style={styles.profileCard}>
           <View style={[styles.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
             <Text style={styles.avatarText}>{initials}</Text>
-            <View style={styles.avatarCheck}>
-              <Ionicons name="checkmark" size={10} color={Colors.white} />
-            </View>
+
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
@@ -206,6 +204,30 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
+        </View>
+
+        {/* Primary tasks should be visible before the crowded metrics grid. */}
+        <View style={styles.accountQuickActions}>
+          <TouchableOpacity
+            style={styles.accountQuickBuy}
+            onPress={() => navTab('Search')}
+            accessibilityRole="button"
+            accessibilityLabel="Browse cars for sale"
+            activeOpacity={0.8}
+          >
+            <Ionicons name="car-outline" size={19} color={Colors.white} />
+            <Text style={styles.accountQuickText}>Buy Cars</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.accountQuickManage}
+            onPress={() => isDealerAccount ? nav('DealerInventory') : isSellerAccount ? nav('SellerListings') : nav('SellCarFlow')}
+            accessibilityRole="button"
+            accessibilityLabel={isSellerAccount ? 'Manage your vehicle listings' : 'Start selling a car'}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="pricetag-outline" size={19} color={Colors.white} />
+            <Text style={styles.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Overview stats strip ── */}
@@ -381,6 +403,10 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
   sectionLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.6 },
 
+  accountQuickActions: { flexDirection: 'row', gap: 10, marginHorizontal: 20, marginBottom: 22 },
+  accountQuickBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  accountQuickManage: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 8 },
+  accountQuickText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   // Overview stats
   statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 24, backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: BORDER, paddingVertical: 18 },
   statCell: { flex: 1, alignItems: 'center' },
