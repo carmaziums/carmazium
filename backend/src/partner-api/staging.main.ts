@@ -27,7 +27,7 @@ function scenario(): SyntheticScenario {
 function syntheticUuid(prefix: '1' | '2', index: number): string {
   if (index === 1) return prefix === '1' ? STAGING_AUCTION_ID : STAGING_LISTING_ID;
   return prefix.repeat(8) + '-' + prefix.repeat(4) + '-4' + prefix.repeat(3) +
-    '-8' + prefix.repeat(3) + '-' + String(index).padStart(12, prefix);
+    '-8' + prefix.repeat(3) + '-' + String(index).padStart(12, '0');
 }
 
 function fixtures() {
