@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, StatusBar, TextInput, ActivityIndicator,
-  Share, Alert, KeyboardAvoidingView, Platform, Linking,
+  Share, Alert, Keyboard, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 // expo-image: caching/recycling for the hero auction photo (large, full-bleed,
 // shown on a screen users keep open while live-bidding).
@@ -259,6 +259,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [isWinning, setIsWinning] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
   const [bidLoading, setBidLoading] = useState(false);
+  // Enforce one confirmation and one network submission even when two taps
+  // arrive before React commits its disabled-button state.
+  const bidConfirmPendingRef = useRef(false);
+  const bidSubmissionInFlightRef = useRef(false);
   const [bidError, setBidError] = useState<string | null>(null);
   // Non-blocking success flash shown right after a successful placeBid — kept
   // separate from bidError since the two states must coexist correctly (an
@@ -670,7 +674,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ─── Bid handling ─────────────────────────────────────────────────────────
 
-  const handleBid = useCallback(async (amount: number) => {
+  const handleBid = useCallback((enteredAmount: string) => {
+    if (bidLoading || bidSubmissionInFlightRef.current || bidConfirmPendingRef.current) return;
     if (role !== 'dealer') {
       setBidError('Only dealers can place bids in auctions.');
       return;
@@ -697,12 +702,31 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     if (!auction || !currentUser) return;
+    if (auction.listing.sellerId === businessUserId) {
+      setBidError('You cannot bid on your own auction.');
+      return;
+    }
+    if (auction.status !== 'ACTIVE' || auction.listing.status !== 'ACTIVE') {
+      setBidError('This auction is not currently accepting bids.');
+      return;
+    }
     if (endTime && Date.now() >= endTime.getTime()) {
       setBidError('This auction has ended and is being finalised.');
       return;
     }
-    const parsed = Number(amount);
-    if (!parsed || parsed <= 0) { setBidError('Enter a valid bid amount.'); return; }
+    // A blank amount must NEVER be turned into an automatic monetary bid.
+    // Only plain pounds/pence are allowed; exponent, sign and NaN inputs are
+    // rejected before displaying the final confirmation.
+    const trimmed = enteredAmount.trim();
+    if (!/^\\d+(?:\\.\\d{1,2})?$/.test(trimmed)) {
+      setBidError('Enter a valid bid amount in pounds (up to two decimal places).');
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 100_000_000) {
+      setBidError('Enter a valid bid amount.');
+      return;
+    }
 
     const highestRealBid = bidHistory[0]?.amount ?? null;
     const minAllowed = getMinimumAuctionBid({
@@ -711,9 +735,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       minIncrement: Number(auction.minIncrement),
       highestActiveBid: highestRealBid,
     });
-
-    if (minAllowed <= 0) {
-      setBidError('This auction does not have valid bidding prices.');
+    if (!Number.isFinite(minAllowed) || minAllowed <= 0) {
+      setBidError('This auction does not have valid bidding prices. Refresh and try again.');
       return;
     }
     if (parsed < minAllowed) {
@@ -724,21 +747,43 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       );
       return;
     }
-    setBidLoading(true);
-    setBidError(null);
-    try {
-      await placeBid(auction.listingId, parsed);
-      setBidAmount('');
-      // Show an inline "bid accepted" flash for a couple seconds so the user
-      // has a clear confirmation, not just watching their bid appear in the
-      // history list. Auto-clears via effect below.
-      setBidJustAccepted(parsed);
-    } catch (err: any) {
-      setBidError(err.message ?? 'Failed to place bid.');
-    } finally {
-      setBidLoading(false);
-    }
-  }, [auction, currentUser, bidHistory, role, canPlaceBid, isDealerVerified, dealerAccess?.isOwner, navigation, endTime]);
+
+    bidConfirmPendingRef.current = true;
+    Keyboard.dismiss();
+    Alert.alert(
+      'Confirm your auction bid',
+      `Place a bid of ${fmt(parsed)} for ${auction.listing.make} ${auction.listing.model}? This is a commitment if you win. A £125 platform fee is payable by the successful auction buyer.`,
+      [
+        { text: 'Review Amount', style: 'cancel', onPress: () => { bidConfirmPendingRef.current = false; } },
+        {
+          text: 'Confirm Bid',
+          onPress: async () => {
+            bidConfirmPendingRef.current = false;
+            if (bidSubmissionInFlightRef.current) return;
+            bidSubmissionInFlightRef.current = true;
+            setBidLoading(true);
+            setBidError(null);
+            try {
+              await placeBid(auction.listingId, parsed);
+              setBidAmount('');
+              setBidJustAccepted(parsed);
+              // Socket events can be missed on mobile networks. Always refresh
+              // the canonical bid history after the server accepts a bid.
+              void loadAuctionRef.current({ silent: true });
+            } catch (err: any) {
+              setBidError(err?.message ?? 'Could not confirm the bid. Refresh the auction before retrying.');
+              void loadAuctionRef.current({ silent: true });
+            } finally {
+              bidSubmissionInFlightRef.current = false;
+              setBidLoading(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true, onDismiss: () => { bidConfirmPendingRef.current = false; } },
+    );
+  }, [auction, currentUser, bidHistory, role, canPlaceBid, isDealerVerified,
+      dealerAccess?.isOwner, navigation, endTime, businessUserId, bidLoading]);
 
   // ─── Cancel bid ──────────────────────────────────────────────────────────────
 
@@ -2271,12 +2316,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   placeholder="Custom amount"
                   placeholderTextColor={Colors.borderMuted}
                   keyboardType="number-pad"
-                  onSubmitEditing={() => bidAmount && handleBid(Number(bidAmount))}
+                  onSubmitEditing={() => Keyboard.dismiss()}
                 />
               </View>
               <TouchableOpacity
                 style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
-                onPress={() => handleBid(Number(bidAmount) || minimumAllowedBid)}
+                onPress={() => handleBid(bidAmount)}
                 disabled={bidLoading}
                 activeOpacity={0.8}
               >
