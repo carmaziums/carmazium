@@ -21,6 +21,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BottomSheet } from '../../components/BottomSheet';
 import { apiClient } from '../../lib/apiClient';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -222,6 +224,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [listings, setListings] = useState<ApiListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('ALL');
   const [actionMenuListing, setActionMenuListing] = useState<ApiListing | null>(null);
   const [sellPriceModal, setSellPriceModal] = useState<ApiListing | null>(null);
@@ -236,19 +239,19 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     if (forceRefresh) setRefreshing(true);
     else setLoading(true);
 
+    setFetchError(null);
     try {
-      const params = activeTab !== 'ALL' ? `&status=${activeTab}` : '';
-      const res = await apiClient<{ success: boolean; data: ApiListing[]; pagination: any }>(
-        `/listings/my?page=1&limit=50${params}`
-      );
-      if (res.success) setListings(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      // silently fail
+      // The API's status query is not a supported filter and SOLD is excluded
+      // by default. Fetch all pages, including sold, then apply local tabs.
+      const owned = await fetchAllMyListings<ApiListing>();
+      setListings(owned);
+    } catch (err: any) {
+      setFetchError(err?.message || 'Could not load all listings. Please retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab]);
+  }, []);
 
   // Refetch on every focus (initial mount + return-from-child, e.g. after
   // editing a listing in SellCarFlow). Silent on returns so the whole screen
@@ -818,6 +821,13 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         })}
       </ScrollView>
 
+      {/* Do not misrepresent failed inventory loading as an empty dealership. */}
+      {fetchError && (
+        <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+          <ErrorBanner message={fetchError} onRetry={() => fetchListings(true)} />
+        </View>
+      )}
+
       {/* ── List ── */}
       {loading ? (
         renderSkeletonRows()
@@ -831,7 +841,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             displayed.length === 0 && styles.listContentEmpty,
           ]}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          ListEmptyComponent={renderEmpty}
+          ListEmptyComponent={fetchError ? null : renderEmpty}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
