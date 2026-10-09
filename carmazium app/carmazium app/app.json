@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0A0A0C",
+    "backgroundColor": "#1B2538",
     "icon": "./assets/images/icon.png",
     "scheme": "carmazium",
     "runtimeVersion": {
@@ -23,7 +23,7 @@
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0C"
+      "backgroundColor": "#1B2538"
     },
     "assetBundlePatterns": [
       "assets/**/*"
@@ -70,7 +70,7 @@
       "package": "uk.carmazium.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0A0A0C"
+        "backgroundColor": "#1B2538"
       },
       "intentFilters": [
         {
@@ -254,7 +254,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#FF0037",
+          "color": "#ED1C24",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "CarMazium"
