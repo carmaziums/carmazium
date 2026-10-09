@@ -481,7 +481,7 @@ export const HomeScreen: React.FC = () => {
   const latestEight = useMemo(() => latestListings.slice(0, 8), [latestListings]);
 
   const userName = user?.firstName || 'there';
-  const recentGrid = latestListings.slice(4, 10);
+  const recentGrid = latestListings.slice(4, 8);
 
   return (
     <View style={s.container}>
@@ -698,7 +698,7 @@ export const HomeScreen: React.FC = () => {
           </ScrollView>
         </Section>
 
-        {/* ── RECENTLY ADDED (2-col grid) ── */}
+        {/* ── RECENTLY ADDED — readable full-width rows on phones ── */}
         {(isLoading || recentGrid.length > 0) && (
           <Section
             title="RECENTLY ADDED"
@@ -708,10 +708,9 @@ export const HomeScreen: React.FC = () => {
             <View style={s.recentGrid}>
               {isLoading ? (
                 <>
-                  <Skeleton w={(SW - 48 - 12) / 2} h={170} />
-                  <Skeleton w={(SW - 48 - 12) / 2} h={170} />
-                  <Skeleton w={(SW - 48 - 12) / 2} h={170} />
-                  <Skeleton w={(SW - 48 - 12) / 2} h={170} />
+                  <Skeleton w={SW - 48} h={126} />
+                  <Skeleton w={SW - 48} h={126} />
+                  <Skeleton w={SW - 48} h={126} />
                 </>
               ) : recentGrid.map(l => (
                 <TouchableOpacity
@@ -920,14 +919,14 @@ const s = StyleSheet.create({
   bodyTypeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
 
   // Recent grid
-  recentGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 24, rowGap: 16 },
-  recentCard: { width: (SW - 56 - 12) / 2, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.whiteAlpha07, borderRadius: Radius.card, overflow: 'hidden' },
-  recentImgWrap: { height: 116 },
+  recentGrid: { flexDirection: 'column', paddingHorizontal: 24, rowGap: 12 },
+  recentCard: { width: '100%', minHeight: 124, flexDirection: 'row', backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: Radius.card, overflow: 'hidden' },
+  recentImgWrap: { width: 132, minHeight: 124 },
   recentImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  recentBody: { padding: 16 },
-  recentSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size9, color: Colors.textFaint, marginBottom: 4 },
-  recentTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 6 },
-  recentPrice: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
+  recentBody: { flex: 1, padding: 14, justifyContent: 'center' },
+  recentSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 6 },
+  recentTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 8 },
+  recentPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.lg, color: Colors.white },
 
   // Empty state
   emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
