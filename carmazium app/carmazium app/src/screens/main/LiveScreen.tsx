@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -103,7 +103,7 @@ export const LiveScreen: React.FC = () => {
   const [filters, setFilters] = useState<AuctionFilterState>(INITIAL_AUCTION_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setAuctionLoadError(null);
     try {
       // Both endpoints enforce verified-dealer access. Fetch all scheduled
@@ -183,11 +183,13 @@ export const LiveScreen: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
+
+  // Tab screens stay mounted; refresh the latest bids and auction status on
+  // every return from detail, KYC or saved auctions, not just initial mount.
+  useFocusEffect(useCallback(() => {
+    void fetchData();
+  }, [fetchData]));
 
   const onRefresh = () => {
     setIsRefreshing(true);
