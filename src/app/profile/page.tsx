@@ -635,6 +635,13 @@ export default function ProfilePage() {
             {currentSection === "account" && <section id="upgrade-role" className="scroll-mt-28">
                 <h3 className="text-xl font-bold mb-3 flex items-center gap-2"><Car className="text-primary" /> Account Type</h3>
                 <p className="mb-7" style={{ color: "var(--text-muted)" }}>Personal accounts are for individual buyers and sellers. Businesses use one Partner Account and add the services they need from the Partner Dashboard.</p>
+                {(currentRole.includes("FINANCE") || currentRole.includes("INSURANCE") || currentRole === "CONTRACTOR") && (
+                    <div className="glass-card p-5 mb-6">
+                        <p className="font-bold mb-2">Partner integration and service configuration</p>
+                        <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>Your partner-specific integrations retain their existing verification and access checks. Open your service workspace to manage them.</p>
+                        <Link href={currentRole.includes("FINANCE") ? "/dashboard/finance/settings" : currentRole.includes("INSURANCE") ? "/dashboard/insurance/settings" : "/dashboard/service/capabilities"}><Button variant="outline">Manage partner integration <ExternalLink size={15} className="ml-2" /></Button></Link>
+                    </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {!isPersonal && <AccountCard icon={User} label="Personal Account" sub="Buy and sell vehicles as an individual" button="Switch to Personal Account" loading={loading} onClick={() => handleRoleElevation("BUYER")} />}
                     {!isPartner && <AccountCard icon={Building2} label="Partner Account" sub="One business login with Dealer, Delivery, Inspection, Finance and Warranty add-ons" button="Create Partner Account" loading={loading} onClick={() => handleRoleElevation("DEALER")} />}
