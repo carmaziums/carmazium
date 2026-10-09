@@ -110,7 +110,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     } finally {
       setSaving(false);
     }
-  }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, freq, quietHours]);
+  }, [muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, freq, quietHours, quietStart, quietEnd, showToast]);
 
   const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent, disabled }: any) => (
     <Switch
