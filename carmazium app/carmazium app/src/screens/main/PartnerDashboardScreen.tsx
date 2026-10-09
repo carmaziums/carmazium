@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -89,7 +90,8 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  // Show updates to verification, matching and quotes when returning to the hub.
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -238,9 +240,36 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
               </View>
 
+              <View style={styles.quickTasks}>
+                <Text style={styles.sectionTitle}>Your workspace</Text>
+                <View style={styles.quickTaskGrid}>
+                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderJobs')} accessibilityRole="button" accessibilityLabel="See available delivery and inspection jobs" activeOpacity={0.8}>
+                    <Ionicons name="briefcase-outline" size={21} color={Colors.accent} />
+                    <Text style={styles.quickTaskText}>Available jobs</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched finance and warranty enquiries" activeOpacity={0.8}>
+                    <Ionicons name="document-text-outline" size={21} color={Colors.accent} />
+                    <Text style={styles.quickTaskText}>Enquiries</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
+                    <Ionicons name="options-outline" size={21} color={Colors.accent} />
+                    <Text style={styles.quickTaskText}>Service areas</Text>
+                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                  {hasApprovedJobCapability && (
+                    <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderMessages')} accessibilityRole="button" accessibilityLabel="Read service job messages" activeOpacity={0.8}>
+                      <Ionicons name="chatbubble-outline" size={21} color={Colors.accent} />
+                      <Text style={styles.quickTaskText}>Job messages</Text>
+                      <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>Your add-ons</Text>
+                  <Text style={styles.sectionTitle}>Your services</Text>
                   <Text style={styles.sectionSub}>Adding one service never removes another.</Text>
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}>
@@ -385,10 +414,14 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   content: { padding: 18, gap: 14 },
   hero: { paddingVertical: 8 },
+  quickTasks: { gap: 12, marginTop: 4 },
+  quickTaskGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  quickTask: { flexBasis: '47%', flexGrow: 1, minHeight: 70, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12 },
+  quickTaskText: { flex: 1, minWidth: 64, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   eyebrow: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.size10, letterSpacing: 1.6 },
   title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl, marginTop: 6 },
   sub: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 21, marginTop: 8 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 16, gap: 12 },
+  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base },
   cardText: { fontFamily: FontFamily.regular, color: Colors.textSecondary, fontSize: FontSize.size12, lineHeight: 19 },
   input: { borderWidth: 1, borderColor: Colors.whiteAlpha10, backgroundColor: Colors.bgTertiary, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 12, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.sm },
@@ -400,14 +433,14 @@ const styles = StyleSheet.create({
   sectionTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.lg },
   sectionSub: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12, marginTop: 3 },
   linkText: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.xs },
-  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, borderRadius: Radius.card, padding: 14 },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, borderRadius: Radius.card, padding: 14 },
   serviceIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   serviceTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
   serviceStatus: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 3 },
   reviewNote: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minWidth: 62, minHeight: 36, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  smallButton: { minWidth: 72, minHeight: 44, borderRadius: 10, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   smallButtonText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
-  smallOutline: { minHeight: 36, borderRadius: 10, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  smallOutline: { minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: Colors.borderHi, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   smallOutlineText: { fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: FontSize.size10 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 1.2, marginBottom: 4 },
