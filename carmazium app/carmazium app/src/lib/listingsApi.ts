@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import { CarListing } from '../data/listings';
+import { formatTransmission } from './transmission';
 
 // ─── Backend Types ────────────────────────────────────────────────────────────
 
@@ -202,19 +203,8 @@ function mapFuelType(raw?: string | null): CarListing['fuelType'] {
   }
 }
 
-function mapTransmission(raw?: string | null): CarListing['transmission'] {
-  const code = String(raw ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
-  switch (code) {
-    case 'MANUAL': return 'Manual';
-    case 'AUTO':
-    case 'AUTOMATIC': return 'Automatic';
-    case 'SEMI_AUTO':
-    case 'SEMI_AUTOMATIC':
-    case 'SEMIAUTOMATIC': return 'Semi-Automatic';
-    case 'CVT':
-    case 'CONTINUOUSLY_VARIABLE': return 'CVT';
-    default: return 'Not specified';
-  }
+export function mapTransmission(raw?: string | null): CarListing['transmission'] {
+  return formatTransmission(raw);
 }
 
 function mapCategory(raw?: string | null): CarListing['category'] {
