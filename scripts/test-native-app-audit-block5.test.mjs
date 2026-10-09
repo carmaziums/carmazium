@@ -60,6 +60,9 @@ test('dealer live auctions handle API errors and load the entire scheduled catal
   assert.ok(live.includes('auction: { id: auc.id, status: auc.status, endTime: auc.endTime }'));
   assert.doesNotMatch(live, /LOT \{String\(idx \+ 6\)/);
   assert.ok(live.includes('Promise.all(['));
+  assert.ok(live.includes('useFocusEffect(useCallback(() => {'));
+  assert.ok(live.includes('void fetchData();'));
+  assert.ok(api.includes("throw new Error('Could not load live auctions.')"));
   assert.ok(live.includes('auctionLoadError'));
   assert.ok(live.includes('<ErrorBanner message={auctionLoadError}'));
   assert.ok(live.includes('filteredActive.length === 0 && !auctionLoadError'));
