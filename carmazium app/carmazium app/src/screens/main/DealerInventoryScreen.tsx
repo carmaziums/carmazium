@@ -46,6 +46,7 @@ type FilterTab = 'All' | 'Live' | 'Drafts' | 'Review' | 'Sale pending' | 'Reject
 interface Listing {
   id: string;
   title: string;
+  registration: string;
   price: string;
   rawPrice: number;
   daysListed: number;
@@ -64,6 +65,7 @@ interface Listing {
 const mapApiListing = (l: any): Listing => ({
   id: l.id,
   title: l.title || `${l.year ?? ''} ${l.make ?? ''} ${l.model ?? ''}`.trim() || 'Untitled',
+  registration: String(l.vrm ?? l.registrationNumber ?? '').trim().toUpperCase(),
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
@@ -475,7 +477,8 @@ const InventoryRow: React.FC<{
 
       {/* Info */}
       <View style={styles.listingInfo}>
-        <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+        <Text style={styles.listingTitle} numberOfLines={2}>{listing.title}</Text>
+        {!!listing.registration && <Text style={styles.inventoryReg}>{listing.registration}</Text>}
         <View style={styles.listingPriceRow}>
           <Text style={styles.listingPrice}>{listing.price}</Text>
           <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
@@ -677,7 +680,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const q = inventoryQuery.trim().toLowerCase();
   const filtered = listings
     .filter(l => !chosenStatus || l.status === chosenStatus)
-    .filter(l => !q || [l.title, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
+    .filter(l => !q || [l.title, l.registration, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
     .sort((a, b) => sortOrder === 'price-low'
       ? a.rawPrice - b.rawPrice
       : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
@@ -717,7 +720,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <TextInput
           value={inventoryQuery}
           onChangeText={setInventoryQuery}
-          placeholder="Search inventory by vehicle or price"
+          placeholder="Search vehicle or registration"
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -983,14 +986,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: RowDensity.compact.padding,
-    minHeight: RowDensity.compact.rowHeight,
+    paddingVertical: 12,
+    minHeight: 94,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteAlpha04,
+    borderBottomColor: Colors.borderSubtle,
   },
   listingThumbWrap: {
-    width: 56,
-    height: 40,
+    width: 92,
+    height: 68,
     borderRadius: RowDensity.compact.borderRadius,
     overflow: 'hidden',
     marginRight: RowDensity.compact.gap,
@@ -998,8 +1001,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha04,
   },
   listingThumb: {
-    width: 56,
-    height: 40,
+    width: 92,
+    height: 68,
     borderRadius: RowDensity.compact.borderRadius,
   },
   statusBadge: {
@@ -1021,10 +1024,12 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.rowLabel,
+    fontSize: FontSize.sm,
     color: Colors.white,
-    marginBottom: 2,
+    lineHeight: 20,
+    marginBottom: 3,
   },
+  inventoryReg: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 3 },
   listingPriceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
