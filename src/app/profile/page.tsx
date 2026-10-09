@@ -72,6 +72,7 @@ export default function ProfilePage() {
     const [bankSaving, setBankSaving] = React.useState(false)
     const [stripeStatus, setStripeStatus] = React.useState<StripeConnectStatus | null>(null)
     const [stripeLoading, setStripeLoading] = React.useState(false)
+    // A status return never means funds were received; re-fetch provider state.
     const [oldPassword, setOldPassword] = React.useState("")
     const [newPassword, setNewPassword] = React.useState("")
     const [confirmPassword, setConfirmPassword] = React.useState("")
@@ -479,41 +480,6 @@ export default function ProfilePage() {
                 <section className="mb-12">
                     <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Building2 className="text-primary" /> Partner Business Profile</h3>
                     <div className="glass-card p-8 space-y-8">
-                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex items-start gap-3">
-                                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
-                                        <ShieldCheck size={18} className="text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
-                                            Business Type
-                                        </p>
-                                        <p className="mt-1 text-lg font-black">{businessTypeLabel}</p>
-                                        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-                                            Verification status: <span className="font-semibold">{verificationStatus}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="gap-2 self-start sm:self-auto"
-                                    onClick={() => setShowBusinessVerification(true)}
-                                >
-                                    <ShieldCheck size={16} />
-                                    {dealerKyc?.status === "APPROVED"
-                                        ? "Change Business Type / Re-verify"
-                                        : dealerKyc
-                                            ? "Update Business Verification"
-                                            : "Choose Business Type"}
-                                </Button>
-                            </div>
-                            <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                                You can operate as a Registered Company or a Sole Trader. Changing legal type uses the same dealer account and existing verification payment; approved accounts are re-verified after the new legal type is submitted.
-                            </p>
-                        </div>
-
                         <ProfileImageUploader
                             currentUrl={businessForm.logo || profile?.dealerProfile?.logo}
                             fallback={businessForm.companyName || "CM"}
@@ -550,6 +516,108 @@ export default function ProfilePage() {
                         </div>
                         <Button onClick={handleUpdateBusiness} disabled={businessLoading}>{businessLoading && <Loader2 className="animate-spin mr-2" size={16} />}Save Business Profile</Button>
                     </div>
+                </section>
+            )}
+
+
+            {currentSection === "verification" && canOwnDealershipProfile && (
+                <section className="mb-8">
+                    <h3 className="text-xl font-bold mb-5">Business verification</h3>
+                    <p className="mb-5 text-sm" style={{ color: "var(--text-muted)" }}>Review your legal business type and verification status. Changing a previously approved type requires re-verification.</p>
+                        <div className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-input)] p-5">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-3">
+                                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20">
+                                        <ShieldCheck size={18} className="text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+                                            Business Type
+                                        </p>
+                                        <p className="mt-1 text-lg font-black">{businessTypeLabel}</p>
+                                        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                                            Verification status: <span className="font-semibold">{verificationStatus}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="gap-2 self-start sm:self-auto"
+                                    onClick={() => setShowBusinessVerification(true)}
+                                >
+                                    <ShieldCheck size={16} />
+                                    {dealerKyc?.status === "APPROVED"
+                                        ? "Change Business Type / Re-verify"
+                                        : dealerKyc
+                                            ? "Update Business Verification"
+                                            : "Choose Business Type"}
+                                </Button>
+                            </div>
+                            <p className="mt-4 text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
+                                You can operate as a Registered Company or a Sole Trader. Changing legal type uses the same dealer account and existing verification payment; approved accounts are re-verified after the new legal type is submitted.
+                            </p>
+                        </div>
+
+
+                </section>
+            )}
+
+            {currentSection === "notifications" && (
+                <section className="mb-8">
+                    <h3 className="text-xl font-bold mb-5">Notifications & privacy</h3>
+                    <div className="glass-card p-5 sm:p-7 space-y-5">
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Control the preferences currently supported by your account. Messages and essential transaction notices continue to be delivered as required.</p>
+                        {!notificationsReady ? (
+                            <p role="status" className="rounded-xl border border-amber-500/30 p-4 text-sm" style={{ color: "var(--text-secondary)" }}>Your saved preferences are unavailable. The app will not change them until they can be loaded. Try reloading this page.</p>
+                        ) : (
+                            <>
+                                <label className="flex items-center justify-between gap-5 border-b border-[var(--border-default)] pb-5">
+                                    <span><strong className="block">Sale email notifications</strong><span className="mt-1 block text-sm" style={{ color: "var(--text-muted)" }}>Receive emails when your vehicle listings sell.</span></span>
+                                    <input type="checkbox" checked={notifyOnSale} onChange={(event) => setNotifyOnSale(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+                                </label>
+                                <label className="flex items-center justify-between gap-5">
+                                    <span><strong className="block">Public profile visibility</strong><span className="mt-1 block text-sm" style={{ color: "var(--text-muted)" }}>Allow your profile to be displayed publicly. This does not bypass trading verification or listing visibility rules.</span></span>
+                                    <input type="checkbox" checked={showPublicProfile} onChange={(event) => setShowPublicProfile(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+                                </label>
+                                <Button onClick={saveNotifications} disabled={notificationSaving}>{notificationSaving && <Loader2 className="mr-2 animate-spin" size={16} />}Save preferences</Button>
+                            </>
+                        )}
+                    </div>
+                </section>
+            )}
+
+            {currentSection === "payouts" && isSellerEligible && (
+                <section className="mb-8">
+                    <h3 className="text-xl font-bold mb-5">Payouts & bank account</h3>
+                    <div className="glass-card p-5 sm:p-7 space-y-6">
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>Vehicle buyers pay sellers directly. These details are for eligible CarMazium incentive payments, not collecting vehicle purchase money.</p>
+                        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-default)] p-4">
+                            <div><strong className="block">Stripe payout connection</strong><p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{stripeStatus?.payoutsEnabled ? "Payouts enabled" : stripeStatus?.connected ? "Connection needs attention or additional onboarding" : "Not connected"}</p></div>
+                            <Button variant="outline" onClick={connectStripe} disabled={stripeLoading || !!stripeStatus?.payoutsEnabled}>{stripeLoading ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} className="mr-2" />}{stripeStatus?.connected ? "Complete onboarding" : "Connect payout account"}</Button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <Field label="Account holder name" value={bankName} onChange={setBankName} />
+                            <Field label="Sort code" value={bankSortCode} onChange={setBankSortCode} />
+                            <div className="sm:col-span-2"><Field label="Account number" value={bankAccountNumber} onChange={setBankAccountNumber} /></div>
+                        </div>
+                        <Button onClick={saveBank} disabled={bankSaving}>{bankSaving && <Loader2 size={16} className="animate-spin mr-2" />}Save bank details</Button>
+                    </div>
+                </section>
+            )}
+
+            {currentSection === "security" && (
+                <section className="mb-8">
+                    <h3 className="text-xl font-bold mb-5">Password & account security</h3>
+                    <form onSubmit={changePassword} className="glass-card p-5 sm:p-7 space-y-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div className="sm:col-span-2"><label className="text-sm font-semibold block mb-2">Current password</label><input type="password" autoComplete="current-password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                            <div><label className="text-sm font-semibold block mb-2">New password</label><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                            <div><label className="text-sm font-semibold block mb-2">Confirm password</label><input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] p-3" /></div>
+                        </div>
+                        <Button type="submit" disabled={passwordSaving}>{passwordSaving && <Loader2 size={16} className="animate-spin mr-2" />}Change password</Button>
+                    </form>
+                    <div className="mt-6"><DeleteAccountSection /></div>
                 </section>
             )}
 
