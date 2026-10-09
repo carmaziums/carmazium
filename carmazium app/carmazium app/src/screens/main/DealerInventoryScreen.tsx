@@ -40,12 +40,13 @@ const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-type StatusTag = 'LIVE' | 'PENDING' | 'SOLD';
-type FilterTab = 'All' | 'Live' | 'Pending' | 'Sold';
+type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
+type FilterTab = 'All' | 'Live' | 'Drafts' | 'Review' | 'Sale pending' | 'Rejected' | 'Sold' | 'Other';
 
 interface Listing {
   id: string;
   title: string;
+  registration: string;
   price: string;
   rawPrice: number;
   daysListed: number;
@@ -64,6 +65,7 @@ interface Listing {
 const mapApiListing = (l: any): Listing => ({
   id: l.id,
   title: l.title || `${l.year ?? ''} ${l.make ?? ''} ${l.model ?? ''}`.trim() || 'Untitled',
+  registration: String(l.vrm ?? l.registrationNumber ?? '').trim().toUpperCase(),
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
@@ -73,7 +75,16 @@ const mapApiListing = (l: any): Listing => ({
   // sort order without ever selecting it).
   leads: l._count?.leads ?? 0,
   offers: l._count?.offers ?? 0,
-  status: (l.status === 'ACTIVE' ? 'LIVE' : l.status === 'DRAFT' ? 'PENDING' : 'SOLD') as StatusTag,
+  // Never call an unapproved, rejected or provisional listing SOLD.
+  status: (
+    l.status === 'ACTIVE' ? 'LIVE'
+      : l.status === 'DRAFT' ? 'DRAFT'
+      : l.status === 'PENDING_REVIEW' ? 'REVIEW'
+      : l.status === 'OFFER_ACCEPTED' ? 'SALE_PENDING'
+      : l.status === 'REJECTED' ? 'REJECTED'
+      : l.status === 'SOLD' ? 'SOLD'
+      : 'OTHER'
+  ) as StatusTag,
   linkedListingId: l.linkedListingId ?? null,
   linkedAuctionStatus: l.linkedListing?.auction?.status ?? null,
   images: l.images || [],
@@ -83,9 +94,13 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:    { bg: Colors.success, color: Colors.white, label: 'LIVE' },
-  PENDING: { bg: Colors.warning, color: Colors.white, label: 'PRICING' },
-  SOLD:    { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'SOLD' },
+  LIVE:         { bg: Colors.success, color: Colors.white, label: 'LIVE' },
+  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'DRAFT' },
+  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'IN REVIEW' },
+  SALE_PENDING: { bg: Colors.warning, color: Colors.white, label: 'SALE PENDING' },
+  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'REJECTED' },
+  SOLD:         { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'SOLD' },
+  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'NOT LIVE' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
@@ -358,13 +373,13 @@ const ListingDetail: React.FC<{
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status === 'SOLD' && styles.markSoldBtnDim]}
+          style={[styles.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
           activeOpacity={0.85}
-          onPress={listing.status !== 'SOLD' ? openMarkSold : undefined}
+          onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
         >
           <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
           <Text style={styles.markSoldBtnText}>
-            {listing.status === 'SOLD' ? 'SOLD' : 'MARK SOLD'}
+            {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
         </TouchableOpacity>
         </View>
@@ -462,7 +477,8 @@ const InventoryRow: React.FC<{
 
       {/* Info */}
       <View style={styles.listingInfo}>
-        <Text style={styles.listingTitle} numberOfLines={1}>{listing.title}</Text>
+        <Text style={styles.listingTitle} numberOfLines={2}>{listing.title}</Text>
+        {!!listing.registration && <Text style={styles.inventoryReg}>{listing.registration}</Text>}
         <View style={styles.listingPriceRow}>
           <Text style={styles.listingPrice}>{listing.price}</Text>
           <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
@@ -554,6 +570,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [inventoryQuery, setInventoryQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'price-high' | 'price-low'>('newest');
 
   // Persist the dealer's list/grid preference across sessions (SE8-style
   // affordance, mobile-ui-ux-audit.md §C9).
@@ -648,16 +666,25 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     );
   }
 
-  const FILTERS: { label: FilterTab; count: number }[] = [
-    { label: 'All',     count: listings.length },
-    { label: 'Live',    count: listings.filter((l) => l.status === 'LIVE').length },
-    { label: 'Pending', count: listings.filter((l) => l.status === 'PENDING').length },
-    { label: 'Sold',    count: listings.filter((l) => l.status === 'SOLD').length },
+  const FILTERS: { label: FilterTab; value: StatusTag | null; count: number }[] = [
+    { label: 'All', value: null, count: listings.length },
+    { label: 'Live', value: 'LIVE', count: listings.filter(l => l.status === 'LIVE').length },
+    { label: 'Drafts', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
+    { label: 'Review', value: 'REVIEW', count: listings.filter(l => l.status === 'REVIEW').length },
+    { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
+    { label: 'Rejected', value: 'REJECTED', count: listings.filter(l => l.status === 'REJECTED').length },
+    { label: 'Sold', value: 'SOLD', count: listings.filter(l => l.status === 'SOLD').length },
+    { label: 'Other', value: 'OTHER', count: listings.filter(l => l.status === 'OTHER').length },
   ];
-
-  const filtered = activeFilter === 'All'
-    ? listings
-    : listings.filter((l) => l.status === activeFilter.toUpperCase() as StatusTag);
+  const chosenStatus = FILTERS.find(f => f.label === activeFilter)?.value;
+  const q = inventoryQuery.trim().toLowerCase();
+  const filtered = listings
+    .filter(l => !chosenStatus || l.status === chosenStatus)
+    .filter(l => !q || [l.title, l.registration, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
+    .sort((a, b) => sortOrder === 'price-low'
+      ? a.rawPrice - b.rawPrice
+      : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
+        : 0);
 
   return (
     <View style={styles.container}>
@@ -685,6 +712,26 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           />
           <HamburgerButton />
         </View>
+      </View>
+
+      {/* Search inventory without paging through unrelated vehicles. */}
+      <View style={styles.inventorySearchWrap}>
+        <Ionicons name="search-outline" size={20} color={Colors.textSecondary} />
+        <TextInput
+          value={inventoryQuery}
+          onChangeText={setInventoryQuery}
+          placeholder="Search vehicle or registration"
+          placeholderTextColor={Colors.textMuted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          accessibilityLabel="Search dealer inventory"
+          style={styles.inventorySearchInput}
+        />
+        {!!inventoryQuery && (
+          <TouchableOpacity onPress={() => setInventoryQuery('')} accessibilityRole="button" accessibilityLabel="Clear inventory search">
+            <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* ── Filter tabs ──────────────────────────────────────────────────── */}
@@ -721,11 +768,17 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       </ScrollView>
 
       {/* ── Sort row ─────────────────────────────────────────────────────── */}
-      {/* Sort picker used to be an alert with every option a no-op — removed
-          rather than faking it (mobile-ui-ux-audit.md §C13). Label alone is
-          still accurate: the list really is fetched newest-first. */}
       <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>SORTED: NEWEST</Text>
+        <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
+        <TouchableOpacity
+          style={styles.sortAction}
+          accessibilityRole="button"
+          accessibilityLabel="Change inventory sorting"
+          onPress={() => setSortOrder(prev => prev === 'newest' ? 'price-high' : prev === 'price-high' ? 'price-low' : 'newest')}
+        >
+          <Ionicons name="swap-vertical-outline" size={17} color={Colors.accent} />
+          <Text style={styles.sortActionText}>{sortOrder === 'newest' ? 'Newest' : sortOrder === 'price-high' ? 'Price: high to low' : 'Price: low to high'}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── Listing cards ─────────────────────────────────────────────────── */}
@@ -755,8 +808,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
-              title={activeFilter === 'All' ? 'No listings yet' : `No ${activeFilter.toLowerCase()} listings`}
-              subtitle={activeFilter === 'All' ? 'Add your first vehicle to start selling.' : `Switch filters or add more listings.`}
+              title={inventoryQuery ? 'No matching vehicles' : activeFilter === 'All' ? 'No listings yet' : `No ${activeFilter.toLowerCase()} listings`}
+              subtitle={inventoryQuery ? 'Try a different vehicle name or clear the search.' : activeFilter === 'All' ? 'Add your first vehicle to start selling.' : 'Try a different status filter.'}
             />
           </View>
         }
@@ -863,6 +916,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
 
+  inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
+  inventorySearchInput: { flex: 1, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
+  sortAction: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, minHeight: 40 },
+  sortActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
   // Filter tabs
   filterBar: {
     marginBottom: 0,
@@ -929,14 +986,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: RowDensity.compact.padding,
-    minHeight: RowDensity.compact.rowHeight,
+    paddingVertical: 12,
+    minHeight: 94,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteAlpha04,
+    borderBottomColor: Colors.borderSubtle,
   },
   listingThumbWrap: {
-    width: 56,
-    height: 40,
+    width: 92,
+    height: 68,
     borderRadius: RowDensity.compact.borderRadius,
     overflow: 'hidden',
     marginRight: RowDensity.compact.gap,
@@ -944,8 +1001,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.whiteAlpha04,
   },
   listingThumb: {
-    width: 56,
-    height: 40,
+    width: 92,
+    height: 68,
     borderRadius: RowDensity.compact.borderRadius,
   },
   statusBadge: {
@@ -967,10 +1024,12 @@ const styles = StyleSheet.create({
   },
   listingTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.rowLabel,
+    fontSize: FontSize.sm,
     color: Colors.white,
-    marginBottom: 2,
+    lineHeight: 20,
+    marginBottom: 3,
   },
+  inventoryReg: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 3 },
   listingPriceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',

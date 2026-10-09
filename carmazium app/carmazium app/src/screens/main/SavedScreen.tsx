@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -43,14 +43,18 @@ export const SavedScreen: React.FC = () => {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
-  const [viewMode,   setViewMode]   = useState<ViewMode>('grid');
+  // Readable website-style list first; a two-column grid remains optional.
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [sortMode, setSortMode] = useState<'saved' | 'price-low' | 'price-high'>('saved');
   const [refreshing, setRefreshing] = useState(false);
 
   const { savedListings, isLoading, toggle, isSaved, hydrateFromApi } = useWatchlistStore();
 
-  useEffect(() => {
-    hydrateFromApi();
-  }, []);
+  // Refresh each time the Saved tab gains focus so web, iOS and Android
+  // watchlist changes appear without requiring an app restart.
+  useFocusEffect(useCallback(() => {
+    void hydrateFromApi();
+  }, [hydrateFromApi]));
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -63,19 +67,23 @@ export const SavedScreen: React.FC = () => {
 
   const handleCardPress = useCallback(
     (listing: CarListing) => {
+      if (listing.listingType === 'AUCTION' && listing.auction?.id) {
+        navigation.navigate('AuctionDeepLink', { auctionId: listing.auction.id });
+        return;
+      }
       navigation.navigate('VehicleDetail', { listing });
     },
     [navigation]
   );
 
-  // Tab filter — only "All" is functional until backend provides richer data
-  const displayedListings = savedListings;
-
+  const displayedListings = [...savedListings].sort((a, b) =>
+    sortMode === 'price-low' ? a.price - b.price :
+      sortMode === 'price-high' ? b.price - a.price : 0
+  );
   const totalCount = savedListings.length;
-  const headerSub  = viewMode === 'grid'
-    ? `${totalCount} SAVED`
-    : `${totalCount} SAVED`;
-  const headerTitle = viewMode === 'grid' ? 'Watchlist' : 'Saved cars';
+  const headerSub = `${totalCount} SAVED`;
+  const headerTitle = 'Saved Cars';
+  const sortLabel = sortMode === 'saved' ? 'Recently saved' : sortMode === 'price-low' ? 'Price: low to high' : 'Price: high to low';
 
   // ─── Empty State ───────────────────────────────────────────────────────────
 
@@ -167,10 +175,16 @@ export const SavedScreen: React.FC = () => {
 
   const renderListSortRow = () => (
     <View style={styles.listSortRow}>
-      <Text style={styles.listSortLabel}>SORTED BY: RECENTLY SAVED</Text>
-      <TouchableOpacity style={styles.listSortChange} activeOpacity={0.7}>
-        <Text style={styles.listSortChangeText}>Change</Text>
-        <Ionicons name="chevron-down" size={12} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
+      <Text style={styles.listSortLabel}>{totalCount} {totalCount === 1 ? 'car' : 'cars'} saved</Text>
+      <TouchableOpacity
+        style={styles.listSortChange}
+        onPress={() => setSortMode(prev => prev === 'saved' ? 'price-low' : prev === 'price-low' ? 'price-high' : 'saved')}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Sort saved cars, currently ${sortLabel}`}
+      >
+        <Ionicons name="swap-vertical-outline" size={16} color={Colors.accent} />
+        <Text style={styles.listSortChangeText}>{sortLabel}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -199,8 +213,8 @@ export const SavedScreen: React.FC = () => {
               </View>
             )}
           </View>
-          <Text style={styles.listMeta}>
-            {listing.year} · {listing.mileage.toLocaleString('en-GB')} mi · {listing.location || ''}
+          <Text style={styles.listMeta} numberOfLines={2}>
+            {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, listing.transmission !== 'Not specified' ? listing.transmission : null, listing.location].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.listPriceRow}>
             <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
@@ -298,6 +312,7 @@ export const SavedScreen: React.FC = () => {
           columnWrapperStyle={styles.gridRow}
           keyExtractor={(item) => item.id}
           renderItem={renderGridItem}
+          ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
           ListEmptyComponent={renderEmptyState()}
         />
       )}
@@ -319,7 +334,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     paddingHorizontal: 24,
-    marginBottom: 26,
+    marginBottom: 18,
   },
   headerSub: {
     fontFamily: FontFamily.bold,
@@ -477,9 +492,8 @@ const styles = StyleSheet.create({
   },
   listSortLabel: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.size10,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
-    letterSpacing: 1.5,
   },
   listSortChange: {
     flexDirection: 'row',
@@ -493,16 +507,16 @@ const styles = StyleSheet.create({
   },
   listCard: {
     flexDirection: 'row',
-    backgroundColor: Colors.bgSecondaryAlt,
+    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
-    padding: 14,
+    borderColor: Colors.borderSubtle,
+    padding: 12,
     alignItems: 'center',
   },
   listImg: {
-    width: 92,
-    height: 68,
+    width: 116,
+    height: 92,
     borderRadius: 10,
     marginRight: 16,
     resizeMode: 'cover',
@@ -517,7 +531,7 @@ const styles = StyleSheet.create({
   },
   listTitle: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.size14,
+    fontSize: FontSize.md,
     color: Colors.white,
     flexShrink: 1,
   },

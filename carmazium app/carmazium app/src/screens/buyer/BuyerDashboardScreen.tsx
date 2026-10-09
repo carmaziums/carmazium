@@ -16,6 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getFeaturedListings } from '../../lib/listingsApi';
+import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
@@ -55,16 +56,6 @@ interface BuyerDashData {
 interface BuyerDashResponse {
   success: boolean;
   data: BuyerDashData;
-}
-
-interface HotDeal {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  price: number;
-  images?: string[];
-  isFeatured?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,7 +140,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const { user } = useAuthStore();
 
   const [dash, setDash] = useState<BuyerDashData | null>(null);
-  const [hotDeal, setHotDeal] = useState<HotDeal | null>(null);
+  const [hotDeal, setHotDeal] = useState<CarListing | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,8 +185,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         setError('Could not load your dashboard.');
       }
       if (featuredRes.status === 'fulfilled' && featuredRes.value?.length > 0) {
-        const f = featuredRes.value[0] as any;
-        setHotDeal(f);
+        setHotDeal(featuredRes.value[0]);
       }
       if (unreadRes.status === 'fulfilled') {
         setUnreadCount(unreadRes.value);
@@ -232,7 +222,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
     ? `${hotDeal.make} ${hotDeal.model} ${hotDeal.year}`
     : null;
   const hotDealPrice = hotDeal ? formatPrice(hotDeal.price) : null;
-  const hotDealImage = (hotDeal as any)?.images?.[0] ?? null;
+  const hotDealImage = hotDeal?.images?.[0] ?? null;
 
   return (
     <View style={styles.container}>
@@ -304,6 +294,30 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </View>
         </View>
 
+        {/* Immediate everyday actions, before the account statistics. */}
+        <View style={styles.buyerJourneyRow}>
+          <TouchableOpacity
+            style={styles.buyerJourneyBuy}
+            onPress={() => navigation?.navigate('Tabs', { screen: 'Search' })}
+            accessibilityRole="button"
+            accessibilityLabel="Browse cars for sale"
+            activeOpacity={0.8}
+          >
+            <Ionicons name="car-outline" size={20} color={Colors.white} />
+            <Text style={styles.buyerJourneyLabel}>Browse Cars</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.buyerJourneySaved}
+            onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
+            accessibilityRole="button"
+            accessibilityLabel="View your saved cars"
+            activeOpacity={0.8}
+          >
+            <Ionicons name="heart-outline" size={20} color={Colors.white} />
+            <Text style={styles.buyerJourneyLabel}>Saved Cars</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── 2. KPI 2×2 Grid ── */}
         <View style={styles.kpiGrid}>
           <KpiCard
@@ -368,7 +382,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   <TouchableOpacity
                     style={styles.hotDealCta}
                     activeOpacity={0.8}
-                    onPress={() => navigation?.navigate('VehicleDetail', { id: hotDeal.id })}
+                    onPress={() => navigation?.navigate('VehicleDetail', { listing: hotDeal })}
                   >
                     <Text style={styles.hotDealCtaText}>View</Text>
                   </TouchableOpacity>
@@ -593,6 +607,10 @@ const styles = StyleSheet.create({
   greetingTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   greetingHeadline: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.white, letterSpacing: -0.5, marginBottom: 2 },
   greetingSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.size14, color: Colors.textMuted },
+  buyerJourneyRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 24, marginBottom: 22 },
+  buyerJourneyBuy: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.accent, borderRadius: Radius.inline, paddingHorizontal: 10 },
+  buyerJourneySaved: { flex: 1, minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, paddingHorizontal: 10 },
+  buyerJourneyLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   periodPillRow: { flexDirection: 'row', gap: 6, backgroundColor: Colors.whiteAlpha04, borderRadius: 10, padding: 3 },
   periodPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   periodPillActive: { backgroundColor: Colors.accent },
@@ -613,7 +631,7 @@ const styles = StyleSheet.create({
 
   // Hot Deal
   hotDealSection: { marginBottom: 28, paddingHorizontal: 24 },
-  hotDealCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1.5, borderColor: 'rgba(255,0,55,0.25)', flexDirection: 'row', padding: 18, gap: 14, alignItems: 'center' },
+  hotDealCard: { backgroundColor: CARD_BG, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, flexDirection: 'row', padding: 16, gap: 14, alignItems: 'center' },
   hotDealImage: { width: 96, height: 76, borderRadius: 12 },
   hotDealImagePlaceholder: { backgroundColor: Colors.whiteAlpha06 },
   hotDealInfo: { flex: 1 },
