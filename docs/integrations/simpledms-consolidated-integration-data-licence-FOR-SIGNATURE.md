@@ -1,5 +1,5 @@
 # CARMAZIUM × SIMPLEDMS — CONSOLIDATED EARLY-LAUNCH INTEGRATION, LIVE-FEED AND HISTORICAL-EVIDENCE LICENCE
-**Consolidated counter-draft for signature — revised 8 October 2026. Not effective until signed by both parties.**
+**Consolidated counter-draft for signature — revised 9 October 2026. Not effective until signed by both parties.**
 
 This document is intended to replace, on signature, the earlier pilot-data-licence and historical-data proposal drafts. Until signature, the existing production API remains disabled and no production credential or live-data permission is granted. Synthetic staging may continue under separate test-only controls.
 
@@ -17,9 +17,10 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 1.2 The **Pilot Launch Date** is the date on which:
 (a) both parties have completed their agreed production acceptance checks;
-(b) CarMazium has enabled the dedicated production partner API and issued the separate production credential;
-(c) BuySmart is displaying the approved CarMazium integration to eligible dealers; and
-(d) both parties confirm in writing that the integration is live and working.
+(b) the privacy, lawful-basis, protected vehicle-matching, raw-VRM deletion and other safeguards required for the Schedule B historical functionality have been completed and verified;
+(c) CarMazium has enabled the dedicated production partner API and issued the separate production credential;
+(d) BuySmart is displaying the approved CarMazium live integration to eligible dealers and the licensed Schedule B historical capture/matching functionality is enabled and ready from the beginning of the pilot; and
+(e) both parties confirm in writing that the complete integration — live and historical — is live and working.
 
 1.3 The initial pilot runs for **90 calendar days from the Pilot Launch Date**, unless ended earlier under section 13.
 
@@ -409,17 +410,20 @@ Live reconciliation target: **2–5 minutes**. Stale threshold: **15 minutes**.
 
 # SCHEDULE B — HISTORICAL VEHICLE-EVENT EVIDENCE
 
-## B0. Activation condition
-The commercial terms in this Schedule B are agreed in principle, but **historical retention and historical matching do not activate merely because the main agreement is signed**.
+## B0. Binding licence and pre-launch safeguard condition
+This Schedule B forms a **binding part of this agreement from the Effective Date**. It defines the agreed historical-evidence licence that is required for the complete BuySmart integration and the 90-day pilot.
 
-Before SimpleDMS stores any CarMazium-sourced event as retained historical evidence, CarMazium must give a separate written Schedule B activation notice confirming that:
+The parties agree, however, that **no CarMazium-sourced historical event may be captured, retained or matched in production until the following safeguards have been completed and verified as part of the joint production-launch approval**:
 - the applicable privacy notice/transparency update is live;
 - the lawful-basis assessment for the historical purpose is complete;
-- any required DPIA or documented DPIA-screening decision is complete;
-- the protected vehicle-matching design and raw-VRM deletion controls have been verified; and
-- the relevant production feed fields have passed final acceptance.
+- any required DPIA, or a documented DPIA-screening decision concluding that a full DPIA is not required, is complete;
+- the protected vehicle-matching design and raw-VRM deletion controls have been verified;
+- the relevant production feed fields, retention/deletion controls and historical-field exclusions have passed final acceptance; and
+- both parties confirm in writing that the licensed historical functionality is ready to operate from the Pilot Launch Date.
 
-Until that written activation notice is given, SimpleDMS may use the production partner API only for the live integration and short operational reconciliation/cache permitted by section 5. No Schedule B historical event record may be created. The live 90-day pilot may begin without Schedule B being activated.
+These safeguards are **conditions to production launch, not a later optional activation**. The Pilot Launch Date cannot occur until both the approved live integration and the licensed Schedule B historical capture/matching functionality are ready and confirmed working by both parties.
+
+Once those pre-launch conditions are satisfied and the Pilot Launch Date occurs, SimpleDMS may begin capturing permitted Schedule B evidence from the start of the pilot under the limits in this Schedule. No historical rights apply to observations made before the Pilot Launch Date unless CarMazium later expressly agrees otherwise in writing.
 
 ## B1. Purpose
 Permitted only for vehicle matching, repeat-appearance research, market analysis, BuySmart vehicle-history evidence, new BuySmart reports while evidence is in term, corrections and agreed aggregate analytics.
@@ -556,7 +560,11 @@ Before production launch:
 - monthly metric definitions agreed;
 - production photographs/rights confirmed;
 - privacy notice/lawful-basis treatment for attribution and historical matching completed;
+- any required DPIA or documented DPIA-screening decision completed;
+- protected matching design and raw-VRM deletion controls verified;
+- historical-field exclusions, 36-month event clock and deletion/expiry controls verified;
 - Schedule C provider items completed;
+- both the approved live integration and licensed Schedule B historical functionality confirmed ready;
 - both parties provide written production go-live approval.
 
 ---
