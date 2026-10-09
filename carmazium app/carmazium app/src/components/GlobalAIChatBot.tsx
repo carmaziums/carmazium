@@ -412,8 +412,10 @@ export const GlobalAIChatBot: React.FC = () => {
   const isKeyboardVisible = keyboardHeight > 0;
   const dynamicBottom = isKeyboardVisible ? keyboardHeight + 8 : chatBottom;
   const maxBoxHeight = windowHeight - insets.top - dynamicBottom - 24;
-  const dynamicHeight = Math.max(0, Math.min(540, maxBoxHeight));
-  const chatWidth = Math.max(0, Math.min(340, windowWidth - 32));
+  // Match the web assistant's roomy conversation panel while respecting
+  // small-screen safe areas and the Android/iOS keyboard.
+  const dynamicHeight = Math.max(0, Math.min(620, maxBoxHeight));
+  const chatWidth = Math.max(0, Math.min(400, windowWidth - 24));
 
   return (
     <>
@@ -436,11 +438,11 @@ export const GlobalAIChatBot: React.FC = () => {
                 <View style={styles.chatHeaderLeft}>
                   <View style={styles.chatAvatar}>
                     <Image source={MAZIUM_MASCOT} style={styles.chatAvatarImage} contentFit="contain" />
-                    <View style={styles.onlineDot} />
+                    <View style={styles.botAccentDot} />
                   </View>
                   <View>
                     <Text style={styles.chatTitle}>MaziuM AI</Text>
-                    <Text style={styles.chatStatus}>Car-buying assistant</Text>
+                    <Text style={styles.chatStatus}>Your car-buying assistant</Text>
                   </View>
                 </View>
                 <View style={styles.chatHeaderActions}>
@@ -579,7 +581,7 @@ export const GlobalAIChatBot: React.FC = () => {
               <View style={styles.chatInputRow}>
                 <TextInput
                   style={styles.chatInput}
-                  placeholder="Ask anything about cars..."
+                  placeholder="e.g. BMWs under £20,000..."
                   placeholderTextColor={Colors.iconMuted}
                   value={message}
                   onChangeText={setMessage}
@@ -594,17 +596,7 @@ export const GlobalAIChatBot: React.FC = () => {
 
             </ChatErrorBoundary>
           </Pressable>
-          {!isKeyboardVisible && (
-            <TouchableOpacity
-              style={[styles.openCloseButton, { bottom: floatingBottom }]}
-              onPress={() => setIsOpen(false)}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Close MaziuM AI assistant"
-            >
-              <Ionicons name="close" size={24} color={Colors.white} />
-            </TouchableOpacity>
-          )}
+
         </Pressable>
       </Modal>
 
@@ -744,17 +736,10 @@ export const GlobalAIChatBot: React.FC = () => {
 const styles = StyleSheet.create({
   container: { position: 'absolute', right: 16, zIndex: 9999, alignItems: 'flex-end' },
   chatBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)' },
-  openCloseButton: {
-    position: 'absolute', right: 16, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.deepBlue_1e1e28, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.accent, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45, shadowRadius: 12, elevation: 8,
-  },
-
   chatBox: {
-    position: 'absolute', right: 16, width: 320,
-    backgroundColor: Colors.bgSecondaryAlt, borderRadius: 20,
-    borderWidth: 1, borderColor: Colors.accentAlpha30,
+    position: 'absolute', right: 12, width: 400,
+    backgroundColor: Colors.bgElevated, borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.borderHi,
     shadowColor: Colors.black, shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5, shadowRadius: 20, elevation: 20, overflow: 'hidden',
   },
@@ -775,8 +760,8 @@ const styles = StyleSheet.create({
   },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 14, backgroundColor: Colors.deepBlue_1e1e28,
-    borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05,
+    paddingHorizontal: 16, paddingVertical: 14, backgroundColor: Colors.bgElevated,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
   },
   chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   chatAvatar: {
@@ -784,32 +769,32 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   chatAvatarImage: { width: 40, height: 40 },
-  onlineDot: {
+  botAccentDot: {
     position: 'absolute', right: 0, bottom: 0, width: 11, height: 11,
-    borderRadius: 6, backgroundColor: Colors.accentGreen,
-    borderWidth: 2, borderColor: Colors.deepBlue_1e1e28,
+    borderRadius: 6, backgroundColor: Colors.accent,
+    borderWidth: 2, borderColor: Colors.bgElevated,
   },
-  chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
-  chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.accentGreen },
+  chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
+  chatStatus: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
   chatHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  closeBtn: { padding: 4 },
+  closeBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
   chatScroll: { flex: 1, backgroundColor: Colors.bgPrimary },
-  chatScrollContent: { padding: 14, gap: 10 },
+  chatScrollContent: { padding: 16, gap: 14 },
 
-  msgBubble: { maxWidth: '85%', padding: 10, borderRadius: 14 },
-  msgAI: { alignSelf: 'flex-start', backgroundColor: Colors.deepBlue_1e1e28, borderBottomLeftRadius: 4 },
+  msgBubble: { maxWidth: '88%', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16 },
+  msgAI: { alignSelf: 'flex-start', backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle, borderBottomLeftRadius: 4 },
   msgUser: { alignSelf: 'flex-end', backgroundColor: Colors.accent, borderBottomRightRadius: 4 },
-  msgText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 18 },
-  msgTextAI: { color: Colors.paleNearWhite_e0e0e0 },
+  msgText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 21 },
+  msgTextAI: { color: Colors.textPrimary },
   msgTextUser: { color: Colors.white },
 
   aiConsentCard: {
     padding: 12,
     borderRadius: 14,
-    backgroundColor: Colors.deepBlue_1e1e28,
+    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.accentAlpha25,
+    borderColor: Colors.borderHi,
   },
   aiConsentTitleRow: {
     flexDirection: 'row',
@@ -824,8 +809,8 @@ const styles = StyleSheet.create({
   },
   aiConsentText: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.size10,
-    lineHeight: 16,
+    fontSize: FontSize.xs,
+    lineHeight: 19,
     color: Colors.textSecondary,
   },
   aiConsentActions: {
@@ -835,7 +820,7 @@ const styles = StyleSheet.create({
   },
   aiConsentPrimary: {
     flex: 1,
-    minHeight: 38,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
@@ -849,12 +834,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   aiConsentSecondary: {
-    minHeight: 38,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
+    borderColor: Colors.borderHi,
     paddingHorizontal: 12,
   },
   aiConsentSecondaryText: {
@@ -1027,7 +1012,7 @@ const styles = StyleSheet.create({
   filterCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginTop: 6, padding: 12, borderRadius: 12,
-    backgroundColor: Colors.deepBlue_1a1a24, borderWidth: 1, borderColor: Colors.accentAlpha25,
+    backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi,
     alignSelf: 'flex-start', maxWidth: '90%',
   },
   filterCardIcon: {
@@ -1040,10 +1025,11 @@ const styles = StyleSheet.create({
   // Quick reply chips
   quickPromptsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   quickPromptChip: {
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14,
-    backgroundColor: Colors.accentAlpha08, borderWidth: 1, borderColor: Colors.accentAlpha20,
+    minHeight: 44, justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
+    backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi,
   },
-  quickPromptText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.paleNearWhite_e0e0e0 },
+  quickPromptText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
 
   // Typing dots
   dotsRow: { flexDirection: 'row', gap: 4, alignItems: 'center', paddingVertical: 2 },
@@ -1051,15 +1037,16 @@ const styles = StyleSheet.create({
 
   // Input row
   chatInputRow: {
-    flexDirection: 'row', alignItems: 'center', padding: 10,
-    backgroundColor: Colors.bgSecondaryAlt, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05, gap: 8,
+    flexDirection: 'row', alignItems: 'center', padding: 12,
+    backgroundColor: Colors.bgElevated, borderTopWidth: 1, borderTopColor: Colors.borderSubtle, gap: 10,
   },
   chatInput: {
-    flex: 1, height: 38, backgroundColor: Colors.deepBlue_1e1e28, borderRadius: 19,
+    flex: 1, minHeight: 46, backgroundColor: Colors.bgCardSolid, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.borderHi,
     paddingHorizontal: 14, fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.white,
   },
   sendBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.accent,
+    width: 46, height: 46, borderRadius: 14, backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
 
