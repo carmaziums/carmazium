@@ -12,7 +12,7 @@ The production design will therefore be prospective and fail closed:
 2. Each eligible listing must carry a recorded partner-distribution acknowledgement timestamp.
 3. Existing/legacy listings without that timestamp are excluded from the SimpleDMS feed by default.
 4. Approved public vehicle photographs may be shared only for the live integration and short operational cache; historical photograph retention remains prohibited.
-5. Schedule B historical vehicle-event retention is separately activation-gated. Signing the main agreement does not by itself activate historical retention or historical matching.
+5. Schedule B historical vehicle-event rights are binding in the signed agreement, but production historical capture/matching remains technically and legally blocked until the defined privacy, lawful-basis, DPIA/matching and deletion safeguards are verified as pre-launch conditions.
 
 ## UK privacy basis — live partner feed
 
@@ -42,12 +42,12 @@ Production controls:
 
 ## Historical evidence and DPIA screening
 
-Historical matching combines or compares vehicle-event records over time and may involve data matching across sources. ICO DPIA guidance identifies data matching/combining datasets as a high-risk indicator and recommends a DPIA where processing is likely to result in high risk; where no mandatory trigger is found, the screening decision should still be documented.
+Historical matching combines or compares vehicle-event records over time and may involve data matching across sources. ICO guidance recommends a DPIA as best practice for data sharing and requires a DPIA where processing is likely to result in high risk; where no mandatory trigger is found, the screening decision should still be documented.
 
 For CarMazium:
-- complete a DPIA or documented DPIA-screening assessment before Schedule B activation;
+- complete a DPIA or documented DPIA-screening assessment before production launch;
 - record the lawful basis, purpose, data fields, 36-month event clock, report-retention boundary, matching design, correction/erasure path and residual risk;
-- keep Schedule B OFF until written activation.
+- keep production historical capture technically disabled until the joint production-launch gate confirms these controls are ready.
 
 Source:
 - ICO, When do we need to do a DPIA?: https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/accountability-and-governance/data-protection-impact-assessments-dpias/when-do-we-need-to-do-a-dpia/
@@ -93,4 +93,4 @@ Prepared:
 
 **Do not enable the production SimpleDMS feed until the legal wording is approved and live, the consent/acknowledgement migration and clients have passed CI/review, and the final production release checklist is signed off.**
 
-**Do not activate Schedule B historical retention until CarMazium separately issues the written Schedule B activation notice defined in the consolidated agreement.**
+**Do not start the 90-day production pilot until Schedule B historical capture/matching safeguards have passed the joint pre-launch gate and both parties confirm the complete live + historical integration is ready.**
