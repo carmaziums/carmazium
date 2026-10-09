@@ -2112,7 +2112,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               // creation path; Date(string) could interpret an unzoned date
               // differently on Android versus iOS and schedule the wrong hour.
               const parsedStart = parseNativeAuctionLocalStart(auctionStartDate);
-              if (!parsedStart || !nativeScheduledStartIsValid(parsedStart)) {
+              if (!parsedStart || !nativeScheduledStartIsValid(auctionStartDate)) {
                 throw new Error('Choose a valid future auction start time.');
               }
               auctionPayload.startTime = parsedStart.toISOString();
