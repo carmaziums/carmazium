@@ -20,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
 import { Colors } from '../../constants/colors';
@@ -113,6 +115,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const { openDrawer } = useDrawer();
   const [listings, setListings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [boostCheckoutUrl, setBoostCheckoutUrl] = useState<string | null>(null);
@@ -120,15 +123,16 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
   const loadListings = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setIsLoading(true);
+    setLoadError(null);
     try {
-      const [listingsRes, statsRes] = await Promise.all([
-        apiClient<any>('/listings/my?page=1&limit=20'),
+      const [ownedListings, statsRes] = await Promise.all([
+        fetchAllMyListings<any>(),
         apiClient<any>('/listings/stats').catch(() => null),
       ]);
-      setListings(listingsRes?.data || []);
+      setListings(ownedListings);
       setStats(statsRes?.data || statsRes || null);
-    } catch (e) {
-      console.warn('Failed to load listings:', e);
+    } catch (e: any) {
+      setLoadError(e?.message || 'Could not load your listings. Please retry.');
     } finally {
       setIsLoading(false);
     }
@@ -274,6 +278,18 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
       );
     }
 
+    // Failed fetches must never masquerade as an empty account.
+    if (loadError && listings.length === 0) {
+      return (
+        <View style={{ flex: 1 }}>
+          <View style={[styles.scrollContent, { paddingTop: insets.top + 24 }]}>
+            <ErrorBanner message={loadError} onRetry={() => loadListings()} />
+          </View>
+          {renderTabBar()}
+        </View>
+      );
+    }
+
     // Empty state
     if (listings.length === 0) {
       return (
@@ -320,6 +336,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
           renderItem={renderListingRow}
           ListHeaderComponent={
             <>
+              {loadError && <ErrorBanner message={loadError} onRetry={() => loadListings({ silent: true })} />}
               {/* Header */}
               <View style={styles.header}>
                 <View>
