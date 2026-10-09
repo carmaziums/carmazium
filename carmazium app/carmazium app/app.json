@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0A0A0C",
+    "backgroundColor": "#1B2538",
     "icon": "./assets/images/icon.png",
     "scheme": "carmazium",
     "runtimeVersion": {
@@ -15,15 +15,12 @@
       "url": "https://u.expo.dev/f0ab914b-3433-4816-80a2-0a94e6c6a066",
       "enabled": true,
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD",
-      "requestHeaders": {
-        "expo-channel-name": "production"
-      }
+      "checkAutomatically": "ON_LOAD"
     },
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0C"
+      "backgroundColor": "#1B2538"
     },
     "assetBundlePatterns": [
       "assets/**/*"
@@ -70,7 +67,7 @@
       "package": "uk.carmazium.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0A0A0C"
+        "backgroundColor": "#1B2538"
       },
       "intentFilters": [
         {
@@ -254,7 +251,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#FF0037",
+          "color": "#ED1C24",
           "sounds": [],
           "androidMode": "default",
           "androidCollapsedTitle": "CarMazium"

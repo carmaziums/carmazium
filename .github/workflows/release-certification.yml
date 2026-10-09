@@ -157,6 +157,8 @@ jobs:
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
         run: node scripts/check-release-readiness.mjs
+      - name: Verify native redesign navigation and release contracts
+        run: node --test scripts/test-mobile-redesign-block10.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
