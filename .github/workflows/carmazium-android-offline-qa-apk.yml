@@ -86,10 +86,10 @@ jobs:
           delete app.expo.updates.url;
           // QA-only: R8 currently cannot resolve Stripe's optional provisioning bridge.
           // Leave the production app.json and EAS release profiles untouched.
-          const props = app.expo.plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties');
-          if (!props || !props[1]?.android) throw new Error('Missing Android build properties');
-          props[1].android.enableProguardInReleaseBuilds = false;
-          props[1].android.enableShrinkResourcesInReleaseBuilds = false;
+          const buildProps = app.expo.plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties');
+          if (!buildProps || !buildProps[1]?.android) throw new Error('Missing Android build properties');
+          buildProps[1].android.enableProguardInReleaseBuilds = false;
+          buildProps[1].android.enableShrinkResourcesInReleaseBuilds = false;
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
           if (app.expo.android.package !== 'uk.carmazium.qa' || app.expo.updates.enabled !== false) throw new Error('Unsafe QA app configuration');
           console.log('QA Android package and disabled OTA verified. Public preview environment selected.');
