@@ -177,6 +177,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block5.test.mjs
       - name: Confirm integrated native audit guards remain consistent
         run: node --test scripts/test-native-app-integration-block6.test.mjs
+      - name: Audit standalone Android test-build safety, channel and real release isolation
+        run: node --test scripts/test-native-app-audit-block7.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
