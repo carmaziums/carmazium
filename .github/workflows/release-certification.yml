@@ -11,6 +11,8 @@ on:
       - 'scripts/check-product-parity.mjs'
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
+      - 'scripts/test-native-app-audit-block7.test.mjs'
+      - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'docs/native/**'
       - 'package.json'
       - '.github/workflows/release-certification.yml'
