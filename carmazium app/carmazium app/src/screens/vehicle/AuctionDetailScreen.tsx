@@ -2232,17 +2232,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             </View>
 
-            {/* Quick bid buttons */}
+            {/* Quick amounts only fill the input: a separate Place Bid action
+                mirrors web and prevents accidental one-tap bids. */}
+            <Text style={s.bidHelpText}>Choose an amount or enter your own, then tap Place Bid.</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {quickBidAmounts.map((targetAmount, index) => {
                 const delta = hasRealBids ? targetAmount - currentBid : targetAmount - minimumAllowedBid;
                 return (
                   <TouchableOpacity
                     key={targetAmount}
-                    style={s.quickBidBtn}
-                    onPress={() => handleBid(targetAmount)}
+                    style={[s.quickBidBtn, Number(bidAmount) === targetAmount && s.quickBidSelected]}
+                    onPress={() => { setBidAmount(String(targetAmount)); setBidError(null); }}
                     disabled={bidLoading || targetAmount < minimumAllowedBid}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: Number(bidAmount) === targetAmount }}
+                    accessibilityLabel={`Select bid amount ${fmt(targetAmount)}`}
                   >
                     <Text style={s.quickBidLabel}>
                       {!hasRealBids && index === 0
@@ -2279,7 +2284,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
                       <Ionicons name="hammer-outline" size={15} color={Colors.white} />
-                      <Text style={s.bidBtnText}>BID</Text>
+                      <Text style={s.bidBtnText}>Place Bid</Text>
                     </>
                 }
               </TouchableOpacity>
@@ -2341,9 +2346,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Buyer fee notice */}
             <View style={s.feeNotice}>
-              <View>
+              <View style={{ flex: 1, paddingRight: 12 }}>
                 <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
-                <Text style={s.feeNoticeHint}>One-time fee if you win</Text>
+                <Text style={s.feeNoticeHint}>Only payable if you win. Pay the vehicle seller directly after inspection and agreement.</Text>
               </View>
               <Text style={[s.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
             </View>
@@ -2479,10 +2484,10 @@ const s = StyleSheet.create({
   cardSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 1, marginBottom: 12, borderLeftWidth: 2, borderLeftColor: Colors.accent, paddingLeft: 8 },
 
   // Stats row
-  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 0 },
-  statBox: { flex: 1, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 10, alignItems: 'center' },
-  statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 4 },
-  statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, textAlign: 'center' },
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 0 },
+  statBox: { flexBasis: '47%', flexGrow: 1, minHeight: 63, backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 10, alignItems: 'center', justifyContent: 'center' },
+  statLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, letterSpacing: 0.6, marginBottom: 4 },
+  statValue: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, textAlign: 'center', flexShrink: 1 },
 
   // Digest — seller custom tags + self-rating
   digestTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -2519,12 +2524,14 @@ const s = StyleSheet.create({
   sellerName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Bid console
-  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.deepBlue_0d0d11, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha06, paddingHorizontal: 14, paddingTop: 12 },
+  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.borderHi, paddingHorizontal: 14, paddingTop: 12 },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
   minNextBid: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
-  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingVertical: 8, alignItems: 'center', gap: 2 },
+  quickBidBtn: { flex: 1, backgroundColor: Colors.whiteAlpha04, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, paddingVertical: 10, alignItems: 'center', gap: 2, minHeight: 52, justifyContent: 'center' },
+  quickBidSelected: { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accent },
+  bidHelpText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   quickBidLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted },
   quickBidAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.size12, color: Colors.white },
   quickBidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, letterSpacing: 0.5 },
@@ -2537,7 +2544,7 @@ const s = StyleSheet.create({
   bidBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, letterSpacing: 0.8 },
   feeNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.warningAlpha06, borderWidth: 1, borderColor: Colors.warningAlpha15, borderRadius: Radius.inline, paddingHorizontal: 12, paddingVertical: 8 },
   feeNoticeLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
-  feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.iconMuted, marginTop: 1 },
+  feeNoticeHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4, lineHeight: 17 },
   feeNoticeAmt: { fontFamily: FontFamily.mono, fontSize: FontSize.xl, color: Colors.warning },
 
   // Seller tools row (top strip, below header banners)
