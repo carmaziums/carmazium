@@ -39,6 +39,9 @@ test('native QA workflow has no Expo secret dependency and keeps production inst
   assert.ok(workflow.includes('apksigner'));
   assert.ok(workflow.includes('upload-artifact@v4'));
   assert.ok(workflow.includes('actions/setup-java@v4'));
+  assert.ok(workflow.includes("'platforms;android-36'"));
+  assert.ok(workflow.includes("'build-tools;36.0.0'"));
+  assert.doesNotMatch(workflow, /android-actions\/setup-android@v3/);
   assert.ok(workflow.includes('node-version: \'20\''));
   assert.doesNotMatch(workflow, /secrets\.EXPO_TOKEN|secrets\.EAS_TOKEN|eas-cli|eas build/);
   assert.ok(workflow.includes('run: npx expo prebuild --platform android --non-interactive --clean'));
