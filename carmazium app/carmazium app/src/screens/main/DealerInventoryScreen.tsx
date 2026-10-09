@@ -297,7 +297,7 @@ const ListingDetail: React.FC<{
 
           {/* Visibility */}
           <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Visibility</Text>
+            <Text style={styles.detailRowLabel}>Listing status</Text>
             <View style={styles.detailRowRight}>
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
             </View>>
