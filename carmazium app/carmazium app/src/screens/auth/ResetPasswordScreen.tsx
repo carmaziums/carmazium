@@ -147,7 +147,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setNewFocused(false)}
                       onSubmitEditing={() => confirmRef.current?.focus()}
                     />
-                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showNew ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Show password' : 'Hide password'} />
+                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
@@ -177,7 +177,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setConfirmFocused(false)}
                       onSubmitEditing={isFormValid ? handleSetPassword : undefined}
                     />
-                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-outline' : 'eye-off-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Show password' : 'Hide password'} />
+                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
