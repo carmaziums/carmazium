@@ -1850,7 +1850,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 Choose an active classified listing to put up for auction.
               </Text>
               {createError && (
-                <ErrorBanner message={createError} onRetry={() => void openCreateModal(presetListingId)} />
+                <ErrorBanner message={createError} onRetry={() => void openCreateModal(preselectListingId)} />
               )}
               {listingsLoading ? (
                 <View style={styles.modalCenter}>
