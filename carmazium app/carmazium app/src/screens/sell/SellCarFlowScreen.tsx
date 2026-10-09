@@ -3322,9 +3322,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={applyValuationGuide}
                 activeOpacity={0.8}
               >
-                <Text style={s.valuationCardLabel}>CURRENT MARKET VALUE</Text>
+                <Text style={s.valuationCardLabel}>{valuation.confidence === 'LOW' ? 'LOW-CONFIDENCE PRICE GUIDE' : 'CURRENT MARKET VALUE'}</Text>
                 <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.</Text>
+                <Text style={s.valuationCardHint}>
+                  {valuation.confidence === 'LOW'
+                    ? 'Limited market evidence. This is a rough guide, not a verified sale price. You can set your own price.'
+                    : 'Market guide from available evidence, adjusted by the condition and specification you provide.'}
+                </Text>
                 <Text style={s.valuationApplyText}>Use this value</Text>
               </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>
