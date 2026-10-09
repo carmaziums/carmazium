@@ -84,7 +84,7 @@ const USER_ITEMS: MenuItem[] = [
     label: 'Dashboard',
     icon: 'speedometer-outline',
     iconLib: 'ion',
-    stackScreen: 'SellerDashboard',
+    tabName: 'Profile',
   },
   {
     id: 'user-listings',
@@ -166,129 +166,22 @@ const USER_ITEMS: MenuItem[] = [
   },
 ];
 
+// Keep core day-to-day tools first. Permissions are still filtered before the
+// menu is rendered, so reordering never grants staff additional access.
 const DEALER_ITEMS: MenuItem[] = [
-  { 
-    id: 'dealer-onboarding',
-    requiredPermission: 'MANAGE_KYC', 
-    label: 'Dealer onboarding', 
-    icon: 'trail-sign-outline', 
-    iconLib: 'ion', 
-    stackScreen: 'DealerOnboarding',
-  },
-  { 
-    id: 'dealer-kyc',
-    requiredPermission: 'MANAGE_KYC', 
-    label: 'KYC Verified identity', 
-    icon: 'shield-checkmark-outline', 
-    iconLib: 'ion', 
-    stackScreen: 'DealerKYC',
-  },
-  {
-    // SellerAuctionsScreen is role-agnostic (fetches /auctions/my/list) and
-    // already reachable for dealers via DealerInventoryScreen's "PUT ON
-    // AUCTION" button and DealerProfileScreen's "Manage auctions" row — this
-    // entry used to show a "Coming Soon" alert that was stale by the time
-    // those two entry points shipped (mobile-production-readiness-plan.md F17).
-    id: 'dealer-auctions',
-    requiredPermission: 'MANAGE_INVENTORY',
-    label: 'Manage Auctions',
-    icon: 'gavel',
-    iconLib: 'mci',
-    stackScreen: 'SellerAuctions',
-  },
-  { 
-    id: 'dealer-leads',
-    requiredPermission: 'MANAGE_CRM', 
-    label: 'Customers', 
-    icon: 'people-outline', 
-    iconLib: 'ion', 
-    stackScreen: 'DealerLeads',
-  },
-  {
-    id: 'dealer-inventory',
-    requiredPermission: 'VIEW_INVENTORY',
-    label: 'Stock',
-    icon: 'albums-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerInventory',
-  },
-  {
-    // Same destination as the buyer/seller "Watchlist" entry above. The
-    // watchlist backend (GET/DELETE /watchlist) is role-agnostic, matching
-    // web's dealer wishlist page reusing the same endpoints rather than
-    // introducing a separate one. Both now land on the Saved tab.
-    id: 'dealer-wishlist',
-    label: 'Saved Cars',
-    icon: 'heart-outline',
-    iconLib: 'ion',
-    tabName: 'Saved',
-  },
-  {
-    id: 'dealer-analytics',
-    requiredPermission: 'VIEW_ANALYTICS',
-    label: 'Analytics',
-    icon: 'bar-chart-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerAnalytics',
-  },
-  {
-    id: 'dealer-team',
-    requiredPermission: 'MANAGE_TEAM',
-    label: 'Team',
-    icon: 'people-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerTeam',
-  },
-  {
-    id: 'dealer-offers',
-    requiredPermission: 'MANAGE_OFFERS',
-    label: 'Offers',
-    icon: 'pricetag-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerOffers',
-  },
-  {
-    id: 'dealer-my-offers',
-    requiredPermission: 'MANAGE_OFFERS',
-    label: 'My Retail Offers',
-    icon: 'send-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerMyOffers',
-  },
-  {
-    id: 'dealer-purchases',
-    requiredPermission: 'VIEW_PURCHASES',
-    label: 'Purchases',
-    icon: 'receipt-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerPurchases',
-  },
-  // Earnings and Finance are both built and registered, but were the only two
-  // dealer features missing from this list — reachable solely from a card on
-  // DealerProfileScreen. A dealer could reach Purchases and then had no path
-  // to the money side, one item further down the same menu.
-  {
-    id: 'dealer-earnings',
-    requiredPermission: 'VIEW_ANALYTICS',
-    label: 'Earnings',
-    icon: 'wallet-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerEarnings',
-  },
-  {
-    id: 'dealer-finance',
-    label: 'Finance',
-    icon: 'calculator-outline',
-    iconLib: 'ion',
-    stackScreen: 'DealerFinance',
-  },
-  {
-    id: 'dealer-notif-settings',
-    label: 'Notification settings', 
-    icon: 'notifications-circle-outline', 
-    iconLib: 'ion', 
-    stackScreen: 'Settings',
-  },
+  { id: 'dealer-inventory', label: 'Stock', icon: 'albums-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', stackScreen: 'DealerInventory' },
+  { id: 'dealer-auctions', label: 'Manage Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
+  { id: 'dealer-wishlist', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
+  { id: 'dealer-offers', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
+  { id: 'dealer-my-offers', label: 'My Retail Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
+  { id: 'dealer-purchases', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
+  { id: 'dealer-leads', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', stackScreen: 'DealerLeads' },
+  { id: 'dealer-analytics', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
+  { id: 'dealer-team', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
+  { id: 'dealer-earnings', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
+  { id: 'dealer-finance', label: 'Finance', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
+  { id: 'dealer-kyc', label: 'Business verification', icon: 'shield-checkmark-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerKYC' },
+  { id: 'dealer-onboarding', label: 'Dealer onboarding', icon: 'trail-sign-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerOnboarding' },
 ];
 
 export const GlobalDrawer: React.FC = () => {
@@ -472,7 +365,7 @@ export const GlobalDrawer: React.FC = () => {
               <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
             )}
           </View>
-          {(user?.isAddressVerified === true) && (
+          {(user?.isAddressVerified === true && user?.isVerified === true) && (
             <View style={styles.verifiedDot}>
               <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success} />
             </View>
@@ -563,7 +456,7 @@ export const GlobalDrawer: React.FC = () => {
             </>
           )}
 
-          {role === 'dealer' && (
+          {(role === 'dealer' || isActualDealer || isDealerStaff) && (
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
@@ -590,7 +483,8 @@ export const GlobalDrawer: React.FC = () => {
                   <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
                 </TouchableOpacity>
               )}
-              {/* Allow dealer to browse as a regular buyer */}
+              {/* Preserve dealer access even in buyer preview. */}
+              {role === 'dealer' && (
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => { closeDrawer(); setTimeout(() => setRole('buyer'), 160); }}
@@ -600,14 +494,15 @@ export const GlobalDrawer: React.FC = () => {
                 <View style={[styles.iconWrap, styles.iconWrapGold]}>
                   <Ionicons name="swap-horizontal-outline" size={19} color={Colors.warning} />
                 </View>
-                <Text style={styles.rowLabelDealer}>Browse as buyer</Text>
+                <Text style={styles.rowLabelDealer}>Preview buyer dashboard</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
+              )}
             </>
           )}
 
           {/* ── Dealer toggle — visible for all non-dealer users ── */}
-          {role !== 'dealer' && (
+          {role !== 'dealer' && (accountRole === 'buyer' || accountRole === 'seller' || isActualDealer) && (
             <>
               <View style={styles.divider} />
               <TouchableOpacity
@@ -692,6 +587,31 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           <View style={styles.divider} />
+          {/* Common account controls are never hidden under advanced pages. */}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}
+            accessibilityRole="button"
+            accessibilityLabel="Open account settings"
+            activeOpacity={0.7}
+          >
+            <View style={styles.bar} />
+            <View style={styles.iconWrap}><Ionicons name="settings-outline" size={19} color={Colors.textSecondary} /></View>
+            <Text style={styles.rowLabel}>Account settings</Text>
+            <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => handleItem({ id: 'notification-settings', label: 'Notification settings', icon: 'notifications-outline', iconLib: 'ion', stackScreen: 'NotificationSettings' })}
+            accessibilityRole="button"
+            accessibilityLabel="Open notification settings"
+            activeOpacity={0.7}
+          >
+            <View style={styles.bar} />
+            <View style={styles.iconWrap}><Ionicons name="notifications-outline" size={19} color={Colors.textSecondary} /></View>
+            <Text style={styles.rowLabel}>Notification settings</Text>
+            <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
+          </TouchableOpacity>
 
           {/* Contact Support (DASH-024). Web has had this in its sidebar for
               every role; mobile had no in-app route to support at all. Opens
@@ -720,7 +640,7 @@ export const GlobalDrawer: React.FC = () => {
         {/* ── Footer brand ─────────────────────────────── */}
         <View style={styles.footer}>
           <Text style={styles.footerBrand}>CARMAZIUM</Text>
-          <Text style={styles.footerTagline}>Premium Automotive Marketplace</Text>
+          <Text style={styles.footerTagline}>Auction FREE · Retail £1</Text>
         </View>
       </Animated.View>
     </Modal>
@@ -847,7 +767,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 16,
-    paddingVertical: 12,
+    paddingVertical: 9,
+    minHeight: 52,
     marginBottom: 2,
   },
   rowActive: {
