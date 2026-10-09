@@ -84,7 +84,7 @@ const USER_ITEMS: MenuItem[] = [
     label: 'Dashboard',
     icon: 'speedometer-outline',
     iconLib: 'ion',
-    stackScreen: 'SellerDashboard',
+    tabName: 'Profile',
   },
   {
     id: 'user-listings',
@@ -142,7 +142,7 @@ const USER_ITEMS: MenuItem[] = [
   },
   {
     id: 'user-watchlist',
-    label: 'Watchlist',
+    label: 'Saved Cars',
     icon: 'heart-outline',
     iconLib: 'ion',
     // Points at the Saved tab, not the deleted WatchlistScreen. Saved is the
@@ -178,7 +178,7 @@ const DEALER_ITEMS: MenuItem[] = [
   { 
     id: 'dealer-kyc',
     requiredPermission: 'MANAGE_KYC', 
-    label: 'KYC Verified identity', 
+    label: 'Identity verification', 
     icon: 'shield-checkmark-outline', 
     iconLib: 'ion', 
     stackScreen: 'DealerKYC',
@@ -207,7 +207,7 @@ const DEALER_ITEMS: MenuItem[] = [
   {
     id: 'dealer-inventory',
     requiredPermission: 'VIEW_INVENTORY',
-    label: 'Stock',
+    label: 'My Inventory',
     icon: 'albums-outline',
     iconLib: 'ion',
     stackScreen: 'DealerInventory',
@@ -287,7 +287,7 @@ const DEALER_ITEMS: MenuItem[] = [
     label: 'Notification settings', 
     icon: 'notifications-circle-outline', 
     iconLib: 'ion', 
-    stackScreen: 'Settings',
+    stackScreen: 'NotificationSettings',
   },
 ];
 
@@ -328,11 +328,18 @@ export const GlobalDrawer: React.FC = () => {
     loading: dealerAccessLoading,
     hasPermission: hasDealerPermission,
   } = useDealerAccess(isActualDealer || isDealerStaff);
+  // Highlight day-to-day dealer tasks before onboarding/secondary settings.
+  // Permission filtering happens before display and remains authoritative.
   const visibleDealerItems = DEALER_ITEMS.filter(
     (item) =>
       !item.requiredPermission
       || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission)),
-  );
+  ).sort((a, b) => {
+    const order = ['dealer-inventory', 'dealer-auctions', 'dealer-leads', 'dealer-offers', 'dealer-my-offers', 'dealer-purchases'];
+    const ia = order.indexOf(a.id);
+    const ib = order.indexOf(b.id);
+    return (ia < 0 ? order.length : ia) - (ib < 0 ? order.length : ib);
+  });
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -563,7 +570,7 @@ export const GlobalDrawer: React.FC = () => {
             </>
           )}
 
-          {role === 'dealer' && (
+          {(role === 'dealer' || isActualDealer || isDealerStaff) && (
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
@@ -590,7 +597,8 @@ export const GlobalDrawer: React.FC = () => {
                   <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
                 </TouchableOpacity>
               )}
-              {/* Allow dealer to browse as a regular buyer */}
+              {/* Allow dealers to preview the buyer experience. */}
+              {role === 'dealer' && (
               <TouchableOpacity
                 style={styles.row}
                 onPress={() => { closeDrawer(); setTimeout(() => setRole('buyer'), 160); }}
@@ -603,6 +611,15 @@ export const GlobalDrawer: React.FC = () => {
                 <Text style={styles.rowLabelDealer}>Browse as buyer</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
+              )}
+              {role !== 'dealer' && isActualDealer && (
+                <TouchableOpacity style={styles.row} onPress={() => { closeDrawer(); setRole('dealer'); }} accessibilityRole="button" activeOpacity={0.7}>
+                  <View style={styles.bar} />
+                  <View style={[styles.iconWrap, styles.iconWrapGold]}><Ionicons name="swap-horizontal-outline" size={19} color={Colors.warning} /></View>
+                  <Text style={styles.rowLabelDealer}>Return to dealer dashboard</Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} />
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -692,6 +709,20 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           <View style={styles.divider} />
+          {/* Common account routes remain in the drawer for every role. */}
+          <Text style={styles.groupLabel}>ACCOUNT & SUPPORT</Text>
+          <TouchableOpacity style={styles.row} accessibilityRole="button" onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}>
+            <View style={styles.bar} />
+            <View style={styles.iconWrap}><Ionicons name="settings-outline" size={19} color={Colors.textSecondary} /></View>
+            <Text style={styles.rowLabel}>Account settings</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.row} accessibilityRole="button" onPress={() => handleItem({ id: 'notification-settings', label: 'Notifications', icon: 'notifications-outline', iconLib: 'ion', stackScreen: 'NotificationSettings' })}>
+            <View style={styles.bar} />
+            <View style={styles.iconWrap}><Ionicons name="notifications-outline" size={19} color={Colors.textSecondary} /></View>
+            <Text style={styles.rowLabel}>Notification preferences</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+          </TouchableOpacity>
 
           {/* Contact Support (DASH-024). Web has had this in its sidebar for
               every role; mobile had no in-app route to support at all. Opens
