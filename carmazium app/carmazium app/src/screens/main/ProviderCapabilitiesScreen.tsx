@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -63,7 +64,8 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  // Returning from verification/matching should refresh capability status.
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const apply = async (type: ServiceType) => {
     setBusy(type);
@@ -106,8 +108,20 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={Colors.accent} />}
         >
-          <Text style={styles.title}>Partner services</Text>
-          <Text style={styles.sub}>Apply once per service. Approval, verification and matching remain independent, while the business account and payouts stay shared.</Text>
+          <Text style={styles.title}>Manage your services</Text>
+          <Text style={styles.sub}>Activate each service independently. Complete verification and set your coverage before matched jobs or enquiries can reach you.</Text>
+          <View style={styles.quickActions}>
+            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
+              <Ionicons name="briefcase-outline" size={19} color={Colors.accent} />
+              <Text style={styles.quickActionText}>Service jobs</Text>
+              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched finance and warranty enquiries">
+              <Ionicons name="mail-outline" size={19} color={Colors.accent} />
+              <Text style={styles.quickActionText}>Enquiries</Text>
+              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -144,7 +158,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={[styles.status, { color: statusColor(cap?.status) }]}>{cap?.status || 'NOT ACTIVATED'}</Text>
                   </View>
                   {canApply ? (
-                    <TouchableOpacity style={styles.smallButton} onPress={() => apply(type)} disabled={busy === type}>
+                    <TouchableOpacity style={styles.smallButton} onPress={() => apply(type)} disabled={busy === type} accessibilityRole="button" accessibilityLabel={`${cap ? 'Reapply for' : 'Add'} ${SERVICE_LABELS[type]} service`}>
                       {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
                     </TouchableOpacity>
                   ) : null}
@@ -162,11 +176,11 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
 
                 {cap ? (
                   <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`View verification for ${SERVICE_LABELS[type]}`}>
                       <Ionicons name="document-text-outline" size={15} color={Colors.white} />
                       <Text style={styles.actionText}>VERIFICATION</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })}>
+                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`Set matching coverage for ${SERVICE_LABELS[type]}`}>
                       <Ionicons name="options-outline" size={15} color={Colors.white} />
                       <Text style={styles.actionText}>MATCHING</Text>
                     </TouchableOpacity>
@@ -190,18 +204,21 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   content: { padding: 18, gap: 14 },
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.xl, color: Colors.white },
+  quickActions: { gap: 9, marginTop: 4 },
+  quickAction: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, paddingHorizontal: 13 },
+  quickActionText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
   sub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 21, color: Colors.textSecondary },
-  payoutCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08, padding: 15 },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 15, gap: 11 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  payoutCard: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.warningAlpha30, backgroundColor: Colors.warningAlpha08, padding: 15 },
+  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 15, gap: 11 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 12 },
   icon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
   cardText: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, lineHeight: 19, color: Colors.textSecondary },
   status: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, marginTop: 3 },
-  smallButton: { minHeight: 36, minWidth: 66, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  smallButton: { minHeight: 44, minWidth: 80, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   smallButtonText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.whiteAlpha04 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 10, paddingHorizontal: 11, backgroundColor: Colors.bgElevated },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
   warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.xs },
