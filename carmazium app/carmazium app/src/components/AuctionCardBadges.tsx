@@ -12,6 +12,7 @@ interface ChipsProps {
   year?: number | null;
   mileage?: number | null;
   fuelType?: string | null;
+  transmission?: string | null;
   bodyType?: string | null;
   location?: string | null;
   deliveryAvailable?: boolean | null;
@@ -24,14 +25,15 @@ const Chip: React.FC<{ icon: any; label: string; accent?: boolean }> = ({ icon, 
   </View>
 );
 
-// Meta chip row — year / mileage / fuel / body type / location / delivery.
+// Meta chip row — year / mileage / fuel / gearbox / body type / location / delivery.
 export const AuctionCardChips: React.FC<ChipsProps> = ({
-  year, mileage, fuelType, bodyType, location, deliveryAvailable,
+  year, mileage, fuelType, transmission, bodyType, location, deliveryAvailable,
 }) => (
   <View style={styles.row}>
     {year != null && <Chip icon="calendar-outline" label={String(year)} />}
     {mileage != null && <Chip icon="speedometer-outline" label={`${Number(mileage).toLocaleString('en-GB')} mi`} />}
     {!!fuelType && <Chip icon="flash-outline" label={String(fuelType).replace(/_/g, ' ')} />}
+    {!!transmission && <Chip icon="settings-outline" label={String(transmission).replace(/_/g, ' ')} />}
     {!!bodyType && <Chip icon="car-outline" label={String(bodyType)} />}
     {!!location && <Chip icon="location-outline" label={String(location).split(',')[0]} />}
     {!!deliveryAvailable && <Chip icon="car-sport-outline" label="Delivery" accent />}
@@ -96,14 +98,14 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 5,
     backgroundColor: Colors.whiteAlpha06,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha10,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 5,
-    maxWidth: 110,
+    borderColor: Colors.borderSubtle,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+    maxWidth: 150,
   },
   chipAccent: {
     backgroundColor: 'rgba(34,197,94,0.12)',
@@ -111,8 +113,8 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontFamily: FontFamily.medium,
-    fontSize: FontSize.size9,
-    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
   },
   chipTextAccent: {
     color: Colors.accentGreen,
