@@ -43,7 +43,8 @@ test('native QA workflow has no Expo secret dependency and keeps production inst
   assert.ok(workflow.includes("'build-tools;36.0.0'"));
   assert.ok(workflow.includes('buildProps[1].android.enableProguardInReleaseBuilds = false;'));
   assert.ok(workflow.includes('buildProps[1].android.enableShrinkResourcesInReleaseBuilds = false;'));
-  assert.ok(workflow.includes("grep -Eq '^android.enableProguardInReleaseBuilds=false
+  assert.ok(workflow.includes("android.enableProguardInReleaseBuilds=false"));
+  assert.ok(workflow.includes("android.enableShrinkResourcesInReleaseBuilds=false"));
   assert.doesNotMatch(workflow, /android-actions\/setup-android@v3/);
   assert.ok(workflow.includes('node-version: \'20\''));
   assert.doesNotMatch(workflow, /secrets\.EXPO_TOKEN|secrets\.EAS_TOKEN|eas-cli|eas build/);
