@@ -113,7 +113,7 @@ jobs:
           sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
           {
             echo '### CarMazium Android QA APK — standalone installation'
-            echo '- Source commit: '`$GITHUB_SHA`
+            echo "- Source commit: $GITHUB_SHA"
             echo '- Package: `uk.carmazium.qa` (separate from installed CarMazium)'
             echo '- Update channel: disabled; no Expo account needed'
             echo '- Build type: bundled release JS, signed with ephemeral Android **debug** signing key'
