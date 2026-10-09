@@ -8,7 +8,7 @@
 // formatting helpers (still used across the app) remain here.
 
 export type FuelType = 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'Plug-in Hybrid';
-export type Transmission = 'Automatic' | 'Manual';
+export type Transmission = 'Automatic' | 'Manual' | 'Semi-Automatic' | 'CVT' | 'Not specified';
 export type Category = 'Sports' | 'SUV' | 'Saloon' | 'Convertible' | 'Supercar' | 'Estate';
 export type Condition = 'New' | 'Used' | 'Certified Pre-Owned';
 
