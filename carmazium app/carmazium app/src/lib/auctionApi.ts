@@ -153,6 +153,10 @@ export function auctionToListingParam(a: AuctionDetail): CarListing & { auctionI
   return {
     id: l?.id ?? a.id,
     auctionId: a.id,
+    // A saved auction must reopen the auction (including after an app restart),
+    // not the retail vehicle detail. Keep the authoritative auction identity.
+    listingType: 'AUCTION',
+    auction: { id: a.id, status: a.status, endTime: a.endTime },
     make: l?.make ?? '',
     model: l?.model ?? '',
     variant: l?.variant ?? '',
