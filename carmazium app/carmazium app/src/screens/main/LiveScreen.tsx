@@ -29,9 +29,10 @@ import {
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
+import { getActiveAuctions, getAllScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
@@ -90,6 +91,7 @@ export const LiveScreen: React.FC = () => {
   const [upcomingAuctions, setUpcomingAuctions] = useState<AuctionDetail[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [auctionLoadError, setAuctionLoadError] = useState<string | null>(null);
 
   // Global ticker reference time
   const [now, setNow] = useState(Date.now());
@@ -102,9 +104,17 @@ export const LiveScreen: React.FC = () => {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const fetchData = async () => {
+    setAuctionLoadError(null);
     try {
-      const activeData = await getActiveAuctions();
-      const scheduledData = await getScheduledAuctions(1, 20);
+      // Both endpoints enforce verified-dealer access. Fetch all scheduled
+      // pages and only commit both lists once the complete response succeeds.
+      const [activeData, upcomingData] = await Promise.all([
+        getActiveAuctions(),
+        getAllScheduledAuctions(),
+      ]);
+      if (!Array.isArray(activeData)) {
+        throw new Error('Invalid live auction response.');
+      }
 
       // Map dynamic active auctions to UI component-friendly shapes
       const mappedActive = activeData.map((a) => {
@@ -158,14 +168,13 @@ export const LiveScreen: React.FC = () => {
       });
 
       setLiveAuctions(mappedActive);
-      setUpcomingAuctions(scheduledData.data);
-    } catch (error) {
-      // No mock fallback exists — on failure the lists simply stay empty and
-      // the screen renders its real empty state. (This log previously claimed
-      // a "fall back to mocks" that doesn't happen — fixed to avoid misleading
-      // future debugging. Also corrected the log level: this is a genuine
-      // error path, not informational, so it should survive prod log-stripping.)
+      setUpcomingAuctions(upcomingData);
+    } catch (error: any) {
+      // A 403, network outage or partial scheduled list must not be displayed
+      // as 'No auctions right now'. Retain the last known cards with a visible
+      // retry prompt, and let the backend own the dealer verification gate.
       console.error('Error loading backend auctions:', error);
+      setAuctionLoadError(error?.message || 'Could not load auctions. Check your dealer verification or connection.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -256,6 +265,10 @@ export const LiveScreen: React.FC = () => {
           </View>
           <HamburgerButton />
         </View>
+
+        {auctionLoadError && (
+          <ErrorBanner message={auctionLoadError} onRetry={() => void fetchData()} />
+        )}
 
         {/* ─── Search ──────────────────────────────────────────────── */}
         <View style={styles.searchBar}>
@@ -376,7 +389,7 @@ export const LiveScreen: React.FC = () => {
               </View>
             ))}
           </View>
-        ) : filteredActive.length === 0 ? (
+        ) : filteredActive.length === 0 && !auctionLoadError ? (
           <EmptyState
             icon="flame-outline"
             title={q ? 'No live auctions match your search' : 'No live auctions right now'}
