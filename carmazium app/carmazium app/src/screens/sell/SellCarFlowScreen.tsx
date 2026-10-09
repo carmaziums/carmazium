@@ -1312,8 +1312,55 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const cleaned = normalizeNativeRegistration(raw);
     const registrationChanged = cleaned !== currentVrmRef.current;
     if (registrationChanged) {
+      // Changing a previously complete registration means this is no longer
+      // the same vehicle. Keeping its DVLA model/MOT/specification or a prior
+      // valuation can result in publishing and pricing the *wrong* car.
+      const previousRegistration = currentVrmRef.current;
+      const switchingVehicle = previousRegistration.length >= 7;
       lookupRequestRef.current += 1;
       currentVrmRef.current = cleaned;
+      if (switchingVehicle) {
+        setVin('');
+        setMake('');
+        setModel('');
+        setYear('');
+        setVariant('');
+        setDriveType('');
+        setFuelType('');
+        setColour('');
+        setEngineSize('');
+        setBhp('');
+        setDoors('');
+        setSeats('');
+        setMotStatus('');
+        setMotExpiry('');
+        setMotHistory([]);
+        setTaxStatus('');
+        setTaxDue('');
+        setFirstRegistered('');
+        setLastV5C('');
+        setWheelplan('');
+        setTypeApproval('');
+        setEuroStandard('');
+        setCo2Emissions('');
+        setUlezCompliant(null);
+        setMarkedForExport(false);
+        setMileage('');
+        // A valuation/asking-price guide from the old registration must
+        // never be presented as an offer for the newly entered vehicle.
+        valuationRequestId.current += 1;
+        valuationBaseKeyRef.current = null;
+        valuationJourneyBaseKeyRef.current = null;
+        valuationJourneyIdRef.current = null;
+        setBaseValuation(null);
+        setValuation(null);
+        setValuationLoading(false);
+        setValuationError(null);
+        setPriceAsking('');
+        setPriceMin('');
+        setReservePrice('');
+        setStartingBid('');
+      }
       setTransmission('');
       setBodyType('');
       setDvlaFetched(false);
