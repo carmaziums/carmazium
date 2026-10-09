@@ -2,6 +2,8 @@ import React from 'react';
 import {
   ScrollView,
   StatusBar,
+  Linking,
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,56 +32,58 @@ interface ServiceItem {
   color: string;
   bg: string;
   border: string;
+  path: string;
+  cta: string;
+  kind: string;
 }
 
+// These are the four active customer service journeys on the website.
+// Native service-request forms do not yet exist, so use the real web form
+// instead of displaying decorative cards with no way to continue.
 const SERVICES: ServiceItem[] = [
   {
-    title: 'Vehicle Delivery',
-    desc: 'Professional vehicle delivery — your car gets transported to your door safely and on schedule, via trusted third-party couriers.',
+    title: 'Delivery & Recovery',
+    desc: 'Post a vehicle transport or recovery job. Approved providers can send competing fixed-price quotes.',
     icon: 'car-outline',
     color: Colors.infoBlueLight,
     bg: Colors.infoBlueAlpha10,
-    border: 'rgba(59,130,246,0.22)',
+    border: Colors.infoBlueAlpha20,
+    path: '/services/delivery/new',
+    cta: 'Post delivery job',
+    kind: 'Paid service job',
   },
   {
-    title: 'Car Inspection',
-    desc: 'Connect with certified inspectors who carry out detailed, independent vehicle evaluations before you commit to a purchase.',
+    title: 'Vehicle Inspection',
+    desc: 'Arrange an independent pre-purchase inspection and choose from approved inspectors’ quotes.',
     icon: 'search-outline',
     color: Colors.lightGreen_34d399,
-    bg: 'rgba(16,185,129,0.10)',
-    border: 'rgba(16,185,129,0.22)',
+    bg: Colors.successAlpha10,
+    border: Colors.successAlpha25,
+    path: '/services/inspection/new',
+    cta: 'Request inspection',
+    kind: 'Paid service job',
   },
   {
-    title: 'Warranty Coverage',
-    desc: 'Extended third-party warranty options give you protection against unexpected mechanical or electrical failures after purchase.',
-    icon: 'ribbon-outline',
-    color: Colors.palePurple_c084fc,
-    bg: 'rgba(168,85,247,0.10)',
-    border: 'rgba(168,85,247,0.22)',
-  },
-  {
-    title: 'Vehicle Financing',
-    desc: 'Get matched with finance providers offering structured payment plans and pre-approvals tailored to your budget.',
+    title: 'Vehicle Finance',
+    desc: 'Send one enquiry to approved finance providers, who respond with their own eligibility and terms.',
     icon: 'cash-outline',
     color: Colors.lightOrange_fbbf24,
     bg: Colors.warningAlpha10,
-    border: 'rgba(245,158,11,0.22)',
+    border: Colors.warningAlpha30,
+    path: '/services/finance',
+    cta: 'Request finance options',
+    kind: 'Matched enquiry',
   },
   {
-    title: 'Maintenance',
-    desc: 'Find trusted garages and mobile mechanics for routine servicing, repairs, and specialist maintenance work near you.',
-    icon: 'build-outline',
-    color: Colors.accent,
-    bg: Colors.accentAlpha10,
-    border: Colors.accentAlpha22,
-  },
-  {
-    title: 'Insurance',
-    desc: 'Compare comprehensive vehicle insurance options from trusted providers, with coverage levels to suit every driver.',
-    icon: 'umbrella-outline',
-    color: Colors.lightTeal_22d3ee,
-    bg: 'rgba(34,211,238,0.10)',
-    border: 'rgba(34,211,238,0.22)',
+    title: 'Vehicle Warranty',
+    desc: 'Request warranty options and compare providers’ cover levels, exclusions and indicative costs.',
+    icon: 'shield-checkmark-outline',
+    color: Colors.palePurple_c084fc,
+    bg: Colors.infoBlueAlpha10,
+    border: Colors.borderHi,
+    path: '/services/warranty',
+    cta: 'Request warranty options',
+    kind: 'Matched enquiry',
   },
 ];
 
@@ -89,11 +93,21 @@ export const ServicesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
+  const continueOnWeb = async (path: string) => {
+    // Native create-job and lead forms are not implemented. Preserve the
+    // website's real request/consent flow, including service kill-switches.
+    try {
+      await Linking.openURL(`https://www.carmazium.com${path}`);
+    } catch {
+      Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services and choose your service.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(34,211,238,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.bgPrimary, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -104,7 +118,7 @@ export const ServicesScreen: React.FC = () => {
       {/* ── Header ── */}
       <View style={styles.header}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Services</Text>
+        <Text style={styles.headerTitle}>TradeXchange Services</Text>
         <HamburgerButton />
       </View>
 
@@ -113,11 +127,27 @@ export const ServicesScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.introTitle}>Carmazium Service Hub</Text>
+        <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
+        <Text style={styles.introTitle}>Post work or compete for it</Text>
         <Text style={styles.introSub}>
-          Everything you need around your vehicle, in one place — connect with trusted,
-          vetted professionals across the automotive world.
+          Book vehicle delivery or inspection, request finance or warranty options,
+          and manage your jobs with approved service partners.
         </Text>
+        <TouchableOpacity
+          style={styles.postJobButton}
+          activeOpacity={0.8}
+          onPress={() => void continueOnWeb('/services/jobs/new')}
+          accessibilityRole="button"
+          accessibilityLabel="Post a service job on the CarMazium website"
+          accessibilityHint="Opens the CarMazium website to complete the request"
+        >
+          <Ionicons name="add-circle-outline" size={22} color={Colors.white} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
+            <Text style={styles.postJobHint}>Continue on CarMazium website</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color={Colors.white} />
+        </TouchableOpacity>
 
         <View style={{ height: 8 }} />
 
@@ -155,22 +185,37 @@ export const ServicesScreen: React.FC = () => {
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
+        <Text style={styles.sectionHeading}>Choose a service</Text>
         {SERVICES.map((service) => (
-          <View key={service.title} style={styles.card}>
+          <TouchableOpacity
+            key={service.title}
+            style={styles.card}
+            activeOpacity={0.8}
+            onPress={() => void continueOnWeb(service.path)}
+            accessibilityRole="button"
+            accessibilityLabel={`${service.cta} on the CarMazium website`}
+            accessibilityHint="Opens the service form on CarMazium website"
+          >
             <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
               <Ionicons name={service.icon} size={22} color={service.color} />
             </View>
             <View style={{ flex: 1 }}>
+              <Text style={styles.cardKind}>{service.kind}</Text>
               <Text style={styles.cardTitle}>{service.title}</Text>
               <Text style={styles.cardDesc}>{service.desc}</Text>
+              <View style={styles.cardAction}>
+                <Text style={styles.cardActionText}>{service.cta}</Text>
+                <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
+              </View>
+              <Text style={styles.cardWebHint}>Continues on website</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={styles.noteText}>
-            Carmazium connects you with independent professionals and Partner businesses. Delivery and Inspection jobs use CarMazium checkout and provider payouts; Finance and Warranty are matched enquiries handled directly with the provider.
+            Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Finance and warranty are matched enquiries handled directly with providers. CarMazium does not make lending decisions or guarantee approval.
           </Text>
         </View>
 
@@ -216,6 +261,11 @@ const styles = StyleSheet.create({
     gap: 14,
   },
 
+  eyebrow: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 1.2, marginBottom: -7 },
+  sectionHeading: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white, marginTop: 10 },
+  postJobButton: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, minHeight: 75, backgroundColor: Colors.accent, borderRadius: Radius.card, marginBottom: 3 },
+  postJobTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  postJobHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.white, opacity: 0.9, marginTop: 4 },
   introTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.xl,
@@ -283,12 +333,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 14,
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
+    borderColor: Colors.borderSubtle,
     padding: 16,
     alignItems: 'flex-start',
+    minHeight: 130,
   },
   iconWrap: {
     width: 46,
@@ -299,6 +350,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
+  cardKind: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 0.4, marginBottom: 5 },
+  cardAction: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10 },
+  cardActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
+  cardWebHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
   cardTitle: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
