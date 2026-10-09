@@ -1,0 +1,132 @@
+name: CarMazium Android standalone QA APK (no Expo credentials)
+
+# Builds a separate, read-only app for screenshot and navigation review.
+# This does NOT distribute to Google Play, update installed production apps,
+# or publish to the production Expo OTA channel.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/carmazium-android-offline-qa-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-android-standalone-qa
+  cancel-in-progress: false
+
+jobs:
+  build-qa:
+    name: Build read-only QA APK (debug signed, no Expo account)
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_QA_READ_ONLY: '1'
+      APP_ENV: 'preview'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK command-line tools
+        uses: android-actions/setup-android@v3
+      - name: Install locked React Native / Expo packages
+        run: npm ci
+      - name: Prepare QA-only app manifest and known public preview environment
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const app = JSON.parse(fs.readFileSync('app.json','utf8'));
+          const eas = JSON.parse(fs.readFileSync('eas.json','utf8'));
+          const cfg = eas.build?.preview?.env || {};
+          const allowlisted = [
+            'EXPO_PUBLIC_API_URL',
+            'EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+            'EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+          ];
+          for (const key of allowlisted) {
+            if (typeof cfg[key] !== 'string' || !cfg[key]) throw new Error('Missing public preview value: '+key);
+            fs.appendFileSync(process.env.GITHUB_ENV, key + '=' + cfg[key] + '\n');
+          }
+          app.expo.name = 'CarMazium QA';
+          app.expo.slug = 'carmazium-qa';
+          app.expo.scheme = 'carmazium-qa';
+          app.expo.android.package = 'uk.carmazium.qa';
+          // Never steal App Links from the production CarMazium install.
+          app.expo.android.intentFilters = [];
+          // A test artifact may not receive production over-the-air updates.
+          app.expo.updates.enabled = false;
+          delete app.expo.updates.url;
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
+          if (app.expo.android.package !== 'uk.carmazium.qa' || app.expo.updates.enabled !== false) throw new Error('Unsafe QA app configuration');
+          console.log('QA Android package and disabled OTA verified. Public preview environment selected.');
+          NODE
+      - name: Typecheck QA app
+        run: npm run typescript
+      - name: Generate native Android project from managed Expo config
+        run: npx expo prebuild --platform android --non-interactive --clean
+      - name: Build self-contained Android APK with local debug signing (no EAS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
+      - name: Verify signed QA APK and source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
+          if [ -z "$apk" ]; then echo "::error::Gradle did not produce an APK"; exit 1; fi
+          mkdir -p "$GITHUB_WORKSPACE/qa-apk"
+          cp "$apk" "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
+          node - <<'NODE'
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+          if (manifest.android.package !== 'uk.carmazium.qa' || manifest.updates.enabled !== false) {
+            throw new Error('Refusing distribution: production package or OTA active');
+          }
+          NODE
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
+          "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
+          sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
+          {
+            echo '### CarMazium Android QA APK — standalone installation'
+            echo '- Source commit: '`$GITHUB_SHA`
+            echo '- Package: `uk.carmazium.qa` (separate from installed CarMazium)'
+            echo '- Update channel: disabled; no Expo account needed'
+            echo '- Build type: bundled release JS, signed with ephemeral Android **debug** signing key'
+            echo '- Safety: API mutation/photo-upload guards active, **not** a security sandbox for real customer data'
+            echo ''
+            echo 'Download the `CarMazium-Android-QA` Actions artifact ZIP from this run. Extract `CarMazium-QA-Android.apk`, then install on your own Android device.'
+            echo ''
+            echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This QA build still reads from the current live backend and authorisation service.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish APK as private workflow artifact for reviewer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Android-QA
+          path: qa-apk/*
+          retention-days: 7
+          if-no-files-found: error
