@@ -352,6 +352,17 @@ if (
   ok(`Expo EAS projectId is configured (${easProjectId})`);
 }
 
+// EAS Build sets expo-channel-name from the selected preview/production
+// profile. A fixed app.json request header can silently point preview testers
+// at production over-the-air updates, bypassing preview isolation.
+if (app.updates?.requestHeaders?.['expo-channel-name']) {
+  fail('Remove hardcoded app.json EAS update channel; build profile must select its own update channel');
+} else if (eas.build?.preview?.channel !== 'preview') {
+  fail('EAS preview profile must use its isolated preview update channel');
+} else {
+  ok('EAS preview/production update channels remain isolated by build profile');
+}
+
 const production = eas.build?.production;
 if (!production) {
   fail('EAS production build profile is missing');
