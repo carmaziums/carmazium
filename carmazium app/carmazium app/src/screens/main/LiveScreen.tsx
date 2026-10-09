@@ -444,6 +444,7 @@ export const LiveScreen: React.FC = () => {
                   year={auction.year}
                   mileage={auction.mileage}
                   fuelType={auction.fuelType}
+                  transmission={auction.transmission}
                   bodyType={auction.category}
                   location={auction.location}
                   deliveryAvailable={auction.deliveryAvailable}
