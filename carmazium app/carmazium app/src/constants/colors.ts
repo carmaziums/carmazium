@@ -1,7 +1,7 @@
 // Carmazium – Brand Color System
-// Dark-first, crimson accent. Source of truth: the CarMazium Design System
-// (`<repo-root>/CarMazium Design System/colors_and_type.css` +
-// `ui_kits/carmazium-mobile/mobile-kit.jsx`).
+// Visual source of truth: the active website's dark-theme tokens in
+// src/app/globals.css. Native screens can retain platform-specific controls,
+// but should share the site's navy surfaces, legible type contrast and red.
 //
 // -----------------------------------------------------------------------------
 // READ THIS BEFORE ADDING A COLOR
@@ -22,24 +22,19 @@
 // -----------------------------------------------------------------------------
 
 // ── Ground ────────────────────────────────────────────────────────────────────
-// Mobile runs a deeper ground than web (#0f172a). That's deliberate and comes
-// from the design system's mobile kit — a phone screen in a dark room wants the
-// darker base. Web is not changed by this.
-const bgBody = '#0A0D14';
-const bgElevated = '#13182A';
-const bgCardSolid = '#15192A';
-const bgSurface = '#1E2740';
-const bgSurfaceHi = '#2A3047';
+// These surface tiers follow the live site's .dark palette (2026-10-09).
+const bgBody = '#1B2538';
+const bgElevated = '#1E293B';
+const bgCardSolid = '#334155';
+const bgSurface = '#334155';
+const bgSurfaceHi = '#3E5066';
 
 // ── Brand ─────────────────────────────────────────────────────────────────────
-// The design system's hard rule: the primary red is #FF0037. It explicitly
-// labels the previous #ED1C24 as "old". Web's globals.css still ships #ed1c24;
-// this is the one deliberate divergence, and it is a single token — flip these
-// four values to revert.
-const accent = '#FF0037';
-const accentDeep = '#D70030';
-const accentHot = '#FF4D6A';
-const accentDark = '#9A0024';
+// Match the website's active primary red rather than the former mobile-only pink.
+const accent = '#ED1C24';
+const accentDeep = '#CC1820';
+const accentHot = '#F0525A';
+const accentDark = '#9A161D';
 
 // ── Support ───────────────────────────────────────────────────────────────────
 const brandSlate = '#2D3C63'; // the "Dark Blue" of the 5-stop brand palette
@@ -64,8 +59,8 @@ export const Colors = {
   bgSurfaceHi,
 
   /** Translucent card surface — pair with a blur for the glass treatment. */
-  bgCard: 'rgba(20, 26, 42, 0.78)',
-  bgCardHi: 'rgba(20, 26, 42, 0.90)',
+  bgCard: 'rgba(51, 65, 85, 0.58)',
+  bgCardHi: 'rgba(51, 65, 85, 0.72)',
 
   // Legacy ground names, kept because they're used everywhere. Same three tiers.
   bgPrimary: bgBody,
@@ -77,16 +72,16 @@ export const Colors = {
   accentDeep,
   accentGlow: accentHot,
   accentDark,
-  accentSubtle: 'rgba(255, 0, 55, 0.15)',
+  accentSubtle: 'rgba(237, 28, 36, 0.15)',
   brandSlate,
   brandSilver,
 
   // ═══ Text ══════════════════════════════════════════════════════════════════
   textPrimary: '#FFFFFF',
   /** Body copy on dark. */
-  textSecondary: '#D6DBE7',
+  textSecondary: '#E2E8F0',
   /** Meta, captions, inactive. Clears WCAG AA on every ground tier above. */
-  textMuted: '#8A93A8',
+  textMuted: '#A3B1C4',
   /**
    * Deprecated alias of `textMuted`, NOT the design system's `fg4`.
    *
@@ -100,21 +95,21 @@ export const Colors = {
    * It now resolves to textMuted, which is where #8A8A93 actually belonged.
    * Use `textDisabled` if you want genuinely de-emphasised, non-content text.
    */
-  textFaint: '#8A93A8',
+  textFaint: '#A3B1C4',
   /** Non-content only — placeholders, disabled controls, decorative rules. */
   textDisabled: '#4B556B',
 
   // ═══ Borders ═══════════════════════════════════════════════════════════════
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderHi: 'rgba(255, 255, 255, 0.16)',
+  border: 'rgba(255, 255, 255, 0.14)',
+  borderHi: 'rgba(255, 255, 255, 0.24)',
   borderStrong: 'rgba(255, 255, 255, 0.30)',
-  borderAccent: 'rgba(255, 0, 55, 0.30)',
+  borderAccent: 'rgba(237, 28, 36, 0.30)',
   // Legacy names for the same two steps.
-  borderSubtle: 'rgba(255, 255, 255, 0.08)',
-  borderMuted: 'rgba(255, 255, 255, 0.16)',
+  borderSubtle: 'rgba(255, 255, 255, 0.14)',
+  borderMuted: 'rgba(255, 255, 255, 0.24)',
   glassBg: 'rgba(255, 255, 255, 0.06)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  glassBorderStrong: 'rgba(255, 255, 255, 0.16)',
+  glassBorder: 'rgba(255, 255, 255, 0.14)',
+  glassBorderStrong: 'rgba(255, 255, 255, 0.24)',
 
   // ═══ Semantic ══════════════════════════════════════════════════════════════
   success,
@@ -133,7 +128,7 @@ export const Colors = {
   // ═══ Utility ═══════════════════════════════════════════════════════════════
   white: '#FFFFFF',
   black: '#000000',
-  iconMuted: '#8A93A8',
+  iconMuted: '#A3B1C4',
 
   // Stripe's native Payment Sheet `appearance.colors.*` requires hex
   // (#RRGGBB/#RRGGBBAA), not rgba() strings — passing an rgba token there throws
@@ -150,14 +145,14 @@ export const Colors = {
   // ═══ Tab bar ═══════════════════════════════════════════════════════════════
   // The design system's tab bar floats: inset, radius 22, heavy blur, red
   // active dot. This is the translucent ground it sits on.
-  tabBarBg: 'rgba(10, 13, 20, 0.78)',
-  tabBarBorder: 'rgba(255, 255, 255, 0.08)',
+  tabBarBg: 'rgba(30, 41, 59, 0.92)',
+  tabBarBorder: 'rgba(255, 255, 255, 0.14)',
   tabActive: accent,
-  tabInactive: '#8A93A8',
+  tabInactive: '#A3B1C4',
 
   // ═══ Input ═════════════════════════════════════════════════════════════════
-  inputBg: 'rgba(255, 255, 255, 0.04)',
-  inputBorder: 'rgba(255, 255, 255, 0.08)',
+  inputBg: 'rgba(51, 65, 85, 0.38)',
+  inputBorder: 'rgba(255, 255, 255, 0.14)',
   inputBorderFocused: accent,
   inputPlaceholder: '#4B556B',
 
@@ -176,21 +171,21 @@ export const Colors = {
   whiteAlpha20: 'rgba(255, 255, 255, 0.20)',
   whiteAlpha50: 'rgba(255, 255, 255, 0.50)',
 
-  // Accent alphas — re-based onto #FF0037 (were #DC1F26).
-  accentAlpha03: 'rgba(255, 0, 55, 0.03)',
-  accentAlpha04: 'rgba(255, 0, 55, 0.04)',
-  accentAlpha05: 'rgba(255, 0, 55, 0.05)',
-  accentAlpha06: 'rgba(255, 0, 55, 0.06)',
-  accentAlpha08: 'rgba(255, 0, 55, 0.08)',
-  accentAlpha10: 'rgba(255, 0, 55, 0.10)',
-  accentAlpha12: 'rgba(255, 0, 55, 0.12)',
-  accentAlpha14: 'rgba(255, 0, 55, 0.14)',
-  accentAlpha15: 'rgba(255, 0, 55, 0.15)',
-  accentAlpha20: 'rgba(255, 0, 55, 0.20)',
-  accentAlpha22: 'rgba(255, 0, 55, 0.22)',
-  accentAlpha25: 'rgba(255, 0, 55, 0.25)',
-  accentAlpha30: 'rgba(255, 0, 55, 0.30)',
-  accentAlpha40: 'rgba(255, 0, 55, 0.40)',
+  // Accent alphas follow the live website's #ED1C24 red.
+  accentAlpha03: 'rgba(237, 28, 36, 0.03)',
+  accentAlpha04: 'rgba(237, 28, 36, 0.04)',
+  accentAlpha05: 'rgba(237, 28, 36, 0.05)',
+  accentAlpha06: 'rgba(237, 28, 36, 0.06)',
+  accentAlpha08: 'rgba(237, 28, 36, 0.08)',
+  accentAlpha10: 'rgba(237, 28, 36, 0.10)',
+  accentAlpha12: 'rgba(237, 28, 36, 0.12)',
+  accentAlpha14: 'rgba(237, 28, 36, 0.14)',
+  accentAlpha15: 'rgba(237, 28, 36, 0.15)',
+  accentAlpha20: 'rgba(237, 28, 36, 0.20)',
+  accentAlpha22: 'rgba(237, 28, 36, 0.22)',
+  accentAlpha25: 'rgba(237, 28, 36, 0.25)',
+  accentAlpha30: 'rgba(237, 28, 36, 0.30)',
+  accentAlpha40: 'rgba(237, 28, 36, 0.40)',
 
   warningAlpha05: 'rgba(245, 158, 11, 0.05)',
   warningAlpha06: 'rgba(245, 158, 11, 0.06)',
@@ -244,7 +239,7 @@ export const Colors = {
   blackAlpha55: 'rgba(0, 0, 0, 0.55)',
   blackAlpha75: 'rgba(0, 0, 0, 0.75)',
 
-  textSecondaryAlpha20: 'rgba(214, 219, 231, 0.20)',
+  textSecondaryAlpha20: 'rgba(226, 232, 240, 0.20)',
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DEPRECATED ALIASES — do not use in new code, do not add to this block.
@@ -300,12 +295,12 @@ export const Colors = {
   deepGreen: 'rgba(16, 185, 129, 0.10)',
   darkGreen: 'rgba(16, 185, 129, 0.18)',
   darkTeal: 'rgba(16, 185, 129, 0.16)',
-  darkRed_3b2424: 'rgba(255, 0, 55, 0.14)',
-  darkRed_5c1d24: 'rgba(255, 0, 55, 0.22)',
-  darkPink_3b1e2b: 'rgba(255, 0, 55, 0.14)',
-  darkPink_521626: 'rgba(255, 0, 55, 0.22)',
-  deepPink_221217: 'rgba(255, 0, 55, 0.08)',
-  deepPink_33111c: 'rgba(255, 0, 55, 0.12)',
+  darkRed_3b2424: 'rgba(237, 28, 36, 0.14)',
+  darkRed_5c1d24: 'rgba(237, 28, 36, 0.22)',
+  darkPink_3b1e2b: 'rgba(237, 28, 36, 0.14)',
+  darkPink_521626: 'rgba(237, 28, 36, 0.22)',
+  deepPink_221217: 'rgba(237, 28, 36, 0.08)',
+  deepPink_33111c: 'rgba(237, 28, 36, 0.12)',
   deepYellow: 'rgba(245, 158, 11, 0.08)',
   darkYellow: 'rgba(245, 158, 11, 0.28)',
 
