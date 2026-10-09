@@ -7,7 +7,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
@@ -46,10 +46,18 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
   const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
   const isDealerAccount = accountRole === 'dealer';
   const isDealerStaff = !!user?.isDealerStaff;
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('personal');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
+    route.params?.section ?? 'personal'
+  );
+  useEffect(() => {
+    // Stripe opens carmazium://settings?section=payouts after onboarding.
+    // Keep the payment context visible instead of jumping to Personal details.
+    if (route.params?.section) setActiveCategory(route.params.section);
+  }, [route.params?.section]);
   const scrollRef = React.useRef<ScrollView>(null);
   const categories: { id: SettingsCategory; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal details', icon: 'person-outline' },
@@ -411,8 +419,8 @@ export const SettingsScreen: React.FC = () => {
         {
           method: 'POST',
           body: JSON.stringify({
-            returnUrl: 'carmazium://settings',
-            refreshUrl: 'carmazium://settings',
+            returnUrl: 'carmazium://settings?section=payouts',
+            refreshUrl: 'carmazium://settings?section=payouts',
           }),
         }
       );
