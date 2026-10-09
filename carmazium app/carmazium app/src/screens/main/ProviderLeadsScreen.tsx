@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -87,12 +88,14 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, [serviceFilter, nextCursor]);
 
-  useEffect(() => {
+  // Reconcile lead statuses after quoting/replying or returning to this inbox.
+  // Reset does not use nextCursor; keep pagination from triggering refetch loops.
+  useFocusEffect(useCallback(() => {
     setLeads([]);
     setNextCursor(null);
     void load('reset');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceFilter]);
+  }, [serviceFilter]));
 
   const refresh = useCallback(() => {
     setRefreshing(true);
@@ -197,6 +200,8 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
             key={item}
             style={[styles.filter, filter === item && styles.filterActive]}
             onPress={() => setFilter(item)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: filter === item }}
           >
             <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
               {item === 'ALL' ? 'All' : item === 'FINANCE' ? 'Finance' : 'Warranty'}
@@ -204,6 +209,18 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </View>
+
+      <TouchableOpacity
+        style={styles.manageCoverage}
+        onPress={() => navigation.navigate('ProviderCapabilities')}
+        accessibilityRole="button"
+        accessibilityLabel="Manage finance and warranty service approvals and matching coverage"
+        activeOpacity={0.8}
+      >
+        <Ionicons name="options-outline" size={17} color={Colors.accent} />
+        <Text style={styles.manageCoverageText}>Manage service areas & approval</Text>
+        <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+      </TouchableOpacity>
 
       {loading && leads.length === 0 ? (
         <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
@@ -269,20 +286,22 @@ const styles = StyleSheet.create({
   headerButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, marginTop: 2 },
-  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 10 },
-  filter: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06 },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingVertical: 10 },
+  manageCoverage: { marginHorizontal: 18, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, marginBottom: 6, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle },
+  manageCoverageText: { flex: 1, color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  filter: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 15, paddingVertical: 9, borderRadius: 999, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid },
   filterActive: { borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10 },
   filterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   filterTextActive: { color: Colors.accent },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { padding: 18, gap: 12, paddingBottom: 36 },
   emptyList: { flexGrow: 1, padding: 18, justifyContent: 'center' },
-  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.bgSecondary, padding: 15, gap: 10 },
+  card: { borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCardSolid, padding: 16, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   typeRow: { flex: 1, flexDirection: 'row', gap: 10 },
   iconBox: { width: 38, height: 38, borderRadius: 11, backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center' },
   typeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  title: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginTop: 3 },
+  title: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginTop: 3 },
   statusPill: { borderRadius: 999, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha08, paddingHorizontal: 9, paddingVertical: 5 },
   statusText: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.textSecondary },
   respondedPill: { borderColor: Colors.successAlpha25, backgroundColor: Colors.successAlpha10 },
@@ -290,9 +309,9 @@ const styles = StyleSheet.create({
   expiredPill: { borderColor: Colors.errorAlpha25, backgroundColor: Colors.errorAlpha10 },
   expiredText: { color: Colors.errorLight },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textSecondary },
+  metaText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.sm, lineHeight: 20, color: Colors.textSecondary },
   requirementBox: { borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha06, padding: 10 },
-  requirementText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textSecondary, lineHeight: 17 },
+  requirementText: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 19 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha08, paddingTop: 11 },
   receivedText: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
   openRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
