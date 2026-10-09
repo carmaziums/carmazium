@@ -108,6 +108,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         </View>
         <AuctionCardChips
           fuelType={l?.fuelType}
+          transmission={l?.transmission}
           bodyType={l?.bodyType}
           location={l?.location}
           deliveryAvailable={l?.deliveryAvailable}
@@ -166,6 +167,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
         </View>
         <AuctionCardChips
           fuelType={l?.fuelType}
+          transmission={l?.transmission}
           bodyType={l?.bodyType}
           location={l?.location}
           deliveryAvailable={l?.deliveryAvailable}
