@@ -625,8 +625,6 @@ export const SettingsScreen: React.FC = () => {
           </View>
 
           <View style={styles.cardDivider} />
-
-          <View style={styles.cardDivider} />
           <TouchableOpacity
             style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
