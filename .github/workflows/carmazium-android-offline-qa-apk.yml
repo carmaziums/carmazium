@@ -46,8 +46,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android SDK command-line tools
-        uses: android-actions/setup-android@v3
+      - name: Use preinstalled GitHub runner Android SDK and ensure API 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          sdkmanager_bin="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)"
+          if [ -z "$sdkmanager_bin" ]; then echo "::error::Android sdkmanager is unavailable on runner"; exit 1; fi
+          "$sdkmanager_bin" --install 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
       - name: Install locked React Native / Expo packages
         run: npm ci
       - name: Prepare QA-only app manifest and known public preview environment
