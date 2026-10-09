@@ -67,17 +67,6 @@ interface VehicleValuationResponse {
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
 
-const BASE_NEW_VALUES: Record<string, number> = {
-  'ABARTH': 26000, 'ALFA ROMEO': 38000, 'AUDI': 47000, 'BMW': 48000,
-  'CITROEN': 28000, 'CITROËN': 28000, 'DACIA': 22000, 'FIAT': 25000,
-  'FORD': 33000, 'HONDA': 35000, 'HYUNDAI': 34000, 'JAGUAR': 50000,
-  'JEEP': 43000, 'KIA': 34000, 'LAND ROVER': 57000, 'LEXUS': 50000,
-  'MAZDA': 33000, 'MERCEDES': 50000, 'MERCEDES-BENZ': 50000, 'MG': 27000,
-  'MINI': 33000, 'MITSUBISHI': 32000, 'NISSAN': 32000, 'PEUGEOT': 29000,
-  'PORSCHE': 82000, 'RENAULT': 29000, 'SEAT': 30000, 'SKODA': 34000,
-  'SUBARU': 39000, 'SUZUKI': 26000, 'TESLA': 46000, 'TOYOTA': 36000,
-  'VAUXHALL': 29000, 'VOLKSWAGEN': 37000, 'VOLVO': 48000,
-};
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -267,50 +256,6 @@ export function applyVehicleValuationAdjustments(
   };
 }
 
-function localFallbackValuation(request: VehicleValuationRequest): VehicleValuation {
-  const age = Math.max(0, new Date().getFullYear() - request.year);
-  let value = BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000;
-
-  for (let year = 1; year <= age; year += 1) {
-    value *= year === 1 ? 0.78 : year <= 3 ? 0.85 : year <= 7 ? 0.89 : 0.92;
-  }
-
-  const expectedMileage = Math.max(6000, age * 8500);
-  const mileageDeltaThousands = (request.mileage - expectedMileage) / 1000;
-  value *= clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15);
-
-  const mid = roundMoney(value);
-  const low = roundMoney(mid * 0.85);
-  const high = roundMoney(mid * 1.15);
-
-  return {
-    low,
-    mid,
-    high,
-    confidence: 'LOW',
-    confidenceScore: 0.2,
-    comparables: 0,
-    source: 'CARMAZIUM_MODEL',
-    explanation: 'Exact-model market evidence is temporarily unavailable, so this LOW-confidence guide uses vehicle age and mileage and conservative depreciation. Use it as a starting point rather than a guaranteed sale price.',
-    retail: {
-      suggestedAsking: high,
-      suggestedMinimum: mid,
-    },
-    auction: {
-      marketValue: low,
-      openingBid: Math.round(low * 0.70 * 100) / 100,
-      reserveLow: Math.round(low * 0.90 * 100) / 100,
-      reserveHigh: low,
-      suggestedReserve: roundMoney(low * 0.95),
-    },
-    marketEvidence: {
-      carmaziumComparables: 0,
-      liveUkComparables: 0,
-      liveUkSearchStatus: 'UNAVAILABLE',
-      rawLiveUkComparables: 0,
-    },
-  };
-}
 
 export async function getVehicleValuation(
   request: VehicleValuationRequest,
@@ -359,13 +304,17 @@ export async function getVehicleValuation(
     }
 
     const body = await response.json() as VehicleValuationResponse;
-    if (!body?.data) throw new Error('Valuation response was empty');
+    // Only the shared backend may issue a valuation. A network error must
+    // never be disguised as a plausible-looking car price calculated from
+    // make/age alone: this caused harmful app/website price discrepancies.
+    const marketValue = Number(body?.data?.auction?.marketValue);
+    if (body?.success !== true || !Number.isFinite(marketValue) || marketValue <= 0) {
+      throw new Error('VALUATION_UNAVAILABLE');
+    }
     return body.data;
-  } catch {
-    // Keep the seller journey alive even during backend/network/live-market
-    // outages. The server normally returns the richer market-backed result;
-    // this deterministic local guide is the final LOW-confidence safety net.
-    return localFallbackValuation(request);
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw new Error('VALUATION_TIMEOUT');
+    throw new Error('VALUATION_UNAVAILABLE');
   } finally {
     clearTimeout(timeoutId);
   }
