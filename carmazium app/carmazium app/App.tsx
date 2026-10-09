@@ -151,7 +151,7 @@ export default function App() {
   // every literal font-family string in src/ — if you add a weight to
   // FontFamily or TextPresets, add it here too or it will silently fall back
   // to the system font.
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontLoadError] = useFonts({
     'Poppins_600SemiBold': require('@expo-google-fonts/poppins/600SemiBold/Poppins_600SemiBold.ttf'),
     'Poppins_700Bold': require('@expo-google-fonts/poppins/700Bold/Poppins_700Bold.ttf'),
     'Poppins_800ExtraBold': require('@expo-google-fonts/poppins/800ExtraBold/Poppins_800ExtraBold.ttf'),
@@ -163,13 +163,17 @@ export default function App() {
     'JetBrainsMono_800ExtraBold': require('@expo-google-fonts/jetbrains-mono/800ExtraBold/JetBrainsMono_800ExtraBold.ttf'),
   });
 
+  // A damaged/missing font asset must not leave users permanently stuck on
+  // the splash screen. When font loading fails, React Native uses system-font
+  // fallback while authentication can still initialise normally.
+  const fontAssetsSettled = fontsLoaded || !!fontLoadError;
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontAssetsSettled) {
       initializeAuth().finally(() => {
-        SplashScreen.hideAsync();
+        void SplashScreen.hideAsync();
       });
     }
-  }, [fontsLoaded]);
+  }, [fontAssetsSettled, initializeAuth]);
 
   // One app-wide Supabase auth subscription (AUTH-013). Mounted here rather
   // than inside a screen so it observes a remote sign-out or a failed token
@@ -306,7 +310,7 @@ export default function App() {
   // mounted RootNavigator while initializeAuth was still running, with
   // isAuthenticated still at its initial false — so a signed-in user saw the
   // Login screen flash before their session was restored (AUTH-035).
-  if (!fontsLoaded || !authInitialized) {
+  if (!fontAssetsSettled || !authInitialized) {
     return <AppSplashScreen />;
   }
 

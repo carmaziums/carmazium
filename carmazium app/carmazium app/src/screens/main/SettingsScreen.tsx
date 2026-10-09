@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, TextInput, ActivityIndicator, Switch,
+  StatusBar, Alert, TextInput, ActivityIndicator, Switch, AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
@@ -24,6 +24,10 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
+type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts';
+const isSettingsCategory = (value: unknown): value is SettingsCategory =>
+  typeof value === 'string' &&
+  ['personal', 'business', 'verification', 'notifications', 'security', 'payouts'].includes(value);
 
 // ─────────────────────────── helpers ──────────────────────────────
 
@@ -45,9 +49,35 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
   const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
   const isDealerAccount = accountRole === 'dealer';
   const isDealerStaff = !!user?.isDealerStaff;
+  const requestedSection = route.params?.section;
+  const resolveCategory = (section: unknown): SettingsCategory =>
+    isSettingsCategory(section) && (section !== 'business' || isDealerAccount)
+      ? section : 'personal';
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
+    resolveCategory(requestedSection)
+  );
+  useEffect(() => {
+    // A deep link is external input: unknown and dealer-only categories must
+    // never land other roles on an empty settings page.
+    if (requestedSection) setActiveCategory(resolveCategory(requestedSection));
+  }, [requestedSection, isDealerAccount]);
+  const scrollRef = React.useRef<ScrollView>(null);
+  const categories: { id: SettingsCategory; label: string; icon: string }[] = [
+    { id: 'personal', label: 'Personal details', icon: 'person-outline' },
+    ...(isDealerAccount ? [{ id: 'business' as const, label: 'Dealership', icon: 'storefront-outline' }] : []),
+    { id: 'verification', label: 'Verification', icon: 'shield-checkmark-outline' },
+    { id: 'notifications', label: 'Notifications & privacy', icon: 'notifications-outline' },
+    { id: 'payouts', label: 'Payouts & bank', icon: 'wallet-outline' },
+    { id: 'security', label: 'Security & account', icon: 'lock-closed-outline' },
+  ];
+  const selectCategory = (category: SettingsCategory) => {
+    setActiveCategory(category);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   // ── Profile state ──────────────────────────────────────────────
   const [profileEmail] = useState(user?.email ?? '');
@@ -59,6 +89,7 @@ export const SettingsScreen: React.FC = () => {
   // before the real values load — same fields, same PATCH /users/me shape.
   const [notifyOnSale, setNotifyOnSale] = useState(true);
   const [showPublicProfile, setShowPublicProfile] = useState(true);
+  const [preferencesSaving, setPreferencesSaving] = useState(false);
   // Do not overwrite privacy preferences with defaults if /users/me fails.
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [preferencesFetchComplete, setPreferencesFetchComplete] = useState(false);
@@ -77,6 +108,12 @@ export const SettingsScreen: React.FC = () => {
           setProfileImage(p.profileImage ?? '');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
+          // /users/me also returns the saved payout fallback. A blank bank
+          // form previously looked like the user's details had been lost and
+          // could overwrite a known account on the next save.
+          setBankName(p.bankAccountName ?? '');
+          setSortCode(p.bankSortCode ?? '');
+          setAccountNumber(p.bankAccountNumber ?? '');
           if (typeof p.notifyOnSale === 'boolean' && typeof p.showPublicProfile === 'boolean') {
             setPreferencesLoaded(true);
           }
@@ -213,6 +250,7 @@ export const SettingsScreen: React.FC = () => {
     accountId?: string;
     detailsSubmitted?: boolean;
     chargesEnabled?: boolean;
+    payoutsEnabled?: boolean;
   } | null>(null);
   const [stripeLoading, setStripeLoading] = useState(true);
   const [stripeConnecting, setStripeConnecting] = useState(false);
@@ -278,7 +316,7 @@ export const SettingsScreen: React.FC = () => {
       await confirmAddressVerification(verificationCode.trim());
       await initializeAuth();
       setVerifyModalVisible(false);
-      Alert.alert('Verified!', 'Address verified — Verified Trader badge unlocked.');
+      Alert.alert('Address verified', 'Your address verification has been saved. Other required account checks remain separate.');
     } catch (err: any) {
       setVerifyError(err?.message || 'Incorrect or expired code. Please try again.');
     } finally {
@@ -286,16 +324,26 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  // ── Load Stripe status ──
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiClient<{ success: boolean; data: any }>('/users/stripe-connect/status');
-        if (res?.success) setStripeStatus(res.data);
-      } catch { /* offline — show connect button */ }
-      finally { setStripeLoading(false); }
-    })();
+  // Read current server payout eligibility, including after returning from
+  // Stripe's browser onboarding. Submission alone does not guarantee payouts
+  // are enabled; only the provider's payoutsEnabled state is authoritative.
+  const refreshStripeStatus = useCallback(async () => {
+    setStripeLoading(true);
+    try {
+      const res = await apiClient<{ success: boolean; data: any }>('/users/stripe-connect/status');
+      if (res?.success) setStripeStatus(res.data);
+    } catch { /* retain last known status; no success is invented */ }
+    finally { setStripeLoading(false); }
   }, []);
+  useFocusEffect(useCallback(() => {
+    if (activeCategory === 'payouts') void refreshStripeStatus();
+  }, [activeCategory, refreshStripeStatus]));
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active' && activeCategory === 'payouts') void refreshStripeStatus();
+    });
+    return () => subscription.remove();
+  }, [activeCategory, refreshStripeStatus]);
 
   // ── Save profile ──
   const handleSaveProfile = async () => {
@@ -311,7 +359,6 @@ export const SettingsScreen: React.FC = () => {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phone: profilePhone,
-          ...(preferencesLoaded ? { notifyOnSale, showPublicProfile } : {}),
         }),
       });
       updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), phone: profilePhone });
@@ -320,6 +367,22 @@ export const SettingsScreen: React.FC = () => {
       Alert.alert('Error', err?.message ?? 'Could not update profile.');
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    if (!preferencesLoaded || preferencesSaving) return;
+    setPreferencesSaving(true);
+    try {
+      await apiClient('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ notifyOnSale, showPublicProfile }),
+      });
+      Alert.alert('Saved', 'Notification and privacy preferences updated.');
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not update your preferences.');
+    } finally {
+      setPreferencesSaving(false);
     }
   };
 
@@ -363,8 +426,8 @@ export const SettingsScreen: React.FC = () => {
         {
           method: 'POST',
           body: JSON.stringify({
-            returnUrl: 'carmazium://settings',
-            refreshUrl: 'carmazium://settings',
+            returnUrl: 'carmazium://settings?section=payouts',
+            refreshUrl: 'carmazium://settings?section=payouts',
           }),
         }
       );
@@ -404,8 +467,8 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const stripeOnboarded = stripeStatus?.detailsSubmitted === true;
-  const stripePartial = stripeStatus?.accountId && !stripeStatus.detailsSubmitted;
+  const stripeOnboarded = stripeStatus?.payoutsEnabled === true;
+  const stripePartial = !!stripeStatus?.accountId && !stripeOnboarded;
 
   // ────────────────────────── render ────────────────────────────
 
@@ -454,33 +517,46 @@ export const SettingsScreen: React.FC = () => {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>Account Settings</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity
-          style={styles.notificationShortcut}
-          onPress={() => navigation.navigate('NotificationSettings')}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Manage notification preferences"
-        >
-          <View style={styles.notificationShortcutIcon}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.notificationShortcutTitle}>Notification preferences</Text>
-            <Text style={styles.notificationShortcutHint}>Choose auction, offer and email alerts</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
-        </TouchableOpacity>
 
+        <View style={styles.categoryGrid} accessibilityLabel="Account settings categories">
+          {categories.map(category => {
+            const selected = activeCategory === category.id;
+            return (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.categoryButton, selected && styles.categoryButtonSelected]}
+                onPress={() => selectCategory(category.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                accessibilityLabel={category.label}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={category.icon as any}
+                  size={19}
+                  color={selected ? Colors.white : Colors.textSecondary}
+                />
+                <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
+                  {category.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {activeCategory === 'personal' && (
+          <>
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
         <View style={styles.card}>
@@ -549,12 +625,45 @@ export const SettingsScreen: React.FC = () => {
           </View>
 
           <View style={styles.cardDivider} />
+          <TouchableOpacity
+            style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
+            activeOpacity={0.8}
+            onPress={handleSaveProfile}
+            disabled={profileSaving}
+          >
+            {profileSaving
+              ? <ActivityIndicator size="small" color={Colors.white} />
+              : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
+          </TouchableOpacity>
+        </View>
+          </>
+        )}
 
+        {activeCategory === 'notifications' && (
+          <>
+            <SectionHeader icon="notifications-outline" label="NOTIFICATIONS & PRIVACY" />
+            <TouchableOpacity
+          style={styles.notificationShortcut}
+          onPress={() => navigation.navigate('NotificationSettings')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Manage notification preferences"
+        >
+          <View style={styles.notificationShortcutIcon}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notificationShortcutTitle}>Notification preferences</Text>
+            <Text style={styles.notificationShortcutHint}>Choose auction, offer and email alerts</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+        </TouchableOpacity>
+            <View style={styles.card}>
           {!preferencesFetchComplete && (
-            <Text style={styles.preferenceNotice}>Loading your saved profile preferences…</Text>
+            <Text style={styles.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
           )}
           {preferencesFetchComplete && !preferencesLoaded && (
-            <Text style={styles.preferenceNotice}>Your saved profile preferences could not be confirmed. Saving your name or phone number will not change them.</Text>
+            <Text style={styles.preferenceNotice}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
           )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
@@ -584,20 +693,25 @@ export const SettingsScreen: React.FC = () => {
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
+              <View style={styles.cardDivider} />
+              <TouchableOpacity
+                style={[styles.saveBtn, (preferencesSaving || !preferencesLoaded) && { opacity: 0.55 }]}
+                activeOpacity={0.8}
+                onPress={handleSavePreferences}
+                disabled={preferencesSaving || !preferencesLoaded}
+                accessibilityRole="button"
+                accessibilityLabel="Save notification and privacy preferences"
+              >
+                {preferencesSaving
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={styles.saveBtnText}>SAVE PREFERENCES</Text>}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
-          <View style={styles.cardDivider} />
-          <TouchableOpacity
-            style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
-            activeOpacity={0.8}
-            onPress={handleSaveProfile}
-            disabled={profileSaving}
-          >
-            {profileSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
-          </TouchableOpacity>
-        </View>
-
+        {activeCategory === 'business' && (
+          <>
         {/* ── 2. DEALERSHIP PROFILE (dealers only) ── */}
         {isDealerAccount && (
           <>
@@ -729,6 +843,11 @@ export const SettingsScreen: React.FC = () => {
           </>
         )}
 
+          </>
+        )}
+
+        {activeCategory === 'verification' && (
+          <>
         {isDealerAccount && (
           <>
             <SectionHeader icon="shield-checkmark-outline" label="BUSINESS VERIFICATION" />
@@ -778,8 +897,8 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.card}>
           <Text style={styles.payoutDesc}>
             {isAddressVerified
-              ? 'Address verified! Your account shows a Verified Trader badge to buyers and sellers.'
-              : 'Verify your address to earn a Verified Trader badge and build trust with buyers and sellers.'}
+              ? 'Your address is verified. Dealer KYC and other account verification checks are tracked separately.'
+              : 'Verify your address to complete this part of account verification. Other checks may still be required.'}
           </Text>
           {isAddressVerified ? (
             <View style={styles.stripeConnected}>
@@ -802,7 +921,11 @@ export const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
           )}
         </View>
+          </>
+        )}
 
+        {activeCategory === 'security' && (
+          <>
         {/* ── 4. SECURITY & PASSWORD ── */}
         <SectionHeader icon="lock-closed-outline" label="SECURITY & PASSWORD" />
         <View style={styles.card}>
@@ -866,7 +989,11 @@ export const SettingsScreen: React.FC = () => {
               : <Text style={styles.saveBtnText}>UPDATE PASSWORD</Text>}
           </TouchableOpacity>
         </View>
+          </>
+        )}
 
+        {activeCategory === 'payouts' && (
+          <>
         {/* ── 5. PAYOUTS ── */}
         <SectionHeader icon="card-outline" label="PAYOUTS" />
         <View style={styles.card}>
@@ -879,7 +1006,7 @@ export const SettingsScreen: React.FC = () => {
           ) : stripeOnboarded ? (
             <View style={styles.stripeConnected}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Stripe account connected</Text>
+              <Text style={styles.stripeConnectedText}>Stripe payouts enabled</Text>
             </View>
           ) : (
             <>
@@ -887,7 +1014,7 @@ export const SettingsScreen: React.FC = () => {
                 <View style={styles.stripeWarning}>
                   <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
                   <Text style={styles.stripeWarningText}>
-                    Your Stripe account was created but onboarding is incomplete. Click below to finish.
+                    Stripe payout setup is not yet enabled. Review any outstanding verification or onboarding requirements below.
                   </Text>
                 </View>
               )}
@@ -901,7 +1028,7 @@ export const SettingsScreen: React.FC = () => {
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
                       <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
-                      <Text style={styles.stripeBtnText}>CONNECT BANK ACCOUNT</Text>
+                      <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
               <Text style={styles.stripeNote}>
@@ -967,7 +1094,11 @@ export const SettingsScreen: React.FC = () => {
               : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
+          </>
+        )}
 
+        {activeCategory === 'security' && (
+          <>
         {/* ── Danger zone ── */}
         <View style={styles.dangerCard}>
           <SectionHeader icon="warning-outline" label="DANGER ZONE" />
@@ -986,6 +1117,8 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.deleteBtnText}>DELETE ACCOUNT</Text>
           </TouchableOpacity>
         </View>
+          </>
+        )}
 
       </ScrollView>
 
@@ -1179,6 +1312,11 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, gap: 8 },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
+  categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
+  categoryLabel: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, lineHeight: 18, color: Colors.textSecondary },
+  categoryLabelSelected: { color: Colors.white },
   notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },
   notificationShortcutIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: Colors.accentAlpha10 },
   notificationShortcutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 3 },
