@@ -61,38 +61,3 @@ test('existing production APK signing and iOS build workflows are never overwrit
   assert.equal(eas.build.production.channel, 'production');
   assert.ok(load('.github/workflows/carmazium-ios-preview-ipa.yml').includes('workflow_dispatch'));
 });
-"));
-  assert.ok(workflow.includes("grep -Eq '^android.enableShrinkResourcesInReleaseBuilds=false
-  assert.doesNotMatch(workflow, /android-actions\/setup-android@v3/);
-  assert.ok(workflow.includes('node-version: \'20\''));
-  assert.doesNotMatch(workflow, /secrets\.EXPO_TOKEN|secrets\.EAS_TOKEN|eas-cli|eas build/);
-  assert.ok(workflow.includes('run: npx expo prebuild --platform android --non-interactive --clean'));
-});
-
-test('existing production APK signing and iOS build workflows are never overwritten', () => {
-  const current = JSON.parse(mobile('app.json')).expo;
-  assert.equal(current.android.package, 'uk.carmazium.app');
-  assert.equal(current.ios.bundleIdentifier, 'uk.carmazium.app');
-  assert.equal(current.updates.enabled, true);
-  const eas = JSON.parse(mobile('eas.json'));
-  assert.equal(eas.build.preview.channel, 'preview');
-  assert.equal(eas.build.production.channel, 'production');
-  assert.ok(load('.github/workflows/carmazium-ios-preview-ipa.yml').includes('workflow_dispatch'));
-});
-"));
-  assert.doesNotMatch(workflow, /android-actions\/setup-android@v3/);
-  assert.ok(workflow.includes('node-version: \'20\''));
-  assert.doesNotMatch(workflow, /secrets\.EXPO_TOKEN|secrets\.EAS_TOKEN|eas-cli|eas build/);
-  assert.ok(workflow.includes('run: npx expo prebuild --platform android --non-interactive --clean'));
-});
-
-test('existing production APK signing and iOS build workflows are never overwritten', () => {
-  const current = JSON.parse(mobile('app.json')).expo;
-  assert.equal(current.android.package, 'uk.carmazium.app');
-  assert.equal(current.ios.bundleIdentifier, 'uk.carmazium.app');
-  assert.equal(current.updates.enabled, true);
-  const eas = JSON.parse(mobile('eas.json'));
-  assert.equal(eas.build.preview.channel, 'preview');
-  assert.equal(eas.build.production.channel, 'production');
-  assert.ok(load('.github/workflows/carmazium-ios-preview-ipa.yml').includes('workflow_dispatch'));
-});
