@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, TextInput, ActivityIndicator, Switch,
+  StatusBar, Alert, TextInput, ActivityIndicator, Switch, AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
@@ -93,6 +93,12 @@ export const SettingsScreen: React.FC = () => {
           setProfileImage(p.profileImage ?? '');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
+          // /users/me also returns the saved payout fallback. A blank bank
+          // form previously looked like the user's details had been lost and
+          // could overwrite a known account on the next save.
+          setBankName(p.bankAccountName ?? '');
+          setSortCode(p.bankSortCode ?? '');
+          setAccountNumber(p.bankAccountNumber ?? '');
           if (typeof p.notifyOnSale === 'boolean' && typeof p.showPublicProfile === 'boolean') {
             setPreferencesLoaded(true);
           }
@@ -229,6 +235,7 @@ export const SettingsScreen: React.FC = () => {
     accountId?: string;
     detailsSubmitted?: boolean;
     chargesEnabled?: boolean;
+    payoutsEnabled?: boolean;
   } | null>(null);
   const [stripeLoading, setStripeLoading] = useState(true);
   const [stripeConnecting, setStripeConnecting] = useState(false);
@@ -302,16 +309,26 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  // ── Load Stripe status ──
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiClient<{ success: boolean; data: any }>('/users/stripe-connect/status');
-        if (res?.success) setStripeStatus(res.data);
-      } catch { /* offline — show connect button */ }
-      finally { setStripeLoading(false); }
-    })();
+  // Read current server payout eligibility, including after returning from
+  // Stripe's browser onboarding. Submission alone does not guarantee payouts
+  // are enabled; only the provider's payoutsEnabled state is authoritative.
+  const refreshStripeStatus = useCallback(async () => {
+    setStripeLoading(true);
+    try {
+      const res = await apiClient<{ success: boolean; data: any }>('/users/stripe-connect/status');
+      if (res?.success) setStripeStatus(res.data);
+    } catch { /* retain last known status; no success is invented */ }
+    finally { setStripeLoading(false); }
   }, []);
+  useFocusEffect(useCallback(() => {
+    if (activeCategory === 'payouts') void refreshStripeStatus();
+  }, [activeCategory, refreshStripeStatus]));
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active' && activeCategory === 'payouts') void refreshStripeStatus();
+    });
+    return () => subscription.remove();
+  }, [activeCategory, refreshStripeStatus]);
 
   // ── Save profile ──
   const handleSaveProfile = async () => {
@@ -435,8 +452,8 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const stripeOnboarded = stripeStatus?.detailsSubmitted === true;
-  const stripePartial = stripeStatus?.accountId && !stripeStatus.detailsSubmitted;
+  const stripeOnboarded = stripeStatus?.payoutsEnabled === true;
+  const stripePartial = !!stripeStatus?.accountId && !stripeOnboarded;
 
   // ────────────────────────── render ────────────────────────────
 
@@ -976,7 +993,7 @@ export const SettingsScreen: React.FC = () => {
           ) : stripeOnboarded ? (
             <View style={styles.stripeConnected}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Stripe account connected</Text>
+              <Text style={styles.stripeConnectedText}>Stripe payouts enabled</Text>
             </View>
           ) : (
             <>
@@ -984,7 +1001,7 @@ export const SettingsScreen: React.FC = () => {
                 <View style={styles.stripeWarning}>
                   <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
                   <Text style={styles.stripeWarningText}>
-                    Your Stripe account was created but onboarding is incomplete. Click below to finish.
+                    Stripe payout setup is not yet enabled. Review any outstanding verification or onboarding requirements below.
                   </Text>
                 </View>
               )}
@@ -998,7 +1015,7 @@ export const SettingsScreen: React.FC = () => {
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
                       <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
-                      <Text style={styles.stripeBtnText}>CONNECT BANK ACCOUNT</Text>
+                      <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
               <Text style={styles.stripeNote}>
