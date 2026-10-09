@@ -28,9 +28,10 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 ## Remaining pre-production gates
 
 ### 1. Current SimpleDMS company/signatory evidence
-- [ ] Obtain a current official Companies House company profile (or equivalent official filing evidence) for SIMPLEDMS LTD, company 17167272, immediately before signature.
-- [ ] Confirm the current registered office and Patricia Jean Abel's current director/signatory authority.
-- Reason: current public registry-derived indexes support the Peterborough PE2 6XU address supplied by SimpleDMS, but an older September index still shows 71–75 Shelton Street, London WC2H 9JQ. The final signed contract must use the current official record, not an inferred address.
+- [x] Stephen supplied the current official Companies House company-profile URL for SIMPLEDMS LTD, company 17167272, on 9 October 2026.
+- [x] Stephen supplied the current official officers URL and confirmed Patricia Jean Abel will sign for SimpleDMS Ltd as director.
+- [x] Current registered office confirmed for the agreement: Brightfield Business Hub, Bakewell Road, Orton Southgate, Peterborough, Cambridgeshire, England, PE2 6XU.
+- Signing-date recheck remains a normal execution control, not an open integration blocker.
 
 ### 2. Final legal/data-protection review and signatures
 - [ ] Both parties review the consolidated counter-draft with appropriate legal/data-protection advice.
@@ -39,15 +40,18 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [ ] The 90-day clock starts only at mutually confirmed working production go-live, not at signature or key creation.
 
 ### 3. SimpleDMS production refresh/staleness confirmation
-- [ ] SimpleDMS confirms its production scheduler will perform complete pagination approximately every 2–5 minutes.
-- [ ] SimpleDMS confirms a failed refresh does not replace a good snapshot with an empty/partial one.
-- [ ] SimpleDMS confirms inventory older than 15 minutes since last successful refresh is hidden or clearly unavailable.
-- Synthetic lifecycle acceptance proves reconciliation semantics but does not by itself prove their production scheduler/fail-safe timing.
+- [x] SimpleDMS confirmed a complete paginated reconciliation target every 2 minutes, within the agreed approximate 2–5 minute interval and API/service limits.
+- [x] SimpleDMS confirmed an incomplete/failed refresh retains the last successful snapshot and is not treated as a successful empty feed.
+- [x] SimpleDMS confirmed CarMazium inventory will be hidden or clearly marked unavailable after more than 15 minutes without a successful refresh.
+- [ ] SimpleDMS will verify this behaviour in production before providing written go-live approval. Synthetic lifecycle acceptance remains separate from production acceptance.
 
 ### 4. Production photo syndication rights
-- [ ] Confirm CarMazium has an express legal basis/right to syndicate seller-uploaded vehicle photographs to SimpleDMS for live BuySmart display.
-- Current CarMazium Terms grant CarMazium rights to publish listings, operate the platform, market vehicles and promote CarMazium, but do not expressly state third-party marketplace/partner syndication.
-- Before production images are enabled, obtain counsel confirmation that the existing licence is sufficient or update the seller Terms/privacy notice/consent wording prospectively.
+- [x] Review identified that the legacy User Content licence is not explicit enough to rely on for third-party partner syndication without qualification.
+- [x] Prospective Terms/Privacy wording has been prepared in draft PR #444 for web/native parity and is NOT live pending review.
+- [x] A fail-closed technical design has been prepared: a listing-level partner-distribution acceptance timestamp defaults to NULL, and the SimpleDMS feed excludes any listing without that acknowledgement. Legacy listings therefore remain excluded by default.
+- [ ] Legal/data-protection review approves the final wording and activation approach.
+- [ ] Updated Terms/Privacy are deployed before any production partner feed is enabled.
+- [ ] Only listings carrying the recorded partner-distribution acknowledgement are eligible for the live partner feed.
 - Historical photographs remain prohibited under Schedule B.
 
 ### 5. Privacy notice / lawful-basis implementation
