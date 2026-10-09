@@ -55,10 +55,12 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - Historical photographs remain prohibited under Schedule B.
 
 ### 5. Privacy notice / lawful-basis implementation
-- [ ] Update/confirm CarMazium's privacy notice for the approved SimpleDMS live-feed purposes, including VRM/server-side matching where used, broad location, current bid, partner referral/attribution where enabled, retention/deletion and the separate historical matching purpose.
-- [ ] Record the lawful basis and controller/processor or independent-controller treatment by activity.
+- [ ] Update/confirm CarMazium's privacy notice for the approved SimpleDMS live-feed and historical-matching purposes, including VRM/server-side matching where used, broad location, current bid, partner referral/attribution, retention/deletion and 36-month historical evidence.
+- [ ] Record the lawful basis and controller/processor or independent-controller treatment by activity in the LIA/DPIA records.
 - [ ] Ensure any attribution cookie/tracking or equivalent PECR-relevant mechanism is enabled only after the required disclosure/consent assessment.
-- [ ] SimpleDMS confirms its corresponding privacy notice/lawful basis.
+- [ ] Complete the historical matching DPIA or documented DPIA-screening decision before production launch.
+- [ ] SimpleDMS confirms its corresponding privacy notice/lawful basis and matching/deletion controls.
+- Historical capture is now a pre-launch requirement; the 90-day pilot does not start without it.
 
 ### 6. Exact production field/config acceptance
 - [ ] Verify production photographs load only from approved public URLs and private/KYC/handover media cannot leak.
@@ -68,7 +70,7 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [ ] Rehearse production-key rotation/revocation procedure without disclosing raw credentials.
 
 ### 7. Joint production go-live
-- [ ] Generate a separate production credential only after all preceding gates pass.
+- [ ] Generate a separate production credential only after all preceding gates pass, including historical matching/privacy safeguards.
 - [ ] Deliver it through an approved private channel; never email the raw secret.
 - [ ] Run a short live production acceptance window with agreed fields only.
 - [ ] Both parties provide written production go-live approval and rollback/kill-switch acknowledgement.
