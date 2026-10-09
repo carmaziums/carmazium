@@ -9,6 +9,7 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -22,6 +23,8 @@ import { Colors } from '../../constants/colors';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
+import { useAuthStore } from '../../store/authStore';
+import { getSavedAuctionIdForListing } from '../../lib/watchlistApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -42,6 +45,7 @@ type ViewMode = 'grid' | 'list';
 export const SavedScreen: React.FC = () => {
   const insets     = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const accountRole = useAuthStore(s => s.accountRole);
 
   // Readable website-style list first; a two-column grid remains optional.
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -66,14 +70,30 @@ export const SavedScreen: React.FC = () => {
   }, [hydrateFromApi]);
 
   const handleCardPress = useCallback(
-    (listing: CarListing) => {
-      if (listing.listingType === 'AUCTION' && listing.auction?.id) {
-        navigation.navigate('AuctionDeepLink', { auctionId: listing.auction.id });
+    async (listing: CarListing) => {
+      if (listing.listingType === 'AUCTION') {
+        // A general watchlist result intentionally lacks trade-auction state.
+        // Never route a trade auction through the retail purchase details.
+        if (accountRole !== 'dealer') {
+          Alert.alert('Dealer account required', 'Only verified motor traders can open trade auctions.');
+          return;
+        }
+        try {
+          const auctionId = listing.auction?.id
+            ?? await getSavedAuctionIdForListing(listing.id);
+          if (!auctionId) {
+            Alert.alert('Auction unavailable', 'This saved auction is no longer available. Check Live Auctions.');
+            return;
+          }
+          navigation.navigate('AuctionDeepLink', { auctionId });
+        } catch {
+          Alert.alert('Unable to open auction', 'Check your connection and dealer verification, then try again.');
+        }
         return;
       }
       navigation.navigate('VehicleDetail', { listing });
     },
-    [navigation]
+    [navigation, accountRole]
   );
 
   const displayedListings = [...savedListings].sort((a, b) =>
@@ -161,6 +181,9 @@ export const SavedScreen: React.FC = () => {
           <Text style={styles.cardTitle} numberOfLines={1}>
             {listing.make} {listing.model}
           </Text>
+          <Text style={styles.cardMeta} numberOfLines={1}>
+            Gearbox: {listing.transmission || 'Not specified'}
+          </Text>
           <View style={styles.gridPriceRow}>
             <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
             <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
@@ -214,7 +237,7 @@ export const SavedScreen: React.FC = () => {
             )}
           </View>
           <Text style={styles.listMeta} numberOfLines={2}>
-            {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, listing.transmission !== 'Not specified' ? listing.transmission : null, listing.location].filter(Boolean).join(' · ')}
+            {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, `Gearbox: ${listing.transmission || 'Not specified'}`, listing.location].filter(Boolean).join(' · ')}
           </Text>
           <View style={styles.listPriceRow}>
             <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
