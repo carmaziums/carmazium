@@ -2,8 +2,7 @@ import React from 'react';
 import {
   ScrollView,
   StatusBar,
-  Linking,
-  Alert,
+   Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -94,10 +94,12 @@ export const ServicesScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
 
   const continueOnWeb = async (path: string) => {
-    // Native create-job and lead forms are not implemented. Preserve the
-    // website's real request/consent flow, including service kill-switches.
+    // HTTPS app links can route back into the installed app on Android.
+    // /services/jobs/new would then be parsed as a detail ID of "new".
+    // Open the actual web form in a browser tab so buyers never enter a
+    // broken native screen and website auth/consent gates remain authoritative.
     try {
-      await Linking.openURL(`https://www.carmazium.com${path}`);
+      await WebBrowser.openBrowserAsync(`https://www.carmazium.com${path}`);
     } catch {
       Alert.alert('Could not open CarMazium', 'Please visit www.carmazium.com/services and choose your service.');
     }
