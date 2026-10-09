@@ -76,7 +76,9 @@ export const SettingsScreen: React.FC = () => {
           setProfileImage(p.profileImage ?? '');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
-          setPreferencesLoaded(true);
+          if (typeof p.notifyOnSale === 'boolean' && typeof p.showPublicProfile === 'boolean') {
+            setPreferencesLoaded(true);
+          }
           if (p.dealerProfile) {
             const dp = p.dealerProfile;
             setDealerCompanyName(dp.companyName ?? '');
