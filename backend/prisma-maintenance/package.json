@@ -1,0 +1,12 @@
+{
+  "name": "carmazium-prisma-maintenance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Short-lived, private Prisma CLI maintenance only; no HTTP backend",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "dependencies": {
+    "prisma": "6.19.3"
+  }
+}

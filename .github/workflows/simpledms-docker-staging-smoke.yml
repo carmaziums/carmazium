@@ -1,0 +1,67 @@
+name: SimpleDMS secure runtime image synthetic HTTP staging smoke
+on:
+  push:
+    branches:
+      - integration/simpledms-staging-candidate-20261003
+    paths:
+      - backend/Dockerfile
+      - backend/scripts/security/ci-only-simpledms-staging-contract.cjs
+      - .github/workflows/simpledms-docker-staging-smoke.yml
+  pull_request:
+    branches:
+      - feature/simpledms-partner-auction-feed
+    paths:
+      - backend/Dockerfile
+      - backend/src/partner-api/**
+      - .github/workflows/simpledms-docker-staging-smoke.yml
+permissions:
+  contents: read
+jobs:
+  test-hardened-runtime-as-synthetic-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the exact reviewed public-runtime target (not general monorepo dependencies)
+        run: docker build --target runtime -f backend/Dockerfile -t simpledms-secure-stage:ci backend
+      - name: Verify runtime isolation, Node 24 and reject any real DB credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm simpledms-secure-stage:ci node -v | grep -E '^v24\.'
+          docker run --rm --entrypoint sh simpledms-secure-stage:ci -c 'test ! -e /app/node_modules/prisma && test ! -e /app/node_modules/@prisma/config && test ! -e /usr/local/bin/npm'
+          if docker run --rm -e STAGING_SYNTHETIC_ONLY=true -e DATABASE_URL='postgresql://synthetic.invalid/notreal' simpledms-secure-stage:ci node dist/partner-api/staging.main.js > "$RUNNER_TEMP/rejected.txt" 2>&1; then
+            echo 'SECURITY FAILURE: staging accepted a database credential'
+            exit 1
+          fi
+          grep -q 'Synthetic staging must not receive production database' "$RUNNER_TEMP/rejected.txt"
+          echo 'PASS: secure runtime image, Node 24, no Prisma CLI, staging rejects DB env'
+      - name: Test actual packaged image over localhost with disposable key
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(openssl rand -hex 36)"
+          digest="$(printf %s "$key" | sha256sum | cut -d ' ' -f 1)"
+          trap 'docker rm -f simpledms-runtime-smoke >/dev/null 2>&1 || true; unset key digest' EXIT
+          docker run --detach --rm --name simpledms-runtime-smoke \
+            --publish 127.0.0.1:43181:43181 \
+            --env PORT=43181 \
+            --env STAGING_SYNTHETIC_ONLY=true \
+            --env STAGING_PUBLIC_HOST=partner-api-synthetic-production.up.railway.app \
+            --env PARTNER_API_ENABLED=true \
+            --env PARTNER_API_SIMPLEDMS_ENABLED=true \
+            --env PARTNER_API_SIMPLEDMS_KEY_SHA256="$digest" \
+            --env NODE_ENV=production \
+            simpledms-secure-stage:ci node dist/partner-api/staging.main.js >/dev/null
+          for i in {1..80}; do
+            if curl --silent --show-error --fail --max-time 2 http://127.0.0.1:43181/health/live > "$RUNNER_TEMP/health.json" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          grep -Eq '"syntheticOnly"[[:space:]]*:[[:space:]]*true' "$RUNNER_TEMP/health.json"
+          missing="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:43181/partners/v1/simpledms/auctions)"
+          test "$missing" = 401
+          curl --silent --show-error --fail \
+            --header "X-Partner-Key: $key" \
+            'http://127.0.0.1:43181/partners/v1/simpledms/auctions?page=1&limit=25' > "$RUNNER_TEMP/feed.json"
+          node -e 'const fs=require("fs");const f=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/feed.json"));const a=f.auctions?.[0];if(f.pagination?.total!==1||f.pagination?.hasMore||a?.vehicle?.registration||a?.images?.length!==0||!a?.url?.startsWith("https://partner-api-synthetic-production.up.railway.app/staging-auctions/")||JSON.stringify(f).includes("PRIVATE_SELLER"))process.exit(1)'
+          echo 'PASS: packaged hardened runtime starts isolated synthetic staging, denies no-key, authenticates disposable key, returns only safe fixture'
