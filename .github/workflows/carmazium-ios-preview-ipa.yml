@@ -1,0 +1,91 @@
+name: CarMazium iOS internal preview build
+
+# Manual only. No Apple App Store/TestFlight submission and no OTA publish.
+# EAS internal iOS requires an Apple provisioning profile and registered test
+# device(s); a signed .ipa is not universally installable on every iPhone.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-ios-internal-preview
+  cancel-in-progress: false
+
+jobs:
+  build-preview:
+    name: Build iOS internal-test IPA (no store submission)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      CI: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify build access without exposing secrets
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN or EAS_TOKEN secret is missing. Cannot build iOS without Expo EAS access."
+            echo '### iOS internal preview — blocked' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Add EXPO_TOKEN in this repository Actions secrets. An authorised Apple signing account and registered internal test devices are also required.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Install locked native dependencies
+        run: npm ci
+      - name: Verify native types and isolated preview channel
+        run: |
+          npm run typescript
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const eas = require('./eas.json');
+          if (app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              eas.build?.preview?.distribution !== 'internal' ||
+              eas.build?.preview?.channel !== 'preview' ||
+              eas.build?.preview?.ios?.simulator !== false ||
+              app.updates?.requestHeaders?.['expo-channel-name']) {
+            throw new Error('The iOS internal preview does not have the expected settings');
+          }
+          console.log('iOS internal preview configuration verified');
+          NODE
+      - name: Check authorised Expo account
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Build signed internal iOS app (manual only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build --platform ios --profile preview --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-ios-preview.json"
+          node - "$RUNNER_TEMP/carmazium-ios-preview.json" <<'NODE'
+          const fs = require('fs');
+          const body = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const build = Array.isArray(body) ? body[0] : body;
+          const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
+          const status = String(build?.status || 'unknown');
+          const lines = [
+            '### CarMazium iOS internal test build',
+            '- Source GitHub commit: ' + process.env.GITHUB_SHA,
+            '- EAS Build ID: ' + (build?.id || 'not available'),
+            '- Status: ' + status,
+            '- Channel: preview (not production)',
+            '- Type: internal iOS build (requires Apple provisioning)',
+            '',
+            '**Do not use real customer transactions:** This preview currently targets the live CarMazium backend and has a live Stripe publishable key.',
+            '**Installation:** Only registered/provisioned iPhones may directly install this internal build. For wider iPhone testing, separately configure TestFlight and approve a store build/submission.',
+          ];
+          if (url?.startsWith('https://')) lines.push('', '[Open the internal iOS build artifact](' + url + ')');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          if (!url || status.toUpperCase() !== 'FINISHED') {
+            throw new Error('No completed, downloadable iOS internal build was produced');
+          }
+          NODE
