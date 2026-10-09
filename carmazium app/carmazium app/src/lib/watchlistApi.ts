@@ -39,6 +39,31 @@ export async function getWatchlist(
   return { items, total: res.pagination.total };
 }
 
+/**
+ * The regular watchlist deliberately omits dealer-only auction records.
+ * Resolve a saved auction through the verified-dealer shortlist endpoint,
+ * never by opening its listing as if it were a retail purchase.
+ */
+export async function getSavedAuctionIdForListing(listingId: string): Promise<string | null> {
+  type SavedAuction = { listingId: string; listing?: { auction?: { id: string } | null } };
+  for (let page = 1; page <= 40; page++) {
+    const response = await apiClient<BackendPaginatedResponse<SavedAuction>>(
+      `/watchlist/auctions?page=${page}&limit=50&view=all`,
+    );
+    if (!response?.success || !Array.isArray(response.data)) {
+      throw new Error('Could not load your saved auctions.');
+    }
+    const match = response.data.find(item => item.listingId === listingId);
+    if (match) return match.listing?.auction?.id ?? null;
+    const pages = Number(response.pagination?.totalPages);
+    if (!Number.isInteger(pages) || pages > 40 || pages < 0) {
+      throw new Error('Could not load the complete auction shortlist.');
+    }
+    if (page >= pages) return null;
+  }
+  throw new Error('Could not load the complete auction shortlist.');
+}
+
 export async function addToWatchlist(listingId: string): Promise<void> {
   try {
     await apiClient<unknown>(`/watchlist/${listingId}`, { method: 'POST' });
