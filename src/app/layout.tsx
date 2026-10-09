@@ -20,7 +20,7 @@ import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { GoogleConsentMode } from "@/components/analytics/GoogleConsentMode";
 import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import { MetaPixel } from "@/components/analytics/MetaPixel";
+import { MetaAdvancedMatching, MetaPixel } from "@/components/analytics/MetaPixel";
 import { TikTokPixel } from "@/components/analytics/TikTokPixel";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { ConsentProvider } from "@/context/ConsentContext";
@@ -125,6 +125,7 @@ export default function RootLayout({
           <TikTokPixel />
           <ThemeProvider>
             <AuthProvider>
+              <MetaAdvancedMatching />
               <ChatProvider>
                 <CompareProvider>
                   <LocationProvider>
