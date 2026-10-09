@@ -151,7 +151,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
         { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
-        { href: "/dashboard/user?tab=settings", label: "Settings", icon: Settings, section: "Account" },
+        { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
     ]
 
     const sellerLinks: LinkObj[] = [
@@ -172,19 +172,19 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/service/leads", label: "Finance & Warranty Enquiries", icon: ClipboardList, section: "Services" },
             { href: "/dashboard/service/capabilities", label: "Service Areas", icon: ShieldCheck, section: "Services" },
             { href: "/dashboard/service/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
-            { href: "/dashboard/service/settings", label: "Settings", icon: Settings, section: "Account" },
+            { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
         ],
         finance: [
             { href: "/dashboard/finance", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/finance/applications", label: "Applications", icon: FileText },
             { href: "/dashboard/finance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/finance/settings", label: "Settings", icon: Settings },
+            { href: "/profile", label: "Account Settings", icon: Settings },
         ],
         insurance: [
             { href: "/dashboard/insurance", label: "Overview", icon: LayoutDashboard },
             { href: "/dashboard/insurance/quotes", label: "Quotes", icon: ClipboardList },
             { href: "/dashboard/insurance/messages", label: "Messages", icon: MessageSquare, badge: unreadCount },
-            { href: "/dashboard/insurance/settings", label: "Settings", icon: Settings },
+            { href: "/profile", label: "Account Settings", icon: Settings },
         ],
         dealer: DEALER_ROUTE_CONFIG
             .filter(route =>

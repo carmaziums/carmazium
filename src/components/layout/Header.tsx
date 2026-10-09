@@ -474,7 +474,7 @@ export function Header() {
                                         className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
                                         style={{ color: 'var(--text-secondary)' }}
                                     >
-                                        <UserIcon size={16} /> Profile Settings
+                                        <UserIcon size={16} /> Account Settings
                                     </Link>
                                     <div
                                         className="lg:hidden flex items-center justify-between px-4 py-2 text-sm"

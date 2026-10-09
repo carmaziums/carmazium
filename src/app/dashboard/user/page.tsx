@@ -115,6 +115,12 @@ function UnifiedUserDashboardContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const activeTab = searchParams.get("tab") || "overview"
+    // Old deep links still resolve, but account controls have one canonical home.
+    React.useEffect(() => {
+        if (activeTab === "settings") {
+            router.replace(`/profile?section=${searchParams.has("stripe_connect") ? "payouts" : "personal"}`)
+        }
+    }, [activeTab, router, searchParams])
     
     const [dashboardData, setDashboardData] = React.useState<UnifiedDashboardData | null>(null)
     const [loading, setLoading] = React.useState(true)
@@ -175,7 +181,7 @@ function UnifiedUserDashboardContent() {
         { id: "stats", label: "Performance", icon: BarChart3 },
         { id: "messages", label: "Messages", icon: MessageSquare, badge: dashboardData?.unreadMessages },
         { id: "earnings", label: "Earnings", icon: DollarSign },
-        { id: "settings", label: "Settings", icon: Settings },
+        // Account Settings is reached from the global menu / dashboard sidebar.
     ]
 
     return (

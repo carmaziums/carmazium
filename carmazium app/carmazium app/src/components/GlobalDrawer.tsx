@@ -600,19 +600,6 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.rowLabel}>Account settings</Text>
             <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => handleItem({ id: 'notification-settings', label: 'Notification settings', icon: 'notifications-outline', iconLib: 'ion', stackScreen: 'NotificationSettings' })}
-            accessibilityRole="button"
-            accessibilityLabel="Open notification settings"
-            activeOpacity={0.7}
-          >
-            <View style={styles.bar} />
-            <View style={styles.iconWrap}><Ionicons name="notifications-outline" size={19} color={Colors.textSecondary} /></View>
-            <Text style={styles.rowLabel}>Notification settings</Text>
-            <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
-          </TouchableOpacity>
-
           {/* Contact Support (DASH-024). Web has had this in its sidebar for
               every role; mobile had no in-app route to support at all. Opens
               the support chat room rather than an email client, matching web

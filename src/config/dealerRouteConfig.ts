@@ -117,8 +117,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         section: "Business"
     },
     {
-        href: "/dashboard/dealer/settings",
-        label: "Settings",
+        href: "/profile?section=business",
+        label: "Account Settings",
         title: "Settings",
         subHeader: "Business profile and preferences",
         icon: Settings,

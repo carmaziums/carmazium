@@ -159,6 +159,8 @@ jobs:
         run: node scripts/check-release-readiness.mjs
       - name: Verify native redesign navigation and release contracts
         run: node --test scripts/test-mobile-redesign-block10.test.mjs
+      - name: Verify unified account settings and legacy routes
+        run: node --test scripts/test-unified-account-settings.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
