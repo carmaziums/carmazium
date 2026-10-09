@@ -1250,27 +1250,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return fieldError(key) ? Colors.error : Colors.success;
   };
 
-  // Step 1 has invalid touched fields?
-  const step1HasErrors = (): boolean => {
-    return !!fieldError('mileage') || !!fieldError('title') || !!fieldError('location')
-      || !!fieldError('transmission') || !!fieldError('bodyType');
-  };
-
-  // Step 3 has invalid touched fields?
-  const step3HasErrors = (): boolean => {
-    return !!fieldError('priceAsking') || !!fieldError('priceMin');
-  };
-
   const allImages = [
     ...exteriorImages.map(url => encodeVehicleImageCategory(url, 'EXTERIOR')),
     ...interiorImages.map(url => encodeVehicleImageCategory(url, 'INTERIOR')),
     ...damageImages.map(url => encodeVehicleImageCategory(url, 'DAMAGE')),
   ];
-
-  // Step 2 (Media) is not field-validated like 1 and 3 — its only rule is the
-  // photo minimum, which is a count, not a touched field. Same shape as the
-  // helpers above so the Next button disables through one consistent path.
-  const step2HasErrors = (): boolean => allImages.length < MIN_PHOTOS;
 
   const sellerAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
