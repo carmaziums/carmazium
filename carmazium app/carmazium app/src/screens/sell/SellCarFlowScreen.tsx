@@ -610,6 +610,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
+  const [showDvlaDetails, setShowDvlaDetails] = useState(false);
+  const [showExtraSpecs, setShowExtraSpecs] = useState(false);
   const currentUserId = useAuthStore(state => state.isAuthenticated ? state.user?.id : null);
 
   // Route-derived edit identity is needed by valuation as well as draft save.
@@ -1659,6 +1661,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function validateStep(s: Step): boolean {
     if (s === 1) {
       if (touchAndCheck(STEP1_FIELD_KEYS)) {
+        Alert.alert('Required details missing', 'Please complete the highlighted vehicle details and legal declarations before continuing.');
         stepScrollRef.current?.scrollTo({ y: 0, animated: true });
         return false;
       }
@@ -1666,14 +1669,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // still a genuine blocking condition, kept as an alert per CLAUDE.md's
       // guidance that only inline "required" validation moves to inline errors.
       if ((writeOffCat === 'CAT_A' || writeOffCat === 'CAT_B') && !isAuction) {
-        Alert.alert('Auction Only', 'Cat A and Cat B write-off vehicles can only be listed via auction. Select the Auction option in Step 3 Pricing.');
+        Alert.alert('Auction Only', 'Cat A and Cat B write-off vehicles can only be listed via auction. Choose Auction at the top of Vehicle Details.');
         return false;
       }
     }
     if (s === 2) {
-      // Photo minimum. The Next button is already disabled below MIN_PHOTOS, so
-      // this is the belt-and-braces path (draft resume landing straight on a
-      // later step, hardware back/forward, any future caller of validateStep).
+      // Tapping Next explains the minimum instead of silently disabling it;
+      // the existing rule is unchanged and is still enforced at publication.
       if (allImages.length < MIN_PHOTOS) {
         Alert.alert(
           'More Photos Needed',
@@ -1684,6 +1686,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
     if (s === 3) {
       if (touchAndCheck(STEP3_FIELD_KEYS)) {
+        Alert.alert('Price needed', 'Enter a valid vehicle price to continue.');
         stepScrollRef.current?.scrollTo({ y: 0, animated: true });
         return false;
       }
@@ -2332,28 +2335,26 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     ? ['DETAILS', 'MEDIA', 'PRICING', 'AUCTION', 'REVIEW']
     : ['DETAILS', 'MEDIA', 'PRICING', 'REVIEW'];
 
+  // The method is chosen at the start of the journey; changing it in Pricing
+  // uses the same handler, so listing type and eligible badge tier never drift.
+  function chooseListingMethod(method: 'CLASSIFIED' | 'AUCTION') {
+    if (listingType === method) return;
+    setListingType(method);
+    setBadgeTier(method === 'AUCTION' ? 'FREE' : 'BASIC');
+  }
+
   function renderStepper() {
     return (
-      <View style={s.stepperContainer}>
-        {STEP_LABELS.map((label, i) => {
-          const n = i + 1;
-          const active = step >= n;
-          const done = step > n;
-          return (
-            <React.Fragment key={label}>
-              <View style={s.stepItem}>
-                <View style={[s.stepCircle, active && s.stepCircleActive]}>
-                  {done
-                    ? <Ionicons name="checkmark" size={13} color={Colors.white} />
-                    : <Text style={[s.stepNum, active && s.stepNumActive]}>{n}</Text>
-                  }
-                </View>
-                <Text style={[s.stepLabel, active && s.stepLabelActive]}>{label}</Text>
-              </View>
-              {i < STEP_LABELS.length - 1 && <View style={[s.stepLine, step > n && s.stepLineActive]} />}
-            </React.Fragment>
-          );
-        })}
+      <View style={s.stepperContainer} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: totalSteps, now: step }}>
+        <View style={s.stepperSummary}>
+          <Text style={s.stepperCount}>STEP {step} OF {totalSteps}</Text>
+          <Text style={s.stepperCurrent}>{STEP_LABELS[step - 1]}</Text>
+        </View>
+        <View style={s.stepperTrack}>
+          {STEP_LABELS.map((label, index) => (
+            <View key={label} style={[s.stepperSegment, index < step && s.stepperSegmentComplete]} />
+          ))}
+        </View>
       </View>
     );
   }
@@ -2363,6 +2364,42 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderStep1() {
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+
+        {!editMode && (
+          <SectionBox title="How would you like to sell?" accent={Colors.accent}>
+            <Text style={s.fieldHint}>Choose once now. You can change your choice later in Pricing.</Text>
+            <View style={s.methodChoices}>
+              <TouchableOpacity
+                style={[s.methodChoice, listingType === 'AUCTION' && s.methodChoiceSelected]}
+                onPress={() => chooseListingMethod('AUCTION')}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: listingType === 'AUCTION' }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="hammer-outline" size={23} color={listingType === 'AUCTION' ? Colors.accent : Colors.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.methodTitle}>Auction · FREE</Text>
+                  <Text style={s.methodDescription}>Verified traders bid. Eligible sellers can receive £100 after a successful sale and approved handover.</Text>
+                </View>
+                <Ionicons name={listingType === 'AUCTION' ? 'radio-button-on' : 'radio-button-off'} size={23} color={listingType === 'AUCTION' ? Colors.accent : Colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.methodChoice, listingType === 'CLASSIFIED' && s.methodChoiceSelected]}
+                onPress={() => chooseListingMethod('CLASSIFIED')}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: listingType === 'CLASSIFIED' }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="pricetag-outline" size={23} color={listingType === 'CLASSIFIED' ? Colors.accent : Colors.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.methodTitle}>Retail · £1</Text>
+                  <Text style={s.methodDescription}>Advertise at your asking price with a one-time basic listing fee until sold.</Text>
+                </View>
+                <Ionicons name={listingType === 'CLASSIFIED' ? 'radio-button-on' : 'radio-button-off'} size={23} color={listingType === 'CLASSIFIED' ? Colors.accent : Colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </SectionBox>
+        )}
 
         {/* Vehicle Type */}
         <SectionBox title="Vehicle Type">
@@ -2424,6 +2461,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
+        <TouchableOpacity
+          style={s.optionalSectionToggle}
+          onPress={() => setShowDvlaDetails(v => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showDvlaDetails }}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={s.optionalSectionTitle}>MOT, tax and DVLA details</Text>
+            <Text style={s.optionalSectionHint}>{motStatus ? `MOT: ${motStatus} · ` : ''}{dvlaFetched ? 'Vehicle data loaded' : 'Review or enter extra registration details'}</Text>
+          </View>
+          <Ionicons name={showDvlaDetails ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        {showDvlaDetails && (
+          <>
         {/* Registration & Compliance — DVLA auto-filled but editable, matching
             web (ListingWizard.tsx) — these used to render as read-only text
             even though the banner above claimed they were editable. Last V5C
@@ -2468,10 +2520,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
+          </>
+        )}
+
         {/* Make / Model / Year */}
         <SectionBox title="Make / Model / Year">
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
+          <View style={{ gap: 12 }}>
+            <View>
               <PickerField
                 label="MAKE *"
                 value={make}
@@ -2488,7 +2543,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 error={fieldError('make') ?? undefined}
               />
             </View>
-            <View style={{ flex: 1 }}>
+            <View>
               <PickerField
                 label="MODEL *"
                 value={model}
@@ -2500,7 +2555,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 error={fieldError('model') ?? undefined}
               />
             </View>
-            <View style={{ width: 80 }}>
+            <View>
               <FieldInput
                 label="YEAR *"
                 value={year}
@@ -2548,30 +2603,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   <Text style={[s.pillText, numberOfKeys === k && s.pillTextActive]}>{k}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
-          </View>
-        </SectionBox>
-
-        {/* Performance & Economy */}
-        <SectionBox title="Performance & Economy">
-          <Text style={s.fieldHint}>Optional — fill in from manufacturer specs.</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <FieldInput label="0-60 MPH (SEC)" value={zeroTo60} onChange={setZeroTo60} placeholder="e.g. 4.5" keyboardType="decimal-pad" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FieldInput label="TOP SPEED MPH" value={topSpeed} onChange={setTopSpeed} placeholder="e.g. 155" keyboardType="number-pad" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FieldInput label="TORQUE (NM)" value={torque} onChange={setTorque} placeholder="e.g. 405" keyboardType="number-pad" />
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <View style={{ flex: 1 }}>
-              <FieldInput label="COMBINED MPG" value={combinedMpg} onChange={setCombinedMpg} placeholder="e.g. 34.4" keyboardType="decimal-pad" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <FieldInput label="EXTRA URBAN MPG" value={extraUrbanMpg} onChange={setExtraUrbanMpg} placeholder="e.g. 42.8" keyboardType="decimal-pad" />
             </View>
           </View>
         </SectionBox>
@@ -2655,46 +2686,6 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </SectionBox>
 
-        {/* UK Compliance */}
-        <SectionBox title="UK Compliance">
-          <YesNoRow label="ULEZ / CAZ COMPLIANT" value={ulezCompliant} onChange={setUlezCompliant} />
-          <PillRow
-            label="EURO STANDARD"
-            options={EURO_STANDARDS.map(e => ({ v: e, l: e.replace('_', ' ') }))}
-            value={euroStandard as any}
-            onSelect={setEuroStandard}
-          />
-          <FieldInput label="CO2 EMISSIONS (G/KM)" value={co2Emissions} onChange={setCo2Emissions} placeholder="e.g. 136" keyboardType="number-pad" />
-        </SectionBox>
-
-        {/* Features */}
-        <SectionBox title="Features">
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {PRESET_FEATURES.map(f => {
-              const on = features.includes(f);
-              return (
-                <TouchableOpacity
-                  key={f}
-                  style={[s.pill, on && s.pillActive]}
-                  onPress={() => setFeatures(p => on ? p.filter(x => x !== f) : [...p, f])}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.pillText, on && s.pillTextActive]}>{f}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <TextInput
-            style={[s.input, { marginTop: 12 }]}
-            placeholder="Additional features (comma separated)"
-            placeholderTextColor={Colors.borderMuted}
-            onSubmitEditing={e => {
-              const extras = e.nativeEvent.text.split(',').map(x => x.trim()).filter(Boolean);
-              setFeatures(p => [...new Set([...p, ...extras])]);
-            }}
-          />
-        </SectionBox>
-
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description">
           <View style={{ marginBottom: 16 }}>
@@ -2738,6 +2729,88 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             />
           </View>
         </SectionBox>
+
+        <TouchableOpacity
+          style={s.optionalSectionToggle}
+          onPress={() => setShowExtraSpecs(v => !v)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showExtraSpecs }}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={s.optionalSectionTitle}>Extra vehicle specifications</Text>
+            <Text style={s.optionalSectionHint}>Performance, ULEZ, emissions and optional features</Text>
+          </View>
+          <Ionicons name={showExtraSpecs ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        {showExtraSpecs && (
+          <>
+        {/* Performance & Economy */}
+        <SectionBox title="Performance & Economy">
+          <Text style={s.fieldHint}>Optional — fill in from manufacturer specs.</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <FieldInput label="0-60 MPH (SEC)" value={zeroTo60} onChange={setZeroTo60} placeholder="e.g. 4.5" keyboardType="decimal-pad" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <FieldInput label="TOP SPEED MPH" value={topSpeed} onChange={setTopSpeed} placeholder="e.g. 155" keyboardType="number-pad" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <FieldInput label="TORQUE (NM)" value={torque} onChange={setTorque} placeholder="e.g. 405" keyboardType="number-pad" />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <FieldInput label="COMBINED MPG" value={combinedMpg} onChange={setCombinedMpg} placeholder="e.g. 34.4" keyboardType="decimal-pad" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <FieldInput label="EXTRA URBAN MPG" value={extraUrbanMpg} onChange={setExtraUrbanMpg} placeholder="e.g. 42.8" keyboardType="decimal-pad" />
+            </View>
+          </View>
+        </SectionBox>
+
+        {/* UK Compliance */}
+        <SectionBox title="UK Compliance">
+          <YesNoRow label="ULEZ / CAZ COMPLIANT" value={ulezCompliant} onChange={setUlezCompliant} />
+          <PillRow
+            label="EURO STANDARD"
+            options={EURO_STANDARDS.map(e => ({ v: e, l: e.replace('_', ' ') }))}
+            value={euroStandard as any}
+            onSelect={setEuroStandard}
+          />
+          <FieldInput label="CO2 EMISSIONS (G/KM)" value={co2Emissions} onChange={setCo2Emissions} placeholder="e.g. 136" keyboardType="number-pad" />
+        </SectionBox>
+
+        {/* Features */}
+        <SectionBox title="Features">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {PRESET_FEATURES.map(f => {
+              const on = features.includes(f);
+              return (
+                <TouchableOpacity
+                  key={f}
+                  style={[s.pill, on && s.pillActive]}
+                  onPress={() => setFeatures(p => on ? p.filter(x => x !== f) : [...p, f])}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.pillText, on && s.pillTextActive]}>{f}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <TextInput
+            style={[s.input, { marginTop: 12 }]}
+            placeholder="Additional features (comma separated)"
+            placeholderTextColor={Colors.borderMuted}
+            onSubmitEditing={e => {
+              const extras = e.nativeEvent.text.split(',').map(x => x.trim()).filter(Boolean);
+              setFeatures(p => [...new Set([...p, ...extras])]);
+            }}
+          />
+        </SectionBox>
+
+          </>
+        )}
 
         {/* Ownership */}
         <SectionBox title="Ownership">
@@ -3391,12 +3464,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 key={opt.v}
                 style={[s.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && s.pillActive]}
                 onPress={() => {
-                  if (listingType === opt.v) return;
-                  setListingType(opt.v);
-                  // Previous tier no longer applies to the new method —
-                  // reset to that method's default rather than leaving a
-                  // stale FREE/BASIC selection that doesn't match.
-                  setBadgeTier(opt.v === 'AUCTION' ? 'FREE' : 'BASIC');
+                  chooseListingMethod(opt.v);
                 }}
                 activeOpacity={0.7}
               >
@@ -3881,10 +3949,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
             {step < totalSteps ? (
               <TouchableOpacity
-                style={[s.nextBtn, ((step === 1 && step1HasErrors()) || (step === 2 && step2HasErrors()) || (step === 3 && step3HasErrors())) ? { opacity: 0.5 } : {}]}
+                style={s.nextBtn}
                 onPress={handleNext}
                 activeOpacity={0.8}
-                disabled={(step === 1 && step1HasErrors()) || (step === 2 && step2HasErrors()) || (step === 3 && step3HasErrors())}
               >
                 <Text style={s.nextBtnText}>
                   {step === 1 ? 'NEXT · MEDIA'
@@ -3933,11 +4000,25 @@ const s = StyleSheet.create({
   headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 1.5, marginBottom: 3 },
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.white },
 
-  // Stepper
+  // Stepper and easy-to-scan selling method
+  methodChoices: { gap: 10 },
+  methodChoice: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: Colors.bgPrimary, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: 12, minHeight: 94 },
+  methodChoiceSelected: { borderColor: Colors.accent, backgroundColor: Colors.accentAlpha06 },
+  methodTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 5 },
+  methodDescription: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
+  optionalSectionToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 66, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondaryAlt, marginBottom: 12 },
+  optionalSectionTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white, marginBottom: 4 },
+  optionalSectionHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 17 },
+  stepperSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  stepperCount: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, letterSpacing: 0.8 },
+  stepperCurrent: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  stepperTrack: { flexDirection: 'row', gap: 5, height: 5 },
+  stepperSegment: { flex: 1, backgroundColor: Colors.whiteAlpha12, borderRadius: 4 },
+  stepperSegmentComplete: { backgroundColor: Colors.accent },
   freshActionRow: { alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -6, marginBottom: 10 },
   freshActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha05 },
   freshActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.accent, letterSpacing: 0.8 },
-  stepperContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', paddingHorizontal: 16, marginBottom: 16 },
+  stepperContainer: { paddingHorizontal: 16, marginBottom: 16 },
   stepItem: { alignItems: 'center', width: 56 },
   stepCircle: { width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.whiteAlpha05, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   stepCircleActive: { backgroundColor: Colors.accent },
