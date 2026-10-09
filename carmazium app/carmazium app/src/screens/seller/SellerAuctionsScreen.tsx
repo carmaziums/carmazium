@@ -792,21 +792,19 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       // an auction that has just ended, and the ENDED status below is the whole
       // basis for admitting its reverted DRAFT. Web does the same for the same
       // reason (it calls this set `freshAuctions`).
-      const [res, auctionsRes] = await Promise.all([
+      const [res, knownAuctions] = await Promise.all([
         apiClient<{ success: boolean; data: EligibleListing[]; pagination: any }>(
           '/listings/my?page=1&limit=100'
         ),
-        apiClient<{ success: boolean; data: { data?: AuctionItem[] } | AuctionItem[] }>(
-          '/auctions/my/list?page=1&limit=50'
-        ).catch(() => null),
+        // A failed auction read must never be treated as 'no existing
+        // auctions': that would incorrectly offer already-running lots again.
+        fetchAllMyAuctions<AuctionItem>('list'),
       ]);
-      if (res.success) {
-        const items = Array.isArray(res.data) ? res.data : [];
-
-        const inner = (auctionsRes as any)?.data;
-        const knownAuctions: AuctionItem[] = Array.isArray(inner)
-          ? inner
-          : Array.isArray(inner?.data) ? inner.data : [];
+      if (!res.success || !Array.isArray(res.data)) {
+        throw new Error('Could not load eligible listings. Please retry.');
+      }
+      {
+        const items = res.data;
         // A listing already tied to a scheduled or running auction cannot enter
         // another one — offering it just produces a server-side rejection
         // (AUC-030).
@@ -847,8 +845,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           if (match) selectListing(match);
         }
       }
-    } catch { /* show empty state */ }
-    finally { setListingsLoading(false); }
+    } catch (error: any) {
+      setCreateError(error?.message || 'Could not load available vehicles. Please retry.');
+    } finally { setListingsLoading(false); }
   }
 
   // Auto-open the create flow once when arriving with a preselected listing.
@@ -1850,11 +1849,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Text style={styles.modalSubheading}>
                 Choose an active classified listing to put up for auction.
               </Text>
+              {createError && (
+                <ErrorBanner message={createError} onRetry={() => void openCreateModal(presetListingId)} />
+              )}
               {listingsLoading ? (
                 <View style={styles.modalCenter}>
                   <ActivityIndicator size="large" color={Colors.accent} />
                 </View>
-              ) : eligibleListings.length === 0 ? (
+              ) : createError ? null : eligibleListings.length === 0 ? (
                 <View style={styles.modalCenter}>
                   <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
                   <Text style={styles.modalEmptyTitle}>No eligible listings</Text>
