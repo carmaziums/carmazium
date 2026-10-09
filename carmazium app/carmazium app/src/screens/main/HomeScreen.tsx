@@ -923,7 +923,7 @@ const s = StyleSheet.create({
   // Recent grid
   recentGrid: { flexDirection: 'column', paddingHorizontal: 24, rowGap: 12 },
   recentCard: { width: '100%', minHeight: 124, flexDirection: 'row', backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: Radius.card, overflow: 'hidden' },
-  recentImgWrap: { width: 132, minHeight: 124 },
+  recentImgWrap: { width: 132, height: 124 },
   recentImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   recentBody: { flex: 1, padding: 14, justifyContent: 'center' },
   recentSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 6 },
