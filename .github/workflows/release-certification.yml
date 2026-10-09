@@ -167,6 +167,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block1.test.mjs
       - name: Audit native notification preferences and cross-platform copy
         run: node --test scripts/test-native-notification-settings-audit.test.mjs
+      - name: Audit native seller/dealer inventory and saved auction journeys
+        run: node --test scripts/test-native-app-audit-block3.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
