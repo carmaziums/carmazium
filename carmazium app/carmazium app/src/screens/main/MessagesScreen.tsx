@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -94,7 +94,6 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
       : (room.lastMessage.content || 'No messages yet')
     : 'No messages yet';
   const hasOfferCounter = lastMsgContent.startsWith('Counter-offer');
-  const isDealer = room.otherUser.role === 'DEALER';
 
   return (
     <TouchableOpacity
@@ -111,11 +110,6 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
         <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
-        {isDealer && (
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={Colors.lightBlue_0084ff} />
-          </View>
-        )}
         {/* Presence (DASH-023). Only ever shown when we positively know the
             partner is online — absence means "unknown or offline", never a
             claim either way. */}
@@ -188,15 +182,14 @@ export const MessagesScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'offers' | 'archived'>('all');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'vehicle'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Re-fetch rooms when focusing the messages tab
-  useEffect(() => {
-    refreshRooms();
-  }, [refreshRooms]);
+  // Reconcile conversations when returning from another chat or device.
+  useFocusEffect(useCallback(() => {
+    void refreshRooms();
+  }, [refreshRooms]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -210,8 +203,7 @@ export const MessagesScreen: React.FC = () => {
   // Tab filtering logic
   const filteredRooms = rooms.filter((r) => {
     // 1. Tab check
-    if (activeTab === 'offers' && !r.listing) return false;
-    if (activeTab === 'archived') return false; // Archive not supported on mobile initially
+    if (activeTab === 'vehicle' && !r.listing) return false;
 
     // 2. Search check
     if (searchQuery.trim()) {
@@ -224,11 +216,8 @@ export const MessagesScreen: React.FC = () => {
     return true;
   });
 
-  const getTabCount = (tab: 'all' | 'offers' | 'archived') => {
-    if (tab === 'all') return rooms.length;
-    if (tab === 'offers') return rooms.filter((r) => r.listing !== null).length;
-    return 0;
-  };
+  const getTabCount = (tab: 'all' | 'vehicle') =>
+    tab === 'all' ? rooms.length : rooms.filter(r => Boolean(r.listing)).length;
 
   const handleThreadPress = useCallback((roomId: string) => {
     markAsRead(roomId);
@@ -273,15 +262,14 @@ export const MessagesScreen: React.FC = () => {
             <View style={styles.header}>
               <View>
                 <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-                <Text style={styles.unreadTag}>{unreadCount} UNREAD</Text>
+                <Text style={styles.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
                 <Text style={styles.title}>Messages</Text>
               </View>
 
-              <IconButton style={styles.searchIconBtn} icon={<Ionicons name="search-outline" size={20} color={Colors.white} />} onPress={() => setSearchOpen(!searchOpen)} accessibilityLabel={searchOpen ? 'Hide search' : 'Search conversations'} />
+              <IconButton style={styles.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
             </View>
 
-            {/* Toggleable search bar */}
-            {searchOpen && (
+            {/* Website-style search is always visible and usable. */}
               <View style={styles.searchWrapper}>
                 <View style={styles.searchBar}>
                   <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
@@ -299,7 +287,6 @@ export const MessagesScreen: React.FC = () => {
                   )}
                 </View>
               </View>
-            )}
 
             {/* Tab Pills */}
             <View style={styles.tabsRow}>
@@ -314,29 +301,20 @@ export const MessagesScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'offers' && styles.tabPillActive]}
-                onPress={() => setActiveTab('offers')}
+                style={[styles.tabPill, activeTab === 'vehicle' && styles.tabPillActive]}
+                onPress={() => setActiveTab('vehicle')}
                 activeOpacity={0.8}
               >
                 <View style={styles.tabPillContent}>
-                  {rooms.some((r) => r.listing !== null && r.unreadCount > 0) && (
+                  {rooms.some((r) => Boolean(r.listing) && r.unreadCount > 0) && (
                     <View style={styles.tabDot} />
                   )}
-                  <Text style={[styles.tabLabel, activeTab === 'offers' && styles.tabLabelActive]}>
-                    Offers <Text style={styles.tabCount}>{getTabCount('offers')}</Text>
+                  <Text style={[styles.tabLabel, activeTab === 'vehicle' && styles.tabLabelActive]}>
+                    Vehicle chats <Text style={styles.tabCount}>{getTabCount('vehicle')}</Text>
                   </Text>
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'archived' && styles.tabPillActive]}
-                onPress={() => setActiveTab('archived')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tabLabel, activeTab === 'archived' && styles.tabLabelActive]}>
-                  Archived <Text style={styles.tabCount}>{getTabCount('archived')}</Text>
-                </Text>
-              </TouchableOpacity>
             </View>
           </>
         }
@@ -344,8 +322,8 @@ export const MessagesScreen: React.FC = () => {
           !isLoading ? (
             <EmptyState
               icon="chatbubbles-outline"
-              title="No messages yet"
-              subtitle={searchQuery ? 'Try adjusting your search query.' : 'Your conversations with buyers and sellers will appear here.'}
+              title={searchQuery ? 'No matching conversations' : activeTab === 'vehicle' ? 'No vehicle conversations yet' : 'No messages yet'}
+              subtitle={searchQuery ? 'Try another name, vehicle or message.' : activeTab === 'vehicle' ? 'Conversations linked to a vehicle will appear here.' : 'Messages from people you contact about cars, or from CarMazium support, will appear here.'}
             />
           ) : null
         }
@@ -413,14 +391,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   searchWrapper: {
-    paddingHorizontal: 24,
-    marginBottom: 20,
+    paddingHorizontal: 18,
+    marginBottom: 14,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 48,
+    height: 52,
     borderRadius: Radius.inline,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
@@ -437,13 +415,14 @@ const styles = StyleSheet.create({
   // Tabs
   tabsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: 24,
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   tabPill: {
     paddingHorizontal: 16,
-    height: 36,
+    minHeight: 44,
     borderRadius: 18,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
@@ -480,16 +459,16 @@ const styles = StyleSheet.create({
   },
   // Thread list
   threadCardSpacing: {
-    marginHorizontal: 24,
+    marginHorizontal: 18,
   },
   threadCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: Colors.bgCardSolid,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha05,
+    borderColor: Colors.borderSubtle,
     borderRadius: Radius.card,
-    padding: 18,
+    padding: 16,
   },
   threadCardUnread: {
     borderColor: Colors.accentAlpha25,
@@ -520,14 +499,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.md,
     color: Colors.white,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: Colors.bgSecondary,
-    borderRadius: 8,
-    padding: 1,
   },
   metaContainer: {
     flex: 1,

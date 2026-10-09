@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
@@ -72,6 +74,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const groups = groupByDate(notifications);
@@ -82,17 +85,18 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
     try {
       const data = await getNotifications(1, 60);
       setNotifications(data.notifications);
+      setLoadError(null);
     } catch {
-      // silently fail — show empty state
+      setLoadError('Could not load notifications. Check your connection and try again.');
     } finally {
       setLoading(false);
       if (isRefresh) setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(useCallback(() => {
+    void load();
+  }, [load]));
 
   // ── actions ──────────────────────────────────────────────────────────────────
 
@@ -103,7 +107,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         setNotifications((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)),
         );
-        markNotificationRead(n.id).catch(() => {});
+        markNotificationRead(n.id).catch(() => {
+          // Keep the unread badge truthful if the server could not save it.
+          setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: false } : x));
+        });
       }
 
       const target = await resolveMobileNotificationTarget(n, accountRole);
@@ -117,16 +124,16 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   const handleMarkAll = useCallback(async () => {
     if (markingAll || unreadCount === 0) return;
     setMarkingAll(true);
-    // Optimistic update
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     try {
       await markAllRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch {
-      // If it fails the local state is still updated; acceptable UX trade-off
+      Alert.alert('Unable to mark notifications read', 'Your notifications are unchanged. Please try again.');
+      await load();
     } finally {
       setMarkingAll(false);
     }
-  }, [markingAll, unreadCount]);
+  }, [markingAll, unreadCount, load]);
 
   // ── render helpers ────────────────────────────────────────────────────────────
 
@@ -259,6 +266,17 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         </TouchableOpacity>
       </View>
 
+      {/* Preserve the last known notifications and offer retry after a network error. */}
+      {!!loadError && (
+        <View style={styles.retryBanner}>
+          <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
+          <Text style={styles.retryText}>{loadError}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* ── Content ── */}
       {loading || notifications.length === 0 ? (
         <ScrollView
@@ -277,7 +295,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
             />
           }
         >
-          {loading ? renderSkeleton() : renderEmpty()}
+          {loading ? renderSkeleton() : loadError ? null : renderEmpty()}
         </ScrollView>
       ) : (
         // FlatList (one row per date group, each group's card rendered exactly as
@@ -316,6 +334,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgPrimary,
   },
 
+  retryBanner: { marginHorizontal: 20, marginBottom: 10, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline, backgroundColor: Colors.bgCardSolid, minHeight: 64, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  retryText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
+  retryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  retryButtonText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
   // ── Header ──
   header: {
     flexDirection: 'row',
@@ -360,7 +382,7 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   markAllBtn: {
-    height: 34,
+    minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: Radius.inline,
     backgroundColor: Colors.whiteAlpha05,
@@ -425,10 +447,10 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   groupCard: {
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: Colors.bgCardSolid,
     borderRadius: Radius.card,
     borderWidth: 1,
-    borderColor: Colors.whiteAlpha06,
+    borderColor: Colors.borderSubtle,
     overflow: 'hidden',
   },
 
@@ -490,8 +512,8 @@ const styles = StyleSheet.create({
   },
   notifMessage: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.size12,
-    color: Colors.textMuted,
-    lineHeight: 19,
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    lineHeight: 20,
   },
 });

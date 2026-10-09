@@ -354,6 +354,7 @@ export const ChatScreen: React.FC = () => {
   const { 
     rooms,
     isConnected,
+    onlineUserIds,
     sendMessage: emitSendMessage,
     startTyping,
     stopTyping,
@@ -789,10 +790,17 @@ export const ChatScreen: React.FC = () => {
   // early returns — see comment there.)
   const handleOpenListing = async () => {
     if (!room?.listing?.id || openingListing) return;
+    if (room.listing.type === 'AUCTION' && room.listing.auction?.id) {
+      navigation.navigate('AuctionDeepLink', { auctionId: room.listing.auction.id });
+      return;
+    }
     setOpeningListing(true);
     try {
       const listing = await getListingById(room.listing.id);
       if (listing) navigation.navigate('VehicleDetail', { listing });
+      else showToast('This listing is not currently available.', 'info');
+    } catch {
+      showToast('Could not open vehicle details. Please try again.', 'info');
     } finally {
       setOpeningListing(false);
     }
@@ -976,7 +984,6 @@ export const ChatScreen: React.FC = () => {
   };
 
   const carPrice = room.listing?.price ? parseFloat(String(room.listing.price)) : 0;
-  const isDealer = room.otherUser.role === 'DEALER';
 
   // Hide "Accept Offer" if this user already sent an acceptance message in this thread
   const offerAccepted = messages.some(
@@ -1009,15 +1016,12 @@ export const ChatScreen: React.FC = () => {
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
             <Text style={styles.dealerName} numberOfLines={1}>{displayName}</Text>
-            {isDealer && (
-              <Ionicons name="checkmark-circle" size={14} color={Colors.lightBlue_0084ff} style={{ marginLeft: 4 }} />
-            )}
           </View>
           {otherUserTyping ? (
             <Text style={[styles.onlineStatus, { color: Colors.accent }]}>typing…</Text>
           ) : (
             <Text style={styles.onlineStatus}>
-              {isConnected ? '● Active now' : '○ Active recently'}
+              {onlineUserIds.has(room.otherUser.id) ? '● Online' : 'Conversation'}
             </Text>
           )}
         </View>
@@ -1053,13 +1057,9 @@ export const ChatScreen: React.FC = () => {
           accessibilityLabel={`Open listing: ${room.listing.title}`}
           accessibilityState={{ disabled: openingListing, busy: openingListing }}
         >
-          <Image
-            source={{ uri: room.listing.images?.[0] || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80' }}
-            style={styles.carImg}
-            contentFit="cover"
-            transition={200}
-            cachePolicy="memory-disk"
-          />
+          {room.listing.images?.[0]
+            ? <Image source={{ uri: room.listing.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            : <View style={[styles.carImg, styles.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
           <View style={styles.carMeta}>
             <Text style={styles.carTitle} numberOfLines={1}>{room.listing.title}</Text>
             <Text style={styles.carPrice}>
@@ -1469,19 +1469,20 @@ const styles = StyleSheet.create({
   listingBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: Colors.bgCardSolid,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.whiteAlpha05,
-    paddingHorizontal: 20,
+    borderBottomColor: Colors.borderSubtle,
+    paddingHorizontal: 18,
     paddingVertical: 12,
   },
   carImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: Colors.whiteAlpha02,
+    width: 56,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: Colors.bgSecondary,
     marginRight: 12,
   },
+  carImageMissing: { alignItems: 'center', justifyContent: 'center' },
   carMeta: {
     flex: 1,
   },
@@ -1561,7 +1562,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   bubbleDealer: {
-    backgroundColor: Colors.deepBlue_1c1d26,
+    backgroundColor: Colors.bgCardSolid,
+    borderWidth: 1,
+    borderColor: Colors.borderSubtle,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
