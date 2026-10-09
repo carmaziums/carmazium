@@ -291,7 +291,7 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>Offers</Text>
             <View style={styles.detailRowRight}>
               <Text style={styles.detailRowValue}>{listing.offersStatus}</Text>
-            </View>>
+            </View>
           </View>
           <View style={styles.detailDivider} />
 
@@ -300,7 +300,7 @@ const ListingDetail: React.FC<{
             <Text style={styles.detailRowLabel}>Listing status</Text>
             <View style={styles.detailRowRight}>
               <Text style={styles.detailRowValue}>{listing.visibility}</Text>
-            </View>>
+            </View>
           </View>
           <View style={styles.detailDivider} />
 
