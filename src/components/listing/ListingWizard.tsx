@@ -1575,6 +1575,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 vin: formData.vin || undefined,
                 images: formData.images,
                 listingType: formData.listingType,
+                partnerDistributionAccepted: formData.declarationAcknowledged,
                 make: formData.make || undefined,
                 model: formData.model || undefined,
                 description: formData.description || undefined,
@@ -3753,7 +3754,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </span>
                                     <span id="seller-declaration-help" className="text-sm sm:text-base font-medium leading-relaxed text-[var(--text-primary)]">
                                         <strong className="block mb-1 font-bold">I confirm these declarations *</strong>
-                                        I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action.
+                                        I confirm that the above declarations are true and accurate to the best of my knowledge. I understand that false declarations void the listing and may result in legal action. I also acknowledge that, while this listing is live, CarMazium may distribute the approved public listing details and vehicle photographs through approved automotive marketplace, dealer-research or referral partners in accordance with the current Terms and Privacy Policy.
                                         {!formData.declarationAcknowledged && <span className="block mt-2 text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">Tick this box to continue.</span>}
                                     </span>
                                 </label>

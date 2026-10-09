@@ -12,7 +12,10 @@ assert.ok(start > 0 && end > start, "MaziuM description CTA must exist")
 const cta = wizard.slice(start, end)
 
 test("retail and auction share the MaziuM description CTA", () => {
-    assert.match(sellerPage, /import \{ ListingWizard \}/)
+    assert.match(
+        sellerPage,
+        /const ListingWizard = dynamic\([\s\S]*import\("@\/components\/listing\/ListingWizard"\)[\s\S]*mod\.ListingWizard/,
+    )
     assert.match(wizard, /MaziuM description/)
     assert.doesNotMatch(cta, /Auto-generate with AI/)
     assert.equal((wizard.match(/data-testid="seller-mazium-description"/g) || []).length, 1)

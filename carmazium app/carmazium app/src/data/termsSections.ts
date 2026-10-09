@@ -7,7 +7,7 @@
 //
 // This file is a byte-for-byte copy of web's content model and SECTIONS array.
 // DO NOT edit the wording here. The source document is CarMazium Ltd (company
-// no. 17053307, "Last Updated: 13 August 2026"), 83 numbered sections, and the
+// no. 17053307, "Last Updated: 9 October 2026"), 83 numbered sections, and the
 // numbering matches the source 1:1 so nothing gets renumbered, merged or
 // reworded out of step with the legal text. If the terms change, re-copy this
 // file from web rather than editing either copy by hand.
@@ -541,7 +541,9 @@ const SECTIONS: LegalSection[] = [
                 "publish the Listing", "operate the Platform", "market the Vehicle", "provide user support",
                 "investigate fraud", "enforce these Terms",
                 "promote CarMazium where reasonably connected to the Listing",
+                "display, transmit or syndicate the Listing and approved public Vehicle photographs through CarMazium-approved automotive marketplace, dealer-research or referral partners where this forms part of the Listing distribution service described in the Privacy Policy",
             ]),
+            p("Partner use of Vehicle photographs is limited to the live Listing/distribution purpose and short operational caching required to provide that service. This licence does not authorise a partner to retain Vehicle photographs as a historical image archive after the Listing is no longer live unless the user separately grants that right."),
         ],
     },
     {
