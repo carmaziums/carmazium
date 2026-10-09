@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
     Gavel, Flame, Calendar, Zap, Users, Search, RefreshCw,
     Clock, Trophy, CheckCircle,
-    ChevronRight, Timer, Gauge, Fuel, Car, MapPin,
+    ChevronRight, Timer, Gauge, Fuel, Car, Cog, MapPin,
     BadgeCheck, ShieldCheck, Star, Truck, Globe,
     ArrowRight, ChevronDown, FileText, Lock, Handshake, Banknote,
     Eye, TrendingUp, CreditCard, Box, Filter,
@@ -202,7 +202,7 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
     const image = auction.listing.images?.[0] ?? "/assets/images/hero-bg.png"
     const vehicle = `${auction.listing.year ?? ""} ${auction.listing.make ?? ""} ${auction.listing.model ?? ""}`.trim()
     const l = auction.listing
-    const hasSpecs = l.year || l.mileage != null || l.fuelType || l.bodyType || l.location || l.deliveryAvailable
+    const hasSpecs = l.year || l.mileage != null || l.fuelType || l.transmission || l.bodyType || l.location || l.deliveryAvailable
     const grade = auction.listing.exteriorGrade
     const gradeStyle: { dot: string; text: string; border: string; bg: string; label: string } | null =
         grade === 1 ? { dot: 'bg-emerald-500', text: 'text-emerald-300', border: 'border-emerald-500/40', bg: 'bg-emerald-500/15', label: 'Excellent — minimal/no wear' } :
@@ -379,6 +379,11 @@ function AuctionCard({ auction, index }: { auction: Auction; index: number }) {
                             {l.fuelType && FUEL_TYPE_LABELS[l.fuelType] && (
                                 <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                     <Fuel size={10} /> {FUEL_TYPE_LABELS[l.fuelType]}
+                                </span>
+                            )}
+                            {l.transmission && TRANSMISSION_LABELS[l.transmission] && (
+                                <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                    <Cog size={10} /> {TRANSMISSION_LABELS[l.transmission]}
                                 </span>
                             )}
                             {l.bodyType && BODY_TYPE_LABELS[l.bodyType] && (
