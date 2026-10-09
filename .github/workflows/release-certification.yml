@@ -165,6 +165,8 @@ jobs:
         run: node --test scripts/test-native-auth-controls-audit.test.mjs
       - name: Audit native app settings, startup and payout safeguards
         run: node --test scripts/test-native-app-audit-block1.test.mjs
+      - name: Audit native vehicle cards and truthful transmission mapping
+        run: node --test scripts/test-native-vehicle-card-audit-block2.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
