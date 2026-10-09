@@ -202,6 +202,9 @@ export interface AuctionEndPayload {
 
 export async function getActiveAuctions(): Promise<AuctionDetail[]> {
   const res = await apiClient<{ success: boolean; data: AuctionDetail[] }>('/auctions/active');
+  if (!res?.success || !Array.isArray(res.data)) {
+    throw new Error('Could not load live auctions.');
+  }
   return res.data;
 }
 
@@ -213,6 +216,9 @@ export async function getScheduledAuctions(
     success: boolean;
     data: { data: AuctionDetail[]; total: number };
   }>(`/auctions/scheduled?page=${page}&limit=${limit}`);
+  if (!res?.success || !Array.isArray(res.data?.data)) {
+    throw new Error('Could not load upcoming auctions.');
+  }
   return res.data;
 }
 
