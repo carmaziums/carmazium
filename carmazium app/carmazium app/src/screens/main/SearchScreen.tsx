@@ -187,6 +187,7 @@ export const SearchScreen: React.FC = () => {
 
   // ── Filter modal state ──
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   // Make filter query. Empty shows the popular ten; typing filters all 71 so a
   // make outside the popular set is reachable (BUY-007). A selected make is
@@ -456,6 +457,14 @@ export const SearchScreen: React.FC = () => {
     maxDistanceMi != null,
   ].filter(Boolean).length;
 
+  const advancedFilterCount = [
+    conditions.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
+    !!maxCo2, vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
+    !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
+    maxDistanceMi != null, !!sellerType, !!ulezCompliant,
+    deliveryAvailable, !!isImported,
+  ].filter(Boolean).length;
+
   const resetFilters = () => {
     setSelectedMakes([]);
     setMinPrice(0);
@@ -679,9 +688,9 @@ export const SearchScreen: React.FC = () => {
         </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Sort */}
-          <TouchableOpacity style={s.sortBtn} onPress={() => setShowSortMenu(v => !v)} activeOpacity={0.7}>
-            <Ionicons name="chevron-down" size={12} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text style={s.sortBtnText}>{sortLabel}</Text>
+          <TouchableOpacity style={s.sortBtn} onPress={() => setShowSortMenu(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Sort cars, currently ${sortLabel}`}>
+            <Ionicons name="swap-vertical-outline" size={16} color={Colors.textSecondary} />
+            <Text style={s.sortBtnText}>Sort</Text>
           </TouchableOpacity>
           {/* Filter */}
           <TouchableOpacity
@@ -694,38 +703,16 @@ export const SearchScreen: React.FC = () => {
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
-          {/* One-tap Clear — surfaces the Reset action outside the modal so a
-              user can wipe applied filters without opening the sheet first. */}
-          {filterCount > 0 && (
-            <TouchableOpacity
-              style={s.filterClearBtn}
-              onPress={resetFilters}
-              activeOpacity={0.7}
-              accessibilityLabel="Clear all filters"
-            >
-              <Ionicons name="close" size={14} color={Colors.textSecondary} />
-              <Text style={s.filterClearBtnText}>Clear</Text>
-            </TouchableOpacity>
-          )}
+
         </View>
 
-        {/* Sort dropdown */}
-        {showSortMenu && (
-          <View style={s.sortDropdown}>
-            {SORT_OPTIONS.map(o => (
-              <TouchableOpacity
-                key={o.id}
-                style={[s.sortOption, o.id === sortId && s.sortOptionActive]}
-                onPress={() => { setSortId(o.id); setShowSortMenu(false); }}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.sortOptionText, o.id === sortId && { color: Colors.accent }]}>{o.label}</Text>
-                {o.id === sortId && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </View>
+      {filterCount > 0 && (
+        <TouchableOpacity style={s.clearBelowRow} onPress={resetFilters} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Clear all search filters">
+          <Ionicons name="close-circle-outline" size={15} color={Colors.accent} />
+          <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── Results ── */}
       {loading && listings.length === 0 ? (
@@ -779,6 +766,25 @@ export const SearchScreen: React.FC = () => {
         />
       )}
 
+      {/* Sort choices live in a native sheet instead of a narrow overlay. */}
+      <BottomSheet visible={showSortMenu} onClose={() => setShowSortMenu(false)} title="Sort cars" maxHeightPercent={65}>
+        <View style={{ padding: 12, gap: 4 }}>
+          {SORT_OPTIONS.map(o => (
+            <TouchableOpacity
+              key={o.id}
+              style={[s.sortOption, o.id === sortId && s.sortOptionActive]}
+              onPress={() => { setSortId(o.id); setShowSortMenu(false); }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: o.id === sortId }}
+            >
+              <Text style={[s.sortOptionText, o.id === sortId && { color: Colors.accent }]}>{o.label}</Text>
+              {o.id === sortId && <Ionicons name="checkmark" size={18} color={Colors.accent} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </BottomSheet>
+
       {/* ── AI Search Modal ── */}
       <BottomSheet
         visible={aiModalVisible}
@@ -830,13 +836,14 @@ export const SearchScreen: React.FC = () => {
             row doesn't support a second right-side action. */}
         <View style={s.modalHeader}>
           <IconButton style={s.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
-          <Text style={s.modalTitle}>Refine Search</Text>
+          <Text style={s.modalTitle}>Filter cars</Text>
           <TouchableOpacity onPress={resetFilters} activeOpacity={0.7}>
             <Text style={s.modalReset}>Reset</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.modalBody}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.modalBody}>
+          <Text style={s.filterIntro}>Choose the details that matter. More options are available below.</Text>
 
               {/* Make — type to filter the full 71-make list, otherwise the ten
                   popular ones. Selection stays single-value: the backend has no
@@ -879,6 +886,22 @@ export const SearchScreen: React.FC = () => {
                   ))}
                 </View>
               )}
+
+              <View style={s.divider} />
+
+              {/* Model + Location */}
+              <Text style={s.filterLabel}>MODEL</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
+                <TextInput
+                  style={s.inputBoxValue}
+                  value={modelFilter}
+                  onChangeText={setModelFilter}
+                  placeholder="e.g. Q7, 3 Series"
+                  placeholderTextColor={Colors.borderMuted}
+                  autoCapitalize="words"
+                />
+              </View>
 
               <View style={s.divider} />
 
@@ -1036,6 +1059,22 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
+              <TouchableOpacity
+                style={s.moreFiltersToggle}
+                onPress={() => setShowAdvancedFilters(v => !v)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showAdvancedFilters }}
+                accessibilityLabel={`More filters, ${advancedFilterCount} active`}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={s.moreFiltersTitle}>More filters {advancedFilterCount > 0 ? `(${advancedFilterCount} active)` : ''}</Text>
+                  <Text style={s.moreFiltersSubtitle}>Condition, location, features and technical details</Text>
+                </View>
+                <Ionicons name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.textSecondary} />
+              </TouchableOpacity>
+              {showAdvancedFilters && (
+                <>
               {/* Condition */}
               <Text style={s.filterLabel}>CONDITION</Text>
               <View style={s.chipGrid}>
@@ -1157,22 +1196,6 @@ export const SearchScreen: React.FC = () => {
                     <Text style={[s.segmentBtnText, vehicleType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
-              </View>
-
-              <View style={s.divider} />
-
-              {/* Model + Location */}
-              <Text style={s.filterLabel}>MODEL</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
-                <TextInput
-                  style={s.inputBoxValue}
-                  value={modelFilter}
-                  onChangeText={setModelFilter}
-                  placeholder="e.g. Q7, 3 Series"
-                  placeholderTextColor={Colors.borderMuted}
-                  autoCapitalize="words"
-                />
               </View>
 
               <View style={s.divider} />
@@ -1413,13 +1436,15 @@ export const SearchScreen: React.FC = () => {
                 ))}
               </View>
 
-              <View style={{ height: 80 }} />
+                </>
+              )}
+              <View style={{ height: 20 }} />
             </ScrollView>
 
         {/* Sticky apply button */}
         <View style={s.modalFooter}>
           <PrimaryCTA
-            label={`SHOW ${total > 0 ? total.toLocaleString('en-GB') + ' CARS' : 'RESULTS'}`}
+            label="VIEW RESULTS"
             onPress={() => { setFilterOpen(false); setQuickFilter('custom'); }}
             hasChamfer
           />
@@ -1490,7 +1515,9 @@ const s = StyleSheet.create({
   quickChipTextActive: { color: Colors.white },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
-  resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1 },
+  resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
+  clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 32 },
+  clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
   sortBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   filterBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08 },
@@ -1499,7 +1526,7 @@ const s = StyleSheet.create({
   filterClearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 7, backgroundColor: 'transparent', borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10 },
   filterClearBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   sortDropdown: { position: 'absolute', top: 36, right: 0, backgroundColor: Colors.bgTertiary, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle, padding: 4, zIndex: 99, minWidth: 160, shadowColor: Colors.black, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  sortOption: { paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 },
+  sortOption: { minHeight: 48, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: 8 },
   sortOptionActive: { backgroundColor: Colors.accentAlpha08 },
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
@@ -1516,6 +1543,10 @@ const s = StyleSheet.create({
   modalTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
   modalReset: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent },
   modalBody: { paddingHorizontal: 22, paddingTop: 20 },
+  filterIntro: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
+  moreFiltersToggle: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderHi, borderRadius: Radius.inline },
+  moreFiltersTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
+  moreFiltersSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 17, marginTop: 4 },
   modalFooter: { paddingHorizontal: 22, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha06, backgroundColor: Colors.deepBlue_0f0f14 },
 
   filterLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.iconMuted, letterSpacing: 1.5, marginBottom: 14 },
@@ -1552,7 +1583,7 @@ const s = StyleSheet.create({
   filterChipTextActive: { color: Colors.white, fontFamily: FontFamily.bold },
   bodyChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.whiteAlpha06 },
   bodyChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  twoCol: { gap: 10 },
+  twoCol: { flexDirection: 'row', gap: 10 },
   inputBox: { flex: 1, backgroundColor: Colors.whiteAlpha03, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 12 },
   inputBoxLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
   inputBoxValue: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },

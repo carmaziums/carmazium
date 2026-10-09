@@ -644,7 +644,6 @@ export const LiveScreen: React.FC = () => {
         value={filters}
         onApply={setFilters}
         availableMakes={availableMakes}
-        resultCount={filteredActive.length + filteredUpcoming.length}
       />
     </View>
   );

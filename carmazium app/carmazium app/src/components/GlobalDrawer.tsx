@@ -50,7 +50,7 @@ interface MenuItem {
 const ITEMS: MenuItem[] = [
   { id: 'home',     label: 'Home',       icon: 'home-outline',              iconLib: 'ion', tabName: 'Home'   },
   { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
-  { id: 'sell',     label: 'Sell Cars',  icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'MyListingDashboard' },
+  { id: 'sell',     label: 'Sell a Car', icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'SellCarFlow' },
   { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
   { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
@@ -296,6 +296,9 @@ export const GlobalDrawer: React.FC = () => {
   const user         = useAuthStore((s) => s.user);
   const logout       = useAuthStore((s) => s.logout);
   const [supportLoading, setSupportLoading] = useState(false);
+  const [showMorePages, setShowMorePages] = useState(false);
+  const [showAllAccountTools, setShowAllAccountTools] = useState(false);
+  const [showAllDealerTools, setShowAllDealerTools] = useState(false);
 
   const handleContactSupport = async () => {
     if (supportLoading) return;
@@ -485,9 +488,9 @@ export const GlobalDrawer: React.FC = () => {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={styles.groupLabel}>NAVIGATION</Text>
+          <Text style={styles.groupLabel}>BUY, SELL & EXPLORE</Text>
 
-          {ITEMS.map((item) => {
+          {ITEMS.slice(0, showMorePages ? ITEMS.length : 4).map((item) => {
             const active = item.tabName === activeTab;
             return (
               <TouchableOpacity
@@ -518,6 +521,16 @@ export const GlobalDrawer: React.FC = () => {
               </TouchableOpacity>
             );
           })}
+          <TouchableOpacity
+            style={styles.moreToggle}
+            onPress={() => setShowMorePages(v => !v)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showMorePages }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : 'More pages & information'}</Text>
+            <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
 
           {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
               same entity with one shared dashboard, so mobile does too now.
@@ -526,7 +539,7 @@ export const GlobalDrawer: React.FC = () => {
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
-              {USER_ITEMS.map((item) => (
+              {USER_ITEMS.slice(0, showAllAccountTools ? USER_ITEMS.length : 7).map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.row}
@@ -543,6 +556,10 @@ export const GlobalDrawer: React.FC = () => {
                   <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllAccountTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllAccountTools }} activeOpacity={0.8}>
+                <Text style={styles.moreToggleText}>{showAllAccountTools ? 'Fewer account tools' : 'All account tools'}</Text>
+                <Ionicons name={showAllAccountTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+              </TouchableOpacity>
             </>
           )}
 
@@ -550,7 +567,7 @@ export const GlobalDrawer: React.FC = () => {
             <>
               <View style={styles.divider} />
               <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
-              {visibleDealerItems.map((item) => (
+              {visibleDealerItems.slice(0, showAllDealerTools ? visibleDealerItems.length : 6).map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={styles.row}
@@ -567,6 +584,12 @@ export const GlobalDrawer: React.FC = () => {
                   <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
+              {visibleDealerItems.length > 6 && (
+                <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllDealerTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllDealerTools }} activeOpacity={0.8}>
+                  <Text style={styles.moreToggleText}>{showAllDealerTools ? 'Fewer dealer tools' : 'All dealer tools'}</Text>
+                  <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
               {/* Allow dealer to browse as a regular buyer */}
               <TouchableOpacity
                 style={styles.row}
@@ -801,6 +824,8 @@ const styles = StyleSheet.create({
   },
 
   // Scroll container
+  moreToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, marginHorizontal: 12, marginVertical: 6, paddingHorizontal: 14, backgroundColor: Colors.bgSecondary, borderColor: Colors.borderSubtle, borderWidth: 1, borderRadius: 12 },
+  moreToggleText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textSecondary },
   scroll: {
     flex: 1,
     paddingTop: 4,

@@ -22,7 +22,7 @@ import {
 } from './auctionFilters';
 
 const FUEL_OPTIONS = ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'Plug-in Hybrid'];
-const TRANSMISSION_OPTIONS = ['Automatic', 'Manual'];
+const TRANSMISSION_OPTIONS = ['Automatic', 'Manual', 'Semi-Automatic', 'CVT'];
 
 interface Props {
   visible: boolean;
@@ -33,8 +33,6 @@ interface Props {
   /** Makes present in the current result set, so the list only offers makes
    *  that can actually match something. */
   availableMakes: string[];
-  /** Result count for the draft filters, shown on the Apply button. */
-  resultCount?: number;
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -76,9 +74,9 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   value,
   onApply,
   availableMakes,
-  resultCount,
 }) => {
   const [draft, setDraft] = useState<AuctionFilterState>(value);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   // Re-seed the draft each time the sheet opens so a cancelled edit doesn't
   // persist into the next open.
@@ -87,6 +85,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   }, [visible, value]);
 
   const activeCount = useMemo(() => countActiveAuctionFilters(draft), [draft]);
+  const moreCount = [!!draft.minYear || !!draft.maxYear, !!draft.maxMileage, !!draft.location.trim(), draft.deliveryAvailable].filter(Boolean).length;
 
   const toggle = (key: 'makes' | 'bodyTypes' | 'fuelTypes' | 'transmissions', item: string) =>
     setDraft((prev) => ({
@@ -214,6 +213,21 @@ export const AuctionFilterSheet: React.FC<Props> = ({
             </View>
           </Section>
 
+          <TouchableOpacity
+            style={styles.moreToggle}
+            onPress={() => setShowMoreFilters(v => !v)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showMoreFilters }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.moreTitle}>More auction filters {moreCount > 0 ? `(${moreCount} active)` : ''}</Text>
+              <Text style={styles.moreSubtitle}>Year, mileage, location and delivery</Text>
+            </View>
+            <Text style={styles.moreChevron}>{showMoreFilters ? '−' : '+'}</Text>
+          </TouchableOpacity>
+          {showMoreFilters && (
+            <>
           <Section title="Year">
             <View style={styles.row}>
               <TextInput
@@ -268,6 +282,8 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               />
             </View>
           </Section>
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -292,9 +308,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
             accessibilityRole="button"
           >
             <Text style={styles.applyText}>
-              {resultCount == null
-                ? 'Apply'
-                : `Show ${resultCount} ${resultCount === 1 ? 'auction' : 'auctions'}`}
+              Apply filters
             </Text>
           </TouchableOpacity>
         </View>
@@ -316,6 +330,10 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 22,
   },
+  moreToggle: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 15, marginBottom: 18, borderRadius: Radius.inline, backgroundColor: Colors.bgSecondary, borderWidth: 1, borderColor: Colors.borderHi },
+  moreTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.white },
+  moreSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 4 },
+  moreChevron: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textSecondary },
   sectionTitle: {
     ...TextPresets.eyebrow,
     color: Colors.white,

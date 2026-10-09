@@ -82,8 +82,8 @@ const TAB_CONFIG: {
   iconType: 'ionicons' | 'material-community';
 }[] = [
   { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'HOME', iconType: 'ionicons' },
-  { name: 'Search', icon: 'search-outline', iconActive: 'search', label: 'SEARCH', iconType: 'ionicons' },
-  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'LIVE', iconType: 'material-community' },
+  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'BUY CARS', iconType: 'ionicons' },
+  { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'AUCTIONS', iconType: 'material-community' },
   { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
 ];
