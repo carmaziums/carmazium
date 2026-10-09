@@ -12,8 +12,11 @@ export class SimpleDmsGuard implements CanActivate {
   constructor(private readonly config: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const response = context.switchToHttp().getResponse<Response>();
-    const denyNoStore = () => response.setHeader('Cache-Control', 'no-store');
+    const http = context.switchToHttp();
+    const response = typeof (http as { getResponse?: () => Response }).getResponse === 'function'
+      ? (http as { getResponse: () => Response }).getResponse()
+      : undefined;
+    const denyNoStore = () => response?.setHeader('Cache-Control', 'no-store');
 
     // A global kill switch AND a per-partner kill switch; both default to off.
     if (this.config.get<string>('PARTNER_API_ENABLED') !== 'true' ||
