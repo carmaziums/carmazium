@@ -59,6 +59,8 @@ export const SettingsScreen: React.FC = () => {
   // before the real values load — same fields, same PATCH /users/me shape.
   const [notifyOnSale, setNotifyOnSale] = useState(true);
   const [showPublicProfile, setShowPublicProfile] = useState(true);
+  // Do not overwrite privacy preferences with defaults if /users/me fails.
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -74,6 +76,7 @@ export const SettingsScreen: React.FC = () => {
           setProfileImage(p.profileImage ?? '');
           if (typeof p.notifyOnSale === 'boolean') setNotifyOnSale(p.notifyOnSale);
           if (typeof p.showPublicProfile === 'boolean') setShowPublicProfile(p.showPublicProfile);
+          setPreferencesLoaded(true);
           if (p.dealerProfile) {
             const dp = p.dealerProfile;
             setDealerCompanyName(dp.companyName ?? '');
@@ -304,8 +307,7 @@ export const SettingsScreen: React.FC = () => {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phone: profilePhone,
-          notifyOnSale,
-          showPublicProfile,
+          ...(preferencesLoaded ? { notifyOnSale, showPublicProfile } : {}),
         }),
       });
       updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), phone: profilePhone });
@@ -458,6 +460,22 @@ export const SettingsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity
+          style={styles.notificationShortcut}
+          onPress={() => navigation.navigate('NotificationSettings')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Manage notification preferences"
+        >
+          <View style={styles.notificationShortcutIcon}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.accent} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.notificationShortcutTitle}>Notification preferences</Text>
+            <Text style={styles.notificationShortcutHint}>Choose auction, offer and email alerts</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
@@ -528,6 +546,9 @@ export const SettingsScreen: React.FC = () => {
 
           <View style={styles.cardDivider} />
 
+          {!preferencesLoaded && (
+            <Text style={styles.preferenceNotice}>Your saved profile preferences could not be confirmed yet. They will not be changed when you save your name or phone number.</Text>
+          )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
               <Text style={styles.toggleTitle}>Email me when a listing is sold</Text>
@@ -535,6 +556,8 @@ export const SettingsScreen: React.FC = () => {
             <Switch
               value={notifyOnSale}
               onValueChange={setNotifyOnSale}
+              disabled={!preferencesLoaded}
+              accessibilityLabel="Email me when a listing is sold"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
               thumbColor={Colors.white}
               ios_backgroundColor={Colors.whiteAlpha10}
@@ -547,6 +570,8 @@ export const SettingsScreen: React.FC = () => {
             <Switch
               value={showPublicProfile}
               onValueChange={setShowPublicProfile}
+              disabled={!preferencesLoaded}
+              accessibilityLabel="Show my profile publicly"
               trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
               thumbColor={Colors.white}
               ios_backgroundColor={Colors.whiteAlpha10}
@@ -1147,6 +1172,11 @@ const styles = StyleSheet.create({
   title: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, gap: 8 },
+  notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },
+  notificationShortcutIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: Colors.accentAlpha10 },
+  notificationShortcutTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 3 },
+  notificationShortcutHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 17 },
+  preferenceNotice: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, lineHeight: 18, color: Colors.warning },
 
   // Dealer invite entry point
   inviteRow: {
@@ -1179,10 +1209,10 @@ const styles = StyleSheet.create({
   fieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
   fieldErrorText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 6 },
 
-  // Profile info row
-  fieldRow: { flexDirection: 'row', gap: 0 },
+  // Mobile forms get a full-width field each, not two narrow desktop columns.
+  fieldRow: { flexDirection: 'column', gap: 14 },
   fieldWrap: { flex: 1 },
-  fieldDividerV: { width: 1, backgroundColor: Colors.whiteAlpha07, marginHorizontal: 14 },
+  fieldDividerV: { display: 'none' },
   fieldValueReadonly: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, paddingVertical: 10 },
   fieldInput: {
     fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.white,
