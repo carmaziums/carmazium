@@ -33,8 +33,6 @@ interface Props {
   /** Makes present in the current result set, so the list only offers makes
    *  that can actually match something. */
   availableMakes: string[];
-  /** Result count for the draft filters, shown on the Apply button. */
-  resultCount?: number;
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -76,7 +74,6 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   value,
   onApply,
   availableMakes,
-  resultCount,
 }) => {
   const [draft, setDraft] = useState<AuctionFilterState>(value);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
