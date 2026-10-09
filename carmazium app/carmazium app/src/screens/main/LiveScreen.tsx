@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
@@ -29,15 +29,17 @@ import {
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
+import { getActiveAuctions, getAllScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
+import { mapTransmission } from '../../lib/listingsApi';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -90,6 +92,7 @@ export const LiveScreen: React.FC = () => {
   const [upcomingAuctions, setUpcomingAuctions] = useState<AuctionDetail[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [auctionLoadError, setAuctionLoadError] = useState<string | null>(null);
 
   // Global ticker reference time
   const [now, setNow] = useState(Date.now());
@@ -101,10 +104,18 @@ export const LiveScreen: React.FC = () => {
   const [filters, setFilters] = useState<AuctionFilterState>(INITIAL_AUCTION_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setAuctionLoadError(null);
     try {
-      const activeData = await getActiveAuctions();
-      const scheduledData = await getScheduledAuctions(1, 20);
+      // Both endpoints enforce verified-dealer access. Fetch all scheduled
+      // pages and only commit both lists once the complete response succeeds.
+      const [activeData, upcomingData] = await Promise.all([
+        getActiveAuctions(),
+        getAllScheduledAuctions(),
+      ]);
+      if (!Array.isArray(activeData)) {
+        throw new Error('Invalid live auction response.');
+      }
 
       // Map dynamic active auctions to UI component-friendly shapes
       const mappedActive = activeData.map((a) => {
@@ -118,6 +129,10 @@ export const LiveScreen: React.FC = () => {
         return {
           id: a.listing.id,
           auctionId: a.id,
+          // Heart buttons must retain the live-auction identity; otherwise a
+          // saved dealer lot opens the retail purchase screen instead of bids.
+          listingType: 'AUCTION',
+          auction: { id: a.id, status: a.status, endTime: a.endTime },
           make: a.listing.make,
           model: a.listing.model,
           variant: a.listing.variant || '',
@@ -125,7 +140,7 @@ export const LiveScreen: React.FC = () => {
           price: Number(a.listing.price),
           mileage: a.listing.mileage,
           fuelType: a.listing.fuelType as any,
-          transmission: a.listing.transmission as any,
+          transmission: mapTransmission(a.listing.transmission),
           category: (a.listing.category as any) || 'Sports',
           condition: (a.listing.condition as any) || 'Used',
           colour: a.listing.colour || '',
@@ -136,8 +151,11 @@ export const LiveScreen: React.FC = () => {
           dealer: seller?.dealerProfile?.companyName || sellerName || 'Private Seller',
           rating: seller?.sellerProfile?.reliabilityScore || 0,
           seller: seller?.id ? { id: seller.id } : undefined,
-          images: a.listing.images && a.listing.images.length > 0 ? a.listing.images : ['https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80'],
-          isFeatured: true,
+          images: a.listing.images ?? [],
+          isFeatured: a.listing.isFeatured === true,
+          badgeTier: a.listing.badgeTier ?? null,
+          isDepartedSale: a.listing.isDepartedSale ?? false,
+          isImported: a.listing.isImported ?? false,
           isNew: false,
           description: a.listing.description || '',
           features: Array.isArray(a.listing.features) ? a.listing.features : [],
@@ -158,23 +176,24 @@ export const LiveScreen: React.FC = () => {
       });
 
       setLiveAuctions(mappedActive);
-      setUpcomingAuctions(scheduledData.data);
-    } catch (error) {
-      // No mock fallback exists — on failure the lists simply stay empty and
-      // the screen renders its real empty state. (This log previously claimed
-      // a "fall back to mocks" that doesn't happen — fixed to avoid misleading
-      // future debugging. Also corrected the log level: this is a genuine
-      // error path, not informational, so it should survive prod log-stripping.)
+      setUpcomingAuctions(upcomingData);
+    } catch (error: any) {
+      // A 403, network outage or partial scheduled list must not be displayed
+      // as 'No auctions right now'. Retain the last known cards with a visible
+      // retry prompt, and let the backend own the dealer verification gate.
       console.error('Error loading backend auctions:', error);
+      setAuctionLoadError(error?.message || 'Could not load auctions. Check your dealer verification or connection.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
+
+  // Tab screens stay mounted; refresh the latest bids and auction status on
+  // every return from detail, KYC or saved auctions, not just initial mount.
+  useFocusEffect(useCallback(() => {
+    void fetchData();
+  }, [fetchData]));
 
   const onRefresh = () => {
     setIsRefreshing(true);
@@ -256,6 +275,10 @@ export const LiveScreen: React.FC = () => {
           </View>
           <HamburgerButton />
         </View>
+
+        {auctionLoadError && (
+          <ErrorBanner message={auctionLoadError} onRetry={() => void fetchData()} />
+        )}
 
         {/* ─── Search ──────────────────────────────────────────────── */}
         <View style={styles.searchBar}>
@@ -376,7 +399,7 @@ export const LiveScreen: React.FC = () => {
               </View>
             ))}
           </View>
-        ) : filteredActive.length === 0 ? (
+        ) : filteredActive.length === 0 && !auctionLoadError ? (
           <EmptyState
             icon="flame-outline"
             title={q ? 'No live auctions match your search' : 'No live auctions right now'}
@@ -511,7 +534,7 @@ export const LiveScreen: React.FC = () => {
         </View>
 
         {filteredUpcoming.length > 0 ? (
-          filteredUpcoming.map((auc, idx) => {
+          filteredUpcoming.map((auc) => {
             // Reserve price is never shown to buyers — it's enforced
             // server-side (Ground Rules). Show Buy It Now if the seller set
             // one, otherwise just the starting bid.
@@ -527,6 +550,8 @@ export const LiveScreen: React.FC = () => {
             const mappedListing = {
               id: auc.listing.id,
               auctionId: auc.id,
+              listingType: 'AUCTION',
+              auction: { id: auc.id, status: auc.status, endTime: auc.endTime },
               make: auc.listing.make,
               model: auc.listing.model,
               variant: auc.listing.variant || '',
@@ -534,7 +559,7 @@ export const LiveScreen: React.FC = () => {
               price: Number(auc.listing.price),
               mileage: auc.listing.mileage,
               fuelType: auc.listing.fuelType as any,
-              transmission: auc.listing.transmission as any,
+              transmission: mapTransmission(auc.listing.transmission),
               category: (auc.listing.category as any) || 'Sports',
               condition: (auc.listing.condition as any) || 'Used',
               colour: auc.listing.colour || '',
@@ -544,8 +569,11 @@ export const LiveScreen: React.FC = () => {
               location: auc.listing.location || '',
               dealer: upcomingSeller?.dealerProfile?.companyName || upcomingSellerName || 'Private Seller',
               rating: upcomingSeller?.sellerProfile?.reliabilityScore || 0,
-              images: auc.listing.images && auc.listing.images.length > 0 ? auc.listing.images : ['https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=500&q=80'],
-              isFeatured: true,
+              images: auc.listing.images ?? [],
+              isFeatured: auc.listing.isFeatured === true,
+              badgeTier: auc.listing.badgeTier ?? null,
+              isDepartedSale: auc.listing.isDepartedSale ?? false,
+              isImported: auc.listing.isImported ?? false,
               isNew: false,
               description: auc.listing.description || '',
               features: Array.isArray(auc.listing.features) ? auc.listing.features : [],
@@ -568,7 +596,7 @@ export const LiveScreen: React.FC = () => {
               >
                 <View style={styles.upcomingImage}>
                   <ImageCarousel
-                    images={auc.listing.images?.length ? auc.listing.images : ['https://images.unsplash.com/photo-1614162692292-7ac56d7f7f1e?w=500&q=80']}
+                    images={auc.listing.images ?? []}
                     width={58}
                     height={58}
                     onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
@@ -584,7 +612,7 @@ export const LiveScreen: React.FC = () => {
                     <Text style={styles.upcomingCarName} numberOfLines={1}>
                       {auc.listing.make} {auc.listing.model}
                     </Text>
-                    <Text style={styles.upcomingLot}>LOT {String(idx + 6).padStart(2, '0')}</Text>
+                    {/* No lot number is supplied by this endpoint; never invent one. */}
                   </View>
                   <Text style={styles.upcomingSpecs} numberOfLines={1}>
                     {auc.listing.year} · {auc.listing.colour || 'Verified Spec'}
