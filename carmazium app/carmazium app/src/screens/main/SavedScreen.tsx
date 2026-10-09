@@ -162,7 +162,7 @@ export const SavedScreen: React.FC = () => {
             {listing.make} {listing.model}
           </Text>
           <Text style={styles.cardMeta} numberOfLines={1}>
-            {listing.transmission || 'Not specified'} gearbox
+            Gearbox: {listing.transmission || 'Not specified'}
           </Text>
           <View style={styles.gridPriceRow}>
             <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
