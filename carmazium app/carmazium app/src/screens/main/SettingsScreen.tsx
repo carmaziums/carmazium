@@ -25,6 +25,9 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts';
+const isSettingsCategory = (value: unknown): value is SettingsCategory =>
+  typeof value === 'string' &&
+  ['personal', 'business', 'verification', 'notifications', 'security', 'payouts'].includes(value);
 
 // ─────────────────────────── helpers ──────────────────────────────
 
@@ -50,14 +53,18 @@ export const SettingsScreen: React.FC = () => {
   const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
   const isDealerAccount = accountRole === 'dealer';
   const isDealerStaff = !!user?.isDealerStaff;
+  const requestedSection = route.params?.section;
+  const resolveCategory = (section: unknown): SettingsCategory =>
+    isSettingsCategory(section) && (section !== 'business' || isDealerAccount)
+      ? section : 'personal';
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
-    route.params?.section ?? 'personal'
+    resolveCategory(requestedSection)
   );
   useEffect(() => {
-    // Stripe opens carmazium://settings?section=payouts after onboarding.
-    // Keep the payment context visible instead of jumping to Personal details.
-    if (route.params?.section) setActiveCategory(route.params.section);
-  }, [route.params?.section]);
+    // A deep link is external input: unknown and dealer-only categories must
+    // never land other roles on an empty settings page.
+    if (requestedSection) setActiveCategory(resolveCategory(requestedSection));
+  }, [requestedSection, isDealerAccount]);
   const scrollRef = React.useRef<ScrollView>(null);
   const categories: { id: SettingsCategory; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal details', icon: 'person-outline' },
@@ -655,10 +662,10 @@ export const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
             <View style={styles.card}>
           {!preferencesFetchComplete && (
-            <Text style={styles.preferenceNotice}>Loading your saved profile preferences…</Text>
+            <Text style={styles.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
           )}
           {preferencesFetchComplete && !preferencesLoaded && (
-            <Text style={styles.preferenceNotice}>Your saved profile preferences could not be confirmed. Saving your name or phone number will not change them.</Text>
+            <Text style={styles.preferenceNotice}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
           )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
