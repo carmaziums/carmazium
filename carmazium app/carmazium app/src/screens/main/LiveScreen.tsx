@@ -30,6 +30,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail } from '../../lib/auctionApi';
+import { mapTransmission } from '../../lib/listingsApi';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
@@ -125,7 +126,7 @@ export const LiveScreen: React.FC = () => {
           price: Number(a.listing.price),
           mileage: a.listing.mileage,
           fuelType: a.listing.fuelType as any,
-          transmission: a.listing.transmission as any,
+          transmission: mapTransmission(a.listing.transmission),
           category: (a.listing.category as any) || 'Sports',
           condition: (a.listing.condition as any) || 'Used',
           colour: a.listing.colour || '',
@@ -136,8 +137,11 @@ export const LiveScreen: React.FC = () => {
           dealer: seller?.dealerProfile?.companyName || sellerName || 'Private Seller',
           rating: seller?.sellerProfile?.reliabilityScore || 0,
           seller: seller?.id ? { id: seller.id } : undefined,
-          images: a.listing.images && a.listing.images.length > 0 ? a.listing.images : ['https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900&q=80'],
-          isFeatured: true,
+          images: a.listing.images ?? [],
+          isFeatured: a.listing.isFeatured === true,
+          badgeTier: a.listing.badgeTier ?? null,
+          isDepartedSale: a.listing.isDepartedSale ?? false,
+          isImported: a.listing.isImported ?? false,
           isNew: false,
           description: a.listing.description || '',
           features: Array.isArray(a.listing.features) ? a.listing.features : [],
@@ -534,7 +538,7 @@ export const LiveScreen: React.FC = () => {
               price: Number(auc.listing.price),
               mileage: auc.listing.mileage,
               fuelType: auc.listing.fuelType as any,
-              transmission: auc.listing.transmission as any,
+              transmission: mapTransmission(auc.listing.transmission),
               category: (auc.listing.category as any) || 'Sports',
               condition: (auc.listing.condition as any) || 'Used',
               colour: auc.listing.colour || '',
