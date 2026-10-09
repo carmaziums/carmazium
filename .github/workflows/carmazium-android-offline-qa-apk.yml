@@ -84,19 +84,12 @@ jobs:
           // A test artifact may not receive production over-the-air updates.
           app.expo.updates.enabled = false;
           delete app.expo.updates.url;
-          // This is a side-by-side UI QA build, not a production release.
-          // Stripe's optional push-provisioning bridge references classes not
-          // supplied by the current RN Stripe package. R8 rejects them in the
-          // minified release build. Keep these overrides LOCAL to the
-          // generated QA manifest; never weaken production shrink settings.
-          const buildProps = app.expo.plugins.find(
-            p => Array.isArray(p) && p[0] === 'expo-build-properties'
-          );
-          if (!buildProps || !buildProps[1]?.android) {
-            throw new Error('Missing expo-build-properties Android options');
-          }
-          buildProps[1].android.enableProguardInReleaseBuilds = false;
-          buildProps[1].android.enableShrinkResourcesInReleaseBuilds = false;
+          // QA-only: R8 currently cannot resolve Stripe's optional provisioning bridge.
+          // Leave the production app.json and EAS release profiles untouched.
+          const props = app.expo.plugins.find(p => Array.isArray(p) && p[0] === 'expo-build-properties');
+          if (!props || !props[1]?.android) throw new Error('Missing Android build properties');
+          props[1].android.enableProguardInReleaseBuilds = false;
+          props[1].android.enableShrinkResourcesInReleaseBuilds = false;
           fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
           if (app.expo.android.package !== 'uk.carmazium.qa' || app.expo.updates.enabled !== false) throw new Error('Unsafe QA app configuration');
           console.log('QA Android package and disabled OTA verified. Public preview environment selected.');
@@ -105,110 +98,13 @@ jobs:
         run: npm run typescript
       - name: Generate native Android project from managed Expo config
         run: npx expo prebuild --platform android --non-interactive --clean
-      - name: Verify QA release minification is disabled
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -Eq '^android.enableProguardInReleaseBuilds=false
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd android
-          chmod +x gradlew
-          ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
-      - name: Verify signed QA APK and source SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
-          if [ -z "$apk" ]; then echo "::error::Gradle did not produce an APK"; exit 1; fi
-          mkdir -p "$GITHUB_WORKSPACE/qa-apk"
-          cp "$apk" "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
-          node - <<'NODE'
-          const fs = require('fs');
-          const manifest = JSON.parse(fs.readFileSync('app.json','utf8')).expo;
-          if (manifest.android.package !== 'uk.carmazium.qa' || manifest.updates.enabled !== false) {
-            throw new Error('Refusing distribution: production package or OTA active');
-          }
-          NODE
-          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
-          "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
-          "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
-          sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
-          {
-            echo '### CarMazium Android QA APK — standalone installation'
-            echo "- Source commit: $GITHUB_SHA"
-            echo '- Package: `uk.carmazium.qa` (separate from installed CarMazium)'
-            echo '- Update channel: disabled; no Expo account needed'
-            echo '- Build type: bundled release JS, signed with ephemeral Android **debug** signing key'
-            echo '- Safety: API mutation/photo-upload guards active, **not** a security sandbox for real customer data'
-            echo ''
-            echo 'Download the `CarMazium-Android-QA` Actions artifact ZIP from this run. Extract `CarMazium-QA-Android.apk`, then install on your own Android device.'
-            echo ''
-            echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This QA build still reads from the current live backend and authorisation service.'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Publish APK as private workflow artifact for reviewer
-        uses: actions/upload-artifact@v4
-        with:
-          name: CarMazium-Android-QA
-          path: qa-apk/*
-          retention-days: 7
-          if-no-files-found: error
- android/gradle.properties
-          grep -Eq '^android.enableShrinkResourcesInReleaseBuilds=false
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd android
-          chmod +x gradlew
-          ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
-      - name: Verify signed QA APK and source SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
-          if [ -z "$apk" ]; then echo "::error::Gradle did not produce an APK"; exit 1; fi
-          mkdir -p "$GITHUB_WORKSPACE/qa-apk"
-          cp "$apk" "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
-          node - <<'NODE'
-          const fs = require('fs');
-          const manifest = JSON.parse(fs.readFileSync('app.json','utf8')).expo;
-          if (manifest.android.package !== 'uk.carmazium.qa' || manifest.updates.enabled !== false) {
-            throw new Error('Refusing distribution: production package or OTA active');
-          }
-          NODE
-          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
-          "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
-          "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
-          sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
-          {
-            echo '### CarMazium Android QA APK — standalone installation'
-            echo "- Source commit: $GITHUB_SHA"
-            echo '- Package: `uk.carmazium.qa` (separate from installed CarMazium)'
-            echo '- Update channel: disabled; no Expo account needed'
-            echo '- Build type: bundled release JS, signed with ephemeral Android **debug** signing key'
-            echo '- Safety: API mutation/photo-upload guards active, **not** a security sandbox for real customer data'
-            echo ''
-            echo 'Download the `CarMazium-Android-QA` Actions artifact ZIP from this run. Extract `CarMazium-QA-Android.apk`, then install on your own Android device.'
-            echo ''
-            echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This QA build still reads from the current live backend and authorisation service.'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - name: Publish APK as private workflow artifact for reviewer
-        uses: actions/upload-artifact@v4
-        with:
-          name: CarMazium-Android-QA
-          path: qa-apk/*
-          retention-days: 7
-          if-no-files-found: error
- android/gradle.properties
-          echo 'QA only: Android R8/resource shrinking disabled; production source remains unchanged.'
       - name: Build self-contained Android APK with local debug signing (no EAS)
         shell: bash
         run: |
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
+          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
       - name: Verify signed QA APK and source SHA
         shell: bash
         run: |
