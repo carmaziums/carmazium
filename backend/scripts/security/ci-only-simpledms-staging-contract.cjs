@@ -192,6 +192,61 @@ async function forbiddenCredentialStartup() {
       ended.data.auctions.length === 0,
       'ended lifecycle is represented by disappearance from full live feed');
     expect(endedDetail.status === 404, 'ended lifecycle detail is no longer live');
+    await stop(child);
+
+    // Historical acceptance sequence. These phases intentionally use only
+    // fictional data. The first three keep the same auction/listing/VRM while
+    // bid and closing time change; the return phase uses a new auction/listing
+    // ID with the same fake VRM and higher mileage for repeat-vehicle matching.
+    const historyFlags = {
+      PARTNER_API_SIMPLEDMS_SHARE_REGISTRATION: 'true',
+      PARTNER_API_SIMPLEDMS_SHARE_CURRENT_BID: 'true',
+    };
+
+    child = await start(41487, { ...historyFlags, STAGING_SYNTHETIC_SCENARIO: 'history-a' });
+    const hA = await request(41487, '/partners/v1/simpledms/auctions', ephemeralKey);
+    const a0 = hA.data.auctions[0];
+    expect(hA.status === 200 && hA.data.pagination.total === 1 && a0.id === STAGING_AUCTION_ID,
+      'history phase A exposes one fictional active auction');
+    expect(a0.vehicle.registration === 'STAGING-NOT-A-REAL-VRM' &&
+      a0.vehicle.mileage === 40000 && a0.auction.currentBidGbp === 5200,
+      'history phase A exposes baseline fake VRM, mileage and observed bid');
+    const hAEndOffset = new Date(a0.auction.endTime).getTime() - new Date(hA.data.generatedAt).getTime();
+    expect(hAEndOffset > 59 * 60_000 && hAEndOffset < 62 * 60_000,
+      'history phase A closing time is approximately one hour ahead');
+    await stop(child);
+
+    child = await start(41488, { ...historyFlags, STAGING_SYNTHETIC_SCENARIO: 'history-bid' });
+    const hBid = await request(41488, '/partners/v1/simpledms/auctions', ephemeralKey);
+    const b0 = hBid.data.auctions[0];
+    expect(b0.id === a0.id && b0.listingId === a0.listingId &&
+      b0.vehicle.registration === a0.vehicle.registration,
+      'history bid phase keeps the same fictional auction/listing/vehicle identity');
+    expect(b0.auction.currentBidGbp === 5450 && b0.vehicle.mileage === 40000,
+      'history bid phase changes only the observed bid');
+    await stop(child);
+
+    child = await start(41489, { ...historyFlags, STAGING_SYNTHETIC_SCENARIO: 'history-extended' });
+    const hExtended = await request(41489, '/partners/v1/simpledms/auctions', ephemeralKey);
+    const e0 = hExtended.data.auctions[0];
+    const extendedOffset = new Date(e0.auction.endTime).getTime() - new Date(hExtended.data.generatedAt).getTime();
+    expect(e0.id === a0.id && e0.auction.currentBidGbp === 5450,
+      'history extension keeps the same auction and observed bid');
+    expect(extendedOffset > 239 * 60_000 && extendedOffset < 242 * 60_000,
+      'history extension moves fictional closing time to approximately four hours ahead');
+    await stop(child);
+
+    child = await start(41490, { ...historyFlags, STAGING_SYNTHETIC_SCENARIO: 'history-return' });
+    const hReturn = await request(41490, '/partners/v1/simpledms/auctions', ephemeralKey);
+    const r0 = hReturn.data.auctions[0];
+    expect(r0.id !== a0.id && r0.listingId !== a0.listingId,
+      'history return phase uses a new fictional auction/listing ID');
+    expect(r0.vehicle.registration === a0.vehicle.registration &&
+      r0.vehicle.mileage === 40125 && r0.auction.currentBidGbp === 5600,
+      'history return phase reuses fake vehicle identity with later mileage and bid evidence');
+    expect(!JSON.stringify(hReturn.data).match(/sellerId|reservePrice|bidderId|privateKey|service_role/i),
+      'historical synthetic phases still expose no prohibited identity/private fields');
+    await stop(child);
 
     console.log('PASS: ' + checks + ' isolated synthetic partner-staging assertions; no credentials or customer data used.');
   } catch (error) {
