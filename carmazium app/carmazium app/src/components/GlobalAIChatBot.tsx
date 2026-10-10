@@ -54,7 +54,7 @@ const ALL_QUICK_REPLIES = [
   { label: 'Diesel only',     action: 'Diesel cars'                 },
   { label: 'Electric',        action: 'Electric vehicles'           },
   { label: '2020+',           action: 'Cars from 2020 onwards'      },
-  { label: 'ULEZ',            action: 'ULEZ compliant cars'        },
+  { label: 'Best value',      action: 'Best value cars on CarMazium'},
   { label: 'Hatchbacks',      action: 'Show me hot hatchbacks'      },
   { label: 'Sports Cars',     action: 'Show me sports cars'         },
   { label: 'Family Cars',     action: 'Spacious family cars'        },
@@ -204,7 +204,7 @@ export const GlobalAIChatBot: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([
-    { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
+    { id: '1', text: "Hi! I'm MaziuM, your CarMazium AI. Tell me what you're looking for and I'll help you find it!", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
