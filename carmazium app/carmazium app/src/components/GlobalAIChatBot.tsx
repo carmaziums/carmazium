@@ -216,15 +216,33 @@ export const GlobalAIChatBot: React.FC = () => {
   const [aiReporting, setAiReporting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  // The native widget lives across account changes. Never show a prior user's
+  // prompts or report details after logout, login or a switch of dealer account.
   useEffect(() => {
+    setIsOpen(false);
+    setMessage('');
+    setIsThinking(false);
+    setChatHistory([
+      { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
+    ]);
+    setReportedResponseIds(new Set());
+    setAiReportTarget(null);
+    setAiReportReason(null);
+    setAiReportDetails('');
+    setAiReporting(false);
+  }, [authUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!aiConsentKey) {
       setHasAiConsent(false);
       return;
     }
     setHasAiConsent(null);
     AsyncStorage.getItem(aiConsentKey)
-      .then((value) => setHasAiConsent(value === 'accepted'))
-      .catch(() => setHasAiConsent(false));
+      .then((value) => { if (!cancelled) setHasAiConsent(value === 'accepted'); })
+      .catch(() => { if (!cancelled) setHasAiConsent(false); });
+    return () => { cancelled = true; };
   }, [aiConsentKey]);
 
   // Scroll to bottom when new messages arrive
@@ -287,6 +305,8 @@ export const GlobalAIChatBot: React.FC = () => {
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isThinking || hasAiConsent !== true) return;
+    const senderId = authUserId;
+    const sameSignedInUser = () => useAuthStore.getState().user?.id === senderId;
 
     const userItem: HistoryItem = { id: Date.now().toString(), text: trimmed, isUser: true };
     const updated = [...chatHistory, userItem];
@@ -311,14 +331,14 @@ export const GlobalAIChatBot: React.FC = () => {
         reportable: true,
         filterCard: result.filterCard ?? null,
       };
-      setChatHistory((prev) => [...prev, botItem]);
+      if (sameSignedInUser()) setChatHistory((prev) => [...prev, botItem]);
     } catch {
-      setChatHistory((prev) => [
+      if (sameSignedInUser()) setChatHistory((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), text: "I'm having a brief moment — please try again in a second!", isUser: false },
+        { id: (Date.now() + 1).toString(), text: 'Something went wrong. Please try again!', isUser: false },
       ]);
     } finally {
-      setIsThinking(false);
+      if (sameSignedInUser()) setIsThinking(false);
     }
   };
 
