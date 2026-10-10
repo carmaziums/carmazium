@@ -48,7 +48,7 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
   assert.ok(top.includes('Math.min(160, Math.max(110, windowWidth - 202))'));
   assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'));
   assert.ok(logo.includes("const LOGO_SOURCE = require('../../assets/images/logo.png')"));
-  assert.ok(logo.includes("width: overrideWidth"));
+  assert.ok(logo.includes("const width = overrideWidth ??"));
   assert.ok(hamburger.includes("name={isOpen ? 'close' : 'menu'}"));
   assert.ok(hamburger.includes("style={[styles.btn, websiteStyle && styles.websiteButton]}"));
   assert.ok(hamburger.includes('websiteStyle && isOpen ? closeDrawer : openDrawer'));
