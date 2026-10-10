@@ -9,6 +9,13 @@ on:
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx'
+      - 'carmazium app/carmazium app/src/navigation/TabNavigator.tsx'
+      - 'carmazium app/carmazium app/src/components/GlobalDrawer.tsx'
+      - 'carmazium app/carmazium app/src/components/WebsiteTopBar.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/LiveScreen.tsx'
   workflow_dispatch:
 
 permissions:
