@@ -239,7 +239,7 @@ export const SellLandingScreen: React.FC = () => {
           <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
           <View style={themed.actionCopy}>
             <Text style={themed.actionTitle}>FREE Dealer Auction</Text>
-            <Text style={themed.actionSub}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
+            <Text style={[themed.actionSub, { color: palette.accentForeground }]}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.white}/>
         </TouchableOpacity>
@@ -320,7 +320,7 @@ function useSellLandingStyles() {
     chooseTitle: [styles.chooseTitle, { color: palette.textPrimary }],
     retailAction: [styles.retailAction, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
     retailTitle: [styles.retailTitle, { color: palette.textPrimary }],
-    actionSub: [styles.actionSub, { color: palette.accentForeground }],
+    actionSub: [styles.actionSub, { color: palette.textSecondary }],
     footnote: [styles.footnote, { color: palette.textMuted }],
   }), [palette]);
 }
