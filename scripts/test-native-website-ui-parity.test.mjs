@@ -61,7 +61,7 @@ test('native shared header follows actual website logo, notification, account an
     'DealerInventoryScreen.tsx',
     'DealerLeadsScreen.tsx',
   ]) assert.ok(app('screens/main/'+screen).includes('<WebsiteTopBar />'),screen);
-  assert.ok(app('screens/main/LiveScreen.tsx').includes('{dealerMode && <WebsiteTopBar />}'));
+  assert.ok(app('screens/main/LiveScreen.tsx').includes('{dealerMode && !embeddedDealerHub && <WebsiteTopBar />}'));
 });
 
 test('website and native match dark navy body + red brand, with a full width bottom bar', () => {

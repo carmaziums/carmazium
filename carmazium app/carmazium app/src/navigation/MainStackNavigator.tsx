@@ -164,7 +164,7 @@ export type MainStackParamList = {
   } | undefined;
   SellCarFlow: { listingId?: string } | undefined;
   SellerListings: undefined;
-  SellerAuctions: { preselectListingId?: string } | undefined;
+  SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
   UnifiedDashboard: undefined;

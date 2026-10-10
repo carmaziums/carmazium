@@ -199,6 +199,8 @@ jobs:
         run: node --test scripts/test-native-visual-parity-block4.test.mjs
       - name: Audit Block 5 Customers CRM website pipeline and roles
         run: node --test scripts/test-native-visual-parity-block5.test.mjs
+      - name: Audit Block 6 dealer auction hub, shortlist and bid positions
+        run: node --test scripts/test-native-visual-parity-block6.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}

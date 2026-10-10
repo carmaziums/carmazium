@@ -195,7 +195,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [refreshing, setRefreshing] = useState(false);
   const [auctionsFetchError, setAuctionsFetchError] = useState<string | null>(null);
   const [wonFetchError, setWonFetchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
+  // Website Buy & Bid > Purchases opens won auctions rather than retail purchases.
+  const [activeTab, setActiveTab] = useState<TabFilter>(route.params?.initialTab === 'WON' ? 'WON' : 'ALL');
   const [navigating, setNavigating] = useState<string | null>(null);
 
   // Stripe Connect payout readiness. A seller can otherwise complete a handover,
@@ -849,6 +850,19 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       setCreateError(error?.message || 'Could not load available vehicles. Please retry.');
     } finally { setListingsLoading(false); }
   }
+
+  // Canonical website Create Auction button goes straight to the existing,
+  // authorized native listing-picker flow. Never auto-open it for staff who
+  // lack MANAGE_INVENTORY (or while dealer permissions are loading).
+  const [createRouteHandled, setCreateRouteHandled] = useState(false);
+  useEffect(() => {
+    if (!route.params?.openCreate || createRouteHandled || dealerAccessLoading) return;
+    setCreateRouteHandled(true);
+    if (!dealerIdentity || hasDealerPermission('MANAGE_INVENTORY')) {
+      void openCreateModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.openCreate, createRouteHandled, dealerAccessLoading, dealerIdentity, hasDealerPermission]);
 
   // Auto-open the create flow once when arriving with a preselected listing.
   useEffect(() => {

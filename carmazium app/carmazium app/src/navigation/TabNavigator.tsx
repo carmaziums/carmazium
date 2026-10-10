@@ -27,6 +27,7 @@ import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScree
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
 import { LegacyPartnerDashboardScreen } from '../screens/account/LegacyPartnerDashboardScreen';
+import { DealerBuyBidScreen } from '../screens/main/DealerBuyBidScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
 import { useAuthStore } from '../store/authStore';
 
@@ -286,7 +287,7 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="DealerHome" component={DealerProfileScreen} />
       <Tab.Screen name="DealerStock" component={DealerInventoryScreen} />
       <Tab.Screen name="DealerCustomers" component={DealerLeadsScreen} />
-      <Tab.Screen name="DealerBuyBid" component={LiveScreen} />
+      <Tab.Screen name="DealerBuyBid" component={DealerBuyBidScreen} />
       <Tab.Screen name="DealerMore" component={ProfileTabScreen} />
     </Tab.Navigator>
   );

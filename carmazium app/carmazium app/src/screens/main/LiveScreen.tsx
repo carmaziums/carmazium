@@ -35,6 +35,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
@@ -83,11 +84,14 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   );
 };
 
-export const LiveScreen: React.FC = () => {
+export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser, accountRole, role } = useAuthStore();
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
+  const { loading: accessLoading, hasPermission } = useDealerAccess(dealerMode);
+  const canCreateAuction = !dealerMode || (!accessLoading && hasPermission('MANAGE_INVENTORY'));
+  const canPlaceDealerBid = !dealerMode || (!accessLoading && hasPermission('PLACE_BID'));
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
@@ -257,7 +261,7 @@ export const LiveScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {dealerMode && <WebsiteTopBar />}
+      {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
@@ -349,7 +353,8 @@ export const LiveScreen: React.FC = () => {
           )}
         </View>
 
-        {/* ─── Auction your car CTA ───────────────────────────────── */}
+        {/* Dealer staff without MANAGE_INVENTORY must not see a seller CTA. */}
+        {canCreateAuction && (
         <TouchableOpacity
           style={styles.auctionCtaBanner}
           activeOpacity={0.85}
@@ -364,12 +369,15 @@ export const LiveScreen: React.FC = () => {
           </View>
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
         </TouchableOpacity>
+        )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
         <View style={styles.alertBanner}>
           <View style={styles.alertDot} />
           <Text style={styles.alertText}>
-            Bidding is live — place your bid before the gavel drops.
+            {canPlaceDealerBid
+              ? 'Bidding is live — place your bid before the gavel drops.'
+              : 'Browse live auctions. Bidding requires dealer bidding permission.'}
           </Text>
         </View>
 
