@@ -36,7 +36,6 @@ test('customer overview matches actual website metric derivation', () => {
   assert.ok(app.includes('const overdueLeads = activeLeads.filter(isFollowUpOverdue)'));
   assert.ok(app.includes("!['WON', 'LOST'].includes(l.status)"));
   assert.ok(app.includes("lead.status !== 'WON' && lead.status !== 'LOST'"));
-  assert.ok(app.includes('loading && (!loadError || leads.length > 0)') === false, 'do not show zeros while fetching');
   assert.ok(app.includes('!loading && (!loadError || leads.length > 0)'), 'only display completed summary');
   assert.ok(app.includes('Previously loaded data may be outdated.'));
 });
