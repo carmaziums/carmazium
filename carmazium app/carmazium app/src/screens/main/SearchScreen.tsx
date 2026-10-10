@@ -328,7 +328,7 @@ export const SearchScreen: React.FC = () => {
     const qf = QUICK_FILTERS.find(f => f.id === quickFilter);
     const parseMi = (s: string) => {
       if (s === 'Any') return undefined;
-      return parseInt(themed.replace('k', ''), 10) * 1000;
+      return parseInt(s.replace('k', ''), 10) * 1000;
     };
     return {
       search: query.trim() || undefined,
