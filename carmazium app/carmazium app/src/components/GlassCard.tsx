@@ -6,6 +6,7 @@ import {
   StyleProp,
 } from 'react-native';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -27,22 +28,23 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   hasBorder = true,
   hasGlow = false,
 }) => {
+  const { resolvedAppearance, palette } = useNativeAppearance();
   return (
     <View
       style={[
         styles.wrapper,
         { borderRadius },
-        hasBorder && styles.border,
+        hasBorder && [styles.border, { borderColor: palette.borderDefault }],
         hasGlow && styles.glow,
         style,
       ]}
     >
       {/* Layer 1: Base dark fill */}
-      <View style={[StyleSheet.absoluteFillObject, styles.baseFill, { borderRadius }]} />
+      <View style={[StyleSheet.absoluteFillObject, styles.baseFill, { borderRadius, backgroundColor: palette.bgCard }]} />
       {/* Layer 2: Light shimmer overlay — simulates frosted glass */}
-      <View style={[StyleSheet.absoluteFillObject, styles.shimmer, { borderRadius }]} />
+      <View style={[StyleSheet.absoluteFillObject, styles.shimmer, { borderRadius, backgroundColor: resolvedAppearance === 'light' ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.042)' }]} />
       {/* Layer 3: Top highlight edge */}
-      <View style={[styles.topHighlight, { borderRadius }]} />
+      <View style={[styles.topHighlight, { borderRadius, backgroundColor: palette.borderHover }]} />
 
       <View style={[styles.content, { padding }]}>{children}</View>
     </View>

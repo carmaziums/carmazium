@@ -69,7 +69,7 @@ import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { CarListing } from '../data/listings';
-import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 
 
 // Hoisted to module scope on purpose. Calling withDealerGate(...) inline in the
@@ -190,12 +190,13 @@ export type MainStackParamList = {
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
 export const MainStackNavigator: React.FC = () => {
+  const { palette } = useNativeAppearance();
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        contentStyle: { backgroundColor: Colors.bgPrimary },
+        contentStyle: { backgroundColor: palette.bgBody },
       }}
     >
       <Stack.Screen name="Tabs" component={TabNavigator} />

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
+import { ThemedTextField } from './ThemedTextField';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
@@ -38,6 +40,7 @@ import { FontFamily, FontSize } from '../constants/typography';
 let dismissedThisSession = false;
 
 export const ProfileCompletionPromptSheet: React.FC = () => {
+  const { palette } = useNativeAppearance();
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.accountRole);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -120,7 +123,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
           <Ionicons name="person-outline" size={20} color={Colors.accent} />
         </View>
 
-        <Text style={styles.blurb}>
+        <Text style={[styles.blurb, { color: palette.textSecondary }]}>
           {needsPhone && needsName
             ? 'Add your name and a contact number so buyers and sellers know who they are dealing with.'
             : needsPhone
@@ -130,25 +133,23 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
 
         {needsName && (
           <>
-            <Text style={styles.label}>First name</Text>
-            <TextInput
+            <Text style={[styles.label, { color: palette.textSecondary }]}>First name</Text>
+            <ThemedTextField
               style={styles.input}
               value={firstName}
               onChangeText={setFirstName}
               placeholder="e.g. Alex"
-              placeholderTextColor={Colors.inputPlaceholder}
               autoCapitalize="words"
               autoCorrect={false}
               editable={!saving}
             />
 
-            <Text style={styles.label}>Last name</Text>
-            <TextInput
+            <Text style={[styles.label, { color: palette.textSecondary }]}>Last name</Text>
+            <ThemedTextField
               style={styles.input}
               value={lastName}
               onChangeText={setLastName}
               placeholder="e.g. Thompson"
-              placeholderTextColor={Colors.inputPlaceholder}
               autoCapitalize="words"
               autoCorrect={false}
               editable={!saving}
@@ -158,13 +159,12 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
 
         {needsPhone && (
           <>
-            <Text style={styles.label}>Phone number</Text>
-            <TextInput
+            <Text style={[styles.label, { color: palette.textSecondary }]}>Phone number</Text>
+            <ThemedTextField
               style={styles.input}
               value={phone}
               onChangeText={setPhone}
               placeholder="e.g. 07700 900000"
-              placeholderTextColor={Colors.inputPlaceholder}
               keyboardType="phone-pad"
               autoCorrect={false}
               editable={!saving}
@@ -186,7 +186,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.laterBtn} onPress={handleDismiss} disabled={saving} activeOpacity={0.7}>
-          <Text style={styles.laterText}>Not now</Text>
+          <Text style={[styles.laterText, { color: palette.textMuted }]}>Not now</Text>
         </TouchableOpacity>
       </View>
     </BottomSheet>
