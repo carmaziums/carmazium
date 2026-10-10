@@ -76,6 +76,8 @@ test('never offer internal APKs or unsigned direct downloads',()=>{
     {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://expo.dev/artifacts/eas/build.apk'},
     {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/preview-build.apk'},
     {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/downloads/qa-app.apk#hash'},
+    {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/downloads/carmazium-qa.apk'},
+    {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/downloads/carmazium-preview.apk'},
     {NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'http://carmazium.com/downloads/app.apk'},
   ]){
     const links=resolveMobileAppLinks({...common,...patch});
