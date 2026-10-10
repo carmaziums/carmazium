@@ -618,10 +618,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Keep it above effects that may reference the current listing id.
   const editListingId: string | null = route?.params?.listingId ?? null;
   const editMode = !!editListingId;
+  // Carry the website-style valuation prefill into the existing wizard.
+  // Never override a listing being edited or the seller's saved draft flow.
+  const landingPrefill = editListingId ? undefined : route?.params?.prefill;
+  const landingListingType = !editListingId ? route?.params?.listingType : undefined;
 
   // ── Step 1 — Vehicle Details ──
   const [vehicleType, setVehicleType] = useState<'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
-  const [vrm, setVrm] = useState('');
+  const [vrm, setVrm] = useState(() => landingPrefill?.vrm || '');
   const [dvlaLoading, setDvlaLoading] = useState(false);
   const [dvlaFetched, setDvlaFetched] = useState(false);
   const lookupRequestRef = useRef(0);
@@ -629,9 +633,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const vehicleTypeRef = useRef<NativeVehicleType>('CAR');
   // DVLA / Registration & Compliance
   const [vin, setVin] = useState('');
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
-  const [year, setYear] = useState('');
+  const [make, setMake] = useState(() => landingPrefill?.make || '');
+  const [model, setModel] = useState(() => landingPrefill?.model || '');
+  const [year, setYear] = useState(() => landingPrefill?.year ? String(landingPrefill.year) : '');
   const [motStatus, setMotStatus] = useState('');
   const [motExpiry, setMotExpiry] = useState('');
   const [taxStatus, setTaxStatus] = useState('');
@@ -667,9 +671,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [location, setLocation] = useState('');
   const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
-  const [mileage, setMileage] = useState('');
+  const [mileage, setMileage] = useState(() => landingPrefill?.mileage != null ? String(landingPrefill.mileage) : '');
   const [fuelType, setFuelType] = useState('');
-  const [transmission, setTransmission] = useState('');
+  const [transmission, setTransmission] = useState(() => normalizeNativeTransmission(landingPrefill?.transmission) || '');
   const [colour, setColour] = useState('');
   const [engineSize, setEngineSize] = useState('');
   const [bhp, setBhp] = useState('');
@@ -729,7 +733,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryMaxMiles, setDeliveryMaxMiles] = useState('');
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
   const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
-  const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>('CLASSIFIED');
+  const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>(
+    landingListingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED',
+  );
   const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(null);
   const [valuation, setValuation] = useState<VehicleValuation | null>(null);
   const valuationBaseKeyRef = useRef<string | null>(null);
