@@ -41,7 +41,7 @@ test('wizard only themes presentation, not DVLA/drafts/validation/price or payme
   expectThemeStyles(wizard,'useSellWizardStyles',
     ['container','headerTitle','methodChoice','input','sectionBox','priceInputWrap','badgeCard','declRow',
       'declText','checkbox','reviewHeading','bottomBar','backBtnSm','backBtnSmText','photoTabs']
-      .filter(x => x !== 'input' && x !== 'sectionBox'));
+      .filter(x => x !== 'input' && x !== 'sectionBox'), 's');
   assert.match(wizard, /const \{ palette, resolvedAppearance \} = useNativeAppearance\(\)/);
   assert.match(wizard, /<TextInput\s*\n\s*style=\{\[s\.input, \{ backgroundColor: palette\.bgInput/);
   assert.match(wizard, /backgroundColor: palette\.bgCard, borderColor: palette\.borderDefault/);
@@ -74,7 +74,7 @@ test('retail vehicle details and offer modal preserve actual price and real sell
 test('auction details use readable bid, contact and fee UI without touching bidding security', () => {
   expectThemeStyles(auction,'useAuctionDetailStyles',
     ['container','headerTitle','card','bidConsole','currentBidVal','customBidInput',
-     'feeNotice','feeNoticeHint','feeNoticeAmt','sellerContactBlock','binPanel','binPanelPrice']);
+     'feeNotice','feeNoticeHint','feeNoticeAmt','sellerContactBlock','binPanel','binPanelPrice'], 's');
   assert.match(auction, /const canPlaceBid =/);
   assert.match(auction, /if \(!canPlaceBid\)/);
   assert.match(auction, /getAuctionFirstOfferFloor/);
