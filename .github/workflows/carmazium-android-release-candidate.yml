@@ -12,6 +12,10 @@ on:
         type: choice
         required: true
         options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
+      version_code:
+        description: Unique, increasing Android release versionCode (1 to 2147483647)
+        type: string
+        required: true
 permissions:
   contents: read
 concurrency:
@@ -19,6 +23,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   candidate:
+    # Do not expose signing secrets on non-main manual dispatches.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 110
     defaults:
@@ -28,8 +34,10 @@ jobs:
       CI: 'true'
       EXPO_NO_TELEMETRY: '1'
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      APP_ENV: 'production'
       CARMAZIUM_CANDIDATE_SOURCE_SHA: ${{ inputs.source_sha }}
       CARMAZIUM_ANDROID_CANDIDATE_APPROVAL: ${{ inputs.approval }}
+      CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE: ${{ inputs.version_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -81,6 +89,8 @@ jobs:
           const app=JSON.parse(fs.readFileSync('app.json','utf8'));
           app.expo.updates.enabled=false;
           delete app.expo.updates.url;
+          // Android sideloaded updates must have a higher versionCode than the prior APK.
+          app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE);
           fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
           const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
           for(const key of ['EXPO_PUBLIC_API_URL','EXPO_PUBLIC_SUPABASE_URL',
@@ -90,6 +100,14 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_ENV,key+'='+value+'\n');
           }
           NODE
+      - name: Verify owner-pinned certificate and private signing key before build
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_PATH: keystores/customer-release.jks
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        run: node ../../scripts/verify-android-release-keystore.mjs
       - name: Ensure Android API 36 and signing tools exist
         shell: bash
         run: |
@@ -107,6 +125,7 @@ jobs:
           grep -F 'signingConfig signingConfigs.release' android/app/build.gradle
           test "$(node -p "require('./app.json').expo.android.package")" = 'uk.carmazium.app'
           test "$(node -p "require('./app.json').expo.updates.enabled")" = 'false'
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "$CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE"
       - name: Build APK with retained release signing key
         shell: bash
         run: |
@@ -131,10 +150,17 @@ jobs:
             echo '::error::APK signer mismatch; NOT distributing debug or unsigned APK.'
             exit 1
           fi
-          "$tools/aapt" dump badging "$apk" | grep -F "package: name='uk.carmazium.app'"
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='uk.carmazium.app' versionCode='${CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE}'"
+          echo "Source revision: $GITHUB_SHA; candidate versionCode: $CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
           mkdir -p "$GITHUB_WORKSPACE/review-only-apk"
           cp "$apk" "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
-          sha256sum "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk" > "$GITHUB_WORKSPACE/review-only-apk/SHA256SUMS.txt"
+          review_apk="$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
+          evidence="$GITHUB_WORKSPACE/review-only-apk/release-evidence.json"
+          # Read the actual, signer-verified APK after copying, then re-check it.
+          node ../../scripts/android-apk-release-evidence.mjs create "$review_apk" "$evidence"
+          node ../../scripts/android-apk-release-evidence.mjs verify "$review_apk" "$evidence"
+          (cd "$GITHUB_WORKSPACE/review-only-apk" && sha256sum CarMazium-Android-REVIEW-ONLY.apk > SHA256SUMS.txt)
+          echo 'Verified private artifact manifest: release-evidence.json, APK and SHA256SUMS.txt.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Release signer verified. INTERNAL REVIEW ONLY; no public distribution authorised.' >> "$GITHUB_STEP_SUMMARY"
       - name: Store short-lived private review artifact only
         uses: actions/upload-artifact@v4

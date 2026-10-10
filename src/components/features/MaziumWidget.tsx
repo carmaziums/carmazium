@@ -125,8 +125,8 @@ export function MaziumWidget() {
     ): Promise<ChatMessage> => {
         try {
             // Build conversation history for the API (last 10 messages)
-            const history = [...currentMessages, { role: "user" as const, text: userMessage }]
-                .slice(-10)
+            // handleSend already added this message; do not duplicate it in API context.
+            const history = currentMessages.slice(-10)
                 .map((m) => ({
                     role: (m.role === "bot" ? "assistant" : "user") as "user" | "assistant",
                     content: m.text,
