@@ -23,13 +23,24 @@ import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
-type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts';
+type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
 const isSettingsCategory = (value: unknown): value is SettingsCategory =>
   typeof value === 'string' &&
-  ['personal', 'business', 'verification', 'notifications', 'security', 'payouts'].includes(value);
+  ['personal', 'business', 'verification', 'notifications', 'payouts', 'appearance', 'security', 'reviews', 'account'].includes(value);
 
 // ─────────────────────────── helpers ──────────────────────────────
+
+type ReviewItem = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer?: { displayName?: string };
+  target?: { displayName?: string };
+};
 
 const SectionHeader: React.FC<{ icon: string; label: string }> = ({ icon, label }) => (
   <View style={styles.sectionHeader}>
@@ -60,20 +71,68 @@ export const SettingsScreen: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
     resolveCategory(requestedSection)
   );
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [ratingSummary, setRatingSummary] = useState<{ average: number; count: number } | null>(null);
+  const [ratingReceived, setRatingReceived] = useState<ReviewItem[]>([]);
+  const [ratingGiven, setRatingGiven] = useState<ReviewItem[]>([]);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
   useEffect(() => {
     // A deep link is external input: unknown and dealer-only categories must
     // never land other roles on an empty settings page.
     if (requestedSection) setActiveCategory(resolveCategory(requestedSection));
   }, [requestedSection, isDealerAccount]);
   const scrollRef = React.useRef<ScrollView>(null);
+  // Match the website's /profile Account Settings nine-section hierarchy,
+  // while keeping native-specific account verification functionality.
   const categories: { id: SettingsCategory; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal details', icon: 'person-outline' },
-    ...(isDealerAccount ? [{ id: 'business' as const, label: 'Dealership', icon: 'storefront-outline' }] : []),
+    ...(isDealerAccount ? [{ id: 'business' as const, label: 'Business profile', icon: 'business-outline' }] : []),
     { id: 'verification', label: 'Verification', icon: 'shield-checkmark-outline' },
     { id: 'notifications', label: 'Notifications & privacy', icon: 'notifications-outline' },
-    { id: 'payouts', label: 'Payouts & bank', icon: 'wallet-outline' },
-    { id: 'security', label: 'Security & account', icon: 'lock-closed-outline' },
+    { id: 'payouts', label: 'Payouts', icon: 'wallet-outline' },
+    { id: 'appearance', label: 'Appearance', icon: 'color-palette-outline' },
+    { id: 'security', label: 'Security', icon: 'lock-closed-outline' },
+    { id: 'reviews', label: 'Ratings & reviews', icon: 'star-outline' },
+    { id: 'account', label: 'Account type', icon: 'settings-outline' },
   ];
+  const handleContactSupport = async () => {
+    if (supportLoading) return;
+    setSupportLoading(true);
+    try {
+      // Same real in-app support room as the existing navigation drawer.
+      const room = await getOrCreateSupportRoom();
+      navigation.navigate('ChatScreen', { threadId: room.id });
+    } catch (error: any) {
+      Alert.alert('Support unavailable', error?.message || 'Please try again.');
+    } finally {
+      setSupportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeCategory !== 'reviews' || !user?.id) return;
+    let active = true;
+    setRatingLoading(true);
+    setRatingError(null);
+    // Website /profile uses these same read-only reputation endpoints.
+    Promise.all([
+      apiClient<{ success: boolean; data: { rating: { average: number; count: number } } }>(`/profiles/${user.id}`),
+      apiClient<{ success: boolean; data: { data: ReviewItem[] } }>(`/profiles/${user.id}/reviews?limit=20`),
+      apiClient<{ success: boolean; data: { data: ReviewItem[] } }>(`/profiles/me/reviews/given?limit=20`),
+    ]).then(([summary, received, given]) => {
+      if (!active) return;
+      if (!summary?.data?.rating || !Array.isArray(received?.data?.data)
+        || !Array.isArray(given?.data?.data)) throw new Error('Reputation details are unavailable');
+      setRatingSummary(summary.data.rating);
+      setRatingReceived(received.data.data);
+      setRatingGiven(given.data.data);
+    }).catch(() => {
+      if (active) setRatingError('Reviews could not be loaded. Previously shown information may be out of date.');
+    }).finally(() => { if (active) setRatingLoading(false); });
+    return () => { active = false; };
+  }, [activeCategory, user?.id]);
+
   const selectCategory = (category: SettingsCategory) => {
     setActiveCategory(category);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
