@@ -77,3 +77,18 @@ test('website and native match dark navy body + red brand, with a full width bot
   assert.ok(tabs.includes("paddingBottom: insets.bottom"));
   assert.ok(!tabs.includes('...Elevation.float'));
 });
+
+test('buyer home uses the current website sale-first proposition and brand header', () => {
+  const home = app('screens/main/HomeScreen.tsx');
+  const webHero = read('src/app/HomeClient.tsx');
+  assert.ok(webHero.includes('Sell Your Car'));
+  assert.ok(webHero.includes('Auction <span className="text-primary">FREE</span>'));
+  assert.ok(home.includes('<WebsiteTopBar />'));
+  assert.ok(home.includes('<Text style={s.greetingLine}>Sell your car</Text>'));
+  assert.ok(home.includes('<Text style={s.greetingAccent}>your way.</Text>'));
+  assert.ok(home.includes('Auction FREE · Retail £1'));
+  assert.ok(home.includes('approved handover earns a £100 reward.'));
+  assert.ok(home.includes("navigation.navigate('Tabs', { screen: 'Search' })"));
+  assert.ok(home.includes("navigation.navigate('SellCarFlow')"));
+  assert.ok(!home.includes('Find your next'));
+});
