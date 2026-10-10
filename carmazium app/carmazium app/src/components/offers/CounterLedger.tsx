@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import {FontFamily, FontSize } from '../../constants/typography';
 
 // The backend keeps a single Offer row per negotiation, not one row per
@@ -74,6 +75,7 @@ interface Row {
 }
 
 export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) => {
+  const { palette } = useNativeAppearance();
   const rows: Row[] = [];
 
   const buyerLabel = viewerRole === 'BUYER' ? 'You offered' : 'Buyer offered';
@@ -124,10 +126,10 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
   const expiry = offer.status === 'COUNTERED' ? fmtExpiry(offer.counterExpiresAt) : null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]}>
       <View style={styles.headerRow}>
-        <Ionicons name="git-network-outline" size={12} color={Colors.textMuted} />
-        <Text style={styles.headerLabel}>NEGOTIATION HISTORY</Text>
+        <Ionicons name="git-network-outline" size={12} color={palette.textMuted} />
+        <Text style={[styles.headerLabel, { color: palette.textMuted }]}>NEGOTIATION HISTORY</Text>
         {expiry && (
           <View
             style={[
@@ -175,7 +177,7 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
             </View>
             <View style={styles.rowBody}>
               <View style={styles.rowTop}>
-                <Text style={styles.rowLabel}>{row.label}</Text>
+                <Text style={[styles.rowLabel, { color: palette.textSecondary }]}>{row.label}</Text>
                 {row.attemptCount != null && row.attemptCount > 1 && (
                   <Text style={styles.attemptCount}>×{row.attemptCount}</Text>
                 )}
@@ -186,9 +188,9 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
                 )}
               </View>
               <View style={styles.rowBottom}>
-                <Text style={styles.rowAmount}>{fmtPrice(row.amount)}</Text>
+                <Text style={[styles.rowAmount, { color: palette.textPrimary }]}>{fmtPrice(row.amount)}</Text>
                 {row.timestamp && (
-                  <Text style={styles.rowTimestamp}>· {fmtDate(row.timestamp)}</Text>
+                  <Text style={[styles.rowTimestamp, { color: palette.textMuted }]}>· {fmtDate(row.timestamp)}</Text>
                 )}
               </View>
             </View>
