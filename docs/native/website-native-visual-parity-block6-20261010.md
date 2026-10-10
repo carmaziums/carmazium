@@ -42,6 +42,6 @@ Date: 10 October 2026. **60% means six implementation blocks out of the ten plan
 
 ## Scope/rollback
 
-Block 6 PR branches off main after **merged PRs #476, #478, #479, #480, #481, #482**; no changes to website, production API/schema, customer records, seller payment flow, bidding economics, CarMazium fee model, external provider keys, mobile signing/distribution or production database. All writes in current UI remain behind pre-existing backend operations/permission checks, with NO live mutation performed during this task.
+Block 6 PR branches off main after **PR #476, PR #478, PR #479, PR #480, PR #481 and PR #482** were merged; no changes to website, production API/schema, customer records, seller payment flow, bidding economics, CarMazium fee model, external provider keys, mobile signing/distribution or production database. All writes in current UI remain behind pre-existing backend operations/permission checks, with NO live mutation performed during this task.
 
 To revert, revert **this Block 6 PR only**, preserving #476, #478, #479, #480, #481 and #482. **STOP at 60%** and await next user **proceed** before Block 7.
