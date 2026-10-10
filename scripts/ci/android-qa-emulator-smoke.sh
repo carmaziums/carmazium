@@ -15,7 +15,7 @@ if [[ ! -s "$APK" ]]; then
 fi
 
 # A normal x86_64 GitHub emulator cannot install an ARM64-only APK.
-if ! unzip -Z1 "$APK" | grep -E '^lib/x86_64/[^/]+[.]so$' | head -n 1 > /dev/null; then
+if ! unzip -Z1 "$APK" | grep -E '^lib/x86_64/[^/]+[.]so$' > /dev/null; then
   echo '::error::The APK has no x86_64 JNI libraries; check the Gradle ABI selection.'
   exit 1
 fi
