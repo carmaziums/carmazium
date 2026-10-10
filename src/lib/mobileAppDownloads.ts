@@ -53,6 +53,7 @@ const approvedAndroidApk = (env: AppDownloadEnv): { href: string | null; sha256:
     if (url.protocol !== "https:" ||
         !["carmazium.com", "www.carmazium.com"].includes(url.hostname) ||
         !url.pathname.startsWith("/downloads/") || !url.pathname.endsWith(".apk") ||
+        /(?:^|[-_.])(qa|preview|staging|debug|dev|test)(?:[-_.]|$)/i.test(url.pathname.split("/").pop() || "") ||
         url.search || url.hash || url.username || url.password) return { href: null, sha256: null }
     return { href: url.toString(), sha256: hash.toLowerCase() }
   } catch { return { href: null, sha256: null } }
