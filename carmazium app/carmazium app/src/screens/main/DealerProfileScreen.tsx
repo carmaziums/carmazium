@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -84,7 +83,6 @@ const trendStyle = (value: number) =>
 const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' : ''}${value}%`);
 
 export const DealerProfileScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
