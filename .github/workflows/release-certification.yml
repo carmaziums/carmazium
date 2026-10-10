@@ -157,6 +157,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify Android signing preflight with temporary synthetic CI fixture
+        run: node --test scripts/test-verify-android-release-keystore.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
