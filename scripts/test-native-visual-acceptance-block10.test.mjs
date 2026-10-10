@@ -29,7 +29,9 @@ const stubReader=record=>{
   // The real CLI always reads PNG BYTES and checks sha256. This is a unit test.
   const key=String(record.path).match(/(360x800|390x844)/)?.[1];
   const [w,h]=(key||'360x800').split('x').map(Number);
-  return {width:w*record.pixelRatio,height:h*record.pixelRatio};
+  // Simulate intrinsic screenshot bytes independently of what the manifest claims.
+  // Otherwise tampering with pixelRatio would also change the mock's dimensions.
+  return {width:w*2,height:h*2};
 };
 const check=(manifest=makeManifest())=>evaluateVisualAcceptance(manifest,{
   base:'/private/evidence',expectedSha:SHA,imageReader:stubReader,
