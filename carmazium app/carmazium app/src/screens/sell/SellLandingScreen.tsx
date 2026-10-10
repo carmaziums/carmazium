@@ -29,6 +29,16 @@ const validYear = (raw: string) => {
     && year >= 1900 && year <= new Date().getFullYear() + 1;
 };
 
+const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardType }:{
+  label:string; value:string; onChangeText:(text:string)=>void;
+  placeholder:string; keyboardType?:'default'|'number-pad';
+}) => <View style={styles.field}>
+  <Text style={styles.fieldLabel}>{label}</Text>
+  <TextInput style={styles.fieldInput} value={value} onChangeText={onChangeText}
+    accessibilityLabel={label} autoCorrect={false} placeholder={placeholder}
+    placeholderTextColor={Colors.textMuted} keyboardType={keyboardType || 'default'}/>
+</View>;
+
 export const SellLandingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [vrm, setVrm] = useState('');
@@ -137,15 +147,6 @@ export const SellLandingScreen: React.FC = () => {
     });
   };
 
-  const Field = ({ label, value, onChangeText, placeholder, keyboardType }:{
-    label:string; value:string; onChangeText:(text:string)=>void;
-    placeholder:string; keyboardType?:'default'|'number-pad';
-  }) => <View style={styles.field}>
-    <Text style={styles.fieldLabel}>{label}</Text>
-    <TextInput style={styles.fieldInput} value={value} onChangeText={onChangeText}
-      accessibilityLabel={label} autoCorrect={false} placeholder={placeholder}
-      placeholderTextColor={Colors.textMuted} keyboardType={keyboardType || 'default'}/>
-  </View>;
 
   return (
     <View style={styles.screen}>
@@ -165,7 +166,7 @@ export const SellLandingScreen: React.FC = () => {
           <Text style={styles.hint}>Enter your registration or provide vehicle details manually.</Text>
           <View style={styles.vrmRow}>
             <View style={styles.vrmInputWrap}>
-              <Field label="Vehicle registration" value={vrm} onChangeText={changeVrm}
+              <SellValuationField label="Vehicle registration" value={vrm} onChangeText={changeVrm}
                 placeholder="AB12 CDE"/>
             </View>
             <TouchableOpacity style={styles.lookupBtn} onPress={() => { void findRegistration(); }}
@@ -174,22 +175,22 @@ export const SellLandingScreen: React.FC = () => {
                 <Text style={styles.lookupText}>Analyse</Text>}
             </TouchableOpacity>
           </View>
-          <Field label="Mileage" value={mileage}
+          <SellValuationField label="Mileage" value={mileage}
             onChangeText={text => { invalidate(); setMileage(text.replace(/[^\d,]/g,'')); }}
             placeholder="e.g. 45000" keyboardType="number-pad"/>
           <View style={styles.fieldRow}>
             <View style={styles.fieldHalf}>
-              <Field label="Make" value={make}
+              <SellValuationField label="Make" value={make}
                 onChangeText={text => { invalidate(); setMake(text); }}
                 placeholder="e.g. Ford"/>
             </View>
             <View style={styles.fieldHalf}>
-              <Field label="Model" value={model}
+              <SellValuationField label="Model" value={model}
                 onChangeText={text => { invalidate(); setModel(text); }}
                 placeholder="e.g. Focus"/>
             </View>
           </View>
-          <Field label="Year" value={year}
+          <SellValuationField label="Year" value={year}
             onChangeText={text => { invalidate(); setYear(text.replace(/[^\d]/g,'').slice(0,4)); }}
             placeholder="e.g. 2018" keyboardType="number-pad"/>
           {!!error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
