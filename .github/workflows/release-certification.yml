@@ -20,6 +20,8 @@ on:
       - 'scripts/test-android-release-candidate.test.mjs'
       - 'scripts/verify-android-release-keystore.mjs'
       - 'scripts/test-verify-android-release-keystore.test.mjs'
+      - 'scripts/android-apk-release-evidence.mjs'
+      - 'scripts/test-android-apk-release-evidence.test.mjs'
       - 'docs/native/**'
       - 'package.json'
       - '.github/workflows/release-certification.yml'
@@ -168,6 +170,8 @@ jobs:
           java-version: '17'
       - name: Verify Android signing preflight with temporary synthetic CI fixture
         run: node --test scripts/test-verify-android-release-keystore.test.mjs
+      - name: Check signed APK evidence and tamper rejection with synthetic bytes
+        run: node --test scripts/test-android-apk-release-evidence.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
