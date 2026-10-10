@@ -195,7 +195,8 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const [refreshing, setRefreshing] = useState(false);
   const [auctionsFetchError, setAuctionsFetchError] = useState<string | null>(null);
   const [wonFetchError, setWonFetchError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
+  // Website Buy & Bid > Purchases opens won auctions rather than retail purchases.
+  const [activeTab, setActiveTab] = useState<TabFilter>(route.params?.initialTab === 'WON' ? 'WON' : 'ALL');
   const [navigating, setNavigating] = useState<string | null>(null);
 
   // Stripe Connect payout readiness. A seller can otherwise complete a handover,
