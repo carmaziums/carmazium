@@ -15,6 +15,20 @@ on:
       - 'scripts/test-native-app-audit-block9.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
+      - '.github/workflows/carmazium-android-release-candidate.yml'
+      - 'scripts/check-android-release-candidate.mjs'
+      - 'scripts/test-android-release-candidate.test.mjs'
+      - 'scripts/verify-android-release-keystore.mjs'
+      - 'scripts/test-verify-android-release-keystore.test.mjs'
+      - 'scripts/android-apk-release-evidence.mjs'
+      - 'scripts/test-android-apk-release-evidence.test.mjs'
+      - 'scripts/verify-first-party-android-apk.mjs'
+      - 'scripts/test-first-party-android-apk.test.mjs'
+      - 'scripts/test-mazium-native-greeting-parity-block8.test.mjs'
+      - 'scripts/test-mazium-consent-filter-parity-block9.test.mjs'
+      - 'scripts/check-customer-app-release-acceptance.mjs'
+      - 'scripts/test-customer-app-release-acceptance.test.mjs'
+      - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
       - '.github/workflows/release-certification.yml'
@@ -157,6 +171,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify Android signing preflight with temporary synthetic CI fixture
+        run: node --test scripts/test-verify-android-release-keystore.test.mjs
+      - name: Check signed APK evidence and tamper rejection with synthetic bytes
+        run: node --test scripts/test-android-apk-release-evidence.test.mjs
+      - name: Test first-party hosted APK verification without external requests
+        run: node --test scripts/test-first-party-android-apk.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
@@ -213,6 +237,14 @@ jobs:
         run: node --test scripts/test-native-visual-acceptance-block10.test.mjs
       - name: Audit MaziuM website/native mascot and consent parity source
         run: node --test scripts/test-mazium-native-visual-parity.test.mjs
+      - name: Verify Mazium web/native conversation and quick-reply parity
+        run: node --test scripts/test-mazium-web-native-conversation-parity.test.mjs
+      - name: Verify native Mazium greeting timer, privacy and visual parity
+        run: node --test scripts/test-mazium-native-greeting-parity-block8.test.mjs
+      - name: Verify Mazium consent-revocation safety and complete Search filter routing
+        run: node --test scripts/test-mazium-consent-filter-parity-block9.test.mjs
+      - name: Verify Block 10 Android and iPhone customer release evidence fails closed
+        run: node --test scripts/test-customer-app-release-acceptance.test.mjs
       - name: Ensure pre-store signed Android candidate cannot release debug or unsigned APKs
         run: node --test scripts/test-android-release-candidate.test.mjs
       - name: Self-test signed-evidence validator
