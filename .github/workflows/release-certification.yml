@@ -187,6 +187,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block8.test.mjs
       - name: Audit Android emulator boot and QA artifact provenance
         run: node --test scripts/test-native-app-audit-block9.test.mjs
+      - name: Audit native welcome copy against marketplace pricing, dealer permissions and AI features
+        run: node --test scripts/test-native-app-audit-block10.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
