@@ -599,6 +599,7 @@ export const SettingsScreen: React.FC = () => {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
 
         <View style={styles.accountToolsPanel}>
@@ -1463,8 +1464,8 @@ const styles = StyleSheet.create({
     fontSize: 25, lineHeight: 32 },
   settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,
     fontSize: 12, lineHeight: 18, marginTop: 3 },
-  settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 10,
-    minHeight: 34, alignSelf: 'flex-start' },
+  settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 8,
+    minHeight: 44, alignSelf: 'flex-start' },
   settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
   accountToolsPanel: { borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, borderRadius: 16, padding: 13, marginBottom: 11 },
