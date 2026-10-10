@@ -56,7 +56,7 @@ interface MenuItem {
 const ITEMS: MenuItem[] = [
   { id: 'home',     label: 'Home',       icon: 'home-outline',              iconLib: 'ion', tabName: 'Home'   },
   { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
-  { id: 'sell',     label: 'Sell a Car', icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'SellCarFlow' },
+  { id: 'sell',     label: 'Sell a Car', icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'SellLanding' },
   { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
   { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
   { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
