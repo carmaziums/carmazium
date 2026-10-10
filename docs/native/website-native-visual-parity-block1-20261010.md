@@ -55,7 +55,7 @@ Status legend: SOURCE = route/component inspected; VIDEO = older E02 mismatch ev
 | B02 | Buyer: Retail browse/filter | /buy-cars — web route and listings components | Search — screens/main/SearchScreen.tsx | search, sort/filter, price, photos, year, mileage, fuel, gearbox | PENDING; no same-listing pair | 7 |
 | B03 | Buyer: Saved cars | /dashboard/user?tab=watchlist — src/app/dashboard/user/page.tsx | Saved — screens/main/SavedScreen.tsx | same saved inventory and route, no unrelated cards | SOURCE; PENDING | 8 |
 | B04 | Buyer: Account menu | /dashboard/user?tab=overview + Header.tsx | Profile / account stack | account role, settings, verification, messages | SOURCE; PENDING | 8,9 |
-| S01 | Seller: free auction vs retail £1 | /sell — web sell/valuation entry | SellCarFlow native stack | route choice, price rules, forms, AI, vehicle facts, optional HPI | E01 copy; PENDING paired image | 7 |
+| S01 | Seller: free auction vs retail £1 | /sell — web sell/valuation entry | SellCarFlow native stack | route choice, price rules, forms, AI, vehicle facts, optional HPI | WEB E07 captured /sell; NATIVE PENDING paired image | 7 |
 | S02 | Seller: Inventory/offers | /dashboard/user?tab=inventory / offers — user/page.tsx | UnifiedDashboardScreen native account stack | listings, offers, statuses, handover; no live write actions | SOURCE; PENDING | 7,9 |
 | X01 | Logged-out onboarding | Web login/signup or public home, **not same workflow** | OnboardingScreen.tsx; E04 native screenshot | only visual identity/reference, **do not pixel-diff against homepage** | E04 native image only | 9 |
 | X02 | Dealer employee restricted role | DealerRouteConfig.ts + dealer access gates | useDealerAccess + TabNavigator.tsx | least-privilege Stock/Customers/Buy & Bid, no unauthorized actions | SOURCE; PENDING staging actor | 9 |
@@ -74,8 +74,8 @@ Status legend: SOURCE = route/component inspected; VIDEO = older E02 mismatch ev
 
 | Pair | Viewport (layout dimensions) | Theme/state | Acceptance condition | Evidence status |
 | --- | --- | --- | --- | --- |
-| W360 home / N360 Home | 360 × 800 CSS px / 360 × 800 RN dp, device density recorded separately | logged-out or synthetic buyer, same screen and scroll | side-by-side hero+header+tabs, image and text visual checks | WEB capture job available; NATIVE PENDING |
-| W390 home / N390 Home | 390 × 844 | same as above | equivalent layouts; no clipped CTA or AI control | WEB capture job available; NATIVE PENDING |
+| W360 home / N360 Home | 360 × 800 CSS px / 360 × 800 RN dp, device density recorded separately | logged-out or synthetic buyer, same screen and scroll | side-by-side hero+header+tabs, image and text visual checks | WEB E07 captured at 360×800 and 390×844; NATIVE PENDING |
+| W390 home / N390 Home | 390 × 844 | same as above | equivalent layouts; no clipped CTA or AI control | WEB E07 captured at 360×800 and 390×844; NATIVE PENDING |
 | W360 dealer D01–D06 / N360 dealer | 360 × 800 | same synthetic verified owner and same fake records, dark | screenshots of header, first fold, whole screen, opened drawer, one card and empty state | BOTH PENDING |
 | W390 dealer D01–D06 / N390 dealer | 390 × 844 | same as above | record exact x/y/width/height of header, tabs, headline, cards, CTA; check navigational effects | BOTH PENDING |
 | W390 buyer/seller / N390 buyer/seller | 390 × 844 | authenticated staging/synthetic, light/dark only if supported | owner, route, same data, same filter/scroll state | BOTH PENDING |
@@ -95,3 +95,14 @@ Required screenshot manifest fields: reference_id, SHA/build, web URL/native rou
 - [ ] Frame-by-frame replay of prior MP4 files — **BLOCKED**, originals not available here; use earlier observations as E02.
 
 **Revert:** This block changes documentation, a read-only public screenshot workflow and a source-inventory test only; revert the Block 1 PR to discard them. **No application UI, business logic, KYC, payment, OTA, app signing, seller fee, dealer permissions or production config is modified.** Do not start Block 2 without explicit user “proceed”.
+
+## E07 — Captured live public website screenshot results (Block 1 PR #478)
+
+- **Capture:** GitHub Actions 38059731055, conclusion SUCCESS; artifact **11672582561**, name `carmazium-issue477-block1-public-web-baseline`, 14-day retention (expires 2026-10-24). Workflow head PR #478, branch commit 32733b86ab667c4289b5db604b9ba8ed7b45fc85; artifact manifest's source_sha may be the **pull-request merge ref** (f49202ddd109e91494fcd33bfb6cb4143e8dc0df), not the base branch.
+- **Verified files and actual pixel sizes:** `website-home-360x800.png` (360×800), `website-home-390x844.png` (390×844), `website-sell-360x800.png` (360×800), `website-sell-390x844.png` (390×844), plus `manifest.txt`.
+- **Observed anonymously at 390×844** on Home: white header, red/black CARMAZIUM logo at left, dark hamburger at right; road-and-cars hero, “Sell Your Car / Your Way”, red “FREE”, “£1”, “£100”, AI search control. Cookie consent overlays lower section, so do **not** claim below-the-fold visibility.
+- **Observed anonymously at 390×844** on /sell: same white logo/hamburger bar; pale background, “Sell Your Car Online in the UK” heading; registration and current mileage inputs; red “Get My Free Valuation” CTA; cookie consent overlay at bottom. These are **website-only** screenshots.
+- **Pair status:** no matched native Home or native Sell screenshot after login/skip has been captured. E04 is unrelated logged-out onboarding. Do not compare E07 public website Home to E04 native onboarding as if their feature state is equivalent, and do not invent a visual-similarity percentage.
+- **Potential test-state issue for Blocks 2/7:** dismiss/reset consent consistently on both sides before comparing content and before timing/interactions; screenshots showing different cookie overlays are invalid comparison pairs. Do not bypass consent or automate acceptance of tracking.
+
+**Block 1 verdict:** source inventory and anonymous reference screenshots captured and reproducible; authenticated page-level **visual acceptance PENDING**. Preserve merged PR #476 and require user “proceed” before Block 2.
