@@ -35,6 +35,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { formatTransmission } from '../../lib/transmission';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -42,12 +43,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
-type FilterTab = 'All' | 'Live' | 'Drafts' | 'Review' | 'Sale pending' | 'Rejected' | 'Sold' | 'Other';
+type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
 
 interface Listing {
   id: string;
   title: string;
   registration: string;
+  make: string;
+  mileage: number | null;
+  transmission: string;
+  rejectionReason: string | null;
   price: string;
   rawPrice: number;
   daysListed: number;
@@ -67,6 +72,10 @@ const mapApiListing = (l: any): Listing => ({
   id: l.id,
   title: l.title || `${l.year ?? ''} ${l.make ?? ''} ${l.model ?? ''}`.trim() || 'Untitled',
   registration: String(l.vrm ?? l.registrationNumber ?? '').trim().toUpperCase(),
+  make: String(l.make ?? '').trim(),
+  mileage: l.mileage != null && Number.isFinite(Number(l.mileage)) ? Number(l.mileage) : null,
+  transmission: formatTransmission(l.transmission),
+  rejectionReason: l.rejectionReason ? String(l.rejectionReason) : null,
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
@@ -95,13 +104,13 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:         { bg: Colors.success, color: Colors.white, label: 'LIVE' },
-  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'DRAFT' },
-  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'IN REVIEW' },
+  LIVE:         { bg: Colors.success, color: Colors.white, label: 'Live' },
+  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Draft' },
+  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'Under Review' },
   SALE_PENDING: { bg: Colors.warning, color: Colors.white, label: 'SALE PENDING' },
-  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'REJECTED' },
-  SOLD:         { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'SOLD' },
-  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'NOT LIVE' },
+  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'Rejected' },
+  SOLD:         { bg: Colors.infoBlue, color: Colors.white, label: 'Sold' },
+  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Not Live' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
