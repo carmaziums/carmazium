@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet,
+  ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, useWindowDimensions,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
 import { LiveScreen } from './LiveScreen';
 
 // Website reference: src/app/dashboard/dealer/auctions/page.tsx.
@@ -57,6 +58,7 @@ const formatDate = (raw?: string | null): string => {
 // those state transitions into this overview would be unsafe.
 export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
   const { loading: accessLoading, hasPermission } = useDealerAccess(true);
+  const { fontScale } = useWindowDimensions();
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
   const canPlaceBid = !accessLoading && hasPermission('PLACE_BID');
@@ -180,13 +182,13 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={styles.navScroller} contentContainerStyle={styles.navContent}
+        style={[styles.navScroller, { maxHeight: getScrollableStageHeight(fontScale) + 4 }]} contentContainerStyle={styles.navContent}
         accessibilityLabel="Auction and buying navigation">
         {auctionLinks.filter(link => link.allowed).map(link => (
           <TouchableOpacity key={link.id} onPress={link.onPress}
             accessibilityRole="button" accessibilityLabel={link.label}
             accessibilityState={link.active === undefined ? undefined : { selected: link.active }}
-            style={[styles.navButton, link.active && styles.navSelected]}>
+            style={[styles.navButton, { minHeight: Math.max(44, getScrollableStageHeight(fontScale) - 10) }, link.active && styles.navSelected]}>
             <Ionicons name={link.icon as any} size={17}
               color={link.active ? Colors.white : Colors.textMuted} />
             <Text style={[styles.navText, link.active && styles.navTextActive]}>
