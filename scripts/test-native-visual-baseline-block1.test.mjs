@@ -28,9 +28,9 @@ test('Block 1 identifies its evidence limits rather than certifying screenshots'
 test('website dealer tab URLs and merged native tab mappings remain inventoried', () => {
   const pairs = [
     ['/dashboard/dealer', 'DealerHome', 'DealerProfileScreen'],
-    ['/dashboard/dealer/inventory', 'DealerStock', 'DealerInventoryScreen'],
-    ['/dashboard/dealer/crm', 'DealerCustomers', 'DealerLeadsScreen'],
-    ['/dashboard/dealer/auctions', 'DealerBuyBid', 'DealerBuyBidScreen'],
+    ['/dashboard/dealer/inventory', 'DealerStock', 'GatedDealerStockTab'],
+    ['/dashboard/dealer/crm', 'DealerCustomers', 'GatedDealerCustomersTab'],
+    ['/dashboard/dealer/auctions', 'DealerBuyBid', 'GatedDealerBuyBidTab'],
   ];
   for (const [href, route, screen] of pairs) {
     assert.ok(webSidebar.includes('"' + href + '"'), 'website bottom tab route ' + href);

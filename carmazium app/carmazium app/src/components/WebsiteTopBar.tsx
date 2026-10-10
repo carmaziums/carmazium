@@ -74,13 +74,13 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   notificationButton: {
-    width: 40, height: 42, borderRadius: 11,
+    width: 44, height: 44, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: 'rgba(51, 65, 85, 0.58)',
   },
   accountButton: {
-    minWidth: 65, height: 42, paddingHorizontal: 6,
+    minWidth: 65, height: 44, paddingHorizontal: 6,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 7, borderRadius: 11,
     borderWidth: 1, borderColor: Colors.borderSubtle,

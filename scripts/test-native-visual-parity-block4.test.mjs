@@ -82,7 +82,7 @@ test('preserve dealer privileges, read-only paginated fetch and previous detail 
   assert.ok(native.includes('fetchAllMyListings<any>()'));
   assert.ok(native.includes("hasPermission('MANAGE_INVENTORY')"));
   assert.ok(stack.includes("withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY')"));
-  assert.ok(routes.includes('<Tab.Screen name="DealerStock" component={DealerInventoryScreen} />'));
+  assert.ok(routes.includes('<Tab.Screen name="DealerStock" component={GatedDealerStockTab} />'));
   assert.ok(native.includes("navigation?.navigate('SellCarFlow')"));
   assert.ok(native.includes("navigation?.navigate('SellerAuctions'"));
   assert.ok(native.includes('handleConfirmMarkSold'));

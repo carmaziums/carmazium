@@ -28,6 +28,7 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
+import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import type { DealerPermission } from '../lib/dealerAccessApi';
@@ -256,12 +257,12 @@ export const GlobalDrawer: React.FC = () => {
     : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, fontScale } = useWindowDimensions();
   // Website DashboardSidebar opens More above the bottom tabs, across the
   // screen width. Only dealer workspace uses that presentation; preserve
   // established consumer drawer navigation and deep-link behaviour.
   // Web drawer max-height is 68vh and sits just above its fixed bottom tabs.
-  const dealerTabBarHeight = 64 + insets.bottom;
+  const dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom);
   const sheetHeight = Math.min(720, Math.round(windowHeight * 0.68));
   const navigation = useNavigation<NavProp>();
 

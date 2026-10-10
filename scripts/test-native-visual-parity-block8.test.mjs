@@ -29,8 +29,8 @@ test('Account Settings is website-canonical and has actual nine sections includi
     assert.ok(web.includes(name), 'website '+name);
     assert.ok(settings.includes(name), 'native '+name);
   }
-  assert.ok(settings.includes('isDealerAccount ? ['));
-  assert.ok(settings.includes("section !== 'business' || isDealerAccount"));
+  assert.ok(settings.includes('canManageBusiness ? ['));
+  assert.ok(settings.includes("section !== 'business' || canManageBusiness"));
   assert.ok(settings.includes('accessibilityRole="tab"'));
   assert.ok(settings.includes('accessibilityState={{ selected }}'));
   assert.ok(settings.includes('<WebsiteTopBar />'));

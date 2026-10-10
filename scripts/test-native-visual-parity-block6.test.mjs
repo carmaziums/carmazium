@@ -23,7 +23,7 @@ test('dealer Buy & Bid opens the real website Auctions & Buying hub, not public 
   assert.ok(routes.includes('href: "/dashboard/dealer/auctions"'));
   assert.ok(routes.includes('title: "Auctions & Buying"'));
   assert.ok(web.includes('Auction and buying navigation'));
-  assert.ok(tab.includes('<Tab.Screen name="DealerBuyBid" component={DealerBuyBidScreen} />'));
+  assert.ok(tab.includes('<Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />'));
   assert.ok(tab.includes('<Tab.Screen name="Live" component={LiveScreen} />'));
   assert.ok(hub.includes("useState<Section>('mine')"));
   assert.ok(hub.includes('Auctions & Buying'));

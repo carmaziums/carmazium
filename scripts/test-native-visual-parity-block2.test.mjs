@@ -27,7 +27,7 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
   assert.ok(drawer.includes('<TouchableWithoutFeedback onPress={closeDrawer}>'));
   assert.ok(drawer.includes('height: sheetHeight'));
-  assert.ok(drawer.includes('dealerTabBarHeight = 64 + insets.bottom'));
+  assert.ok(drawer.includes('dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom)'));
   assert.ok(drawer.includes('bottom: dealerTabBarHeight'));
   assert.ok(drawer.includes("pointerEvents={isOpen ? 'box-none' : 'none'}"));
   assert.ok(drawer.includes("BackHandler.addEventListener('hardwareBackPress'"));
@@ -64,9 +64,9 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
 test('dealer route remains named and gated, including Block 6 website-canonical hub', () => {
   for (const [route,screen] of [
     ['DealerHome','DealerProfileScreen'],
-    ['DealerStock','DealerInventoryScreen'],
-    ['DealerCustomers','DealerLeadsScreen'],
-    ['DealerBuyBid','DealerBuyBidScreen'],
+    ['DealerStock','GatedDealerStockTab'],
+    ['DealerCustomers','GatedDealerCustomersTab'],
+    ['DealerBuyBid','GatedDealerBuyBidTab'],
   ]) assert.ok(tabs.includes('name="' + route + '" component={' + screen + '}'));
   for (const gate of ["hasPermission('VIEW_INVENTORY')", "hasPermission('MANAGE_CRM')", "hasPermission('VIEW_TRADE')"]) {
     assert.ok(tabs.includes(gate));

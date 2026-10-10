@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { getBottomTabItemHeight } from '../lib/nativeLayoutParity';
 import { TextPresets } from '../constants/typography';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
@@ -23,6 +24,7 @@ import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
 import { useDrawer } from '../context/DrawerContext';
 import { useDealerAccess } from '../hooks/useDealerAccess';
+import { withDealerGate } from '../components/DealerGate';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
@@ -33,6 +35,13 @@ import { useAuthStore } from '../store/authStore';
 
 // Stable wrapper so the Profile tab's component prop never changes reference,
 // preventing React Navigation from unmounting + remounting the tab when role loads.
+// Do not rely only on visually hiding unavailable tab buttons: navigation,
+// saved state and future deep links can mount a route directly. Use the same
+// KYC + per-role gate already enforced by MainStackNavigator.
+const GatedDealerStockTab = withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY');
+const GatedDealerCustomersTab = withDealerGate(DealerLeadsScreen, 'MANAGE_CRM');
+const GatedDealerBuyBidTab = withDealerGate(DealerBuyBidScreen, 'VIEW_TRADE');
+
 const ProfileTabScreen: React.FC<any> = React.memo((props) => {
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -163,6 +172,7 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
   const { isOpen: isDrawerOpen, openDrawer, closeDrawer } = useDrawer();
@@ -225,7 +235,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
           return (
             <TouchableOpacity
               key={route.key}
-              style={styles.tabItem}
+              style={[styles.tabItem, { minHeight: getBottomTabItemHeight(fontScale) }]}
               onPress={onPress}
               activeOpacity={0.75}
               accessibilityRole="tab"
@@ -251,9 +261,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   styles.tabLabel,
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
                 ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
+                numberOfLines={2}
+                maxFontSizeMultiplier={2}
+                ellipsizeMode="tail"
               >
                 {config.label}
               </Text>
@@ -285,9 +295,9 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Profile" component={ProfileTabScreen} />
       <Tab.Screen name="DealerHome" component={DealerProfileScreen} />
-      <Tab.Screen name="DealerStock" component={DealerInventoryScreen} />
-      <Tab.Screen name="DealerCustomers" component={DealerLeadsScreen} />
-      <Tab.Screen name="DealerBuyBid" component={DealerBuyBidScreen} />
+      <Tab.Screen name="DealerStock" component={GatedDealerStockTab} />
+      <Tab.Screen name="DealerCustomers" component={GatedDealerCustomersTab} />
+      <Tab.Screen name="DealerBuyBid" component={GatedDealerBuyBidTab} />
       <Tab.Screen name="DealerMore" component={ProfileTabScreen} />
     </Tab.Navigator>
   );
@@ -336,6 +346,8 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     ...TextPresets.tabLabel,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   tabLabelActive: {
     color: Colors.accent,

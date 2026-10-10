@@ -14,7 +14,8 @@ test('account settings uses one role-aware category navigation', () => {
     assert.ok(settings.includes(`activeCategory === '${section}'`), 'Missing usable '+section+' section');
   }
   assert.match(settings, /isSettingsCategory\(section\)/);
-  assert.match(settings, /section !== 'business' \|\| isDealerAccount/);
+  assert.match(settings, /const canManageBusiness = isDealerAccount && !isDealerStaff/);
+  assert.ok(settings.includes("section !== 'business' || canManageBusiness"));
   assert.match(settings, /accessibilityRole="tab"/);
   assert.match(settings, /accessibilityState=\{\{ selected \}\}/);
   assert.match(settings, /Account Settings/);

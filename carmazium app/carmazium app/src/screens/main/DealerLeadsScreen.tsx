@@ -13,6 +13,7 @@ import {
   Alert,
   Linking,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,6 +37,7 @@ import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -521,6 +523,7 @@ const BoardCard: React.FC<{
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageOffers = hasPermission('MANAGE_OFFERS');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
@@ -897,13 +900,13 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
       {viewMode === 'board' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          style={styles.crmStagesScroll}
+          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }]}
           contentContainerStyle={styles.crmStagesList}>
           {BOARD_STAGES.map(stage => {
             const selected = stage.key === mobileStage;
             return (
               <TouchableOpacity key={stage.key}
-                style={[styles.crmStageTab, selected && styles.crmStageSelected]}
+                style={[styles.crmStageTab, { minHeight: Math.max(42, getScrollableStageHeight(fontScale) - 12) }, selected && styles.crmStageSelected]}
                 onPress={() => setMobileStage(stage.key)}
                 accessibilityRole="button"
                 accessibilityLabel={`${stage.label}, ${(leadsByStage[stage.key] || []).length} customers`}
@@ -1265,7 +1268,7 @@ const styles = StyleSheet.create({
      borderWidth: 1, borderColor: Colors.whiteAlpha08, padding: 2,
   },
   viewModeBtn: {
-     width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+     width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
   },
   viewModeBtnActive: {
      backgroundColor: Colors.accent,

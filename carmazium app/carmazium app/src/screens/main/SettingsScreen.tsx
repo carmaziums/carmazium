@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, TextInput, ActivityIndicator, Switch, AppState,
+  StatusBar, Alert, TextInput, ActivityIndicator, Switch, AppState, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,6 +23,7 @@ import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
@@ -58,14 +59,19 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 
 export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth, fontScale } = useWindowDimensions();
+  const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
   const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
   const isDealerAccount = accountRole === 'dealer';
   const isDealerStaff = !!user?.isDealerStaff;
+  // A team member may edit their OWN personal settings, but is not the dealer owner.
+  // Do not display ownership-sensitive business forms or KYC entry points to staff.
+  const canManageBusiness = isDealerAccount && !isDealerStaff;
   const requestedSection = route.params?.section;
   const resolveCategory = (section: unknown): SettingsCategory =>
-    isSettingsCategory(section) && (section !== 'business' || isDealerAccount)
+    isSettingsCategory(section) && (section !== 'business' || canManageBusiness)
       ? section : 'personal';
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
     resolveCategory(requestedSection)
@@ -80,13 +86,16 @@ export const SettingsScreen: React.FC = () => {
     // A deep link is external input: unknown and dealer-only categories must
     // never land other roles on an empty settings page.
     if (requestedSection) setActiveCategory(resolveCategory(requestedSection));
-  }, [requestedSection, isDealerAccount]);
+  }, [requestedSection, canManageBusiness]);
+  useEffect(() => {
+    if (!canManageBusiness && activeCategory === 'business') setActiveCategory('personal');
+  }, [canManageBusiness, activeCategory]);
   const scrollRef = React.useRef<ScrollView>(null);
   // Match the website's /profile Account Settings nine-section hierarchy,
   // while keeping native-specific account verification functionality.
   const categories: { id: SettingsCategory; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal details', icon: 'person-outline' },
-    ...(isDealerAccount ? [{ id: 'business' as const, label: 'Business profile', icon: 'business-outline' }] : []),
+    ...(canManageBusiness ? [{ id: 'business' as const, label: 'Business profile', icon: 'business-outline' }] : []),
     { id: 'verification', label: 'Verification', icon: 'shield-checkmark-outline' },
     { id: 'notifications', label: 'Notifications & privacy', icon: 'notifications-outline' },
     { id: 'payouts', label: 'Payouts', icon: 'wallet-outline' },
@@ -590,6 +599,7 @@ export const SettingsScreen: React.FC = () => {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
 
         <View style={styles.accountToolsPanel}>
@@ -604,7 +614,7 @@ export const SettingsScreen: React.FC = () => {
               { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
                 action: () => navigation.navigate('Notifications') },
             ].map(tool => (
-              <TouchableOpacity key={tool.id} style={styles.accountToolButton}
+              <TouchableOpacity key={tool.id} style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]}
                 accessibilityRole="button" accessibilityLabel={tool.label}
                 onPress={tool.action}>
                 <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
@@ -612,7 +622,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.accountToolButton} accessibilityRole="button"
+            <TouchableOpacity style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
               accessibilityLabel="Contact Support" disabled={supportLoading}
               onPress={() => { void handleContactSupport(); }}>
               <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
@@ -630,7 +640,7 @@ export const SettingsScreen: React.FC = () => {
             return (
               <TouchableOpacity
                 key={category.id}
-                style={[styles.categoryButton, selected && styles.categoryButtonSelected]}
+                style={[styles.categoryButton, singleColumnSettings && styles.fullWidthCategory, selected && styles.categoryButtonSelected]}
                 onPress={() => selectCategory(category.id)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
@@ -808,7 +818,7 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'business' && (
           <>
         {/* ── 2. DEALERSHIP PROFILE (dealers only) ── */}
-        {isDealerAccount && (
+        {canManageBusiness && (
           <>
             <SectionHeader icon="storefront-outline" label="DEALERSHIP PROFILE" />
             <View style={styles.card}>
@@ -943,7 +953,7 @@ export const SettingsScreen: React.FC = () => {
 
         {activeCategory === 'verification' && (
           <>
-        {isDealerAccount && (
+        {canManageBusiness && (
           <>
             <SectionHeader icon="shield-checkmark-outline" label="BUSINESS VERIFICATION" />
             <View style={styles.card}>
@@ -1288,27 +1298,31 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.accountSectionCard}>
             <SectionHeader icon="settings-outline" label="ACCOUNT TYPE" />
             <Text style={styles.accountSectionTitle}>
-              {isDealerAccount ? 'Partner Account' : 'Personal Account'}
+              {isDealerStaff ? 'Dealer team member' : isDealerAccount ? 'Partner Account' : 'Personal Account'}
             </Text>
             <Text style={styles.accountSectionText}>
               Personal accounts let individuals buy and sell vehicles.
               Partner accounts manage verified trade and business services.
               Changing your dashboard view does not change your verified account permissions.
             </Text>
-            {isDealerAccount ? (
+            {canManageBusiness ? (
               <TouchableOpacity style={styles.accountAction}
                 accessibilityRole="button" accessibilityLabel="Review business verification"
                 onPress={() => selectCategory('verification')}>
                 <Text style={styles.accountActionText}>Review business verification</Text>
                 <Ionicons name="chevron-forward" size={17} color={Colors.white} />
               </TouchableOpacity>
-            ) : (
+            ) : !isDealerStaff ? (
               <TouchableOpacity style={styles.accountAction}
                 accessibilityRole="button" accessibilityLabel="Explore Partner Account"
                 onPress={() => navigation.navigate('PartnerDashboard')}>
                 <Text style={styles.accountActionText}>Explore Partner Account</Text>
                 <Ionicons name="chevron-forward" size={17} color={Colors.white} />
               </TouchableOpacity>
+            ) : (
+              <Text style={styles.accountSectionText}>
+                Business ownership, legal type and verification changes must be made by the dealership owner.
+              </Text>
             )}
           </View>
         )}
@@ -1450,8 +1464,8 @@ const styles = StyleSheet.create({
     fontSize: 25, lineHeight: 32 },
   settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,
     fontSize: 12, lineHeight: 18, marginTop: 3 },
-  settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 10,
-    minHeight: 34, alignSelf: 'flex-start' },
+  settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 8,
+    minHeight: 44, alignSelf: 'flex-start' },
   settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
   accountToolsPanel: { borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, borderRadius: 16, padding: 13, marginBottom: 11 },
@@ -1460,6 +1474,8 @@ const styles = StyleSheet.create({
   accountToolsSub: { fontFamily: FontFamily.regular, color: Colors.textMuted,
     fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
   accountToolsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fullWidthTool: { width: '100%', flexBasis: '100%' },
+  fullWidthCategory: { flexBasis: '100%' },
   accountToolButton: { width: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center',
     gap: 8, minHeight: 48, paddingHorizontal: 10, borderRadius: 10,
     backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle },
