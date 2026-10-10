@@ -725,6 +725,8 @@ export const DealerProfileScreen: React.FC = () => {
               <ActivityIndicator size="small" color={Colors.accent} />
               <Text style={styles.loadingText}>Loading your dashboard…</Text>
             </View>
+          ) : error && !stats && !analytics ? (
+            <Text style={styles.loadingText}>Insights are unavailable. Try again.</Text>
           ) : (
             activeSubTab === 'today' ? renderTodayView() : renderThisWeekView()
           )}
