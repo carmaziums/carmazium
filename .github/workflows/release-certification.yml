@@ -213,6 +213,8 @@ jobs:
         run: node --test scripts/test-native-visual-acceptance-block10.test.mjs
       - name: Audit MaziuM website/native mascot and consent parity source
         run: node --test scripts/test-mazium-native-visual-parity.test.mjs
+      - name: Ensure pre-store signed Android candidate cannot release debug or unsigned APKs
+        run: node --test scripts/test-android-release-candidate.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
