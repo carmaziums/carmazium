@@ -97,10 +97,11 @@ test('serialized writes cannot race and failure cannot falsely update the displa
   assert.match(provider, /if \(!isAppearancePreference\(next\) \|\| !hydratedRef\.current\) return false/);
 });
 
-test('Block 2 does not prematurely expose fake theme controls or recolour unconverted screens', () => {
+test('Blocks 2–3 still hide the appearance switch until all screen content is theme-aware', () => {
   assert.match(settings, /A live light\/dark switch is not yet supported by the native theme engine/);
-  assert.match(app, /dark: true/);
-  assert.match(app, /<StatusBar style="light" \/>/);
-  assert.doesNotMatch(app, /theme=\{getNativeSemanticPalette/);
+  // Block 3 now themes only the shared navigation/status chrome; this is NOT
+  // evidence that all buyer, seller, dealer and Mazium screens use the palette.
+  assert.match(app, /theme=\{navigationTheme\}/);
+  assert.match(app, /style=\{resolvedAppearance === 'dark' \? 'light' : 'dark'\}/);
   assert.doesNotMatch(provider, /Object\.assign\(Colors|Colors\.[a-zA-Z]+\s*=/);
 });
