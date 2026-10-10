@@ -112,6 +112,23 @@ test('native MaziuM exists and is kept above accessible tabs with consent still 
   assert.ok(!ai.includes("setHasAiConsent(true);\n  const sendMessage"),'AI sending must not auto-consent');
 });
 
+test('Home AI Search cannot bypass the same explicit OpenAI consent used on native Search',()=>{
+  const home=read('carmazium app/carmazium app/src/screens/main/HomeScreen.tsx');
+  const search=read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+  const homeApi=read('carmazium app/carmazium app/src/lib/aiApi.ts');
+  const handler=home.slice(home.indexOf('const handleAiSearch = async () => {'),home.indexOf('const viewAiResults = () => {'));
+  assert.ok(home.includes('const ensureHomeAiSearchConsent = async (): Promise<boolean>'));
+  assert.ok(home.includes("AsyncStorage.getItem(key) === 'accepted'"));
+  assert.ok(home.includes("AsyncStorage.setItem(key, 'accepted')"));
+  assert.ok(home.includes("'AI data sharing'") && home.includes("'I consent'"));
+  assert.ok(home.includes("navigation.navigate('PrivacyPolicy')"));
+  assert.ok(handler.indexOf("await ensureHomeAiSearchConsent()") >= 0);
+  assert.ok(handler.indexOf("await ensureHomeAiSearchConsent()") < handler.indexOf('naturalLanguageSearch(query)'));
+  assert.ok(search.includes('ensureAiSearchConsent()'), 'match previously consent-gated Search entry');
+  assert.ok(homeApi.includes('aiConsentAcknowledged: true'), 'transport acknowledges prior explicit consent');
+  assert.ok(home.includes('accessibilityLabel="AI Search"'));
+});
+
 test('source gate and docs cannot silently claim public website capture is a matched device pair',()=>{
   const workflow=read('.github/workflows/carmazium-visual-baseline.yml');
   const android=read('.github/workflows/carmazium-android-preview-apk.yml');
