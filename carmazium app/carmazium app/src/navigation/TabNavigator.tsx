@@ -23,6 +23,7 @@ import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
 import { useDrawer } from '../context/DrawerContext';
+import { useDealerAccess } from '../hooks/useDealerAccess';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
@@ -166,9 +167,17 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const accountRole = useAuthStore((s) => s.accountRole);
   const { openDrawer } = useDrawer();
   const dealerMode = role === 'dealer' && accountRole === 'dealer';
-  const visibleRoutes = state.routes.filter((route: { name: string }) =>
-    dealerMode ? route.name.startsWith('Dealer') : !route.name.startsWith('Dealer')
-  );
+  const { loading: dealerAccessLoading, hasPermission } = useDealerAccess(dealerMode);
+  const visibleRoutes = state.routes.filter((route: { name: string }) => {
+    if (!dealerMode) return !route.name.startsWith('Dealer');
+    if (!route.name.startsWith('Dealer')) return false;
+    // Website mobile sidebar filters destinations by team permissions.
+    // Never put unavailable Stock, CRM or bidding routes in the tab bar.
+    if (route.name === 'DealerStock') return !dealerAccessLoading && hasPermission('VIEW_INVENTORY');
+    if (route.name === 'DealerCustomers') return !dealerAccessLoading && hasPermission('MANAGE_CRM');
+    if (route.name === 'DealerBuyBid') return !dealerAccessLoading && hasPermission('VIEW_TRADE');
+    return true; // Home and More remain reachable.
+  });
 
   // Stable press handlers keyed by route key — prevents closure recreation on every render
   const pressHandlers = useMemo(() => {
