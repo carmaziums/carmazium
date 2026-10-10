@@ -29,6 +29,7 @@ on:
       - 'scripts/check-customer-app-release-acceptance.mjs'
       - 'scripts/test-customer-app-release-acceptance.test.mjs'
       - 'scripts/test-native-dealer-menu-visibility.test.mjs'
+      - 'scripts/test-native-theme-website-tokens-block1.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
@@ -218,6 +219,8 @@ jobs:
         run: node --test scripts/test-native-website-ui-parity.test.mjs
       - name: Regression-check native dealer menu icon and full-window sheet
         run: node --test scripts/test-native-dealer-menu-visibility.test.mjs
+      - name: Assert native Light/Dark semantic tokens exactly match website
+        run: node --test scripts/test-native-theme-website-tokens-block1.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
         run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Audit Block 3 dealer Home website KPIs and reporting range
