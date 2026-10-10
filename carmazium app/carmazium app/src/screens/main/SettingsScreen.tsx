@@ -20,7 +20,6 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
@@ -573,13 +572,18 @@ export const SettingsScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.title}>Account Settings</Text>
-        <HamburgerButton />
+      <WebsiteTopBar />
+      <View style={styles.settingsPageHeader}>
+        <Text style={styles.settingsPageTitle}>Account Settings</Text>
+        <Text style={styles.settingsPageSubtitle}>
+          One place for your profile, business, notifications, payouts and security.
+        </Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
+          onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
+          <Ionicons name="arrow-back" size={16} color={Colors.accent} />
+          <Text style={styles.settingsBackText}>Back</Text>
+        </TouchableOpacity>
       </View>
-
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
@@ -587,6 +591,38 @@ export const SettingsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+
+        <View style={styles.accountToolsPanel}>
+          <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
+          <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
+          <View style={styles.accountToolsGrid}>
+            {[
+              { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
+                action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
+              { id: 'messages', label: 'Messages', icon: 'chatbubbles-outline',
+                action: () => navigation.navigate('Messages') },
+              { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
+                action: () => navigation.navigate('Notifications') },
+            ].map(tool => (
+              <TouchableOpacity key={tool.id} style={styles.accountToolButton}
+                accessibilityRole="button" accessibilityLabel={tool.label}
+                onPress={tool.action}>
+                <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
+                <Text style={styles.accountToolLabel}>{tool.label}</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.accountToolButton} accessibilityRole="button"
+              accessibilityLabel="Contact Support" disabled={supportLoading}
+              onPress={() => { void handleContactSupport(); }}>
+              <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
+              <Text style={styles.accountToolLabel}>
+                {supportLoading ? 'Opening support…' : 'Contact Support'}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={styles.categoryGrid} accessibilityLabel="Account settings categories">
           {categories.map(category => {
@@ -1179,6 +1215,104 @@ export const SettingsScreen: React.FC = () => {
           </>
         )}
 
+        {activeCategory === 'appearance' && (
+          <View style={styles.accountSectionCard}>
+            <SectionHeader icon="color-palette-outline" label="APPEARANCE" />
+            <Text style={styles.accountSectionTitle}>Dark appearance</Text>
+            <Text style={styles.accountSectionText}>
+              The app currently uses the CarMazium website's dark colour palette.
+              A live light/dark switch is not yet supported by the native theme engine.
+              This screen does not pretend that changing the website theme changes app colours.
+            </Text>
+          </View>
+        )}
+
+        {activeCategory === 'reviews' && (
+          <View style={styles.accountSectionCard}>
+            <SectionHeader icon="star-outline" label="RATINGS & REVIEWS" />
+            <Text style={styles.accountSectionText}>See what others have written about you and the reviews you have given.</Text>
+            {ratingLoading && <ActivityIndicator color={Colors.accent} style={{ marginVertical: 10 }} />}
+            {!!ratingError && (
+              <Text style={styles.accountErrorText}>{ratingError}</Text>
+            )}
+            {!!ratingSummary && (
+              <View style={styles.reviewSummary}>
+                <Ionicons name="star" size={20} color={Colors.warning} />
+                <Text style={styles.reviewScore}>
+                  {Number(ratingSummary.average).toFixed(1)}
+                </Text>
+                <Text style={styles.accountSectionText}>
+                  ({ratingSummary.count.toLocaleString('en-GB')} reviews)
+                </Text>
+              </View>
+            )}
+            {!ratingLoading && !ratingError && (
+              <>
+                {([
+                  { label: 'Reviews received', items: ratingReceived, from: 'reviewer' as const },
+                  { label: 'Reviews given', items: ratingGiven, from: 'target' as const },
+                ]).map(group => (
+                  <View key={group.label} style={styles.reviewGroup}>
+                    <Text style={styles.accountSectionTitle}>{group.label}</Text>
+                    {group.items.length === 0 && (
+                      <Text style={styles.accountSectionText}>No {group.label.toLowerCase()} yet.</Text>
+                    )}
+                    {group.items.map(review => (
+                      <View key={review.id} style={styles.reviewRow}>
+                        <View style={styles.reviewRowHeading}>
+                          <Text style={styles.reviewName}>
+                            {group.from === 'reviewer'
+                              ? review.reviewer?.displayName || 'CarMazium user'
+                              : review.target?.displayName || 'CarMazium user'}
+                          </Text>
+                          <Text style={styles.reviewStars}>
+                            {Number(review.rating).toFixed(1)} / 5
+                          </Text>
+                        </View>
+                        {!!review.comment && <Text style={styles.accountSectionText}>{review.comment}</Text>}
+                        <Text style={styles.reviewDate}>
+                          {Number.isFinite(new Date(review.createdAt).getTime())
+                            ? new Date(review.createdAt).toLocaleDateString('en-GB')
+                            : ''}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </>
+            )}
+          </View>
+        )}
+
+        {activeCategory === 'account' && (
+          <View style={styles.accountSectionCard}>
+            <SectionHeader icon="settings-outline" label="ACCOUNT TYPE" />
+            <Text style={styles.accountSectionTitle}>
+              {isDealerAccount ? 'Partner Account' : 'Personal Account'}
+            </Text>
+            <Text style={styles.accountSectionText}>
+              Personal accounts let individuals buy and sell vehicles.
+              Partner accounts manage verified trade and business services.
+              Changing your dashboard view does not change your verified account permissions.
+            </Text>
+            {isDealerAccount ? (
+              <TouchableOpacity style={styles.accountAction}
+                accessibilityRole="button" accessibilityLabel="Review business verification"
+                onPress={() => selectCategory('verification')}>
+                <Text style={styles.accountActionText}>Review business verification</Text>
+                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.accountAction}
+                accessibilityRole="button" accessibilityLabel="Explore Partner Account"
+                onPress={() => navigation.navigate('PartnerDashboard')}>
+                <Text style={styles.accountActionText}>Explore Partner Account</Text>
+                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Delete account — typed confirmation, mirroring web
@@ -1311,6 +1445,44 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
+  settingsPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 },
+  settingsPageTitle: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
+    fontSize: 25, lineHeight: 32 },
+  settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,
+    fontSize: 12, lineHeight: 18, marginTop: 3 },
+  settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 10,
+    minHeight: 34, alignSelf: 'flex-start' },
+  settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
+  accountToolsPanel: { borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard, borderRadius: 16, padding: 13, marginBottom: 11 },
+  accountToolsHeading: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
+    fontSize: 12, letterSpacing: 0.7 },
+  accountToolsSub: { fontFamily: FontFamily.regular, color: Colors.textMuted,
+    fontSize: 11, lineHeight: 16, marginTop: 4, marginBottom: 10 },
+  accountToolsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  accountToolButton: { width: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center',
+    gap: 8, minHeight: 48, paddingHorizontal: 10, borderRadius: 10,
+    backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle },
+  accountToolLabel: { color: Colors.textPrimary, fontFamily: FontFamily.bold,
+    fontSize: 11, flex: 1 },
+  accountSectionCard: { backgroundColor: Colors.bgCard, padding: 15, marginTop: 8,
+    borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 15, gap: 10 },
+  accountSectionTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: 15 },
+  accountSectionText: { color: Colors.textSecondary, fontFamily: FontFamily.regular,
+    fontSize: 12, lineHeight: 19 },
+  accountErrorText: { color: Colors.warning, fontFamily: FontFamily.medium, fontSize: 12 },
+  reviewSummary: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 5 },
+  reviewScore: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary, fontSize: 20 },
+  reviewGroup: { gap: 10, marginTop: 11 },
+  reviewRow: { padding: 11, gap: 5, backgroundColor: Colors.bgElevated, borderRadius: 10 },
+  reviewRowHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  reviewName: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12, flex: 1 },
+  reviewStars: { color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 12 },
+  reviewDate: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 10 },
+  accountAction: { backgroundColor: Colors.accent, borderRadius: 11, minHeight: 46,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 13 },
+  accountActionText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   dangerCard: {
     backgroundColor: Colors.errorAlpha08,
