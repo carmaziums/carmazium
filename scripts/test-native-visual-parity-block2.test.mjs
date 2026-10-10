@@ -61,12 +61,12 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
   assert.ok(top.includes("navigation.navigate('Notifications')"));
 });
 
-test('no changed dealer route, buyer deep link, permission or business flow', () => {
+test('dealer route remains named and gated, including Block 6 website-canonical hub', () => {
   for (const [route,screen] of [
     ['DealerHome','DealerProfileScreen'],
     ['DealerStock','DealerInventoryScreen'],
     ['DealerCustomers','DealerLeadsScreen'],
-    ['DealerBuyBid','LiveScreen'],
+    ['DealerBuyBid','DealerBuyBidScreen'],
   ]) assert.ok(tabs.includes('name="' + route + '" component={' + screen + '}'));
   for (const gate of ["hasPermission('VIEW_INVENTORY')", "hasPermission('MANAGE_CRM')", "hasPermission('VIEW_TRADE')"]) {
     assert.ok(tabs.includes(gate));
