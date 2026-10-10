@@ -25,6 +25,7 @@ on:
       - 'scripts/verify-first-party-android-apk.mjs'
       - 'scripts/test-first-party-android-apk.test.mjs'
       - 'scripts/test-mazium-native-greeting-parity-block8.test.mjs'
+      - 'scripts/test-mazium-consent-filter-parity-block9.test.mjs'
       - 'docs/native/**'
       - 'package.json'
       - '.github/workflows/release-certification.yml'
@@ -237,6 +238,8 @@ jobs:
         run: node --test scripts/test-mazium-web-native-conversation-parity.test.mjs
       - name: Verify native Mazium greeting timer, privacy and visual parity
         run: node --test scripts/test-mazium-native-greeting-parity-block8.test.mjs
+      - name: Verify Mazium consent-revocation safety and complete Search filter routing
+        run: node --test scripts/test-mazium-consent-filter-parity-block9.test.mjs
       - name: Ensure pre-store signed Android candidate cannot release debug or unsigned APKs
         run: node --test scripts/test-android-release-candidate.test.mjs
       - name: Self-test signed-evidence validator
