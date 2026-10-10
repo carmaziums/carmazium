@@ -703,21 +703,38 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
       <View style={[styles.listHeader, { paddingTop: 12 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.listHeaderCenter}>
-          <Text style={styles.listHeaderSub}>DEALER · {listings.length} LISTINGS</Text>
           <Text style={styles.listHeaderTitle}>Inventory</Text>
+          <Text style={styles.listHeaderSub}>Manage live, draft and sold stock</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton
-            style={styles.backBtn}
-            icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
-            onPress={toggleViewMode}
-            accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
-          />
-
-        </View>
+        <IconButton
+          style={styles.backBtn}
+          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
+          onPress={toggleViewMode}
+          accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
+        />
       </View>
+      {/* Website places Add Vehicle and imports above filters, not as a
+          floating footer that can overlap the dealer bottom navigation. */}
+      {canManageInventory && (
+        <View style={styles.stockHeaderActions}>
+          <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
+            accessibilityRole="button" accessibilityLabel="Add Vehicle">
+            <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
+            <Text style={styles.stockAddActionText}>Add Vehicle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowImportModal(true)}
+            accessibilityRole="button" accessibilityLabel="Import Listing">
+            <Ionicons name="link-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.stockSecondaryActionText}>Import Listing</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
+            accessibilityRole="button" accessibilityLabel="Bulk Import">
+            <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.stockSecondaryActionText}>Bulk Import</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Search inventory without paging through unrelated vehicles. */}
       <View style={styles.inventorySearchWrap}>
@@ -813,7 +830,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : { paddingBottom: 110 }}
+        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
         data={filtered}
         numColumns={viewMode === 'grid' ? 2 : 1}
@@ -830,42 +847,6 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           </View>
         }
       />
-      )}
-
-      {/* ── Add listing CTA ──────────────────────────────────────────────── */}
-      {canManageInventory && (
-      <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
-          activeOpacity={0.85}
-          onPress={() => navigation?.navigate('SellCarFlow')}
-        >
-          <LinearGradient
-            colors={[Colors.accentGlow, Colors.accent]}
-            style={StyleSheet.absoluteFillObject}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <Ionicons name="add" size={22} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.addListingText}>ADD LISTING</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowImportModal(true)}
-        >
-          <Ionicons name="link-outline" size={20} color={Colors.infoBlueLight} />
-          <Text style={[styles.bulkImportText, { color: Colors.infoBlueLight }]}>IMPORT</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowBulkImportModal(true)}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
-          <Text style={styles.bulkImportText}>CSV</Text>
-        </TouchableOpacity>
-      </View>
       )}
 
       {/* Bulk CSV Import Modal */}
