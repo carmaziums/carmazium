@@ -209,6 +209,9 @@ export const GlobalAIChatBot: React.FC = () => {
   // Each signed-in account has its own opt-out. Do not reuse a previous
   // account's async read while the shared widget switches users.
   const [greetingState, setGreetingState] = useState<{ userId: string; dismissed: boolean } | null>(null);
+  const reduceGreetingMotion = useReduceMotionPreference();
+  const greetingOpacity = useRef(new Animated.Value(0)).current;
+  const greetingOffsetY = useRef(new Animated.Value(10)).current;
   const greetingStorageKey = authUserId ? MAZIUM_GREETING_STORAGE_PREFIX + authUserId : '';
 
   useEffect(() => {
@@ -247,6 +250,25 @@ export const GlobalAIChatBot: React.FC = () => {
     const timer = setInterval(() => setShowGreeting((visible) => !visible), MAZIUM_GREETING_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [isAuthenticated, authUserId, greetingState, isForeground]);
+
+  useEffect(() => {
+    if (!showGreeting || !isForeground) {
+      greetingOpacity.setValue(0);
+      greetingOffsetY.setValue(10);
+      return;
+    }
+    if (reduceGreetingMotion) {
+      greetingOpacity.setValue(1);
+      greetingOffsetY.setValue(0);
+      return;
+    }
+    const entrance = Animated.parallel([
+      Animated.timing(greetingOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(greetingOffsetY, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]);
+    entrance.start();
+    return () => entrance.stop();
+  }, [showGreeting, isForeground, reduceGreetingMotion, greetingOpacity, greetingOffsetY]);
 
   const dismissGreeting = () => {
     if (!authUserId || !greetingStorageKey) return;
@@ -806,8 +828,12 @@ export const GlobalAIChatBot: React.FC = () => {
         <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
           {isForeground && !isKeyboardVisible && activeRoute !== 'LiveAuctionDetailed' &&
             greetingState?.userId === authUserId && showGreeting && (
-            <View
-              style={[styles.greetingBubble, { width: Math.min(260, windowWidth - 32) }]}
+            <Animated.View
+              style={[styles.greetingBubble, {
+                width: Math.min(260, windowWidth - 32),
+                opacity: greetingOpacity,
+                transform: [{ translateY: greetingOffsetY }],
+              }]}
               accessibilityLabel="Mazium greeting. How can I help you today?"
             >
               <View style={styles.greetingAvatar}>
@@ -829,7 +855,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 <Ionicons name="close" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
               <View style={styles.greetingArrow} pointerEvents="none" />
-            </View>
+            </Animated.View>
           )}
           <TouchableOpacity
             activeOpacity={0.9}
