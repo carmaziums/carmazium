@@ -245,6 +245,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Audit public Apple and Android app install link safety
+        run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - run: npx tsc --noEmit
 
   mobile:
