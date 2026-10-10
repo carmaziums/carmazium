@@ -536,9 +536,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                       navigation.navigate('LiveAuctionDetailed', { listing: auction })
                     }
                   >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={themed.bidBtnIcon} />
-                    <Text style={themed.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={themed.bidBtnArrow} />
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={isOwnAuction ? palette.textPrimary : Colors.white} style={themed.bidBtnIcon} />
+                    <Text style={[themed.bidNowBtnText, isOwnAuction && { color: palette.textPrimary }]}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={isOwnAuction ? palette.textPrimary : Colors.white} style={themed.bidBtnArrow} />
                   </TouchableOpacity>
                 );
               })()}
