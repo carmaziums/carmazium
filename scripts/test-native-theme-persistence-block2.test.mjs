@@ -66,7 +66,7 @@ test('preference is device-local, persisted and exposes a three-choice API witho
 
 test('navigation never mounts before preference hydration and read failures fail dark', () => {
   assert.match(app, /function AppContent\(\)/);
-  assert.match(app, /<NativeAppearanceProvider>\s*<AppContent \/><\/NativeAppearanceProvider>/);
+  assert.match(app, /<NativeAppearanceProvider>\s*<AppContent \/>\s*<\/NativeAppearanceProvider>/);
   assert.match(provider, /if \(!isHydrated\) \{\s*return <View testID="native-appearance-hydration"/);
   assert.match(provider, /setPreference\(isAppearancePreference\(value\) \? value : 'dark'\)/);
   assert.match(provider, /clearTimeout\(timeout\)/);
