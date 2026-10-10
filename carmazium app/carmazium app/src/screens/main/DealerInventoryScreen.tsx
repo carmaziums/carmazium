@@ -439,106 +439,123 @@ const InventoryRow: React.FC<{
   const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
-      style={styles.listingCard}
+      style={styles.websiteStockCard}
       onPress={() => onPress(listing.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${listing.title}, ${listing.registration || 'private registration'}, ${listing.transmission}, ${s.label}`}
       activeOpacity={0.85}
     >
-      {/* Thumbnail + status badge */}
-      <View style={styles.listingThumbWrap}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.listingThumb}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-        <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-          <Text style={styles.statusBadgeText}>{s.label}</Text>
-        </View>
-      </View>
-
-      {/* Info */}
-      <View style={styles.listingInfo}>
-        <Text style={styles.listingTitle} numberOfLines={2}>{listing.title}</Text>
-        {!!listing.registration && <Text style={styles.inventoryReg}>{listing.registration}</Text>}
-        <View style={styles.listingPriceRow}>
-          <Text style={styles.listingPrice}>{listing.price}</Text>
-          <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
-        </View>
-        <View style={styles.listingStats}>
-          <Ionicons name="eye-outline" size={13} color={Colors.iconMuted} />
-          <Text style={styles.statNum}>{listing.views}</Text>
-          <Ionicons name="mail-outline" size={13} color={Colors.iconMuted} style={{ marginLeft: 10 }} />
-          <Text style={styles.statNum}>{listing.leads}</Text>
-          {listing.offers > 0 && (
-            <>
-              <Ionicons name="heart-outline" size={13} color={Colors.accent} style={{ marginLeft: 10 }} />
-              <Text style={styles.statOffers}>{listing.offers} offers</Text>
-            </>
+      {/* Website inventory mobile showcase: real photo, title and vehicle facts. */}
+      <View style={styles.stockShowcase}>
+        <View style={styles.stockImageWrap}>
+          {listing.images[0] ? (
+            <Image source={{ uri: listing.images[0] }} style={styles.stockImage}
+              contentFit="cover" transition={200} cachePolicy="memory-disk"
+              accessibilityLabel={listing.title} />
+          ) : (
+            <Ionicons name="car-outline" size={23} color={Colors.textMuted} />
           )}
         </View>
-        {hasLinkedAuction ? (
-          <TouchableOpacity
-            style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
-            onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="gavel" size={10} color={linkedAuctionLive ? Colors.accentGreen : Colors.textMuted} />
-            <Text style={[styles.rowCrossListChipText, linkedAuctionLive && { color: Colors.accentGreen }]}>
-              {linkedAuctionLive ? 'Linked auction — LIVE' : `Linked auction${listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : ''}`}
-            </Text>
-          </TouchableOpacity>
-        ) : canPutOnAuction && onPutOnAuction ? (
-          <TouchableOpacity
-            style={styles.rowPutOnAuction}
-            onPress={() => onPutOnAuction(listing.id)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="gavel" size={10} color={Colors.accent} />
-            <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
-          </TouchableOpacity>
-        ) : null}
+        <View style={styles.stockIdentity}>
+          <Text style={styles.stockTitle} numberOfLines={2}>{listing.title}</Text>
+          <View style={styles.stockFacts}>
+            <Text style={styles.stockRegistration}>{listing.registration || 'PRIVATE'}</Text>
+            {!!listing.make && <Text style={styles.stockMake}>{listing.make.toUpperCase()}</Text>}
+            {listing.mileage !== null && (
+              <Text style={styles.stockFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+            )}
+            <Text style={styles.stockFact}>Transmission: {listing.transmission}</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Chevron */}
-      <Ionicons name="chevron-forward" size={16} color={Colors.borderSubtle} accessibilityElementsHidden importantForAccessibility="no" />
+      {/* Match website's mobile 2-column price/status/engagement/leads grid. */}
+      <View style={styles.stockMetrics}>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>MARKET PRICE</Text>
+          <Text style={styles.stockPrice}>{listing.price}</Text>
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>STATUS</Text>
+          <View style={[styles.stockOutlinedStatus, { borderColor: s.bg }]}>
+            <Text style={[styles.stockStatusText, { color: s.bg }]}>{s.label}</Text>
+          </View>
+          {!!listing.rejectionReason && listing.status === 'REJECTED' && (
+            <Text style={styles.stockRejection} numberOfLines={3}>{listing.rejectionReason}</Text>
+          )}
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>ENGAGEMENT</Text>
+          <Text style={styles.stockMetricValue}>{listing.views.toLocaleString('en-GB')}</Text>
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>HOT LEADS</Text>
+          <Text style={[styles.stockMetricValue, { color: Colors.accent }]}>
+            {listing.leads.toLocaleString('en-GB')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Existing linked-auction and dealer-only actions stay on the card. */}
+      {hasLinkedAuction ? (
+        <TouchableOpacity style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
+          onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
+          accessibilityRole="button" accessibilityLabel="Open linked auction" activeOpacity={0.8}>
+          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
+          <Text style={styles.rowCrossListChipText}>
+            {linkedAuctionLive ? 'Linked auction — Live' : 'Linked auction' +
+              (listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : '')}
+          </Text>
+        </TouchableOpacity>
+      ) : canPutOnAuction && onPutOnAuction ? (
+        <TouchableOpacity style={styles.rowPutOnAuction}
+          onPress={() => onPutOnAuction(listing.id)}
+          accessibilityRole="button" accessibilityLabel="Also list on auction" activeOpacity={0.8}>
+          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
+          <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
+        </TouchableOpacity>
+      ) : null}
+      <View style={styles.stockOpenRow}>
+        <Text style={styles.stockOpenText}>View details and actions</Text>
+        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+      </View>
     </TouchableOpacity>
-  );
-});
+  );});
 
 // ─── Inventory grid card — compact thumbnail-forward alternative to the row
 // view, for dealers scanning many listings at once (mobile-ui-ux-audit.md §C9). ──
 const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
   const s = STATUS_STYLE[listing.status];
   return (
-    <TouchableOpacity
-      style={styles.gridCard}
-      onPress={() => onPress(listing.id)}
-      activeOpacity={0.85}
-    >
+    <TouchableOpacity style={styles.gridCard} onPress={() => onPress(listing.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`${listing.title}, ${listing.price}, ${listing.transmission}, ${s.label}`}
+      activeOpacity={0.85}>
       <View style={styles.gridThumbWrap}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.gridThumb}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
+        {listing.images[0] ? (
+          <Image source={{ uri: listing.images[0] }} style={styles.gridThumb}
+            contentFit="cover" transition={200} cachePolicy="memory-disk"
+            accessibilityLabel={listing.title} />
+        ) : <Ionicons name="car-outline" size={26} color={Colors.textMuted} />}
         <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
           <Text style={styles.statusBadgeText}>{s.label}</Text>
         </View>
       </View>
-      <Text style={styles.gridTitle} numberOfLines={1}>{listing.title}</Text>
+      <Text style={styles.gridTitle} numberOfLines={2}>{listing.title}</Text>
+      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.registration || 'PRIVATE'}</Text>
+      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.transmission}</Text>
+      {listing.mileage !== null && (
+        <Text style={styles.stockGridFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+      )}
       <Text style={styles.gridPrice}>{listing.price}</Text>
       <View style={styles.listingStats}>
         <Ionicons name="eye-outline" size={12} color={Colors.iconMuted} />
         <Text style={styles.statNum}>{listing.views}</Text>
-        <Ionicons name="mail-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+        <Ionicons name="people-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
         <Text style={styles.statNum}>{listing.leads}</Text>
       </View>
     </TouchableOpacity>
-  );
-});
+  );});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
