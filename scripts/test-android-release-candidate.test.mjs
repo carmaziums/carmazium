@@ -53,6 +53,8 @@ test('must reject missing keys, malformed signature and any weak keystore',()=>{
     ['CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64','not-base64?'],
     ['CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64','YQ=='],
     ['CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS',''],
+    ['CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS','androiddebugkey'],
+    ['CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS','debug'],
     ['CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD',''],
     ['CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD',''],
     ['CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD','unsafe\nInjected=true'],
