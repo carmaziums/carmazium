@@ -29,7 +29,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
