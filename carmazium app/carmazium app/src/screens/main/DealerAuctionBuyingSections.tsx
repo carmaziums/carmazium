@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet,
+  ActivityIndicator, FlatList, RefreshControl, StyleSheet,
   Text, TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -38,8 +38,10 @@ type AuctionPosition = {
   };
 };
 
-const money = (v: number | string) =>
-  '£' + Number(v || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+const money = (v: number | string | null | undefined) => {
+  if (v == null || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
+  return '£' + Number(v).toLocaleString('en-GB', { maximumFractionDigits: 0 });
+};
 const timeLeft = (raw: string, now: number): string => {
   const ms = new Date(raw).getTime() - now;
   if (!Number.isFinite(ms) || ms <= 0) return 'Ending';
@@ -153,7 +155,9 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
                 <Text style={[styles.status, live && { color: Colors.success }]}>{state}</Text>
                 {a && <Text style={styles.meta}>Opening bid {money(a.startingBid)}</Text>}
                 {a && <Text style={styles.meta}>
-                  {live ? 'Ends' : a.status === 'SCHEDULED' ? 'Starts' : 'Ended'} · {timeLeft(live ? a.endTime : a.startTime, now)}
+                  {live ? 'Ends ' + timeLeft(a.endTime, now)
+                    : a.status === 'SCHEDULED' ? 'Starts ' + timeLeft(a.startTime, now)
+                    : 'Auction ' + a.status.toLowerCase()}
                 </Text>}
                 <Text style={styles.go}>{live ? 'Open Auction to Bid' : 'View Auction'}  ›</Text>
               </View>
