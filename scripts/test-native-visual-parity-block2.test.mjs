@@ -27,7 +27,7 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
   assert.ok(drawer.includes('<TouchableWithoutFeedback onPress={closeDrawer}>'));
   assert.ok(drawer.includes('height: sheetHeight'));
-  assert.ok(drawer.includes('dealerTabBarHeight = 64 + insets.bottom'));
+  assert.ok(drawer.includes('dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom)'));
   assert.ok(drawer.includes('bottom: dealerTabBarHeight'));
   assert.ok(drawer.includes("pointerEvents={isOpen ? 'box-none' : 'none'}"));
   assert.ok(drawer.includes("BackHandler.addEventListener('hardwareBackPress'"));
