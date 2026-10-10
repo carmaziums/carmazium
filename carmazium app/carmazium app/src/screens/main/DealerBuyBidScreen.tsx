@@ -87,6 +87,9 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   const openManager = () => {
     if (canManageInventory) navigation?.navigate('SellerAuctions');
   };
+  const openCreate = () => {
+    if (canManageInventory) navigation?.navigate('SellerAuctions', { openCreate: true });
+  };
   const openWon = () => {
     if (canViewPurchases) navigation?.navigate('SellerAuctions', { initialTab: 'WON' });
   };
@@ -165,7 +168,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
         {canManageInventory && (
           <TouchableOpacity accessibilityRole="button"
             accessibilityLabel="Create Auction"
-            onPress={openManager} style={styles.createButton}>
+            onPress={openCreate} style={styles.createButton}>
             <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
             <Text style={styles.createText}>Create Auction</Text>
           </TouchableOpacity>
