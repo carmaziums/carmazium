@@ -30,7 +30,7 @@ test('dealer More menu is a genuine full-window modal and does not leave its con
 
 test('noninteractive drag handle is removed; drawer has a labelled close action and navigation content', () => {
   assert.doesNotMatch(drawer, /sheetHandle|<View style=\{styles\.handle\}/);
-  assert.match(drawer, /<Text style=\[styles\.dealerMenuHeading, \{ color: drawerForeground \}\] accessibilityRole="header">Navigation menu<\/Text>/);
+  assert.match(drawer, /<Text style=\{\[styles\.dealerMenuHeading, \{ color: drawerForeground \}\]\} accessibilityRole="header">Navigation menu<\/Text>/);
   assert.match(drawer, /onPress=\{closeDrawer\} accessibilityLabel="Close"/);
   assert.match(drawer, /<ScrollView/);
   assert.match(drawer, /visiblePrimaryDealerItems/);
