@@ -841,8 +841,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
-              title={inventoryQuery ? 'No matching vehicles' : activeFilter === 'All' ? 'No listings yet' : `No ${activeFilter.toLowerCase()} listings`}
-              subtitle={inventoryQuery ? 'Try a different vehicle name or clear the search.' : activeFilter === 'All' ? 'Add your first vehicle to start selling.' : 'Try a different status filter.'}
+              title="No vehicles found"
+              subtitle={inventoryQuery || activeFilter !== 'All'
+                ? 'Try adjusting your search or filters.'
+                : 'Add your first vehicle to start building your dealership inventory.'}
             />
           </View>
         }
