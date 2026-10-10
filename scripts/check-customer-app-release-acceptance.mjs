@@ -82,7 +82,7 @@ export function assessCustomerAppRelease(input = {}) {
     if (android.checks?.[name] !== true)
       add('ANDROID_' + name.toUpperCase(), 'Missing independent device QA: ' + name);
   }
-  if (android.production_mutating_test_activity === true)
+  if (android.production_mutating_test_activity !== false)
     add('PRODUCTION_SAFETY', 'No synthetic test bids, KYC, payments or other mutating production activity permitted');
 
   if (visual.website_source_commit !== source.commit_sha ||
