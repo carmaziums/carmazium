@@ -191,6 +191,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block10.test.mjs
       - name: Audit dealer app and website navigation, header and design parity
         run: node --test scripts/test-native-website-ui-parity.test.mjs
+      - name: Audit Block 2 website-matched native header, tab and More drawer
+        run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}

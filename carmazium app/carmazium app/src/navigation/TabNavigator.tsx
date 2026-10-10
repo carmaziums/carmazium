@@ -164,7 +164,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
-  const { openDrawer } = useDrawer();
+  const { isOpen: isDrawerOpen, openDrawer, closeDrawer } = useDrawer();
   const dealerMode = role === 'dealer' && accountRole === 'dealer';
   const { loading: dealerAccessLoading, hasPermission } = useDealerAccess(dealerMode);
   const visibleRoutes = state.routes.filter((route: { name: string }) => {
@@ -184,7 +184,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     state.routes.forEach((route: any, index: number) => {
       handlers[route.key] = () => {
         if (route.name === 'DealerMore') {
-          openDrawer();
+          // Match the website's active More state and close-on-second-tap.
+          if (isDrawerOpen) closeDrawer();
+          else openDrawer();
           return;
         }
         const isFocused = state.index === index;
@@ -199,7 +201,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       };
     });
     return handlers;
-  }, [state.routes, state.index, navigation, openDrawer]);
+  }, [state.routes, state.index, navigation, isDrawerOpen, openDrawer, closeDrawer]);
 
   return (
     // Match website DashboardSidebar's edge-to-edge five-item bar, including
@@ -215,7 +217,8 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       <View style={styles.tabBarInner}>
         {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
-          const isFocused = state.routes[state.index]?.name === route.name;
+          const isMore = route.name === 'DealerMore';
+          const isFocused = isMore ? isDrawerOpen : state.routes[state.index]?.name === route.name;
           const onPress = pressHandlers[route.key];
 
           return (
@@ -226,8 +229,8 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               activeOpacity={0.75}
               accessibilityRole="tab"
               accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
-              accessibilityState={{ selected: isFocused }}
-              accessibilityHint={isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
+              accessibilityState={isMore ? { selected: isDrawerOpen, expanded: isDrawerOpen } : { selected: isFocused }}
+              accessibilityHint={isMore ? (isDrawerOpen ? 'Closes the dealer menu' : 'Opens the dealer menu') : isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
             >
               {/* Active dot above focused tabs */}
               {isFocused && (
@@ -236,7 +239,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               <View style={styles.iconWrapper}>
                 <AnimatedTabIcon
                   focused={isFocused}
-                  iconName={isFocused ? config.iconActive : config.icon}
+                  iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
                   iconType={config.iconType}
                   color={isFocused ? Colors.accent : Colors.tabInactive}
                   size={config.iconType === 'material-community' ? 22 : 20}

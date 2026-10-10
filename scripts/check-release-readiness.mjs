@@ -685,7 +685,11 @@ if (
 }
 
 if (
-  !hamburgerSource.includes('accessibilityLabel="Open navigation menu"') ||
+  // Both the legacy static label and website-style open/close label must
+  // communicate the action. The new dynamic form improves screen-reader
+  // accuracy while the More panel is expanded.
+  (!hamburgerSource.includes('accessibilityLabel="Open navigation menu"') &&
+    !hamburgerSource.includes('accessibilityLabel={websiteStyle && isOpen ? "Close navigation menu" : "Open navigation menu"}')) ||
   !hamburgerSource.includes('accessibilityRole="button"')
 ) {
   fail('Hamburger navigation control must expose screen-reader semantics');
@@ -705,7 +709,10 @@ if (
 
 if (
   !tabSource.includes('accessibilityRole="tab"') ||
-  !tabSource.includes('accessibilityState={{ selected: isFocused }}') ||
+  // Dealer More now exposes BOTH selected and expanded states; all other
+  // routes retain their selected state. Accept either verified syntax.
+  (!tabSource.includes('accessibilityState={{ selected: isFocused }}') &&
+    !tabSource.includes('accessibilityState={isMore ? { selected: isDrawerOpen, expanded: isDrawerOpen } : { selected: isFocused }}')) ||
   !tabSource.includes('minHeight: 48') ||
   !tabSource.includes('useReduceMotionPreference')
 ) {

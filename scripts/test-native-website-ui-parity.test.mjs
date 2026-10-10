@@ -50,10 +50,10 @@ test('role switching and permissions retain secured routes and consumer deep lin
 test('native shared header follows actual website logo, notification, account and More hierarchy', () => {
   const head = read('src/components/layout/Header.tsx');
   assert.ok(head.includes('isMobileMenuOpen'));
-  assert.ok(bar.includes('<Logo size="sm" />'));
+  assert.ok(bar.includes('<Logo size="sm" width={logoWidth} />'));
   assert.ok(bar.includes("navigation.navigate('Notifications')"));
   assert.ok(bar.includes("navigation.navigate('Settings')"));
-  assert.ok(bar.includes('<HamburgerButton />'));
+  assert.ok(bar.includes('<HamburgerButton websiteStyle />'));
   assert.ok(bar.includes("backgroundColor: '#1E293B'"));
   assert.ok(!bar.includes("setRole("));
   for (const screen of [

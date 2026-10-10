@@ -13,12 +13,14 @@ const LOGO_SOURCE = require('../../assets/images/logo.png');
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   style?: ViewStyle;
+  /** Optional exact rendered width for tight site-matched mobile headers. */
+  width?: number;
 }
 
-export const Logo: React.FC<LogoProps> = ({ size = 'md', style }) => {
+export const Logo: React.FC<LogoProps> = ({ size = 'md', style, width: overrideWidth }) => {
   // Widths chosen to preserve the visual footprint of the old hand-drawn
   // component at each preset (which was circleSize + gap + text width).
-  const width = size === 'sm' ? 120 : size === 'lg' ? 260 : 180;
+  const width = overrideWidth ?? (size === 'sm' ? 120 : size === 'lg' ? 260 : 180);
   const height = width / LOGO_ASPECT;
 
   return (
