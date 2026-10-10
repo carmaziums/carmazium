@@ -20,6 +20,9 @@ import { SearchScreen } from '../screens/main/SearchScreen';
 import { LiveScreen } from '../screens/main/LiveScreen';
 import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
+import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
+import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
+import { useDrawer } from '../context/DrawerContext';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { AccountRoleHomeScreen } from '../screens/account/AccountRoleHomeScreen';
@@ -70,6 +73,13 @@ export type TabParamList = {
   Live: undefined;
   Saved: undefined;
   Profile: undefined;
+  // Dealer-only mobile shortcuts, mirroring web DashboardSidebar mobile tabs.
+  // Core routes above are retained for deep links and buyer-preview switching.
+  DealerHome: undefined;
+  DealerStock: undefined;
+  DealerCustomers: undefined;
+  DealerBuyBid: undefined;
+  DealerMore: undefined;
 };
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -86,6 +96,11 @@ const TAB_CONFIG: {
   { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'AUCTIONS', iconType: 'material-community' },
   { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
+  { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
+  { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
+  { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
+  { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Buy & Bid', iconType: 'material-community' },
+  { name: 'DealerMore', icon: 'menu-outline', iconActive: 'menu', label: 'More', iconType: 'ionicons' },
 ];
 
 // ─── Animated tab icon: spring-scales (1.0 → 1.2 → 1.0) on focus ─────────────
@@ -147,12 +162,23 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const role = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const { openDrawer } = useDrawer();
+  const dealerMode = role === 'dealer' && accountRole === 'dealer';
+  const visibleRoutes = state.routes.filter((route: { name: string }) =>
+    dealerMode ? route.name.startsWith('Dealer') : !route.name.startsWith('Dealer')
+  );
 
   // Stable press handlers keyed by route key — prevents closure recreation on every render
   const pressHandlers = useMemo(() => {
     const handlers: Record<string, () => void> = {};
     state.routes.forEach((route: any, index: number) => {
       handlers[route.key] = () => {
+        if (route.name === 'DealerMore') {
+          openDrawer();
+          return;
+        }
         const isFocused = state.index === index;
         const event = navigation.emit({
           type: 'tabPress',
@@ -165,27 +191,23 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
       };
     });
     return handlers;
-  }, [state.routes, state.index, navigation]);
+  }, [state.routes, state.index, navigation, openDrawer]);
 
   return (
-    // The bar floats above the content rather than sitting edge-to-edge on a
-    // hairline border — that inset, rounded, shadowed slab is the design
-    // system's tab bar and one of the few pieces of chrome visible on every
-    // screen. `insets.bottom` becomes a margin rather than internal padding so
-    // the bar clears the home indicator without growing a dead grey strip
-    // underneath it; on devices with no inset it falls back to a fixed 10px so
-    // it never sits flush against the screen edge.
+    // Match website DashboardSidebar's edge-to-edge five-item bar, including
+    // its safe-area clearance. The earlier floating capsule read like a
+    // different product, and covered the lowest rows on compact devices.
     <View
       style={[
         styles.tabBarOuter,
-        { bottom: Math.max(insets.bottom, 10) },
+        { paddingBottom: insets.bottom },
       ]}
     >
       <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass]} />
       <View style={styles.tabBarInner}>
-        {state.routes.map((route: any, index: number) => {
+        {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
-          const isFocused = state.index === index;
+          const isFocused = state.routes[state.index]?.name === route.name;
           const onPress = pressHandlers[route.key];
 
           return (
@@ -195,7 +217,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               onPress={onPress}
               activeOpacity={0.75}
               accessibilityRole="tab"
-              accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label.toLowerCase()}
+              accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
               accessibilityState={{ selected: isFocused }}
               accessibilityHint={isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
             >
@@ -232,8 +254,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
 };
 
 export const TabNavigator: React.FC = () => {
+  const role = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const dealerMode = role === 'dealer' && accountRole === 'dealer';
   return (
     <Tab.Navigator
+      key={dealerMode ? 'dealer-workspace' : 'marketplace-workspace'}
+      initialRouteName={dealerMode ? 'DealerHome' : 'Home'}
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
@@ -245,6 +272,11 @@ export const TabNavigator: React.FC = () => {
       <Tab.Screen name="Live" component={LiveScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Profile" component={ProfileTabScreen} />
+      <Tab.Screen name="DealerHome" component={DealerProfileScreen} />
+      <Tab.Screen name="DealerStock" component={DealerInventoryScreen} />
+      <Tab.Screen name="DealerCustomers" component={DealerLeadsScreen} />
+      <Tab.Screen name="DealerBuyBid" component={LiveScreen} />
+      <Tab.Screen name="DealerMore" component={ProfileTabScreen} />
     </Tab.Navigator>
   );
 };
@@ -252,42 +284,32 @@ export const TabNavigator: React.FC = () => {
 const styles = StyleSheet.create({
   tabBarOuter: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    borderRadius: Radius.sheet,
-    borderWidth: 1,
-    borderColor: Colors.tabBarBorder,
-    backgroundColor: Colors.tabBarBg,
-    // Deliberately NOT `overflow: 'hidden'` — on iOS that clips the shadow, so
-    // the float elevation below would never render. The glass layer carries its
-    // own radius instead of relying on the parent to clip it.
-    ...Elevation.float,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: Colors.tabBarBorder,
+    backgroundColor: '#243047',
   },
   tabBarGlass: {
-    borderRadius: Radius.sheet,
-    // Sits under the items to deepen the translucent ground. A real backdrop
-    // blur needs expo-blur, which isn't installed (adding it forces a native
-    // prebuild) — on a dark ground this reads close.
-    backgroundColor: Colors.tabBarBg,
+    backgroundColor: '#243047',
   },
   tabBarInner: {
     flexDirection: 'row',
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
+    paddingTop: 9,
+    paddingBottom: 7,
+    paddingHorizontal: 4,
   },
   tabItem: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 51,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 6,
     gap: 4,
   },
   iconWrapper: {
-    width: 44,
-    height: 32,
-    borderRadius: 10,
+    width: 38,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -297,13 +319,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: Colors.accent,
     position: 'absolute',
-    top: -2,
+    top: -4,
     alignSelf: 'center',
-    // The glow on the active dot is the tab bar's signature detail.
-    shadowColor: Colors.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
   },
   tabLabel: {
     ...TextPresets.tabLabel,
