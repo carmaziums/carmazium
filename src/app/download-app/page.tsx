@@ -22,7 +22,7 @@ export default function DownloadAppPage() {
   const appsReady = links.ios.available && androidReady
 
   return (
-    <main className="min-h-screen pb-20 pt-28 sm:pt-36" style={{ color: "var(--text-primary)", background: "var(--bg-primary)" }}>
+    <main className="min-h-screen pb-20 pt-28 sm:pt-36" style={{ color: "var(--text-primary)", background: "var(--bg-body)" }}>
       <div className="container mx-auto max-w-6xl px-5">
         <div className="mx-auto max-w-3xl text-center">
           <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-red-500">CarMazium mobile</p>
@@ -91,7 +91,7 @@ export default function DownloadAppPage() {
             {links.androidApk.href && (
               <div className="mt-3">
                 <a href={links.androidApk.href} download
-                  className={storeButton + " border border-[var(--border-default)] bg-[var(--bg-elevated)] hover:border-red-500"}
+                  className={storeButton + " border border-[var(--border-default)] bg-[var(--bg-card-hover)] hover:border-red-500"}
                   aria-label="Download approved, signed CarMazium Android APK directly">
                   <ArrowDownToLine className="h-5 w-5" aria-hidden="true" />
                   Download Android APK
