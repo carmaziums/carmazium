@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { Mail, Phone, MapPin } from "lucide-react"
+import { Mail, Phone, MapPin, Smartphone, ArrowRight } from "lucide-react"
 import { useConsent } from "@/context/ConsentContext"
 
 const footerLinkClass = "rounded-sm text-sm text-slate-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
@@ -32,6 +32,13 @@ export function Footer() {
                         <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">
                             CarMazium brings vehicle buying, selling and automotive services together in one UK marketplace with clear, purpose-built workflows.
                         </p>
+                        <Link href="/download-app"
+                            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/15 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                            aria-label="Get the CarMazium app for iPhone or Android">
+                            <Smartphone size={17} aria-hidden="true" />
+                            CarMazium for iPhone &amp; Android
+                            <ArrowRight size={15} aria-hidden="true" />
+                        </Link>
                     </div>
 
                     <div>
@@ -45,6 +52,7 @@ export function Footer() {
                             <li><Link href="/compare" className={footerLinkClass}>Compare Cars</Link></li>
                             <li><Link href="/pricing" className={footerLinkClass}>Pricing</Link></li>
                             <li><Link href="/about" className={footerLinkClass}>About</Link></li>
+                            <li><Link href="/download-app" className={footerLinkClass}>Get the App</Link></li>
                         </ul>
                     </div>
 
