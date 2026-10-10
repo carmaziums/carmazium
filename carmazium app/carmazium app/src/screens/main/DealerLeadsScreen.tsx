@@ -34,6 +34,8 @@ import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -57,7 +59,11 @@ interface Lead {
   unreadCount?: number;
   assignedToId?: string;
   assignedToName?: string;
+  nextFollowUpAt?: string | null;
+  lastActivityAt?: string | null;
 }
+
+interface CustomerListingOption { id: string; title: string; make: string; vrm: string }
 
 interface StaffOption {
   userId: string;
@@ -65,10 +71,11 @@ interface StaffOption {
 }
 
 const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
+  { key: 'NEW', label: 'New Leads', color: Colors.infoBlue },
   { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
-  { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
+  { key: 'QUALIFIED', label: 'Viewing / Qualified', color: Colors.lightPurple },
   { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
-  { key: 'WON', label: 'Won', color: Colors.success },
+  { key: 'WON', label: 'Closed Won', color: Colors.success },
   { key: 'LOST', label: 'Lost', color: Colors.accent },
 ];
 
@@ -78,20 +85,20 @@ const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
 // stage set (mobile-production-readiness-plan.md F16) as a tap-based board
 // rather than drag-and-drop — see that finding for why.
 const BOARD_STAGES: { key: string; label: string; color: string }[] = [
-  { key: 'NEW', label: 'New', color: Colors.textMuted },
-  { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
-  { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
-  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
-  { key: 'WON', label: 'Won', color: Colors.success },
-  { key: 'LOST', label: 'Lost', color: Colors.accent },
+  { key: 'NEW', label: 'New Leads', color: Colors.infoBlue },
+  { key: 'CONTACTED', label: 'Contacted', color: Colors.warning },
+  { key: 'QUALIFIED', label: 'Viewing / Qualified', color: Colors.lightPurple },
+  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.infoBlueLight },
+  { key: 'WON', label: 'Closed Won', color: Colors.success },
+  { key: 'LOST', label: 'Lost', color: Colors.error },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
-  listing_enquiry: 'Listing Enquiry',
-  chat: 'Chat Message',
-  offer: 'Offer Submitted',
+  listing_enquiry: 'Listing enquiry',
+  chat: 'CarMazium message',
+  offer: 'Retail offer',
   walk_in: 'Walk-in',
-  phone: 'Phone Call',
+  phone: 'Phone',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -115,6 +122,11 @@ const formatTimeAgo = (iso: string): string => {
   return `${Math.floor(hrs / 24)}d`;
 };
 
+// Match website follow-up semantics; closed cases cannot be overdue.
+const isFollowUpOverdue = (lead: Lead): boolean => !!lead.nextFollowUpAt
+  && lead.status !== 'WON' && lead.status !== 'LOST'
+  && new Date(lead.nextFollowUpAt).getTime() < Date.now();
+
 const formatPrice = (n?: number | null): string | undefined =>
   typeof n === 'number' && !Number.isNaN(n) ? `£${n.toLocaleString('en-GB')}` : undefined;
 
@@ -133,6 +145,8 @@ const mapApiLead = (l: any): Lead => ({
   notes: l.notes || '',
   time: l.createdAt ? formatTimeAgo(l.createdAt) : '–',
   createdAtIso: l.createdAt,
+  lastActivityAt: l.lastActivityAt || l.updatedAt || l.createdAt || null,
+  nextFollowUpAt: l.nextFollowUpAt || null,
   status: l.status || 'NEW',
   tag: getLeadTag(l.status || 'NEW'),
   unreadCount: l.status === 'NEW' ? 1 : 0,
@@ -421,39 +435,85 @@ const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.m
   </TouchableOpacity>
 ));
 
-// ─── Board card — compact, memoized (same rationale as LeadRow above).
-// Deliberately no drag handle: tapping the move icon opens a stage-picker
-// sheet instead of a physical drag gesture (see BOARD_STAGES comment). ──
+// Website CRM card: buyer, source, interested listing, direct contact,
+ // latest activity, follow-up state and phase move action. Mobile uses tap
+ // to choose a stage rather than drag-to-drop (RN has no HTML5 DnD).
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-
 const BoardCard: React.FC<{
   lead: Lead;
   onPress: (id: string) => void;
   onMove: (id: string) => void;
-}> = React.memo(({ lead, onPress, onMove }) => (
-  <AnimatedTouchable entering={FadeIn.duration(200)} style={styles.boardCard} onPress={() => onPress(lead.id)} activeOpacity={0.75}>
-    <View style={styles.boardCardTopRow}>
-      <View style={styles.boardAvatar}>
-        <Text style={styles.boardAvatarText}>{lead.initials}</Text>
+  onFollowUp: (id: string, current: string | null | undefined) => void;
+}> = React.memo(({ lead, onPress, onMove, onFollowUp }) => (
+  <AnimatedTouchable entering={FadeIn.duration(200)}
+    style={styles.websiteLeadCard} onPress={() => onPress(lead.id)} activeOpacity={0.85}
+    accessibilityRole="button" accessibilityLabel={`Open customer ${lead.name}`}>
+    <View style={styles.websiteLeadCardHead}>
+      <View style={styles.boardAvatar}><Ionicons name="person-outline" size={17} color={Colors.textSecondary} /></View>
+      <View style={styles.websiteLeadCardIdentity}>
+        <Text style={styles.boardCardName} numberOfLines={2}>{lead.name}</Text>
+        <Text style={styles.websiteLeadSource} numberOfLines={2}>
+          {lead.source ? SOURCE_LABELS[lead.source] || lead.source : 'Unknown source'}
+        </Text>
       </View>
       <TouchableOpacity
         style={styles.boardMoveBtn}
+        accessibilityRole="button"
+        accessibilityLabel={`Change pipeline stage for ${lead.name}`}
         onPress={() => onMove(lead.id)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        accessibilityLabel={`Move ${lead.name} to a different stage`}
-      >
-        <Ionicons name="swap-horizontal-outline" size={14} color={Colors.textMuted} />
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons name="swap-horizontal-outline" size={17} color={Colors.textSecondary} />
       </TouchableOpacity>
     </View>
-    <Text style={styles.boardCardName} numberOfLines={1}>{lead.name}</Text>
-    <Text style={styles.boardCardVehicle} numberOfLines={1}>{lead.vehicle}</Text>
-    <View style={styles.boardCardFooterRow}>
-      {formatPrice(lead.listingPrice) && (
-        <Text style={styles.boardCardPrice}>{formatPrice(lead.listingPrice)}</Text>
+    {lead.vehicle !== 'General enquiry' && (
+      <View style={styles.websiteInterestTile}>
+        <Text style={styles.websiteInterestLabel}>INTERESTED IN</Text>
+        <Text style={styles.boardCardVehicle} numberOfLines={2}>{lead.vehicle}</Text>
+      </View>
+    )}
+    <View style={styles.websiteContactLine}>
+      {lead.email && (
+        <TouchableOpacity
+          style={styles.websiteContactChip}
+          accessibilityRole="button" accessibilityLabel={`Email ${lead.name}`}
+          onPress={() => { void Linking.openURL(`mailto:${lead.email}`); }}>
+          <Ionicons name="mail-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.email}</Text>
+        </TouchableOpacity>
       )}
-      {lead.assignedToName && (
-        <Text style={styles.boardCardAssignee} numberOfLines={1}>→ {lead.assignedToName}</Text>
+      {lead.phone && (
+        <TouchableOpacity style={styles.websiteContactChip}
+          accessibilityRole="button" accessibilityLabel={`Call ${lead.name}`}
+          onPress={() => { void Linking.openURL(`tel:${lead.phone}`); }}>
+          <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.phone}</Text>
+        </TouchableOpacity>
       )}
+    </View>
+    <View style={styles.websiteLeadCardFoot}>
+      <Text style={styles.websiteActivity}>
+        {lead.lastActivityAt ? formatTimeAgo(lead.lastActivityAt) : lead.time} ago
+      </Text>
+      <TouchableOpacity style={[styles.websiteFollowUp, isFollowUpOverdue(lead) && styles.websiteFollowUpDue]}
+        onPress={() => onFollowUp(lead.id, lead.nextFollowUpAt)}
+        accessibilityRole="button"
+        accessibilityLabel={lead.nextFollowUpAt
+          ? (isFollowUpOverdue(lead) ? 'Clear overdue follow-up' : 'Clear follow-up reminder')
+          : 'Schedule follow-up for tomorrow'}>
+        <Ionicons name="time-outline" size={14}
+          color={isFollowUpOverdue(lead) ? Colors.error : Colors.textSecondary} />
+        <Text style={[styles.websiteFollowText, isFollowUpOverdue(lead) && { color: Colors.error }]}>
+          {lead.nextFollowUpAt ? isFollowUpOverdue(lead) ? 'Overdue' : 'Reminder' : 'Follow up'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+    <View style={styles.websitePhaseFooter}>
+      <Text style={styles.websitePhaseLabel}>PHASE STATUS</Text>
+      <TouchableOpacity style={styles.websitePhaseButton} onPress={() => onMove(lead.id)}
+        accessibilityRole="button" accessibilityLabel="Change phase status">
+        <Text style={styles.websitePhaseText}>{BOARD_STAGES.find(x => x.key === lead.status)?.label || lead.status}</Text>
+        <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+      </TouchableOpacity>
     </View>
   </AnimatedTouchable>
 ));
@@ -461,8 +521,12 @@ const BoardCard: React.FC<{
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { hasPermission } = useDealerAccess(true);
+  const canManageOffers = hasPermission('MANAGE_OFFERS');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [mobileStage, setMobileStage] = useState('NEW');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reassignLeadId, setReassignLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -479,15 +543,51 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [newNotes, setNewNotes] = useState('');
   const [newAssignedToId, setNewAssignedToId] = useState<string | null>(null);
   const [newSource, setNewSource] = useState<string>('walk_in');
+  const [newListingId, setNewListingId] = useState<string | null>(null);
+  const [newListingQuery, setNewListingQuery] = useState('');
+  const [customerListings, setCustomerListings] = useState<CustomerListingOption[]>([]);
   const [creating, setCreating] = useState(false);
 
   const fetchLeads = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setLoadError(null);
     try {
-      const res = await apiClient<{ success: boolean; data: any[]; pagination: any }>('/dealers/leads?page=1&limit=50');
-      if (res.success) setLeads((res.data || []).map(mapApiLead));
-    } catch { /* keep previous */ }
-    finally { setLoading(false); setRefreshing(false); }
+      // Avoid the old 50-lead cap: a dashboard with >50 customers silently
+      // understated stage counts and overdue follow-ups. Bounded pagination
+      // uses the same authenticated read-only endpoint as web.
+      const all: Lead[] = [];
+      const seen = new Set<string>();
+      const limit = 50;
+      let completed = false;
+      for (let page = 1; page <= 40; page++) {
+        const res = await apiClient<{
+          success: boolean; data: any[];
+          pagination?: { totalPages?: number; total?: number };
+          meta?: { totalPages?: number; total?: number };
+        }>(`/dealers/leads?page=${page}&limit=${limit}`);
+        if (!res.success || !Array.isArray(res.data)) throw new Error('Customer list unavailable');
+        let added = 0;
+        for (const raw of res.data) {
+          if (!raw?.id || seen.has(String(raw.id))) continue;
+          seen.add(String(raw.id));
+          all.push(mapApiLead(raw));
+          added++;
+        }
+        const pages = res.pagination?.totalPages ?? res.meta?.totalPages;
+        const total = res.pagination?.total ?? res.meta?.total;
+        if (!res.data.length || added === 0 || res.data.length < limit
+            || (pages !== undefined && page >= pages)
+            || (total !== undefined && all.length >= total)) {
+          completed = true;
+          break;
+        }
+      }
+      if (!completed) throw new Error('Too many CRM pages to load safely');
+      setLeads(all);
+    } catch {
+      // Preserve previous values but explicitly mark them stale.
+      setLoadError('Customer pipeline could not be refreshed. Previously loaded data may be outdated.');
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   const fetchStaff = useCallback(async () => {
@@ -526,9 +626,25 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     }
   };
 
+  useEffect(() => {
+    if (!createModalVisible) return;
+    let mounted = true;
+    // Optional listing lookup matches the website Add Lead form; read only.
+    void fetchAllMyListings<any>()
+      .then(rows => {
+        if (mounted) setCustomerListings(rows.map((l: any) => ({
+          id: String(l.id),
+          title: l.title || [l.year, l.make, l.model].filter(Boolean).join(' ') || 'Untitled',
+          make: l.make || '', vrm: l.vrm || '',
+        })));
+      })
+      .catch(() => { if (mounted) setCustomerListings([]); });
+    return () => { mounted = false; };
+  }, [createModalVisible]);
+
   const resetCreateForm = () => {
     setNewName(''); setNewEmail(''); setNewPhone(''); setNewNotes(''); setNewAssignedToId(null);
-    setNewSource('walk_in');
+    setNewSource('walk_in'); setNewListingId(null); setNewListingQuery('');
   };
 
   const handleCreateLead = async () => {
@@ -547,6 +663,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           notes: newNotes.trim() || undefined,
           assignedToId: newAssignedToId ?? undefined,
           source: newSource,
+          listingId: newListingId || undefined,
         }),
       });
       if (res.success && res.data) {
@@ -577,6 +694,27 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status: newStatus, tag: getLeadTag(newStatus) } : l)));
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Could not update lead status.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Website CRM uses tomorrow at 09:00 local time for new follow-up reminders.
+  const handleFollowUp = async (leadId: string, current: string | null | undefined) => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(9, 0, 0, 0);
+    const nextFollowUpAt = current ? null : next.toISOString();
+    setUpdatingId(leadId);
+    try {
+      await apiClient(`/dealers/leads/${leadId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ nextFollowUpAt }),
+      });
+      setLeads(previous => previous.map(item => item.id === leadId
+        ? { ...item, nextFollowUpAt } : item));
+    } catch (error: any) {
+      Alert.alert('Follow-up not saved', error?.message || 'Please retry.');
     } finally {
       setUpdatingId(null);
     }
@@ -618,33 +756,6 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     return map;
   }, [leads]);
 
-  const renderBoardColumn = useCallback(
-    ({ item: stage }: { item: (typeof BOARD_STAGES)[number] }) => {
-      const stageLeads = leadsByStage[stage.key] ?? [];
-      return (
-        <View style={styles.boardColumn}>
-          <View style={styles.boardColumnHeader}>
-            <View style={[styles.boardColumnDot, { backgroundColor: stage.color }]} />
-            <Text style={styles.boardColumnTitle}>{stage.label}</Text>
-            <Text style={styles.boardColumnCount}>{stageLeads.length}</Text>
-          </View>
-          <FlatList
-            style={styles.boardColumnList}
-            data={stageLeads}
-            keyExtractor={(l) => l.id}
-            renderItem={({ item }) => (
-              <BoardCard lead={item} onPress={handleLeadPress} onMove={handleOpenReassign} />
-            )}
-            contentContainerStyle={{ paddingBottom: 12 }}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<Text style={styles.boardColumnEmpty}>No customers</Text>}
-          />
-        </View>
-      );
-    },
-    [leadsByStage, handleLeadPress, handleOpenReassign],
-  );
-
   if (selectedLead) {
     return (
       <LeadDetail
@@ -661,8 +772,16 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   }
 
   const newCount = leads.filter(l => l.status === 'NEW').length;
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const newThisWeek = leads.filter(l => l.createdAtIso && new Date(l.createdAtIso).getTime() >= weekAgo).length;
+  const activeLeads = leads.filter(l => !['WON', 'LOST'].includes(l.status));
+  const overdueLeads = activeLeads.filter(isFollowUpOverdue);
+  const wonCount = leads.filter(l => l.status === 'WON').length;
+  const websiteSummary = [
+    { label: 'New', count: newCount, color: Colors.infoBlue },
+    { label: 'Active', count: activeLeads.length, color: Colors.warning },
+    { label: 'Follow-up due', count: overdueLeads.length,
+      color: overdueLeads.length > 0 ? Colors.error : Colors.textMuted },
+    { label: 'Sold', count: wonCount, color: Colors.success },
+  ];
 
   // Won/Lost used to be invisible inside a catch-all "Cold" tag with no
   // dedicated filter — only reachable by scrolling "All" (mobile-production-
@@ -705,40 +824,98 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       />
 
       <WebsiteTopBar />
-      <View style={[styles.header, { paddingTop: 12 }]}>
-         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <IconButton style={[styles.backBtn, { marginRight: 12 }]} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-            <View>
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <View style={styles.unreadDot} />
-                  <Text style={styles.headerSub}>{newCount} NEW · {newThisWeek} THIS WEEK</Text>
-               </View>
-               <Text style={styles.headerTitle}>Customers</Text>
-            </View>
-         </View>
-         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={styles.viewModeToggle}>
-               <TouchableOpacity
-                  style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
-                  onPress={() => setViewMode('list')}
-                  activeOpacity={0.7}
-                  accessibilityLabel="List view"
-               >
-                  <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
-               </TouchableOpacity>
-               <TouchableOpacity
-                  style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
-                  onPress={() => setViewMode('board')}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Board view"
-               >
-                  <Ionicons name="albums-outline" size={15} color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
-               </TouchableOpacity>
-            </View>
-            <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add customer" />
-
-         </View>
+      {/* Use the exact website dealer Customers hierarchy and labels.
+          Existing MANAGE_CRM screen gate remains in navigation. */}
+      <View style={styles.crmPageHeader}>
+        <Text style={styles.headerTitle}>Customers</Text>
+        <Text style={styles.crmSubtitle}>Enquiries, offers and buyer follow-up</Text>
+        <View style={styles.crmHeaderActions}>
+          <TouchableOpacity style={styles.crmAddButton}
+            onPress={() => setCreateModalVisible(true)}
+            accessibilityRole="button" accessibilityLabel="Add Customer">
+            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
+            <Text style={styles.crmAddButtonText}>Add Customer</Text>
+          </TouchableOpacity>
+          {canManageOffers && (
+            <TouchableOpacity style={styles.crmOffersButton}
+              onPress={() => navigation?.navigate('DealerOffers')}
+              accessibilityRole="button" accessibilityLabel="Offers received">
+              <Text style={styles.crmOffersText}>Offers received</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.viewModeToggle}>
+            <TouchableOpacity
+              style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
+              onPress={() => setViewMode('board')} activeOpacity={0.75}
+              accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
+              accessibilityLabel="Pipeline board view">
+              <Ionicons name="albums-outline" size={17}
+                color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
+              onPress={() => setViewMode('list')} activeOpacity={0.75}
+              accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
+              accessibilityLabel="Customer list view">
+              <Ionicons name="list-outline" size={17}
+                color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
+      <View style={styles.crmAutoBanner}>
+        <Ionicons name="sparkles-outline" size={19} color={Colors.success} />
+        <View style={styles.crmAutoText}>
+          <Text style={styles.crmAutoTitle}>Customer enquiries are automatic</Text>
+          <Text style={styles.crmAutoDescription}>
+            CarMazium retail messages and offers appear here automatically and stay linked to the vehicle.
+            Add Customer is for phone calls, walk-ins and other off-platform enquiries.
+          </Text>
+        </View>
+      </View>
+      {!loading && (!loadError || leads.length > 0) && (
+      <View style={styles.crmMetrics}>
+        {websiteSummary.map(metric => (
+          <View style={styles.crmMetricCard} key={metric.label}>
+            <Text style={[styles.crmMetricCount, { color: metric.color }]}>
+              {metric.count.toLocaleString('en-GB')}
+            </Text>
+            <Text style={styles.crmMetricLabel}>{metric.label}</Text>
+          </View>
+        ))}
+      </View>
+      )}
+      {!!loadError && (
+        <View style={styles.crmErrorBanner}>
+          <Text style={styles.crmErrorText}>{loadError}</Text>
+          <TouchableOpacity accessibilityRole="button"
+            accessibilityLabel="Retry loading customers" onPress={() => { void fetchLeads(true); }}>
+            <Text style={styles.crmRetry}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {viewMode === 'board' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={styles.crmStagesScroll}
+          contentContainerStyle={styles.crmStagesList}>
+          {BOARD_STAGES.map(stage => {
+            const selected = stage.key === mobileStage;
+            return (
+              <TouchableOpacity key={stage.key}
+                style={[styles.crmStageTab, selected && styles.crmStageSelected]}
+                onPress={() => setMobileStage(stage.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`${stage.label}, ${(leadsByStage[stage.key] || []).length} customers`}
+                accessibilityState={{ selected }}>
+                <Text style={[styles.crmStageText, selected && styles.crmStageSelectedText]}>
+                  {stage.label} {(leadsByStage[stage.key] || []).length}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {viewMode === 'list' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
@@ -766,15 +943,32 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
           ))}
         </View>
+      ) : loadError && leads.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Customers unavailable</Text>
+          <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
+            <Text style={styles.crmRetry}>Retry loading customers</Text>
+          </TouchableOpacity>
+        </View>
       ) : viewMode === 'board' ? (
         <FlatList
-          horizontal
-          style={styles.boardScroll}
-          contentContainerStyle={styles.boardContent}
-          showsHorizontalScrollIndicator={false}
-          data={BOARD_STAGES}
-          keyExtractor={(s) => s.key}
-          renderItem={renderBoardColumn}
+          key={mobileStage}
+          style={styles.listScroll}
+          contentContainerStyle={styles.crmBoardCards}
+          data={leadsByStage[mobileStage] || []}
+          keyExtractor={lead => lead.id}
+          renderItem={({ item }) => (
+            <BoardCard lead={item} onPress={handleLeadPress}
+              onMove={handleOpenReassign} onFollowUp={handleFollowUp} />
+          )}
+          refreshControl={<RefreshControl refreshing={refreshing}
+            onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />}
+          ListEmptyComponent={
+            <View style={styles.crmBoardEmpty}>
+              <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
+              <Text style={styles.crmBoardEmptyText}>Empty</Text>
+            </View>
+          }
         />
       ) : filteredLeads.length === 0 ? (
         renderEmptyState()
@@ -824,7 +1018,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       <BottomSheet
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        title="New Customer"
+        title="Add Customer"
         avoidKeyboard
       >
         <>
@@ -856,6 +1050,42 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   placeholderTextColor={Colors.iconMuted}
                   keyboardType="phone-pad"
                 />
+                <Text style={styles.createFieldLabel}>INTERESTED IN VEHICLE (OPTIONAL)</Text>
+                <TextInput
+                  style={styles.createInput}
+                  value={newListingQuery}
+                  onChangeText={setNewListingQuery}
+                  placeholder="Search your listings..."
+                  placeholderTextColor={Colors.iconMuted}
+                  accessibilityLabel="Search your listings for this customer"
+                  autoCorrect={false}
+                />
+                {!!newListingId && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => { setNewListingId(null); setNewListingQuery(''); }}
+                    style={styles.crmSelectedListing}>
+                    <Text style={styles.crmSelectedListingText}>
+                      {customerListings.find(l => l.id === newListingId)?.title || 'Selected vehicle'} · Clear
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {!newListingId && newListingQuery.trim().length > 0 && (
+                  <View style={styles.crmListingOptions}>
+                    {customerListings.filter(l =>
+                      [l.title, l.make, l.vrm].some(value =>
+                        value.toLowerCase().includes(newListingQuery.trim().toLowerCase()))
+                    ).slice(0, 5).map(l => (
+                      <TouchableOpacity key={l.id} accessibilityRole="button"
+                        onPress={() => { setNewListingId(l.id); setNewListingQuery(''); }}
+                        style={styles.crmListingOption}>
+                        <Text style={styles.crmListingOptionText} numberOfLines={2}>
+                          {l.title}{l.vrm ? ` · ${l.vrm}` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <Text style={styles.createFieldLabel}>NOTES</Text>
                 <TextInput
                   style={[styles.createInput, { minHeight: 70, textAlignVertical: 'top' }]}
@@ -915,6 +1145,103 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
 };
 
 const styles = StyleSheet.create({
+  // Website /dashboard/dealer/crm canonical mobile hierarchy.
+  crmPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 13 },
+  crmSubtitle: { color: Colors.textMuted, fontFamily: FontFamily.regular,
+    fontSize: 12, lineHeight: 18, marginTop: 3 },
+  crmHeaderActions: { flexDirection: 'row', flexWrap: 'wrap',
+    alignItems: 'center', gap: 8, marginTop: 13 },
+  crmAddButton: { flexDirection: 'row', alignItems: 'center', gap: 7,
+    borderRadius: 12, backgroundColor: Colors.accent, minHeight: 44,
+    paddingHorizontal: 14 },
+  crmAddButtonText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  crmOffersButton: { flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard, paddingHorizontal: 11, minHeight: 44 },
+  crmOffersText: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.textPrimary },
+  crmAutoBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    marginHorizontal: 20, marginBottom: 13, padding: 14, borderRadius: 16,
+    borderColor: Colors.successAlpha20, borderWidth: 1,
+    backgroundColor: Colors.successAlpha08 },
+  crmAutoText: { flex: 1, gap: 4 },
+  crmAutoTitle: { fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textPrimary },
+  crmAutoDescription: { fontFamily: FontFamily.regular, fontSize: 12,
+    color: Colors.textMuted, lineHeight: 18 },
+  crmMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+    marginHorizontal: 20, marginBottom: 14 },
+  crmMetricCard: { width: '47%', flexGrow: 1,
+    padding: 14, minHeight: 82, borderRadius: 16,
+    borderColor: Colors.borderSubtle, borderWidth: 1,
+    backgroundColor: Colors.bgCard, alignItems: 'center', justifyContent: 'center' },
+  crmMetricCount: { fontFamily: FontFamily.extraBold, fontSize: 25 },
+  crmMetricLabel: { color: Colors.textMuted, fontFamily: FontFamily.bold,
+    fontSize: 11, letterSpacing: 0.5, marginTop: 4, textTransform: 'uppercase' },
+  crmErrorBanner: { flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 15, paddingVertical: 9, marginHorizontal: 20, marginBottom: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: Colors.warning,
+    backgroundColor: Colors.bgCard, gap: 10 },
+  crmErrorText: { flex: 1, color: Colors.warning, fontSize: 12,
+    fontFamily: FontFamily.medium },
+  crmRetry: { color: Colors.accent, fontSize: 12, fontFamily: FontFamily.bold },
+  crmStagesScroll: { maxHeight: 54, marginBottom: 8 },
+  crmStagesList: { paddingHorizontal: 20, alignItems: 'center', gap: 7,
+    paddingBottom: 6 },
+  crmStageTab: { minHeight: 42, paddingHorizontal: 13, justifyContent: 'center',
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard },
+  crmStageSelected: { borderColor: Colors.accent, backgroundColor: Colors.accent },
+  crmStageText: { fontSize: 12, fontFamily: FontFamily.bold, color: Colors.textMuted },
+  crmStageSelectedText: { color: Colors.white },
+  crmBoardCards: { paddingHorizontal: 20, paddingBottom: 90, paddingTop: 6 },
+  crmBoardEmpty: { paddingVertical: 45, alignItems: 'center', gap: 12 },
+  crmBoardEmptyText: { fontFamily: FontFamily.bold, fontSize: 12,
+    textTransform: 'uppercase', color: Colors.textMuted },
+  websiteLeadCard: { backgroundColor: Colors.bgCard, borderRadius: 16,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    padding: 16, marginBottom: 12 },
+  websiteLeadCardHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  websiteLeadCardIdentity: { flex: 1, gap: 3 },
+  websiteLeadSource: { color: Colors.accent, fontSize: 11,
+    fontFamily: FontFamily.bold, textTransform: 'uppercase' },
+  websiteInterestTile: { backgroundColor: Colors.bgElevated, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.borderSubtle, padding: 11, marginTop: 13, gap: 4 },
+  websiteInterestLabel: { color: Colors.textMuted, fontSize: 10,
+    fontFamily: FontFamily.bold, letterSpacing: 0.6 },
+  websiteContactLine: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
+  websiteContactChip: { flexDirection: 'row', alignItems: 'center', gap: 6,
+    maxWidth: '100%', borderRadius: 8, backgroundColor: Colors.bgElevated,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    paddingVertical: 7, paddingHorizontal: 9 },
+  websiteContactText: { fontFamily: FontFamily.medium, fontSize: 11,
+    color: Colors.textSecondary, flexShrink: 1 },
+  websiteLeadCardFoot: { marginTop: 12, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between' },
+  websiteActivity: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
+  websiteFollowUp: { flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.bgElevated, borderRadius: 8,
+    minHeight: 38, paddingHorizontal: 9 },
+  websiteFollowUpDue: { backgroundColor: Colors.errorAlpha08 },
+  websiteFollowText: { fontFamily: FontFamily.bold,
+    fontSize: 11, color: Colors.textSecondary },
+  websitePhaseFooter: { marginTop: 12, borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle, paddingTop: 12, gap: 7 },
+  websitePhaseLabel: { fontFamily: FontFamily.bold, fontSize: 10,
+    color: Colors.textMuted, letterSpacing: 0.6 },
+  websitePhaseButton: { flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', minHeight: 43, paddingHorizontal: 12,
+    backgroundColor: Colors.bgElevated, borderWidth: 1,
+    borderColor: Colors.borderSubtle, borderRadius: 10 },
+  websitePhaseText: { fontFamily: FontFamily.bold, fontSize: 12, color: Colors.textPrimary },
+  crmSelectedListing: { marginBottom: 8, backgroundColor: Colors.accentAlpha10,
+    borderRadius: 8, padding: 10, borderWidth: 1, borderColor: Colors.accent },
+  crmSelectedListingText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12 },
+  crmListingOptions: { borderWidth: 1, borderColor: Colors.borderSubtle,
+    borderRadius: 9, backgroundColor: Colors.bgCard, marginBottom: 9 },
+  crmListingOption: { minHeight: 42, justifyContent: 'center',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
+    paddingHorizontal: 12 },
+  crmListingOptionText: { color: Colors.textPrimary, fontFamily: FontFamily.medium,
+    fontSize: 12 },
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
