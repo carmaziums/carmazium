@@ -12,6 +12,8 @@ on:
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
       - 'scripts/test-native-app-audit-block7.test.mjs'
+      - 'scripts/test-native-app-audit-block9.test.mjs'
+      - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'docs/native/**'
       - 'package.json'
@@ -183,6 +185,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block7.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
         run: node --test scripts/test-native-app-audit-block8.test.mjs
+      - name: Audit Android emulator boot and QA artifact provenance
+        run: node --test scripts/test-native-app-audit-block9.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
