@@ -21,6 +21,13 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
     errors.push('Candidate must use exact requested Git source SHA');
   if(env.CARMAZIUM_ANDROID_CANDIDATE_APPROVAL!=='INTERNAL_REVIEW_ONLY')
     errors.push('Explicit internal-review-only approval missing');
+  if(env.APP_ENV!=='production')
+    errors.push('Release candidate must use the production app environment');
+  const rawVersion=env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE;
+  const versionCode=Number(rawVersion);
+  if(typeof rawVersion!=='string' || !/^[1-9][0-9]{0,9}$/.test(rawVersion) ||
+      !Number.isSafeInteger(versionCode) || versionCode>2147483647)
+    errors.push('Candidate Android versionCode must be a valid positive 32-bit integer');
   if(app?.expo?.android?.package!=='uk.carmazium.app')
     errors.push('Candidate must use real CarMazium Android package');
   if(app?.expo?.ios?.bundleIdentifier!=='uk.carmazium.app')
