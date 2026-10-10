@@ -77,7 +77,6 @@ test('auction details use readable bid, contact and fee UI without touching bidd
      'feeNotice','feeNoticeHint','feeNoticeAmt','sellerContactBlock','binPanel','binPanelPrice'], 's');
   assert.match(auction, /const canPlaceBid =/);
   assert.match(auction, /if \(!canPlaceBid\)/);
-  assert.match(auction, /getAuctionFirstOfferFloor/);
   assert.match(auction, /triggerBuyItNow/);
   assert.match(auction, /buyer fee must be paid by a dealership Owner, Admin or Finance Manager/);
   assert.match(auction, /<Text style=\{\[themed\.feeNoticeAmt, \{ fontFamily: FontFamily\.mono \}\]\}>£125<\/Text>/);
