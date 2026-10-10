@@ -34,6 +34,7 @@ on:
       - 'scripts/test-native-theme-navigation-block3.test.mjs'
       - 'scripts/test-native-theme-shared-controls-block4.test.mjs'
       - 'scripts/test-native-theme-discovery-block5.test.mjs'
+      - 'scripts/test-native-theme-sell-detail-offers-block6.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
@@ -233,6 +234,8 @@ jobs:
         run: node --test scripts/test-native-theme-shared-controls-block4.test.mjs
       - name: Verify discovery, Search filters, vehicle cards and Live Auction light/dark source parity
         run: node --test scripts/test-native-theme-discovery-block5.test.mjs
+      - name: Check native sell wizard, vehicle details and buyer/seller offer theme contracts
+        run: node --test scripts/test-native-theme-sell-detail-offers-block6.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
         run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Audit Block 3 dealer Home website KPIs and reporting range
