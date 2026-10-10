@@ -1,0 +1,108 @@
+name: CarMazium isolated native visual QA (manual only)
+
+# This workflow is NOT production distribution. It cannot build until the owner
+# configures a separate QA Expo project, isolated Nest/Fly staging API, separate
+# compatible Supabase project, TEST Stripe key and isolated synthetic fixtures.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Internal QA platform (not Play Store or TestFlight)'
+        required: true
+        type: choice
+        default: android
+        options:
+          - android
+          - ios
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-issue477-isolated-qa
+  cancel-in-progress: false
+
+jobs:
+  isolated-qa-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: 'true'
+      CARMAZIUM_QA_API_URL: ${{ vars.CARMAZIUM_QA_API_URL }}
+      CARMAZIUM_QA_SUPABASE_URL: ${{ vars.CARMAZIUM_QA_SUPABASE_URL }}
+      CARMAZIUM_QA_SUPABASE_ANON_KEY: ${{ secrets.CARMAZIUM_QA_SUPABASE_ANON_KEY }}
+      CARMAZIUM_QA_STRIPE_PUBLISHABLE_KEY: ${{ vars.CARMAZIUM_QA_STRIPE_PUBLISHABLE_KEY }}
+      CARMAZIUM_QA_EAS_PROJECT_ID: ${{ vars.CARMAZIUM_QA_EAS_PROJECT_ID }}
+      CARMAZIUM_QA_ISOLATED_CONFIRMED: ${{ vars.CARMAZIUM_QA_ISOLATED_CONFIRMED }}
+      EXPO_TOKEN: ${{ secrets.CARMAZIUM_QA_EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify required QA Expo account is connected
+        shell: bash
+        run: |
+          if [ -z "${EXPO_TOKEN:-}" ]; then
+            echo '::error::QA Expo token not configured; aborting without a build.'
+            exit 1
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Enforce isolated staging and generate ephemeral QA-only app settings
+        run: node ../../scripts/prepare-native-isolated-qa.mjs --prepare
+      - name: Reject disconnected or unhealthy QA backend
+        shell: bash
+        run: |
+          # Readiness must be provided by a dedicated Nest backend connected to its
+          # matching, seeded synthetic database. A standalone Supabase project
+          # is NOT automatically compatible with the Prisma backend.
+          curl --fail --silent --show-error --location --max-time 15 \
+            --output /dev/null "${CARMAZIUM_QA_API_URL%/}/health/ready"
+      - name: Install and typecheck exact native dependencies
+        run: |
+          npm ci
+          npm run typescript
+      - name: Verify QA Expo account
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Build separate internal QA artifact (NO publish/submit/update)
+        shell: bash
+        env:
+          QA_PLATFORM: ${{ inputs.platform }}
+        run: |
+          set -euo pipefail
+          if [[ "$QA_PLATFORM" != 'android' && "$QA_PLATFORM" != 'ios' ]]; then
+            echo '::error::Unsupported internal QA platform'
+            exit 1
+          fi
+          npx --yes eas-cli@16.18.0 build --platform "$QA_PLATFORM" \
+            --profile qa-isolated --non-interactive --wait --json > "$RUNNER_TEMP/qa-build.json"
+          node - "$RUNNER_TEMP/qa-build.json" <<'NODE'
+          const fs=require('fs');
+          const raw=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+          const build=Array.isArray(raw)?raw[0]:raw;
+          if (!build?.id) throw new Error('Missing QA build ID');
+          const url=build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || '';
+          const lines=[
+            '## Isolated internal CarMazium QA build',
+            '- Commit: '+process.env.GITHUB_SHA,
+            '- Platform: '+process.env.QA_PLATFORM,
+            '- EAS Build ID: '+build.id,
+            '- QA app identity: uk.carmazium.qa',
+            '- OTA updates: DISABLED',
+            '- Backend: dedicated nonproduction staging (no URL printed)',
+            '- READ ONLY UI preview; synthetic fixtures only',
+            '- Not reviewed by website/mobile screenshot acceptance gate',
+          ];
+          if (url.startsWith('https://')) lines.push('- Internal QA artifact: '+url);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          NODE
+      - name: Report next action without claiming release approval
+        if: always()
+        run: |
+          echo 'QA artifact != visual sign-off. Paired device screenshots and independent review remain required.' >> "$GITHUB_STEP_SUMMARY"
