@@ -1,0 +1,49 @@
+name: CarMazium Public Visual Baseline (Issue 477 Block 1)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/carmazium-visual-baseline.yml'
+      - 'docs/native/website-native-visual-parity-block1-20261010.md'
+      - 'scripts/test-native-visual-baseline-block1.test.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-visual-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check route matrix and source-level caveats
+        run: node --test scripts/test-native-visual-baseline-block1.test.mjs
+      - name: Install headless Playwright Chromium (public pages only)
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+      - name: Capture public website at specified mobile viewport sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p visual-evidence
+          echo "source_sha=${GITHUB_SHA}" > visual-evidence/manifest.txt
+          echo "url_base=https://www.carmazium.com" >> visual-evidence/manifest.txt
+          echo "status=ANONYMOUS_WEB_ONLY_NOT_NATIVE_PARITY" >> visual-evidence/manifest.txt
+          echo "viewports=360x800,390x844" >> visual-evidence/manifest.txt
+          for spec in "360,800" "390,844"; do
+            name="${spec/,/x}"
+            npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size="$spec" --wait-for-timeout=2500 "https://www.carmazium.com/" "visual-evidence/website-home-${name}.png"
+            npx --yes playwright@1.56.1 screenshot --browser chromium --viewport-size="$spec" --wait-for-timeout=2500 "https://www.carmazium.com/sell" "visual-evidence/website-sell-${name}.png"
+          done
+          ls -lh visual-evidence
+      - name: Upload non-sensitive anonymous web screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carmazium-issue477-block1-public-web-baseline
+          path: visual-evidence/
+          retention-days: 14
+          if-no-files-found: warn
