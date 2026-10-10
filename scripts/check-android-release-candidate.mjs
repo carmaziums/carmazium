@@ -43,6 +43,8 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
     if(typeof env[key]!=='string'||!env[key].trim())errors.push('Missing release signing secret: '+key);
     if(typeof env[key]==='string' && /[\r\n]/.test(env[key]))errors.push('Invalid newline in signing secret: '+key);
   }
+  if(/^(androiddebugkey|debug)$/i.test(env.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS||''))
+    errors.push('Android debug signing key alias must not be used for customer release');
   if(!certSha256.test(env.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256||''))
     errors.push('Expected signing certificate SHA-256 must be a 64-character digest');
   if(!/^[A-Za-z0-9+\/=]+$/.test(env.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64||''))
