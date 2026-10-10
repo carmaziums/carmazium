@@ -563,6 +563,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [showExtraStatuses, setShowExtraStatuses] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -667,21 +668,22 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     );
   }
 
+  // Website's six statuses first; retain other workflow states in More.
   const FILTERS: { label: FilterTab; value: StatusTag | null; count: number }[] = [
     { label: 'All', value: null, count: listings.length },
     { label: 'Live', value: 'LIVE', count: listings.filter(l => l.status === 'LIVE').length },
-    { label: 'Drafts', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
-    { label: 'Review', value: 'REVIEW', count: listings.filter(l => l.status === 'REVIEW').length },
-    { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
+    { label: 'Under Review', value: 'REVIEW', count: listings.filter(l => l.status === 'REVIEW').length },
     { label: 'Rejected', value: 'REJECTED', count: listings.filter(l => l.status === 'REJECTED').length },
+    { label: 'Draft', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
     { label: 'Sold', value: 'SOLD', count: listings.filter(l => l.status === 'SOLD').length },
+    { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
     { label: 'Other', value: 'OTHER', count: listings.filter(l => l.status === 'OTHER').length },
   ];
   const chosenStatus = FILTERS.find(f => f.label === activeFilter)?.value;
   const q = inventoryQuery.trim().toLowerCase();
   const filtered = listings
     .filter(l => !chosenStatus || l.status === chosenStatus)
-    .filter(l => !q || [l.title, l.registration, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
+    .filter(l => !q || [l.title, l.registration, l.make, l.transmission, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
     .sort((a, b) => sortOrder === 'price-low'
       ? a.rawPrice - b.rawPrice
       : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
@@ -723,7 +725,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <TextInput
           value={inventoryQuery}
           onChangeText={setInventoryQuery}
-          placeholder="Search vehicle or registration"
+          placeholder="Search by make, model, VRM..."
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -744,7 +746,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         contentContainerStyle={styles.filterScroll}
         style={styles.filterBar}
       >
-        {FILTERS.map((f) => (
+        {FILTERS.filter((f, index) => index < 6 || showExtraStatuses || activeFilter === f.label).map((f) => (
           <TouchableOpacity
             key={f.label}
             style={[
@@ -768,6 +770,17 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity style={styles.filterTab}
+          onPress={() => {
+            if (showExtraStatuses && (activeFilter === 'Sale pending' || activeFilter === 'Other')) setActiveFilter('All');
+            setShowExtraStatuses(previous => !previous);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={showExtraStatuses ? 'Hide additional statuses' : 'Show additional statuses'}
+          accessibilityState={{ expanded: showExtraStatuses }}
+        >
+          <Text style={styles.filterTabText}>{showExtraStatuses ? 'Fewer' : 'More'}</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Sort row ─────────────────────────────────────────────────────── */}
