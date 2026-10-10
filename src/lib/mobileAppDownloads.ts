@@ -10,6 +10,7 @@ export type MobileAppDestination = {
 
 export type MobileAppLinks = {
   ios: MobileAppDestination
+  iosTestFlight: MobileAppDestination
   android: MobileAppDestination
   androidApk: MobileAppDestination & { sha256: string | null }
 }
@@ -23,6 +24,22 @@ const iosStore = (raw?: string): string | null => {
     if (url.protocol !== "https:" || url.hostname !== "apps.apple.com" ||
         url.username || url.password || url.hash ||
         !/(?:^|\/)id\d{7,13}\/?$/.test(url.pathname)) return null
+    return url.toString()
+  } catch { return null }
+}
+
+/**
+ * Apple TestFlight public invitation URL. This is NOT a direct IPA installer.
+ * Apple requires beta review, public invitation and installation via TestFlight.
+ * Never advertise internal tester/admin links or fabricated join tokens.
+ */
+const publicTestFlight = (raw?: string): string | null => {
+  if (!raw) return null
+  try {
+    const url = new URL(raw.trim())
+    if (url.protocol !== "https:" || url.hostname !== "testflight.apple.com" ||
+        url.username || url.password || url.port || url.search || url.hash ||
+        !url.pathname.startsWith("/join/") || !/^[A-Za-z0-9]{8,16}$/.test(url.pathname.slice(6))) return null
     return url.toString()
   } catch { return null }
 }
@@ -61,10 +78,12 @@ const approvedAndroidApk = (env: AppDownloadEnv): { href: string | null; sha256:
 
 export function resolveMobileAppLinks(env: AppDownloadEnv): MobileAppLinks {
   const ios = iosStore(env.NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL)
+  const iosTestFlight = publicTestFlight(env.NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL)
   const android = googlePlay(env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL)
   const apk = approvedAndroidApk(env)
   return {
     ios: { href: ios, available: Boolean(ios) },
+    iosTestFlight: { href: iosTestFlight, available: Boolean(iosTestFlight) },
     android: { href: android, available: Boolean(android) },
     androidApk: { href: apk.href, sha256: apk.sha256, available: Boolean(apk.href) },
   }
