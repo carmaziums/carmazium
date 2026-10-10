@@ -336,9 +336,10 @@ export const MessagesScreen: React.FC = () => {
             colors={[Colors.accent]}
           />
         }
-        ListFooterComponent={<View style={{ height: 100 }} />}
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       />
     </View>
   );
