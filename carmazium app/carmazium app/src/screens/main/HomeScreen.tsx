@@ -20,6 +20,7 @@ import { useWatchlistStore } from '../../store/watchlistStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -58,6 +59,7 @@ function useCountdown(targetIso: string) {
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const themed = useHomeDiscoveryStyles();
   const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
@@ -67,42 +69,42 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
   const firstOfferFloor = getAuctionFirstOfferFloor(startingBid, Number(auction.reservePrice ?? 0));
 
   return (
-    <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+    <TouchableOpacity style={themed.auctionCard} onPress={onPress} activeOpacity={0.9}>
+      <View style={themed.cardImgWrap}>
         {images.length > 0
           ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
-          : <View style={s.cardImgEmpty} />}
-        <View style={s.livePill} pointerEvents="none">
-          <View style={s.liveDot} />
-          <Text style={s.livePillText}>LIVE</Text>
+          : <View style={themed.cardImgEmpty} />}
+        <View style={themed.livePill} pointerEvents="none">
+          <View style={themed.liveDot} />
+          <Text style={themed.livePillText}>LIVE</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
-        <View style={s.bidOverlay} pointerEvents="none">
+        <View style={themed.bidOverlay} pointerEvents="none">
           <View style={{ flex: 1 }}>
-            <Text style={s.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-            <Text style={s.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
+            <Text style={themed.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={themed.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
             {bids === 0 && firstOfferFloor > 0 && (
-              <Text style={[s.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
+              <Text style={[themed.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
                 FIRST OFFER {formatPrice(firstOfferFloor)}
               </Text>
             )}
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={s.overlayLabel}>ENDS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
+            <Text style={themed.overlayLabel}>ENDS IN</Text>
+            <Text style={[themed.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
           </View>
         </View>
       </View>
-      <View style={s.cardBody}>
-        <Text style={s.cardSpecs}>
+      <View style={themed.cardBody}>
+        <Text style={themed.cardSpecs}>
           {l?.year} · {mapTransmission(l?.transmission)}
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[themed.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -114,9 +116,9 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
           <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
-          <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
-          <Text style={s.cardMeta}> · </Text>
-          <Text style={[s.cardMeta, { color: Colors.warning }]}>View auction</Text>
+          <Text style={themed.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
+          <Text style={themed.cardMeta}> · </Text>
+          <Text style={[themed.cardMeta, { color: Colors.warning }]}>View auction</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -126,42 +128,43 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const themed = useHomeDiscoveryStyles();
   const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const startingBid = Number(auction.startingBid ?? 0);
 
   return (
-    <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+    <TouchableOpacity style={themed.auctionCard} onPress={onPress} activeOpacity={0.9}>
+      <View style={themed.cardImgWrap}>
         {images.length > 0
           ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
-          : <View style={s.cardImgEmpty} />}
-        <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
+          : <View style={themed.cardImgEmpty} />}
+        <View style={[themed.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
           <Ionicons name="calendar-outline" size={9} color={Colors.white} />
-          <Text style={s.livePillText}>UPCOMING</Text>
+          <Text style={themed.livePillText}>UPCOMING</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
-        <View style={s.bidOverlay} pointerEvents="none">
+        <View style={themed.bidOverlay} pointerEvents="none">
           <View style={{ flex: 1 }}>
-            <Text style={s.overlayLabel}>STARTING BID</Text>
-            <Text style={s.overlayVal}>{formatPrice(startingBid)}</Text>
+            <Text style={themed.overlayLabel}>STARTING BID</Text>
+            <Text style={themed.overlayVal}>{formatPrice(startingBid)}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={s.overlayLabel}>STARTS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
+            <Text style={themed.overlayLabel}>STARTS IN</Text>
+            <Text style={[themed.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
           </View>
         </View>
       </View>
-      <View style={s.cardBody}>
-        <Text style={s.cardSpecs}>
+      <View style={themed.cardBody}>
+        <Text style={themed.cardSpecs}>
           {l?.year}{l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[themed.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -176,7 +179,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
         {!!auction.buyItNowPrice && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <Ionicons name="flash-outline" size={11} color={Colors.textSecondary} />
-            <Text style={s.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
+            <Text style={themed.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
           </View>
         )}
       </View>
@@ -193,13 +196,14 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void }>(({
   listing, onPress
 }) => {
+  const themed = useHomeDiscoveryStyles();
   // The card owns its own saved state rather than receiving `saved`/`onToggle`
   // from HomeScreen. Passing it down meant HomeScreen had to subscribe to the
   // watchlist store, so saving any one car re-rendered the whole screen and
   // every rail on it. `savedIds` is a Set, so this selector returns a plain
   // boolean and only the card whose state actually changed re-renders.
-  const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
-  const toggle = useWatchlistStore((s) => s.toggle);
+  const saved = useWatchlistStore((s) => themed.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((s) => themed.toggle);
   // Tapping the image opens a full-screen lightbox instead of navigating —
   // matches web's CarCard.tsx (lightboxOnTap). Navigation still happens via
   // the rest of the card.
@@ -212,17 +216,17 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
 
   return (
     <>
-    <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+    <AnimatedTouchable entering={FadeIn.duration(220)} style={themed.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
+      <View style={themed.cardImgWrap}>
         {listing.images?.length
           ? <ImageCarousel images={listing.images} width={240} height={150} onPress={openLightbox} />
-          : <View style={s.cardImgEmpty} />
+          : <View style={themed.cardImgEmpty} />
         }
         {listing.isFeatured && (
-          <View style={s.featuredBadge} pointerEvents="none"><Text style={s.featuredBadgeText}>FEATURED</Text></View>
+          <View style={themed.featuredBadge} pointerEvents="none"><Text style={themed.featuredBadgeText}>FEATURED</Text></View>
         )}
         <TouchableOpacity
-          style={s.heartBtn}
+          style={themed.heartBtn}
           onPress={() => toggle(listing)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
@@ -231,15 +235,15 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
         </TouchableOpacity>
       </View>
-      <View style={s.cardBody}>
-        <Text style={s.cardSpecs}>
+      <View style={themed.cardBody}>
+        <Text style={themed.cardSpecs}>
           {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{listing.make} {listing.model}</Text>
+          <Text style={[themed.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{listing.make} {listing.model}</Text>
           <GradeChip grade={listing.exteriorGrade} />
         </View>
-        <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
+        <Text style={themed.cardPrice}>{formatPrice(listing.price)}</Text>
       </View>
     </AnimatedTouchable>
     <ImageLightbox
@@ -278,13 +282,13 @@ function Rail<T>({
 }) {
   if (loading) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={themed.hScroll}>
         {skeleton}
       </ScrollView>
     );
   }
   if (data.length === 0) {
-    return empty ? <View style={s.hScroll}>{empty}</View> : null;
+    return empty ? <View style={themed.hScroll}>{empty}</View> : null;
   }
   return (
     <FlatList
@@ -293,7 +297,7 @@ function Rail<T>({
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={s.hScroll}
+      contentContainerStyle={themed.hScroll}
       initialNumToRender={3}
       maxToRenderPerBatch={3}
       windowSize={5}
@@ -361,8 +365,10 @@ const BODY_TYPES = [
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
+  const themed = useHomeDiscoveryStyles();
+  const { resolvedAppearance, palette } = useNativeAppearance();
   const navigation = useNavigation<NavProp>();
-  const role = useAuthStore((s) => s.role);
+  const role = useAuthStore((s) => themed.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
@@ -521,13 +527,13 @@ export const HomeScreen: React.FC = () => {
   const recentGrid = latestListings.slice(4, 8);
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={s.topGlow} />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
+      <View style={themed.topGlow} />
       <WebsiteTopBar />
 
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingTop: 12 }]}
+        contentContainerStyle={[themed.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -541,61 +547,61 @@ export const HomeScreen: React.FC = () => {
         {/* Website's current hero: lead with how to sell, not a separate
             native-only 'Find your next car' experience. Both journeys remain
             visible immediately below. */}
-        <View style={s.greeting}>
-          <Text style={s.greetingLine}>Sell your car</Text>
-          <Text style={s.greetingAccent}>your way.</Text>
-          <Text style={s.greetingOffer}>Auction FREE · Retail £1</Text>
-          <Text style={s.greetingDetail}>
+        <View style={themed.greeting}>
+          <Text style={themed.greetingLine}>Sell your car</Text>
+          <Text style={themed.greetingAccent}>your way.</Text>
+          <Text style={themed.greetingOffer}>Auction FREE · Retail £1</Text>
+          <Text style={themed.greetingDetail}>
             Let verified dealers bid for free, or advertise your car for £1.
             A successful auction sale with approved handover earns a £100 reward.
           </Text>
         </View>
 
         {/* Two familiar website journeys, visible without scrolling past the feeds. */}
-        <View style={s.primaryJourneyRow}>
+        <View style={themed.primaryJourneyRow}>
           <TouchableOpacity
-            style={s.buyJourneyBtn}
+            style={themed.buyJourneyBtn}
             onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
           >
             <Ionicons name="car-outline" size={20} color={Colors.textPrimary} />
-            <Text style={s.buyJourneyText}>Buy Cars</Text>
+            <Text style={themed.buyJourneyText}>Buy Cars</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={s.sellJourneyBtn}
+            style={themed.sellJourneyBtn}
             onPress={() => navigation.navigate('SellLanding')}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Start selling your car"
           >
             <Ionicons name="pricetag-outline" size={20} color={Colors.white} />
-            <Text style={s.sellJourneyText}>Sell a Car</Text>
+            <Text style={themed.sellJourneyText}>Sell a Car</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.white} />
           </TouchableOpacity>
         </View>
 
         {/* Stats bar */}
         {!isLoading && (liveAuctions.length > 0 || latestListings.length > 0) && (
-          <View style={s.statsBar}>
+          <View style={themed.statsBar}>
             {liveAuctions.length > 0 && (
-              <View style={s.statChip}>
-                <View style={s.liveDot} />
-                <Text style={s.statChipText}>{liveAuctions.length} Live now</Text>
+              <View style={themed.statChip}>
+                <View style={themed.liveDot} />
+                <Text style={themed.statChipText}>{liveAuctions.length} Live now</Text>
               </View>
             )}
             {upcomingAuctions.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
+              <View style={[themed.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
                 <Ionicons name="calendar-outline" size={10} color={Colors.infoBlueLight} />
-                <Text style={[s.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
+                <Text style={[themed.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
               </View>
             )}
             {latestListings.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
+              <View style={[themed.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
                 <Ionicons name="pricetag-outline" size={10} color={Colors.accentGreen} />
-                <Text style={[s.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
+                <Text style={[themed.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
               </View>
             )}
           </View>
@@ -604,45 +610,45 @@ export const HomeScreen: React.FC = () => {
         {/* Search bar — was a TouchableOpacity with no query state at all
             (tapping anywhere just navigated to Search); now a real input
             that runs AI search inline, matching web's HomeClient.tsx. */}
-        <View style={s.searchBar}>
+        <View style={themed.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <TextInput
-            style={s.searchInput}
+            style={themed.searchInput}
             value={aiQuery}
             onChangeText={(t) => { setAiQuery(t); if (aiResult) setAiResult(null); if (aiError) setAiError(null); }}
             placeholder="Search make, model, budget..."
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={palette.textMuted}
             returnKeyType="search"
             onSubmitEditing={handleAiSearch}
             accessibilityLabel="Search cars using MaziuM AI"
           />
-          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
+          <TouchableOpacity style={themed.aiChip} onPress={handleAiSearch} disabled={aiLoading}
             accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
             {aiLoading
               ? <ActivityIndicator size="small" color={Colors.white} />
               : <>
                   <Ionicons name="sparkles" size={10} color={Colors.white} />
-                  <Text style={s.aiChipText}>AI</Text>
+                  <Text style={themed.aiChipText}>AI</Text>
                 </>}
           </TouchableOpacity>
         </View>
 
         {aiError && (
-          <View style={s.aiResultCard}>
-            <Text style={s.aiResultError}>{aiError}</Text>
+          <View style={themed.aiResultCard}>
+            <Text style={themed.aiResultError}>{aiError}</Text>
           </View>
         )}
 
         {aiResult && (
-          <View style={s.aiResultCard}>
-            <View style={s.aiResultHeader}>
+          <View style={themed.aiResultCard}>
+            <View style={themed.aiResultHeader}>
               <Ionicons name="sparkles" size={13} color={Colors.warning} />
-              <Text style={s.aiResultLabel}>MAZIUM AI</Text>
+              <Text style={themed.aiResultLabel}>MAZIUM AI</Text>
             </View>
-            <Text style={s.aiResultText}>{aiResult.text}</Text>
+            <Text style={themed.aiResultText}>{aiResult.text}</Text>
             {Object.keys(aiResult.filterCard?.params ?? {}).length > 0 && (
-              <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
-                <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
+              <TouchableOpacity style={themed.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
+                <Text style={themed.aiResultBtnText}>VIEW MATCHING CARS</Text>
                 <Ionicons name="arrow-forward" size={14} color={Colors.white} />
               </TouchableOpacity>
             )}
@@ -653,7 +659,7 @@ export const HomeScreen: React.FC = () => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.quickChipsRow}
+          contentContainerStyle={themed.quickChipsRow}
         >
           {[
             { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live', params: undefined },
@@ -664,7 +670,7 @@ export const HomeScreen: React.FC = () => {
           ].map((chip) => (
             <TouchableOpacity
               key={chip.label}
-              style={[s.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
+              style={[themed.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
               onPress={() => {
                 const params = chip.params ? { ...chip.params, _t: Date.now() } : undefined;
                 navigation.navigate(chip.screen as any, params as any);
@@ -672,7 +678,7 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Ionicons name={chip.icon as any} size={13} color={chip.color} />
-              <Text style={[s.quickChipText, { color: chip.color }]}>{chip.label}</Text>
+              <Text style={[themed.quickChipText, { color: chip.color }]}>{chip.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -742,18 +748,18 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── BROWSE BY BODY TYPE ── */}
         <Section title="BROWSE BY TYPE">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={themed.hScroll}>
             {BODY_TYPES.map(bt => (
               <TouchableOpacity
                 key={bt.bodyType}
-                style={s.bodyTypeCard}
+                style={themed.bodyTypeCard}
                 onPress={() => navigation.navigate('Search' as any, { bodyType: bt.bodyType, _t: Date.now() })}
                 activeOpacity={0.8}
               >
-                <View style={[s.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
+                <View style={[themed.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
                   <Ionicons name={bt.icon as any} size={22} color={bt.color} />
                 </View>
-                <Text style={s.bodyTypeLabel}>{bt.label}</Text>
+                <Text style={themed.bodyTypeLabel}>{bt.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -766,7 +772,7 @@ export const HomeScreen: React.FC = () => {
             badge={!isLoading && recentGrid.length > 0 ? `${recentGrid.length} new` : undefined}
             onSeeAll={() => navigation.navigate('Search' as any)}
           >
-            <View style={s.recentGrid}>
+            <View style={themed.recentGrid}>
               {isLoading ? (
                 <>
                   <Skeleton w={SW - 48} h={126} />
@@ -776,20 +782,20 @@ export const HomeScreen: React.FC = () => {
               ) : recentGrid.map(l => (
                 <TouchableOpacity
                   key={l.id}
-                  style={s.recentCard}
+                  style={themed.recentCard}
                   onPress={() => goToListing(l)}
                   activeOpacity={0.85}
                 >
-                  <View style={s.recentImgWrap}>
+                  <View style={themed.recentImgWrap}>
                     {l.images?.[0]
-                      ? <Image source={{ uri: l.images[0] }} style={s.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                      : <View style={[s.recentImg, { backgroundColor: Colors.bgTertiary }]} />
+                      ? <Image source={{ uri: l.images[0] }} style={themed.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                      : <View style={[themed.recentImg, { backgroundColor: Colors.bgTertiary }]} />
                     }
                   </View>
-                  <View style={s.recentBody}>
-                    <Text style={s.recentSpecs}>{l.year} · {Number(l.mileage || 0).toLocaleString('en-GB')} mi</Text>
-                    <Text style={s.recentTitle} numberOfLines={1}>{l.make} {l.model}</Text>
-                    <Text style={s.recentPrice}>{formatPrice(l.price)}</Text>
+                  <View style={themed.recentBody}>
+                    <Text style={themed.recentSpecs}>{l.year} · {Number(l.mileage || 0).toLocaleString('en-GB')} mi</Text>
+                    <Text style={themed.recentTitle} numberOfLines={1}>{l.make} {l.model}</Text>
+                    <Text style={themed.recentPrice}>{formatPrice(l.price)}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -803,15 +809,15 @@ export const HomeScreen: React.FC = () => {
             restyled so only the highest-value action (free listing) gets the
             hero treatment; auction/dealer below are now quiet utility rows. */}
         <TouchableOpacity
-          style={s.sellCta}
+          style={themed.sellCta}
           onPress={() => navigation.navigate('SellLanding')}
           activeOpacity={0.9}
         >
-          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={s.sellCtaWatermark} />
-          <Text style={s.sellCtaTitle}>Sell your car</Text>
-          <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
-          <View style={s.sellCtaBtn}>
-            <Text style={s.sellCtaBtnText}>Start listing</Text>
+          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={themed.sellCtaWatermark} />
+          <Text style={themed.sellCtaTitle}>Sell your car</Text>
+          <Text style={themed.sellCtaHint}>List in minutes · Get offers from buyers</Text>
+          <View style={themed.sellCtaBtn}>
+            <Text style={themed.sellCtaBtnText}>Start listing</Text>
             <Ionicons name="arrow-forward" size={14} color={Colors.white} />
           </View>
         </TouchableOpacity>
@@ -826,18 +832,18 @@ export const HomeScreen: React.FC = () => {
             ? { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle }
             : undefined;
           return (
-            <View style={s.secondaryRows}>
+            <View style={themed.secondaryRows}>
               {showAuctionRow && (
                 <TouchableOpacity
-                  style={[s.utilityRow, dividerStyle]}
+                  style={[themed.utilityRow, dividerStyle]}
                   onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
                   activeOpacity={0.7}
                 >
-                  <View style={s.utilityRowIconWrap}>
+                  <View style={themed.utilityRowIconWrap}>
                     <Ionicons name="hammer-outline" size={16} color={Colors.accent} />
-                    <View style={s.auctionLiveDot} />
+                    <View style={themed.auctionLiveDot} />
                   </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>
+                  <Text style={themed.utilityRowText} numberOfLines={1}>
                     {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
@@ -849,14 +855,14 @@ export const HomeScreen: React.FC = () => {
                   mobile had no equivalent entry point anywhere on the home screen. */}
               {showDealerRow && (
                 <TouchableOpacity
-                  style={s.utilityRow}
+                  style={themed.utilityRow}
                   onPress={() => navigation.navigate('DealerOnboarding' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={s.utilityRowIconWrap}>
+                  <View style={themed.utilityRowIconWrap}>
                     <Ionicons name="business-outline" size={16} color={Colors.infoBlueLight} />
                   </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
+                  <Text style={themed.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               )}
@@ -1021,3 +1027,44 @@ const s = StyleSheet.create({
   auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
   utilityRowText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white },
 });
+
+/**
+ * Keep the website's semantic Light/Dark colours on each Home discovery
+ * surface. Photo overlays and branded red CTA labels retain their deliberate
+ * fixed contrast; prices, metadata and card text follow the current palette.
+ */
+function useHomeDiscoveryStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...s,
+    container: [s.container, { backgroundColor: palette.bgBody }],
+    greetingLine: [s.greetingLine, { color: palette.textPrimary }],
+    greetingDetail: [s.greetingDetail, { color: palette.textSecondary }],
+    buyJourneyBtn: [s.buyJourneyBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    buyJourneyText: [s.buyJourneyText, { color: palette.textPrimary }],
+    searchBar: [s.searchBar, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    searchInput: [s.searchInput, { color: palette.textPrimary }],
+    aiResultCard: [s.aiResultCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    aiResultText: [s.aiResultText, { color: palette.textSecondary }],
+    sectionTitle: [s.sectionTitle, { color: palette.textPrimary }],
+    auctionCard: [s.auctionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    listingCard: [s.listingCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardSpecs: [s.cardSpecs, { color: palette.textMuted }],
+    cardTitle: [s.cardTitle, { color: palette.textPrimary }],
+    cardPrice: [s.cardPrice, { color: palette.textPrimary }],
+    cardMeta: [s.cardMeta, { color: palette.textSecondary }],
+    bodyTypeCard: [s.bodyTypeCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    bodyTypeLabel: [s.bodyTypeLabel, { color: palette.textPrimary }],
+    recentCard: [s.recentCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    recentSpecs: [s.recentSpecs, { color: palette.textMuted }],
+    recentTitle: [s.recentTitle, { color: palette.textPrimary }],
+    recentPrice: [s.recentPrice, { color: palette.textPrimary }],
+    sellCtaTitle: [s.sellCtaTitle, { color: palette.textPrimary }],
+    sellCtaHint: [s.sellCtaHint, { color: palette.textSecondary }],
+    secondaryRows: [s.secondaryRows, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    utilityRowText: [s.utilityRowText, { color: palette.textPrimary }],
+    utilityRowIconWrap: [s.utilityRowIconWrap, { backgroundColor: palette.bgInput }],
+    emptyState: [s.emptyState, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyStateText: [s.emptyStateText, { color: palette.textMuted }],
+  }), [palette]);
+}
