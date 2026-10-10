@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
+      - 'carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx'
   workflow_dispatch:
 
 permissions:
