@@ -160,7 +160,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     <View style={styles.screen}>
       <WebsiteTopBar />
       <View style={styles.heading}>
-        <Text style={styles.pageTitle}>Auctions &amp; Buying</Text>
+        <Text style={styles.pageTitle}>Auctions & Buying</Text>
         <Text style={styles.subtitle}>Live auctions, bids and purchases</Text>
         {canManageInventory && (
           <TouchableOpacity accessibilityRole="button"
@@ -188,7 +188,14 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
         ))}
       </ScrollView>
       {section === 'live' ? (
-        <LiveScreen embeddedDealerHub />
+        <View style={styles.liveContainer}>
+          {!accessLoading && !canPlaceBid && (
+            <Text style={styles.permissionNotice}>
+              You can browse auctions. Placing bids requires dealer bidding permission.
+            </Text>
+          )}
+          <LiveScreen embeddedDealerHub />
+        </View>
       ) : (
         <>
           {canManageInventory && needsHandover > 0 && !error && !loading && (
@@ -266,6 +273,9 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bgPrimary },
+  liveContainer: { flex: 1 },
+  permissionNotice: { color: Colors.textMuted, paddingHorizontal: 20, paddingBottom: 5,
+    fontFamily: FontFamily.medium, fontSize: 12 },
   heading: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 9, gap: 5 },
   pageTitle: { fontFamily: FontFamily.extraBold, fontSize: 25,
     color: Colors.textPrimary, letterSpacing: -0.5, textTransform: 'uppercase' },
