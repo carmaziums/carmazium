@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, RefreshControl,
-  TextInput, ActivityIndicator, FlatList,
+  TextInput, ActivityIndicator, FlatList, Alert,
 } from 'react-native';
 import type { ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
@@ -15,6 +15,7 @@ import { getFeaturedListings, searchListings, mapTransmission } from '../../lib/
 import { getActiveAuctions, getScheduledAuctions, AuctionDetail, auctionToListingParam } from '../../lib/auctionApi';
 import { naturalLanguageSearch, AiSearchResult } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -410,9 +411,48 @@ export const HomeScreen: React.FC = () => {
 
   const goToListing = (listing: CarListing) => navigation.navigate('VehicleDetail', { listing });
 
+  // Match the already protected SearchScreen AI entry point. Home was
+  // sending queries while the API helper unconditionally claimed consent.
+  // No query is sent until the same per-user consent is explicitly accepted.
+  const ensureHomeAiSearchConsent = async (): Promise<boolean> => {
+    const userId = useAuthStore.getState().user?.id;
+    const key = userId ? `mazium_ai_consent_v1:${userId}` : 'mazium_ai_consent_v1:anonymous';
+    try {
+      if (await AsyncStorage.getItem(key) === 'accepted') return true;
+    } catch {
+      // Storage failure is not consent: always ask, and block on failed save.
+    }
+    return new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'AI data sharing',
+        'Your AI search text will be sent to OpenAI to generate search guidance. AI can make mistakes. Do not include passwords, payment credentials or unnecessary sensitive personal information. Do you consent?',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Privacy',
+            onPress: () => {
+              try { navigation.navigate('PrivacyPolicy'); } catch {}
+              resolve(false);
+            },
+          },
+          {
+            text: 'I consent',
+            onPress: () => {
+              AsyncStorage.setItem(key, 'accepted')
+                .then(() => resolve(true))
+                .catch(() => resolve(false));
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    });
+  };
+
   const handleAiSearch = async () => {
     const query = aiQuery.trim();
     if (!query || aiLoading) return;
+    if (!(await ensureHomeAiSearchConsent())) return;
     setAiLoading(true);
     setAiError(null);
     try {
@@ -574,8 +614,10 @@ export const HomeScreen: React.FC = () => {
             placeholderTextColor={Colors.iconMuted}
             returnKeyType="search"
             onSubmitEditing={handleAiSearch}
+            accessibilityLabel="Search cars using MaziuM AI"
           />
-          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading} activeOpacity={0.8}>
+          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
+            accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
             {aiLoading
               ? <ActivityIndicator size="small" color={Colors.white} />
               : <>
