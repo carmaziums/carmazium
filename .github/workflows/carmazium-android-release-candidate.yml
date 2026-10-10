@@ -154,7 +154,13 @@ jobs:
           echo "Source revision: $GITHUB_SHA; candidate versionCode: $CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE" >> "$GITHUB_STEP_SUMMARY"
           mkdir -p "$GITHUB_WORKSPACE/review-only-apk"
           cp "$apk" "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
-          sha256sum "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk" > "$GITHUB_WORKSPACE/review-only-apk/SHA256SUMS.txt"
+          review_apk="$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
+          evidence="$GITHUB_WORKSPACE/review-only-apk/release-evidence.json"
+          # Read the actual, signer-verified APK after copying, then re-check it.
+          node ../../scripts/android-apk-release-evidence.mjs create "$review_apk" "$evidence"
+          node ../../scripts/android-apk-release-evidence.mjs verify "$review_apk" "$evidence"
+          (cd "$GITHUB_WORKSPACE/review-only-apk" && sha256sum CarMazium-Android-REVIEW-ONLY.apk > SHA256SUMS.txt)
+          echo 'Verified private artifact manifest: release-evidence.json, APK and SHA256SUMS.txt.' >> "$GITHUB_STEP_SUMMARY"
           echo 'Release signer verified. INTERNAL REVIEW ONLY; no public distribution authorised.' >> "$GITHUB_STEP_SUMMARY"
       - name: Store short-lived private review artifact only
         uses: actions/upload-artifact@v4
