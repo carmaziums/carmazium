@@ -202,8 +202,8 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
   // watchlist store, so saving any one car re-rendered the whole screen and
   // every rail on it. `savedIds` is a Set, so this selector returns a plain
   // boolean and only the card whose state actually changed re-renders.
-  const saved = useWatchlistStore((s) => themed.savedIds.has(listing.id));
-  const toggle = useWatchlistStore((s) => themed.toggle);
+  const saved = useWatchlistStore((state) => state.savedIds.has(listing.id));
+  const toggle = useWatchlistStore((state) => state.toggle);
   // Tapping the image opens a full-screen lightbox instead of navigating —
   // matches web's CarCard.tsx (lightboxOnTap). Navigation still happens via
   // the rest of the card.
@@ -282,13 +282,13 @@ function Rail<T>({
 }) {
   if (loading) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={themed.hScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
         {skeleton}
       </ScrollView>
     );
   }
   if (data.length === 0) {
-    return empty ? <View style={themed.hScroll}>{empty}</View> : null;
+    return empty ? <View style={s.hScroll}>{empty}</View> : null;
   }
   return (
     <FlatList
@@ -297,7 +297,7 @@ function Rail<T>({
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={themed.hScroll}
+      contentContainerStyle={s.hScroll}
       initialNumToRender={3}
       maxToRenderPerBatch={3}
       windowSize={5}
@@ -321,31 +321,38 @@ function Rail<T>({
 
 const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.ReactNode; badge?: string }> = ({
   title, onSeeAll, children, badge
-}) => (
-  <View style={s.section}>
-    <View style={s.sectionHeader}>
+}) => {
+  const themed = useHomeDiscoveryStyles();
+  return (
+  <View style={themed.section}>
+    <View style={themed.sectionHeader}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={s.sectionTitle}>{title}</Text>
-        {badge ? <View style={s.sectionBadge}><Text style={s.sectionBadgeText}>{badge}</Text></View> : null}
+        <Text style={themed.sectionTitle}>{title}</Text>
+        {badge ? <View style={themed.sectionBadge}><Text style={themed.sectionBadgeText}>{badge}</Text></View> : null}
       </View>
       {onSeeAll && (
         <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
-          <Text style={s.seeAll}>See all</Text>
+          <Text style={themed.seeAll}>See all</Text>
         </TouchableOpacity>
       )}
     </View>
     {children}
   </View>
-);
+  );
+};
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
-  <View style={s.emptyState}>
-    <Ionicons name={icon as any} size={24} color={Colors.borderMuted} />
-    <Text style={s.emptyStateText}>{text}</Text>
-  </View>
-);
+const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => {
+  const themed = useHomeDiscoveryStyles();
+  const { palette } = useNativeAppearance();
+  return (
+    <View style={themed.emptyState}>
+      <Ionicons name={icon as any} size={24} color={palette.textMuted} />
+      <Text style={themed.emptyStateText}>{text}</Text>
+    </View>
+  );
+};
 
 // ─── Body type chips ──────────────────────────────────────────────────────────
 
@@ -368,7 +375,7 @@ export const HomeScreen: React.FC = () => {
   const themed = useHomeDiscoveryStyles();
   const { resolvedAppearance, palette } = useNativeAppearance();
   const navigation = useNavigation<NavProp>();
-  const role = useAuthStore((s) => themed.role);
+  const role = useAuthStore((state) => state.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
