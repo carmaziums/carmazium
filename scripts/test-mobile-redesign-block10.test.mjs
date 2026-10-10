@@ -33,7 +33,19 @@ test('every hardcoded drawer and bottom-tab destination resolves to a registered
   );
 
   assert.ok(mountedRoutes.size >= 50, 'Stack unexpectedly lost screens');
-  assert.deepEqual([...mountedTabs].sort(), ['Home', 'Live', 'Profile', 'Saved', 'Search'].sort());
+  // Consumer deep links must remain intact while dealer mode adds a second,
+  // separately permission-gated five-item navigation scheme.
+  const consumerTabs = ['Home', 'Live', 'Profile', 'Saved', 'Search'];
+  const dealerTabs = ['DealerHome', 'DealerStock', 'DealerCustomers', 'DealerBuyBid', 'DealerMore'];
+  assert.deepEqual(
+    [...mountedTabs].sort(),
+    [...consumerTabs, ...dealerTabs].sort(),
+    'Only the five established consumer routes and five web-matching dealer routes may be mounted',
+  );
+  assert.match(tabs, /role === 'dealer' && accountRole === 'dealer'/);
+  assert.match(tabs, /hasPermission\('VIEW_INVENTORY'\)/);
+  assert.match(tabs, /hasPermission\('MANAGE_CRM'\)/);
+  assert.match(tabs, /hasPermission\('VIEW_TRADE'\)/);
   for (const match of drawer.matchAll(/stackScreen:\s*'([^']+)'/g)) {
     assert.ok(definedRoutes.has(match[1]), `Drawer destination ${match[1]} has no route type`);
     assert.ok(mountedRoutes.has(match[1]), `Drawer destination ${match[1]} is not registered`);
