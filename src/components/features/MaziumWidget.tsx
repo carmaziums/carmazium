@@ -63,6 +63,8 @@ export function MaziumWidget() {
     const [isThinking, setIsThinking] = React.useState(false)
     const [quickReplies, setQuickReplies] = React.useState<QuickReply[]>([])
     const [hasAiConsent, setHasAiConsent] = React.useState<boolean | null>(null)
+    // Invalidate a pending AI reply when the visitor withdraws data-sharing consent.
+    const aiConsentEpochRef = React.useRef(0)
     const [reportTarget, setReportTarget] = React.useState<ChatMessage | null>(null)
     const [reportReason, setReportReason] = React.useState<AiReportReason | "">("")
     const [reportDetails, setReportDetails] = React.useState("")
@@ -125,8 +127,8 @@ export function MaziumWidget() {
     ): Promise<ChatMessage> => {
         try {
             // Build conversation history for the API (last 10 messages)
-            const history = [...currentMessages, { role: "user" as const, text: userMessage }]
-                .slice(-10)
+            // handleSend already added this message; do not duplicate it in API context.
+            const history = currentMessages.slice(-10)
                 .map((m) => ({
                     role: (m.role === "bot" ? "assistant" : "user") as "user" | "assistant",
                     content: m.text,
@@ -152,7 +154,10 @@ export function MaziumWidget() {
 
     const handleSend = async (message?: string) => {
         const text = (message || input).trim()
-        if (!text || hasAiConsent !== true) return
+        if (!text || hasAiConsent !== true || isThinking) return
+        const sendEpoch = aiConsentEpochRef.current
+        const canShowReply = () => aiConsentEpochRef.current === sendEpoch &&
+            localStorage.getItem("mazium_ai_consent_v1") === "accepted"
         setInput("")
 
         // Add user message
@@ -162,14 +167,14 @@ export function MaziumWidget() {
 
         try {
             const reply = await processMessage(text, updatedMessages)
-            setMessages((prev) => [...prev, reply])
+            if (canShowReply()) setMessages((prev) => [...prev, reply])
         } catch {
-            setMessages((prev) => [
+            if (canShowReply()) setMessages((prev) => [
                 ...prev,
                 { role: "bot", text: "Something went wrong. Please try again!" },
             ])
         } finally {
-            setIsThinking(false)
+            if (canShowReply()) setIsThinking(false)
         }
     }
 
@@ -179,8 +184,11 @@ export function MaziumWidget() {
     }
 
     const withdrawAiConsent = () => {
+        // Stop future requests immediately; never display a late reply from an old session.
+        aiConsentEpochRef.current += 1
         localStorage.removeItem("mazium_ai_consent_v1")
         setHasAiConsent(false)
+        setIsThinking(false)
         setInput("")
     }
 

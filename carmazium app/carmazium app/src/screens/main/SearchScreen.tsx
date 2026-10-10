@@ -307,12 +307,14 @@ export const SearchScreen: React.FC = () => {
     if (hasNew) {
       setQuickFilter('custom');
       setQuery('');
-      if (!p.make) setSelectedMakes([]);
-      setMinPrice(0);
-      if (!p.maxPrice) setMaxPrice(150000);
-      setMinYear('Any');
+      // Do not immediately erase filters received from Mazium's card.
+      // Reset only dimensions that were NOT supplied in this navigation.
+      if (!p.make && !p.aiFilters?.make) setSelectedMakes([]);
+      if (!p.aiFilters?.minPrice) setMinPrice(0);
+      if (!p.maxPrice && !p.aiFilters?.maxPrice) setMaxPrice(150000);
+      if (!p.aiFilters?.minYear) setMinYear('Any');
       setMaxMiles('Any');
-      setTransmissions([]);
+      if (!p.aiFilters?.transmission) setTransmissions([]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(route.params as any)?._t]);
