@@ -35,6 +35,20 @@ Only if every gate passes does it upload an **internal 3-day GitHub Actions arti
 
 **This build references the live service configuration**, unlike the unconfigured isolated synthetic staging that is still needed for mutable app QA. Merely installing a candidate must not trigger test bids, uploads, payment attempts, KYC, refunds or synthetic real-customer messages; real transactional QA requires approved isolated staging.
 
+## Block 6: confirm the *hosted* APK is byte-for-byte identical before enabling any button
+
+A working `/download-app` button requires more than a matching release URL or an environment flag. `scripts/verify-first-party-android-apk.mjs` independently downloads the exact HTTPS APK URL from `carmazium.com` or `www.carmazium.com`, disallows redirects, credentials, tracking queries, non-APK MIME responses and unrecognised paths, and rechecks the **full hosted bytes** against the original internal-release evidence. It also invokes Android SDK `apksigner` and `aapt` on the downloaded bytes and compares the original verified signer fingerprint, package identity and version. It fails closed on invalid/short/truncated/tampered output. The downloaded file is immediately deleted after verification. Source tests use fake binary data and stub SDK output without external network requests.
+
+**Public hosting is itself public access, even before the download button is activated.** Never upload an unapproved internal review APK into a public `/downloads/` path merely to test it. First independently approve the genuine signing identity, binary and device QA; only then place the versioned final APK at the stable first-party URL. Following hosting and **before** enabling the button, run:
+
+```bash
+ANDROID_HOME=/path/to/android-sdk node scripts/verify-first-party-android-apk.mjs \\
+  https://www.carmazium.com/downloads/CarMazium-1.0.0-vNN.apk \\
+  /secure/release-evidence.json
+```
+
+Replace `vNN` with the actually approved version code and use evidence obtained from the signed internal build. The verifier **never grants public-release approval**; check the owner's independent approval and install/functional/security QA separately. Only after real hosted-file verification should the website's APK variables be configured and deployed. Check the customer download again after website redeployment and compare its SHA-256, package, signer and installed version. Never use a fabricated checksum or a QA/debug APK.
+
 ## To activate public Android download later
 1. Provide verified release-signing credentials with secure provenance (ideally retain the same signing identity intended for Play Store). If missing, have the release owner establish a signing strategy first. Do not regenerate signing keys casually.
 2. Produce the internal signed candidate, confirm signer digest/package/version and perform Android installation, logout/login, compatibility, malware/dependency scans, payment/permission checks, and source-revision tests on a controlled device.
