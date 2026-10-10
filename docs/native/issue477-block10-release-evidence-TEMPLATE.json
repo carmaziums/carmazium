@@ -1,0 +1,81 @@
+{
+  "_warning": "TEMPLATE ONLY. Not proof, not approval. Never put keystore material, passwords, private IDs, customer data or raw KYC into Git.",
+  "source": {
+    "branch": "UNMERGED",
+    "commit_sha": "",
+    "reviewed_pr_sha": ""
+  },
+  "apk": {
+    "sha256": "",
+    "signer_certificate_sha256": "",
+    "owner_pinned_cert_sha256": "",
+    "source_sha": "",
+    "package_name": "",
+    "version_code": "",
+    "size_bytes": 0,
+    "independently_verified": false,
+    "signing_key_provenance_approved": false
+  },
+  "hosting": {
+    "url": "",
+    "verified_from_exact_url": false,
+    "apk_sha256": "",
+    "signer_certificate_sha256": "",
+    "source_sha": "",
+    "version_code": "",
+    "size_bytes": 0
+  },
+  "android_device_qa": {
+    "tested_at": "",
+    "physical_device": false,
+    "device_model": "",
+    "os_version": "",
+    "installed_apk_sha256": "",
+    "production_mutating_test_activity": null,
+    "checks": {
+      "install_cold_start": false,
+      "existing_user_sign_in": false,
+      "browse_and_search": false,
+      "mazium_ai_consent_and_withdrawal": false,
+      "mazium_filter_card_navigation": false,
+      "mazium_account_switch_privacy": false,
+      "keyboard_accessibility_and_large_text": false,
+      "update_install_preserves_user_data": false
+    }
+  },
+  "mazium_visual_review": {
+    "website_source_commit": "",
+    "native_apk_sha256": "",
+    "android_role_screenshots_reviewed": false,
+    "ios_role_screenshots_reviewed": false,
+    "accessibility_large_text_verified": false,
+    "roles": {
+      "buyer": {
+        "android_verified": false,
+        "ios_verified": false
+      },
+      "trader": {
+        "android_verified": false,
+        "ios_verified": false
+      }
+    }
+  },
+  "ios_testflight": {
+    "app_store_connect_build_verified": false,
+    "public_testflight_invitation_verified": false,
+    "physical_iphone_tested": false,
+    "checks": {
+      "signed_testflight_build": false,
+      "apple_external_beta_approved": false,
+      "tested_on_physical_iphone": false,
+      "mazium_ai_privacy_and_filters": false
+    }
+  },
+  "owner_signoff": {
+    "android_public_release_approved": false,
+    "ios_testflight_public_link_approved": false,
+    "approver": "",
+    "approved_source_sha": "",
+    "approved_apk_sha256": ""
+  }
+}
