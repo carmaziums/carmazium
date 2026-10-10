@@ -34,6 +34,7 @@ import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { useDealerAccess } from '../../hooks/useDealerAccess';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -516,6 +517,8 @@ const BoardCard: React.FC<{
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { hasPermission } = useDealerAccess(true);
+  const canManageOffers = hasPermission('MANAGE_OFFERS');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
   const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [mobileStage, setMobileStage] = useState('NEW');
@@ -729,33 +732,6 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     return map;
   }, [leads]);
 
-  const renderBoardColumn = useCallback(
-    ({ item: stage }: { item: (typeof BOARD_STAGES)[number] }) => {
-      const stageLeads = leadsByStage[stage.key] ?? [];
-      return (
-        <View style={styles.boardColumn}>
-          <View style={styles.boardColumnHeader}>
-            <View style={[styles.boardColumnDot, { backgroundColor: stage.color }]} />
-            <Text style={styles.boardColumnTitle}>{stage.label}</Text>
-            <Text style={styles.boardColumnCount}>{stageLeads.length}</Text>
-          </View>
-          <FlatList
-            style={styles.boardColumnList}
-            data={stageLeads}
-            keyExtractor={(l) => l.id}
-            renderItem={({ item }) => (
-              <BoardCard lead={item} onPress={handleLeadPress} onMove={handleOpenReassign} />
-            )}
-            contentContainerStyle={{ paddingBottom: 12 }}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<Text style={styles.boardColumnEmpty}>No customers</Text>}
-          />
-        </View>
-      );
-    },
-    [leadsByStage, handleLeadPress, handleOpenReassign],
-  );
-
   if (selectedLead) {
     return (
       <LeadDetail
@@ -774,6 +750,17 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const newCount = leads.filter(l => l.status === 'NEW').length;
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const newThisWeek = leads.filter(l => l.createdAtIso && new Date(l.createdAtIso).getTime() >= weekAgo).length;
+
+  const activeLeads = leads.filter(l => !['WON', 'LOST'].includes(l.status));
+  const overdueLeads = activeLeads.filter(isFollowUpOverdue);
+  const wonCount = leads.filter(l => l.status === 'WON').length;
+  const websiteSummary = [
+    { label: 'New', count: newCount, color: Colors.infoBlue },
+    { label: 'Active', count: activeLeads.length, color: Colors.warning },
+    { label: 'Follow-up due', count: overdueLeads.length,
+      color: overdueLeads.length > 0 ? Colors.error : Colors.textMuted },
+    { label: 'Sold', count: wonCount, color: Colors.success },
+  ];
 
   // Won/Lost used to be invisible inside a catch-all "Cold" tag with no
   // dedicated filter — only reachable by scrolling "All" (mobile-production-
