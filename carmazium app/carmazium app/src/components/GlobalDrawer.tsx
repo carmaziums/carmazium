@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Dimensions,
+  useWindowDimensions,
   Alert,
   ScrollView,
   ActivityIndicator,
@@ -254,23 +255,38 @@ export const GlobalDrawer: React.FC = () => {
     : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  // Website DashboardSidebar opens More above the bottom tabs, across the
+  // screen width. Only dealer workspace uses that presentation; preserve
+  // established consumer drawer navigation and deep-link behaviour.
+  const sheetHeight = Math.min(720, Math.round(windowHeight * 0.82));
   const navigation = useNavigation<NavProp>();
 
   const translateX = useSharedValue(DRAWER_WIDTH);
+  const translateY = useSharedValue(sheetHeight);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
-      translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
+      if (dealerMode) {
+        translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
+      } else {
+        translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
+      }
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
       translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
+      translateY.value = withTiming(sheetHeight, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen, translateX, backdropOpacity]);
+  }, [isOpen, dealerMode, sheetHeight, translateX, translateY, backdropOpacity]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
-  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: dealerMode
+      ? [{ translateY: translateY.value }]
+      : [{ translateX: translateX.value }],
+  }));
 
   // Determine which tab is active
   const getActiveTab = (): string => {
@@ -391,17 +407,19 @@ export const GlobalDrawer: React.FC = () => {
         <Animated.View style={[styles.backdrop, backdropStyle]} />
       </TouchableWithoutFeedback>
 
-      {/* Slide-in panel */}
+      {/* Dealer website uses a full-width bottom More panel; consumer
+          navigation keeps the existing right drawer. Both retain all links. */}
       <Animated.View
         style={[
           styles.panel,
+          dealerMode ? styles.dealerBottomSheet : styles.sidePanel,
           panelStyle,
-          {
-            paddingTop: insets.top + 10,
-            paddingBottom: insets.bottom + 16,
-          },
+          dealerMode
+            ? { height: sheetHeight, paddingTop: 10, paddingBottom: insets.bottom + 10 }
+            : { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
         ]}
       >
+        {dealerMode && <View style={styles.sheetHandle} accessibilityElementsHidden />}
         {/* ── Close button ─────────────────────────────── */}
         <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
@@ -713,18 +731,38 @@ const styles = StyleSheet.create({
   // Sliding panel
   panel: {
     position: 'absolute',
-    top: 0,
     right: 0,
     bottom: 0,
-    width: DRAWER_WIDTH,
     backgroundColor: '#243047',
-    borderLeftWidth: 1,
-    borderLeftColor: Colors.whiteAlpha08,
     shadowColor: Colors.black,
-    shadowOffset: { width: -6, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 24,
     elevation: 24,
+  },
+  sidePanel: {
+    top: 0,
+    width: DRAWER_WIDTH,
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.whiteAlpha08,
+    shadowOffset: { width: -6, height: 0 },
+  },
+  dealerBottomSheet: {
+    left: 0,
+    width: '100%',
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSubtle,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: -6 },
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    backgroundColor: Colors.textMuted,
+    marginBottom: 2,
   },
 
   // Close button
