@@ -74,7 +74,7 @@ test('one set of permission-gated jobs; no altered auction/KYC/buyer routes', ()
     assert.ok(native.includes(route));
   }
   assert.ok(native.includes("navigation.navigate('Tabs', { screen: 'DealerBuyBid' })"));
-  assert.ok(routes.includes('<Tab.Screen name="DealerBuyBid" component={LiveScreen} />'));
+  assert.ok(routes.includes('<Tab.Screen name="DealerBuyBid" component={DealerBuyBidScreen} />'));
   assert.ok(routes.includes('<Tab.Screen name="DealerMore" component={ProfileTabScreen} />'));
   assert.ok(native.includes('setRole(\'buyer\')')); // legacy buyer preview retained
   assert.ok(native.includes('showPhoneBanner')); // existing KYC/phone affordance retained
