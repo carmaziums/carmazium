@@ -526,7 +526,7 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={s.sellJourneyBtn}
-            onPress={() => navigation.navigate('SellCarFlow')}
+            onPress={() => navigation.navigate('SellLanding')}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Start selling your car"
