@@ -888,6 +888,94 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // Website mobile PageHeader keeps the main listing CTA and imports in the
+  // page header rather than a bottom fixed overlay.
+  stockHeaderActions: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 20, marginBottom: 16, gap: 8,
+  },
+  stockAddAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: Colors.accent, borderRadius: 12,
+    minHeight: 46, paddingHorizontal: 16,
+  },
+  stockAddActionText: {
+    fontFamily: FontFamily.bold, fontSize: 12, color: Colors.white,
+  },
+  stockSecondaryAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard, borderRadius: 12,
+    minHeight: 46, paddingHorizontal: 11,
+  },
+  stockSecondaryActionText: {
+    fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: 11,
+  },
+  stockListContent: {
+    paddingTop: 4, paddingBottom: 92,
+  },
+  websiteStockCard: {
+    marginHorizontal: 20, padding: 16, marginBottom: 12,
+    backgroundColor: Colors.bgCard, borderWidth: 1,
+    borderColor: Colors.borderSubtle, borderRadius: 18,
+  },
+  stockShowcase: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  stockImageWrap: {
+    width: 80, height: 64, borderRadius: 12, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgElevated, alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stockImage: { width: '100%', height: '100%' },
+  stockIdentity: { flex: 1, minWidth: 0 },
+  stockTitle: {
+    fontFamily: FontFamily.extraBold, fontSize: 15, lineHeight: 21,
+    color: Colors.textPrimary,
+  },
+  stockFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 5 },
+  stockRegistration: {
+    color: Colors.textSecondary, backgroundColor: Colors.bgElevated,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    borderRadius: 4, overflow: 'hidden', paddingHorizontal: 5,
+    paddingVertical: 2, fontSize: 11, fontFamily: FontFamily.bold,
+  },
+  stockMake: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
+  stockFact: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  stockMetrics: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16,
+  },
+  stockMetricTile: {
+    width: '48%', flexGrow: 1, minWidth: 0, minHeight: 79,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgElevated, borderRadius: 12, padding: 12,
+  },
+  stockMetricLabel: {
+    fontFamily: FontFamily.bold, color: Colors.textMuted,
+    fontSize: 10, letterSpacing: 0.6,
+  },
+  stockPrice: {
+    fontFamily: FontFamily.extraBold, fontSize: 20,
+    color: Colors.textPrimary, marginTop: 6,
+  },
+  stockMetricValue: {
+    fontFamily: FontFamily.extraBold, fontSize: 18,
+    color: Colors.textPrimary, marginTop: 6,
+  },
+  stockOutlinedStatus: {
+    alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 4, marginTop: 6,
+  },
+  stockStatusText: { fontFamily: FontFamily.bold, fontSize: 11 },
+  stockRejection: { fontFamily: FontFamily.medium, fontSize: 10,
+    color: Colors.error, marginTop: 5 },
+  stockOpenRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+    gap: 4, marginTop: 13, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: Colors.borderSubtle,
+  },
+  stockOpenText: { color: Colors.textSecondary, fontFamily: FontFamily.bold, fontSize: 12 },
+  stockGridFact: { color: Colors.textMuted, fontFamily: FontFamily.medium,
+    fontSize: 11, marginBottom: 3 },
   // ── LIST VIEW ────────────────────────────────────────────────────────────
   listHeader: {
     flexDirection: 'row',
@@ -897,20 +985,22 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   listHeaderCenter: {
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   listHeaderSub: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.iconMuted,
-    letterSpacing: 1.8,
-    marginBottom: 2,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: 0.4,
+    marginTop: 4,
   },
   listHeaderTitle: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.size26,
     color: Colors.white,
     letterSpacing: -0.8,
+    textTransform: 'uppercase',
   },
 
   inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
@@ -1103,19 +1193,26 @@ const styles = StyleSheet.create({
   // Grid view — compact thumbnail-forward alternative to the row view
   // (mobile-ui-ux-audit.md §C9).
   gridContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 110,
+    paddingHorizontal: 20,
+    paddingBottom: 92,
   },
   gridRow: {
     justifyContent: 'space-between',
   },
   gridCard: {
     width: '48%',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderSubtle,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 9,
     marginBottom: RowDensity.compact.gap * 2,
   },
   gridThumbWrap: {
     width: '100%',
     aspectRatio: 4 / 3,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: RowDensity.compact.borderRadius,
     overflow: 'hidden',
     position: 'relative',
