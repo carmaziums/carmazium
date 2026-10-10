@@ -35,6 +35,7 @@ import { Button } from '../../components/Button';
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { fetchAllMyListings } from '../../lib/myListingsApi';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -61,6 +62,8 @@ interface Lead {
   nextFollowUpAt?: string | null;
   lastActivityAt?: string | null;
 }
+
+interface CustomerListingOption { id: string; title: string; make: string; vrm: string }
 
 interface StaffOption {
   userId: string;
@@ -540,6 +543,9 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const [newNotes, setNewNotes] = useState('');
   const [newAssignedToId, setNewAssignedToId] = useState<string | null>(null);
   const [newSource, setNewSource] = useState<string>('walk_in');
+  const [newListingId, setNewListingId] = useState<string | null>(null);
+  const [newListingQuery, setNewListingQuery] = useState('');
+  const [customerListings, setCustomerListings] = useState<CustomerListingOption[]>([]);
   const [creating, setCreating] = useState(false);
 
   const fetchLeads = useCallback(async (isRefresh = false) => {
@@ -620,9 +626,25 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     }
   };
 
+  useEffect(() => {
+    if (!createModalVisible) return;
+    let mounted = true;
+    // Optional listing lookup matches the website Add Lead form; read only.
+    void fetchAllMyListings<any>()
+      .then(rows => {
+        if (mounted) setCustomerListings(rows.map((l: any) => ({
+          id: String(l.id),
+          title: l.title || [l.year, l.make, l.model].filter(Boolean).join(' ') || 'Untitled',
+          make: l.make || '', vrm: l.vrm || '',
+        })));
+      })
+      .catch(() => { if (mounted) setCustomerListings([]); });
+    return () => { mounted = false; };
+  }, [createModalVisible]);
+
   const resetCreateForm = () => {
     setNewName(''); setNewEmail(''); setNewPhone(''); setNewNotes(''); setNewAssignedToId(null);
-    setNewSource('walk_in');
+    setNewSource('walk_in'); setNewListingId(null); setNewListingQuery('');
   };
 
   const handleCreateLead = async () => {
@@ -641,6 +663,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           notes: newNotes.trim() || undefined,
           assignedToId: newAssignedToId ?? undefined,
           source: newSource,
+          listingId: newListingId || undefined,
         }),
       });
       if (res.success && res.data) {
@@ -749,9 +772,6 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   }
 
   const newCount = leads.filter(l => l.status === 'NEW').length;
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const newThisWeek = leads.filter(l => l.createdAtIso && new Date(l.createdAtIso).getTime() >= weekAgo).length;
-
   const activeLeads = leads.filter(l => !['WON', 'LOST'].includes(l.status));
   const overdueLeads = activeLeads.filter(isFollowUpOverdue);
   const wonCount = leads.filter(l => l.status === 'WON').length;
@@ -854,6 +874,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </Text>
         </View>
       </View>
+      {!loading && (!loadError || leads.length > 0) && (
       <View style={styles.crmMetrics}>
         {websiteSummary.map(metric => (
           <View style={styles.crmMetricCard} key={metric.label}>
@@ -864,6 +885,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </View>
         ))}
       </View>
+      )}
       {!!loadError && (
         <View style={styles.crmErrorBanner}>
           <Text style={styles.crmErrorText}>{loadError}</Text>
@@ -996,7 +1018,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       <BottomSheet
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        title="New Customer"
+        title="Add Customer"
         avoidKeyboard
       >
         <>
@@ -1028,6 +1050,42 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   placeholderTextColor={Colors.iconMuted}
                   keyboardType="phone-pad"
                 />
+                <Text style={styles.createFieldLabel}>INTERESTED IN VEHICLE (OPTIONAL)</Text>
+                <TextInput
+                  style={styles.createInput}
+                  value={newListingQuery}
+                  onChangeText={setNewListingQuery}
+                  placeholder="Search your listings..."
+                  placeholderTextColor={Colors.iconMuted}
+                  accessibilityLabel="Search your listings for this customer"
+                  autoCorrect={false}
+                />
+                {!!newListingId && (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => { setNewListingId(null); setNewListingQuery(''); }}
+                    style={styles.crmSelectedListing}>
+                    <Text style={styles.crmSelectedListingText}>
+                      {customerListings.find(l => l.id === newListingId)?.title || 'Selected vehicle'} · Clear
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {!newListingId && newListingQuery.trim().length > 0 && (
+                  <View style={styles.crmListingOptions}>
+                    {customerListings.filter(l =>
+                      [l.title, l.make, l.vrm].some(value =>
+                        value.toLowerCase().includes(newListingQuery.trim().toLowerCase()))
+                    ).slice(0, 5).map(l => (
+                      <TouchableOpacity key={l.id} accessibilityRole="button"
+                        onPress={() => { setNewListingId(l.id); setNewListingQuery(''); }}
+                        style={styles.crmListingOption}>
+                        <Text style={styles.crmListingOptionText} numberOfLines={2}>
+                          {l.title}{l.vrm ? ` · ${l.vrm}` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <Text style={styles.createFieldLabel}>NOTES</Text>
                 <TextInput
                   style={[styles.createInput, { minHeight: 70, textAlignVertical: 'top' }]}
