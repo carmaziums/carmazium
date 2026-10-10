@@ -117,6 +117,11 @@ const formatTimeAgo = (iso: string): string => {
   return `${Math.floor(hrs / 24)}d`;
 };
 
+// Match website follow-up semantics; closed cases cannot be overdue.
+const isFollowUpOverdue = (lead: Lead): boolean => !!lead.nextFollowUpAt
+  && lead.status !== 'WON' && lead.status !== 'LOST'
+  && new Date(lead.nextFollowUpAt).getTime() < Date.now();
+
 const formatPrice = (n?: number | null): string | undefined =>
   typeof n === 'number' && !Number.isNaN(n) ? `£${n.toLocaleString('en-GB')}` : undefined;
 
@@ -425,39 +430,85 @@ const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.m
   </TouchableOpacity>
 ));
 
-// ─── Board card — compact, memoized (same rationale as LeadRow above).
-// Deliberately no drag handle: tapping the move icon opens a stage-picker
-// sheet instead of a physical drag gesture (see BOARD_STAGES comment). ──
+// Website CRM card: buyer, source, interested listing, direct contact,
+ // latest activity, follow-up state and phase move action. Mobile uses tap
+ // to choose a stage rather than drag-to-drop (RN has no HTML5 DnD).
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-
 const BoardCard: React.FC<{
   lead: Lead;
   onPress: (id: string) => void;
   onMove: (id: string) => void;
-}> = React.memo(({ lead, onPress, onMove }) => (
-  <AnimatedTouchable entering={FadeIn.duration(200)} style={styles.boardCard} onPress={() => onPress(lead.id)} activeOpacity={0.75}>
-    <View style={styles.boardCardTopRow}>
-      <View style={styles.boardAvatar}>
-        <Text style={styles.boardAvatarText}>{lead.initials}</Text>
+  onFollowUp: (id: string, current: string | null | undefined) => void;
+}> = React.memo(({ lead, onPress, onMove, onFollowUp }) => (
+  <AnimatedTouchable entering={FadeIn.duration(200)}
+    style={styles.websiteLeadCard} onPress={() => onPress(lead.id)} activeOpacity={0.85}
+    accessibilityRole="button" accessibilityLabel={`Open customer ${lead.name}`}>
+    <View style={styles.websiteLeadCardHead}>
+      <View style={styles.boardAvatar}><Ionicons name="person-outline" size={17} color={Colors.textSecondary} /></View>
+      <View style={styles.websiteLeadCardIdentity}>
+        <Text style={styles.boardCardName} numberOfLines={2}>{lead.name}</Text>
+        <Text style={styles.websiteLeadSource} numberOfLines={2}>
+          {lead.source ? SOURCE_LABELS[lead.source] || lead.source : 'Unknown source'}
+        </Text>
       </View>
       <TouchableOpacity
         style={styles.boardMoveBtn}
+        accessibilityRole="button"
+        accessibilityLabel={`Change pipeline stage for ${lead.name}`}
         onPress={() => onMove(lead.id)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        accessibilityLabel={`Move ${lead.name} to a different stage`}
-      >
-        <Ionicons name="swap-horizontal-outline" size={14} color={Colors.textMuted} />
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Ionicons name="swap-horizontal-outline" size={17} color={Colors.textSecondary} />
       </TouchableOpacity>
     </View>
-    <Text style={styles.boardCardName} numberOfLines={1}>{lead.name}</Text>
-    <Text style={styles.boardCardVehicle} numberOfLines={1}>{lead.vehicle}</Text>
-    <View style={styles.boardCardFooterRow}>
-      {formatPrice(lead.listingPrice) && (
-        <Text style={styles.boardCardPrice}>{formatPrice(lead.listingPrice)}</Text>
+    {lead.vehicle !== 'General enquiry' && (
+      <View style={styles.websiteInterestTile}>
+        <Text style={styles.websiteInterestLabel}>INTERESTED IN</Text>
+        <Text style={styles.boardCardVehicle} numberOfLines={2}>{lead.vehicle}</Text>
+      </View>
+    )}
+    <View style={styles.websiteContactLine}>
+      {lead.email && (
+        <TouchableOpacity
+          style={styles.websiteContactChip}
+          accessibilityRole="button" accessibilityLabel={`Email ${lead.name}`}
+          onPress={() => { void Linking.openURL(`mailto:${lead.email}`); }}>
+          <Ionicons name="mail-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.email}</Text>
+        </TouchableOpacity>
       )}
-      {lead.assignedToName && (
-        <Text style={styles.boardCardAssignee} numberOfLines={1}>→ {lead.assignedToName}</Text>
+      {lead.phone && (
+        <TouchableOpacity style={styles.websiteContactChip}
+          accessibilityRole="button" accessibilityLabel={`Call ${lead.name}`}
+          onPress={() => { void Linking.openURL(`tel:${lead.phone}`); }}>
+          <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.phone}</Text>
+        </TouchableOpacity>
       )}
+    </View>
+    <View style={styles.websiteLeadCardFoot}>
+      <Text style={styles.websiteActivity}>
+        {lead.lastActivityAt ? formatTimeAgo(lead.lastActivityAt) : lead.time} ago
+      </Text>
+      <TouchableOpacity style={[styles.websiteFollowUp, isFollowUpOverdue(lead) && styles.websiteFollowUpDue]}
+        onPress={() => onFollowUp(lead.id, lead.nextFollowUpAt)}
+        accessibilityRole="button"
+        accessibilityLabel={lead.nextFollowUpAt
+          ? (isFollowUpOverdue(lead) ? 'Clear overdue follow-up' : 'Clear follow-up reminder')
+          : 'Schedule follow-up for tomorrow'}>
+        <Ionicons name="time-outline" size={14}
+          color={isFollowUpOverdue(lead) ? Colors.error : Colors.textSecondary} />
+        <Text style={[styles.websiteFollowText, isFollowUpOverdue(lead) && { color: Colors.error }]}>
+          {lead.nextFollowUpAt ? isFollowUpOverdue(lead) ? 'Overdue' : 'Reminder' : 'Follow up'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+    <View style={styles.websitePhaseFooter}>
+      <Text style={styles.websitePhaseLabel}>PHASE STATUS</Text>
+      <TouchableOpacity style={styles.websitePhaseButton} onPress={() => onMove(lead.id)}
+        accessibilityRole="button" accessibilityLabel="Change phase status">
+        <Text style={styles.websitePhaseText}>{BOARD_STAGES.find(x => x.key === lead.status)?.label || lead.status}</Text>
+        <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+      </TouchableOpacity>
     </View>
   </AnimatedTouchable>
 ));
