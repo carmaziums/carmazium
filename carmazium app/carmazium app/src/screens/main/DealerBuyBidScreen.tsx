@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@/components/BrandIcon';
+import { Image } from 'expo-image';
+import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctionBuyingSections';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
@@ -16,7 +18,7 @@ import { LiveScreen } from './LiveScreen';
 // /dashboard/dealer/auctions is the CANONICAL default Buy & Bid route:
 // My Auctions, Live Auctions, Shortlisted, My Bids, Purchases.
 // It is not simply a public live-auction browser.
-type Section = 'mine' | 'live';
+type Section = 'mine' | 'live' | 'shortlisted' | 'bids';
 type OwnedAuction = {
   id: string; listingId: string;
   status: 'ACTIVE' | 'SCHEDULED' | 'ENDED' | 'CANCELLED' | string;
@@ -93,8 +95,6 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   const openWon = () => {
     if (canViewPurchases) navigation?.navigate('SellerAuctions', { initialTab: 'WON' });
   };
-  const openBids = () => navigation?.navigate('BuyerBids');
-  const openShortlist = () => navigation?.navigate('Saved');
 
   const auctionLinks: {
     id: string; label: string; icon: string;
@@ -105,9 +105,9 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     { id: 'live', label: 'Live Auctions', icon: 'flame-outline',
       active: section === 'live', allowed: true, onPress: () => setSection('live') },
     { id: 'shortlisted', label: 'Shortlisted', icon: 'star-outline',
-      allowed: true, onPress: openShortlist },
+      active: section === 'shortlisted', allowed: true, onPress: () => setSection('shortlisted') },
     { id: 'bids', label: 'My Bids', icon: 'receipt-outline',
-      allowed: true, onPress: openBids },
+      active: section === 'bids', allowed: true, onPress: () => setSection('bids') },
     { id: 'purchases', label: 'Purchases', icon: 'trophy-outline',
       allowed: canViewPurchases, onPress: openWon },
   ];
@@ -128,7 +128,12 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
       accessibilityRole={canManageInventory ? 'button' : undefined}
       accessibilityLabel={`${auctionTitle(item)}, ${statusName(item.status)}. ${canManageInventory ? 'Manage auction' : 'Read-only'}`}>
       <View style={styles.rowTitle}>
-        <Ionicons name="car-outline" size={24} color={Colors.accent} />
+        <View style={styles.auctionThumb}>
+          {item.listing?.images?.[0] ? (
+            <Image source={{ uri: item.listing.images[0] }} style={styles.auctionImage}
+              contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          ) : <Ionicons name="car-outline" size={24} color={Colors.accent} />}
+        </View>
         <View style={styles.rowCopy}>
           <Text style={styles.vehicleTitle} numberOfLines={2}>{auctionTitle(item)}</Text>
           <Text style={styles.auctionIdText}>{item.listing?.vrm || 'PRIVATE'}</Text>
@@ -199,6 +204,10 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           )}
           <LiveScreen embeddedDealerHub />
         </View>
+      ) : section === 'shortlisted' ? (
+        <DealerAuctionShortlist navigation={navigation} />
+      ) : section === 'bids' ? (
+        <DealerActiveBidPositions navigation={navigation} />
       ) : (
         <>
           {canManageInventory && needsHandover > 0 && !error && !loading && (
@@ -323,6 +332,9 @@ const styles = StyleSheet.create({
   auctionCard: { borderRadius: 15, padding: 15, marginBottom: 10,
     borderWidth: 1, borderColor: Colors.borderSubtle, backgroundColor: Colors.bgCard },
   rowTitle: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  auctionThumb: { width: 65, height: 60, backgroundColor: Colors.bgElevated,
+    borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  auctionImage: { width: '100%', height: '100%' },
   rowCopy: { flex: 1, gap: 3 },
   vehicleTitle: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 14 },
   auctionIdText: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
