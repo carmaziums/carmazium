@@ -851,6 +851,19 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     } finally { setListingsLoading(false); }
   }
 
+  // Canonical website Create Auction button goes straight to the existing,
+  // authorized native listing-picker flow. Never auto-open it for staff who
+  // lack MANAGE_INVENTORY (or while dealer permissions are loading).
+  const [createRouteHandled, setCreateRouteHandled] = useState(false);
+  useEffect(() => {
+    if (!route.params?.openCreate || createRouteHandled || dealerAccessLoading) return;
+    setCreateRouteHandled(true);
+    if (!dealerIdentity || hasDealerPermission('MANAGE_INVENTORY')) {
+      void openCreateModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.openCreate, createRouteHandled, dealerAccessLoading, dealerIdentity, hasDealerPermission]);
+
   // Auto-open the create flow once when arriving with a preselected listing.
   useEffect(() => {
     if (preselectListingId && !preselectHandled) {
