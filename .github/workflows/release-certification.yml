@@ -213,8 +213,6 @@ jobs:
         run: node --test scripts/test-native-visual-acceptance-block10.test.mjs
       - name: Audit MaziuM website/native mascot and consent parity source
         run: node --test scripts/test-mazium-native-visual-parity.test.mjs
-      - name: Audit public Apple and Android app install link safety
-        run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
@@ -247,6 +245,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Audit public Apple and Android app install link safety
+        run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - run: npx tsc --noEmit
 
   mobile:
