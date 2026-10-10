@@ -12,7 +12,6 @@ import {FontFamily, FontSize } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, reportAiResponse, AiChatMessage, type AiReportReason } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
-import { CommonActions } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -285,6 +284,8 @@ export const GlobalAIChatBot: React.FC = () => {
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
+  // Invalidates in-flight responses and stale consent reads after revocation/account change.
+  const aiConsentEpoch = useRef(0);
   const [reportedResponseIds, setReportedResponseIds] = useState<Set<string>>(new Set());
   const [aiReportTarget, setAiReportTarget] = useState<HistoryItem | null>(null);
   const [aiReportReason, setAiReportReason] = useState<AiReportReason | null>(null);
@@ -295,6 +296,8 @@ export const GlobalAIChatBot: React.FC = () => {
   // The native widget lives across account changes. Never show a prior user's
   // prompts or report details after logout, login or a switch of dealer account.
   useEffect(() => {
+    aiConsentEpoch.current += 1;
+    setHasAiConsent(null);
     setIsOpen(false);
     setMessage('');
     setIsThinking(false);
@@ -315,9 +318,10 @@ export const GlobalAIChatBot: React.FC = () => {
       return;
     }
     setHasAiConsent(null);
+    const epoch = aiConsentEpoch.current;
     AsyncStorage.getItem(aiConsentKey)
-      .then((value) => { if (!cancelled) setHasAiConsent(value === 'accepted'); })
-      .catch(() => { if (!cancelled) setHasAiConsent(false); });
+      .then((value) => { if (!cancelled && epoch === aiConsentEpoch.current) setHasAiConsent(value === 'accepted'); })
+      .catch(() => { if (!cancelled && epoch === aiConsentEpoch.current) setHasAiConsent(false); });
     return () => { cancelled = true; };
   }, [aiConsentKey]);
 
@@ -339,23 +343,13 @@ export const GlobalAIChatBot: React.FC = () => {
 
   if (!isAuthenticated || activeRoute === 'LiveAuctionDetailed') return null;
 
-  // ── Navigate to Search with filterCard params ─────────────────────────────
-  // CommonActions.navigate searches the full navigator tree — more reliable than
-  // nested screen params when navigating from outside the navigator hierarchy.
+  // The website forwards every non-empty AI filter. Use the app's real nested
+  // Search tab instead of dispatching a possibly unhandled root action.
   const applyFilterCard = (params: Record<string, string>) => {
-    setIsOpen(false);
-    setTimeout(() => {
-      try {
-        const navParams: Record<string, any> = { _t: Date.now() };
-        if (params.fuelType) navParams.fuelType = params.fuelType;
-        if (params.bodyType) navParams.bodyType = params.bodyType;
-        if (params.maxPrice) navParams.maxPrice = Number(params.maxPrice);
-        if (params.minPrice) navParams.minPrice = Number(params.minPrice);
-        if (params.make) navParams.make = params.make;
-        if (params.sortBy) navParams.sortBy = params.sortBy;
-        navigationRef.dispatch(CommonActions.navigate({ name: 'Search', params: navParams }));
-      } catch { /* nav not ready */ }
-    }, 220);
+    const aiFilters = Object.fromEntries(
+      Object.entries(params).filter(([, value]) => typeof value === 'string' && value.trim() !== ''),
+    );
+    navigateFromChat('Search', { aiFilters });
   };
 
   const navigateFromChat = (nav?: 'Search' | 'Live' | 'SellCarFlow', navParams?: Record<string, any>) => {
@@ -382,7 +376,11 @@ export const GlobalAIChatBot: React.FC = () => {
     const trimmed = text.trim();
     if (!trimmed || isThinking || hasAiConsent !== true) return;
     const senderId = authUserId;
-    const sameSignedInUser = () => useAuthStore.getState().user?.id === senderId;
+    const consentEpoch = aiConsentEpoch.current;
+    const sameConsentSession = () =>
+      useAuthStore.getState().isAuthenticated &&
+      useAuthStore.getState().user?.id === senderId &&
+      aiConsentEpoch.current === consentEpoch;
 
     const userItem: HistoryItem = { id: Date.now().toString(), text: trimmed, isUser: true };
     const updated = [...chatHistory, userItem];
@@ -407,24 +405,28 @@ export const GlobalAIChatBot: React.FC = () => {
         reportable: true,
         filterCard: result.filterCard ?? null,
       };
-      if (sameSignedInUser()) setChatHistory((prev) => [...prev, botItem]);
+      if (sameConsentSession()) setChatHistory((prev) => [...prev, botItem]);
     } catch {
-      if (sameSignedInUser()) setChatHistory((prev) => [
+      if (sameConsentSession()) setChatHistory((prev) => [
         ...prev,
         { id: (Date.now() + 1).toString(), text: 'Something went wrong. Please try again!', isUser: false },
       ]);
     } finally {
-      if (sameSignedInUser()) setIsThinking(false);
+      if (sameConsentSession()) setIsThinking(false);
     }
   };
 
   const acceptAiConsent = async () => {
+    if (!aiConsentKey) return;
+    const epoch = ++aiConsentEpoch.current;
+    const consentingUser = authUserId;
     try {
-      if (!aiConsentKey) return;
       await AsyncStorage.setItem(aiConsentKey, 'accepted');
-      setHasAiConsent(true);
+      if (epoch === aiConsentEpoch.current && useAuthStore.getState().user?.id === consentingUser)
+        setHasAiConsent(true);
     } catch {
-      setHasAiConsent(false);
+      if (epoch === aiConsentEpoch.current && useAuthStore.getState().user?.id === consentingUser)
+        setHasAiConsent(false);
     }
   };
 
@@ -441,11 +443,17 @@ export const GlobalAIChatBot: React.FC = () => {
   };
 
   const withdrawAiConsent = async () => {
+    // Block future sends immediately, before asynchronous storage removal.
+    const epoch = ++aiConsentEpoch.current;
+    const withdrawingUser = authUserId;
+    setHasAiConsent(false);
+    setIsThinking(false);
+    setMessage('');
     try {
       if (aiConsentKey) await AsyncStorage.removeItem(aiConsentKey);
-    } finally {
-      setHasAiConsent(false);
-      setMessage('');
+    } catch {
+      if (epoch === aiConsentEpoch.current && useAuthStore.getState().user?.id === withdrawingUser)
+        Alert.alert('Privacy preference not saved', 'AI sharing is stopped for this session, but the preference could not be saved on this device. Please try again.');
     }
   };
 
@@ -542,7 +550,7 @@ export const GlobalAIChatBot: React.FC = () => {
                     <View style={styles.botAccentDot} />
                   </View>
                   <View>
-                    <Text style={styles.chatTitle}>Mazium AI</Text>
+                    <Text style={styles.chatTitle} accessibilityRole="header">Mazium AI</Text>
                     <Text style={styles.chatStatus}>Car-buying assistant</Text>
                   </View>
                 </View>
@@ -558,7 +566,7 @@ export const GlobalAIChatBot: React.FC = () => {
               </LinearGradient>
 
               {/* Messages */}
-              <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false}>
+              <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
                 {hasAiConsent === false && (
                   <View style={styles.aiConsentCard}>
@@ -694,17 +702,18 @@ export const GlobalAIChatBot: React.FC = () => {
                   editable={!isThinking && hasAiConsent === true}
                   accessibilityLabel="Message MaziuM AI"
                   accessibilityHint="Enter a question about cars"
+                  accessibilityState={{ disabled: isThinking || hasAiConsent !== true }}
                 />
                 <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
               {hasAiConsent === true && (
                 <View style={styles.aiPrivacyFooter}>
-                  <TouchableOpacity onPress={openAiPrivacy} accessibilityRole="button" accessibilityLabel="AI privacy">
+                  <TouchableOpacity onPress={openAiPrivacy} style={styles.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="AI privacy">
                     <Text style={styles.aiPrivacyFooterText}>AI privacy</Text>
                   </TouchableOpacity>
                   <Text style={styles.aiPrivacyFooterDot}>·</Text>
-                  <TouchableOpacity onPress={() => void withdrawAiConsent()} accessibilityRole="button" accessibilityLabel="Stop AI sharing">
+                  <TouchableOpacity onPress={() => void withdrawAiConsent()} style={styles.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="Stop AI sharing">
                     <Text style={styles.aiPrivacyFooterText}>Stop AI sharing</Text>
                   </TouchableOpacity>
                 </View>
@@ -1226,6 +1235,7 @@ const styles = StyleSheet.create({
     minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
     borderTopWidth: 1, borderTopColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated,
   },
+  aiPrivacyFooterAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
   aiPrivacyFooterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
   aiPrivacyFooterDot: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
 
