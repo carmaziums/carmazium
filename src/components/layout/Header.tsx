@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid, Smartphone } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -415,6 +415,14 @@ export function Header() {
 
                 {/* Action Buttons */}
                 <div className="flex-1 flex items-center justify-end gap-2 lg:gap-3">
+                    <Link
+                        href="/download-app"
+                        className="hidden 2xl:inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-bold text-primary transition-colors hover:bg-primary hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        aria-label="Get the CarMazium app for iPhone or Android"
+                    >
+                        <Smartphone size={17} aria-hidden="true" />
+                        Get the App
+                    </Link>
                     <div className="hidden lg:block">
                         <ThemeToggle />
                     </div>
@@ -759,6 +767,15 @@ export function Header() {
                         })}
 
 
+
+                        <Link
+                            href="/download-app"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-primary/35 bg-primary/10 px-4 py-3 text-base font-bold text-primary"
+                        >
+                            <Smartphone size={20} aria-hidden="true" />
+                            Get the CarMazium App
+                        </Link>
 
                         {!user ? (
                             <>
