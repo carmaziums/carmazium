@@ -10,6 +10,8 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Platform,
+  Share,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
@@ -33,6 +35,8 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
+
+const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
 
 interface MenuItem {
   id: string;
@@ -297,6 +301,31 @@ export const GlobalDrawer: React.FC = () => {
     }, 160);
   };
 
+  // This is a local share sheet only. No issue report, screenshot, account
+  // identity or device data is transmitted automatically by CarMazium.
+  // The user decides whether and where to share the review notes.
+  const handleShareQaFeedback = () => {
+    closeDrawer();
+    const sourceSha = process.env.EXPO_PUBLIC_QA_COMMIT_SHA || 'unknown';
+    setTimeout(() => {
+      void Share.share({
+        title: 'CarMazium QA interface feedback',
+        message: [
+          'CarMazium QA — website/app comparison',
+          'Build source: ' + sourceSha,
+          'Platform: ' + Platform.OS + ' ' + String(Platform.Version),
+          'Screen or journey:',
+          'What differs from carmazium.com:',
+          'What I expected:',
+          'Steps to reproduce:',
+          '',
+          'Please attach a screenshot or screen recording separately.',
+          'Do not include real customer information, passwords or payment data.',
+        ].join('\\n'),
+      }).catch(() => Alert.alert('Cannot open share sheet', 'You can describe the issue with a screenshot directly in ChatGPT.'));
+    }, 220);
+  };
+
   const handleSignOut = () => {
     closeDrawer();
     setTimeout(() => {
@@ -369,6 +398,37 @@ export const GlobalDrawer: React.FC = () => {
             <View style={styles.verifiedDot}>
               <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success} />
             </View>
+          )}
+        </View>
+
+        {/* Settings belongs next to the account identity, not underneath
+            dozens of buyer/dealer tools at the very bottom of this drawer. */}
+        <View style={styles.accountShortcuts}>
+          <TouchableOpacity
+            style={styles.accountShortcut}
+            onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Open all account settings"
+            accessibilityHint="Personal details, dealership, verification, notifications, payouts and security in one place"
+          >
+            <Ionicons name="settings-outline" size={20} color={Colors.accent} />
+            <Text style={styles.accountShortcutText}>Account settings</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          {IS_QA_REVIEW_BUILD && (
+            <TouchableOpacity
+              style={styles.accountShortcut}
+              onPress={handleShareQaFeedback}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Share QA screenshot and interface feedback"
+              accessibilityHint="Opens the device share sheet with a build-specific feedback template. No information is sent automatically."
+            >
+              <Ionicons name="share-social-outline" size={20} color={Colors.accent} />
+              <Text style={styles.accountShortcutText}>Share QA feedback</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+            </TouchableOpacity>
           )}
         </View>
 
@@ -587,19 +647,6 @@ export const GlobalDrawer: React.FC = () => {
           )}
 
           <View style={styles.divider} />
-          {/* Common account controls are never hidden under advanced pages. */}
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}
-            accessibilityRole="button"
-            accessibilityLabel="Open account settings"
-            activeOpacity={0.7}
-          >
-            <View style={styles.bar} />
-            <View style={styles.iconWrap}><Ionicons name="settings-outline" size={19} color={Colors.textSecondary} /></View>
-            <Text style={styles.rowLabel}>Account settings</Text>
-            <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
-          </TouchableOpacity>
           {/* Contact Support (DASH-024). Web has had this in its sidebar for
               every role; mobile had no in-app route to support at all. Opens
               the support chat room rather than an email client, matching web
@@ -720,6 +767,17 @@ const styles = StyleSheet.create({
   },
   verifiedDot: {
     padding: 2,
+  },
+
+  // Always-visible, prominent shortcut for unified settings and QA review.
+  accountShortcuts: { paddingHorizontal: 14, paddingVertical: 2 },
+  accountShortcut: {
+    flexDirection: 'row', alignItems: 'center', minHeight: 48,
+    paddingHorizontal: 12, gap: 10, borderRadius: 12,
+  },
+  accountShortcutText: {
+    flex: 1, color: Colors.white, fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.sm,
   },
 
   // Divider
