@@ -302,6 +302,26 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
         </motion.div>
       </section>
 
+      {/* App install CTA: public store links resolve on the download page only
+          after verification, never to guessed store IDs or internal QA APKs. */}
+      <section aria-labelledby="carmazium-app-home-title" className="container mx-auto mb-10 px-5 md:mb-16">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-5 rounded-3xl border border-red-500/25 bg-gradient-to-r from-red-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-6 shadow-sm sm:flex-row sm:items-center sm:p-8">
+          <div>
+            <p className="mb-2 text-xs font-black uppercase tracking-widest text-red-500">CarMazium on mobile</p>
+            <h2 id="carmazium-app-home-title" className="text-2xl font-extrabold sm:text-3xl">
+              Get the CarMazium App
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
+              iPhone or Android — check the verified install links and take your car search with you.
+            </p>
+          </div>
+          <Link href="/download-app" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2">
+            iPhone &amp; Android
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
       {/* Discover + Browse Sections (dynamically imported) */}
       <DiscoverSection />
       <BrowseByCategory />
