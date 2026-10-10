@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { getBottomTabItemHeight } from '../lib/nativeLayoutParity';
 import { TextPresets } from '../constants/typography';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
@@ -163,6 +164,7 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
   const { isOpen: isDrawerOpen, openDrawer, closeDrawer } = useDrawer();
@@ -225,7 +227,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
           return (
             <TouchableOpacity
               key={route.key}
-              style={styles.tabItem}
+              style={[styles.tabItem, { minHeight: getBottomTabItemHeight(fontScale) }]}
               onPress={onPress}
               activeOpacity={0.75}
               accessibilityRole="tab"
@@ -251,9 +253,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   styles.tabLabel,
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
                 ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
+                numberOfLines={2}
+                maxFontSizeMultiplier={2}
+                ellipsizeMode="tail"
               >
                 {config.label}
               </Text>
@@ -336,6 +338,8 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     ...TextPresets.tabLabel,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   tabLabelActive: {
     color: Colors.accent,
