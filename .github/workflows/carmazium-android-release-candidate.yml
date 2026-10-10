@@ -98,6 +98,14 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_ENV,key+'='+value+'\n');
           }
           NODE
+      - name: Verify owner-pinned certificate and private signing key before build
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_PATH: keystores/customer-release.jks
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        run: node ../../scripts/verify-android-release-keystore.mjs
       - name: Ensure Android API 36 and signing tools exist
         shell: bash
         run: |
