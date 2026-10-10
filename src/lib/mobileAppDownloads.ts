@@ -39,7 +39,7 @@ const publicTestFlight = (raw?: string): string | null => {
     const url = new URL(raw.trim())
     if (url.protocol !== "https:" || url.hostname !== "testflight.apple.com" ||
         url.username || url.password || url.port || url.search || url.hash ||
-        !/^\\/join\\/[A-Za-z0-9]{8,16}$/.test(url.pathname)) return null
+        !url.pathname.startsWith("/join/") || !/^[A-Za-z0-9]{8,16}$/.test(url.pathname.slice(6))) return null
     return url.toString()
   } catch { return null }
 }
