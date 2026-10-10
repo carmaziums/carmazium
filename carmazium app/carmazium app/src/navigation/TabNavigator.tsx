@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    minHeight: 51,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
