@@ -5,6 +5,7 @@ import {
   LayoutAnimation, UIManager, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import {FontFamily, FontSize } from '../constants/typography';
@@ -54,7 +55,7 @@ const ALL_QUICK_REPLIES = [
   { label: 'Diesel only',     action: 'Diesel cars'                 },
   { label: 'Electric',        action: 'Electric vehicles'           },
   { label: '2020+',           action: 'Cars from 2020 onwards'      },
-  { label: 'Best value',      action: 'Best value cars on CarMazium'},
+  { label: 'ULEZ',            action: 'ULEZ compliant cars'        },
   { label: 'Hatchbacks',      action: 'Show me hot hatchbacks'      },
   { label: 'Sports Cars',     action: 'Show me sports cars'         },
   { label: 'Family Cars',     action: 'Spacious family cars'        },
@@ -204,7 +205,7 @@ export const GlobalAIChatBot: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([
-    { id: '1', text: "Hi! I'm MaziuM, your CarMazium AI. Tell me what you're looking for and I'll help you find it!", isUser: false },
+    { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
@@ -215,15 +216,33 @@ export const GlobalAIChatBot: React.FC = () => {
   const [aiReporting, setAiReporting] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  // The native widget lives across account changes. Never show a prior user's
+  // prompts or report details after logout, login or a switch of dealer account.
   useEffect(() => {
+    setIsOpen(false);
+    setMessage('');
+    setIsThinking(false);
+    setChatHistory([
+      { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
+    ]);
+    setReportedResponseIds(new Set());
+    setAiReportTarget(null);
+    setAiReportReason(null);
+    setAiReportDetails('');
+    setAiReporting(false);
+  }, [authUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!aiConsentKey) {
       setHasAiConsent(false);
       return;
     }
     setHasAiConsent(null);
     AsyncStorage.getItem(aiConsentKey)
-      .then((value) => setHasAiConsent(value === 'accepted'))
-      .catch(() => setHasAiConsent(false));
+      .then((value) => { if (!cancelled) setHasAiConsent(value === 'accepted'); })
+      .catch(() => { if (!cancelled) setHasAiConsent(false); });
+    return () => { cancelled = true; };
   }, [aiConsentKey]);
 
   // Scroll to bottom when new messages arrive
@@ -286,6 +305,8 @@ export const GlobalAIChatBot: React.FC = () => {
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isThinking || hasAiConsent !== true) return;
+    const senderId = authUserId;
+    const sameSignedInUser = () => useAuthStore.getState().user?.id === senderId;
 
     const userItem: HistoryItem = { id: Date.now().toString(), text: trimmed, isUser: true };
     const updated = [...chatHistory, userItem];
@@ -310,14 +331,14 @@ export const GlobalAIChatBot: React.FC = () => {
         reportable: true,
         filterCard: result.filterCard ?? null,
       };
-      setChatHistory((prev) => [...prev, botItem]);
+      if (sameSignedInUser()) setChatHistory((prev) => [...prev, botItem]);
     } catch {
-      setChatHistory((prev) => [
+      if (sameSignedInUser()) setChatHistory((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), text: "I'm having a brief moment — please try again in a second!", isUser: false },
+        { id: (Date.now() + 1).toString(), text: 'Something went wrong. Please try again!', isUser: false },
       ]);
     } finally {
-      setIsThinking(false);
+      if (sameSignedInUser()) setIsThinking(false);
     }
   };
 
@@ -418,8 +439,8 @@ export const GlobalAIChatBot: React.FC = () => {
   const maxBoxHeight = windowHeight - insets.top - dynamicBottom - 24;
   // Match the web assistant's roomy conversation panel while respecting
   // small-screen safe areas and the Android/iOS keyboard.
-  const dynamicHeight = Math.max(0, Math.min(620, maxBoxHeight));
-  const chatWidth = Math.max(0, Math.min(400, windowWidth - 24));
+  const dynamicHeight = Math.max(0, Math.min(540, maxBoxHeight));
+  const chatWidth = Math.max(0, Math.min(340, windowWidth - 24));
 
   return (
     <>
@@ -438,15 +459,15 @@ export const GlobalAIChatBot: React.FC = () => {
             <ChatErrorBoundary onReset={() => setIsOpen(false)}>
 
               {/* Header */}
-              <View style={styles.chatHeader}>
+              <LinearGradient colors={[Colors.bgBody, Colors.bgElevated]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chatHeader}>
                 <View style={styles.chatHeaderLeft}>
                   <View style={styles.chatAvatar}>
                     <Image source={MAZIUM_MASCOT} style={styles.chatAvatarImage} contentFit="contain" />
                     <View style={styles.botAccentDot} />
                   </View>
                   <View>
-                    <Text style={styles.chatTitle}>MaziuM AI</Text>
-                    <Text style={styles.chatStatus}>Your car-buying assistant</Text>
+                    <Text style={styles.chatTitle}>Mazium AI</Text>
+                    <Text style={styles.chatStatus}>Car-buying assistant</Text>
                   </View>
                 </View>
                 <View style={styles.chatHeaderActions}>
@@ -458,7 +479,7 @@ export const GlobalAIChatBot: React.FC = () => {
                   />
                   <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close MaziuM AI assistant" />
                 </View>
-              </View>
+              </LinearGradient>
 
               {/* Messages */}
               <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false}>
@@ -467,10 +488,10 @@ export const GlobalAIChatBot: React.FC = () => {
                   <View style={styles.aiConsentCard}>
                     <View style={styles.aiConsentTitleRow}>
                       <Ionicons name="shield-checkmark-outline" size={16} color={Colors.accent} />
-                      <Text style={styles.aiConsentTitle}>Before you use MaziuM AI</Text>
+                      <Text style={styles.aiConsentTitle}>Before you use Mazium AI</Text>
                     </View>
                     <Text style={styles.aiConsentText}>
-                      Your message and recent MaziuM chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.
+                      Your message and recent Mazium chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.
                     </Text>
                     <View style={styles.aiConsentActions}>
                       <TouchableOpacity
@@ -551,24 +572,6 @@ export const GlobalAIChatBot: React.FC = () => {
                   </View>
                 ))}
 
-                {/* Daily rotating quick replies — shown only before user sends anything */}
-                {chatHistory.length === 1 && !isThinking && hasAiConsent === true && (
-                  <View style={styles.quickPromptsWrap}>
-                    {quickReplies.map((q) => (
-                      <TouchableOpacity
-                        key={q.label}
-                        style={styles.quickPromptChip}
-                        onPress={() => sendMessage(q.action)}
-                        activeOpacity={0.75}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Ask MaziuM: ${q.label}`}
-                      >
-                        <Text style={styles.quickPromptText}>{q.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
                 {/* Animated typing indicator */}
                 {isThinking && (
                   <View
@@ -581,11 +584,32 @@ export const GlobalAIChatBot: React.FC = () => {
                 )}
               </ScrollView>
 
+              {/* Website-equivalent persistent daily quick replies, horizontally scrollable. */}
+              <View style={styles.quickRepliesRail}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always" contentContainerStyle={styles.quickPromptsWrap}>
+                  {quickReplies.map((q) => (
+                    <TouchableOpacity
+                      key={q.label}
+                      style={styles.quickPromptChip}
+                      onPress={() => void sendMessage(q.action)}
+                      disabled={isThinking || hasAiConsent !== true}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Ask MaziuM: ${q.label}`}
+                      accessibilityState={{ disabled: isThinking || hasAiConsent !== true }}
+                    >
+                      <Text style={styles.quickPromptText}>{q.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
               {/* Input row */}
               <View style={styles.chatInputRow}>
                 <TextInput
                   style={styles.chatInput}
-                  placeholder="e.g. BMWs under £20,000..."
+                  placeholder="e.g. Show me BMWs under £20k..."
                   placeholderTextColor={Colors.iconMuted}
                   value={message}
                   onChangeText={setMessage}
@@ -597,6 +621,18 @@ export const GlobalAIChatBot: React.FC = () => {
                 />
                 <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
+
+              {hasAiConsent === true && (
+                <View style={styles.aiPrivacyFooter}>
+                  <TouchableOpacity onPress={openAiPrivacy} accessibilityRole="button" accessibilityLabel="AI privacy">
+                    <Text style={styles.aiPrivacyFooterText}>AI privacy</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.aiPrivacyFooterDot}>·</Text>
+                  <TouchableOpacity onPress={() => void withdrawAiConsent()} accessibilityRole="button" accessibilityLabel="Stop AI sharing">
+                    <Text style={styles.aiPrivacyFooterText}>Stop AI sharing</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
             </ChatErrorBoundary>
           </Pressable>
@@ -764,7 +800,7 @@ const styles = StyleSheet.create({
   },
   chatHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14, backgroundColor: Colors.bgElevated,
+    paddingHorizontal: 16, paddingVertical: 14,
     borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle,
   },
   chatHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
@@ -775,7 +811,7 @@ const styles = StyleSheet.create({
   chatAvatarImage: { width: 40, height: 40 },
   botAccentDot: {
     position: 'absolute', right: 0, bottom: 0, width: 11, height: 11,
-    borderRadius: 6, backgroundColor: Colors.accent,
+    borderRadius: 6, backgroundColor: Colors.success,
     borderWidth: 2, borderColor: Colors.bgElevated,
   },
   chatTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white },
@@ -1026,12 +1062,13 @@ const styles = StyleSheet.create({
   filterCardLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size8, color: Colors.iconMuted, letterSpacing: 1 },
   filterCardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginTop: 1 },
 
-  // Quick reply chips
-  quickPromptsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  // Match the website's horizontal, always-visible daily quick-reply rail.
+  quickRepliesRail: { borderTopWidth: 1, borderTopColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated },
+  quickPromptsWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
   quickPromptChip: {
     minHeight: 44, justifyContent: 'center',
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
-    backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.borderHi,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle,
   },
   quickPromptText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary },
 
@@ -1050,9 +1087,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.white,
   },
   sendBtn: {
-    width: 46, height: 46, borderRadius: 14, backgroundColor: Colors.accent,
+    width: 46, height: 46, borderRadius: 23, backgroundColor: Colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
+  aiPrivacyFooter: {
+    minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
+    borderTopWidth: 1, borderTopColor: Colors.borderSubtle, backgroundColor: Colors.bgElevated,
+  },
+  aiPrivacyFooterText: { fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.textMuted },
+  aiPrivacyFooterDot: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted },
 
   botButton: {
     width: MAZIUM_TRIGGER_SIZE, height: MAZIUM_TRIGGER_SIZE,

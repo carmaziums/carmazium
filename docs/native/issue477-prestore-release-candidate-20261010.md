@@ -16,7 +16,7 @@ These are two different mechanisms. A regular UK iPhone **cannot be given an arb
 
 ## New manual RELEASE CANDIDATE workflow (NOT public)
 
-`.github/workflows/carmazium-android-release-candidate.yml` allows an owner to build a release-signed Android **candidate for private review only**. Workflow is manual only, never triggered by a push, with required inputs `source_sha` and `approval=INTERNAL_REVIEW_ONLY`; any other approval fails.
+`.github/workflows/carmazium-android-release-candidate.yml` allows an owner to build a release-signed Android **candidate for private review only**. Workflow is manual only, never triggered by a push, with required inputs `source_sha`, `approval=INTERNAL_REVIEW_ONLY` and a strictly positive `version_code` (max 2147483647); invalid values fail. The candidate uses `APP_ENV=production` and never publishes.
 
 For a candidate run, configure the following **GitHub Actions Secrets** (never paste keystore material into chat, code, PR or workflow logs):
 - `CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64`: Base64 bytes of the **existing protected production release keystore** (not a newly generated key unless the owner has explicitly decided a key rotation and future Play signing approach).
@@ -25,11 +25,29 @@ For a candidate run, configure the following **GitHub Actions Secrets** (never p
 - `CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD`
 - `CARMAZIUM_ANDROID_RELEASE_CERT_SHA256`: The *certificate's* 64-char hex SHA-256 from the authorised release keystore, verified out of band, **not** the APK file SHA.
 
-The workflow validates the exact Git SHA, source-controlled identity `uk.carmazium.app`, release signing plugin and settings, and the above secrets. The keystore is reconstructed **only inside a temporary GitHub runner**, outside source-controlled files. Expo prebuild must produce a Gradle `signingConfigs.release`; it never silently accepts debug fallback. After Gradle `assembleRelease`, `apksigner verify` and its actual signer certificate digest must match the independent expected SHA-256, and `aapt dump badging` must confirm the production Android package.
+The Block 4 preflight runs `scripts/verify-android-release-keystore.mjs` **after restoring the authorised keystore but before compiling**. It uses Java keytool to export the public certificate, validates the owner-pinned SHA-256, checks the certificate is currently valid and not within 90 days of expiry, rejects Android debug certificate names and weak/unexpected signing key types, and proves that the configured private key/password are usable via a temporary certificate signing request (CSR). The temporary CSR is deleted. Passwords are read through child-process environment variables instead of command-line arguments; tool output and credentials are never written into the workflow log. Passing this preflight is not a public release approval. Unit tests use a disposable synthetic CI signer only, which must NEVER be used for a customer APK.
+
+The workflow validates the exact Git SHA, source-controlled identity `uk.carmazium.app`, release signing plugin and settings, and the above secrets. The keystore is reconstructed **only inside a temporary GitHub runner**, outside source-controlled files. Expo prebuild must produce a Gradle `signingConfigs.release`; it never silently accepts debug fallback. After Gradle `assembleRelease`, `apksigner verify` and its actual signer certificate digest must match the independent expected SHA-256, and `aapt dump badging` must confirm the production Android package **and requested versionCode**. Do not reuse a versionCode from a prior customer installer: Android generally requires a higher versionCode for app upgrades. Retain the same signing identity and package name across updates. The `version_code` is injected into the ephemeral build config and recorded in workflow evidence, without changing production source.
+
+Block 5 adds `scripts/android-apk-release-evidence.mjs` to generate `release-evidence.json` from the actual copied, signed internal APK: package `uk.carmazium.app`, versionCode/versionName, exact Git source SHA, APK file SHA-256, byte size, and verified signer certificate SHA-256. Before artifact upload, the workflow independently rechecks the file and manifest against the trusted pinned certificate, requested source revision and versionCode, and writes portable `SHA256SUMS.txt`. The JSON explicitly marks `approved_for_customer_download: false` and `artifact_kind: INTERNAL_REVIEW_ONLY`. Source tests use synthetic bytes and stub inspection outputs; this is not an Android device or security scan. For public release, rerun independent verification on the actual binary with the approved certificate before hosting; do not treat the internal manifest as owner release authorisation.
 
 Only if every gate passes does it upload an **internal 3-day GitHub Actions artifact** named `CarMazium-Android-REVIEW-ONLY`, with a checksum file. No APK, keystore, Google Play release or website link is auto-published; no actual customer install is made. OTA is disabled for this candidate to prevent reviewing a different later JS bundle. The separate `scripts/check-android-release-candidate.mjs` and `scripts/test-android-release-candidate.test.mjs` provide fail-closed source tests.
 
 **This build references the live service configuration**, unlike the unconfigured isolated synthetic staging that is still needed for mutable app QA. Merely installing a candidate must not trigger test bids, uploads, payment attempts, KYC, refunds or synthetic real-customer messages; real transactional QA requires approved isolated staging.
+
+## Block 6: confirm the *hosted* APK is byte-for-byte identical before enabling any button
+
+A working `/download-app` button requires more than a matching release URL or an environment flag. `scripts/verify-first-party-android-apk.mjs` independently downloads the exact HTTPS APK URL from `carmazium.com` or `www.carmazium.com`, disallows redirects, credentials, tracking queries, non-APK MIME responses and unrecognised paths, and rechecks the **full hosted bytes** against the original internal-release evidence. It also invokes Android SDK `apksigner` and `aapt` on the downloaded bytes and compares the original verified signer fingerprint, package identity and version. It fails closed on invalid/short/truncated/tampered output. The downloaded file is immediately deleted after verification. Source tests use fake binary data and stub SDK output without external network requests.
+
+**Public hosting is itself public access, even before the download button is activated.** Never upload an unapproved internal review APK into a public `/downloads/` path merely to test it. First independently approve the genuine signing identity, binary and device QA; only then place the versioned final APK at the stable first-party URL. Following hosting and **before** enabling the button, run:
+
+```bash
+ANDROID_HOME=/path/to/android-sdk node scripts/verify-first-party-android-apk.mjs \\
+  https://www.carmazium.com/downloads/CarMazium-1.0.0-vNN.apk \\
+  /secure/release-evidence.json
+```
+
+Replace `vNN` with the actually approved version code and use evidence obtained from the signed internal build. The verifier **never grants public-release approval**; check the owner's independent approval and install/functional/security QA separately. Only after real hosted-file verification should the website's APK variables be configured and deployed. Check the customer download again after website redeployment and compare its SHA-256, package, signer and installed version. Never use a fabricated checksum or a QA/debug APK.
 
 ## To activate public Android download later
 1. Provide verified release-signing credentials with secure provenance (ideally retain the same signing identity intended for Play Store). If missing, have the release owner establish a signing strategy first. Do not regenerate signing keys casually.
