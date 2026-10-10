@@ -31,6 +31,7 @@ on:
       - 'scripts/test-native-dealer-menu-visibility.test.mjs'
       - 'scripts/test-native-theme-website-tokens-block1.test.mjs'
       - 'scripts/test-native-theme-persistence-block2.test.mjs'
+      - 'scripts/test-native-theme-navigation-block3.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
@@ -224,6 +225,8 @@ jobs:
         run: node --test scripts/test-native-theme-website-tokens-block1.test.mjs
       - name: Validate persistent native Light/Dark/System preference and startup gating
         run: node --test scripts/test-native-theme-persistence-block2.test.mjs
+      - name: Check native navigation chrome light/dark and dealer menu contracts
+        run: node --test scripts/test-native-theme-navigation-block3.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
         run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Audit Block 3 dealer Home website KPIs and reporting range
