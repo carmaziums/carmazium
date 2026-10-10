@@ -416,7 +416,9 @@ export const GlobalDrawer: React.FC = () => {
         <Animated.View
           style={[
             styles.backdrop,
-            dealerMode && { bottom: dealerTabBarHeight },
+            // In modal presentation, the backdrop covers the full window.
+            // Leaving a "tab bar gap" makes an unreachable dead zone.
+            dealerMode && { bottom: 0 },
             backdropStyle,
           ]}
         />
@@ -428,13 +430,18 @@ export const GlobalDrawer: React.FC = () => {
         style={[
           styles.panel,
           dealerMode ? styles.dealerBottomSheet : styles.sidePanel,
-          panelStyle,
+          // Dealer uses a real modal with its own native slide entrance. The old
+          // translateY shared value sometimes left the whole drawer below the
+          // viewport, exposing only the handle/X and hiding every menu item.
+          !dealerMode && panelStyle,
           dealerMode
-            ? { height: sheetHeight, bottom: dealerTabBarHeight, paddingTop: 10, paddingBottom: 10 }
+            ? { height: sheetHeight, bottom: Math.max(insets.bottom, 8), paddingTop: 10, paddingBottom: 10 }
             : { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
         ]}
       >
-        {dealerMode && <View style={styles.sheetHandle} accessibilityElementsHidden />}
+        {dealerMode && (
+          <Text style={styles.dealerMenuHeading} accessibilityRole="header">Navigation menu</Text>
+        )}
         {/* ── Close button ─────────────────────────────── */}
         <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
@@ -736,12 +743,19 @@ export const GlobalDrawer: React.FC = () => {
   );
 
   return dealerMode ? (
-    <View
-      style={styles.dealerOverlay}
-      pointerEvents={isOpen ? 'box-none' : 'none'}
+    // The root inline overlay was clipped by the NavigationContainer viewport
+    // on actual Samsung devices. A native Modal gives the dealer menu a
+    // guaranteed full-window presentation, without swallowing gestures when
+    // the menu is closed.
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={closeDrawer}
     >
-      {drawerContent}
-    </View>
+      <View style={styles.dealerOverlay}>{drawerContent}</View>
+    </Modal>
   ) : (
     <Modal
       visible={isOpen}
@@ -759,7 +773,7 @@ const styles = StyleSheet.create({
   // Dealer overlay belongs to the same RN view hierarchy as the tabs, so
   // touches on those existing tabs are not swallowed by another window.
   dealerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     zIndex: 100,
   },
 
@@ -797,13 +811,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowOffset: { width: 0, height: -6 },
   },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    backgroundColor: Colors.textMuted,
-    marginBottom: 2,
+  dealerMenuHeading: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 6,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
   },
 
   // Close button
