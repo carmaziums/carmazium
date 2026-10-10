@@ -18,9 +18,11 @@ if(typeof resolveMobileAppLinks!=='function') throw Error('Resolver not exported
 
 const apple='https://apps.apple.com/gb/app/carmazium/id1234567890';
 const play='https://play.google.com/store/apps/details?id=uk.carmazium.app';
+const testflight='https://testflight.apple.com/join/A1b2C3d4';
 const hash='a'.repeat(64);
 const testEnv=()=>({
   NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL:apple,
+  NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL:testflight,
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL:play,
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/downloads/carmazium-release.apk',
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256:hash,
@@ -31,6 +33,7 @@ test('never advertises an unverified or guessed install URL',()=>{
   const links=resolveMobileAppLinks({});
   assert.deepEqual(links,{
     ios:{href:null,available:false},
+    iosTestFlight:{href:null,available:false},
     android:{href:null,available:false},
     androidApk:{href:null,available:false,sha256:null},
   });
@@ -40,6 +43,7 @@ test('verified official iOS and Google Play store URLs appear as direct destinat
   const links=resolveMobileAppLinks(testEnv());
   assert.equal(links.ios.href,apple);
   assert.equal(links.ios.available,true);
+  assert.equal(links.iosTestFlight.href,testflight);
   assert.equal(links.android.href,play);
   assert.equal(links.android.available,true);
 });
@@ -63,6 +67,35 @@ test('do not allow search results, private TestFlight links, generic Apple pages
     'https://fake-play.google.com/store/apps/details?id=uk.carmazium.app',
   ]){
     assert.equal(resolveMobileAppLinks({...testEnv(),NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL:bad}).android.href,null,bad);
+  }
+});
+
+test('approved TestFlight PUBLIC beta invitation works before App Store launch',()=>{
+  const preStore={...testEnv(),NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL:undefined,
+    NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL:undefined};
+  const links=resolveMobileAppLinks(preStore);
+  assert.equal(links.ios.available,false);
+  assert.equal(links.iosTestFlight.href,testflight);
+  assert.equal(links.iosTestFlight.available,true);
+  assert.equal(links.android.available,false);
+  assert.equal(links.androidApk.available,true);
+});
+
+test('TestFlight links must be from Apple, public join invitations, never private or fake',()=>{
+  for(const bad of [
+    'https://testflight.apple.com/',
+    'https://testflight.apple.com/join/1234567',
+    'https://testflight.apple.com/join/abcdefghijklmnopq',
+    'https://testflight.apple.com/join/A1b2C3d4?token=tracking',
+    'https://testflight.apple.com/join/A1b2C3d4#anchor',
+    'https://testflight.apple.com/private/abc12345',
+    'https://itunesconnect.apple.com/',
+    'https://testflight.apple.com.evil.example/join/A1b2C3d4',
+    'http://testflight.apple.com/join/A1b2C3d4',
+    'https://testflight.apple.com/join/1234%2F1234'
+  ]){
+    const links=resolveMobileAppLinks({...testEnv(),NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL:bad});
+    assert.equal(links.iosTestFlight.href,null,bad);
   }
 });
 
@@ -104,6 +137,9 @@ test('download page only offers clickable buttons with genuine validated destina
   const page=read('src/app/download-app/page.tsx');
   assert.ok(page.includes('getMobileAppLinks()'));
   assert.ok(page.includes('href={links.ios.href}'));
+  assert.ok(page.includes('href={links.iosTestFlight.href}'));
+  assert.ok(page.includes('links.iosTestFlight.href ? ('));
+  assert.ok(page.includes('Install iPhone Beta via TestFlight'));
   assert.ok(page.includes('href={links.android.href}'));
   assert.ok(page.includes('href={links.androidApk.href}'));
   assert.ok(page.includes('links.ios.href ? ('));
@@ -120,6 +156,7 @@ test('download page only offers clickable buttons with genuine validated destina
 test('source docs must not promise App Store availability, unsupported iOS web sideloading or live APK',()=>{
   const docs=read('docs/website/mobile-app-install-links-20261010.md');
   for(const term of ['NOT VERIFIED','NOT LIVE','NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL',
+    'NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL',
     'NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL','NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL',
     'signed','UK','App Store','Google Play','source CI','release approval']){
     assert.ok(docs.toLowerCase().includes(term.toLowerCase()),term);
