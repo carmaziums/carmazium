@@ -209,6 +209,8 @@ jobs:
         run: node --test scripts/test-native-visual-parity-block9.test.mjs
       - name: Verify Block 10 visual release acceptance fails closed without real private device evidence
         run: node --test scripts/test-native-visual-parity-block10.test.mjs
+      - name: Validate exact-role synthetic acceptance manifest tests
+        run: node --test scripts/test-native-visual-acceptance-block10.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
