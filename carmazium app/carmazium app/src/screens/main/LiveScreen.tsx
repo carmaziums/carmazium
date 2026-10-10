@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
@@ -85,7 +86,8 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 export const LiveScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, accountRole, role } = useAuthStore();
+  const dealerMode = accountRole === 'dealer' && role === 'dealer';
 
   // Live states for dynamic API data
   const [liveAuctions, setLiveAuctions] = useState<AuctionListing[]>([]);
@@ -255,8 +257,9 @@ export const LiveScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
+      {dealerMode && <WebsiteTopBar />}
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -273,7 +276,7 @@ export const LiveScreen: React.FC = () => {
             <Text style={styles.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
             <Text style={styles.headerTitle}>Live Auctions</Text>
           </View>
-          <HamburgerButton />
+          {!dealerMode && <HamburgerButton />}
         </View>
 
         {auctionLoadError && (

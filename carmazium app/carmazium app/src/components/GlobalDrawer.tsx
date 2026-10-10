@@ -74,6 +74,17 @@ const ITEMS: MenuItem[] = [
   { id: 'privacy',  label: 'Privacy Policy', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
 ];
 
+// The website's dealer mobile navigation has four primary destinations
+// (Home, Stock, Customers, Buy & Bid), with More for secondary functions.
+// Match that first-run information hierarchy instead of showing a public
+// Buy/Sell/Explore menu in the dealer workspace.
+const DEALER_PRIMARY_ITEMS: MenuItem[] = [
+  { id: 'dealer-home-tab', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
+  { id: 'dealer-stock-tab', label: 'Stock', icon: 'car-outline', iconLib: 'ion', tabName: 'DealerStock', requiredPermission: 'VIEW_INVENTORY' },
+  { id: 'dealer-customers-tab', label: 'Customers', icon: 'people-outline', iconLib: 'ion', tabName: 'DealerCustomers', requiredPermission: 'MANAGE_CRM' },
+  { id: 'dealer-auctions-tab', label: 'Buy & Bid', icon: 'gavel', iconLib: 'mci', tabName: 'DealerBuyBid', requiredPermission: 'VIEW_TRADE' },
+];
+
 // Web (DashboardSidebar.tsx) treats BUYER and SELLER as the same unified
 // entity — same 9-tab dashboard, same "Buyer/Seller Account" label. Mobile
 // previously hid this whole group from buyers. This is now shown to both
@@ -220,6 +231,7 @@ export const GlobalDrawer: React.FC = () => {
   // (mobile-production-readiness-plan.md F38's accountRole fix, extended to
   // this file too).
   const isActualDealer = accountRole === 'dealer';
+  const dealerMode = isActualDealer && role === 'dealer';
   const isDealerStaff = !!user?.isDealerStaff;
   const {
     loading: dealerAccessLoading,
@@ -227,9 +239,19 @@ export const GlobalDrawer: React.FC = () => {
   } = useDealerAccess(isActualDealer || isDealerStaff);
   const visibleDealerItems = DEALER_ITEMS.filter(
     (item) =>
-      !item.requiredPermission
+      // The main dealer tabs already provide Stock/Customers; don't bury
+      // duplicate entries in More while hiding account-level actions.
+      (!dealerMode || !['dealer-inventory', 'dealer-leads'].includes(item.id))
+      && (!item.requiredPermission
+        || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission))),
+  );
+  const visiblePrimaryDealerItems = DEALER_PRIMARY_ITEMS.filter(
+    item => !item.requiredPermission
       || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission)),
   );
+  const primaryDrawerItems = dealerMode
+    ? (showMorePages ? [...visiblePrimaryDealerItems, ...ITEMS] : visiblePrimaryDealerItems)
+    : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
@@ -441,9 +463,9 @@ export const GlobalDrawer: React.FC = () => {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={styles.groupLabel}>BUY, SELL & EXPLORE</Text>
+          <Text style={styles.groupLabel}>{dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'}</Text>
 
-          {ITEMS.slice(0, showMorePages ? ITEMS.length : 4).map((item) => {
+          {primaryDrawerItems.map((item) => {
             const active = item.tabName === activeTab;
             return (
               <TouchableOpacity
@@ -481,7 +503,7 @@ export const GlobalDrawer: React.FC = () => {
             accessibilityState={{ expanded: showMorePages }}
             activeOpacity={0.8}
           >
-            <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : 'More pages & information'}</Text>
+            <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : dealerMode ? 'Marketplace & information' : 'More pages & information'}</Text>
             <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
 
@@ -695,7 +717,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: Colors.deepBlue_13131a,
+    backgroundColor: '#243047',
     borderLeftWidth: 1,
     borderLeftColor: Colors.whiteAlpha08,
     shadowColor: Colors.black,

@@ -33,7 +33,7 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Button } from '../../components/Button';
 
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -704,7 +704,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         end={{ x: 1, y: 0.5 }}
       />
 
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <WebsiteTopBar />
+      <View style={[styles.header, { paddingTop: 12 }]}>
          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <IconButton style={[styles.backBtn, { marginRight: 12 }]} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
             <View>
@@ -735,7 +736,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                </TouchableOpacity>
             </View>
             <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add customer" />
-            <HamburgerButton />
+
          </View>
       </View>
 

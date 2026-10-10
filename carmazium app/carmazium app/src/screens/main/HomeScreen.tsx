@@ -8,7 +8,6 @@ import type { ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CarListing, formatPrice } from '../../data/listings';
@@ -17,8 +16,7 @@ import { getActiveAuctions, getScheduledAuctions, AuctionDetail, auctionToListin
 import { naturalLanguageSearch, AiSearchResult } from '../../lib/aiApi';
 import { useAuthStore } from '../../store/authStore';
 import { useWatchlistStore } from '../../store/watchlistStore';
-import { Logo } from '../../components/Logo';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
@@ -362,9 +360,7 @@ const BODY_TYPES = [
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
-  const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
@@ -482,16 +478,16 @@ export const HomeScreen: React.FC = () => {
   // render body would give FlatList a new `data` reference every render.
   const latestEight = useMemo(() => latestListings.slice(0, 8), [latestListings]);
 
-  const userName = user?.firstName || 'there';
   const recentGrid = latestListings.slice(4, 8);
 
   return (
     <View style={s.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={s.topGlow} />
+      <WebsiteTopBar />
 
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingTop: insets.top + 12 }]}
+        contentContainerStyle={[s.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -502,22 +498,17 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {/* Header */}
-        <View style={s.header}>
-          <Logo size="sm" />
-          <View style={s.headerRight}>
-            <TouchableOpacity style={s.iconBtn} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
-              <Ionicons name="notifications-outline" size={20} color={Colors.textPrimary} />
-              <View style={s.notifDot} />
-            </TouchableOpacity>
-            <HamburgerButton />
-          </View>
-        </View>
-
-        {/* Greeting */}
+        {/* Website's current hero: lead with how to sell, not a separate
+            native-only 'Find your next car' experience. Both journeys remain
+            visible immediately below. */}
         <View style={s.greeting}>
-          <Text style={s.greetingLine}>Find your next</Text>
-          <Text style={s.greetingAccent}>car, {userName}.</Text>
+          <Text style={s.greetingLine}>Sell your car</Text>
+          <Text style={s.greetingAccent}>your way.</Text>
+          <Text style={s.greetingOffer}>Auction FREE · Retail £1</Text>
+          <Text style={s.greetingDetail}>
+            Let verified dealers bid for free, or advertise your car for £1.
+            A successful auction sale with approved handover earns a £100 reward.
+          </Text>
         </View>
 
         {/* Two familiar website journeys, visible without scrolling past the feeds. */}
@@ -854,7 +845,9 @@ const s = StyleSheet.create({
   notifDot: { position: 'absolute', top: 9, right: 9, width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgPrimary },
 
   // Greeting
-  greeting: { paddingHorizontal: 24, marginBottom: 22 },
+  greeting: { paddingHorizontal: 20, marginBottom: 18, paddingTop: 6 },
+  greetingOffer: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent, marginTop: 10 },
+  greetingDetail: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginTop: 8 },
   greetingLine: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.white, lineHeight: 34 },
   greetingAccent: { fontFamily: FontFamily.extraBold, fontSize: FontSize['3xl'], color: Colors.accent, lineHeight: 34 },
 

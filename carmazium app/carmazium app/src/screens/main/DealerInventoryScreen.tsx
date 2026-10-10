@@ -31,7 +31,7 @@ import { BulkImportModal } from '../../components/BulkImportModal';
 import { BottomSheet } from '../../components/BottomSheet';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { IconButton } from '../../components/IconButton';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
@@ -671,8 +671,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         end={{ x: 1, y: 0.5 }}
       />
 
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <View style={[styles.listHeader, { paddingTop: insets.top + 14 }]}>
+      <WebsiteTopBar />
+      {/* The same global web header stays visible while the stock-specific
+          view picker and inventory count remain below it. */}
+      <View style={[styles.listHeader, { paddingTop: 12 }]}>
         <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.listHeaderCenter}>
           <Text style={styles.listHeaderSub}>DEALER · {listings.length} LISTINGS</Text>
@@ -685,7 +687,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             onPress={toggleViewMode}
             accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
           />
-          <HamburgerButton />
+
         </View>
       </View>
 
