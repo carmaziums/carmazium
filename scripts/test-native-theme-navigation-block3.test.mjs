@@ -12,6 +12,8 @@ const main = read(base + 'src/navigation/MainStackNavigator.tsx');
 const tabs = read(base + 'src/navigation/TabNavigator.tsx');
 const header = read(base + 'src/components/WebsiteTopBar.tsx');
 const hamburger = read(base + 'src/components/HamburgerButton.tsx');
+const logo = read(base + 'src/components/Logo.tsx');
+const websiteHeader = read('src/components/layout/Header.tsx');
 const drawer = read(base + 'src/components/GlobalDrawer.tsx');
 const settings = read(base + 'src/screens/main/SettingsScreen.tsx');
 
@@ -91,6 +93,11 @@ test('website-style top header keeps notifications and account navigation legibl
   assert.match(header, /navigation\.navigate\('Settings'\)/);
   assert.match(hamburger, /const iconColor = color \?\? \(websiteStyle \? palette\.textPrimary : Colors\.white\)/);
   assert.match(hamburger, /name=\{isOpen \? 'close' : 'menu'\}/);
+  assert.match(websiteHeader, /src="\/assets\/images\/logo-light\.png"/);
+  assert.match(websiteHeader, /src="\/assets\/images\/logo\.png"/);
+  assert.match(logo, /LIGHT_LOGO_SOURCE = require\('\.\.\/\.\.\/assets\/images\/logo-light\.png'\)/);
+  assert.match(logo, /DARK_LOGO_SOURCE = require\('\.\.\/\.\.\/assets\/images\/logo\.png'\)/);
+  assert.match(logo, /resolvedAppearance === 'light' \? LIGHT_LOGO_SOURCE : DARK_LOGO_SOURCE/);
 });
 
 test('buyer/dealer tabs react to palette while preserving permissions and the working More menu', () => {
