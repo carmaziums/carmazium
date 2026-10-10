@@ -18,8 +18,9 @@ const cardStyle = "flex h-full flex-col rounded-3xl border border-[var(--border-
 
 export default function DownloadAppPage() {
   const links = getMobileAppLinks()
+  const iphoneReady = links.ios.available || links.iosTestFlight.available
   const androidReady = links.android.available || links.androidApk.available
-  const appsReady = links.ios.available && androidReady
+  const appsReady = iphoneReady && androidReady
 
   return (
     <main className="min-h-screen pb-20 pt-28 sm:pt-36" style={{ color: "var(--text-primary)", background: "var(--bg-body)" }}>
@@ -35,7 +36,7 @@ export default function DownloadAppPage() {
           </p>
           {!appsReady && (
             <p role="status" className="mx-auto mt-5 max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-              App downloads are being prepared. We’ll enable each installation button when its official public release is verified.
+              Some installation options are not ready yet. We’ll enable each button as soon as an approved customer installation build or beta invitation is available.
               You can continue using CarMazium in your browser meanwhile.
             </p>
           )}
@@ -48,7 +49,7 @@ export default function DownloadAppPage() {
             </div>
             <h2 id="iphone-app-title" className="text-2xl font-extrabold">CarMazium for iPhone</h2>
             <p className="mt-3 flex-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-              Install the official iOS app on your iPhone through Apple’s App Store.
+              Before the App Store launch, you can join the approved CarMazium iPhone beta through Apple TestFlight if a public invitation is available. After launch, install from the App Store.
             </p>
             {links.ios.href ? (
               <a href={links.ios.href} className={storeButton + " mt-6 bg-red-600 text-white hover:bg-red-700"}
@@ -57,10 +58,24 @@ export default function DownloadAppPage() {
                 Download on the App Store
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </a>
+            ) : links.iosTestFlight.href ? (
+              <div className="mt-6">
+                <a href={links.iosTestFlight.href}
+                  className={storeButton + " bg-red-600 text-white hover:bg-red-700"}
+                  aria-label="Join the CarMazium iPhone beta through Apple TestFlight">
+                  <Apple className="h-5 w-5" aria-hidden="true" />
+                  Install iPhone Beta via TestFlight
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
+                <p className="mt-3 text-xs leading-5" style={{ color: "var(--text-secondary)" }}>
+                  You will be taken to Apple TestFlight. Install the TestFlight app if asked,
+                  then accept the CarMazium invitation. Beta builds expire and places may be limited.
+                </p>
+              </div>
             ) : (
               <div className="mt-6 flex min-h-14 items-center justify-center rounded-xl border border-[var(--border-default)] px-5 py-3 text-sm font-semibold"
                 style={{ color: "var(--text-muted)" }}>
-                iPhone app — coming soon
+                iPhone beta — not available yet
               </div>
             )}
           </section>
@@ -71,7 +86,7 @@ export default function DownloadAppPage() {
             </div>
             <h2 id="android-app-title" className="text-2xl font-extrabold">CarMazium for Android</h2>
             <p className="mt-3 flex-1 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>
-              Install on your Android phone using Google Play or an approved, signed CarMazium APK when available.
+              Before Google Play launches, download an approved signed Android APK directly from this website when available, or install through Google Play later.
             </p>
             {links.android.href ? (
               <a href={links.android.href} className={storeButton + " mt-6 bg-red-600 text-white hover:bg-red-700"}
