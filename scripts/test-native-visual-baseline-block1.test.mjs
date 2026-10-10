@@ -30,7 +30,7 @@ test('website dealer tab URLs and merged native tab mappings remain inventoried'
     ['/dashboard/dealer', 'DealerHome', 'DealerProfileScreen'],
     ['/dashboard/dealer/inventory', 'DealerStock', 'DealerInventoryScreen'],
     ['/dashboard/dealer/crm', 'DealerCustomers', 'DealerLeadsScreen'],
-    ['/dashboard/dealer/auctions', 'DealerBuyBid', 'LiveScreen'],
+    ['/dashboard/dealer/auctions', 'DealerBuyBid', 'DealerBuyBidScreen'],
   ];
   for (const [href, route, screen] of pairs) {
     assert.ok(webSidebar.includes('"' + href + '"'), 'website bottom tab route ' + href);
@@ -47,13 +47,17 @@ test('website dealer tab URLs and merged native tab mappings remain inventoried'
   }
 });
 
-test('rank source-level Buy & Bid semantic discrepancy instead of claiming false equivalence', () => {
+test('retain historical discrepancy evidence while verifying the fixed canonical route', () => {
   const nativeLive = read('carmazium app/carmazium app/src/screens/main/LiveScreen.tsx');
   const webDealerAuctions = read('src/app/dashboard/dealer/auctions/page.tsx');
   assert.ok(nativeLive.includes('getActiveAuctions()') && nativeLive.includes('getAllScheduledAuctions()'));
   assert.ok(webDealerAuctions.includes('createAuction(') && webDealerAuctions.includes('fetchAuctions()'));
   assert.ok(doc.includes('C01 — P1'));
   assert.ok(doc.includes('own auctions'));
+  const hub = read('carmazium app/carmazium app/src/screens/main/DealerBuyBidScreen.tsx');
+  assert.ok(hub.includes('My Auctions') && hub.includes('Live Auctions'));
+  assert.ok(hub.includes('Shortlisted') && hub.includes('My Bids') && hub.includes('Purchases'));
+  assert.ok(hub.includes("fetchAllMyAuctions<OwnedAuction>('list')"));
 });
 
 test('record the real site tokens and flag geometry that needs screenshots', () => {
