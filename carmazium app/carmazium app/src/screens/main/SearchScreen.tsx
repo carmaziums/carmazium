@@ -30,6 +30,7 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
@@ -609,19 +610,28 @@ export const SearchScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* ── Header ── */}
-      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+      <WebsiteTopBar />
+      {/* Match website Search title; result counts belong beside sorting,
+          not as a changing page title that jumps between 0 and a number. */}
+      <View style={[s.header, { paddingTop: 12 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.headerSub}>BUY CARS</Text>
-          <Text style={s.headerTitle}>
-            {total > 0 ? `${total.toLocaleString('en-GB')} listings` : 'Browse cars'}
+          <Text style={s.headerSub}>BUY CARS · RETAIL</Text>
+          <Text style={s.headerTitle}>Find Your Perfect Car</Text>
+          <Text style={s.headerResults}>
+            {loading ? 'Loading vehicles…' : `${total.toLocaleString('en-GB')} vehicles available`}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton style={s.iconBtn} icon={<Ionicons name="notifications-outline" size={19} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
-          <HamburgerButton />
-        </View>
       </View>
+      <TouchableOpacity style={s.auctionBrowseBanner}
+        onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
+        accessibilityRole="button" accessibilityLabel="Browse Live Auctions">
+        <Ionicons name="hammer-outline" size={19} color={Colors.accent}/>
+        <View style={{ flex: 1 }}>
+          <Text style={s.auctionBrowseTitle}>Looking for dealer auctions?</Text>
+          <Text style={s.auctionBrowseDesc}>Browse Live Auctions in TradeXchange</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={17} color={Colors.accent}/>
+      </TouchableOpacity>
 
       {/* ── Search bar ── */}
       <View style={s.searchWrap}>
@@ -1487,9 +1497,15 @@ export const SearchScreen: React.FC = () => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
 
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 18 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16 },
   headerSub: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.accent, letterSpacing: 1.5, marginBottom: 4 },
   headerTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.size22, color: Colors.white },
+  headerResults: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 12, marginTop: 7 },
+  auctionBrowseBanner: { marginHorizontal: 24, marginBottom: 13, flexDirection: 'row',
+    alignItems: 'center', gap: 11, padding: 12, minHeight: 60, backgroundColor: Colors.bgCard,
+    borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 13 },
+  auctionBrowseTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 13 },
+  auctionBrowseDesc: { fontFamily: FontFamily.medium, color: Colors.textMuted, fontSize: 11 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.whiteAlpha05, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center' },
 
   searchWrap: { paddingHorizontal: 24, marginBottom: 8 },
