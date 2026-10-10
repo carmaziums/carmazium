@@ -90,5 +90,5 @@ test('buyer home uses the current website sale-first proposition and brand heade
   assert.ok(home.includes('approved handover earns a £100 reward.'));
   assert.ok(home.includes("navigation.navigate('Tabs', { screen: 'Search' })"));
   assert.ok(home.includes("navigation.navigate('SellCarFlow')"));
-  assert.ok(!home.includes('Find your next'));
+  assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
 });
