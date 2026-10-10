@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -247,6 +248,7 @@ export const MessagesScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
+      <WebsiteTopBar />
       {isLoading && rooms.length === 0 ? renderSkeletonRows() : null}
     <FlatList
         data={isLoading && rooms.length === 0 ? [] : filteredRooms}
@@ -279,7 +281,6 @@ export const MessagesScreen: React.FC = () => {
                     onChangeText={setSearchQuery}
                     placeholder="Search messages..."
                     placeholderTextColor={Colors.inputPlaceholder}
-                    autoFocus
                     autoCapitalize="none"
                   />
                   {searchQuery.length > 0 && (

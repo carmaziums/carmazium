@@ -11,11 +11,12 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Spacing, Radius } from '../../constants/spacing';
 import {
@@ -67,7 +68,6 @@ function groupByDate(
 export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
-  const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -224,8 +224,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         end={{ x: 0.5, y: 0.5 }}
       />
 
-      {/* Safe area top */}
-      <View style={{ height: insets.top }} />
+      {/* Global website-like navigation owns safe-area top. */}
+      <WebsiteTopBar />
 
       {/* ── Header ── */}
       <View style={styles.header}>

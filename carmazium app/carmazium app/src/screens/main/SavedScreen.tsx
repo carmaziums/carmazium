@@ -13,13 +13,13 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -43,7 +43,6 @@ type ViewMode = 'grid' | 'list';
 // ─── Saved Screen ─────────────────────────────────────────────────────────────
 
 export const SavedScreen: React.FC = () => {
-  const insets     = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const accountRole = useAuthStore(s => s.accountRole);
 
@@ -274,8 +273,9 @@ export const SavedScreen: React.FC = () => {
         end={{ x: 1, y: 0.4 }}
       />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <WebsiteTopBar />
+      {/* Website watchlist header below global navigation. */}
+      <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
           <Text style={styles.headerSub}>{headerSub}</Text>
           <Text style={styles.headerTitle}>{headerTitle}</Text>
