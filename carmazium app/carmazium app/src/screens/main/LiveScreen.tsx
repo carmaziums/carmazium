@@ -83,7 +83,7 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   );
 };
 
-export const LiveScreen: React.FC = () => {
+export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser, accountRole, role } = useAuthStore();
@@ -257,7 +257,7 @@ export const LiveScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {dealerMode && <WebsiteTopBar />}
+      {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
