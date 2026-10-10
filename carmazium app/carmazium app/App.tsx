@@ -18,7 +18,8 @@ import { DrawerProvider } from './src/context/DrawerContext';
 import { GlobalDrawer } from './src/components/GlobalDrawer';
 import { LocationPromptSheet } from './src/components/LocationPromptSheet';
 import { ProfileCompletionPromptSheet } from './src/components/ProfileCompletionPromptSheet';
-import { Colors } from './src/constants/colors';
+import { useNativeAppearance } from './src/theme/NativeAppearanceProvider';
+import { createNativeNavigationTheme } from './src/theme/nativeNavigationTheme';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
@@ -40,6 +41,12 @@ SplashScreen.preventAutoHideAsync();
 // so it can be imported by GlobalAIChatBot and other non-screen components safely.
 
 function AppContent() {
+  const { resolvedAppearance, palette } = useNativeAppearance();
+  // Keep the navigator instance mounted when switching OS/system appearance.
+  const navigationTheme = React.useMemo(
+    () => createNativeNavigationTheme(resolvedAppearance, palette),
+    [resolvedAppearance, palette],
+  );
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
@@ -316,7 +323,7 @@ function AppContent() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.bgBody }}>
     <StripeProvider
       publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
       merchantIdentifier="merchant.uk.carmazium.app"
@@ -329,23 +336,7 @@ function AppContent() {
         // Navigation never routed an inbound URL and every deep link fell to
         // the ad-hoc listener above, which only understood Supabase tokens.
         linking={linking}
-        theme={{
-          dark: true,
-          colors: {
-            primary: Colors.accent,
-            background: Colors.bgPrimary,
-            card: Colors.bgSecondary,
-            text: Colors.textPrimary,
-            border: Colors.glassBorder,
-            notification: Colors.accent,
-          },
-          fonts: {
-            regular: { fontFamily: 'System', fontWeight: 'normal' },
-            medium: { fontFamily: 'System', fontWeight: '500' },
-            bold: { fontFamily: 'System', fontWeight: 'bold' },
-            heavy: { fontFamily: 'System', fontWeight: '900' },
-          } as any,
-        }}
+        theme={navigationTheme}
       >
         <DrawerProvider>
           <LocationProvider>
@@ -374,7 +365,10 @@ function AppContent() {
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
         </DrawerProvider>
-        <StatusBar style="light" />
+        <StatusBar
+          style={resolvedAppearance === 'dark' ? 'light' : 'dark'}
+          backgroundColor={palette.bgBody}
+        />
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>
