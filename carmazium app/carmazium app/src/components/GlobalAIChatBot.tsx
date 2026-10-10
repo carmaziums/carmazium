@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, Platform, Text,
   TextInput, ScrollView, Keyboard, Modal, Pressable, Animated, Alert,
-  LayoutAnimation, UIManager, useWindowDimensions, ActivityIndicator,
+  LayoutAnimation, UIManager, useWindowDimensions, ActivityIndicator, AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +26,8 @@ const MAZIUM_MASCOT = require('../../assets/images/mazium-bot-3d.png');
 const MAZIUM_TRIGGER_SIZE = 64;
 const MAZIUM_TAB_CLEARANCE = 96;
 const MAZIUM_CHAT_GAP = 12;
+const MAZIUM_GREETING_INTERVAL_MS = 20_000;
+const MAZIUM_GREETING_STORAGE_PREFIX = 'mazium_greeting_dismissed:';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -202,6 +204,58 @@ export const GlobalAIChatBot: React.FC = () => {
   }, []);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
+  const [showGreeting, setShowGreeting] = useState(false);
+  // Each signed-in account has its own opt-out. Do not reuse a previous
+  // account's async read while the shared widget switches users.
+  const [greetingState, setGreetingState] = useState<{ userId: string; dismissed: boolean } | null>(null);
+  const greetingStorageKey = authUserId ? MAZIUM_GREETING_STORAGE_PREFIX + authUserId : '';
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      setIsForeground(state === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setShowGreeting(false);
+    setGreetingState(null);
+    if (!authUserId || !greetingStorageKey) return;
+    AsyncStorage.getItem(greetingStorageKey)
+      .then((value) => {
+        if (!cancelled) setGreetingState({ userId: authUserId, dismissed: value === 'true' });
+      })
+      .catch(() => {
+        // A failed preference read must not trigger repeated unsolicited popups.
+        if (!cancelled) setGreetingState({ userId: authUserId, dismissed: true });
+      });
+    return () => { cancelled = true; };
+  }, [authUserId, greetingStorageKey]);
+
+  // Match the website's initial greeting and 20s visible/hidden cadence.
+  // Do not run a timer when backgrounded or after permanent dismissal.
+  useEffect(() => {
+    const eligible = isAuthenticated && Boolean(authUserId) && isForeground &&
+      greetingState?.userId === authUserId && greetingState.dismissed === false;
+    if (!eligible) {
+      setShowGreeting(false);
+      return;
+    }
+    setShowGreeting(true);
+    const timer = setInterval(() => setShowGreeting((visible) => !visible), MAZIUM_GREETING_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [isAuthenticated, authUserId, greetingState, isForeground]);
+
+  const dismissGreeting = () => {
+    if (!authUserId || !greetingStorageKey) return;
+    setShowGreeting(false);
+    setGreetingState({ userId: authUserId, dismissed: true });
+    void AsyncStorage.setItem(greetingStorageKey, 'true').catch(() => {
+      // Still suppress for this session; never claim persistence on write failure.
+    });
+  };
   const [message, setMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([
@@ -750,9 +804,36 @@ export const GlobalAIChatBot: React.FC = () => {
       {/* The same standalone 3D PNG used by the website. */}
       {!isOpen && (
         <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
+          {isForeground && !isKeyboardVisible && activeRoute !== 'LiveAuctionDetailed' &&
+            greetingState?.userId === authUserId && showGreeting && (
+            <View
+              style={[styles.greetingBubble, { width: Math.min(260, windowWidth - 32) }]}
+              accessibilityLabel="Mazium greeting. How can I help you today?"
+            >
+              <View style={styles.greetingAvatar}>
+                <Image source={MAZIUM_MASCOT} style={styles.greetingAvatarImage} contentFit="contain" accessible={false} />
+                <View style={styles.greetingOnlineDot} />
+              </View>
+              <View style={styles.greetingCopy}>
+                <Text style={styles.greetingTitle}>Hi, I'm Mazium! 👋</Text>
+                <Text style={styles.greetingSubtitle}>How can I help you today?</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.greetingClose}
+                onPress={dismissGreeting}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Permanently dismiss Mazium greeting"
+                hitSlop={10}
+              >
+                <Ionicons name="close" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
+              <View style={styles.greetingArrow} pointerEvents="none" />
+            </View>
+          )}
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => setIsOpen(true)}
+            onPress={() => { setIsOpen(true); setShowGreeting(false); }}
             style={styles.botButton}
             accessibilityRole="button"
             accessibilityLabel="Open MaziuM AI assistant"
@@ -775,6 +856,31 @@ export const GlobalAIChatBot: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { position: 'absolute', right: 16, zIndex: 9999, alignItems: 'flex-end' },
+  // Matches the website's compact, dismissible speech bubble above the 3D mascot.
+  greetingBubble: {
+    position: 'absolute', bottom: MAZIUM_TRIGGER_SIZE + 16, right: 0,
+    minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgElevated,
+    paddingHorizontal: 14, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    shadowColor: Colors.black, shadowOpacity: 0.22, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 }, elevation: 12,
+  },
+  greetingAvatar: { width: 32, height: 32 },
+  greetingAvatarImage: { width: 32, height: 32 },
+  greetingOnlineDot: {
+    position: 'absolute', top: -3, right: -3, width: 9, height: 9,
+    borderRadius: 5, backgroundColor: Colors.success, borderWidth: 1, borderColor: Colors.bgElevated,
+  },
+  greetingCopy: { flex: 1, minWidth: 0 },
+  greetingTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary },
+  greetingSubtitle: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  greetingClose: { minWidth: 28, minHeight: 28, alignItems: 'center', justifyContent: 'center' },
+  greetingArrow: {
+    position: 'absolute', bottom: -6, right: 24, height: 12, width: 12,
+    transform: [{ rotate: '45deg' }], backgroundColor: Colors.bgElevated,
+    borderRightWidth: 1, borderBottomWidth: 1, borderColor: Colors.borderSubtle,
+  },
   chatBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)' },
   chatBox: {
     position: 'absolute', right: 12, width: 400,
