@@ -540,11 +540,44 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   const fetchLeads = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    setLoadError(null);
     try {
-      const res = await apiClient<{ success: boolean; data: any[]; pagination: any }>('/dealers/leads?page=1&limit=50');
-      if (res.success) setLeads((res.data || []).map(mapApiLead));
-    } catch { /* keep previous */ }
-    finally { setLoading(false); setRefreshing(false); }
+      // Avoid the old 50-lead cap: a dashboard with >50 customers silently
+      // understated stage counts and overdue follow-ups. Bounded pagination
+      // uses the same authenticated read-only endpoint as web.
+      const all: Lead[] = [];
+      const seen = new Set<string>();
+      const limit = 50;
+      let completed = false;
+      for (let page = 1; page <= 40; page++) {
+        const res = await apiClient<{
+          success: boolean; data: any[];
+          pagination?: { totalPages?: number; total?: number };
+          meta?: { totalPages?: number; total?: number };
+        }>(`/dealers/leads?page=${page}&limit=${limit}`);
+        if (!res.success || !Array.isArray(res.data)) throw new Error('Customer list unavailable');
+        let added = 0;
+        for (const raw of res.data) {
+          if (!raw?.id || seen.has(String(raw.id))) continue;
+          seen.add(String(raw.id));
+          all.push(mapApiLead(raw));
+          added++;
+        }
+        const pages = res.pagination?.totalPages ?? res.meta?.totalPages;
+        const total = res.pagination?.total ?? res.meta?.total;
+        if (!res.data.length || added === 0 || res.data.length < limit
+            || (pages !== undefined && page >= pages)
+            || (total !== undefined && all.length >= total)) {
+          completed = true;
+          break;
+        }
+      }
+      if (!completed) throw new Error('Too many CRM pages to load safely');
+      setLeads(all);
+    } catch {
+      // Preserve previous values but explicitly mark them stale.
+      setLoadError('Customer pipeline could not be refreshed. Previously loaded data may be outdated.');
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   const fetchStaff = useCallback(async () => {
@@ -634,6 +667,27 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status: newStatus, tag: getLeadTag(newStatus) } : l)));
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Could not update lead status.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Website CRM uses tomorrow at 09:00 local time for new follow-up reminders.
+  const handleFollowUp = async (leadId: string, current: string | null | undefined) => {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(9, 0, 0, 0);
+    const nextFollowUpAt = current ? null : next.toISOString();
+    setUpdatingId(leadId);
+    try {
+      await apiClient(`/dealers/leads/${leadId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ nextFollowUpAt }),
+      });
+      setLeads(previous => previous.map(item => item.id === leadId
+        ? { ...item, nextFollowUpAt } : item));
+    } catch (error: any) {
+      Alert.alert('Follow-up not saved', error?.message || 'Please retry.');
     } finally {
       setUpdatingId(null);
     }
