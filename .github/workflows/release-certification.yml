@@ -207,6 +207,8 @@ jobs:
         run: node --test scripts/test-native-visual-parity-block8.test.mjs
       - name: Audit Block 9 dealer role gates, accessible type and safe areas
         run: node --test scripts/test-native-visual-parity-block9.test.mjs
+      - name: Verify Block 10 visual release acceptance fails closed without real private device evidence
+        run: node --test scripts/test-native-visual-parity-block10.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
