@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
@@ -10,8 +10,7 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
-import { FontFamily, FontSize, TextPresets } from '../constants/typography';
-import { Elevation, Radius } from '../constants/spacing';
+import { TextPresets } from '../constants/typography';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 // Main screens
