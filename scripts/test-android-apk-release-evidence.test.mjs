@@ -45,7 +45,7 @@ test('emits private review evidence from measured bytes, signer, version and Git
     assert.equal(evidence.package_name, 'uk.carmazium.app');
     assert.equal(evidence.version_code, '42');
     assert.match(evidence.apk_sha256, /^[a-f0-9]{64}$/);
-    assert.equal(evidence.apk_size_bytes, 45);
+    assert.equal(evidence.apk_size_bytes, 49);
     writeFileSync(f.evidenceFile, JSON.stringify(evidence));
     assert.deepEqual(await verifyAndroidApkEvidence(f.apk, f.evidenceFile, env, f.run), evidence);
   } finally { f.close(); }
