@@ -762,7 +762,7 @@ export const HomeScreen: React.FC = () => {
             hero treatment; auction/dealer below are now quiet utility rows. */}
         <TouchableOpacity
           style={s.sellCta}
-          onPress={() => navigation.navigate('SellCarFlow' as any)}
+          onPress={() => navigation.navigate('SellLanding')}
           activeOpacity={0.9}
         >
           <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={s.sellCtaWatermark} />
