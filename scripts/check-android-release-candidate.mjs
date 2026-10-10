@@ -19,6 +19,10 @@ export function checkReleaseCandidate({app,eas,env,commitSha,requestedSha}){
   if(!sha40.test(commitSha||'') || !sha40.test(requestedSha||'') ||
       commitSha.toLowerCase()!==requestedSha.toLowerCase())
     errors.push('Candidate must use exact requested Git source SHA');
+  if(env.GITHUB_REF!=='refs/heads/main')
+    errors.push('Release candidate must originate from main branch');
+  if(env.GITHUB_EVENT_NAME!=='workflow_dispatch')
+    errors.push('Release candidate must be manually dispatched');
   if(env.CARMAZIUM_ANDROID_CANDIDATE_APPROVAL!=='INTERNAL_REVIEW_ONLY')
     errors.push('Explicit internal-review-only approval missing');
   if(env.APP_ENV!=='production')
