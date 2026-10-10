@@ -321,7 +321,7 @@ export const GlobalDrawer: React.FC = () => {
           '',
           'Please attach a screenshot or screen recording separately.',
           'Do not include real customer information, passwords or payment data.',
-        ].join('\\n'),
+        ].join('\n'),
       }).catch(() => Alert.alert('Cannot open share sheet', 'You can describe the issue with a screenshot directly in ChatGPT.'));
     }, 220);
   };
