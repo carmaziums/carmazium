@@ -1,0 +1,140 @@
+name: CarMazium Android release candidate (internal review only)
+# Manual only. Never publishes a website APK, store release, or OTA update.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character main source SHA for candidate
+        type: string
+        required: true
+      approval:
+        description: Candidate only; not customer distribution
+        type: choice
+        required: true
+        options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
+permissions:
+  contents: read
+concurrency:
+  group: carmazium-android-release-review
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      CARMAZIUM_CANDIDATE_SOURCE_SHA: ${{ inputs.source_sha }}
+      CARMAZIUM_ANDROID_CANDIDATE_APPROVAL: ${{ inputs.approval }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install locked native packages
+        run: npm ci
+      - name: Reject missing keystore, unsigned candidate and wrong source SHA
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        run: node ../../scripts/check-android-release-candidate.mjs
+      - name: Restore keystore in ephemeral runner only
+        env:
+          CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS }}
+          CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD }}
+          CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p keystores
+          printf '%s' "$CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64" | base64 --decode > keystores/customer-release.jks
+          test -s keystores/customer-release.jks
+          node - <<'NODE'
+          const fs=require('fs');
+          const keys={
+            MYAPP_RELEASE_STORE_FILE:'customer-release.jks',
+            MYAPP_RELEASE_KEY_ALIAS:process.env.CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS,
+            MYAPP_RELEASE_STORE_PASSWORD:process.env.CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD,
+            MYAPP_RELEASE_KEY_PASSWORD:process.env.CARMAZIUM_ANDROID_RELEASE_KEY_PASSWORD,
+          };
+          for(const [k,v] of Object.entries(keys))
+            if(!v || /[\r\n]/.test(v)) throw Error('Malformed signing property: '+k);
+          fs.writeFileSync('keystores/release.keystore.properties',
+            Object.entries(keys).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
+          const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+          app.expo.updates.enabled=false;
+          delete app.expo.updates.url;
+          fs.writeFileSync('app.json',JSON.stringify(app,null,2)+'\n');
+          const eas=JSON.parse(fs.readFileSync('eas.json','utf8'));
+          for(const key of ['EXPO_PUBLIC_API_URL','EXPO_PUBLIC_SUPABASE_URL',
+            'EXPO_PUBLIC_SUPABASE_ANON_KEY','EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY']){
+            const value=eas.build.production.env[key];
+            if(!value||/[\r\n]/.test(value))throw Error('Missing production client variable: '+key);
+            fs.appendFileSync(process.env.GITHUB_ENV,key+'='+value+'\n');
+          }
+          NODE
+      - name: Prepare Android project and assert release signing
+        run: |
+          npm run typescript
+          npx expo prebuild --platform android --non-interactive --clean
+          grep -F 'signingConfig signingConfigs.release' android/app/build.gradle
+          test "$(node -p "require('./app.json').expo.android.package")" = 'uk.carmazium.app'
+          test "$(node -p "require('./app.json').expo.updates.enabled")" = 'false'
+      - name: Build APK with retained release signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon
+      - name: Reject debug signer and verify production package and checksum
+        env:
+          CARMAZIUM_ANDROID_RELEASE_CERT_SHA256: ${{ secrets.CARMAZIUM_ANDROID_RELEASE_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find android/app/build/outputs/apk/release -name '*.apk' -type f -print -quit)"
+          test -s "$apk"
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          test -x "$tools/apksigner"
+          "$tools/apksigner" verify --verbose "$apk"
+          actual="$("$tools/apksigner" verify --print-certs "$apk" | sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+          expected="$(printf '%s' "$CARMAZIUM_ANDROID_RELEASE_CERT_SHA256" | tr '[:upper:]' '[:lower:]')"
+          if [ -z "$actual" ] || [ "$actual" != "$expected" ]; then
+            echo '::error::APK signer mismatch; NOT distributing debug or unsigned APK.'
+            exit 1
+          fi
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='uk.carmazium.app'"
+          mkdir -p "$GITHUB_WORKSPACE/review-only-apk"
+          cp "$apk" "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk"
+          sha256sum "$GITHUB_WORKSPACE/review-only-apk/CarMazium-Android-REVIEW-ONLY.apk" > "$GITHUB_WORKSPACE/review-only-apk/SHA256SUMS.txt"
+          echo 'Release signer verified. INTERNAL REVIEW ONLY; no public distribution authorised.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Store short-lived private review artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Android-REVIEW-ONLY
+          path: review-only-apk/*
+          retention-days: 3
+          if-no-files-found: error
+      - name: Remove signing material from temporary runner
+        if: always()
+        shell: bash
+        run: |
+          rm -f keystores/customer-release.jks keystores/release.keystore.properties android/app/customer-release.jks 2>/dev/null || true
