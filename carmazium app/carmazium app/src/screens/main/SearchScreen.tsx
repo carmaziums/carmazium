@@ -18,6 +18,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
 import { haversineDistanceMiles } from '../../lib/distance';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -172,6 +173,8 @@ const DISTANCE_CHIPS = [10, 25, 50, 100, 200];
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const SearchScreen: React.FC = () => {
+  const themed = useSearchDiscoveryStyles();
+  const { resolvedAppearance, palette } = useNativeAppearance();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
@@ -325,7 +328,7 @@ export const SearchScreen: React.FC = () => {
     const qf = QUICK_FILTERS.find(f => f.id === quickFilter);
     const parseMi = (s: string) => {
       if (s === 'Any') return undefined;
-      return parseInt(s.replace('k', ''), 10) * 1000;
+      return parseInt(themed.replace('k', ''), 10) * 1000;
     };
     return {
       search: query.trim() || undefined,
@@ -524,7 +527,7 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  const sortLabel = SORT_OPTIONS.find(s => s.id === sortId)?.label ?? 'Sort';
+  const sortLabel = SORT_OPTIONS.find(s => themed.id === sortId)?.label ?? 'Sort';
 
   const searchAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
@@ -603,10 +606,10 @@ export const SearchScreen: React.FC = () => {
   };
 
   return (
-    <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', palette.bgBody]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -614,36 +617,36 @@ export const SearchScreen: React.FC = () => {
       <WebsiteTopBar />
       {/* Match website Search title; result counts belong beside sorting,
           not as a changing page title that jumps between 0 and a number. */}
-      <View style={[s.header, { paddingTop: 12 }]}>
+      <View style={[themed.header, { paddingTop: 12 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={s.headerSub}>BUY CARS · RETAIL</Text>
-          <Text style={s.headerTitle}>Find Your Perfect Car</Text>
-          <Text style={s.headerResults}>
+          <Text style={themed.headerSub}>BUY CARS · RETAIL</Text>
+          <Text style={themed.headerTitle}>Find Your Perfect Car</Text>
+          <Text style={themed.headerResults}>
             {loading ? 'Loading vehicles…' : `${total.toLocaleString('en-GB')} vehicles available`}
           </Text>
         </View>
       </View>
-      <TouchableOpacity style={s.auctionBrowseBanner}
+      <TouchableOpacity style={themed.auctionBrowseBanner}
         onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
         accessibilityRole="button" accessibilityLabel="Browse Live Auctions">
         <Ionicons name="hammer-outline" size={19} color={Colors.accent}/>
         <View style={{ flex: 1 }}>
-          <Text style={s.auctionBrowseTitle}>Looking for dealer auctions?</Text>
-          <Text style={s.auctionBrowseDesc}>Browse Live Auctions in TradeXchange</Text>
+          <Text style={themed.auctionBrowseTitle}>Looking for dealer auctions?</Text>
+          <Text style={themed.auctionBrowseDesc}>Browse Live Auctions in TradeXchange</Text>
         </View>
         <Ionicons name="chevron-forward" size={17} color={Colors.accent}/>
       </TouchableOpacity>
 
       {/* ── Search bar ── */}
-      <View style={s.searchWrap}>
-        <View style={s.searchBar}>
+      <View style={themed.searchWrap}>
+        <View style={themed.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <TextInput
-            style={s.searchInput}
+            style={themed.searchInput}
             value={query}
             onChangeText={setQuery}
             placeholder="Make, model, or keyword..."
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={palette.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -655,18 +658,18 @@ export const SearchScreen: React.FC = () => {
       </View>
 
       {/* ── AI Search button ── */}
-      <View style={s.aiSearchWrap}>
-        <TouchableOpacity style={s.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
+      <View style={themed.aiSearchWrap}>
+        <TouchableOpacity style={themed.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
           <Ionicons name="sparkles" size={13} color={Colors.warning} />
-          <Text style={s.aiSearchBtnText}>Try AI Search ✦</Text>
+          <Text style={themed.aiSearchBtnText}>Try AI Search ✦</Text>
         </TouchableOpacity>
       </View>
 
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
-        <View style={s.aiExplanationBanner}>
+        <View style={themed.aiExplanationBanner}>
           <Ionicons name="sparkles" size={12} color={Colors.warning} />
-          <Text style={s.aiExplanationText} numberOfLines={2}>{aiExplanation}</Text>
+          <Text style={themed.aiExplanationText} numberOfLines={2}>{aiExplanation}</Text>
           <IconButton icon={<Ionicons name="close" size={14} color={Colors.warning} />} onPress={() => setAiExplanation(null)} accessibilityLabel="Dismiss AI search explanation" />
         </View>
       )}
@@ -675,17 +678,17 @@ export const SearchScreen: React.FC = () => {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={s.quickScroll}
-        contentContainerStyle={s.quickRow}
+        style={themed.quickScroll}
+        contentContainerStyle={themed.quickRow}
       >
         {QUICK_FILTERS.map(f => (
           <TouchableOpacity
             key={f.id}
-            style={[s.quickChip, quickFilter === f.id && s.quickChipActive]}
+            style={[themed.quickChip, quickFilter === f.id && themed.quickChipActive]}
             onPress={() => applyQuickFilter(f.id)}
             activeOpacity={0.7}
           >
-            <Text style={[s.quickChipText, quickFilter === f.id && s.quickChipTextActive]}>
+            <Text style={[themed.quickChipText, quickFilter === f.id && themed.quickChipTextActive]}>
               {f.label}
             </Text>
           </TouchableOpacity>
@@ -693,24 +696,24 @@ export const SearchScreen: React.FC = () => {
       </ScrollView>
 
       {/* ── Sort + Filter row ── */}
-      <View style={s.sortRow}>
-        <Text style={s.resultsCount}>
+      <View style={themed.sortRow}>
+        <Text style={themed.resultsCount}>
           {loading ? '...' : `${total.toLocaleString('en-GB')} results`}
         </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Sort */}
-          <TouchableOpacity style={s.sortBtn} onPress={() => setShowSortMenu(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Sort cars, currently ${sortLabel}`}>
+          <TouchableOpacity style={themed.sortBtn} onPress={() => setShowSortMenu(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Sort cars, currently ${sortLabel}`}>
             <Ionicons name="swap-vertical-outline" size={16} color={Colors.textSecondary} />
-            <Text style={s.sortBtnText}>Sort</Text>
+            <Text style={themed.sortBtnText}>Sort</Text>
           </TouchableOpacity>
           {/* Filter */}
           <TouchableOpacity
-            style={[s.filterBtn, filterCount > 0 && s.filterBtnActive]}
+            style={[themed.filterBtn, filterCount > 0 && themed.filterBtnActive]}
             onPress={() => setFilterOpen(true)}
             activeOpacity={0.7}
           >
             <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : Colors.textSecondary} />
-            <Text style={[s.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
+            <Text style={[themed.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
           </TouchableOpacity>
@@ -719,19 +722,19 @@ export const SearchScreen: React.FC = () => {
 
       </View>
       {filterCount > 0 && (
-        <TouchableOpacity style={s.clearBelowRow} onPress={resetFilters} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Clear all search filters">
+        <TouchableOpacity style={themed.clearBelowRow} onPress={resetFilters} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Clear all search filters">
           <Ionicons name="close-circle-outline" size={15} color={Colors.accent} />
-          <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
+          <Text style={themed.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
 
       {/* ── Results ── */}
       {loading && listings.length === 0 ? (
-        <View style={s.skeletonList}>
+        <View style={themed.skeletonList}>
           {Array.from({ length: 4 }).map((_, i) => (
-            <View key={`sk-${i}`} style={s.skeletonCard}>
+            <View key={`sk-${i}`} style={themed.skeletonCard}>
               <Skeleton w={92} h={72} r={10} />
-              <View style={s.skeletonInfo}>
+              <View style={themed.skeletonInfo}>
                 <Skeleton w={160} h={14} r={6} />
                 <Skeleton w={100} h={12} r={5} />
                 <Skeleton w={80} h={18} r={6} />
@@ -756,7 +759,7 @@ export const SearchScreen: React.FC = () => {
         <FlatList
           data={listings}
           keyExtractor={item => item.id}
-          contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
+          contentContainerStyle={[themed.listContent, { paddingBottom: insets.bottom + 110 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
@@ -767,11 +770,11 @@ export const SearchScreen: React.FC = () => {
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             loadingMore ? (
-              <View style={s.loadMoreWrap}>
+              <View style={themed.loadMoreWrap}>
                 <ActivityIndicator size="small" color={Colors.accent} />
               </View>
             ) : hasMore ? null : listings.length > 10 ? (
-              <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
+              <Text style={themed.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
             ) : null
           }
         />
@@ -783,13 +786,13 @@ export const SearchScreen: React.FC = () => {
           {SORT_OPTIONS.map(o => (
             <TouchableOpacity
               key={o.id}
-              style={[s.sortOption, o.id === sortId && s.sortOptionActive]}
+              style={[themed.sortOption, o.id === sortId && themed.sortOptionActive]}
               onPress={() => { setSortId(o.id); setShowSortMenu(false); }}
               activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityState={{ selected: o.id === sortId }}
             >
-              <Text style={[s.sortOptionText, o.id === sortId && { color: Colors.accent }]}>{o.label}</Text>
+              <Text style={[themed.sortOptionText, o.id === sortId && { color: Colors.accent }]}>{o.label}</Text>
               {o.id === sortId && <Ionicons name="checkmark" size={18} color={Colors.accent} />}
             </TouchableOpacity>
           ))}
@@ -807,16 +810,16 @@ export const SearchScreen: React.FC = () => {
         {/* gap replicates the old aiModalSheet wrapper's spacing, which BottomSheet's
             own sheet style doesn't provide */}
         <View style={{ gap: 12 }}>
-          <Text style={s.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
-          <Text style={s.aiPrivacyHint}>
+          <Text style={themed.aiModalSubtitle}>Describe what you're looking for in plain English</Text>
+          <Text style={themed.aiPrivacyHint}>
             AI Search sends your search text to OpenAI. Do not include sensitive information; you will be asked for consent before the first search.
           </Text>
           <TextInput
-            style={s.aiModalInput}
+            style={themed.aiModalInput}
             value={aiQuery}
             onChangeText={setAiQuery}
             placeholder="Describe the car you're looking for…"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={palette.textMuted}
             multiline
             numberOfLines={3}
             onSubmitEditing={handleAiSearch}
@@ -824,7 +827,7 @@ export const SearchScreen: React.FC = () => {
             autoFocus
           />
           <TouchableOpacity
-            style={[s.aiModalBtn, (aiLoading || !aiQuery.trim()) && { opacity: 0.5 }]}
+            style={[themed.aiModalBtn, (aiLoading || !aiQuery.trim()) && { opacity: 0.5 }]}
             onPress={handleAiSearch}
             disabled={aiLoading || !aiQuery.trim()}
             activeOpacity={0.85}
@@ -834,7 +837,7 @@ export const SearchScreen: React.FC = () => {
             ) : (
               <>
                 <Ionicons name="sparkles" size={14} color={Colors.white} />
-                <Text style={s.aiModalBtnText}>Search with AI</Text>
+                <Text style={themed.aiModalBtnText}>Search with AI</Text>
               </>
             )}
           </TouchableOpacity>
@@ -845,28 +848,28 @@ export const SearchScreen: React.FC = () => {
       <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} maxHeightPercent={92} avoidKeyboard>
         {/* Custom header (with Reset) kept as content — BottomSheet's own title
             row doesn't support a second right-side action. */}
-        <View style={s.modalHeader}>
-          <IconButton style={s.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
-          <Text style={s.modalTitle}>Filter cars</Text>
+        <View style={themed.modalHeader}>
+          <IconButton style={themed.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
+          <Text style={themed.modalTitle}>Filter cars</Text>
           <TouchableOpacity onPress={resetFilters} activeOpacity={0.7}>
-            <Text style={s.modalReset}>Reset</Text>
+            <Text style={themed.modalReset}>Reset</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.modalBody}>
-          <Text style={s.filterIntro}>Choose the details that matter. More options are available below.</Text>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={themed.modalBody}>
+          <Text style={themed.filterIntro}>Choose the details that matter. More options are available below.</Text>
 
               {/* Make — type to filter the full 71-make list, otherwise the ten
                   popular ones. Selection stays single-value: the backend has no
                   `makes[]` param, buildParams() only ever sent selectedMakes[0],
                   so a second chip silently did nothing. */}
-              <Text style={s.filterLabel}>MAKE</Text>
-              <View style={s.makeSearchBox}>
+              <Text style={themed.filterLabel}>MAKE</Text>
+              <View style={themed.makeSearchBox}>
                 <Ionicons name="search" size={14} color={Colors.iconMuted} />
                 <TextInput
-                  style={s.makeSearchInput}
+                  style={themed.makeSearchInput}
                   placeholder="Search all makes"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                   value={makeQuery}
                   onChangeText={setMakeQuery}
                   autoCorrect={false}
@@ -880,17 +883,17 @@ export const SearchScreen: React.FC = () => {
                 )}
               </View>
               {visibleMakes.length === 0 ? (
-                <Text style={s.makeEmptyText}>No makes match “{makeQuery.trim()}”</Text>
+                <Text style={themed.makeEmptyText}>No makes match “{makeQuery.trim()}”</Text>
               ) : (
-                <View style={s.chipGrid}>
+                <View style={themed.chipGrid}>
                   {visibleMakes.map(m => (
                     <TouchableOpacity
                       key={m}
-                      style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
+                      style={[themed.filterChip, selectedMakes.includes(m) && themed.filterChipActive]}
                       onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
                       activeOpacity={0.7}
                     >
-                      <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
+                      <Text style={[themed.filterChipText, selectedMakes.includes(m) && themed.filterChipTextActive]}>
                         {m}
                       </Text>
                     </TouchableOpacity>
@@ -898,112 +901,112 @@ export const SearchScreen: React.FC = () => {
                 </View>
               )}
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Model + Location */}
-              <Text style={s.filterLabel}>MODEL</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
+              <Text style={themed.filterLabel}>MODEL</Text>
+              <View style={themed.inputBox}>
+                <Text style={themed.inputBoxLabel}>MODEL NAME</Text>
                 <TextInput
-                  style={s.inputBoxValue}
+                  style={themed.inputBoxValue}
                   value={modelFilter}
                   onChangeText={setModelFilter}
                   placeholder="e.g. Q7, 3 Series"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={palette.textMuted}
                   autoCapitalize="words"
                 />
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Price */}
-              <Text style={s.filterLabel}>PRICE RANGE</Text>
-              <View style={s.twoCol}>
-                <View style={s.inputBox}>
-                  <Text style={s.inputBoxLabel}>MIN</Text>
+              <Text style={themed.filterLabel}>PRICE RANGE</Text>
+              <View style={themed.twoCol}>
+                <View style={themed.inputBox}>
+                  <Text style={themed.inputBoxLabel}>MIN</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={minPrice > 0 ? `£${minPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMinPrice(parseInt(t.replace(/[^0-9]/g, '') || '0'))}
                     placeholder="£ 0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
-                <View style={s.inputBox}>
-                  <Text style={s.inputBoxLabel}>MAX</Text>
+                <View style={themed.inputBox}>
+                  <Text style={themed.inputBoxLabel}>MAX</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
                     placeholder="£ Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Body type */}
-              <Text style={s.filterLabel}>BODY TYPE</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>BODY TYPE</Text>
+              <View style={themed.chipGrid}>
                 {BODY_TYPES.map(bt => (
                   <TouchableOpacity
                     key={bt.id}
-                    style={[s.bodyChip, selectedBody === bt.id && s.bodyChipActive]}
+                    style={[themed.bodyChip, selectedBody === bt.id && themed.bodyChipActive]}
                     onPress={() => setSelectedBody(prev => prev === bt.id ? '' : bt.id)}
                     activeOpacity={0.7}
                   >
                     <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : Colors.textSecondary} />
-                    <Text style={[s.filterChipText, selectedBody === bt.id && s.filterChipTextActive]}>
+                    <Text style={[themed.filterChipText, selectedBody === bt.id && themed.filterChipTextActive]}>
                       {bt.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Fuel */}
-              <Text style={s.filterLabel}>FUEL TYPE</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>FUEL TYPE</Text>
+              <View style={themed.chipGrid}>
                 {FUELS.map(f => (
                   <TouchableOpacity
                     key={f}
-                    style={[s.filterChip, selectedFuels.includes(f) && s.filterChipActive]}
+                    style={[themed.filterChip, selectedFuels.includes(f) && themed.filterChipActive]}
                     onPress={() => setSelectedFuels(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.filterChipText, selectedFuels.includes(f) && s.filterChipTextActive]}>{f}</Text>
+                    <Text style={[themed.filterChipText, selectedFuels.includes(f) && themed.filterChipTextActive]}>{f}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Year Range */}
-              <Text style={s.filterLabel}>YEAR RANGE</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>FROM YEAR</Text>
+              <Text style={themed.filterLabel}>YEAR RANGE</Text>
+              <View style={themed.inputBox}>
+                <Text style={themed.inputBoxLabel}>FROM YEAR</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {YEAR_OPTS.map(y => (
-                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
+                      <TouchableOpacity key={y} style={[themed.miniChip, minYear === y && themed.filterChipActive]} onPress={() => setMinYear(y)} activeOpacity={0.7}>
+                        <Text style={[themed.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </ScrollView>
               </View>
               <View style={{ marginTop: 10 }}>
-                <View style={s.inputBox}>
-                  <Text style={s.inputBoxLabel}>TO YEAR</Text>
+                <View style={themed.inputBox}>
+                  <Text style={themed.inputBoxLabel}>TO YEAR</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {YEAR_OPTS_MAX.map(y => (
-                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
+                        <TouchableOpacity key={y} style={[themed.miniChip, maxYear === y && themed.filterChipActive]} onPress={() => setMaxYear(y)} activeOpacity={0.7}>
+                          <Text style={[themed.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1011,30 +1014,30 @@ export const SearchScreen: React.FC = () => {
                 </View>
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Mileage Range */}
-              <Text style={s.filterLabel}>MILEAGE RANGE</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>MIN MILES</Text>
+              <Text style={themed.filterLabel}>MILEAGE RANGE</Text>
+              <View style={themed.inputBox}>
+                <Text style={themed.inputBoxLabel}>MIN MILES</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {MILES_OPTS_MIN.map(m => (
-                      <TouchableOpacity key={m} style={[s.miniChip, minMiles === m && s.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
+                      <TouchableOpacity key={m} style={[themed.miniChip, minMiles === m && themed.filterChipActive]} onPress={() => setMinMiles(m)} activeOpacity={0.7}>
+                        <Text style={[themed.miniChipText, minMiles === m && { color: Colors.white }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </ScrollView>
               </View>
               <View style={{ marginTop: 10 }}>
-                <View style={s.inputBox}>
-                  <Text style={s.inputBoxLabel}>MAX MILES</Text>
+                <View style={themed.inputBox}>
+                  <Text style={themed.inputBoxLabel}>MAX MILES</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       {MILES_OPTS.map(m => (
-                        <TouchableOpacity key={m} style={[s.miniChip, maxMiles === m && s.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
+                        <TouchableOpacity key={m} style={[themed.miniChip, maxMiles === m && themed.filterChipActive]} onPress={() => setMaxMiles(m)} activeOpacity={0.7}>
+                          <Text style={[themed.miniChipText, maxMiles === m && { color: Colors.white }]}>{m}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1042,17 +1045,17 @@ export const SearchScreen: React.FC = () => {
                 </View>
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Transmission — multi-select, mirrors the fuel-types chip pattern */}
-              <Text style={s.filterLabel}>TRANSMISSION</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>TRANSMISSION</Text>
+              <View style={themed.chipGrid}>
                 {TRANSMISSIONS.map(t => {
                   const selected = transmissions.includes(t.id);
                   return (
                     <TouchableOpacity
                       key={t.id}
-                      style={[s.filterChip, selected && s.filterChipActive]}
+                      style={[themed.filterChip, selected && themed.filterChipActive]}
                       onPress={() =>
                         setTransmissions(prev =>
                           prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id],
@@ -1060,7 +1063,7 @@ export const SearchScreen: React.FC = () => {
                       }
                       activeOpacity={0.7}
                     >
-                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>
+                      <Text style={[themed.filterChipText, selected && themed.filterChipTextActive]}>
                         {t.label}
                       </Text>
                     </TouchableOpacity>
@@ -1068,10 +1071,10 @@ export const SearchScreen: React.FC = () => {
                 })}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               <TouchableOpacity
-                style={s.moreFiltersToggle}
+                style={themed.moreFiltersToggle}
                 onPress={() => setShowAdvancedFilters(v => !v)}
                 activeOpacity={0.8}
                 accessibilityRole="button"
@@ -1079,98 +1082,98 @@ export const SearchScreen: React.FC = () => {
                 accessibilityLabel={`More filters, ${advancedFilterCount} active`}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={s.moreFiltersTitle}>More filters {advancedFilterCount > 0 ? `(${advancedFilterCount} active)` : ''}</Text>
-                  <Text style={s.moreFiltersSubtitle}>Condition, location, features and technical details</Text>
+                  <Text style={themed.moreFiltersTitle}>More filters {advancedFilterCount > 0 ? `(${advancedFilterCount} active)` : ''}</Text>
+                  <Text style={themed.moreFiltersSubtitle}>Condition, location, features and technical details</Text>
                 </View>
                 <Ionicons name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
               {showAdvancedFilters && (
                 <>
               {/* Condition */}
-              <Text style={s.filterLabel}>CONDITION</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>CONDITION</Text>
+              <View style={themed.chipGrid}>
                 {CONDITIONS.map(c => (
                   <TouchableOpacity
                     key={c.id}
-                    style={[s.filterChip, conditions.includes(c.id) && s.filterChipActive]}
+                    style={[themed.filterChip, conditions.includes(c.id) && themed.filterChipActive]}
                     onPress={() => setConditions(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.filterChipText, conditions.includes(c.id) && s.filterChipTextActive]}>{c.label}</Text>
+                    <Text style={[themed.filterChipText, conditions.includes(c.id) && themed.filterChipTextActive]}>{c.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* BHP Range */}
-              <Text style={s.filterLabel}>POWER (BHP)</Text>
+              <Text style={themed.filterLabel}>POWER (BHP)</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={[s.inputBox, { flex: 1 }]}>
-                  <Text style={s.inputBoxLabel}>MIN BHP</Text>
+                <View style={[themed.inputBox, { flex: 1 }]}>
+                  <Text style={themed.inputBoxLabel}>MIN BHP</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={minBhp}
                     onChangeText={setMinBhp}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
-                <View style={[s.inputBox, { flex: 1 }]}>
-                  <Text style={s.inputBoxLabel}>MAX BHP</Text>
+                <View style={[themed.inputBox, { flex: 1 }]}>
+                  <Text style={themed.inputBoxLabel}>MAX BHP</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={maxBhp}
                     onChangeText={setMaxBhp}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Engine Size */}
-              <Text style={s.filterLabel}>ENGINE SIZE (CC)</Text>
+              <Text style={themed.filterLabel}>ENGINE SIZE (CC)</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={[s.inputBox, { flex: 1 }]}>
-                  <Text style={s.inputBoxLabel}>MIN CC</Text>
+                <View style={[themed.inputBox, { flex: 1 }]}>
+                  <Text style={themed.inputBoxLabel}>MIN CC</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={minEngine}
                     onChangeText={setMinEngine}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
-                <View style={[s.inputBox, { flex: 1 }]}>
-                  <Text style={s.inputBoxLabel}>MAX CC</Text>
+                <View style={[themed.inputBox, { flex: 1 }]}>
+                  <Text style={themed.inputBoxLabel}>MAX CC</Text>
                   <TextInput
-                    style={s.inputBoxValue}
+                    style={themed.inputBoxValue}
                     value={maxEngine}
                     onChangeText={setMaxEngine}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     keyboardType="number-pad"
                   />
                 </View>
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* CO2 Emissions */}
-              <Text style={s.filterLabel}>CO₂ EMISSIONS (G/KM)</Text>
-              <View style={[s.inputBox, { marginBottom: 10 }]}>
-                <Text style={s.inputBoxLabel}>MAX G/KM</Text>
+              <Text style={themed.filterLabel}>CO₂ EMISSIONS (G/KM)</Text>
+              <View style={[themed.inputBox, { marginBottom: 10 }]}>
+                <Text style={themed.inputBoxLabel}>MAX G/KM</Text>
                 <TextInput
-                  style={s.inputBoxValue}
+                  style={themed.inputBoxValue}
                   value={maxCo2}
                   onChangeText={setMaxCo2}
                   placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={palette.textMuted}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1178,19 +1181,19 @@ export const SearchScreen: React.FC = () => {
                 {['100', '120', '150', '200'].map(v => (
                   <TouchableOpacity
                     key={v}
-                    style={[s.segmentBtn, maxCo2 === v && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, maxCo2 === v && themed.segmentBtnActive]}
                     onPress={() => setMaxCo2(prev => prev === v ? '' : v)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, maxCo2 === v && s.segmentBtnTextActive]}>≤{v}</Text>
+                    <Text style={[themed.segmentBtnText, maxCo2 === v && themed.segmentBtnTextActive]}>≤{v}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Vehicle Type */}
-              <Text style={s.filterLabel}>VEHICLE TYPE</Text>
+              <Text style={themed.filterLabel}>VEHICLE TYPE</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {[
                   { id: '' as const,            label: 'All' },
@@ -1200,98 +1203,98 @@ export const SearchScreen: React.FC = () => {
                 ].map(opt => (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[s.segmentBtn, vehicleType === opt.id && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, vehicleType === opt.id && themed.segmentBtnActive]}
                     onPress={() => setVehicleType(opt.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, vehicleType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                    <Text style={[themed.segmentBtnText, vehicleType === opt.id && themed.segmentBtnTextActive]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
-              <Text style={s.filterLabel}>COLOUR</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>e.g. White, Black, Blue</Text>
+              <Text style={themed.filterLabel}>COLOUR</Text>
+              <View style={themed.inputBox}>
+                <Text style={themed.inputBoxLabel}>e.g. White, Black, Blue</Text>
                 <TextInput
-                  style={s.inputBoxValue}
+                  style={themed.inputBoxValue}
                   value={colorFilter}
                   onChangeText={setColorFilter}
                   placeholder="Any colour"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={palette.textMuted}
                   autoCapitalize="words"
                 />
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Doors / Seats — mirrors web's quick-select buttons */}
-              <Text style={s.filterLabel}>DOORS</Text>
+              <Text style={themed.filterLabel}>DOORS</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {DOOR_OPTS.map(d => (
                   <TouchableOpacity
                     key={d}
-                    style={[s.segmentBtn, minDoors === d && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, minDoors === d && themed.segmentBtnActive]}
                     onPress={() => setMinDoors(prev => prev === d ? '' : d)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, minDoors === d && s.segmentBtnTextActive]}>{d}+</Text>
+                    <Text style={[themed.segmentBtnText, minDoors === d && themed.segmentBtnTextActive]}>{d}+</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               <View style={{ height: 16 }} />
 
-              <Text style={s.filterLabel}>SEATS</Text>
+              <Text style={themed.filterLabel}>SEATS</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {SEAT_OPTS.map(sv => (
                   <TouchableOpacity
                     key={sv}
-                    style={[s.segmentBtn, minSeats === sv && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, minSeats === sv && themed.segmentBtnActive]}
                     onPress={() => setMinSeats(prev => prev === sv ? '' : sv)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, minSeats === sv && s.segmentBtnTextActive]}>{sv}+</Text>
+                    <Text style={[themed.segmentBtnText, minSeats === sv && themed.segmentBtnTextActive]}>{sv}+</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Euro Standard */}
-              <Text style={s.filterLabel}>EURO STANDARD</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>EURO STANDARD</Text>
+              <View style={themed.chipGrid}>
                 <TouchableOpacity
-                  style={[s.filterChip, !euroStandard && s.filterChipActive]}
+                  style={[themed.filterChip, !euroStandard && themed.filterChipActive]}
                   onPress={() => setEuroStandard('')}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.filterChipText, !euroStandard && s.filterChipTextActive]}>Any</Text>
+                  <Text style={[themed.filterChipText, !euroStandard && themed.filterChipTextActive]}>Any</Text>
                 </TouchableOpacity>
                 {EURO_OPTIONS.map(o => (
                   <TouchableOpacity
                     key={o.value}
-                    style={[s.filterChip, euroStandard === o.value && s.filterChipActive]}
+                    style={[themed.filterChip, euroStandard === o.value && themed.filterChipActive]}
                     onPress={() => setEuroStandard(prev => prev === o.value ? '' : o.value)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.filterChipText, euroStandard === o.value && s.filterChipTextActive]}>{o.label}</Text>
+                    <Text style={[themed.filterChipText, euroStandard === o.value && themed.filterChipTextActive]}>{o.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Features / Options — 18-item checklist, matches web's POPULAR_FEATURES */}
-              <Text style={s.filterLabel}>FEATURES / OPTIONS</Text>
-              <View style={s.chipGrid}>
+              <Text style={themed.filterLabel}>FEATURES / OPTIONS</Text>
+              <View style={themed.chipGrid}>
                 {POPULAR_FEATURES.map(feat => {
                   const selected = selectedFeatures.includes(feat);
                   return (
                     <TouchableOpacity
                       key={feat}
-                      style={[s.filterChip, selected && s.filterChipActive]}
+                      style={[themed.filterChip, selected && themed.filterChipActive]}
                       onPress={() =>
                         setSelectedFeatures(prev =>
                           prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat],
@@ -1299,78 +1302,78 @@ export const SearchScreen: React.FC = () => {
                       }
                       activeOpacity={0.7}
                     >
-                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
+                      <Text style={[themed.filterChipText, selected && themed.filterChipTextActive]}>{feat}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
-              <Text style={s.filterLabel}>LOCATION</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>CITY OR POSTCODE</Text>
+              <Text style={themed.filterLabel}>LOCATION</Text>
+              <View style={themed.inputBox}>
+                <Text style={themed.inputBoxLabel}>CITY OR POSTCODE</Text>
                 <TextInput
-                  style={s.inputBoxValue}
+                  style={themed.inputBoxValue}
                   value={locationFilter}
                   onChangeText={setLocationFilter}
                   placeholder="e.g. London"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={palette.textMuted}
                   autoCapitalize="words"
                 />
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Distance ("Near Me") — needs a postcode on record since the
                   app doesn't request device geolocation (deliberate choice,
                   see LocationContext.tsx); geocodes via postcodes.io same as
                   web's fallback path. */}
-              <Text style={s.filterLabel}>DISTANCE</Text>
+              <Text style={themed.filterLabel}>DISTANCE</Text>
               {userLat != null ? (
                 <>
-                  <View style={s.postcodeRow}>
+                  <View style={themed.postcodeRow}>
                     <Ionicons name="location" size={14} color={Colors.accent} />
-                    <Text style={s.postcodeRowText}>Using {userPostcode}</Text>
+                    <Text style={themed.postcodeRowText}>Using {userPostcode}</Text>
                     <TouchableOpacity onPress={() => setPostcodeInput(userPostcode ?? '')} activeOpacity={0.7}>
-                      <Text style={s.postcodeChangeLink}>Change</Text>
+                      <Text style={themed.postcodeChangeLink}>Change</Text>
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity
-                    style={[s.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    style={[themed.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                     onPress={() => setDistancePickerVisible(true)}
                     activeOpacity={0.7}
                   >
-                    <Text style={s.inputBoxValue}>{maxDistanceMi != null ? `${maxDistanceMi} mi` : 'Any distance'}</Text>
+                    <Text style={themed.inputBoxValue}>{maxDistanceMi != null ? `${maxDistanceMi} mi` : 'Any distance'}</Text>
                     <Ionicons name="chevron-down" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
                   </TouchableOpacity>
                 </>
               ) : (
-                <Text style={s.toggleHint}>Add your postcode to filter by distance.</Text>
+                <Text style={themed.toggleHint}>Add your postcode to filter by distance.</Text>
               )}
               {(userLat == null || postcodeInput) && (
-                <View style={[s.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                <View style={[themed.inputBox, { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
                   <TextInput
-                    style={[s.inputBoxValue, { flex: 1 }]}
+                    style={[themed.inputBoxValue, { flex: 1 }]}
                     value={postcodeInput}
                     onChangeText={setPostcodeInput}
                     placeholder="e.g. SW1X 7LY"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={palette.textMuted}
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
                   <TouchableOpacity onPress={handleSavePostcode} disabled={postcodeSaving || !postcodeInput.trim()} activeOpacity={0.7}>
                     {postcodeSaving
                       ? <ActivityIndicator size="small" color={Colors.accent} />
-                      : <Text style={[s.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
+                      : <Text style={[themed.postcodeChangeLink, (!postcodeInput.trim()) && { opacity: 0.4 }]}>Save</Text>}
                   </TouchableOpacity>
                 </View>
               )}
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* Seller Type */}
-              <Text style={s.filterLabel}>SELLER TYPE</Text>
+              <Text style={themed.filterLabel}>SELLER TYPE</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {[
                   { id: '' as const,        label: 'All' },
@@ -1379,20 +1382,20 @@ export const SearchScreen: React.FC = () => {
                 ].map(opt => (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[s.segmentBtn, sellerType === opt.id && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, sellerType === opt.id && themed.segmentBtnActive]}
                     onPress={() => setSellerType(opt.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, sellerType === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                    <Text style={[themed.segmentBtnText, sellerType === opt.id && themed.segmentBtnTextActive]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={s.divider} />
+              <View style={themed.divider} />
 
               {/* ULEZ — same tri-state choice as web */}
-              <Text style={s.filterLabel}>ULEZ / CAZ</Text>
-              <Text style={[s.toggleHint, { marginBottom: 10 }]}>
+              <Text style={themed.filterLabel}>ULEZ / CAZ</Text>
+              <Text style={[themed.toggleHint, { marginBottom: 10 }]}>
                 Filter by Ultra Low Emission Zone compliance
               </Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1403,21 +1406,21 @@ export const SearchScreen: React.FC = () => {
                 ].map(opt => (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[s.segmentBtn, ulezCompliant === opt.id && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, ulezCompliant === opt.id && themed.segmentBtnActive]}
                     onPress={() => setUlezCompliant(opt.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, ulezCompliant === opt.id && s.segmentBtnTextActive]}>
+                    <Text style={[themed.segmentBtnText, ulezCompliant === opt.id && themed.segmentBtnTextActive]}>
                       {opt.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={[s.toggleRow, { marginTop: 18 }]}>
+              <View style={[themed.toggleRow, { marginTop: 18 }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.toggleLabel}>DELIVERY AVAILABLE ONLY</Text>
-                  <Text style={s.toggleHint}>Only show listings where seller offers delivery</Text>
+                  <Text style={themed.toggleLabel}>DELIVERY AVAILABLE ONLY</Text>
+                  <Text style={themed.toggleHint}>Only show listings where seller offers delivery</Text>
                 </View>
                 <Switch
                   value={deliveryAvailable}
@@ -1429,7 +1432,7 @@ export const SearchScreen: React.FC = () => {
               {/* Import status — was a plain "Imported only" toggle with no
                   way to explicitly exclude imports. Segmented control matches
                   the Vehicle Type / Listing Type pattern already used above. */}
-              <Text style={[s.toggleLabel, { marginTop: 18, marginBottom: 10 }]}>IMPORT STATUS</Text>
+              <Text style={[themed.toggleLabel, { marginTop: 18, marginBottom: 10 }]}>IMPORT STATUS</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {[
                   { id: '' as const, label: 'Any' },
@@ -1438,11 +1441,11 @@ export const SearchScreen: React.FC = () => {
                 ].map(opt => (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[s.segmentBtn, isImported === opt.id && s.segmentBtnActive]}
+                    style={[themed.segmentBtn, isImported === opt.id && themed.segmentBtnActive]}
                     onPress={() => setIsImported(opt.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.segmentBtnText, isImported === opt.id && s.segmentBtnTextActive]}>{opt.label}</Text>
+                    <Text style={[themed.segmentBtnText, isImported === opt.id && themed.segmentBtnTextActive]}>{opt.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1453,7 +1456,7 @@ export const SearchScreen: React.FC = () => {
             </ScrollView>
 
         {/* Sticky apply button */}
-        <View style={s.modalFooter}>
+        <View style={themed.modalFooter}>
           <PrimaryCTA
             label="VIEW RESULTS"
             onPress={() => { setFilterOpen(false); setQuickFilter('custom'); }}
@@ -1469,21 +1472,21 @@ export const SearchScreen: React.FC = () => {
       <BottomSheet visible={distancePickerVisible} onClose={() => setDistancePickerVisible(false)} title="Distance">
         <View style={{ padding: 8 }}>
           <TouchableOpacity
-            style={[s.sortOption, maxDistanceMi == null && s.sortOptionActive]}
+            style={[themed.sortOption, maxDistanceMi == null && themed.sortOptionActive]}
             onPress={() => { setMaxDistanceMi(null); setDistancePickerVisible(false); }}
             activeOpacity={0.7}
           >
-            <Text style={[s.sortOptionText, maxDistanceMi == null && { color: Colors.accent }]}>Any distance</Text>
+            <Text style={[themed.sortOptionText, maxDistanceMi == null && { color: Colors.accent }]}>Any distance</Text>
             {maxDistanceMi == null && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
           </TouchableOpacity>
           {DISTANCE_CHIPS.map(mi => (
             <TouchableOpacity
               key={mi}
-              style={[s.sortOption, maxDistanceMi === mi && s.sortOptionActive]}
+              style={[themed.sortOption, maxDistanceMi === mi && themed.sortOptionActive]}
               onPress={() => { setMaxDistanceMi(mi); setDistancePickerVisible(false); }}
               activeOpacity={0.7}
             >
-              <Text style={[s.sortOptionText, maxDistanceMi === mi && { color: Colors.accent }]}>{mi} mi</Text>
+              <Text style={[themed.sortOptionText, maxDistanceMi === mi && { color: Colors.accent }]}>{mi} mi</Text>
               {maxDistanceMi === mi && <Ionicons name="checkmark" size={14} color={Colors.accent} />}
             </TouchableOpacity>
           ))}
@@ -1637,3 +1640,57 @@ const s = StyleSheet.create({
   toggleLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 3 },
   toggleHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, lineHeight: 15 },
 });
+
+function useSearchDiscoveryStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...s,
+    container: [s.container, { backgroundColor: palette.bgBody }],
+    headerTitle: [s.headerTitle, { color: palette.textPrimary }],
+    headerResults: [s.headerResults, { color: palette.textMuted }],
+    auctionBrowseBanner: [s.auctionBrowseBanner, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    auctionBrowseTitle: [s.auctionBrowseTitle, { color: palette.textPrimary }],
+    auctionBrowseDesc: [s.auctionBrowseDesc, { color: palette.textSecondary }],
+    searchBar: [s.searchBar, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    searchInput: [s.searchInput, { color: palette.textPrimary }],
+    quickChip: [s.quickChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    quickChipText: [s.quickChipText, { color: palette.textSecondary }],
+    resultsCount: [s.resultsCount, { color: palette.textSecondary }],
+    sortBtn: [s.sortBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    sortBtnText: [s.sortBtnText, { color: palette.textSecondary }],
+    filterBtn: [s.filterBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    filterBtnText: [s.filterBtnText, { color: palette.textSecondary }],
+    sortOptionText: [s.sortOptionText, { color: palette.textPrimary }],
+    skeletonCard: [s.skeletonCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    endText: [s.endText, { color: palette.textMuted }],
+    modalHeader: [s.modalHeader, { borderBottomColor: palette.borderDefault }],
+    modalTitle: [s.modalTitle, { color: palette.textPrimary }],
+    modalClose: [s.modalClose, { backgroundColor: palette.bgInput }],
+    filterIntro: [s.filterIntro, { color: palette.textSecondary }],
+    moreFiltersToggle: [s.moreFiltersToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    moreFiltersTitle: [s.moreFiltersTitle, { color: palette.textPrimary }],
+    moreFiltersSubtitle: [s.moreFiltersSubtitle, { color: palette.textSecondary }],
+    modalFooter: [s.modalFooter, { backgroundColor: palette.bgDropdown, borderTopColor: palette.borderDefault }],
+    filterLabel: [s.filterLabel, { color: palette.textMuted }],
+    divider: [s.divider, { backgroundColor: palette.borderDefault }],
+    makeSearchBox: [s.makeSearchBox, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    makeSearchInput: [s.makeSearchInput, { color: palette.textPrimary }],
+    makeEmptyText: [s.makeEmptyText, { color: palette.textMuted }],
+    filterChip: [s.filterChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    filterChipText: [s.filterChipText, { color: palette.textSecondary }],
+    bodyChip: [s.bodyChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    inputBox: [s.inputBox, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    inputBoxLabel: [s.inputBoxLabel, { color: palette.textMuted }],
+    inputBoxValue: [s.inputBoxValue, { color: palette.textPrimary }],
+    miniChip: [s.miniChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    miniChipText: [s.miniChipText, { color: palette.textSecondary }],
+    postcodeRowText: [s.postcodeRowText, { color: palette.textPrimary }],
+    aiModalSubtitle: [s.aiModalSubtitle, { color: palette.textSecondary }],
+    aiPrivacyHint: [s.aiPrivacyHint, { color: palette.textMuted }],
+    aiModalInput: [s.aiModalInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    segmentBtn: [s.segmentBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    segmentBtnText: [s.segmentBtnText, { color: palette.textSecondary }],
+    toggleLabel: [s.toggleLabel, { color: palette.textPrimary }],
+    toggleHint: [s.toggleHint, { color: palette.textMuted }],
+  }), [palette]);
+}
