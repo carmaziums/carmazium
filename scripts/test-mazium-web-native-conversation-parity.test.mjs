@@ -78,6 +78,6 @@ test('native isolates chat history and pending response on account changes witho
   assert.match(native, /let cancelled = false;/);
   assert.match(native, /return \(\) => \{ cancelled = true; \};/);
   assert.match(native, /const senderId = authUserId;/);
-  assert.match(native, /if \(sameSignedInUser\(\)\) setChatHistory/);
+  assert.match(native, /if \(sameConsentSession\(\)\) setChatHistory/);
   assert.match(native, /if \(!isAuthenticated \|\| activeRoute === 'LiveAuctionDetailed'\) return null;/);
 });
