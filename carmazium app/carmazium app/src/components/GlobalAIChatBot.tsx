@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
+import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 
 // Bundle the exact approved transparent mascot used by the website widget.
 // This avoids a network-dependent icon or any visual placeholder.
@@ -53,13 +54,13 @@ const ALL_QUICK_REPLIES = [
   { label: 'Diesel only',     action: 'Diesel cars'                 },
   { label: 'Electric',        action: 'Electric vehicles'           },
   { label: '2020+',           action: 'Cars from 2020 onwards'      },
+  { label: 'ULEZ',            action: 'ULEZ compliant cars'        },
   { label: 'Hatchbacks',      action: 'Show me hot hatchbacks'      },
   { label: 'Sports Cars',     action: 'Show me sports cars'         },
   { label: 'Family Cars',     action: 'Spacious family cars'        },
   { label: 'First Cars',      action: 'Good cars for new drivers'   },
   { label: 'Low CO2',         action: 'Cars with low CO2 emissions' },
   { label: 'Executive',       action: 'Executive saloons'           },
-  { label: 'Best value',      action: 'Best value cars on CarMazium'},
 ];
 
 function getDailyQuickReplies() {
@@ -155,7 +156,7 @@ class ChatErrorBoundary extends React.Component<
 
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth, fontScale } = useWindowDimensions();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUserId = useAuthStore((s) => s.user?.id || '');
   const aiConsentKey = authUserId ? `mazium_ai_consent_v1:${authUserId}` : '';
@@ -203,7 +204,7 @@ export const GlobalAIChatBot: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([
-    { id: '1', text: "Hi! I'm MaziuM, your CarMazium AI. Tell me what you're looking for and I'll help you find it!", isUser: false },
+    { id: '1', text: "Hi! I'm Mazium, your AI car-buying assistant. Tell me what you're looking for and I'll find it!", isUser: false },
   ]);
   const [quickReplies] = useState(() => getDailyQuickReplies());
   const [hasAiConsent, setHasAiConsent] = useState<boolean | null>(null);
@@ -406,8 +407,11 @@ export const GlobalAIChatBot: React.FC = () => {
     setAiReportDetails('');
   };
 
-  // Clear the native tab bar and anchor chat directly above the mascot.
-  const floatingBottom = Math.max(insets.bottom, 16) + MAZIUM_TAB_CLEARANCE;
+  // Reuse the same large-text bottom bar geometry as dealer More; the AI
+  // launcher must stay above the expanded tabs at 200% system font size.
+  // On the normal scale retain the established trigger position.
+  const tabClearance = Math.max(MAZIUM_TAB_CLEARANCE, getBottomTabBarHeight(fontScale) + 8);
+  const floatingBottom = Math.max(insets.bottom, 16) + tabClearance;
   const chatBottom = floatingBottom + MAZIUM_TRIGGER_SIZE + MAZIUM_CHAT_GAP;
   const isKeyboardVisible = keyboardHeight > 0;
   const dynamicBottom = isKeyboardVisible ? keyboardHeight + 8 : chatBottom;
