@@ -22,7 +22,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
-import { HamburgerButton } from '../../components/HamburgerButton';
+import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -582,58 +582,19 @@ export const DealerProfileScreen: React.FC = () => {
   };
 
   const companyLabel = (stats?.companyName || 'YOUR DEALERSHIP').toUpperCase();
-  const badgeCount = activeLeads > 9 ? '9+' : String(activeLeads);
-
-  const renderHeader = () => {
-    if (activeSubTab === 'today') {
-      return (
-        <View style={styles.headerToday}>
-          <View style={styles.headerLeft}>
-            <HamburgerButton />
-          </View>
-          <View style={styles.headerCenter}>
-            <Text style={styles.dealerProSub}>• DEALER PRO</Text>
-            <Text style={styles.headerTodayTitle}>Today</Text>
-          </View>
-          <View style={styles.headerRightRow}>
-            <TouchableOpacity
-              style={styles.bellBtnCircle}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('Notifications')}
-            >
-              <Ionicons name="notifications" size={20} color={Colors.white} />
-              {activeLeads > 0 && (
-                <View style={styles.bellBadgeRed}>
-                  <Text style={styles.bellBadgeText}>{badgeCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <IconButton style={[styles.bellBtnCircle, { marginLeft: 8 }]} icon={<Ionicons name="settings-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
-          </View>
-        </View>
-      );
-    } else {
-      return (
-        <View style={styles.headerWeek}>
-          <View style={styles.headerWeekLeft}>
-            <View style={styles.dealerTitleRow}>
-              <Text style={styles.dealerSub}>DEALER • {companyLabel}</Text>
-              {stats?.isVerified && (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.headerWeekTitle}>This week</Text>
-          </View>
-          <View style={styles.headerRightRow}>
-            <IconButton style={styles.bellBtnCircle} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Notifications')} accessibilityLabel="Notifications" />
-            <IconButton style={[styles.bellBtnCircle, { marginLeft: 8 }]} icon={<Ionicons name="settings-outline" size={20} color={Colors.white} />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
-          </View>
-        </View>
-      );
-    }
-  };
+  // Website header and account actions are shared by every dealer tab.
+  // Keep this header as page content only, not a second hamburger/bell.
+  const renderHeader = () => (
+    <View style={styles.headerToday}>
+      <View>
+        <Text style={styles.dealerProSub}>DEALER · {companyLabel}</Text>
+        <Text style={styles.headerTodayTitle}>{activeSubTab === 'today' ? 'Today' : 'This week'}</Text>
+      </View>
+      {stats?.isVerified && (
+        <View style={styles.proBadge}><Text style={styles.proBadgeText}>PRO</Text></View>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -647,8 +608,9 @@ export const DealerProfileScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
+      <WebsiteTopBar />
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.accent} />
