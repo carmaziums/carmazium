@@ -28,7 +28,6 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
-import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import type { DealerPermission } from '../lib/dealerAccessApi';
@@ -257,36 +256,26 @@ export const GlobalDrawer: React.FC = () => {
     : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
-  const { height: windowHeight, fontScale } = useWindowDimensions();
-  // Website DashboardSidebar opens More above the bottom tabs, across the
-  // screen width. Only dealer workspace uses that presentation; preserve
-  // established consumer drawer navigation and deep-link behaviour.
-  // Web drawer max-height is 68vh and sits just above its fixed bottom tabs.
-  const dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom);
+  const { height: windowHeight } = useWindowDimensions();
+  // Dealer menu uses a full-window native modal; retain 68vh sheet height
+  // without a misleading gap over inaccessible bottom tabs.
   const sheetHeight = Math.min(720, Math.round(windowHeight * 0.68));
   const navigation = useNavigation<NavProp>();
 
   const translateX = useSharedValue(DRAWER_WIDTH);
-  const translateY = useSharedValue(sheetHeight);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
-      if (dealerMode) {
-        translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      } else {
-        translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      }
+      if (!dealerMode) translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
       translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
-      translateY.value = withTiming(sheetHeight, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen, dealerMode, sheetHeight, translateX, translateY, backdropOpacity]);
+  }, [isOpen, dealerMode, translateX, backdropOpacity]);
 
-  // Dealer overlay is inline so the original bottom tab bar stays visible and
-  // tappable. A Modal would intercept taps on More even with transparent pixels.
+  // Hardware Back always closes the dealer modal, as with consumer navigation.
   useEffect(() => {
     if (!dealerMode || !isOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -298,9 +287,7 @@ export const GlobalDrawer: React.FC = () => {
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const panelStyle = useAnimatedStyle(() => ({
-    transform: dealerMode
-      ? [{ translateY: translateY.value }]
-      : [{ translateX: translateX.value }],
+    transform: [{ translateX: translateX.value }],
   }));
 
   // Determine which tab is active
@@ -411,7 +398,7 @@ export const GlobalDrawer: React.FC = () => {
 
   const drawerContent = (
     <>
-      {/* Keep the dealer tab bar above the backdrop, like the website. */}
+      {/* Full-height backdrop blocks accidental navigation while menu is open. */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
         <Animated.View
           style={[
@@ -424,8 +411,8 @@ export const GlobalDrawer: React.FC = () => {
         />
       </TouchableWithoutFeedback>
 
-      {/* Dealer website uses a full-width bottom More panel; consumer
-          navigation keeps the existing right drawer. Both retain all links. */}
+      {/* Dealer has a full-window bottom navigation modal; consumer keeps its
+          original right-side drawer. Both retain the same actions and links. */}
       <Animated.View
         style={[
           styles.panel,
