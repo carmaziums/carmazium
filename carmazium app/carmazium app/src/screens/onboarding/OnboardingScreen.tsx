@@ -37,31 +37,31 @@ const SLIDES: SlideData[] = [
   {
     id: '1',
     eyebrow: 'WELCOME TO CARMAZIUM',
-    headlineLight: "Britain's most\ncurated",
-    headlineRed: 'car marketplace.',
+    headlineLight: 'Sell your car',
+    headlineRed: 'your way.',
     description:
-      'Verified sellers, transparent pricing, live auctions. Buy or sell with the kind of confidence the showroom forgot.',
+      'Choose a FREE dealer auction or list your car for £1 retail. Successful auction sale with an approved handover? Get a £100 seller reward.',
     buttonLabel: 'GET STARTED',
     image: require('../../../assets/images/onboarding_car1.png'),
   },
   {
     id: '2',
     eyebrow: 'MAZIUM AI',
-    headlineLight: 'Describe your\ndream car',
-    headlineRed: 'in your words.',
+    headlineLight: 'Find your next car',
+    headlineRed: 'with MaziuM.',
     description:
-      'No clunky filters. Tell our AI you want "a red SUV under £30k" and it does the rest — matching cars, finance, the lot.',
-    buttonLabel: 'TRY IT',
+      'Browse used cars by make, model and budget. Ask MaziuM AI to help find listings that match what you are looking for.',
+    buttonLabel: 'NEXT',
     image: require('../../../assets/images/onboarding_car2.png'),
   },
   {
     id: '3',
-    eyebrow: 'LIVE AUCTIONS',
-    headlineLight: 'Bid in real time.',
-    headlineRed: 'From anywhere.',
+    eyebrow: 'VERIFIED TRADE AUCTIONS',
+    headlineLight: 'Browse cars.',
+    headlineRed: 'Dealers can bid.',
     description:
-      'Sub-second updates, anti-snipe extensions, and proxy bidding. The gavel drops in your pocket — not someone else\'s.',
-    buttonLabel: 'CONTINUE',
+      'Everyone can browse. Only verified motor traders can bid in auctions. Winning dealer fee: £125. Retail buyers pay no platform fee.',
+    buttonLabel: 'SIGN IN',
     image: require('../../../assets/images/onboarding_car3.png'),
   },
 ];
