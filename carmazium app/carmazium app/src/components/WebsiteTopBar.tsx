@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
@@ -19,6 +19,10 @@ import { Logo } from './Logo';
 export const WebsiteTopBar: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
+  // except where a narrow device needs room for three 44dp action targets.
+  const logoWidth = Math.min(160, Math.max(110, windowWidth - 202));
   const user = useAuthStore(s => s.user);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
@@ -27,7 +31,7 @@ export const WebsiteTopBar: React.FC = () => {
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
-      <Logo size="sm" />
+      <Logo size="sm" width={logoWidth} />
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.notificationButton}
@@ -49,7 +53,7 @@ export const WebsiteTopBar: React.FC = () => {
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
           <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
         </TouchableOpacity>
-        <HamburgerButton />
+        <HamburgerButton websiteStyle />
       </View>
     </View>
   );
