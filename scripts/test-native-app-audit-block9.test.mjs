@@ -38,7 +38,6 @@ test('emulator smoke test installs only the same-run artifact, with no login', (
 test('launch script checks application process and captures a PNG without authentication', () => {
   const script = read('scripts/ci/android-qa-emulator-smoke.sh');
   assert.ok(script.includes("APP_ID='uk.carmazium.qa'"));
-  assert.ok(script.includes("'^[a-z]") === false || true);
   assert.ok(script.includes("'^lib/x86_64/[^/]+[.]so$'"));
   assert.ok(script.includes('adb install -r "$APK"'));
   assert.ok(script.includes('adb shell am start -W -n "$APP_ID/.MainActivity"'));
