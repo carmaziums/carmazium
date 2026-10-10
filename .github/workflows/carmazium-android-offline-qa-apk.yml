@@ -105,7 +105,7 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a --max-workers 2 --no-daemon -x lint -x lintVitalRelease
+          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon -x lint -x lintVitalRelease
       - name: Verify signed QA APK and source SHA
         shell: bash
         run: |
@@ -144,3 +144,44 @@ jobs:
           path: qa-apk/*
           retention-days: 7
           if-no-files-found: error
+
+  emulator-smoke:
+    name: Android 15 emulator — install, cold launch, screenshot
+    needs: build-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download this commit's compiled QA APK (no production app)
+        uses: actions/download-artifact@v4
+        with:
+          name: CarMazium-Android-QA
+          path: qa-apk
+      - name: Enable Android emulator hardware acceleration
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and launch the logged-out CarMazium QA build
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash scripts/ci/android-qa-emulator-smoke.sh
+      - name: Upload unauthenticated launch screenshot and build identifiers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-QA-Emulator-Report
+          path: qa-emulator-results/*
+          retention-days: 7
+          if-no-files-found: warn
