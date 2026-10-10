@@ -35,6 +35,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
+import { formatTransmission } from '../../lib/transmission';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -42,12 +43,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
-type FilterTab = 'All' | 'Live' | 'Drafts' | 'Review' | 'Sale pending' | 'Rejected' | 'Sold' | 'Other';
+type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
 
 interface Listing {
   id: string;
   title: string;
   registration: string;
+  make: string;
+  mileage: number | null;
+  transmission: string;
+  rejectionReason: string | null;
   price: string;
   rawPrice: number;
   daysListed: number;
@@ -67,6 +72,10 @@ const mapApiListing = (l: any): Listing => ({
   id: l.id,
   title: l.title || `${l.year ?? ''} ${l.make ?? ''} ${l.model ?? ''}`.trim() || 'Untitled',
   registration: String(l.vrm ?? l.registrationNumber ?? '').trim().toUpperCase(),
+  make: String(l.make ?? '').trim(),
+  mileage: l.mileage != null && Number.isFinite(Number(l.mileage)) ? Number(l.mileage) : null,
+  transmission: formatTransmission(l.transmission),
+  rejectionReason: l.rejectionReason ? String(l.rejectionReason) : null,
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
@@ -95,13 +104,13 @@ const mapApiListing = (l: any): Listing => ({
 
 // ─── Status badge colors ─────────────────────────────────────────────────────
 const STATUS_STYLE: Record<StatusTag, { bg: string; color: string; label: string }> = {
-  LIVE:         { bg: Colors.success, color: Colors.white, label: 'LIVE' },
-  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'DRAFT' },
-  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'IN REVIEW' },
+  LIVE:         { bg: Colors.success, color: Colors.white, label: 'Live' },
+  DRAFT:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Draft' },
+  REVIEW:       { bg: Colors.warning, color: Colors.white, label: 'Under Review' },
   SALE_PENDING: { bg: Colors.warning, color: Colors.white, label: 'SALE PENDING' },
-  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'REJECTED' },
-  SOLD:         { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'SOLD' },
-  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'NOT LIVE' },
+  REJECTED:     { bg: Colors.error, color: Colors.white, label: 'Rejected' },
+  SOLD:         { bg: Colors.infoBlue, color: Colors.white, label: 'Sold' },
+  OTHER:        { bg: Colors.midBlue_6b7280, color: Colors.white, label: 'Not Live' },
 };
 
 // ─── LISTING DETAIL SUBSCREEN ────────────────────────────────────────────────
@@ -430,106 +439,123 @@ const InventoryRow: React.FC<{
   const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
-      style={styles.listingCard}
+      style={styles.websiteStockCard}
       onPress={() => onPress(listing.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${listing.title}, ${listing.registration || 'private registration'}, ${listing.transmission}, ${s.label}`}
       activeOpacity={0.85}
     >
-      {/* Thumbnail + status badge */}
-      <View style={styles.listingThumbWrap}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.listingThumb}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
-        <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-          <Text style={styles.statusBadgeText}>{s.label}</Text>
-        </View>
-      </View>
-
-      {/* Info */}
-      <View style={styles.listingInfo}>
-        <Text style={styles.listingTitle} numberOfLines={2}>{listing.title}</Text>
-        {!!listing.registration && <Text style={styles.inventoryReg}>{listing.registration}</Text>}
-        <View style={styles.listingPriceRow}>
-          <Text style={styles.listingPrice}>{listing.price}</Text>
-          <Text style={styles.listingDays}> · {listing.daysListed}d listed</Text>
-        </View>
-        <View style={styles.listingStats}>
-          <Ionicons name="eye-outline" size={13} color={Colors.iconMuted} />
-          <Text style={styles.statNum}>{listing.views}</Text>
-          <Ionicons name="mail-outline" size={13} color={Colors.iconMuted} style={{ marginLeft: 10 }} />
-          <Text style={styles.statNum}>{listing.leads}</Text>
-          {listing.offers > 0 && (
-            <>
-              <Ionicons name="heart-outline" size={13} color={Colors.accent} style={{ marginLeft: 10 }} />
-              <Text style={styles.statOffers}>{listing.offers} offers</Text>
-            </>
+      {/* Website inventory mobile showcase: real photo, title and vehicle facts. */}
+      <View style={styles.stockShowcase}>
+        <View style={styles.stockImageWrap}>
+          {listing.images[0] ? (
+            <Image source={{ uri: listing.images[0] }} style={styles.stockImage}
+              contentFit="cover" transition={200} cachePolicy="memory-disk"
+              accessibilityLabel={listing.title} />
+          ) : (
+            <Ionicons name="car-outline" size={23} color={Colors.textMuted} />
           )}
         </View>
-        {hasLinkedAuction ? (
-          <TouchableOpacity
-            style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
-            onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="gavel" size={10} color={linkedAuctionLive ? Colors.accentGreen : Colors.textMuted} />
-            <Text style={[styles.rowCrossListChipText, linkedAuctionLive && { color: Colors.accentGreen }]}>
-              {linkedAuctionLive ? 'Linked auction — LIVE' : `Linked auction${listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : ''}`}
-            </Text>
-          </TouchableOpacity>
-        ) : canPutOnAuction && onPutOnAuction ? (
-          <TouchableOpacity
-            style={styles.rowPutOnAuction}
-            onPress={() => onPutOnAuction(listing.id)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="gavel" size={10} color={Colors.accent} />
-            <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
-          </TouchableOpacity>
-        ) : null}
+        <View style={styles.stockIdentity}>
+          <Text style={styles.stockTitle} numberOfLines={2}>{listing.title}</Text>
+          <View style={styles.stockFacts}>
+            <Text style={styles.stockRegistration}>{listing.registration || 'PRIVATE'}</Text>
+            {!!listing.make && <Text style={styles.stockMake}>{listing.make.toUpperCase()}</Text>}
+            {listing.mileage !== null && (
+              <Text style={styles.stockFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+            )}
+            <Text style={styles.stockFact}>Transmission: {listing.transmission}</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Chevron */}
-      <Ionicons name="chevron-forward" size={16} color={Colors.borderSubtle} accessibilityElementsHidden importantForAccessibility="no" />
+      {/* Match website's mobile 2-column price/status/engagement/leads grid. */}
+      <View style={styles.stockMetrics}>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>MARKET PRICE</Text>
+          <Text style={styles.stockPrice}>{listing.price}</Text>
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>STATUS</Text>
+          <View style={[styles.stockOutlinedStatus, { borderColor: s.bg }]}>
+            <Text style={[styles.stockStatusText, { color: s.bg }]}>{s.label}</Text>
+          </View>
+          {!!listing.rejectionReason && listing.status === 'REJECTED' && (
+            <Text style={styles.stockRejection} numberOfLines={3}>{listing.rejectionReason}</Text>
+          )}
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>ENGAGEMENT</Text>
+          <Text style={styles.stockMetricValue}>{listing.views.toLocaleString('en-GB')}</Text>
+        </View>
+        <View style={styles.stockMetricTile}>
+          <Text style={styles.stockMetricLabel}>HOT LEADS</Text>
+          <Text style={[styles.stockMetricValue, { color: Colors.accent }]}>
+            {listing.leads.toLocaleString('en-GB')}
+          </Text>
+        </View>
+      </View>
+
+      {/* Existing linked-auction and dealer-only actions stay on the card. */}
+      {hasLinkedAuction ? (
+        <TouchableOpacity style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
+          onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
+          accessibilityRole="button" accessibilityLabel="Open linked auction" activeOpacity={0.8}>
+          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
+          <Text style={styles.rowCrossListChipText}>
+            {linkedAuctionLive ? 'Linked auction — Live' : 'Linked auction' +
+              (listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : '')}
+          </Text>
+        </TouchableOpacity>
+      ) : canPutOnAuction && onPutOnAuction ? (
+        <TouchableOpacity style={styles.rowPutOnAuction}
+          onPress={() => onPutOnAuction(listing.id)}
+          accessibilityRole="button" accessibilityLabel="Also list on auction" activeOpacity={0.8}>
+          <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
+          <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
+        </TouchableOpacity>
+      ) : null}
+      <View style={styles.stockOpenRow}>
+        <Text style={styles.stockOpenText}>View details and actions</Text>
+        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+      </View>
     </TouchableOpacity>
-  );
-});
+  );});
 
 // ─── Inventory grid card — compact thumbnail-forward alternative to the row
 // view, for dealers scanning many listings at once (mobile-ui-ux-audit.md §C9). ──
 const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
   const s = STATUS_STYLE[listing.status];
   return (
-    <TouchableOpacity
-      style={styles.gridCard}
-      onPress={() => onPress(listing.id)}
-      activeOpacity={0.85}
-    >
+    <TouchableOpacity style={styles.gridCard} onPress={() => onPress(listing.id)}
+      accessibilityRole="button"
+      accessibilityLabel={`${listing.title}, ${listing.price}, ${listing.transmission}, ${s.label}`}
+      activeOpacity={0.85}>
       <View style={styles.gridThumbWrap}>
-        <Image
-          source={{ uri: listing.images[0] }}
-          style={styles.gridThumb}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-        />
+        {listing.images[0] ? (
+          <Image source={{ uri: listing.images[0] }} style={styles.gridThumb}
+            contentFit="cover" transition={200} cachePolicy="memory-disk"
+            accessibilityLabel={listing.title} />
+        ) : <Ionicons name="car-outline" size={26} color={Colors.textMuted} />}
         <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
           <Text style={styles.statusBadgeText}>{s.label}</Text>
         </View>
       </View>
-      <Text style={styles.gridTitle} numberOfLines={1}>{listing.title}</Text>
+      <Text style={styles.gridTitle} numberOfLines={2}>{listing.title}</Text>
+      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.registration || 'PRIVATE'}</Text>
+      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.transmission}</Text>
+      {listing.mileage !== null && (
+        <Text style={styles.stockGridFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+      )}
       <Text style={styles.gridPrice}>{listing.price}</Text>
       <View style={styles.listingStats}>
         <Ionicons name="eye-outline" size={12} color={Colors.iconMuted} />
         <Text style={styles.statNum}>{listing.views}</Text>
-        <Ionicons name="mail-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+        <Ionicons name="people-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
         <Text style={styles.statNum}>{listing.leads}</Text>
       </View>
     </TouchableOpacity>
-  );
-});
+  );});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
@@ -537,6 +563,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [showExtraStatuses, setShowExtraStatuses] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -641,21 +668,22 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
     );
   }
 
+  // Website's six statuses first; retain other workflow states in More.
   const FILTERS: { label: FilterTab; value: StatusTag | null; count: number }[] = [
     { label: 'All', value: null, count: listings.length },
     { label: 'Live', value: 'LIVE', count: listings.filter(l => l.status === 'LIVE').length },
-    { label: 'Drafts', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
-    { label: 'Review', value: 'REVIEW', count: listings.filter(l => l.status === 'REVIEW').length },
-    { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
+    { label: 'Under Review', value: 'REVIEW', count: listings.filter(l => l.status === 'REVIEW').length },
     { label: 'Rejected', value: 'REJECTED', count: listings.filter(l => l.status === 'REJECTED').length },
+    { label: 'Draft', value: 'DRAFT', count: listings.filter(l => l.status === 'DRAFT').length },
     { label: 'Sold', value: 'SOLD', count: listings.filter(l => l.status === 'SOLD').length },
+    { label: 'Sale pending', value: 'SALE_PENDING', count: listings.filter(l => l.status === 'SALE_PENDING').length },
     { label: 'Other', value: 'OTHER', count: listings.filter(l => l.status === 'OTHER').length },
   ];
   const chosenStatus = FILTERS.find(f => f.label === activeFilter)?.value;
   const q = inventoryQuery.trim().toLowerCase();
   const filtered = listings
     .filter(l => !chosenStatus || l.status === chosenStatus)
-    .filter(l => !q || [l.title, l.registration, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
+    .filter(l => !q || [l.title, l.registration, l.make, l.transmission, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
     .sort((a, b) => sortOrder === 'price-low'
       ? a.rawPrice - b.rawPrice
       : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
@@ -675,21 +703,38 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
       <View style={[styles.listHeader, { paddingTop: 12 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <View style={styles.listHeaderCenter}>
-          <Text style={styles.listHeaderSub}>DEALER · {listings.length} LISTINGS</Text>
           <Text style={styles.listHeaderTitle}>Inventory</Text>
+          <Text style={styles.listHeaderSub}>Manage live, draft and sold stock</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton
-            style={styles.backBtn}
-            icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
-            onPress={toggleViewMode}
-            accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
-          />
-
-        </View>
+        <IconButton
+          style={styles.backBtn}
+          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
+          onPress={toggleViewMode}
+          accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
+        />
       </View>
+      {/* Website places Add Vehicle and imports above filters, not as a
+          floating footer that can overlap the dealer bottom navigation. */}
+      {canManageInventory && (
+        <View style={styles.stockHeaderActions}>
+          <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
+            accessibilityRole="button" accessibilityLabel="Add Vehicle">
+            <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
+            <Text style={styles.stockAddActionText}>Add Vehicle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowImportModal(true)}
+            accessibilityRole="button" accessibilityLabel="Import Listing">
+            <Ionicons name="link-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.stockSecondaryActionText}>Import Listing</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
+            accessibilityRole="button" accessibilityLabel="Bulk Import">
+            <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
+            <Text style={styles.stockSecondaryActionText}>Bulk Import</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Search inventory without paging through unrelated vehicles. */}
       <View style={styles.inventorySearchWrap}>
@@ -697,7 +742,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         <TextInput
           value={inventoryQuery}
           onChangeText={setInventoryQuery}
-          placeholder="Search vehicle or registration"
+          placeholder="Search by make, model, VRM..."
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -718,7 +763,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         contentContainerStyle={styles.filterScroll}
         style={styles.filterBar}
       >
-        {FILTERS.map((f) => (
+        {FILTERS.filter((f, index) => index < 6 || showExtraStatuses || activeFilter === f.label).map((f) => (
           <TouchableOpacity
             key={f.label}
             style={[
@@ -742,6 +787,17 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity style={styles.filterTab}
+          onPress={() => {
+            if (showExtraStatuses && (activeFilter === 'Sale pending' || activeFilter === 'Other')) setActiveFilter('All');
+            setShowExtraStatuses(previous => !previous);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={showExtraStatuses ? 'Hide additional statuses' : 'Show additional statuses'}
+          accessibilityState={{ expanded: showExtraStatuses }}
+        >
+          <Text style={styles.filterTabText}>{showExtraStatuses ? 'Fewer' : 'More'}</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Sort row ─────────────────────────────────────────────────────── */}
@@ -774,7 +830,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : { paddingBottom: 110 }}
+        contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
         data={filtered}
         numColumns={viewMode === 'grid' ? 2 : 1}
@@ -785,48 +841,14 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={{ marginTop: 40 }}>
             <EmptyState
               icon="car-outline"
-              title={inventoryQuery ? 'No matching vehicles' : activeFilter === 'All' ? 'No listings yet' : `No ${activeFilter.toLowerCase()} listings`}
-              subtitle={inventoryQuery ? 'Try a different vehicle name or clear the search.' : activeFilter === 'All' ? 'Add your first vehicle to start selling.' : 'Try a different status filter.'}
+              title="No vehicles found"
+              subtitle={inventoryQuery || activeFilter !== 'All'
+                ? 'Try adjusting your search or filters.'
+                : 'Add your first vehicle to start building your dealership inventory.'}
             />
           </View>
         }
       />
-      )}
-
-      {/* ── Add listing CTA ──────────────────────────────────────────────── */}
-      {canManageInventory && (
-      <View style={[styles.addListingWrap, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={[styles.addListingBtn, { flex: 1, marginRight: 8 }]}
-          activeOpacity={0.85}
-          onPress={() => navigation?.navigate('SellCarFlow')}
-        >
-          <LinearGradient
-            colors={[Colors.accentGlow, Colors.accent]}
-            style={StyleSheet.absoluteFillObject}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          <Ionicons name="add" size={22} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.addListingText}>ADD LISTING</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowImportModal(true)}
-        >
-          <Ionicons name="link-outline" size={20} color={Colors.infoBlueLight} />
-          <Text style={[styles.bulkImportText, { color: Colors.infoBlueLight }]}>IMPORT</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkImportBtn}
-          activeOpacity={0.85}
-          onPress={() => setShowBulkImportModal(true)}
-        >
-          <Ionicons name="cloud-upload-outline" size={20} color={Colors.warning} />
-          <Text style={styles.bulkImportText}>CSV</Text>
-        </TouchableOpacity>
-      </View>
       )}
 
       {/* Bulk CSV Import Modal */}
@@ -868,6 +890,94 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // Website mobile PageHeader keeps the main listing CTA and imports in the
+  // page header rather than a bottom fixed overlay.
+  stockHeaderActions: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 20, marginBottom: 16, gap: 8,
+  },
+  stockAddAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: Colors.accent, borderRadius: 12,
+    minHeight: 46, paddingHorizontal: 16,
+  },
+  stockAddActionText: {
+    fontFamily: FontFamily.bold, fontSize: 12, color: Colors.white,
+  },
+  stockSecondaryAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgCard, borderRadius: 12,
+    minHeight: 46, paddingHorizontal: 11,
+  },
+  stockSecondaryActionText: {
+    fontFamily: FontFamily.bold, color: Colors.textSecondary, fontSize: 11,
+  },
+  stockListContent: {
+    paddingTop: 4, paddingBottom: 92,
+  },
+  websiteStockCard: {
+    marginHorizontal: 20, padding: 16, marginBottom: 12,
+    backgroundColor: Colors.bgCard, borderWidth: 1,
+    borderColor: Colors.borderSubtle, borderRadius: 18,
+  },
+  stockShowcase: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  stockImageWrap: {
+    width: 80, height: 64, borderRadius: 12, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgElevated, alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stockImage: { width: '100%', height: '100%' },
+  stockIdentity: { flex: 1, minWidth: 0 },
+  stockTitle: {
+    fontFamily: FontFamily.extraBold, fontSize: 15, lineHeight: 21,
+    color: Colors.textPrimary,
+  },
+  stockFacts: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 5 },
+  stockRegistration: {
+    color: Colors.textSecondary, backgroundColor: Colors.bgElevated,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    borderRadius: 4, overflow: 'hidden', paddingHorizontal: 5,
+    paddingVertical: 2, fontSize: 11, fontFamily: FontFamily.bold,
+  },
+  stockMake: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 11 },
+  stockFact: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 11 },
+  stockMetrics: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16,
+  },
+  stockMetricTile: {
+    width: '48%', flexGrow: 1, minWidth: 0, minHeight: 79,
+    borderWidth: 1, borderColor: Colors.borderSubtle,
+    backgroundColor: Colors.bgElevated, borderRadius: 12, padding: 12,
+  },
+  stockMetricLabel: {
+    fontFamily: FontFamily.bold, color: Colors.textMuted,
+    fontSize: 10, letterSpacing: 0.6,
+  },
+  stockPrice: {
+    fontFamily: FontFamily.extraBold, fontSize: 20,
+    color: Colors.textPrimary, marginTop: 6,
+  },
+  stockMetricValue: {
+    fontFamily: FontFamily.extraBold, fontSize: 18,
+    color: Colors.textPrimary, marginTop: 6,
+  },
+  stockOutlinedStatus: {
+    alignSelf: 'flex-start', borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 4, marginTop: 6,
+  },
+  stockStatusText: { fontFamily: FontFamily.bold, fontSize: 11 },
+  stockRejection: { fontFamily: FontFamily.medium, fontSize: 10,
+    color: Colors.error, marginTop: 5 },
+  stockOpenRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+    gap: 4, marginTop: 13, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: Colors.borderSubtle,
+  },
+  stockOpenText: { color: Colors.textSecondary, fontFamily: FontFamily.bold, fontSize: 12 },
+  stockGridFact: { color: Colors.textMuted, fontFamily: FontFamily.medium,
+    fontSize: 11, marginBottom: 3 },
   // ── LIST VIEW ────────────────────────────────────────────────────────────
   listHeader: {
     flexDirection: 'row',
@@ -877,20 +987,22 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   listHeaderCenter: {
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   listHeaderSub: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.size9,
-    color: Colors.iconMuted,
-    letterSpacing: 1.8,
-    marginBottom: 2,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    letterSpacing: 0.4,
+    marginTop: 4,
   },
   listHeaderTitle: {
     fontFamily: FontFamily.extraBold,
     fontSize: FontSize.size26,
     color: Colors.white,
     letterSpacing: -0.8,
+    textTransform: 'uppercase',
   },
 
   inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
@@ -1083,19 +1195,26 @@ const styles = StyleSheet.create({
   // Grid view — compact thumbnail-forward alternative to the row view
   // (mobile-ui-ux-audit.md §C9).
   gridContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 110,
+    paddingHorizontal: 20,
+    paddingBottom: 92,
   },
   gridRow: {
     justifyContent: 'space-between',
   },
   gridCard: {
     width: '48%',
+    backgroundColor: Colors.bgCard,
+    borderColor: Colors.borderSubtle,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 9,
     marginBottom: RowDensity.compact.gap * 2,
   },
   gridThumbWrap: {
     width: '100%',
     aspectRatio: 4 / 3,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: RowDensity.compact.borderRadius,
     overflow: 'hidden',
     position: 'relative',
