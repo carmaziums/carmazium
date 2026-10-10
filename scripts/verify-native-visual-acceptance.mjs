@@ -8,7 +8,7 @@
  * node scripts/verify-native-visual-acceptance.mjs --manifest /private/qa/issue477.json --sha <git-sha>
  */
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,7 +60,16 @@ export const readPngEvidence = (base, attachment) => {
   if (!attachment || !inPrivateFolder(base, attachment.path) || !HEX_256.test(attachment.sha256 || '')) {
     throw new Error('Screenshot path/hash missing or outside the private evidence folder');
   }
-  const bytes = readFileSync(resolve(base, attachment.path));
+  // Verify real paths too: a symlink inside the private folder must not
+  // allow this release gate to read unrelated personal files elsewhere.
+  const baseReal = realpathSync(base);
+  const imageReal = realpathSync(resolve(base, attachment.path));
+  const onDiskRelative = relative(baseReal, imageReal);
+  if (!onDiskRelative || onDiskRelative === '..' || onDiskRelative.startsWith('..' + sep)
+      || isAbsolute(onDiskRelative)) {
+    throw new Error('Screenshot resolves outside the private evidence folder');
+  }
+  const bytes = readFileSync(imageReal);
   if (bytes.length < 24 || bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a'
       || bytes.subarray(12,16).toString() !== 'IHDR') {
     throw new Error('Evidence must be a valid PNG screenshot');
