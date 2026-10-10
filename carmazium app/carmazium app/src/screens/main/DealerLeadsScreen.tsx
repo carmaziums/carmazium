@@ -57,6 +57,8 @@ interface Lead {
   unreadCount?: number;
   assignedToId?: string;
   assignedToName?: string;
+  nextFollowUpAt?: string | null;
+  lastActivityAt?: string | null;
 }
 
 interface StaffOption {
@@ -78,20 +80,20 @@ const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
 // stage set (mobile-production-readiness-plan.md F16) as a tap-based board
 // rather than drag-and-drop — see that finding for why.
 const BOARD_STAGES: { key: string; label: string; color: string }[] = [
-  { key: 'NEW', label: 'New', color: Colors.textMuted },
-  { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
-  { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
-  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
-  { key: 'WON', label: 'Won', color: Colors.success },
-  { key: 'LOST', label: 'Lost', color: Colors.accent },
+  { key: 'NEW', label: 'New Leads', color: Colors.infoBlue },
+  { key: 'CONTACTED', label: 'Contacted', color: Colors.warning },
+  { key: 'QUALIFIED', label: 'Viewing / Qualified', color: Colors.lightPurple },
+  { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.infoBlueLight },
+  { key: 'WON', label: 'Closed Won', color: Colors.success },
+  { key: 'LOST', label: 'Lost', color: Colors.error },
 ];
 
 const SOURCE_LABELS: Record<string, string> = {
-  listing_enquiry: 'Listing Enquiry',
-  chat: 'Chat Message',
-  offer: 'Offer Submitted',
+  listing_enquiry: 'Listing enquiry',
+  chat: 'CarMazium message',
+  offer: 'Retail offer',
   walk_in: 'Walk-in',
-  phone: 'Phone Call',
+  phone: 'Phone',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -133,6 +135,8 @@ const mapApiLead = (l: any): Lead => ({
   notes: l.notes || '',
   time: l.createdAt ? formatTimeAgo(l.createdAt) : '–',
   createdAtIso: l.createdAt,
+  lastActivityAt: l.lastActivityAt || l.updatedAt || l.createdAt || null,
+  nextFollowUpAt: l.nextFollowUpAt || null,
   status: l.status || 'NEW',
   tag: getLeadTag(l.status || 'NEW'),
   unreadCount: l.status === 'NEW' ? 1 : 0,
@@ -462,7 +466,9 @@ const BoardCard: React.FC<{
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [mobileStage, setMobileStage] = useState('NEW');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reassignLeadId, setReassignLeadId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
