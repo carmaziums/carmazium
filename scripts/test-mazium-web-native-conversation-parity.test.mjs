@@ -9,7 +9,7 @@ const web = read('src/components/features/MaziumWidget.tsx');
 const native = read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
 
 function replies(source) {
-  const match = source.match(/const ALL_QUICK_REPLIES(?:: QuickReply\[\])?\s*=\s*\[([\s\S]*?)\];/);
+  const match = source.match(/const ALL_QUICK_REPLIES(?:: QuickReply\[\])?\s*=\s*\[([\s\S]*?)\]\s*;?/);
   assert.ok(match, 'quick-reply pool must exist');
   return [...match[1].matchAll(/\{\s*label:\s*['"]([^'"]+)['"]\s*,\s*action:\s*['"]([^'"]+)['"]\s*\}/g)]
     .map(([, label, action]) => ({ label, action }));
