@@ -22,6 +22,7 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { DealerWebParityOverview, type DealerHomeDestination } from './DealerWebParityOverview';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -92,6 +93,10 @@ export const DealerProfileScreen: React.FC = () => {
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = hasPermission('VIEW_PURCHASES');
   const canManageTeam = hasPermission('MANAGE_TEAM');
+  const canViewTrade = hasPermission('VIEW_TRADE');
+  const canViewAnalytics = hasPermission('VIEW_ANALYTICS');
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
   const [activeSubTab, setActiveSubTab] = useState<'today' | 'this_week'>('today');
 
   const [stats, setStats] = useState<DealerStats | null>(null);
@@ -153,7 +158,10 @@ export const DealerProfileScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // The old Today/This Week analytics now live behind a secondary disclosure.
+  // Do not eagerly fetch unrelated 7d analytics before the web-equivalent
+  // Home summary finishes loading (which also avoids two competing loaders).
+  useEffect(() => { if (advancedExpanded) void loadData(); }, [advancedExpanded, loadData]);
 
   const dealerDisplayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
 
@@ -579,20 +587,28 @@ export const DealerProfileScreen: React.FC = () => {
     );
   };
 
-  const companyLabel = (stats?.companyName || 'YOUR DEALERSHIP').toUpperCase();
-  // Website header and account actions are shared by every dealer tab.
-  // Keep this header as page content only, not a second hamburger/bell.
-  const renderHeader = () => (
-    <View style={styles.headerToday}>
-      <View>
-        <Text style={styles.dealerProSub}>DEALER · {companyLabel}</Text>
-        <Text style={styles.headerTodayTitle}>{activeSubTab === 'today' ? 'Today' : 'This week'}</Text>
-      </View>
-      {stats?.isVerified && (
-        <View style={styles.proBadge}><Text style={styles.proBadgeText}>PRO</Text></View>
-      )}
-    </View>
-  );
+  const openMainAction = (destination: DealerHomeDestination) => {
+    switch (destination) {
+      case 'add-vehicle':
+        if (canManageInventory) navigation.navigate('SellCarFlow');
+        break;
+      case 'customers':
+        if (canManageCrm) navigation.navigate('DealerLeads');
+        break;
+      case 'buy-and-bid':
+        if (canViewTrade) navigation.navigate('Tabs', { screen: 'DealerBuyBid' });
+        break;
+      case 'partner-services':
+        navigation.navigate('PartnerDashboard');
+        break;
+      case 'performance':
+        if (canViewAnalytics) navigation.navigate('DealerAnalytics');
+        break;
+      case 'stock':
+        if (hasPermission('VIEW_INVENTORY')) navigation.navigate('DealerInventory');
+        break;
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -611,17 +627,16 @@ export const DealerProfileScreen: React.FC = () => {
         contentContainerStyle={[styles.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => loadData(true)} tintColor={Colors.accent} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setOverviewRefreshToken(token => token + 1);
+              if (advancedExpanded) void loadData(true);
+            }}
+            tintColor={Colors.accent}
+          />
         }
       >
-        {error ? (
-          <View style={{ marginBottom: 16 }}>
-            <ErrorBanner message={error} onRetry={() => loadData()} />
-          </View>
-        ) : null}
-
-        {/* Render Dynamic Header */}
-        {renderHeader()}
 
         {showPhoneBanner && (
           <TouchableOpacity
@@ -644,42 +659,81 @@ export const DealerProfileScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        {/* TODAY / THIS WEEK SUB-TABS SELECTOR */}
-        <View style={styles.tabToggleRow}>
-          <TouchableOpacity
-            style={[styles.tabToggleBtn, activeSubTab === 'today' && styles.tabToggleBtnActive]}
-            onPress={() => {
-              setActiveSubTab('today');
-              showToast('Today dashboard loaded', 'info');
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabToggleText, activeSubTab === 'today' && styles.tabToggleTextActive]}>
-              TODAY
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabToggleBtn, activeSubTab === 'this_week' && styles.tabToggleBtnActive]}
-            onPress={() => {
-              setActiveSubTab('this_week');
-              showToast('Weekly performance loaded', 'info');
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabToggleText, activeSubTab === 'this_week' && styles.tabToggleTextActive]}>
-              THIS WEEK
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Website first: verified dealer identity, flexible range, four KPIs,
+            main actions. Do not silently substitute 7-day analytics values. */}
+        <DealerWebParityOverview
+          userName={dealerDisplayName || 'Dealer'}
+          canManageInventory={canManageInventory}
+          canManageCrm={canManageCrm}
+          canViewTrade={canViewTrade}
+          canViewAnalytics={canViewAnalytics}
+          onNavigate={openMainAction}
+          refreshToken={overviewRefreshToken}
+        />
 
-        {loading && !stats && !analytics ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="small" color={Colors.accent} />
-            <Text style={styles.loadingText}>Loading your dashboard…</Text>
+        {/* Preserve the pre-existing inventory/lead/sales insights, but put
+            them behind a secondary disclosure as on-site Home has one clear
+            first-fold hierarchy rather than competing Today/Week dashboards. */}
+        <View style={styles.extraInsights}>
+          <TouchableOpacity
+            style={styles.extraInsightsToggle}
+            onPress={() => setAdvancedExpanded(expanded => !expanded)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: advancedExpanded }}
+            accessibilityLabel="Additional dealer insights"
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.extraInsightsTitle}>Additional insights</Text>
+              <Text style={styles.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
+            </View>
+            <Ionicons name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
+              size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          {advancedExpanded && (
+            <View style={styles.extraInsightsBody}>
+              {error && <ErrorBanner message={error} onRetry={() => loadData()} />}
+          {/* TODAY / THIS WEEK SUB-TABS SELECTOR */}
+          <View style={styles.tabToggleRow}>
+            <TouchableOpacity
+              style={[styles.tabToggleBtn, activeSubTab === 'today' && styles.tabToggleBtnActive]}
+              onPress={() => {
+                setActiveSubTab('today');
+                showToast('Today dashboard loaded', 'info');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabToggleText, activeSubTab === 'today' && styles.tabToggleTextActive]}>
+                TODAY
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabToggleBtn, activeSubTab === 'this_week' && styles.tabToggleBtnActive]}
+              onPress={() => {
+                setActiveSubTab('this_week');
+                showToast('Weekly performance loaded', 'info');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabToggleText, activeSubTab === 'this_week' && styles.tabToggleTextActive]}>
+                THIS WEEK
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          activeSubTab === 'today' ? renderTodayView() : renderThisWeekView()
-        )}
+  
+          {loading && !stats && !analytics ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+              <Text style={styles.loadingText}>Loading your dashboard…</Text>
+            </View>
+          ) : error && !stats && !analytics ? (
+            <Text style={styles.loadingText}>Insights are unavailable. Try again.</Text>
+          ) : (
+            activeSubTab === 'today' ? renderTodayView() : renderThisWeekView()
+          )}
+  
+            </View>
+          )}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -696,6 +750,16 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
+  // Website-aligned first fold is rendered by DealerWebParityOverview.
+  // Keep these older sections available under the non-destructive disclosure.
+  extraInsights: { marginHorizontal: 20, marginTop: 22, marginBottom: 6 },
+  extraInsightsToggle: { flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 15, borderRadius: 16, borderWidth: 1,
+    backgroundColor: Colors.bgCard, borderColor: Colors.borderSubtle },
+  extraInsightsTitle: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.textPrimary },
+  extraInsightsSub: { fontFamily: FontFamily.regular, fontSize: 12,
+    marginTop: 4, color: Colors.textMuted },
+  extraInsightsBody: { paddingTop: 16 },
   // Headers
   headerToday: {
     flexDirection: 'row',
