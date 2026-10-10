@@ -51,6 +51,7 @@ import { NotificationsScreen } from '../screens/main/NotificationsScreen';
 import { MyListingDashboardScreen } from '../screens/sell/MyListingDashboardScreen';
 import { PurchaseFlowScreen } from '../screens/main/PurchaseFlowScreen';
 import { SellCarFlowScreen } from '../screens/sell/SellCarFlowScreen';
+import { SellLandingScreen } from '../screens/sell/SellLandingScreen';
 import { BuyerDashboardScreen } from '../screens/buyer/BuyerDashboardScreen';
 import { SellerDashboardScreen } from '../screens/seller/SellerDashboardScreen';
 import { UnifiedDashboardScreen } from '../screens/account/UnifiedDashboardScreen';
@@ -162,7 +163,10 @@ export type MainStackParamList = {
     paymentType?: 'COMMISSION';
     auctionId?: string;
   } | undefined;
-  SellCarFlow: { listingId?: string } | undefined;
+  SellLanding: undefined;
+  SellCarFlow: { listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
+    vrm?: string; make?: string; model?: string; year?: number; mileage?: number; transmission?: string;
+  } } | undefined;
   SellerListings: undefined;
   SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean } | undefined;
   BuyerDashboard: undefined;
@@ -335,6 +339,8 @@ export const MainStackNavigator: React.FC = () => {
         component={PurchaseFlowScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen name="SellLanding" component={SellLandingScreen}
+        options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen
         name="SellCarFlow"
         component={SellCarFlowScreen}
