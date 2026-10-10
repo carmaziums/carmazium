@@ -2,8 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import ts from 'typescript';
-
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const themeSource = read('carmazium app/carmazium app/src/theme/nativeTheme.ts');
 const provider = read('carmazium app/carmazium app/src/theme/NativeAppearanceProvider.tsx');
@@ -11,17 +9,32 @@ const app = read('carmazium app/carmazium app/App.tsx');
 const settings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
 
 function loadPureNativeTheme() {
-  const transpiled = ts.transpileModule(themeSource, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-    fileName: 'nativeTheme.ts',
-    reportDiagnostics: true,
-  });
-  assert.equal(transpiled.diagnostics?.length ?? 0, 0);
-  const mod = { exports: {} };
-  // Evaluate ONLY the local, pure nativeTheme.ts TypeScript module with
-  // module/exports; no network, app imports, or native platform dependencies.
-  new Function('module', 'exports', transpiled.outputText)(mod, mod.exports);
-  return mod.exports;
+  // This release-contract CI job deliberately runs BEFORE npm ci. Extract and
+  // evaluate the exact simple resolver FUNCTION BODY from the local TypeScript
+  // source rather than importing the TypeScript package or mocking a function.
+  const resolver = themeSource.match(/export function resolveNativeAppearance\([\s\S]*?\): ResolvedAppearance \{([\s\S]*?)\n\}/);
+  assert.ok(resolver, 'missing resolver');
+  const resolveNativeAppearance = new Function('preference', 'systemAppearance', resolver[1]);
+  const parsePalette = kind => {
+    const pattern = new RegExp('export const NATIVE_' + kind + '_THEME: NativeSemanticPalette = Object.freeze\\(\\{([\\s\\S]*?)\\}\\);');
+    const m = themeSource.match(pattern);
+    assert.ok(m, kind + ' palette');
+    return Object.freeze(Object.fromEntries(
+      [...m[1].matchAll(/^\s*([a-zA-Z]+):\s*'([^']+)',/gm)].map(([, key, val]) => [key, val]),
+    ));
+  };
+  const NATIVE_LIGHT_THEME = parsePalette('LIGHT');
+  const NATIVE_DARK_THEME = parsePalette('DARK');
+  assert.match(themeSource, /Object\.freeze\(\{/);
+  const getter = themeSource.match(/export function getNativeSemanticPalette\(mode: ResolvedAppearance\): NativeSemanticPalette \{([\s\S]*?)\n\}/);
+  assert.ok(getter, 'missing palette selector');
+  const getNativeSemanticPalette = new Function('mode', 'NATIVE_LIGHT_THEME', 'NATIVE_DARK_THEME', getter[1]);
+  return {
+    resolveNativeAppearance,
+    NATIVE_LIGHT_THEME,
+    NATIVE_DARK_THEME,
+    getNativeSemanticPalette: mode => getNativeSemanticPalette(mode, NATIVE_LIGHT_THEME, NATIVE_DARK_THEME),
+  };
 }
 
 test('actual appearance resolver honours explicit Light and Dark independent of OS', () => {
