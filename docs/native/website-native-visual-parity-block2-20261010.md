@@ -24,7 +24,7 @@ Date: 2026-10-10. Programme checkpoint **20%** upon passing the source checks, N
 ### Implementation notes
 
 - `GlobalDrawer` uses `useWindowDimensions` and the existing `useSafeAreaInsets`. Dealer sheet height = min(720dp, 82% of app window); panel is flush left/right with rounded top corners. Its backdrop, Android back dismissal, user identity, sections, account settings, support, sign-out, buyer preview and permissions logic remain intact.
-- The RN Modal remains the existing one; no nested duplicate drawer, extra navigation route or new role toggle.
+- Dealer More is an **inline absolute overlay**, NOT a full-screen RN Modal: its backdrop/sheet stop above the existing 64dp bottom navigation (+ system safe area). The original bottom tabs remain visible and tappable (including the More close toggle), without adding any duplicate nav; hardware-back, backdrop and close button all dismiss the panel. Non-dealer roles continue to use the original RN Modal and right drawer.
 - `TabNavigator` More uses the existing drawer context, not a new tab screen. The previously visited dealer tab stays mounted and its state persists.
 - `HamburgerButton` gains an optional `websiteStyle` prop only for `WebsiteTopBar`; other button usages keep their exact original appearance.
 - `Logo` gains an optional `width` override. Normal size presets elsewhere are unchanged; the same bundled website PNG is used (no external image URL).
