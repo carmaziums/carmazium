@@ -68,10 +68,11 @@ interface StaffOption {
 }
 
 const STATUS_OPTIONS: { key: string; label: string; color: string }[] = [
+  { key: 'NEW', label: 'New Leads', color: Colors.infoBlue },
   { key: 'CONTACTED', label: 'Contacted', color: Colors.infoBlue },
-  { key: 'QUALIFIED', label: 'Qualified', color: Colors.success },
+  { key: 'QUALIFIED', label: 'Viewing / Qualified', color: Colors.lightPurple },
   { key: 'NEGOTIATING', label: 'Negotiating', color: Colors.warning },
-  { key: 'WON', label: 'Won', color: Colors.success },
+  { key: 'WON', label: 'Closed Won', color: Colors.success },
   { key: 'LOST', label: 'Lost', color: Colors.accent },
 ];
 
@@ -803,40 +804,96 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       />
 
       <WebsiteTopBar />
-      <View style={[styles.header, { paddingTop: 12 }]}>
-         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <IconButton style={[styles.backBtn, { marginRight: 12 }]} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-            <View>
-               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <View style={styles.unreadDot} />
-                  <Text style={styles.headerSub}>{newCount} NEW · {newThisWeek} THIS WEEK</Text>
-               </View>
-               <Text style={styles.headerTitle}>Customers</Text>
-            </View>
-         </View>
-         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={styles.viewModeToggle}>
-               <TouchableOpacity
-                  style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
-                  onPress={() => setViewMode('list')}
-                  activeOpacity={0.7}
-                  accessibilityLabel="List view"
-               >
-                  <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
-               </TouchableOpacity>
-               <TouchableOpacity
-                  style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
-                  onPress={() => setViewMode('board')}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Board view"
-               >
-                  <Ionicons name="albums-outline" size={15} color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
-               </TouchableOpacity>
-            </View>
-            <IconButton style={styles.addLeadBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => setCreateModalVisible(true)} accessibilityLabel="Add customer" />
-
-         </View>
+      {/* Use the exact website dealer Customers hierarchy and labels.
+          Existing MANAGE_CRM screen gate remains in navigation. */}
+      <View style={styles.crmPageHeader}>
+        <Text style={styles.headerTitle}>Customers</Text>
+        <Text style={styles.crmSubtitle}>Enquiries, offers and buyer follow-up</Text>
+        <View style={styles.crmHeaderActions}>
+          <TouchableOpacity style={styles.crmAddButton}
+            onPress={() => setCreateModalVisible(true)}
+            accessibilityRole="button" accessibilityLabel="Add Customer">
+            <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
+            <Text style={styles.crmAddButtonText}>Add Customer</Text>
+          </TouchableOpacity>
+          {canManageOffers && (
+            <TouchableOpacity style={styles.crmOffersButton}
+              onPress={() => navigation?.navigate('DealerOffers')}
+              accessibilityRole="button" accessibilityLabel="Offers received">
+              <Text style={styles.crmOffersText}>Offers received</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.viewModeToggle}>
+            <TouchableOpacity
+              style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
+              onPress={() => setViewMode('board')} activeOpacity={0.75}
+              accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
+              accessibilityLabel="Pipeline board view">
+              <Ionicons name="albums-outline" size={17}
+                color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
+              onPress={() => setViewMode('list')} activeOpacity={0.75}
+              accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
+              accessibilityLabel="Customer list view">
+              <Ionicons name="list-outline" size={17}
+                color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
+      <View style={styles.crmAutoBanner}>
+        <Ionicons name="sparkles-outline" size={19} color={Colors.success} />
+        <View style={styles.crmAutoText}>
+          <Text style={styles.crmAutoTitle}>Customer enquiries are automatic</Text>
+          <Text style={styles.crmAutoDescription}>
+            CarMazium retail messages and offers appear here automatically and stay linked to the vehicle.
+            Add Customer is for phone calls, walk-ins and other off-platform enquiries.
+          </Text>
+        </View>
+      </View>
+      <View style={styles.crmMetrics}>
+        {websiteSummary.map(metric => (
+          <View style={styles.crmMetricCard} key={metric.label}>
+            <Text style={[styles.crmMetricCount, { color: metric.color }]}>
+              {metric.count.toLocaleString('en-GB')}
+            </Text>
+            <Text style={styles.crmMetricLabel}>{metric.label}</Text>
+          </View>
+        ))}
+      </View>
+      {!!loadError && (
+        <View style={styles.crmErrorBanner}>
+          <Text style={styles.crmErrorText}>{loadError}</Text>
+          <TouchableOpacity accessibilityRole="button"
+            accessibilityLabel="Retry loading customers" onPress={() => { void fetchLeads(true); }}>
+            <Text style={styles.crmRetry}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {viewMode === 'board' && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={styles.crmStagesScroll}
+          contentContainerStyle={styles.crmStagesList}>
+          {BOARD_STAGES.map(stage => {
+            const selected = stage.key === mobileStage;
+            return (
+              <TouchableOpacity key={stage.key}
+                style={[styles.crmStageTab, selected && styles.crmStageSelected]}
+                onPress={() => setMobileStage(stage.key)}
+                accessibilityRole="button"
+                accessibilityLabel={`${stage.label}, ${(leadsByStage[stage.key] || []).length} customers`}
+                accessibilityState={{ selected }}>
+                <Text style={[styles.crmStageText, selected && styles.crmStageSelectedText]}>
+                  {stage.label} {(leadsByStage[stage.key] || []).length}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {viewMode === 'list' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
@@ -864,15 +921,32 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
           ))}
         </View>
+      ) : loadError && leads.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyTitle}>Customers unavailable</Text>
+          <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
+            <Text style={styles.crmRetry}>Retry loading customers</Text>
+          </TouchableOpacity>
+        </View>
       ) : viewMode === 'board' ? (
         <FlatList
-          horizontal
-          style={styles.boardScroll}
-          contentContainerStyle={styles.boardContent}
-          showsHorizontalScrollIndicator={false}
-          data={BOARD_STAGES}
-          keyExtractor={(s) => s.key}
-          renderItem={renderBoardColumn}
+          key={mobileStage}
+          style={styles.listScroll}
+          contentContainerStyle={styles.crmBoardCards}
+          data={leadsByStage[mobileStage] || []}
+          keyExtractor={lead => lead.id}
+          renderItem={({ item }) => (
+            <BoardCard lead={item} onPress={handleLeadPress}
+              onMove={handleOpenReassign} onFollowUp={handleFollowUp} />
+          )}
+          refreshControl={<RefreshControl refreshing={refreshing}
+            onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />}
+          ListEmptyComponent={
+            <View style={styles.crmBoardEmpty}>
+              <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
+              <Text style={styles.crmBoardEmptyText}>Empty</Text>
+            </View>
+          }
         />
       ) : filteredLeads.length === 0 ? (
         renderEmptyState()
