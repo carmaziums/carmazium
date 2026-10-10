@@ -32,13 +32,14 @@ import { resolveMobileNotificationTarget } from './src/lib/notificationRouting';
 import { SplashScreen as AppSplashScreen } from './src/screens/loading/SplashScreen';
 
 import { GlobalAIChatBot } from './src/components/GlobalAIChatBot';
+import { NativeAppearanceProvider } from './src/theme/NativeAppearanceProvider';
 
 SplashScreen.preventAutoHideAsync();
 
 // navigationRef is now a module-level singleton from src/lib/navigationRef.ts
 // so it can be imported by GlobalAIChatBot and other non-screen components safely.
 
-export default function App() {
+function AppContent() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
@@ -378,5 +379,17 @@ export default function App() {
     </SafeAreaProvider>
     </StripeProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * Prepare the device-wide Light/Dark/System preference before any navigation
+ * or authenticated UI mounts. Actual UI recolouring is gated on later blocks.
+ */
+export default function App() {
+  return (
+    <NativeAppearanceProvider>
+      <AppContent />
+    </NativeAppearanceProvider>
   );
 }
