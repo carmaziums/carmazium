@@ -527,7 +527,7 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  const sortLabel = SORT_OPTIONS.find(s => themed.id === sortId)?.label ?? 'Sort';
+  const sortLabel = SORT_OPTIONS.find(option => option.id === sortId)?.label ?? 'Sort';
 
   const searchAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
