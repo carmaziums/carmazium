@@ -100,6 +100,18 @@ test('PNG evidence cannot be path-traversed or declared using a guessed hash',()
   assert.throws(()=>readPngEvidence(root,{path:'not-there.png',sha256:'invalid'}),/missing/);
 });
 
+test('native MaziuM exists and is kept above accessible tabs with consent still gating all AI sends',()=>{
+  const ai=read('carmazium app/carmazium app/src/components/GlobalAIChatBot.tsx');
+  assert.ok(ai.includes('getBottomTabBarHeight(fontScale) + 8'));
+  assert.ok(ai.includes('const tabClearance = Math.max(MAZIUM_TAB_CLEARANCE,'));
+  assert.ok(ai.includes('hasAiConsent !== true) return;'));
+  assert.ok(ai.includes('AsyncStorage.getItem(aiConsentKey)'));
+  assert.ok(ai.includes("AsyncStorage.setItem(aiConsentKey, 'accepted')"));
+  assert.ok(ai.includes('editable={!isThinking && hasAiConsent === true}'));
+  assert.ok(ai.includes('MaziuM AI privacy'));
+  assert.ok(!ai.includes("setHasAiConsent(true);\n  const sendMessage"),'AI sending must not auto-consent');
+});
+
 test('source gate and docs cannot silently claim public website capture is a matched device pair',()=>{
   const workflow=read('.github/workflows/carmazium-visual-baseline.yml');
   const android=read('.github/workflows/carmazium-android-preview-apk.yml');
