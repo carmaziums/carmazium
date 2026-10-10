@@ -11,7 +11,11 @@ const app=JSON.parse(read('carmazium app/carmazium app/app.json'));
 const eas=JSON.parse(read('carmazium app/carmazium app/eas.json'));
 const sha='a'.repeat(40);
 const env=()=>({
+  GITHUB_REF:'refs/heads/main',
+  GITHUB_EVENT_NAME:'workflow_dispatch',
   CARMAZIUM_ANDROID_CANDIDATE_APPROVAL:'INTERNAL_REVIEW_ONLY',
+  CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:'2',
+  APP_ENV:'production',
   CARMAZIUM_ANDROID_RELEASE_KEYSTORE_BASE64:'AQID'.repeat(32),
   CARMAZIUM_ANDROID_RELEASE_KEY_ALIAS:'carmazium',
   CARMAZIUM_ANDROID_RELEASE_STORE_PASSWORD:'random-store-secret',
@@ -25,6 +29,7 @@ test('valid synthetic signing metadata allows INTERNAL candidate only, not publi
   assert.deepEqual(check(),{ok:true,errors:[]});
   const source=read('.github/workflows/carmazium-android-release-candidate.yml');
   assert.ok(source.includes('workflow_dispatch:'));
+  assert.ok(source.includes("if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'"));
   assert.ok(!source.includes('on: push'));
   assert.ok(!source.includes('deploy-to-production'));
   assert.ok(!source.includes('eas submit'));
@@ -37,14 +42,29 @@ test('valid synthetic signing metadata allows INTERNAL candidate only, not publi
   assert.ok(source.includes('REVIEW-ONLY'));
   assert.ok(source.includes('retention-days: 3'));
   assert.ok(source.includes('app.expo.updates.enabled=false'));
+  assert.ok(source.includes('app.expo.android.versionCode=Number(process.env.CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE)'));
+  assert.ok(source.includes("versionCode='${CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE}'"));
   assert.ok(source.includes('cert'));
 });
 
 test('must verify exact main SHA and explicit internal-only approval',()=>{
+  assert.equal(check({GITHUB_REF:'refs/heads/feature-test'}).ok,false);
+  assert.equal(check({GITHUB_REF:'refs/tags/v1.0.0'}).ok,false);
+  assert.equal(check({GITHUB_REF:''}).ok,false);
+  assert.equal(check({GITHUB_EVENT_NAME:'push'}).ok,false);
   assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_APPROVAL:'NOT_APPROVED'}).ok,false);
   assert.equal(check({},'c'.repeat(40)).ok,false);
   assert.equal(check({},'invalid').ok,false);
   assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_APPROVAL:'PUBLISH_NOW'}).ok,false);
+});
+
+test('must reject unsafe release versionCode and wrong APP_ENV',()=>{
+  for(const invalid of ['', '0','01','-1','1.1','abc','2147483648','99999999999']){
+    assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:invalid}).ok,false,invalid);
+  }
+  assert.equal(check({APP_ENV:'preview'}).ok,false);
+  assert.equal(check({APP_ENV:''}).ok,false);
+  assert.equal(check({CARMAZIUM_ANDROID_CANDIDATE_VERSION_CODE:'2147483647'}).ok,true);
 });
 
 test('must reject missing keys, malformed signature and any weak keystore',()=>{
