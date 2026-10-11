@@ -171,8 +171,12 @@ export class DamageAnalysisService {
           })),
         });
       }
+      // Prisma 6 permits filtering a unique update by the previously checked
+      // sellerId. This makes a concurrent ownership transfer fail atomically
+      // (rolling back damage deletes/creates), instead of allowing the prior
+      // owner to rewrite a transferred listing after the authorization read.
       return tx.listing.update({
-        where: { id: listingId },
+        where: { id: listingId, sellerId: listing.sellerId },
         data: { exteriorGrade: computeExteriorGrade(detections) },
       });
     });
