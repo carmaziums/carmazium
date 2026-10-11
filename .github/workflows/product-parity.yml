@@ -23,6 +23,7 @@ on:
       - 'scripts/test-damage-web-buyer-parity-block8.test.mjs'
       - 'scripts/test-damage-accessibility-gesture-block9.test.mjs'
       - 'scripts/test-damage-block10-security-release-gates.test.mjs'
+      - 'scripts/test-native-simplified-main-menu.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -60,6 +61,8 @@ jobs:
         run: node --test scripts/test-damage-accessibility-gesture-block9.test.mjs
       - name: Block 10 — validate damage ownership and private Android release gates
         run: node --test scripts/test-damage-block10-security-release-gates.test.mjs
+      - name: Simplified main menu — verify navigation and settings account consolidation
+        run: node --test scripts/test-native-simplified-main-menu.test.mjs
 
   web-typecheck:
     name: Web typecheck
