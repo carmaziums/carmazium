@@ -207,9 +207,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const refreshProfile = async () => {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user && session.access_token) {
-            await fetchProfile()
+        // apiClient already resolves the access token with a bounded timeout.
+        // Do not separately await Supabase getSession() here: if its auth lock
+        // is stalled, the recovery button must still reach the server.
+        const expectedUserId = activeUserIdRef.current
+        if (expectedUserId) {
+            await fetchProfile(expectedUserId)
         }
     }
 
