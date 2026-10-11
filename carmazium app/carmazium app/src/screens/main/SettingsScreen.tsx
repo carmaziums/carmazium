@@ -637,17 +637,6 @@ export const SettingsScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
-      <View style={styles.settingsPageHeader}>
-        <Text style={styles.settingsPageTitle}>Account Settings</Text>
-        <Text style={styles.settingsPageSubtitle}>
-          One place for your profile, business, notifications, payouts and security.
-        </Text>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
-          onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
-          <Ionicons name="arrow-back" size={16} color={Colors.accent} />
-          <Text style={styles.settingsBackText}>Back</Text>
-        </TouchableOpacity>
-      </View>
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
@@ -657,10 +646,28 @@ export const SettingsScreen: React.FC = () => {
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
       >
+        {/* Keep the page introduction scrollable at 200% text. A fixed title
+            above this scroller previously left little room for categories,
+            account actions and the confirmed Sign Out row on short phones. */}
+        <View style={styles.settingsPageHeader}>
+          <Text style={styles.settingsPageTitle} maxFontSizeMultiplier={2} accessibilityRole="header">Account Settings</Text>
+          <Text style={styles.settingsPageSubtitle} maxFontSizeMultiplier={2}>
+            One place for your profile, business, notifications, payouts and security.
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Back to previous screen"
+            onPress={() => navigation.goBack()}
+            style={styles.settingsBackLink}
+          >
+            <Ionicons name="arrow-back" size={16} color={Colors.accent} accessibilityElementsHidden />
+            <Text style={styles.settingsBackText} maxFontSizeMultiplier={2}>Back</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.accountToolsPanel}>
-          <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
-          <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
+          <Text style={styles.accountToolsHeading} maxFontSizeMultiplier={2}>YOUR ACCOUNT TOOLS</Text>
+          <Text style={styles.accountToolsSub} maxFontSizeMultiplier={2}>Quick access to the same conversations and saved vehicles on web and app.</Text>
           <View style={styles.accountToolsGrid}>
             {[
               { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
@@ -674,7 +681,7 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityRole="button" accessibilityLabel={tool.label}
                 onPress={tool.action}>
                 <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
-                <Text style={styles.accountToolLabel}>{tool.label}</Text>
+                <Text style={styles.accountToolLabel} maxFontSizeMultiplier={2}>{tool.label}</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
@@ -682,7 +689,7 @@ export const SettingsScreen: React.FC = () => {
               accessibilityLabel="Contact Support" disabled={supportLoading}
               onPress={() => { void handleContactSupport(); }}>
               <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
-              <Text style={styles.accountToolLabel}>
+              <Text style={styles.accountToolLabel} maxFontSizeMultiplier={2}>
                 {supportLoading ? 'Opening support…' : 'Contact Support'}
               </Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
@@ -708,7 +715,7 @@ export const SettingsScreen: React.FC = () => {
                   size={19}
                   color={selected ? Colors.white : Colors.textSecondary}
                 />
-                <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
+                <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]} maxFontSizeMultiplier={2}>
                   {category.label}
                 </Text>
               </TouchableOpacity>
@@ -1639,14 +1646,14 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const styles = StyleSheet.create({
-  settingsPageHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14 },
+  settingsPageHeader: { paddingHorizontal: 0, paddingTop: 12, paddingBottom: 14 },
   settingsPageTitle: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
-    fontSize: 25, lineHeight: 32 },
+    fontSize: 25, flexShrink: 1 },
   settingsPageSubtitle: { fontFamily: FontFamily.medium, color: Colors.textMuted,
-    fontSize: 12, lineHeight: 18, marginTop: 3 },
+    fontSize: 12, marginTop: 3, flexShrink: 1 },
   settingsBackLink: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingTop: 8,
     minHeight: 44, alignSelf: 'flex-start' },
-  settingsBackText: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: 12 },
+  settingsBackText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12 },
   accountToolsPanel: { borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: Colors.bgCard, borderRadius: 16, padding: 13, marginBottom: 11 },
   accountToolsHeading: { fontFamily: FontFamily.extraBold, color: Colors.textPrimary,
@@ -1660,7 +1667,7 @@ const styles = StyleSheet.create({
     gap: 8, minHeight: 48, paddingHorizontal: 10, borderRadius: 10,
     backgroundColor: Colors.bgElevated, borderWidth: 1, borderColor: Colors.borderSubtle },
   accountToolLabel: { color: Colors.textPrimary, fontFamily: FontFamily.bold,
-    fontSize: 11, flex: 1 },
+    fontSize: 11, flex: 1, minWidth: 0, flexShrink: 1 },
   accountSectionCard: { backgroundColor: Colors.bgCard, padding: 15, marginTop: 8,
     borderWidth: 1, borderColor: Colors.borderSubtle, borderRadius: 15, gap: 10 },
   accountSectionTitle: { color: Colors.textPrimary, fontFamily: FontFamily.extraBold, fontSize: 15 },
@@ -1795,8 +1802,10 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, gap: 8 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
   categoryButton: { flexGrow: 1, flexBasis: '46%', minHeight: 56, flexDirection: 'row', gap: 9, alignItems: 'center', backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderHi, borderWidth: 1, borderRadius: Radius.inline, paddingHorizontal: 13, paddingVertical: 10 },
-  categoryButtonSelected: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  categoryLabel: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, lineHeight: 18, color: Colors.textSecondary },
+  // White category text needs >=4.5:1 contrast: accentDeep provides 5.65:1
+  // while retaining the website's CarMazium red selection treatment.
+  categoryButtonSelected: { backgroundColor: Colors.accentDeep, borderColor: Colors.accentDeep },
+  categoryLabel: { flex: 1, minWidth: 0, flexShrink: 1, fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
   categoryLabelSelected: { color: Colors.white },
   notificationShortcut: { flexDirection: 'row', alignItems: 'center', minHeight: 68, padding: 14, borderRadius: Radius.card, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgCardSolid, gap: 12, marginBottom: 6 },
   notificationShortcutIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: Colors.accentAlpha10 },
