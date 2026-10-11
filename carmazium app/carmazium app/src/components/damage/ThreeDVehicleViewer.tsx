@@ -92,6 +92,8 @@ export interface ThreeDVehicleViewerProps {
   onSurfaceTap?: (tap: DamageSurfaceTap) => void;
   onZoneHide?: (zoneId: string) => void;
   onZonePhoto?: (zoneId: string, imageUri: string) => void;
+  /** Open the parent inline editor directly rather than the old Mark/Hide/Photo pill. */
+  inlineDamageEditor?: boolean;
   height?: number;
   /** Friendly body type label shown in the model badge (e.g. "SUV", "Hatchback").
    *  The GLB model itself doesn't change shape per body type yet — this only
@@ -116,6 +118,7 @@ export function ThreeDVehicleViewer({
   onSurfaceTap,
   onZoneHide,
   onZonePhoto,
+  inlineDamageEditor = false,
   height = 280,
   bodyTypeLabel,
   readOnly = false,
@@ -245,8 +248,8 @@ export function ThreeDVehicleViewer({
 
   const handleHotspotPress = useCallback((zone: DamageZone3D) => {
     onZoneClick(zone.label);
-    if (!readOnly) setPillZoneId(zone.id);
-  }, [onZoneClick, readOnly]);
+    if (!readOnly && !inlineDamageEditor) setPillZoneId(zone.id);
+  }, [onZoneClick, readOnly, inlineDamageEditor]);
 
   const handleHideToggle = useCallback((zoneId: string) => {
     setHiddenZones((prev) => {
@@ -270,7 +273,7 @@ export function ThreeDVehicleViewer({
     setPillZoneId(null);
   }, [onZonePhoto]);
 
-  const pillZone = zones.find((z) => z.id === pillZoneId) ?? null;
+  const pillZone = inlineDamageEditor ? null : zones.find((z) => z.id === pillZoneId) ?? null;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
