@@ -197,3 +197,76 @@ test('MaziuM launcher yields to account settings, protected forms, menu and keyb
   assert.match(settings, /getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 128/);
   assert.match(settings, /const handleSignOut = \(\) => Alert\.alert\('Sign Out'/);
 });
+
+
+test('Block 6 compact 280dp–320dp headers preserve all three independently accessible controls', () => {
+  const menu = app('components/HamburgerButton.tsx');
+  const header = app('components/WebsiteTopBar.tsx');
+  const logo = app('components/Logo.tsx');
+  assert.match(header, /const logoWidth = Math\.min\(160, Math\.max\(48, windowWidth - 210\)\)/);
+  assert.match(header, /paddingHorizontal: 10/);
+  assert.match(header, /actions: \{ flexDirection: 'row', alignItems: 'center', gap: 4 \}/);
+  assert.match(header, /width: 44, height: 44/);
+  assert.match(header, /minWidth: 48, height: 48/);
+  assert.match(menu, /minWidth: 90,\s*minHeight: 48/);
+  assert.match(header, /accessibilityLabel="Notifications"/);
+  assert.match(header, /accessibilityLabel="Profile settings"/);
+  assert.match(menu, /accessibilityLabel=\{websiteStyle \? 'Menu' : 'Open navigation menu'\}/);
+  assert.match(header, /<HamburgerButton websiteStyle \/>/);
+  assert.match(logo, /const LOGO_SOURCE = require\('\.\.\/\.\.\/assets\/images\/logo\.png'\)/);
+  for (const width of [280, 300, 320, 360, 390]) {
+    const reserved = 44 + 48 + 90 + 4 * 2 + 10 * 2;
+    const logoWidth = Math.min(160, Math.max(48, width - 210));
+    assert.ok(logoWidth + reserved <= width, 'Header cannot overflow '+width+'dp viewport');
+    assert.ok(logoWidth >= 48, 'Brand mark remains visible');
+  }
+});
+
+test('Block 6 buyer, dealer and staff tab destinations keep menu distinct from More and preserve permissions', () => {
+  const nav = app('navigation/TabNavigator.tsx');
+  const tools = app('screens/main/DealerMoreScreen.tsx');
+  const gate = app('components/DealerGate.tsx');
+  assert.match(nav, /const dealerMode = role === 'dealer' && accountRole === 'dealer'/);
+  assert.match(nav, /if \(!dealerMode\) return !route\.name\.startsWith\('Dealer'\) && route\.name !== 'Live'/);
+  assert.match(nav, /if \(!route\.name\.startsWith\('Dealer'\)\) return false/);
+  assert.match(nav, /route\.name === 'DealerStock'.*hasPermission\('VIEW_INVENTORY'\)/);
+  assert.match(nav, /route\.name === 'DealerCustomers'.*hasPermission\('MANAGE_CRM'\)/);
+  assert.match(nav, /route\.name === 'DealerBuyBid'.*hasPermission\('VIEW_TRADE'\)/);
+  assert.match(nav, /const GatedDealerMoreTab = withDealerGate\(DealerMoreScreen\)/);
+  assert.match(nav, /accessibilityRole="tab"/);
+  assert.match(nav, /accessibilityState=\{\{ selected: isFocused \}\}/);
+  assert.match(nav, /accessibilityLabel=\{route\.name === 'DealerMore'\s*\? 'Dealer tools'/);
+  assert.match(nav, /route\.name === 'DealerMore' \? 'Opens dealer business tools, not the main Menu'/);
+  assert.match(nav, /accessibilityElementsHidden importantForAccessibility="no" \/>/);
+  assert.doesNotMatch(nav, /openDrawer\(\)/);
+  assert.match(tools, /EXTRA_DEALER_TOOLS\.filter\(tool => hasPermission\(tool\.permission\)\)/);
+  assert.match(gate, /access\?\.isVerified === true/);
+  assert.match(gate, /permissionDenied/);
+  assert.match(gate, /withDealerGate/);
+});
+
+test('Block 6 drawer reads naturally at 200% font, scrolls and distinguishes dealer dashboard', () => {
+  const shared = app('components/GlobalDrawer.tsx');
+  const menu = app('components/HamburgerButton.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+  assert.match(shared, /visible=\{isOpen\}/);
+  assert.match(shared, /onRequestClose=\{closeDrawer\}/);
+  assert.match(shared, /accessibilityLabel="Close navigation menu"/);
+  assert.match(shared, /accessibilityLabel=\{item\.id === 'dashboard' && dealerMode \? 'Dealer Dashboard' : item\.label\}/);
+  assert.match(shared, /expanded \? 'Collapse ' \+ item\.label \+ ' choices' : 'Expand ' \+ item\.label \+ ' choices'/);
+  assert.match(shared, /accessibilityState=\{item\.children \? \{ expanded: !!expanded \} : \{ selected: active \}\}/);
+  assert.match(shared, /<Text style=\{\[styles\.rowLabel, active && styles\.rowLabelActive\]\} maxFontSizeMultiplier=\{2\}>/);
+  assert.match(shared, /<Text style=\{styles\.subMenuText\} maxFontSizeMultiplier=\{2\}>/);
+  assert.match(shared, /<Text style=\{styles\.userName\} maxFontSizeMultiplier=\{2\} numberOfLines=\{2\}>/);
+  assert.match(shared, /userMeta: \{\s*flex: 1,\s*minWidth: 0/);
+  assert.match(shared, /rowLabel: \{\s*flex: 1,\s*minWidth: 0,\s*flexShrink: 1/);
+  assert.match(shared, /subMenuText: \{ flex: 1, minWidth: 0, flexShrink: 1/);
+  assert.match(shared, /style=\{styles\.scroll\}/);
+  assert.match(shared, /bounces=\{false\}/);
+  assert.match(menu, /maxFontSizeMultiplier=\{2\}>Menu<\/Text>/);
+  assert.match(settings, /isDealerStaff && \(/);
+  assert.match(settings, /Managed by dealership owner/);
+  assert.match(settings, /const canManageBusiness = isDealerAccount && !isDealerStaff/);
+  assert.match(settings, /style=\{styles\.signOutRow\}/);
+  assert.match(settings, /onPress=\{handleSignOut\}/);
+});

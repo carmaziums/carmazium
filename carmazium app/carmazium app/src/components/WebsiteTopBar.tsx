@@ -20,9 +20,11 @@ export const WebsiteTopBar: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  // Reserve room for a visible Menu label as well as dedicated notification
-  // and account buttons, including on narrower Android screens.
-  const logoWidth = Math.min(160, Math.max(80, windowWidth - 234));
+  // The right-hand actions need 44 + 48 + 90dp plus two 4dp gaps.
+  // The 20dp horizontal padding also counts toward the viewport. Reserve
+  // that space first, rather than a fixed 80dp minimum logo that overflows on
+  // 280–320dp screens or at large text sizes.
+  const logoWidth = Math.min(160, Math.max(48, windowWidth - 210));
   const user = useAuthStore(s => s.user);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 65,
     paddingBottom: 9,
-    paddingHorizontal: 13,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -72,7 +74,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   notificationButton: {
     width: 44, height: 44, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
@@ -80,14 +82,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(51, 65, 85, 0.58)',
   },
   accountButton: {
-    minWidth: 56, height: 48, paddingHorizontal: 4,
+    minWidth: 48, height: 48, paddingHorizontal: 3,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 2, borderRadius: 11,
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: 'rgba(51, 65, 85, 0.58)',
   },
   avatar: {
-    width: 31, height: 31, borderRadius: 16,
+    width: 29, height: 29, borderRadius: 15,
     backgroundColor: 'rgba(237, 28, 36, 0.14)',
     alignItems: 'center', justifyContent: 'center',
   },
