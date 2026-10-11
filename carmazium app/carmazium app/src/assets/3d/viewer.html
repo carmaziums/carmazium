@@ -214,6 +214,7 @@ function doLoad(dataUrl) {
       controls.target.set(0, size.y * scale * 0.3, 0);
       controls.update();
       invalidate();
+      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'modelReady' }));
     },
     undefined,
     function() {
