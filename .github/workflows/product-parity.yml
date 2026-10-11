@@ -47,6 +47,8 @@ jobs:
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - name: Verify administrator-only dashboard navigation and customer onboarding isolation
         run: node --test scripts/test-admin-exclusive-dashboard-routing.test.mjs
+      - name: Verify desktop dealer login cannot stall on Supabase auth callbacks
+        run: node --test scripts/test-desktop-dealer-auth-loading.test.mjs
       - name: Auction shortlist web regressions
         run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
