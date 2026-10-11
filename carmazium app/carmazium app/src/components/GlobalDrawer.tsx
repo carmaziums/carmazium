@@ -339,13 +339,15 @@ export const GlobalDrawer: React.FC = () => {
               <Text style={styles.qaFeedbackText} maxFontSizeMultiplier={2}>Share private QA feedback</Text>
             </TouchableOpacity>
           )}
-        </ScrollView>
 
-        {/* ── Footer brand ─────────────────────────────── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerBrand}>CARMAZIUM</Text>
-          <Text style={styles.footerTagline}>Auction FREE · Retail £1</Text>
-        </View>
+          {/* Branding is not a fixed overlay. On short phones and at 200%
+              text sizes the ten menu rows must get the full scroll area,
+              without a pinned footer stealing room or hiding the last item. */}
+          <View style={styles.footer}>
+            <Text style={styles.footerBrand} maxFontSizeMultiplier={2}>CARMAZIUM</Text>
+            <Text style={styles.footerTagline} maxFontSizeMultiplier={2}>Auction FREE · Retail £1</Text>
+          </View>
+        </ScrollView>
       </Animated.View>
     </>
   );
