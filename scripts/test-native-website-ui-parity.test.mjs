@@ -22,7 +22,7 @@ test('web dealer bottom navigation and native route labels have the same informa
   for (const [route,label] of [
     ['DealerHome','Home'],
     ['DealerStock','Stock'],
-    ['DealerCustomers','CLIENTS'],
+    ['DealerCustomers','Customers'],
     ['DealerBuyBid','Buy & Bid'],
     ['DealerMore','More'],
   ]) {
@@ -538,7 +538,8 @@ test('post-build QA: no fake Help icons in Menu, dealer More, sorting or setting
   assert.doesNotMatch(icon, /const lucideName = ICON_MAP\[name\] \|\| 'HelpCircle'/);
   assert.match(header, /<Ionicons name="menu" size=\{22\}/);
   assert.match(tabs, /name: 'DealerMore', icon: 'apps-outline', iconActive: 'apps'/);
-  assert.match(tabs, /name: 'DealerCustomers'.*label: 'CLIENTS'/);
+  assert.match(tabs, /name: 'DealerCustomers'.*label: 'Customers'/);
+  assert.match(tabs, /route\.name === 'DealerCustomers' \? 'CLIENTS' : config\.label/);
   assert.match(tabs, /route\.name === 'DealerCustomers' \? 'Customers'/);
   assert.match(saved, /name="swap-vertical-outline"/);
 });
