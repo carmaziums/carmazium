@@ -16,6 +16,7 @@ on:
       - 'scripts/test-native-damage-surface-tap-block1.test.mjs'
       - 'scripts/test-native-damage-inline-editor-block2.test.mjs'
       - 'scripts/test-native-damage-camera-preview-block3.test.mjs'
+      - 'scripts/test-native-damage-durable-upload-block4.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -39,6 +40,8 @@ jobs:
         run: node --test scripts/test-native-damage-inline-editor-block2.test.mjs
       - name: Block 3 — camera/gallery previews, per-damage staging and safe Save & Add Another
         run: node --test scripts/test-native-damage-camera-preview-block3.test.mjs
+      - name: Block 4 — verify durable per-defect photo upload, retry and publish guards
+        run: node --test scripts/test-native-damage-durable-upload-block4.test.mjs
 
   web-typecheck:
     name: Web typecheck

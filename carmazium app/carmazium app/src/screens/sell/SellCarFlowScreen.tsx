@@ -94,8 +94,10 @@ interface DamageEntry {
   description: string;
   /** Preliminary surface point; persisted in a later backend migration. */
   surfacePoint?: DamageSurfacePoint;
-  /** Local, temporary photo preview for THIS damage record — NOT a storage URL. */
+  /** Staged photo for this record; never sent to backend as a device URI. */
   localDamagePhotoUri?: string;
+  /** Permanent HTTPS storage URL tied to this damage record, not the panel. */
+  damagePhotoUrl?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -433,15 +435,16 @@ function SectionBox({ title, children, accent, action }: {
 // ─── Interactive Damage Map ───────────────────────────────────────────────────
 
 function Damage3DMapper({
-  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel, onInteractionChange,
+  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel, onInteractionChange, onPendingChange,
 }: {
   records: DamageEntry[];
-  onAdd: (entry: DamageEntry) => void;
+  onAdd: (entry: DamageEntry, onProgress: (percent: number) => void) => Promise<void>;
   onRemove: (id: string) => void;
   onHide: (zoneId: string) => void;
   onPhoto: (zoneId: string, uri: string) => void;
   bodyTypeLabel?: string;
   onInteractionChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [pendingSurfacePoint, setPendingSurfacePoint] = useState<DamageSurfacePoint | null>(null);
@@ -466,9 +469,16 @@ function Damage3DMapper({
   const [dmgDesc, setDmgDesc] = useState('');
   const [pendingDamagePhotoUri, setPendingDamagePhotoUri] = useState<string | null>(null);
   const [pickingDamagePhoto, setPickingDamagePhoto] = useState(false);
+  const [uploadingDamagePhoto, setUploadingDamagePhoto] = useState(false);
+  const [damageUploadPercent, setDamageUploadPercent] = useState(0);
+  const [damageUploadError, setDamageUploadError] = useState<string | null>(null);
   const photoPickerInFlightRef = useRef(false);
   const savingDamageRef = useRef(false);
   useEffect(() => { if (!addingZone) savingDamageRef.current = false; }, [addingZone]);
+  useEffect(() => {
+    onPendingChange?.(Boolean(addingZone) || pickingDamagePhoto || uploadingDamagePhoto);
+    return () => onPendingChange?.(false);
+  }, [addingZone, pickingDamagePhoto, uploadingDamagePhoto, onPendingChange]);
   const [customZoneText, setCustomZoneText] = useState('');
 
   const resetDamageEditor = () => {
@@ -479,10 +489,12 @@ function Damage3DMapper({
     setDmgType('SCRATCH');
     setDmgDesc('');
     setPendingDamagePhotoUri(null);
+    setDamageUploadError(null);
+    setDamageUploadPercent(0);
   };
 
   async function pickDamagePhoto(source: 'camera' | 'gallery') {
-    if (photoPickerInFlightRef.current || !addingZone) return;
+    if (photoPickerInFlightRef.current || uploadingDamagePhoto || !addingZone) return;
     photoPickerInFlightRef.current = true;
     setPickingDamagePhoto(true);
     try {
@@ -500,6 +512,7 @@ function Damage3DMapper({
       // description and type untouched.
       if (!result.canceled && result.assets?.[0]?.uri) {
         setPendingDamagePhotoUri(result.assets[0].uri);
+        setDamageUploadError(null);
       }
     } catch {
       Alert.alert('Photo unavailable', 'Could not open the camera or gallery. Your damage details are still here; please try again.');
@@ -509,20 +522,30 @@ function Damage3DMapper({
     }
   }
 
-  function confirmAdd() {
+  async function confirmAdd() {
     if (!addingZone || pickingDamagePhoto || savingDamageRef.current) return;
     savingDamageRef.current = true;
-    onAdd({
-      id: `${Date.now()}`,
-      zone: addingZone,
-      type: dmgType,
-      description: dmgDesc.trim(),
-      ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
-      ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
-    });
-    // Ready for another direct tap on the same 3D vehicle without revisiting
-    // the manual panel list. Actual photo storage/persistence follows in Block 4.
-    resetDamageEditor();
+    setDamageUploadError(null);
+    setDamageUploadPercent(0);
+    setUploadingDamagePhoto(Boolean(pendingDamagePhotoUri));
+    try {
+      await onAdd({
+        id: createValuationJourneyId(),
+        zone: addingZone,
+        type: dmgType,
+        description: dmgDesc.trim(),
+        ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
+        ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
+      }, setDamageUploadPercent);
+      // Dismiss only after durable upload + record commit.
+      resetDamageEditor();
+    } catch (error: any) {
+      // Do not erase the local image, category, panel or description on failure.
+      setDamageUploadError(error?.message || 'Photo upload failed. Check your connection and retry.');
+    } finally {
+      setUploadingDamagePhoto(false);
+      savingDamageRef.current = false;
+    }
   }
 
   const markedLabels = records.map(r => r.zone);
@@ -552,13 +575,13 @@ function Damage3DMapper({
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
         markedZones={markedLabels}
-        onZoneClick={selectManualZone}
+        onZoneClick={label => { if (!uploadingDamagePhoto) selectManualZone(label); }}
         inlineDamageEditor
         onSurfaceTap={({ zoneId, point }) => {
           const zone = DAMAGE_ZONES_3D.find(z => z.id === zoneId);
           // A surface hit is a panel SUGGESTION from an illustrative car;
           // the seller can change it with the manual selector in Block 2.
-          if (!zone) return;
+          if (!zone || uploadingDamagePhoto) return;
           setPendingSurfacePoint(point);
           setAddingZone(zone.label);
           setPanelChooserOpen(false);
@@ -584,6 +607,7 @@ function Damage3DMapper({
               accessibilityRole="button"
               accessibilityLabel="Change selected damage panel"
               onPress={() => { setCorrectingPanel(true); setPanelChooserOpen(true); }}
+              disabled={uploadingDamagePhoto}
               style={s.damageChangePanelButton}
               activeOpacity={0.8}
             >
@@ -615,8 +639,8 @@ function Damage3DMapper({
             <SL label="DAMAGE PHOTO (optional)" />
             <View style={s.damagePhotoActions}>
               <TouchableOpacity
-                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
-                disabled={pickingDamagePhoto}
+                style={[s.damagePhotoAction, (pickingDamagePhoto || uploadingDamagePhoto) && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 onPress={() => { void pickDamagePhoto('camera'); }}
                 accessibilityRole="button"
                 accessibilityLabel="Take a photo of this damage"
@@ -625,8 +649,8 @@ function Damage3DMapper({
                 <Text style={s.damagePhotoActionText}>Take Photo</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
-                disabled={pickingDamagePhoto}
+                style={[s.damagePhotoAction, (pickingDamagePhoto || uploadingDamagePhoto) && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 onPress={() => { void pickDamagePhoto('gallery'); }}
                 accessibilityRole="button"
                 accessibilityLabel="Choose a damage photo from the gallery"
@@ -651,11 +675,11 @@ function Damage3DMapper({
                 />
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={s.damagePhotoActionText}>Photo selected</Text>
-                  <Text style={s.zoneHint}>Local preview only — permanent upload is added in the next block.</Text>
+                  <Text style={s.zoneHint}>This photo will be uploaded when you save the damage.</Text>
                   <TouchableOpacity
                     style={s.damageRemovePhoto}
                     onPress={() => setPendingDamagePhotoUri(null)}
-                    disabled={pickingDamagePhoto}
+                    disabled={pickingDamagePhoto || uploadingDamagePhoto}
                     accessibilityRole="button"
                     accessibilityLabel="Remove selected damage photo"
                   >
@@ -664,6 +688,17 @@ function Damage3DMapper({
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
+            {uploadingDamagePhoto && (
+              <View style={s.damagePhotoBusy} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text style={s.damagePhotoActionText}>Uploading damage photo — {damageUploadPercent}%</Text>
+              </View>
+            )}
+            {damageUploadError && (
+              <Text style={s.inlineError} accessibilityLiveRegion="polite">
+                {damageUploadError} Your photo and description are still here. Tap Retry Save to try again.
+              </Text>
             )}
             <SL label="DESCRIPTION (optional)" />
             <TextInput
@@ -678,7 +713,7 @@ function Damage3DMapper({
               <TouchableOpacity
                 style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
                 onPress={resetDamageEditor}
-                disabled={pickingDamagePhoto}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel damage entry"
@@ -688,12 +723,12 @@ function Damage3DMapper({
               <TouchableOpacity
                 style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
                 onPress={confirmAdd}
-                disabled={pickingDamagePhoto}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Save damage and add another"
               >
-                <Text style={s.pillTextActive}>SAVE & ADD ANOTHER</Text>
+                <Text style={s.pillTextActive}>{uploadingDamagePhoto ? 'UPLOADING...' : damageUploadError ? 'RETRY SAVE' : 'SAVE & ADD ANOTHER'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -709,6 +744,7 @@ function Damage3DMapper({
       <TouchableOpacity
         style={s.damageChooserToggle}
         onPress={() => {
+          if (uploadingDamagePhoto) return;
           if (panelChooserOpen) {
             setPanelChooserOpen(false);
             setCorrectingPanel(false);
@@ -748,7 +784,7 @@ function Damage3DMapper({
                     <TouchableOpacity
                       key={zone.id}
                       style={[s.pill, (isMarked || isSelected) && s.pillActive]}
-                      onPress={() => chooseKnownPanel(zone.label)}
+                      onPress={() => { if (!uploadingDamagePhoto) chooseKnownPanel(zone.label); }}
                       activeOpacity={0.7}
                       accessibilityRole="button"
                       accessibilityLabel={`Select ${zone.label} as damaged area`}
@@ -777,6 +813,7 @@ function Damage3DMapper({
                 disabled={!customZoneText.trim()}
                 onPress={() => {
                   // Custom areas do not have known model coordinates.
+                  if (uploadingDamagePhoto) return;
                   selectManualZone(customZoneText.trim());
                   setCustomZoneText('');
                 }}
@@ -801,15 +838,15 @@ function Damage3DMapper({
               <View style={{ flex: 1 }}>
                 <Text style={s.dmgRecordZone}>{r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
-                {r.localDamagePhotoUri && (
+                {(r.damagePhotoUrl || r.localDamagePhotoUri) && (
                   <View style={s.damageSavedPhotoRow}>
                     <ExpoImage
-                      source={{ uri: r.localDamagePhotoUri }}
+                      source={{ uri: r.damagePhotoUrl || r.localDamagePhotoUri }}
                       style={s.damageRecordThumbnail}
                       contentFit="cover"
-                      accessibilityLabel={`Photo preview for ${r.zone}`}
+                      accessibilityLabel={`Damage evidence for ${r.zone}`}
                     />
-                    <Text style={s.zoneHint}>Photo awaiting upload</Text>
+                    <Text style={s.zoneHint}>{r.damagePhotoUrl ? 'Photo uploaded' : 'Photo awaiting upload'}</Text>
                   </View>
                 )}
               </View>
@@ -935,6 +972,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [interiorImages, setInteriorImages] = useState<string[]>([]);
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [damageRecords, setDamageRecords] = useState<DamageEntry[]>([]);
+  const [damageEditorPending, setDamageEditorPending] = useState(false);
+  const damageUploadInFlightRef = useRef(false);
+  const handleDamagePendingChange = useCallback((pending: boolean) => setDamageEditorPending(pending), []);
   const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
   const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -1384,6 +1424,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 zone: zone?.label ?? r.part,
                 type: (r.type as DamageEntry['type']) || 'OTHER',
                 description: '',
+                // The URL belongs to this defect, not just its panel. Hydrate
+                // legacy backend records when editing to preserve their evidence.
+                ...(typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
+                  ? { damagePhotoUrl: parseVehicleImageMetadata(r.imageUrl).src }
+                  : {}),
               });
               if (zone && r.imageUrl) nextPhotos[zone.id] = r.imageUrl;
             });
@@ -1801,6 +1846,70 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return encodedUrl;
   }
 
+  /**
+   * Commit exactly one marked defect. Successful evidence uploads are stored
+   * under the authenticated seller's damage folder and linked to this record.
+   * A failed upload rejects: the inline editor stays open with its local photo,
+   * description and panel for one-tap Retry Save. No device URI reaches the API.
+   */
+  async function handleAddDamageEntry(
+    entry: DamageEntry,
+    onProgress: (percent: number) => void,
+  ): Promise<void> {
+    if (damageUploadInFlightRef.current || uploadingPhoto) {
+      throw new Error('Another photo is uploading. Wait for it to finish.');
+    }
+    if (!entry.localDamagePhotoUri) {
+      setDamageRecords(prev => [...prev, entry]);
+      return;
+    }
+    const photoCount = exteriorImages.length + interiorImages.length + damageImages.length;
+    if (photoCount >= MAX_PHOTOS) {
+      throw new Error(`Photo limit reached. Listings support up to ${MAX_PHOTOS} photos.`);
+    }
+    const sellerId = useAuthStore.getState().user?.id;
+    if (!sellerId) throw new Error('Sign in before uploading damage photos.');
+    damageUploadInFlightRef.current = true;
+    try {
+      onProgress(10);
+      const compressedUri = await convertAndCompress(entry.localDamagePhotoUri);
+      onProgress(45);
+      // New random ID for every retry avoids name collisions and overwrites.
+      const objectPath = `${sellerId}/damage/${createValuationJourneyId()}.jpg`;
+      const durableUrl = await uploadToStorage(compressedUri, 'listings', objectPath, 'image/jpeg');
+      const source = parseVehicleImageMetadata(durableUrl).src;
+      if (!source.startsWith('https://') || !source.includes('/storage/v1/object/public/listings/')) {
+        throw new Error('The photo service did not return a valid permanent image URL.');
+      }
+      onProgress(90);
+      newlyUploadedPhotoSourcesRef.current.add(source);
+      // Add the same source to listing images for the listing's existing
+      // 100-image cap, retention and gallery/metadata rules.
+      setDamageImages(prev => [...prev, encodeVehicleImageCategory(source, 'DAMAGE')]);
+      setDamageRecords(prev => [...prev, {
+        ...entry,
+        damagePhotoUrl: source,
+        localDamagePhotoUri: undefined,
+      }]);
+      onProgress(100);
+    } catch (err: any) {
+      throw new Error(err?.message || 'Could not upload the damage photo. Please retry.');
+    } finally {
+      damageUploadInFlightRef.current = false;
+    }
+  }
+
+  async function handleRemoveDamageEntry(id: string): Promise<void> {
+    const record = damageRecords.find(item => item.id === id);
+    if (!record) return;
+    setDamageRecords(prev => prev.filter(item => item.id !== id));
+    // Never remove evidence referenced by another defect, even on same panel.
+    const url = record.damagePhotoUrl;
+    if (url && !damageRecords.some(item => item.id !== id && item.damagePhotoUrl === url)) {
+      await removePhoto('Damage', encodeVehicleImageCategory(url, 'DAMAGE'));
+    }
+  }
+
   async function handlePickPhoto() {
     const currentCount = exteriorImages.length + interiorImages.length + damageImages.length;
     const remainingSlots = MAX_PHOTOS - currentCount;
@@ -1937,6 +2046,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       }
     }
     if (s === 2) {
+      if (damageUploadInFlightRef.current || damageEditorPending) {
+        setPhotoTab('Damage');
+        Alert.alert('Finish damage details', 'Save or cancel your current damage entry before leaving the Media step. Wait for any photo upload to finish.');
+        return false;
+      }
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
       if (allImages.length < MIN_PHOTOS) {
@@ -2148,14 +2262,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function handlePublish() {
     if (publishingInFlightRef.current) return;
-    // Fail closed until Block 4 installs durable uploads and per-defect URLs.
-    // Never silently publish a listing that would lose local-only damage evidence.
-    if (damageRecords.some(record => Boolean(record.localDamagePhotoUri))) {
+    // Fail closed before any listing mutation/fee while evidence is uploading,
+    // uncommitted, or still a local phone URI.
+    if (damageUploadInFlightRef.current || damageEditorPending || damageRecords.some(
+      record => Boolean(record.localDamagePhotoUri)
+        || (Boolean(record.damagePhotoUrl) && !record.damagePhotoUrl!.startsWith('https://')),
+    )) {
       setStep(2);
       setPhotoTab('Damage');
       Alert.alert(
         'Damage photos not uploaded',
-        'One or more damage photos are only stored on this device. Publishing is disabled until those photos can be uploaded permanently. Your other listing details have not been submitted.',
+        'Finish saving the selected damage and wait for its photo upload. If an upload failed, open the damage editor and retry before publishing.',
       );
       return;
     }
@@ -2278,7 +2395,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 type,
                 size: 'MODERATE',
                 coords: zone?.coords,
-                imageUrl: zone ? zonePhotos[zone.id] : undefined,
+                // Each defect owns its own durable image URL. Never use the
+                // zone-keyed legacy map (which confused separate defects on
+                // the same panel), or a device-local file:// URI.
+                imageUrl: r.damagePhotoUrl && r.damagePhotoUrl.startsWith('https://')
+                  ? parseVehicleImageMetadata(r.damagePhotoUrl).src
+                  : undefined,
               };
             }),
           }),
@@ -3448,8 +3570,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Damage3DMapper
             onInteractionChange={set3DInteracting}
                 records={damageRecords}
-                onAdd={entry => setDamageRecords(p => [...p, entry])}
-                onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}
+                onAdd={handleAddDamageEntry}
+                onRemove={id => { void handleRemoveDamageEntry(id); }}
+                onPendingChange={handleDamagePendingChange}
                 onHide={handleZoneHide}
                 onPhoto={handleZonePhoto}
                 bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
