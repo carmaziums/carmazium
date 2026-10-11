@@ -311,7 +311,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             msg.deliveryStatus === 'failed' && styles.bubbleFailed,
           ]}
         >
-          <Text style={themed.bubbleText}>{msg.content}</Text>
+          <Text style={[themed.bubbleText, isOwn && { color: Colors.white }]}>{msg.content}</Text>
           <View style={[themed.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
