@@ -76,7 +76,8 @@ describe('damage pin identity and coordinates — Block 5', () => {
     expect(saved[0].coords.surfacePoint).toEqual({ fx: 0.8, fy: 0.42, fz: 0.61 });
     expect(saved[1].coords.surfacePoint).toEqual({ fx: 0.9, fy: 0.31, fz: 0.33 });
     expect(saved.map((r: any) => r.imageUrl)).toEqual([
-      'https://example.test/photo-one.jpg', 'https://example.test/photo-two.jpg',
+      'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-one.jpg',
+      'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-two.jpg',
     ]);
     expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'car-one' }, data: { exteriorGrade: 2 } });
   });
