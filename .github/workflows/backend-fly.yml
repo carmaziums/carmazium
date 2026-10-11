@@ -54,10 +54,48 @@ jobs:
       - name: Build backend
         run: npm run build
 
+  integration-security:
+    name: Disposable PostgreSQL damage authorization
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa_isolated_only
+          POSTGRES_DB: carmazium_damage_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U qa -d carmazium_damage_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://qa:qa_isolated_only@127.0.0.1:5432/carmazium_damage_qa?schema=public
+      DIRECT_URL: postgresql://qa:qa_isolated_only@127.0.0.1:5432/carmazium_damage_qa?schema=public
+      DAMAGE_POSTGRES_TEST: '1'
+      SUPABASE_URL: https://synthetic-damage-qa.supabase.co
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Prepare disposable PostgreSQL schema only
+        run: npx prisma db push --skip-generate
+      - name: Test owner, outsider, photo and dealer role with real transactions
+        run: npm test -- --runInBand src/damage/damage.integration.spec.ts
+
   deploy:
     name: Deploy backend to Fly.io
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test-build
+    needs: [test-build, integration-security]
     runs-on: ubuntu-latest
     defaults:
       run:
