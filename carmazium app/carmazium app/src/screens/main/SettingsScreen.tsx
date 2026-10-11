@@ -23,7 +23,7 @@ import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
-import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
+import { getBottomTabBarHeight, useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
@@ -61,6 +61,10 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
+  // Scroll clearance accounts for Android/iOS gesture insets, large-text
+  // bottom navigation and the floating MaziuM assistant trigger. The Sign Out
+  // row is deliberately INSIDE this scroller, never under a fixed footer.
+  const settingsBottomClearance = getBottomTabBarHeight(fontScale, insets.bottom) + 128;
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
   const { user, role, setRole, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
@@ -630,10 +634,11 @@ export const SettingsScreen: React.FC = () => {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: settingsBottomClearance }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
 
         <View style={styles.accountToolsPanel}>
@@ -1383,15 +1388,25 @@ export const SettingsScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Use a fully opaque, high-contrast surface rather than red-on-red.
+            Remains readable against the website-derived dark background even
+            when Android/iOS system appearance and text scaling change. */}
         <TouchableOpacity
-          style={[styles.accountAction, { marginTop: 12 }]}
+          style={styles.signOutRow}
           onPress={handleSignOut}
+          activeOpacity={0.8}
           accessibilityRole="button"
-          accessibilityLabel="Sign out of CarMazium"
+          accessibilityLabel="Sign Out"
+          accessibilityHint="Opens a confirmation before signing out of CarMazium"
         >
-          <Ionicons name="log-out-outline" size={18} color={Colors.accent} />
-          <Text style={[styles.accountActionText, { color: Colors.accent }]}>Sign Out</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+          <View style={styles.signOutIcon}>
+            <Ionicons name="log-out-outline" size={21} color={Colors.white} accessibilityElementsHidden />
+          </View>
+          <View style={styles.signOutCopy}>
+            <Text style={styles.signOutTitle} maxFontSizeMultiplier={2}>Sign Out</Text>
+            <Text style={styles.signOutSubtitle} maxFontSizeMultiplier={2}>Sign out of this account</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={19} color={Colors.textSecondary} accessibilityElementsHidden />
         </TouchableOpacity>
       </ScrollView>
 
@@ -1565,6 +1580,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 13 },
   accountActionText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  // Opaque contrasting row: white-on-slate stays legible in both system
+  // appearance settings, and the label may wrap at 200% system font size.
+  signOutRow: {
+    minHeight: 60,
+    marginTop: 18,
+    backgroundColor: Colors.bgElevated,
+    borderColor: Colors.borderStrong,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  signOutIcon: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: Colors.bgCardSolid,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  signOutCopy: { flex: 1, minWidth: 0, gap: 3 },
+  signOutTitle: {
+    fontFamily: FontFamily.bold, fontSize: 15,
+    color: Colors.white, flexShrink: 1,
+  },
+  signOutSubtitle: {
+    fontFamily: FontFamily.medium, fontSize: 12,
+    color: Colors.textSecondary, flexShrink: 1,
+  },
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
   dangerCard: {
     backgroundColor: Colors.errorAlpha08,
