@@ -19,6 +19,10 @@ function ownDamagePhoto(url: string, ownerId: string): boolean {
       && parsed.pathname.endsWith('.jpg');
   } catch { return false; }
 }
+function readEntries(raw: string | null, ownerId: string): OrphanPhoto[] {
+  try { return validEntries(JSON.parse(raw || '[]'), ownerId); }
+  catch { return []; }
+}
 function validEntries(value: unknown, ownerId: string): OrphanPhoto[] {
   if (!Array.isArray(value)) return [];
   return value.filter((row: any) => row
@@ -38,7 +42,7 @@ export async function markDamagePhotoAbandoned(ownerId: string, url: string): Pr
   const key = storageKey(ownerId);
   if (!key || !ownDamagePhoto(url, ownerId)) return;
   await enqueueSerialized(async () => {
-    const queued = validEntries(JSON.parse((await AsyncStorage.getItem(key)) || '[]'), ownerId);
+    const queued = readEntries(await AsyncStorage.getItem(key), ownerId);
     if (queued.some(row => row.url === url)) return;
     queued.push({ url, queuedAt: Date.now() });
     await AsyncStorage.setItem(key, JSON.stringify(queued));
@@ -58,7 +62,7 @@ export async function cleanAbandonedDamagePhotos(
   if (!key) return 0;
   let removed = 0;
   await enqueueSerialized(async () => {
-    const queued = validEntries(JSON.parse((await AsyncStorage.getItem(key)) || '[]'), ownerId);
+    const queued = readEntries(await AsyncStorage.getItem(key), ownerId);
     const remaining: OrphanPhoto[] = [];
     for (const item of queued) {
       if (keep.has(item.url) || now - item.queuedAt < GRACE_MS) {
