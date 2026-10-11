@@ -14,6 +14,7 @@ on:
       - 'scripts/test-native-app-audit-block7.test.mjs'
       - 'scripts/test-native-app-audit-block9.test.mjs'
       - 'scripts/test-native-3d-gesture-performance.test.mjs'
+      - 'scripts/test-native-damage-surface-tap-block1.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -210,6 +211,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block7.test.mjs
       - name: Check 3D damage viewer gesture isolation and performance contracts
         run: node --test scripts/test-native-3d-gesture-performance.test.mjs
+      - name: Block 1 — ensure seller-only 3D surface taps do not trigger on orbit drag
+        run: node --test scripts/test-native-damage-surface-tap-block1.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
         run: node --test scripts/test-native-app-audit-block8.test.mjs
       - name: Audit Android emulator boot and QA artifact provenance
