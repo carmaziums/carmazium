@@ -13,6 +13,7 @@ on:
       - 'next.config.ts'
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
+      - 'scripts/test-native-damage-surface-tap-block1.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -30,6 +31,8 @@ jobs:
         run: node scripts/check-auction-fee-deadline.mjs
       - name: Assert exact native and web MaziuM visual parity
         run: node --test scripts/test-mazium-native-visual-parity.test.mjs
+      - name: Assert seller-only 3D surface hit and touch-versus-drag contract
+        run: node --test scripts/test-native-damage-surface-tap-block1.test.mjs
 
   web-typecheck:
     name: Web typecheck

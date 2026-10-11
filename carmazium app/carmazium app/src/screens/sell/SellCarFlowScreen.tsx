@@ -26,7 +26,7 @@ import { parseNativeAuctionLocalStart, nativeScheduledStartIsValid, nativeAuctio
 import { haptics } from '../../lib/haptics';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet } from '../../lib/paymentsApi';
-import { ThreeDVehicleViewer } from '../../components/damage/ThreeDVehicleViewer';
+import { ThreeDVehicleViewer, type DamageSurfacePoint } from '../../components/damage/ThreeDVehicleViewer';
 import { DAMAGE_ZONES_3D, DAMAGE_ZONE_SECTIONS } from '../../components/damage/damageZones';
 import {
   convertAuctionToRetail,
@@ -92,6 +92,8 @@ interface DamageEntry {
   zone: string;
   type: 'SCRATCH' | 'SCUFF' | 'DENT' | 'CRACK' | 'OTHER';
   description: string;
+  /** Preliminary surface point; persisted in a later backend migration. */
+  surfacePoint?: DamageSurfacePoint;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -440,6 +442,11 @@ function Damage3DMapper({
   onInteractionChange?: (active: boolean) => void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
+  const [pendingSurfacePoint, setPendingSurfacePoint] = useState<DamageSurfacePoint | null>(null);
+  const selectManualZone = (label: string) => {
+    setPendingSurfacePoint(null);
+    setAddingZone(label);
+  };
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
   const [customZoneText, setCustomZoneText] = useState('');
@@ -451,8 +458,10 @@ function Damage3DMapper({
       zone: addingZone,
       type: dmgType,
       description: dmgDesc.trim(),
+      ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
     });
     setAddingZone(null);
+    setPendingSurfacePoint(null);
     setDmgType('SCRATCH');
     setDmgDesc('');
   }
@@ -484,7 +493,15 @@ function Damage3DMapper({
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
         markedZones={markedLabels}
-        onZoneClick={zoneLabel => setAddingZone(zoneLabel)}
+        onZoneClick={selectManualZone}
+        onSurfaceTap={({ zoneId, point }) => {
+          const zone = DAMAGE_ZONES_3D.find(z => z.id === zoneId);
+          // A surface hit is a panel SUGGESTION from an illustrative car;
+          // the seller can change it with the manual selector in Block 2.
+          if (!zone) return;
+          setPendingSurfacePoint(point);
+          setAddingZone(zone.label);
+        }}
         onZoneHide={onHide}
         onZonePhoto={onPhoto}
         bodyTypeLabel={bodyTypeLabel}
@@ -509,7 +526,7 @@ function Damage3DMapper({
                   <TouchableOpacity
                     key={zone.id}
                     style={[s.pill, (isMarked || isSelected) && s.pillActive]}
-                    onPress={() => setAddingZone(zone.label)}
+                    onPress={() => selectManualZone(zone.label)}
                     activeOpacity={0.7}
                   >
                     <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
@@ -535,7 +552,7 @@ function Damage3DMapper({
               style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
               disabled={!customZoneText.trim()}
               onPress={() => {
-                setAddingZone(customZoneText.trim());
+                selectManualZone(customZoneText.trim());
                 setCustomZoneText('');
               }}
               activeOpacity={0.7}
@@ -573,7 +590,7 @@ function Damage3DMapper({
             placeholderTextColor={Colors.borderMuted}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => { setAddingZone(null); setPendingSurfacePoint(null); }} activeOpacity={0.8}>
               <Text style={s.pillText}>CANCEL</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
@@ -3212,7 +3229,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
-                Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
+                Drag to rotate the model. Tap any visible car surface to suggest its panel, or use the existing markers. Confirm the panel before saving. More direct photo and description controls are coming.
               </Text>
               <Damage3DMapper
             onInteractionChange={set3DInteracting}
