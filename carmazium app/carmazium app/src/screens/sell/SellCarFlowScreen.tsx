@@ -848,7 +848,7 @@ function Damage3DMapper({
                     />
                     <Text style={s.zoneHint}>{r.damagePhotoUrl ? 'Photo uploaded' : 'Photo awaiting upload'}</Text>
                   </View>
-                )
+                )}
               </View>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
