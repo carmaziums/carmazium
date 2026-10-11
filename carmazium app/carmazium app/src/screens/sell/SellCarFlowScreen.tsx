@@ -443,9 +443,22 @@ function Damage3DMapper({
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [pendingSurfacePoint, setPendingSurfacePoint] = useState<DamageSurfacePoint | null>(null);
+  // The extensive panel list is a fallback, not a mandatory step before the
+  // damage editor. Correction mode preserves the precise surface hit; manual
+  // selection clears it rather than attaching unrelated model coordinates.
+  const [panelChooserOpen, setPanelChooserOpen] = useState(false);
+  const [correctingPanel, setCorrectingPanel] = useState(false);
   const selectManualZone = (label: string) => {
     setPendingSurfacePoint(null);
     setAddingZone(label);
+    setPanelChooserOpen(false);
+    setCorrectingPanel(false);
+  };
+  const chooseKnownPanel = (label: string) => {
+    if (!correctingPanel) setPendingSurfacePoint(null);
+    setAddingZone(label);
+    setPanelChooserOpen(false);
+    setCorrectingPanel(false);
   };
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
@@ -462,6 +475,8 @@ function Damage3DMapper({
     });
     setAddingZone(null);
     setPendingSurfacePoint(null);
+    setPanelChooserOpen(false);
+    setCorrectingPanel(false);
     setDmgType('SCRATCH');
     setDmgDesc('');
   }
@@ -501,6 +516,8 @@ function Damage3DMapper({
           if (!zone) return;
           setPendingSurfacePoint(point);
           setAddingZone(zone.label);
+          setPanelChooserOpen(false);
+          setCorrectingPanel(false);
         }}
         onZoneHide={onHide}
         onZonePhoto={onPhoto}
@@ -508,94 +525,174 @@ function Damage3DMapper({
         onInteractionChange={onInteractionChange}
       />
 
-      {/* Quick-add button list — every zone the web app offers, for faster
-          input than hunting for a precise spot on the 3D model */}
-      <View style={{ marginTop: 16 }}>
-        {DAMAGE_ZONE_SECTIONS.map(section => (
-          <View key={section} style={{ marginBottom: 14 }}>
-            <SL label={section.toUpperCase()} />
-            <View style={s.zoneChipRow}>
-              {DAMAGE_ZONES_3D.filter(z => z.section === section).map(zone => {
-                const isMarked = markedLabels.includes(zone.label);
-                // Selected (currently being marked, form not yet confirmed)
-                // gets the same red treatment as marked — the pill previously
-                // gave zero feedback on tap, only turning red after the
-                // inline form was filled in and confirmed.
-                const isSelected = addingZone === zone.label;
-                return (
-                  <TouchableOpacity
-                    key={zone.id}
-                    style={[s.pill, (isMarked || isSelected) && s.pillActive]}
-                    onPress={() => selectManualZone(zone.label)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+      {/* One-tap quick editor immediately below the 3D model. The surface
+          chooser infers a panel from the illustrative model, never a verified
+          real-car panel. The seller can correct that suggestion below. */}
+      {addingZone ? (
+        <View style={[s.dmgForm, { marginTop: 12 }]} accessibilityLabel="Damage details editor">
+          <Text style={s.dmgFormTitle}>
+            {pendingSurfacePoint ? 'Suggested damage area' : 'Selected damage area'}
+          </Text>
+          <View style={s.damagePanelRow}>
+            <Text style={s.damagePanelLabel} numberOfLines={2}>{addingZone}</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Change selected damage panel"
+              onPress={() => { setCorrectingPanel(true); setPanelChooserOpen(true); }}
+              style={s.damageChangePanelButton}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="create-outline" size={16} color={Colors.accent} />
+              <Text style={s.damageChangePanelText}>Change panel</Text>
+            </TouchableOpacity>
+          </View>
+          {pendingSurfacePoint && (
+            <Text style={s.zoneHint}>
+              Suggested from a generic 3D car. Check the selected panel matches your actual vehicle.
+            </Text>
+          )}
+          <View style={{ marginTop: 14 }}>
+            <SL label="DAMAGE TYPE" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
+              {DAMAGE_TYPES.map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={[s.pill, dmgType === t && s.pillActive]}
+                  onPress={() => setDmgType(t as DamageEntry['type'])}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: dmgType === t }}
+                >
+                  <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <SL label="DESCRIPTION (optional)" />
+            <TextInput
+              style={[s.input, { marginBottom: 12 }]}
+              value={dmgDesc}
+              onChangeText={setDmgDesc}
+              placeholder="e.g. Small scratch on lower section"
+              placeholderTextColor={Colors.borderMuted}
+              accessibilityLabel="Describe damage to the selected vehicle area"
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
+                onPress={() => {
+                  setAddingZone(null);
+                  setPendingSurfacePoint(null);
+                  setPanelChooserOpen(false);
+                  setCorrectingPanel(false);
+                }}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel damage entry"
+              >
+                <Text style={s.pillText}>CANCEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
+                onPress={confirmAdd}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Mark selected vehicle damage"
+              >
+                <Text style={s.pillTextActive}>MARK DAMAGE</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        ))}
-
-        {/* Free-text zone for anything not covered above */}
-        <View>
-          <SL label="OTHER DAMAGE AREA" />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput
-              style={[s.input, { flex: 1 }]}
-              value={customZoneText}
-              onChangeText={setCustomZoneText}
-              placeholder="e.g. Interior — Driver Seat, Engine Bay..."
-              placeholderTextColor={Colors.iconMuted}
-            />
-            <TouchableOpacity
-              style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
-              disabled={!customZoneText.trim()}
-              onPress={() => {
-                selectManualZone(customZoneText.trim());
-                setCustomZoneText('');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={s.pillText}>Mark</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={s.zoneHint}>Not in the list above? Type any area and press Mark to describe the damage.</Text>
         </View>
-      </View>
+      ) : (
+        <Text style={[s.zoneHint, { marginTop: 10 }]}>
+          Tap a point on the 3D vehicle to record damage, or choose a panel manually.
+        </Text>
+      )}
 
-      {/* Inline add form */}
-      {addingZone && (
-        <View style={s.dmgForm}>
-          <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
-          <SL label="DAMAGE TYPE" />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
-            {DAMAGE_TYPES.map(t => (
+      {/* The full list of panels is optional. The same accessible chooser
+          serves both manual entry and correction of an inferred panel. */}
+      <TouchableOpacity
+        style={s.damageChooserToggle}
+        onPress={() => {
+          if (panelChooserOpen) {
+            setPanelChooserOpen(false);
+            setCorrectingPanel(false);
+          } else {
+            setCorrectingPanel(false);
+            setPanelChooserOpen(true);
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Choose damage area manually"
+        accessibilityState={{ expanded: panelChooserOpen }}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="list-outline" size={18} color={Colors.accent} />
+        <Text style={s.damageChooserToggleText}>Choose area manually</Text>
+        <Ionicons
+          name={panelChooserOpen ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color={Colors.textSecondary}
+        />
+      </TouchableOpacity>
+      {panelChooserOpen && (
+        <View style={s.damageManualPanelList} accessibilityLabel="Available vehicle damage areas">
+          <Text style={[s.zoneHint, { marginBottom: 10 }]}>
+            {correctingPanel
+              ? 'Select the correct panel. Your original tap position is kept for this damage.'
+              : 'Select a vehicle panel below to open the damage form.'}
+          </Text>
+          {DAMAGE_ZONE_SECTIONS.map(section => (
+            <View key={section} style={{ marginBottom: 14 }}>
+              <SL label={section.toUpperCase()} />
+              <View style={s.zoneChipRow}>
+                {DAMAGE_ZONES_3D.filter(z => z.section === section).map(zone => {
+                  const isMarked = markedLabels.includes(zone.label);
+                  const isSelected = addingZone === zone.label;
+                  return (
+                    <TouchableOpacity
+                      key={zone.id}
+                      style={[s.pill, (isMarked || isSelected) && s.pillActive]}
+                      onPress={() => chooseKnownPanel(zone.label)}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select ${zone.label} as damaged area`}
+                      accessibilityState={{ selected: isSelected }}
+                    >
+                      <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <View>
+            <SL label="OTHER DAMAGE AREA" />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                style={[s.input, { flex: 1 }]}
+                value={customZoneText}
+                onChangeText={setCustomZoneText}
+                placeholder="e.g. Interior — Driver Seat, Engine Bay..."
+                placeholderTextColor={Colors.iconMuted}
+                accessibilityLabel="Other vehicle damage area"
+              />
               <TouchableOpacity
-                key={t}
-                style={[s.pill, dmgType === t && s.pillActive]}
-                onPress={() => setDmgType(t as DamageEntry['type'])}
+                style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18, minHeight: 44 }, !customZoneText.trim() && { opacity: 0.5 }]}
+                disabled={!customZoneText.trim()}
+                onPress={() => {
+                  // Custom areas do not have known model coordinates.
+                  selectManualZone(customZoneText.trim());
+                  setCustomZoneText('');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Select custom damage area"
                 activeOpacity={0.7}
               >
-                <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
+                <Text style={s.pillText}>Select</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <SL label="DESCRIPTION (optional)" />
-          <TextInput
-            style={[s.input, { marginBottom: 12 }]}
-            value={dmgDesc}
-            onChangeText={setDmgDesc}
-            placeholder="e.g. Small scratch on lower section"
-            placeholderTextColor={Colors.borderMuted}
-          />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => { setAddingZone(null); setPendingSurfacePoint(null); }} activeOpacity={0.8}>
-              <Text style={s.pillText}>CANCEL</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
-              <Text style={s.pillTextActive}>MARK DAMAGE</Text>
-            </TouchableOpacity>
+            </View>
+            <Text style={s.zoneHint}>For interior or other areas not represented on this generic 3D model.</Text>
           </View>
         </View>
       )}
@@ -3229,7 +3326,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
               <Text style={s.fieldHint}>
-                Drag to rotate the model. Tap any visible car surface to suggest its panel, or use the existing markers. Confirm the panel before saving. More direct photo and description controls are coming.
+                Drag to rotate. Tap a visible point to open the damage editor directly below the car, or choose an area manually.
               </Text>
               <Damage3DMapper
             onInteractionChange={set3DInteracting}
@@ -4230,6 +4327,13 @@ const s = StyleSheet.create({
   photoProgressFill: { height: 4, backgroundColor: Colors.accent ?? Colors.accent, borderRadius: 0 },
 
   // Damage Map
+  damagePanelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  damagePanelLabel: { flex: 1, color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  damageChangePanelButton: { minHeight: 44, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  damageChangePanelText: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.xs },
+  damageChooserToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, minHeight: 48, marginTop: 10, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.border },
+  damageChooserToggleText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
+  damageManualPanelList: { marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgSecondaryAlt },
   dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
   dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.whiteAlpha03, borderRadius: 8, padding: 10, marginBottom: 6 },
