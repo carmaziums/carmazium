@@ -577,6 +577,14 @@ test('post-build QA: home rails show exactly one photo with visible facts, price
   assert.match(home, /<Text style=\{s\.homeCardCtaLabel\}>View Details<\/Text>/);
   assert.match(home, /<Text style=\{s\.homeCardCtaLabel\}>\{bids\} bid/);
   assert.match(home, /<GradeChip grade=\{listing\.exteriorGrade\} \/>/);
+  assert.match(home, /listing\.writeOffCategory \|\| listing\.conditionRaw/);
+  assert.match(home, /rawCategory === 'S' \|\| rawCategory === 'N'/);
+  assert.match(home, /listing\.isSellerVerified === true/);
+  assert.match(home, /listing\.badgeTier === 'STANDARD' \|\| listing\.badgeTier === 'PREMIUM'/);
+  assert.match(home, />HPI Included<\/Text>/);
+  assert.match(home, />Verified seller<\/Text>/);
+  assert.match(home, />\{writeOffBadge\}<\/Text>/);
+  assert.doesNotMatch(home, /\|\| 'Category S'|\|\| 'HPI Included'/);
   assert.match(home, /<AuctionCardChips/);
   assert.match(home, /const featuredIds = new Set\(featuredListings\.map\(listing => listing\.id\)\)/);
   assert.match(home, /latestListings\.filter\(listing => !featuredIds\.has\(listing\.id\)\)/);
