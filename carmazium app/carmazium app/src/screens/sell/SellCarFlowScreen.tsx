@@ -730,6 +730,29 @@ function Damage3DMapper({
                 </View>
               </View>
             )}
+            {preservedDamagePhotoUrl && !pendingDamagePhotoUri && (
+              <View style={s.damagePhotoPreview}>
+                <ExpoImage
+                  source={{ uri: preservedDamagePhotoUrl }}
+                  style={s.damagePhotoPreviewImage}
+                  contentFit="cover"
+                  accessibilityLabel="Previously uploaded photo for this damage"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.damagePhotoActionText}>Existing uploaded photo</Text>
+                  <TouchableOpacity
+                    style={s.damageRemovePhoto}
+                    onPress={() => setPreservedDamagePhotoUrl(undefined)}
+                    disabled={pickingDamagePhoto || uploadingDamagePhoto}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove existing photo from this damage entry"
+                  >
+                    <Ionicons name="trash-outline" size={15} color={Colors.accent} />
+                    <Text style={s.damagePhotoRemoveText}>Remove photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             {uploadingDamagePhoto && (
               <View style={s.damagePhotoBusy} accessibilityLiveRegion="polite">
                 <ActivityIndicator size="small" color={Colors.accent} />
@@ -1998,10 +2021,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
     if (!entry.localDamagePhotoUri) {
       // Editing an existing defect replaces its record, never duplicates it.
-      // A second defect on the same panel still has its own UUID and row.
+      // Preserve shared gallery photos and defer storage deletion until the
+      // server/listing no longer needs the removed record's previous proof.
+      const original = damageRecords.find(item => item.id === entry.id);
+      const remaining = damageRecords.filter(item => item.id !== entry.id);
       setDamageRecords(prev => prev.some(r => r.id === entry.id)
         ? prev.map(r => r.id === entry.id ? entry : r)
         : [...prev, entry]);
+      if (original?.damagePhotoUrl && original.damagePhotoUrl !== entry.damagePhotoUrl) {
+        setDamageImages(prev => withoutUnreferencedDamagePhoto(prev, original.damagePhotoUrl!, [...remaining, entry]));
+        if (!editMode && !hpiDraftListingId && currentUserId
+          && !remaining.some(item => item.damagePhotoUrl === original.damagePhotoUrl)) {
+          void markDamagePhotoAbandoned(currentUserId, original.damagePhotoUrl)
+            .catch(error => console.warn('Could not queue detached proof:', error));
+        }
+      }
       return;
     }
     const photoCount = exteriorImages.length + interiorImages.length + damageImages.length;
