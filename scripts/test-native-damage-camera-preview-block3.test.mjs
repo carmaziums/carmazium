@@ -25,21 +25,21 @@ test('cancelled picker and denied camera access preserve active description and 
   assert.match(mapper, /setPendingDamagePhotoUri\(result\.assets\[0\]\.uri\)/);
   assert.match(mapper, /photoPickerInFlightRef\.current = true/);
   assert.match(mapper, /finally \{\s*photoPickerInFlightRef\.current = false;/);
-  assert.match(mapper, /disabled=\{pickingDamagePhoto\}/);
+  assert.match(mapper, /disabled=\{pickingDamagePhoto \|\| uploadingDamagePhoto\}/);
   assert.match(mapper, /setDmgDesc/);
 });
 
 test('Save & Add Another associates local photo with one damage, prevents double-taps and resets next entry', () => {
   assert.match(seller, /localDamagePhotoUri\?: string/);
   assert.match(mapper, /pendingDamagePhotoUri \? \{ localDamagePhotoUri: pendingDamagePhotoUri \}/);
-  assert.match(mapper, /function confirmAdd\(\) \{\s*if \(!addingZone \|\| pickingDamagePhoto \|\| savingDamageRef\.current\) return;/);
+  assert.match(mapper, /async function confirmAdd\(\) \{\s*if \(!addingZone \|\| pickingDamagePhoto \|\| savingDamageRef\.current\) return;/);
   assert.match(mapper, /savingDamageRef\.current = true/);
-  assert.match(mapper, /onAdd\(\{[\s\S]*?localDamagePhotoUri:[\s\S]*?\}\);\s*\/\/ Ready for another direct tap/);
+  assert.match(mapper, /await onAdd\(\{[\s\S]*?localDamagePhotoUri:[\s\S]*?\}, setDamageUploadPercent\);[\s\S]*?resetDamageEditor\(\);/);
   assert.match(mapper, /resetDamageEditor\(\);/);
   assert.match(mapper, /setPendingDamagePhotoUri\(null\)/);
-  assert.match(mapper, />SAVE & ADD ANOTHER</);
-  assert.match(mapper, /r\.localDamagePhotoUri && \(/);
-  assert.match(mapper, /source=\{\{ uri: r\.localDamagePhotoUri \}\}/);
+  assert.match(mapper, /'SAVE & ADD ANOTHER'/);
+  assert.match(mapper, /r\.damagePhotoUrl \|\| r\.localDamagePhotoUri/);
+  assert.match(mapper, /source=\{\{ uri: r\.damagePhotoUrl \|\| r\.localDamagePhotoUri \}\}/);
 });
 
 test('old viewer Photo pill is suppressed only in seller quick-entry mode; buyer stays read only', () => {
@@ -53,7 +53,7 @@ test('old viewer Photo pill is suppressed only in seller quick-entry mode; buyer
 
 test('publishing fails closed before any listing writes or fee charge for local-only damage photos', () => {
   const publishing = seller.slice(seller.indexOf('async function handlePublish()'), seller.indexOf('// Damage records are saved via a dedicated endpoint', seller.indexOf('async function handlePublish()')));
-  const guard = publishing.indexOf('damageRecords.some(record => Boolean(record.localDamagePhotoUri))');
+  const guard = publishing.indexOf('damageRecords.some(');
   const writes = publishing.indexOf('const payload: Record<string, any> =');
   assert.ok(guard > 0 && writes > guard);
   assert.match(publishing, /setStep\(2\);\s*setPhotoTab\('Damage'\);/);
