@@ -564,6 +564,8 @@ test('post-build QA: home rails show exactly one photo with visible facts, price
   const carousel = app('components/ImageCarousel.tsx');
   const watchlist = app('store/watchlistStore.ts');
   assert.doesNotMatch(home, /<ImageCarousel/);
+  assert.match(home, /Math\.max\(220, Math\.min\(292, windowWidth - 48\)\)/);
+  assert.match(home, /Math\.max\(220, Math\.min\(284, windowWidth - 48\)\)/);
   assert.match(home, /<Image source=\{\{ uri: images\[0\] \}\} style=\{s\.cardImg\}/);
   assert.match(home, /<Image source=\{\{ uri: listing\.images\[0\] \}\} style=\{s\.cardImg\}/);
   assert.match(home, /<ImageLightbox[\s\S]*?images=\{listing\.images \?\? \[\]\}/);
