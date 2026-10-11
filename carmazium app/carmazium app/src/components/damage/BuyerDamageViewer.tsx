@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
@@ -128,6 +128,37 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
         />
       </DamageViewerErrorBoundary>
 
+      {records.length > 0 && (
+        <View style={styles.quickSelector}>
+          <Text style={styles.quickSelectorHeading}>Inspect individual damage reports</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            accessibilityLabel="Seller damage evidence quick selector"
+            contentContainerStyle={styles.quickSelectorContent}
+          >
+            {records.map((record, index) => {
+              const selected = selectedDamageId === record.id;
+              return (
+                <TouchableOpacity
+                  key={record.id}
+                  style={[styles.quickSelectorButton, selected && styles.quickSelectorButtonSelected]}
+                  onPress={() => setSelectedDamageId(previous => previous === record.id ? null : record.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`Damage ${index + 1}. ${getType(record.type)} on ${formatPart(record.part)}. ${record.imageUrl ? 'Photo attached.' : 'No photo attached.'}`}
+                  accessibilityHint="Shows this individual reported damage and its available photo"
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.quickSelectorNumber}>#{index + 1}</Text>
+                  <Text style={styles.quickSelectorPart} numberOfLines={1}>{formatPart(record.part)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {records.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
@@ -152,7 +183,8 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
                   onPress={() => setSelectedDamageId(previous => previous === record.id ? null : record.id)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`Inspect damage ${index + 1} on ${formatPart(record.part)}`}
+                  accessibilityLabel={`Inspect damage ${index + 1} on ${formatPart(record.part)}. ${getType(record.type)}. ${record.imageUrl ? 'Photo attached.' : 'No photo attached.'}`}
+                  accessibilityHint="Shows the description and seller photo associated with this damage"
                 >
                   {record.imageUrl ? (
                     <Image
@@ -252,6 +284,36 @@ const styles = StyleSheet.create({
   list: {
     gap: 8,
   },
+  quickSelector: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+  },
+  quickSelectorHeading: {
+    color: Colors.white,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.sm,
+    marginBottom: 6,
+  },
+  quickSelectorContent: { gap: 8, paddingVertical: 6 },
+  quickSelectorButton: {
+    minHeight: 48,
+    minWidth: 76,
+    maxWidth: 152,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha08,
+  },
+  quickSelectorButtonSelected: { borderColor: Colors.accent, borderWidth: 2, backgroundColor: Colors.accentAlpha06 },
+  quickSelectorNumber: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  quickSelectorPart: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',

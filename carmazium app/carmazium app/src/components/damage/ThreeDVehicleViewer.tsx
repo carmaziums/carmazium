@@ -188,6 +188,12 @@ export function ThreeDVehicleViewer({
     }));
     return layoutProjectedDamagePins(projected, viewportSize.width, viewportSize.height);
   }, [damagePins, damagePinScreenPos, viewportSize]);
+  // Render the selected marker last so its focused 44dp target stays above
+  // near-overlapping neighbours even when the collision spiral is saturated.
+  const orderedVisibleDamagePins = useMemo(() =>
+    [...placedDamagePins].sort((left, right) =>
+      Number(left.id === selectedDamageId) - Number(right.id === selectedDamageId)),
+    [placedDamagePins, selectedDamageId]);
   const pinWire = useMemo(() => JSON.stringify(damagePins.map(pin => ({
     id: pin.id, ...pin.point,
   }))), [damagePins]);
@@ -348,6 +354,10 @@ export function ThreeDVehicleViewer({
         onTouchStart={() => setInteracting(true)}
         onTouchEnd={() => setInteracting(false)}
         onTouchCancel={() => setInteracting(false)}
+        accessibilityLabel={readOnly
+          ? 'Interactive vehicle view. Rotate the car or choose a numbered damage to inspect the seller report.'
+          : 'Interactive vehicle view. Touch the car to mark damage, drag to rotate or use the rotation buttons below.'}
+        accessibilityHint="Damage numbers can also be selected from the accessible list below the vehicle."
       >
 
       {/* 3D viewer — only mounts once the HTML string is ready */}
@@ -434,7 +444,7 @@ export function ThreeDVehicleViewer({
               ]}
               onPress={() => handleHotspotPress(zone)}
               activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
               accessibilityLabel={`${zone.label}${isMarked ? ' (damage marked)' : ''}`}
               accessibilityRole="button"
             >
@@ -459,7 +469,7 @@ export function ThreeDVehicleViewer({
         {/* Seller 3D defect pins: each number links to ONE record, even when
             several scratches share a door. Collision layout is native-only:
             stored 3D positions and raycast precision are never modified. */}
-        {(!readOnly || Boolean(onDamagePinPress)) && placedDamagePins.map(placed => {
+        {(!readOnly || Boolean(onDamagePinPress)) && orderedVisibleDamagePins.map(placed => {
           const pin = damagePins.find(item => item.id === placed.id);
           const projected = damagePinScreenPos[placed.id];
           if (!pin || !projected) return null;
@@ -493,11 +503,12 @@ export function ThreeDVehicleViewer({
                 disabled={!onDamagePinPress}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`Damage ${pin.number}. ${pin.type || 'Other'} on ${pin.zone || 'vehicle'}. Edit this damage`}
+                accessibilityLabel={`Damage ${pin.number}. ${pin.type || 'Other'} on ${pin.zone || 'vehicle'}.${pin.hasPhoto ? ' Photo attached.' : ' No photo attached.'} ${readOnly ? 'Inspect this damage' : 'Edit this damage'}`}
+                accessibilityHint={readOnly ? 'Shows seller damage details and available photo' : 'Opens this individual damage record for editing'}
+                accessibilityState={{ selected, disabled: !onDamagePinPress }}
               >
                 <Text style={styles.damagePinText}>{pin.number}</Text>
-                {pin.hasPhoto && <View style={styles.damagePinPhoto}><Ionicons name="camera" size={9} color={Colors.white} /></View>}
+                {pin.hasPhoto && <View style={styles.damagePinPhoto} accessible={false} importantForAccessibility="no-hide-descendants"><Ionicons name="camera" size={9} color={Colors.white} /></View>}
               </TouchableOpacity>
             </React.Fragment>
           );
@@ -570,6 +581,9 @@ export function ThreeDVehicleViewer({
             disabled={!modelReady}
             accessibilityRole="button"
             accessibilityLabel={direction === 'up' || direction === 'down' ? `Tilt car ${direction}` : `Rotate car ${direction}`}
+            accessibilityHint="Moves the vehicle view without requiring a drag gesture"
+            accessibilityState={{ disabled: !modelReady }}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             activeOpacity={0.7}
           >
             <Ionicons name={icon} size={19} color={Colors.white} />

@@ -308,6 +308,10 @@ export function ThreeDVehicleViewer({
     <div
       ref={containerRef}
       className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
+      role="group"
+      aria-label={onSurfaceTap
+        ? "Interactive 3D vehicle marking area. Tap the surface or use the manual area selector. Use the saved damage list for keyboard navigation."
+        : "Interactive 3D vehicle damage view. Numbered buttons open individual seller damage reports; the damage list is also available."}
       style={{ height: 400 }}
     >
       {!inView ? (
@@ -322,7 +326,7 @@ export function ThreeDVehicleViewer({
       <Canvas
         camera={{ position: [5, 3, 7], fov: 42 }}
         gl={{ antialias: true, alpha: true }}
-        style={{ background: "transparent" }}
+        style={{ background: "transparent", touchAction: "none" }}
       >
         <ambientLight intensity={0.8} />
         <directionalLight position={[6, 8, 5]} intensity={1.4} castShadow />
@@ -355,11 +359,11 @@ export function ThreeDVehicleViewer({
                 <button
                   type="button"
                   title={`Damage ${pin.number}: ${pin.type || 'Other'}`}
-                  aria-label={`Damage ${pin.number}. Click to inspect this recorded damage`}
+                  aria-label={`Damage ${pin.number}. ${pin.type || 'Other'}. ${pin.hasPhoto ? 'Photo attached.' : 'No photo attached.'} ${onSurfaceTap ? 'Edit' : 'Inspect'} this recorded damage`}
                   aria-pressed={selectedDamageId === pin.id}
                   onClick={event => { event.stopPropagation(); onDamagePinPress?.(pin.id) }}
                   disabled={!onDamagePinPress}
-                  className={`flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-black text-white shadow-xl transition focus:outline-none focus:ring-2 focus:ring-white ${selectedDamageId === pin.id ? 'ring-4 ring-primary bg-primary' : pin.type === 'DENT' || pin.type === 'CRACK' ? 'bg-red-600' : 'bg-amber-600'}`}
+                  className={`flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-black text-white shadow-xl transition focus:outline-none focus:ring-4 focus:ring-white ${selectedDamageId === pin.id ? 'ring-4 ring-primary bg-primary' : pin.type === 'DENT' || pin.type === 'CRACK' ? 'bg-red-600' : 'bg-amber-600'}`}
                 >
                   {pin.number}{pin.hasPhoto ? <CameraGlyph /> : null}
                 </button>

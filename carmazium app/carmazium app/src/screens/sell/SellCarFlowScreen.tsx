@@ -663,6 +663,38 @@ function Damage3DMapper({
         bodyTypeLabel={bodyTypeLabel}
         onInteractionChange={onInteractionChange}
       />
+      {records.length > 0 && (
+        <View style={s.damageAccessibleSelector}>
+          <Text style={s.damageAccessibleSelectorTitle}>Select a recorded damage</Text>
+          <Text style={s.zoneHint}>Use these buttons when two 3D marks are close together or you cannot tap the model.</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            accessibilityLabel="Recorded damage quick selector"
+            contentContainerStyle={s.damageAccessibleSelectorScroll}
+          >
+            {records.map((record, index) => {
+              const selected = editingDamageId === record.id;
+              return (
+                <TouchableOpacity
+                  key={record.id}
+                  style={[s.damageAccessibleSelectButton, selected && s.damageAccessibleSelectButtonActive]}
+                  onPress={() => editDamage(record.id)}
+                  disabled={uploadingDamagePhoto || pickingDamagePhoto}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected, disabled: uploadingDamagePhoto || pickingDamagePhoto }}
+                  accessibilityLabel={`Damage ${index + 1}. ${record.type} on ${record.zone}. ${record.damagePhotoUrl ? 'Photo attached' : 'No photo attached'}.`}
+                  accessibilityHint="Opens the selected damage details to edit"
+                >
+                  <Text style={s.damageAccessibleSelectText}>#{index + 1}</Text>
+                  <Text style={s.damageAccessibleSelectLabel} numberOfLines={1}>{record.zone}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
       <View style={s.damagePinLegend}>
         <View style={[s.damageLegendDot, { backgroundColor: Colors.warning }]} />
         <Text style={s.damageLegendText}>Scratch / Scuff</Text>
@@ -707,9 +739,11 @@ function Damage3DMapper({
                   key={t}
                   style={[s.pill, dmgType === t && s.pillActive]}
                   onPress={() => setDmgType(t as DamageEntry['type'])}
+                  disabled={pickingDamagePhoto || uploadingDamagePhoto}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: dmgType === t }}
+                  accessibilityState={{ selected: dmgType === t, disabled: pickingDamagePhoto || uploadingDamagePhoto }}
+                  accessibilityLabel={`Damage type ${t.toLowerCase()}`}
                 >
                   <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
                 </TouchableOpacity>
@@ -828,7 +862,10 @@ function Damage3DMapper({
                 disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel="Save damage and add another"
+                accessibilityLabel={uploadingDamagePhoto
+                  ? 'Uploading damage photo, please wait'
+                  : damageUploadError ? 'Retry saving damage'
+                    : editingDamageId ? 'Save changes to selected damage' : 'Save damage and add another'}
               >
                 <Text style={s.pillTextActive}>{uploadingDamagePhoto ? 'UPLOADING...' : damageUploadError ? 'RETRY SAVE' : editingDamageId ? 'SAVE CHANGES' : 'SAVE & ADD ANOTHER'}</Text>
               </TouchableOpacity>
@@ -887,10 +924,11 @@ function Damage3DMapper({
                       key={zone.id}
                       style={[s.pill, (isMarked || isSelected) && s.pillActive]}
                       onPress={() => { if (!uploadingDamagePhoto) chooseKnownPanel(zone.label); }}
+                      disabled={uploadingDamagePhoto || pickingDamagePhoto}
                       activeOpacity={0.7}
                       accessibilityRole="button"
                       accessibilityLabel={`Select ${zone.label} as damaged area`}
-                      accessibilityState={{ selected: isSelected }}
+                      accessibilityState={{ selected: isSelected, disabled: uploadingDamagePhoto || pickingDamagePhoto }}
                     >
                       <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
                     </TouchableOpacity>
@@ -962,7 +1000,7 @@ function Damage3DMapper({
               </TouchableOpacity>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
-                accessibilityLabel={`Remove damage record for ${r.zone}`}
+                accessibilityLabel={`Remove damage ${records.indexOf(r) + 1} from ${r.zone}`}
                 onPress={() => onRemove(r.id)}
               />
             </View>
@@ -4852,6 +4890,13 @@ const s = StyleSheet.create({
   damageRecordThumbnail: { width: 64, height: 52, borderRadius: 6, backgroundColor: Colors.bgPrimary },
   dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
+  damageAccessibleSelector: { marginTop: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.borderMuted, borderRadius: 10, paddingHorizontal: 10 },
+  damageAccessibleSelectorTitle: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm, marginBottom: 4 },
+  damageAccessibleSelectorScroll: { gap: 8, paddingVertical: 8 },
+  damageAccessibleSelectButton: { minHeight: 48, minWidth: 74, maxWidth: 156, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: Colors.borderMuted, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  damageAccessibleSelectButtonActive: { borderColor: Colors.accent, borderWidth: 2, backgroundColor: Colors.accentAlpha22 },
+  damageAccessibleSelectText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  damageAccessibleSelectLabel: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   damageSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, gap: 8 },
   damageSummaryItem: { flex: 1, alignItems: 'center', paddingVertical: 8, borderWidth: 1, borderColor: Colors.borderMuted, borderRadius: 8 },
   damageSummaryNumber: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.white },
