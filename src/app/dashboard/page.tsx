@@ -29,19 +29,19 @@ export default function DashboardPage() {
         if (role === 'ADMIN') {
             router.replace('/dashboard/admin')
         } else if (role === 'BUYER' || role === 'SELLER') {
-            router.replace('/dashboard/user')
+            router.push('/dashboard/user')
         } else if (role === 'DEALER') {
             // Verified motor-trade users land in the Dealer Command Centre.
             // Partner services remain one tap away from that dashboard.
-            router.replace('/dashboard/dealer')
+            router.push('/dashboard/dealer')
         } else if (role === 'CONTRACTOR') {
-            router.replace('/dashboard/partner')
+            router.push('/dashboard/partner')
         } else if (role === 'FINANCE_PARTNER') {
-            router.replace('/dashboard/finance')
+            router.push('/dashboard/finance')
         } else if (role === 'INSURANCE_PARTNER') {
-            router.replace('/dashboard/insurance')
+            router.push('/dashboard/insurance')
         } else {
-            router.replace('/dashboard/user')
+            router.push('/dashboard/user')
         }
     }, [user, profile, loading, router])
 
