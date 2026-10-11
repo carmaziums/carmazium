@@ -49,6 +49,8 @@ jobs:
         run: node --test scripts/test-admin-exclusive-dashboard-routing.test.mjs
       - name: Verify desktop dealer login cannot stall on Supabase auth callbacks
         run: node --test scripts/test-desktop-dealer-auth-loading.test.mjs
+      - name: Verify login profile recovery cannot get trapped on a spinner
+        run: node --test scripts/test-login-profile-recovery.test.mjs
       - name: Auction shortlist web regressions
         run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
