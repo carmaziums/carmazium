@@ -181,6 +181,12 @@ export async function apiClient<T>(
         }
         const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
 
+        if (response.status === 401 && endpoint === '/auth/supabase-session') {
+            // A bridge token can be invalidated before its local expiry. Do not
+            // force a browser redirect in the middle of explicit recovery;
+            // the caller may refresh the Supabase token once and try again.
+            throw new Error('AUTH_BRIDGE_UNAUTHORIZED');
+        }
         if (isAuthError(response.status, message)) {
             // Redirect to login and preserve the return URL
             redirectToLogin();

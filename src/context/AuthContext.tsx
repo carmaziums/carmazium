@@ -1,7 +1,8 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, getAccessToken, refreshAccessToken } from '@/lib/supabase'
+import { isSessionTokenForUser } from '@/lib/supabaseSessionIdentity'
 import { apiClient } from '@/lib/apiClient'
 import { User } from '@supabase/supabase-js'
 
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const bridgedTokenRef = useRef<string | null>(null)
     const bridgeInFlightRef = useRef<Promise<void> | null>(null)
     const activeUserIdRef = useRef<string | null>(null)
+    const profileRecoveryInFlightRef = useRef<Promise<void> | null>(null)
 
     // Each profile response must belong to the current signed-in identity.
     // Switching accounts on another tab cannot show an old dealer's profile.
@@ -91,6 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         body: JSON.stringify({ token }),
                     })
                 } catch (err: any) {
+                    // Do not treat a failed cookie bridge as successful. Otherwise
+                    // later auth events keep skipping the bridge even after the API
+                    // recovers, and the signed-in user stays without a profile.
+                    if (bridgedTokenRef.current === token && activeUserIdRef.current === userId) {
+                        bridgedTokenRef.current = null
+                    }
                     if (err?.message !== 'AUTH_REDIRECT') {
                         console.warn('Session bridge failed:', err?.message)
                     }
@@ -207,12 +215,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const refreshProfile = async () => {
-        // apiClient already resolves the access token with a bounded timeout.
-        // Do not separately await Supabase getSession() here: if its auth lock
-        // is stalled, the recovery button must still reach the server.
         const expectedUserId = activeUserIdRef.current
-        if (expectedUserId) {
+        if (!expectedUserId) return
+
+        // Normal settings/profile refreshes do not need to create a new session.
+        // Only a signed-in user with an unavailable profile needs recovery.
+        if (profile?.id === expectedUserId) {
             await fetchProfile(expectedUserId)
+            return
+        }
+        if (profileRecoveryInFlightRef.current) {
+            await profileRecoveryInFlightRef.current
+            return
+        }
+
+        // The prior retry button merely called /users/me again. When the
+        // initial /auth/supabase-session failed (or its cookie belonged to a
+        // previous account), that could never repair the session. A user click
+        // now explicitly re-bridges first, then fetches the verified profile.
+        // Avoid directly awaiting the Supabase SDK session getter: its auth
+        // lock can stall browser startup. Both token helpers are time-bounded.
+        const recovery = (async () => {
+            let token = await getAccessToken()
+            if (!token || !isSessionTokenForUser(token, expectedUserId)) {
+                token = await refreshAccessToken()
+            }
+
+            const bridgeOnce = async (candidate: string): Promise<'ok' | 'unauthorized' | 'unavailable'> => {
+                try {
+                    await apiClient('/auth/supabase-session', {
+                        method: 'POST',
+                        body: JSON.stringify({ token: candidate }),
+                    })
+                    if (activeUserIdRef.current === expectedUserId) bridgedTokenRef.current = candidate
+                    return 'ok'
+                } catch (err: any) {
+                    if (activeUserIdRef.current === expectedUserId) bridgedTokenRef.current = null
+                    if (err?.message === 'AUTH_BRIDGE_UNAUTHORIZED') return 'unauthorized'
+                    // A real network outage is still possible; the subsequent
+                    // read can work through the independent bearer-token guard.
+                    console.warn('Account session recovery was unavailable:', err?.message)
+                    return 'unavailable'
+                }
+            }
+
+            if (token && isSessionTokenForUser(token, expectedUserId) &&
+                activeUserIdRef.current === expectedUserId) {
+                const bridgeResult = await bridgeOnce(token)
+                if (bridgeResult === 'unauthorized' && activeUserIdRef.current === expectedUserId) {
+                    // A token can be locally unexpired but already invalidated
+                    // at Supabase. Refresh once, not an unlimited auth loop.
+                    const refreshed = await refreshAccessToken()
+                    if (refreshed && isSessionTokenForUser(refreshed, expectedUserId)) {
+                        await bridgeOnce(refreshed)
+                    }
+                }
+            }
+            if (activeUserIdRef.current === expectedUserId) {
+                await fetchProfile(expectedUserId)
+            }
+        })()
+        profileRecoveryInFlightRef.current = recovery
+        try {
+            await recovery
+        } finally {
+            if (profileRecoveryInFlightRef.current === recovery) {
+                profileRecoveryInFlightRef.current = null
+            }
         }
     }
 

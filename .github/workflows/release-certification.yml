@@ -12,6 +12,7 @@ on:
       - 'scripts/check-release-readiness.mjs'
       - 'scripts/check-release-candidate-evidence.mjs'
       - 'scripts/test-backend-connection-recovery.test.mjs'
+      - 'scripts/test-login-session-rebridge.test.mjs'
       - 'scripts/test-native-app-audit-block7.test.mjs'
       - 'scripts/test-native-app-audit-block9.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
@@ -282,6 +283,8 @@ jobs:
       - run: npm ci
       - name: Verify bounded, jittered backend read reconnection without duplicate writes
         run: node --test scripts/test-backend-connection-recovery.test.mjs
+      - name: Verify login session rebridge, token freshness and identity safeguards
+        run: node --test scripts/test-login-session-rebridge.test.mjs scripts/test-login-profile-recovery.test.mjs scripts/test-desktop-dealer-auth-loading.test.mjs
       - name: Audit public Apple and Android app install link safety
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - run: npx tsc --noEmit
