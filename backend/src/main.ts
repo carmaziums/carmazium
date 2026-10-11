@@ -12,6 +12,7 @@ import helmet from 'helmet';
 import { RedisIoAdapter } from './core/adapters/redis-io.adapter';
 import { loggerConfig } from './core/config/logger.config';
 import { getAllowedOrigins } from './core/allowed-origins';
+import { ABSOLUTE_SESSION_LIFETIME_MS, remainingSessionLifetimeMs } from './auth/session-lifetime';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -75,7 +76,7 @@ async function bootstrap() {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? 'none' : 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: ABSOLUTE_SESSION_LIFETIME_MS, // 24-hour absolute sign-in limit
       },
     }),
   );
@@ -87,8 +88,37 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   const authService = app.get(AuthService);
 
-  app.use(async (req: any, _res: any, next: any) => {
+  app.use(async (req: any, res: any, next: any) => {
     if (req.session?.userId && !req.user) {
+      // Login/logout endpoints must remain accessible to recover a real
+      // expired session without trapping the user in a redirect loop.
+      const isExplicitAuth = ['/auth/supabase-session', '/auth/login', '/auth/register', '/auth/logout']
+        .includes(req.path);
+      if (!isExplicitAuth) {
+        // Migration of legacy seven-day cookies: begin a ONE-TIME 24-hour
+        // grace period on first use. Do not log everyone out on deployment.
+        // Once stored, authenticatedAt is immutable until a NEW login.
+        if (typeof req.session.authenticatedAt !== 'number') {
+          req.session.authenticatedAt = Date.now();
+        }
+        const remaining = remainingSessionLifetimeMs(req.session.authenticatedAt);
+        if (remaining === 0) {
+          return req.session.destroy((error: Error | undefined) => {
+            res.clearCookie('sid', {
+              httpOnly: true,
+              secure: isProduction,
+              sameSite: isProduction ? 'none' : 'lax',
+            });
+            if (error) {
+              return res.status(503).json({ message: 'Unable to end expired session' });
+            }
+            return res.status(401).json({ message: 'SESSION_EXPIRED_24H' });
+          });
+        }
+        // express-session cookie touch may reset Max-Age; cap it to the
+        // REMAINING absolute lifetime on every request, never another 24h.
+        req.session.cookie.maxAge = remaining;
+      }
       if (req.session.cachedUser) {
         // Use the user object cached in the session store — no extra DB query needed
         req.user = req.session.cachedUser;
