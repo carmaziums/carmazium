@@ -41,221 +41,51 @@ const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
 
 const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
 
-interface MenuItem {
+type MenuItem = {
   id: string;
   label: string;
   icon: string;
   iconLib: 'ion' | 'mci';
   tabName?: keyof TabParamList;
   stackScreen?: keyof MainStackParamList;
-  action?: 'alert';
-  alertTitle?: string;
-  alertMsg?: string;
-  requiredPermission?: DealerPermission;
-}
+  params?: { listingType: 'AUCTION' | 'CLASSIFIED' };
+  children?: MenuItem[];
+};
 
-const ITEMS: MenuItem[] = [
-  { id: 'home',     label: 'Home',       icon: 'home-outline',              iconLib: 'ion', tabName: 'Home'   },
-  { id: 'buy',      label: 'Buy Cars',   icon: 'car-outline',               iconLib: 'ion', tabName: 'Search' },
-  { id: 'sell',     label: 'Sell a Car', icon: 'storefront-outline',        iconLib: 'ion', stackScreen: 'SellLanding' },
-  { id: 'auctions', label: 'Auctions',   icon: 'gavel',                     iconLib: 'mci', tabName: 'Live'   },
-  { id: 'compare',  label: 'Compare',    icon: 'git-compare-outline',       iconLib: 'ion', stackScreen: 'Compare' },
-  { id: 'pricing',  label: 'Pricing',    icon: 'pricetag-outline',          iconLib: 'ion', stackScreen: 'Pricing' },
-  // No mobile equivalent existed at all — not even a stub (mobile-production-
-  // readiness-plan.md F14). See ReviewsScreen.tsx/FinanceScreen.tsx for why
-  // these deliberately don't port web's fabricated testimonials/fake lenders.
-  { id: 'reviews',  label: 'Trust & Reviews', icon: 'star-outline',         iconLib: 'ion', stackScreen: 'Reviews' },
-  { id: 'finance',  label: 'Vehicle Finance', icon: 'card-outline',         iconLib: 'ion', stackScreen: 'Finance' },
-  { id: 'about',    label: 'About',      icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
-  { id: 'how-it-works', label: 'How It Works', icon: 'compass-outline',     iconLib: 'ion', stackScreen: 'HowItWorks' },
-  { id: 'services', label: 'Services',   icon: 'construct-outline',         iconLib: 'ion', stackScreen: 'Services' },
-  { id: 'partner',  label: 'Partner Account', icon: 'business-outline',       iconLib: 'ion', stackScreen: 'PartnerDashboard' },
-  { id: 'contact',  label: 'Contact',    icon: 'call-outline',              iconLib: 'ion', stackScreen: 'Contact' },
-  // Built but previously unreachable from anywhere in the app — no nav entry
-  // existed at all (mobile-production-readiness-plan.md F13).
-  { id: 'terms',    label: 'Terms of Service', icon: 'document-text-outline', iconLib: 'ion', stackScreen: 'Terms' },
-  { id: 'privacy',  label: 'Privacy Policy', icon: 'shield-checkmark-outline', iconLib: 'ion', stackScreen: 'PrivacyPolicy' },
-];
-
-// The website's dealer mobile navigation has four primary destinations
-// (Home, Stock, Customers, Buy & Bid), with More for secondary functions.
-// Match that first-run information hierarchy instead of showing a public
-// Buy/Sell/Explore menu in the dealer workspace.
-const DEALER_PRIMARY_ITEMS: MenuItem[] = [
-  { id: 'dealer-home-tab', label: 'Home', icon: 'grid-outline', iconLib: 'ion', tabName: 'DealerHome' },
-  { id: 'dealer-stock-tab', label: 'Stock', icon: 'car-outline', iconLib: 'ion', tabName: 'DealerStock', requiredPermission: 'VIEW_INVENTORY' },
-  { id: 'dealer-customers-tab', label: 'Customers', icon: 'people-outline', iconLib: 'ion', tabName: 'DealerCustomers', requiredPermission: 'MANAGE_CRM' },
-  { id: 'dealer-auctions-tab', label: 'Buy & Bid', icon: 'gavel', iconLib: 'mci', tabName: 'DealerBuyBid', requiredPermission: 'VIEW_TRADE' },
-];
-
-// Web (DashboardSidebar.tsx) treats BUYER and SELLER as the same unified
-// entity — same 9-tab dashboard, same "Buyer/Seller Account" label. Mobile
-// previously hid this whole group from buyers. This is now shown to both
-// roles so buyers can reach their own sent offers, watchlist, earnings-if-any
-// etc. — every entry here is backed by a role-agnostic screen that fetches
-// by the current user's id (SellerListingsScreen shows the caller's listings
-// whether that's zero or many, SellerOffersScreen shows incoming offers on
-// the caller's listings, etc.).
-const USER_ITEMS: MenuItem[] = [
+// Ten entry points only. Role-specific management stays inside the dashboard
+// and account type/verification stays on the dedicated Settings page.
+const MAIN_MENU: MenuItem[] = [
+  { id: 'home', label: 'Home', icon: 'home-outline', iconLib: 'ion', tabName: 'Home' },
+  { id: 'valuation', label: 'Get Valuation', icon: 'speedometer-outline', iconLib: 'ion', stackScreen: 'SellLanding' },
   {
-    id: 'user-dashboard',
-    label: 'Dashboard',
-    icon: 'speedometer-outline',
-    iconLib: 'ion',
-    tabName: 'Profile',
+    id: 'buy', label: 'Buy Cars', icon: 'car-outline', iconLib: 'ion', children: [
+      { id: 'buy-retail', label: 'Retail Listings', icon: 'pricetag-outline', iconLib: 'ion', tabName: 'Search' },
+      { id: 'buy-auctions', label: 'Live Auctions', icon: 'hammer-outline', iconLib: 'ion', tabName: 'Live' },
+    ],
   },
   {
-    id: 'user-listings',
-    label: 'My listings',
-    icon: 'car-outline',
-    iconLib: 'ion',
-    stackScreen: 'SellerListings',
+    id: 'sell', label: 'Sell Cars', icon: 'storefront-outline', iconLib: 'ion', children: [
+      { id: 'sell-auction', label: 'Sell by Auction · FREE', icon: 'hammer-outline', iconLib: 'ion',
+        stackScreen: 'SellCarFlow', params: { listingType: 'AUCTION' } },
+      { id: 'sell-retail', label: 'Retail Listing · £1', icon: 'car-outline', iconLib: 'ion',
+        stackScreen: 'SellCarFlow', params: { listingType: 'CLASSIFIED' } },
+    ],
   },
-  {
-    id: 'user-sent-offers',
-    label: 'My sent offers',
-    icon: 'send-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerOffers',
-  },
-  {
-    id: 'user-incoming-offers',
-    label: 'Incoming offers',
-    icon: 'pricetag-outline',
-    iconLib: 'ion',
-    stackScreen: 'SellerOffers',
-  },
-  {
-    id: 'user-auctions',
-    label: 'My auctions',
-    icon: 'gavel',
-    iconLib: 'mci',
-    stackScreen: 'SellerAuctions',
-  },
-  // The next three screens were fully built and registered in
-  // MainStackNavigator but had no drawer entry, so nothing in the app
-  // navigated to them — a buyer could place bids, buy a car and request
-  // delivery, then have no way back to any of it. Web exposes all three
-  // (/dashboard/buyer/bids, /history, and the delivery requests view).
-  {
-    id: 'user-bids',
-    label: 'My bids',
-    icon: 'hammer-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerBids',
-  },
-  {
-    id: 'user-purchases',
-    label: 'Purchase history',
-    icon: 'receipt-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerPurchaseHistory',
-  },
-  {
-    id: 'user-deliveries',
-    label: 'Delivery requests',
-    icon: 'cube-outline',
-    iconLib: 'ion',
-    stackScreen: 'BuyerDeliveryRequests',
-  },
-  {
-    id: 'user-watchlist',
-    label: 'Watchlist',
-    icon: 'heart-outline',
-    iconLib: 'ion',
-    // Points at the Saved tab, not the deleted WatchlistScreen. Saved is the
-    // live implementation over the same store — grid/list toggle, status
-    // badges — and WatchlistScreen was a second, thinner copy of it (BUY-021).
-    tabName: 'Saved',
-  },
-  {
-    id: 'user-earnings',
-    label: 'Earnings',
-    icon: 'wallet-outline',
-    iconLib: 'ion',
-    stackScreen: 'Earnings',
-  },
-  {
-    id: 'user-performance',
-    label: 'Performance analytics',
-    icon: 'bar-chart-outline',
-    iconLib: 'ion',
-    stackScreen: 'SellerPerformance',
-  },
-];
-
-// Keep core day-to-day tools first. Permissions are still filtered before the
-// menu is rendered, so reordering never grants staff additional access.
-const DEALER_ITEMS: MenuItem[] = [
-  { id: 'dealer-inventory', label: 'Stock', icon: 'albums-outline', iconLib: 'ion', requiredPermission: 'VIEW_INVENTORY', stackScreen: 'DealerInventory' },
-  { id: 'dealer-auctions', label: 'Manage Auctions', icon: 'gavel', iconLib: 'mci', requiredPermission: 'MANAGE_INVENTORY', stackScreen: 'SellerAuctions' },
-  { id: 'dealer-wishlist', label: 'Saved Cars', icon: 'heart-outline', iconLib: 'ion', tabName: 'Saved' },
-  { id: 'dealer-offers', label: 'Offers', icon: 'pricetag-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerOffers' },
-  { id: 'dealer-my-offers', label: 'My Retail Offers', icon: 'send-outline', iconLib: 'ion', requiredPermission: 'MANAGE_OFFERS', stackScreen: 'DealerMyOffers' },
-  { id: 'dealer-purchases', label: 'Purchases', icon: 'receipt-outline', iconLib: 'ion', requiredPermission: 'VIEW_PURCHASES', stackScreen: 'DealerPurchases' },
-  { id: 'dealer-leads', label: 'Customers', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_CRM', stackScreen: 'DealerLeads' },
-  { id: 'dealer-analytics', label: 'Analytics', icon: 'bar-chart-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerAnalytics' },
-  { id: 'dealer-team', label: 'Team', icon: 'people-outline', iconLib: 'ion', requiredPermission: 'MANAGE_TEAM', stackScreen: 'DealerTeam' },
-  { id: 'dealer-earnings', label: 'Earnings', icon: 'wallet-outline', iconLib: 'ion', requiredPermission: 'VIEW_ANALYTICS', stackScreen: 'DealerEarnings' },
-  { id: 'dealer-finance', label: 'Finance', icon: 'calculator-outline', iconLib: 'ion', stackScreen: 'DealerFinance' },
-  { id: 'dealer-kyc', label: 'Business verification', icon: 'shield-checkmark-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerKYC' },
-  { id: 'dealer-onboarding', label: 'Dealer onboarding', icon: 'trail-sign-outline', iconLib: 'ion', requiredPermission: 'MANAGE_KYC', stackScreen: 'DealerOnboarding' },
+  { id: 'tradexchange', label: 'TradeXchange', icon: 'construct-outline', iconLib: 'ion', stackScreen: 'Services' },
+  { id: 'compare', label: 'Compare', icon: 'git-compare-outline', iconLib: 'ion', stackScreen: 'Compare' },
+  { id: 'pricing', label: 'Pricing', icon: 'pricetag-outline', iconLib: 'ion', stackScreen: 'Pricing' },
+  { id: 'about', label: 'About', icon: 'information-circle-outline', iconLib: 'ion', stackScreen: 'About' },
+  { id: 'settings', label: 'Profile Settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' },
+  { id: 'dashboard', label: 'User Dashboard', icon: 'grid-outline', iconLib: 'ion', tabName: 'Profile' },
 ];
 
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
-  const user         = useAuthStore((s) => s.user);
-  const logout       = useAuthStore((s) => s.logout);
-  const [supportLoading, setSupportLoading] = useState(false);
-  const [showMorePages, setShowMorePages] = useState(false);
-  const [showAllAccountTools, setShowAllAccountTools] = useState(false);
-  const [showAllDealerTools, setShowAllDealerTools] = useState(false);
-
-  const handleContactSupport = async () => {
-    if (supportLoading) return;
-    setSupportLoading(true);
-    try {
-      const room = await getOrCreateSupportRoom();
-      closeDrawer();
-      navigation.navigate('Main', { screen: 'ChatScreen', params: { threadId: room.id } });
-    } catch (err: any) {
-      Alert.alert('Could not open support', err?.message || 'Please try again in a moment.');
-    } finally {
-      setSupportLoading(false);
-    }
-  };
-  const role         = useAuthStore((s) => s.role);
-  const accountRole  = useAuthStore((s) => s.accountRole);
-  const setRole      = useAuthStore((s) => s.setRole);
-  const initializeAuth = useAuthStore((s) => s.initializeAuth);
-  // Real account status, not the buyer-preview toggle (`role`) — a dealer
-  // browsing with "VIEW MY PROFILE" would otherwise look like a non-dealer
-  // here and get routed back through onboarding/KYC on every tap
-  // (mobile-production-readiness-plan.md F38's accountRole fix, extended to
-  // this file too).
-  const isActualDealer = accountRole === 'dealer';
-  const dealerMode = isActualDealer && role === 'dealer';
-  const isDealerStaff = !!user?.isDealerStaff;
-  const {
-    loading: dealerAccessLoading,
-    hasPermission: hasDealerPermission,
-  } = useDealerAccess(isActualDealer || isDealerStaff);
-  const visibleDealerItems = DEALER_ITEMS.filter(
-    (item) =>
-      // The main dealer tabs already provide Stock/Customers; don't bury
-      // duplicate entries in More while hiding account-level actions.
-      (!dealerMode || !['dealer-inventory', 'dealer-leads'].includes(item.id))
-      && (!item.requiredPermission
-        || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission))),
-  );
-  const visiblePrimaryDealerItems = DEALER_PRIMARY_ITEMS.filter(
-    item => !item.requiredPermission
-      || (!dealerAccessLoading && hasDealerPermission(item.requiredPermission)),
-  );
-  const primaryDrawerItems = dealerMode
-    ? (showMorePages ? [...visiblePrimaryDealerItems, ...ITEMS] : visiblePrimaryDealerItems)
-    : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
-  const [switchingDealer, setSwitchingDealer] = React.useState(false);
+  const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
+  const dealerMode = accountRole === 'dealer' && role === 'dealer';
+  const [expandedMenu, setExpandedMenu] = useState<'buy' | 'sell' | null>(null);
   const insets = useSafeAreaInsets();
   const { height: windowHeight, fontScale } = useWindowDimensions();
   // Website DashboardSidebar opens More above the bottom tabs, across the
@@ -333,16 +163,15 @@ export const GlobalDrawer: React.FC = () => {
   const activeTab = getActiveTab();
 
   const handleItem = (item: MenuItem) => {
+    if (item.children) {
+      setExpandedMenu(open => open === item.id ? null : item.id as 'buy' | 'sell');
+      return;
+    }
     closeDrawer();
+    setExpandedMenu(null);
     setTimeout(() => {
-      if (item.action === 'alert') {
-        Alert.alert(item.alertTitle!, item.alertMsg!);
-        return;
-      }
       if (item.stackScreen) {
-        // `stackScreen` is a dynamic union of route names — React Navigation's
-        // recommended pattern for variable screen names is `as never`.
-        navigation.navigate('Main', { screen: item.stackScreen } as never);
+        navigation.navigate('Main', { screen: item.stackScreen, params: item.params } as never);
         return;
       }
       if (item.tabName) {
@@ -377,16 +206,6 @@ export const GlobalDrawer: React.FC = () => {
         ].join('\n'),
       }).catch(() => Alert.alert('Cannot open share sheet', 'You can describe the issue with a screenshot directly in ChatGPT.'));
     }, 220);
-  };
-
-  const handleSignOut = () => {
-    closeDrawer();
-    setTimeout(() => {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout },
-      ]);
-    }, 160);
   };
 
   // Always prefer the real authenticated user's data — never overwrite it with
@@ -456,274 +275,75 @@ export const GlobalDrawer: React.FC = () => {
           )}
         </View>
 
-        {/* Settings belongs next to the account identity, not underneath
-            dozens of buyer/dealer tools at the very bottom of this drawer. */}
-        <View style={styles.accountShortcuts}>
-          <TouchableOpacity
-            style={styles.accountShortcut}
-            onPress={() => handleItem({ id: 'account-settings', label: 'Account settings', icon: 'settings-outline', iconLib: 'ion', stackScreen: 'Settings' })}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Open all account settings"
-            accessibilityHint="Personal details, dealership, verification, notifications, payouts and security in one place"
-          >
-            <Ionicons name="settings-outline" size={20} color={Colors.accent} />
-            <Text style={styles.accountShortcutText}>Account settings</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          {IS_QA_REVIEW_BUILD && (
-            <TouchableOpacity
-              style={styles.accountShortcut}
-              onPress={handleShareQaFeedback}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Share QA screenshot and interface feedback"
-              accessibilityHint="Opens the device share sheet with a build-specific feedback template. No information is sent automatically."
-            >
-              <Ionicons name="share-social-outline" size={20} color={Colors.accent} />
-              <Text style={styles.accountShortcutText}>Share QA feedback</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* ── Nav items ────────────────────────────────── */}
+        {/* Ten primary destinations. Nested choices are shown only when the
+            corresponding Buy or Sell parent is expanded; no duplicate tool
+            groups or 'show more' controls compete for attention. */}
         <ScrollView
-          key={`drawer-scroll-${role}`}
+          key={`simple-app-menu-${role}`}
           style={styles.scroll}
+          contentContainerStyle={styles.simpleMenuContent}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={styles.groupLabel}>{dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'}</Text>
-
-          {primaryDrawerItems.map((item) => {
-            const active = item.tabName === activeTab;
+          <Text style={styles.groupLabel}>EXPLORE CARMAZIUM</Text>
+          {MAIN_MENU.map(item => {
+            const expanded = item.children && expandedMenu === item.id;
+            const active = !!item.tabName && item.tabName === activeTab;
             return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.row, active && styles.rowActive]}
-                onPress={() => handleItem(item)}
-                activeOpacity={0.7}
-              >
-                {/* Left active bar */}
-                <View style={[styles.bar, active && styles.barActive]} />
-
-                {/* Icon */}
-                <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
-                  {renderIcon(item, active)}
-                </View>
-
-                {/* Label */}
-                <Text style={[styles.rowLabel, active && styles.rowLabelActive]}>
-                  {item.label}
-                </Text>
-
-                {/* Active pill */}
-                {active && (
-                  <View style={styles.activePill}>
-                    <Text style={styles.activePillText}>ACTIVE</Text>
+              <View key={item.id}>
+                <TouchableOpacity
+                  style={[styles.row, active && styles.rowActive]}
+                  onPress={() => handleItem(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityHint={item.children ? 'Shows two choices' : 'Opens ' + item.label}
+                  accessibilityState={item.children ? { expanded: !!expanded } : { selected: active }}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.bar, active && styles.barActive]} />
+                  <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                    {renderIcon(item, active)}
+                  </View>
+                  <Text style={[styles.rowLabel, active && styles.rowLabelActive]}>{item.label}</Text>
+                  {item.children ? (
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18}
+                      color={Colors.lightGrey} accessibilityElementsHidden />
+                  ) : (
+                    <Ionicons name="chevron-forward" size={15}
+                      color={Colors.iconMuted} accessibilityElementsHidden />
+                  )}
+                </TouchableOpacity>
+                {!!expanded && (
+                  <View style={styles.subMenu} accessibilityLabel={item.label + ' choices'}>
+                    {item.children!.map(child => (
+                      <TouchableOpacity
+                        key={child.id}
+                        style={styles.subMenuRow}
+                        onPress={() => handleItem(child)}
+                        accessibilityRole="button"
+                        accessibilityLabel={child.label}
+                        accessibilityHint={item.label + ', ' + child.label}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.subMenuIcon}>{renderIcon(child, false)}</View>
+                        <Text style={styles.subMenuText}>{child.label}</Text>
+                        <Ionicons name="arrow-forward" size={16} color={Colors.textSecondary} accessibilityElementsHidden />
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 )}
-              </TouchableOpacity>
+              </View>
             );
           })}
-          <TouchableOpacity
-            style={styles.moreToggle}
-            onPress={() => setShowMorePages(v => !v)}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showMorePages }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : dealerMode ? 'Marketplace & information' : 'More pages & information'}</Text>
-            <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
-          </TouchableOpacity>
 
-          {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
-              same entity with one shared dashboard, so mobile does too now.
-              Dealer keeps its own dedicated DEALER CONTROLS group below. */}
-          {(role === 'buyer' || role === 'seller') && (
-            <>
-              <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
-              {USER_ITEMS.slice(0, showAllAccountTools ? USER_ITEMS.length : 7).map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.row}
-                  onPress={() => handleItem(item)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.bar} />
-                  <View style={[styles.iconWrap, styles.iconWrapBlue]}>
-                    {renderIcon(item, false, false, true)}
-                  </View>
-                  <Text style={styles.rowLabelSeller}>
-                    {item.label}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllAccountTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllAccountTools }} activeOpacity={0.8}>
-                <Text style={styles.moreToggleText}>{showAllAccountTools ? 'Fewer account tools' : 'All account tools'}</Text>
-                <Ionicons name={showAllAccountTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            </>
+          {/* Test-only feedback is outside the navigation hierarchy. */}
+          {IS_QA_REVIEW_BUILD && (
+            <TouchableOpacity style={styles.qaFeedback} onPress={handleShareQaFeedback}
+              accessibilityRole="button" accessibilityLabel="Share QA feedback">
+              <Ionicons name="share-social-outline" size={18} color={Colors.textSecondary} />
+              <Text style={styles.qaFeedbackText}>Share private QA feedback</Text>
+            </TouchableOpacity>
           )}
-
-          {(role === 'dealer' || isActualDealer || isDealerStaff) && (
-            <>
-              <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
-              {visibleDealerItems.slice(0, showAllDealerTools ? visibleDealerItems.length : 6).map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.row}
-                  onPress={() => handleItem(item)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.bar} />
-                  <View style={[styles.iconWrap, styles.iconWrapGold]}>
-                    {renderIcon(item, false, true)}
-                  </View>
-                  <Text style={styles.rowLabelDealer}>
-                    {item.label}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-                </TouchableOpacity>
-              ))}
-              {visibleDealerItems.length > 6 && (
-                <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllDealerTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllDealerTools }} activeOpacity={0.8}>
-                  <Text style={styles.moreToggleText}>{showAllDealerTools ? 'Fewer dealer tools' : 'All dealer tools'}</Text>
-                  <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-              {/* Preserve dealer access even in buyer preview. */}
-              {role === 'dealer' && (
-              <TouchableOpacity
-                style={styles.row}
-                onPress={() => { closeDrawer(); setTimeout(() => setRole('buyer'), 160); }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.bar} />
-                <View style={[styles.iconWrap, styles.iconWrapGold]}>
-                  <Ionicons name="swap-horizontal-outline" size={19} color={Colors.warning} />
-                </View>
-                <Text style={styles.rowLabelDealer}>Preview buyer dashboard</Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-              </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* ── Dealer toggle — visible for all non-dealer users ── */}
-          {role !== 'dealer' && (accountRole === 'buyer' || accountRole === 'seller' || isActualDealer) && (
-            <>
-              <View style={styles.divider} />
-              <TouchableOpacity
-                style={styles.dealerToggleCard}
-                activeOpacity={0.8}
-                disabled={switchingDealer}
-                onPress={async () => {
-                  // user?.isVerified is checked FIRST, independent of
-                  // accountRole/isActualDealer — DealerProfile/KYC persist
-                  // per-user forever, never reset by switching away from
-                  // dealer (confirmed: backend's /users/elevate only ever
-                  // touches the `role` column). Web's equivalent gate
-                  // (dashboard/dealer/layout.tsx) checks isVerified alone
-                  // for exactly this reason. Previously this only checked
-                  // isVerified inside the isActualDealer branch, and
-                  // isActualDealer used the buyer-preview-mutable `role`
-                  // instead of accountRole, so a previously-verified dealer
-                  // who'd switched to buyer/seller view was always sent
-                  // through onboarding/KYC again on this tap
-                  // (mobile-production-readiness-plan.md — KYC-forced-again
-                  // finding, 2026-07-18).
-                  if (user?.isVerified) {
-                    if (isActualDealer) {
-                      closeDrawer();
-                      setTimeout(() => setRole('dealer'), 160);
-                      return;
-                    }
-                    // Verified from a past dealer stint but the backend role
-                    // isn't DEALER right now — re-elevate silently (no form,
-                    // matching web) then switch the view.
-                    setSwitchingDealer(true);
-                    try {
-                      await apiClient('/users/elevate', {
-                        method: 'POST',
-                        body: JSON.stringify({ newRole: 'DEALER' }),
-                      });
-                      await initializeAuth();
-                      setRole('dealer');
-                      closeDrawer();
-                    } catch (err: any) {
-                      Alert.alert('Could not switch to dealer mode', err?.message || 'Please try again.');
-                    } finally {
-                      setSwitchingDealer(false);
-                    }
-                    return;
-                  }
-                  closeDrawer();
-                  setTimeout(() => {
-                    if (isActualDealer) {
-                      // Already elevated but not yet verified — resume at KYC (step 2).
-                      navigation.navigate('Main', { screen: 'DealerKYC' } as never);
-                    } else {
-                      // Never a dealer at all — start at onboarding (step 1), which
-                      // grants the DEALER role before KYC. Sending these users
-                      // straight to DealerKYC skipped the role-elevation step entirely.
-                      navigation.navigate('Main', { screen: 'DealerOnboarding' } as never);
-                    }
-                  }, 160);
-                }}
-              >
-                <View style={styles.dealerToggleIcon}>
-                  <Ionicons name="briefcase-outline" size={20} color={Colors.warning} />
-                </View>
-                <View style={styles.dealerToggleText}>
-                  <Text style={styles.dealerToggleTitle}>
-                    {user?.isVerified ? 'Switch to Dealer Mode' : isActualDealer ? 'Complete Verification' : 'Become a Dealer'}
-                  </Text>
-                  <Text style={styles.dealerToggleSub}>
-                    {user?.isVerified
-                      ? 'Your account is verified — tap to switch'
-                      : isActualDealer
-                      ? 'Complete KYC to unlock dealer features'
-                      : 'Set up your dealership to unlock dealer features'}
-                  </Text>
-                </View>
-                {switchingDealer
-                  ? <ActivityIndicator size="small" color={Colors.warning} />
-                  : <Ionicons name="chevron-forward" size={15} color={Colors.warning} accessibilityElementsHidden importantForAccessibility="no" />
-                }
-              </TouchableOpacity>
-            </>
-          )}
-
-          <View style={styles.divider} />
-          {/* Contact Support (DASH-024). Web has had this in its sidebar for
-              every role; mobile had no in-app route to support at all. Opens
-              the support chat room rather than an email client, matching web
-              and keeping the conversation in the product. */}
-          <TouchableOpacity style={styles.row} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading}>
-            <View style={styles.bar} />
-            <View style={styles.iconWrap}>
-              {supportLoading
-                ? <ActivityIndicator size="small" color={Colors.accent} />
-                : <Ionicons name="help-buoy-outline" size={19} color={Colors.accent} />}
-            </View>
-            <Text style={styles.rowLabel}>Contact Support</Text>
-          </TouchableOpacity>
-
-          {/* Sign Out row */}
-          <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>
-            <View style={styles.bar} />
-            <View style={[styles.iconWrap, styles.iconWrapRed]}>
-              <Ionicons name="log-out-outline" size={19} color={Colors.accent} />
-            </View>
-            <Text style={styles.rowLabelRed}>Sign Out</Text>
-          </TouchableOpacity>
         </ScrollView>
 
         {/* ── Footer brand ─────────────────────────────── */}
@@ -881,6 +501,23 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
   },
 
+  simpleMenuContent: { paddingBottom: 18 },
+  subMenu: {
+    marginLeft: 46, marginRight: 14, marginBottom: 10,
+    paddingVertical: 5, paddingHorizontal: 10,
+    borderLeftWidth: 2, borderLeftColor: Colors.accent,
+    backgroundColor: Colors.whiteAlpha04,
+    borderTopRightRadius: 10, borderBottomRightRadius: 10,
+  },
+  subMenuRow: {
+    flexDirection: 'row', alignItems: 'center',
+    minHeight: 48, gap: 10, paddingVertical: 7, paddingHorizontal: 4,
+  },
+  subMenuIcon: { width: 28, alignItems: 'center' },
+  subMenuText: { flex: 1, color: Colors.white, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
+  qaFeedback: { marginTop: 14, marginHorizontal: 15, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 9 },
+  qaFeedbackText: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
   // Divider
   divider: {
     height: 1,
