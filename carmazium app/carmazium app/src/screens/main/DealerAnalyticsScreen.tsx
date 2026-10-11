@@ -1281,7 +1281,6 @@ function useDealerAnalyticsPalette() {
     monthSold: [styles.monthSold, { color: palette.textSecondary }],
     monthName: [styles.monthName, { color: palette.textMuted }],
     convCard: [styles.convCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
-    convCardText: [styles.convCardText, { color: palette.textSecondary }],
     convCardBig: [styles.convCardBig, { color: palette.textPrimary }],
     convCardSub: [styles.convCardSub, { color: palette.textMuted }],
     funnelCard: [styles.funnelCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
@@ -1293,5 +1292,6 @@ function useDealerAnalyticsPalette() {
     benchCard: [styles.benchCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
     benchLabel: [styles.benchLabel, { color: palette.textSecondary }],
     benchVal: [styles.benchVal, { color: palette.textPrimary }],
+    convCardLabel: [styles.convCardLabel, { color: palette.textSecondary }],
   }), [palette]);
 }
