@@ -357,8 +357,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flexShrink: 1,
   },
+  // White lettering exceeds 13:1 against the website-matched navy bar.
+  // Keep the selected icon and focus dot brand red for visual parity.
   tabLabelActive: {
-    color: Colors.accent,
+    color: Colors.textPrimary,
   },
   tabLabelInactive: {
     color: Colors.tabInactive,
