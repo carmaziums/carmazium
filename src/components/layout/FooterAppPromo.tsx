@@ -36,7 +36,8 @@ function WindowsMark() {
  * A responsive, interactive version of the approved CarMazium app-install
  * campaign artwork. Store links remain routed through /download-app, which
  * only exposes validated customer installation destinations. Microsoft Store
- * is intentionally not an active download because no verified listing exists.
+ * now links to its status section just like Apple/Android, but is not a direct
+ * store download until a verified Microsoft listing exists.
  */
 export function FooterAppPromo() {
   return (
@@ -60,7 +61,7 @@ export function FooterAppPromo() {
             <span className="bg-gradient-to-r from-[#ff985c] via-[#ff526c] to-[#ff6165] bg-clip-text text-transparent">CarMazium</span> App
           </h2>
           <p className="mt-4 text-lg font-extrabold leading-snug sm:text-2xl">
-            For iPhone and Android
+            For iPhone, Android and Windows
           </p>
           <p className="mt-2 max-w-lg text-sm leading-6 text-indigo-100 sm:text-base">
             Browse, buy, sell and manage your cars on the go.
@@ -76,10 +77,11 @@ export function FooterAppPromo() {
               <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">Get it for</span><span className="block text-sm font-black sm:text-base">Android</span></span>
               <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
             </Link>
-            <span aria-label="Microsoft Store installation is coming soon" className="inline-flex min-h-16 cursor-not-allowed items-center gap-3 rounded-2xl border border-white/20 bg-slate-950/50 px-4 py-3 text-left text-white/80">
+            <Link href="/download-app#windows" className={installLinkClass} aria-label="See official CarMazium Microsoft Store installation options">
               <WindowsMark />
-              <span className="min-w-0"><span className="block text-[10px] font-medium text-slate-300">Microsoft Store</span><span className="block text-sm font-black sm:text-base">Coming soon</span></span>
-            </span>
+              <span className="min-w-0 flex-1"><span className="block text-[10px] font-medium text-slate-200">Get it from</span><span className="block text-sm font-black leading-tight sm:text-base">Microsoft Store</span></span>
+              <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
           <p className="mt-3 text-xs leading-5 text-indigo-200">
             Install options are shown only when verified releases are ready.
