@@ -1163,6 +1163,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // effect. handlePublish below treats this draft the same way it treats an
   // existing edit target: PATCH it rather than creating a second listing.
   const [hpiDraftListingId, setHpiDraftListingId] = useState<string | null>(null);
+  // If an atomic auction POST succeeded but damage save failed, retry on this
+  // screen must use that saved listing and must not POST a second Auction row.
+  const [damageRetryHasAuction, setDamageRetryHasAuction] = useState(false);
   const [hpiUnlocking, setHpiUnlocking] = useState(false);
   const [hpiUnlocked, setHpiUnlocked] = useState(false);
   const [hpiSummary, setHpiSummary] = useState<{ isClear?: boolean } | null>(null);
@@ -2703,15 +2706,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         });
       };
       const DAMAGE_SAVE_FAILED_MSG =
-        'Listing published, but damage details couldn\'t be saved — edit the listing to retry.';
+        'Your vehicle listing details were saved, but its damage evidence could not be saved. No publication or listing-fee checkout will continue. Open the saved draft to retry.';
 
       if (editMode && editListingId) {
         await apiClient(`/listings/${editListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
         const damageSaved = await saveDamageRecords(editListingId);
+        if (!damageSaved) {
+          Alert.alert('Damage not saved', 'Vehicle fields were updated but damage details were not. Stay in this editor and retry the update before leaving.');
+          return;
+        }
         haptics.success();
         Alert.alert(
-          damageSaved ? 'Updated!' : 'Updated — damage details not saved',
-          damageSaved ? 'Your listing has been updated.' : DAMAGE_SAVE_FAILED_MSG,
+          'Updated!',
+          'Your listing has been updated.',
           // goBack (not navigate('SellerListings')) — the caller may be
           // MyListingDashboard, SellerListings, DealerInventory, or a detail
           // page. Popping this screen off the stack returns the user to
@@ -2726,7 +2733,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // of this branch (auction scheduling / listing-fee payment /
         // publish) is unchanged either way.
         let newListingId: string | null | undefined;
-        let initialAuctionCreatedAtomically = false;
+        let initialAuctionCreatedAtomically = damageRetryHasAuction;
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
@@ -2794,6 +2801,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         }
 
         const damageSaved = newListingId ? await saveDamageRecords(newListingId) : true;
+        if (!damageSaved) {
+          // This is still a draft: never schedule/publish an auction or take
+          // a Retail listing fee when the seller's damage evidence is missing.
+          if (newListingId) setHpiDraftListingId(newListingId);
+          if (initialAuctionCreatedAtomically) setDamageRetryHasAuction(true);
+          Alert.alert('Damage details not saved', DAMAGE_SAVE_FAILED_MSG, [
+            { text: 'OK' },
+            { text: 'View saved drafts', onPress: () => navigation?.navigate(isAuction ? 'SellerAuctions' : 'SellerListings') },
+          ]);
+          return;
+        }
 
         if (isAuction && newListingId) {
           // Brand-new auctions are already paired with their Auction row by the
@@ -2850,13 +2868,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           haptics.success();
           clearDraftAndStopDamageAutosave();
           Alert.alert(
-            damageSaved ? 'Auction Scheduled!' : 'Auction scheduled — damage details not saved',
+            'Auction Scheduled!',
             // Auctions require admin review before going live in every case
             // (FEATURE_AUDIT.md section 10) — this used to promise "your auction
             // is now live", which is not what happens.
-            damageSaved
-              ? 'Your auction goes live once our team has reviewed it. We’ll notify you when it does.'
-              : DAMAGE_SAVE_FAILED_MSG,
+            'Your auction goes live once our team has reviewed it. We’ll notify you when it does.',
             // Was 'SellerListings' — an auction the seller just scheduled isn't
             // in the retail listings screen, so this dropped them somewhere
             // their new auction wasn't. Web branches by listing type here
@@ -2936,10 +2952,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           haptics.success();
           clearDraftAndStopDamageAutosave();
           Alert.alert(
-            damageSaved ? 'Submitted for review' : 'Submitted — damage details not saved',
-            damageSaved
-              ? 'Your listing goes live once our team has reviewed it. We’ll notify you when it does.'
-              : DAMAGE_SAVE_FAILED_MSG,
+            'Submitted for review',
+            'Your listing goes live once our team has reviewed it. We’ll notify you when it does.',
             [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
           );
         }

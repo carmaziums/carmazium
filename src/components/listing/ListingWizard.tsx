@@ -1694,6 +1694,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 await ensureAuctionScheduled(editId)
@@ -1740,6 +1741,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 localStorage.removeItem(draftKeys.draft)
@@ -1868,6 +1870,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         })
                     } catch (e) {
                         console.error('Failed to save damage records:', e)
+                        // A new DRAFT listing already exists. Retain its ID so
+                        // retrying never creates a second record/auction.
+                        setDraftListingId(newListingId)
+                        localStorage.setItem(draftKeys.hpiDraftId, newListingId)
+                        if (isAuctionListing) setExistingAuctionStatus('SCHEDULED')
+                        throw new Error('Damage details were not saved. The listing remains a draft; retry before publishing or paying.')
                     }
                 }
 
@@ -1983,6 +1991,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     })
                 } catch (e) {
                     console.error('Failed to save damage records during Retail conversion:', e)
+                    throw new Error('The Retail listing was created but its damage details could not be saved. Open the saved draft and retry; no fee or publication has been started.')
                 }
             }
 

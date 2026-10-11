@@ -22,6 +22,7 @@ on:
       - 'scripts/test-native-damage-pin-visibility-block7.test.mjs'
       - 'scripts/test-damage-web-buyer-parity-block8.test.mjs'
       - 'scripts/test-damage-accessibility-gesture-block9.test.mjs'
+      - 'scripts/test-damage-block10-security-release-gates.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -57,6 +58,8 @@ jobs:
         run: node --test scripts/test-damage-web-buyer-parity-block8.test.mjs
       - name: Block 9 — screen-reader navigation, dense pins and small-screen gesture safety
         run: node --test scripts/test-damage-accessibility-gesture-block9.test.mjs
+      - name: Block 10 — validate damage ownership and private Android release gates
+        run: node --test scripts/test-damage-block10-security-release-gates.test.mjs
 
   web-typecheck:
     name: Web typecheck
@@ -111,3 +114,7 @@ jobs:
         run: npm test -- --runInBand src/watchlist/watchlist.service.spec.ts
       - name: Verify same-panel damage rows retain independent IDs and positions
         run: npm test -- --runInBand src/damage/damage.service.spec.ts
+      - name: Reject cross-seller damage writes, foreign photos and private draft reads
+        run: npm test -- --runInBand src/damage/damage.security.spec.ts
+      - name: Validate cookie-vs-cached-user identity for damage controller
+        run: npm test -- --runInBand src/damage/damage.controller.spec.ts
