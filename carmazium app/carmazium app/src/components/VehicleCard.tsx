@@ -24,6 +24,7 @@ import { ImageCarousel } from './ImageCarousel';
 import { ImageLightbox } from './ImageLightbox';
 import { GradeChip } from './GradeChip';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Elevation, Radius } from '../constants/spacing';
 import { useLocation } from '../context/LocationContext';
@@ -57,6 +58,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   // the single worst re-render source in the app. `savedIds` is a Set, so the
   // selector returns a plain boolean and this row now re-renders only when its
   // own saved state flips.
+  const { palette } = useNativeAppearance();
   const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
   const toggle = useWatchlistStore((s) => s.toggle);
   const scale = useSharedValue(1);
@@ -107,7 +109,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
     <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
-      style={[styles.card, { width }, animatedStyle]}
+      style={[styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }, { width }, animatedStyle]}
       onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -184,10 +186,10 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         {/* Make + Model */}
         <View style={styles.titleRow}>
           <View style={styles.titleLeft}>
-            <Text style={styles.make} numberOfLines={1}>
+            <Text style={[styles.make, { color: palette.textSecondary }]} numberOfLines={1}>
               {listing.make}
             </Text>
-            <Text style={styles.model} numberOfLines={1}>
+            <Text style={[styles.model, { color: palette.textPrimary }]} numberOfLines={1}>
               {listing.model} {listing.variant}
             </Text>
           </View>
@@ -197,7 +199,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
             {listing.rating != null && (
               <View style={styles.ratingBadge}>
                 <Ionicons name="star" size={10} color={Colors.warning} />
-                <Text style={styles.ratingText}>{listing.rating}</Text>
+                <Text style={[styles.ratingText, { color: palette.textSecondary }]}>{listing.rating}</Text>
               </View>
             )}
             <GradeChip grade={listing.exteriorGrade} />
@@ -213,10 +215,10 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {!compact && (
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: palette.borderDefault }]}>
             <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-              <Text style={styles.locationText} numberOfLines={1}>
+              <Ionicons name="location-outline" size={12} color={palette.textMuted} />
+              <Text style={[styles.locationText, { color: palette.textMuted }]} numberOfLines={1}>
                 {listing.location}
               </Text>
               {distanceMiles != null && (
@@ -226,7 +228,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               )}
             </View>
             <View style={styles.fuelRow}>
-              <Text style={styles.fuelText}>{listing.fuelType}</Text>
+              <Text style={[styles.fuelText, { color: palette.textMuted }]}>{listing.fuelType}</Text>
             </View>
           </View>
         )}

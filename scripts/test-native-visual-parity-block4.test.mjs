@@ -25,8 +25,8 @@ test('website Stock identity, main actions and search match without a fixed foot
     assert.ok(web.includes(action), action);
   }
   assert.ok(native.includes('{canManageInventory && ('));
-  assert.ok(native.includes('style={styles.stockHeaderActions}'));
-  assert.ok(!native.includes('style={[styles.addListingWrap'), 'no fixed Add Listing footer');
+  assert.ok(native.includes('style={themed.stockHeaderActions}'), 'website inventory header layout remains, now theme-aware');
+  assert.ok(!native.includes('style={[styles.addListingWrap') && !native.includes('style={[themed.addListingWrap'), 'no fixed Add Listing footer');
   assert.ok(native.includes('onPress={toggleViewMode}'), 'preserve list/grid preference');
 });
 
@@ -72,8 +72,8 @@ test('web-style mobile KPI tiles show real price, status, views and HOT LEADS', 
   }
   assert.ok(native.includes('listing.leads.toLocaleString'), 'real server count, not hardcoded web 0');
   assert.ok(native.includes('listing.views.toLocaleString'));
-  assert.ok(native.includes('styles.websiteStockCard'));
-  assert.ok(native.includes('styles.stockMetrics'));
+  assert.ok(native.includes('themed.websiteStockCard'), 'actual memoised inventory card is theme-aware');
+  assert.ok(native.includes('themed.stockMetrics'), 'actual inventory KPI row retained in theme-aware card');
   assert.ok(native.includes('listing.rejectionReason'));
   assert.ok(!native.includes("label: 'Market Value Plus'"), 'do not pretend unverified valuations are a fact');
 });

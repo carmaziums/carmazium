@@ -18,6 +18,7 @@ import Animated, {
 import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
@@ -42,6 +43,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   // Selector-subscribed rather than destructuring the whole store — see the
   // note in VehicleCard.tsx. Re-renders only when this row's own saved state
   // changes, not when any listing anywhere is saved.
+  const { palette } = useNativeAppearance();
   const saved = useWatchlistStore((s) => s.savedIds.has(listing.id));
   const toggle = useWatchlistStore((s) => s.toggle);
   const scale = useSharedValue(1);
@@ -96,7 +98,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
     <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
-      style={[styles.card, animatedStyle]}
+      style={[styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }, animatedStyle]}
       onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -134,17 +136,17 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
       {/* Full-width details, with a clear hierarchy and no tiny cramped column. */}
       <View style={styles.infoContainer}>
         {/* Specs Row: Colour & Distance */}
-        <Text style={styles.specsText} numberOfLines={1}>
+        <Text style={[styles.specsText, { color: palette.textMuted }]} numberOfLines={1}>
           {getSpecsTopText(listing)}
         </Text>
 
         {/* Title: Make & Model */}
-        <Text style={styles.titleText} numberOfLines={2}>
+        <Text style={[styles.titleText, { color: palette.textPrimary }]} numberOfLines={2}>
           {listing.make} {listing.model}
         </Text>
 
         {/* Vehicle details are visible without opening each listing. */}
-        <Text style={styles.subSpecsText} numberOfLines={2}>
+        <Text style={[styles.subSpecsText, { color: palette.textSecondary }]} numberOfLines={2}>
           {[`Gearbox: ${listing.transmission || 'Not specified'}`, formatMileage(listing.mileage), listing.fuelType, listing.category].filter(Boolean).join('  ·  ')}
         </Text>
 
@@ -152,7 +154,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
         <View style={styles.bottomRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
             <View style={styles.priceWrapper}>
-              <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+              <Text style={[styles.priceText, { color: palette.textPrimary }]}>{formatPrice(listing.price)}</Text>
             </View>
             <GradeChip grade={listing.exteriorGrade} />
           </View>
