@@ -38,7 +38,7 @@ describe('RolesGuard admin hardening', () => {
             method: 'GET',
             headers: {},
             user: { ...admin },
-            session: { userRole: UserRole.ADMIN, cachedUser: { ...admin } },
+            session: { userId: admin.id, userRole: UserRole.ADMIN, cachedUser: { ...admin } },
         };
 
         await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
@@ -52,7 +52,7 @@ describe('RolesGuard admin hardening', () => {
             method: 'POST',
             headers: {},
             user: { ...admin },
-            session: { userRole: UserRole.ADMIN, cachedUser: { ...admin } },
+            session: { userId: admin.id, userRole: UserRole.ADMIN, cachedUser: { ...admin } },
         };
 
         await expect(guard.canActivate(makeContext(request))).rejects.toBeInstanceOf(UnauthorizedException);
@@ -64,7 +64,7 @@ describe('RolesGuard admin hardening', () => {
             method: 'PATCH',
             headers: { authorization: 'Bearer valid-token' },
             user: { ...admin },
-            session: { userRole: UserRole.ADMIN, cachedUser: { ...admin } },
+            session: { userId: admin.id, userRole: UserRole.ADMIN, cachedUser: { ...admin } },
         };
 
         await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
@@ -78,7 +78,7 @@ describe('RolesGuard admin hardening', () => {
             method: 'GET',
             headers: {},
             user: { ...admin },
-            session: { userRole: UserRole.ADMIN, cachedUser: { ...admin } },
+            session: { userId: admin.id, userRole: UserRole.ADMIN, cachedUser: { ...admin } },
         };
 
         await expect(guard.canActivate(makeContext(request))).rejects.toBeInstanceOf(ForbiddenException);
@@ -93,9 +93,37 @@ describe('RolesGuard admin hardening', () => {
             method: 'GET',
             headers: {},
             user: { ...admin },
-            session: { userRole: UserRole.ADMIN, cachedUser: { ...admin } },
+            session: { userId: admin.id, userRole: UserRole.ADMIN, cachedUser: { ...admin } },
         };
 
         await expect(guard.canActivate(makeContext(request))).rejects.toBeInstanceOf(ForbiddenException);
     });
+    it('does not persist a new cookie when an admin reads with a Bearer token only', async () => {
+        const { guard, prisma } = createGuard();
+        const request: any = {
+            method: 'GET',
+            headers: { authorization: 'Bearer valid-token' },
+            user: { ...admin },
+            session: { cookie: { maxAge: 604800000 } },
+        };
+
+        await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+        expect(prisma.user.findUnique).toHaveBeenCalled();
+        expect(request.session).toEqual({ cookie: { maxAge: 604800000 } });
+        expect(request.user.role).toBe(UserRole.ADMIN);
+    });
+
+    it('does not create cookie state during a Bearer-only administrator mutation', async () => {
+        const { guard, authService } = createGuard();
+        const request: any = {
+            method: 'PATCH',
+            headers: { authorization: 'Bearer valid-token' },
+            user: { ...admin },
+            session: { cookie: {} },
+        };
+        await expect(guard.canActivate(makeContext(request))).resolves.toBe(true);
+        expect(authService.getSupabaseIdentity).toHaveBeenCalledWith('valid-token');
+        expect(request.session).toEqual({ cookie: {} });
+    });
+
 });
