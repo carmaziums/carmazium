@@ -447,6 +447,8 @@ function Damage3DMapper({
   onPendingChange?: (pending: boolean) => void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
+  const [editingDamageId, setEditingDamageId] = useState<string | null>(null);
+  const [preservedDamagePhotoUrl, setPreservedDamagePhotoUrl] = useState<string | undefined>(undefined);
   const [pendingSurfacePoint, setPendingSurfacePoint] = useState<DamageSurfacePoint | null>(null);
   // The extensive panel list is a fallback, not a mandatory step before the
   // damage editor. Correction mode preserves the precise surface hit; manual
@@ -454,13 +456,21 @@ function Damage3DMapper({
   const [panelChooserOpen, setPanelChooserOpen] = useState(false);
   const [correctingPanel, setCorrectingPanel] = useState(false);
   const selectManualZone = (label: string) => {
+    setEditingDamageId(null);
+    setPreservedDamagePhotoUrl(undefined);
+    setPendingDamagePhotoUri(null);
     setPendingSurfacePoint(null);
     setAddingZone(label);
     setPanelChooserOpen(false);
     setCorrectingPanel(false);
   };
   const chooseKnownPanel = (label: string) => {
-    if (!correctingPanel) setPendingSurfacePoint(null);
+    if (!correctingPanel) {
+      setPendingSurfacePoint(null);
+      setEditingDamageId(null);
+      setPreservedDamagePhotoUrl(undefined);
+      setPendingDamagePhotoUri(null);
+    }
     setAddingZone(label);
     setPanelChooserOpen(false);
     setCorrectingPanel(false);
@@ -480,9 +490,30 @@ function Damage3DMapper({
     return () => onPendingChange?.(false);
   }, [addingZone, pickingDamagePhoto, uploadingDamagePhoto, onPendingChange]);
   const [customZoneText, setCustomZoneText] = useState('');
+  const damagePins = useMemo(() => records.flatMap((record, index) =>
+    record.surfacePoint ? [{ id: record.id, number: index + 1, point: record.surfacePoint }] : []
+  ), [records]);
+
+  const editDamage = (id: string) => {
+    if (uploadingDamagePhoto || pickingDamagePhoto) return;
+    const record = records.find(item => item.id === id);
+    if (!record) return;
+    setEditingDamageId(record.id);
+    setAddingZone(record.zone);
+    setPendingSurfacePoint(record.surfacePoint ?? null);
+    setDmgType(record.type);
+    setDmgDesc(record.description);
+    setPreservedDamagePhotoUrl(record.damagePhotoUrl);
+    setPendingDamagePhotoUri(null);
+    setDamageUploadError(null);
+    setPanelChooserOpen(false);
+    setCorrectingPanel(false);
+  };
 
   const resetDamageEditor = () => {
     setAddingZone(null);
+    setEditingDamageId(null);
+    setPreservedDamagePhotoUrl(undefined);
     setPendingSurfacePoint(null);
     setPanelChooserOpen(false);
     setCorrectingPanel(false);
@@ -530,12 +561,14 @@ function Damage3DMapper({
     setUploadingDamagePhoto(Boolean(pendingDamagePhotoUri));
     try {
       await onAdd({
-        id: createValuationJourneyId(),
+        id: editingDamageId ?? createValuationJourneyId(),
         zone: addingZone,
         type: dmgType,
         description: dmgDesc.trim(),
         ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
         ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
+        ...(!pendingDamagePhotoUri && preservedDamagePhotoUrl
+          ? { damagePhotoUrl: preservedDamagePhotoUrl } : {}),
       }, setDamageUploadPercent);
       // Dismiss only after durable upload + record commit.
       resetDamageEditor();
@@ -575,6 +608,9 @@ function Damage3DMapper({
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
         markedZones={markedLabels}
+        damagePins={damagePins}
+        onDamagePinPress={editDamage}
+        selectedDamageId={editingDamageId}
         onZoneClick={label => { if (!uploadingDamagePhoto) selectManualZone(label); }}
         inlineDamageEditor
         onSurfaceTap={({ zoneId, point }) => {
@@ -582,6 +618,9 @@ function Damage3DMapper({
           // A surface hit is a panel SUGGESTION from an illustrative car;
           // the seller can change it with the manual selector in Block 2.
           if (!zone || uploadingDamagePhoto) return;
+          setEditingDamageId(null);
+          setPreservedDamagePhotoUrl(undefined);
+          setPendingDamagePhotoUri(null);
           setPendingSurfacePoint(point);
           setAddingZone(zone.label);
           setPanelChooserOpen(false);
@@ -599,7 +638,7 @@ function Damage3DMapper({
       {addingZone ? (
         <View style={[s.dmgForm, { marginTop: 12 }]} accessibilityLabel="Damage details editor">
           <Text style={s.dmgFormTitle}>
-            {pendingSurfacePoint ? 'Suggested damage area' : 'Selected damage area'}
+            {editingDamageId ? 'Edit damage record' : pendingSurfacePoint ? 'Suggested damage area' : 'Selected damage area'}
           </Text>
           <View style={s.damagePanelRow}>
             <Text style={s.damagePanelLabel} numberOfLines={2}>{addingZone}</Text>
@@ -728,7 +767,7 @@ function Damage3DMapper({
                 accessibilityRole="button"
                 accessibilityLabel="Save damage and add another"
               >
-                <Text style={s.pillTextActive}>{uploadingDamagePhoto ? 'UPLOADING...' : damageUploadError ? 'RETRY SAVE' : 'SAVE & ADD ANOTHER'}</Text>
+                <Text style={s.pillTextActive}>{uploadingDamagePhoto ? 'UPLOADING...' : damageUploadError ? 'RETRY SAVE' : editingDamageId ? 'SAVE CHANGES' : 'SAVE & ADD ANOTHER'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -836,7 +875,7 @@ function Damage3DMapper({
           {records.map(r => (
             <View key={r.id} style={s.dmgRecord}>
               <View style={{ flex: 1 }}>
-                <Text style={s.dmgRecordZone}>{r.zone}</Text>
+                <Text style={s.dmgRecordZone}>Damage {records.indexOf(r) + 1} · {r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
                 {(r.damagePhotoUrl || r.localDamagePhotoUri) && (
                   <View style={s.damageSavedPhotoRow}>
@@ -850,6 +889,14 @@ function Damage3DMapper({
                   </View>
                 )}
               </View>
+              <TouchableOpacity
+                style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
+                onPress={() => editDamage(r.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit damage ${records.indexOf(r) + 1} on ${r.zone}`}
+              >
+                <Ionicons name="create-outline" size={18} color={Colors.accent} />
+              </TouchableOpacity>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
                 accessibilityLabel={`Remove damage record for ${r.zone}`}
