@@ -92,7 +92,9 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
     expect(row.id).toBe(defect.id);
     expect(row.imageUrl).toBe(proof);
     expect(row.coords.surfacePoint).toEqual(defect.coords.surfacePoint);
-    expect(h.tx.listing.update).toHaveBeenCalledTimes(1);
+    expect(h.tx.listing.update).toHaveBeenCalledWith({
+      where: { id: 'listing-one', sellerId: owner }, data: { exteriorGrade: 1 },
+    });
   });
 
   it('blocks a different seller or retail buyer before reading or replacing any damage', async () => {
