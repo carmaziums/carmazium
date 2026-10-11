@@ -21,6 +21,7 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, deletePublicStorageObject, uploadToStorage } from '../../lib/storageHelper';
 import { useSellWizardStore, loadSellWizardDraftForUser } from '../../lib/sellWizardStore';
+import { sanitizeDamageDraft, withoutUnreferencedDamagePhoto } from '../../lib/damageDraft';
 import { nativeDraftStepOneComplete } from '../../lib/nativeSellerDraftReadiness';
 import { parseNativeAuctionLocalStart, nativeScheduledStartIsValid, nativeAuctionDraftReady } from '../../lib/nativeAuctionDraft';
 import { haptics } from '../../lib/haptics';
@@ -1253,6 +1254,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ── Draft persistence ──
   const { updateDraft, clearDraft } = useSellWizardStore();
+  // Owner gate is separate from screen mount: never overwrite a not-yet-resumed
+  // saved draft with initial [] on app launch or account transition.
+  const [activeDamageDraftOwner, setActiveDamageDraftOwner] = useState<string | null>(null);
+  const clearDraftAndStopDamageAutosave = () => {
+    setActiveDamageDraftOwner(null);
+    clearDraft();
+  };
+  useEffect(() => {
+    if (editMode || !currentUserId || activeDamageDraftOwner !== currentUserId) return;
+    if (damageUploadInFlightRef.current) return;
+    // A confirmed damage is durable in memory after the photo upload resolves.
+    // This effect also covers the case where the seller closes the app without
+    // pressing Next or Save Draft.
+    updateDraft({
+      damageRecords: sanitizeDamageDraft(damageRecords),
+      damageImages,
+    });
+  }, [activeDamageDraftOwner, currentUserId, editMode, damageRecords, damageImages, updateDraft]);
 
   // ── Inline validation (Step 1 user-entered fields, Step 3 pricing) ──
   // Touched tracks whether user has interacted with a field (blur or change after focus)
@@ -1271,9 +1290,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       const loaded = await loadSellWizardDraftForUser(currentUserId);
       if (!loaded || cancelled || editMode) return;
       const store = useSellWizardStore.getState();
-      if (!store.make && !store.model && store.lastStep <= 1) return;
+      if (!store.make && !store.model && store.lastStep <= 1 && !(store.damageRecords?.length)) {
+        setActiveDamageDraftOwner(currentUserId);
+        return;
+      }
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
-        { text: 'Start fresh', onPress: clearDraft, style: 'cancel' },
+        { text: 'Start fresh', onPress: () => {
+            clearDraftAndStopDamageAutosave();
+            setDamageRecords([]);
+            setDamageImages([]);
+            setActiveDamageDraftOwner(currentUserId);
+          }, style: 'destructive' },
         { text: 'Resume', onPress: () => {
             if (cancelled) return;
             const normalizedVrm = normalizeNativeRegistration(store.vrm);
@@ -1310,7 +1337,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setDeclAcknowledged(store.declAcknowledged);
             setExteriorImages(store.exteriorImages ?? []);
             setInteriorImages(store.interiorImages ?? []);
-            setDamageImages(store.damageImages ?? []);
+            const recoveredDamage = sanitizeDamageDraft(store.damageRecords);
+            // Keep record-owned evidence visible in the listing gallery even
+            // if the process stopped between the two React state commits.
+            const recoveredDamageImages = [...(store.damageImages ?? [])];
+            for (const record of recoveredDamage) {
+              const source = record.damagePhotoUrl;
+              if (source && !recoveredDamageImages.some(uri =>
+                parseVehicleImageMetadata(uri).src === source)) {
+                recoveredDamageImages.push(encodeVehicleImageCategory(source, 'DAMAGE'));
+              }
+            }
+            setDamageImages(recoveredDamageImages);
+            setDamageRecords(recoveredDamage);
+            setActiveDamageDraftOwner(currentUserId);
             setAuctionStartMode(store.auctionStartMode || 'NOW');
             setAuctionStartDate(store.auctionStartDate || '');
             setReservePrice(store.reservePrice || '');
@@ -2747,6 +2787,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      damageRecords: sanitizeDamageDraft(damageRecords),
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: nextStep,
     });
@@ -2754,6 +2795,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function handleBack() {
+    if (damageUploadInFlightRef.current || damageEditorPending) {
+      Alert.alert('Finish damage entry', 'Save or cancel the open damage entry before leaving. Wait for the photo upload to finish.');
+      return;
+    }
     if (step > 1) setStep((step - 1) as Step);
     else navigation?.goBack();
   }
@@ -2769,7 +2814,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           text: 'Start Fresh',
           style: 'destructive',
           onPress: () => {
-            clearDraft();
+            clearDraftAndStopDamageAutosave();
             haptics.light();
             navigation?.replace('SellCarFlow');
           },
@@ -2782,6 +2827,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
+    if (damageUploadInFlightRef.current || damageEditorPending) {
+      Alert.alert('Finish damage entry', 'Save the selected damage and wait for its photo upload, or cancel that entry before exiting.');
+      return;
+    }
     if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
@@ -2791,6 +2840,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      damageRecords: sanitizeDamageDraft(damageRecords),
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: step,
     });
