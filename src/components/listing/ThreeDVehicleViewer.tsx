@@ -1,8 +1,8 @@
 import * as React from "react"
 import * as THREE from "three"
-import { Canvas } from "@react-three/fiber"
+import { Canvas, type ThreeEvent } from "@react-three/fiber"
 import { useGLTF, OrbitControls, Environment, Html, useProgress } from "@react-three/drei"
-import { Loader2 } from "lucide-react"
+import { Loader2, Camera } from "lucide-react"
 
 // ─── Model → GLB mapping ──────────────────────────────────────────────────────
 
@@ -91,7 +91,23 @@ export const ALL_ZONES: Zone[] = [
 
 const TARGET_SIZE = 5 // units along the longest dimension
 
-function VehicleModel({ url }: { url: string }) {
+export interface SurfacePoint { fx: number; fy: number; fz: number }
+export interface SurfaceDamagePin {
+  id: string
+  number: number
+  point: SurfacePoint
+  type?: string
+  hasPhoto?: boolean
+}
+
+type ModelBounds = { min: [number, number, number]; size: [number, number, number] }
+const clampUnit = (value: number) => Math.max(0, Math.min(1, value))
+
+function VehicleModel({ url, onSurfaceTap, onBounds }: {
+  url: string
+  onSurfaceTap?: (point: SurfacePoint) => void
+  onBounds?: (bounds: ModelBounds) => void
+}) {
   const { scene } = useGLTF(url)
   const groupRef = React.useRef<THREE.Group>(null)
 
@@ -121,10 +137,32 @@ function VehicleModel({ url }: { url: string }) {
     group.position.x -= center.x
     group.position.z -= center.z
     group.position.y -= scaledBox.min.y
-  }, [scene])
+    group.updateMatrixWorld(true)
+    const world = new THREE.Box3().setFromObject(group)
+    const min = world.min
+    const size = world.getSize(new THREE.Vector3())
+    onBounds?.({ min: [min.x, min.y, min.z], size: [size.x, size.y, size.z] })
+  }, [scene, onBounds])
+
+  const handleMeshTap = (event: ThreeEvent<MouseEvent>) => {
+    if (!onSurfaceTap) return
+    // R3F emits click for short taps; never mark during OrbitControls drags.
+    if (event.delta > 8) return
+    const group = groupRef.current
+    if (!group) return
+    const bounds = new THREE.Box3().setFromObject(group)
+    const size = bounds.getSize(new THREE.Vector3())
+    if (size.x <= 0 || size.y <= 0 || size.z <= 0) return
+    event.stopPropagation()
+    onSurfaceTap({
+      fx: clampUnit((event.point.x - bounds.min.x) / size.x),
+      fy: clampUnit((event.point.y - bounds.min.y) / size.y),
+      fz: clampUnit((event.point.z - bounds.min.z) / size.z),
+    })
+  }
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} onClick={onSurfaceTap ? handleMeshTap : undefined}>
       <primitive object={scene} />
     </group>
   )
@@ -190,6 +228,10 @@ function Hotspot({ zone, isMarked, isSelected, onClick }: HotspotProps) {
   )
 }
 
+function CameraGlyph() {
+  return <Camera size={11} aria-hidden className="absolute -right-1 -top-1 rounded-full bg-slate-950 p-0.5" />
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export interface ThreeDVehicleViewerProps {
@@ -197,6 +239,11 @@ export interface ThreeDVehicleViewerProps {
   selectedZone: string | null
   markedZones: string[]
   onZoneClick: (zoneId: string) => void
+  /** Opt-in seller-only mesh click; buyer/default legacy zones still work. */
+  onSurfaceTap?: (tap: { zoneId: string; point: SurfacePoint }) => void
+  damagePins?: SurfaceDamagePin[]
+  onDamagePinPress?: (damageId: string) => void
+  selectedDamageId?: string | null
 }
 
 /**
@@ -212,9 +259,33 @@ export function ThreeDVehicleViewer({
   selectedZone,
   markedZones,
   onZoneClick,
+  onSurfaceTap,
+  damagePins = [],
+  onDamagePinPress,
+  selectedDamageId,
 }: ThreeDVehicleViewerProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
   const [inView, setInView] = React.useState(false)
+  const [modelBounds, setModelBounds] = React.useState<ModelBounds | null>(null)
+  const handleBounds = React.useCallback((next: ModelBounds) => {
+    setModelBounds(prev => prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next)
+  }, [])
+
+  const chooseSurface = React.useCallback((point: SurfacePoint) => {
+    if (!onSurfaceTap) return
+    // This is a suggested body panel on a generic GLB, not an exact part map.
+    const nearest = ALL_ZONES.filter(zone => !['dashboard', 'steering-wheel', 'driver-seat',
+      'passenger-seat', 'rear-seat', 'centre-console', 'headlining', 'boot-interior'].includes(zone.id))
+      .map(zone => {
+        const [x, y, z] = zone.position
+        const dx = (point.fx - clampUnit((x + 1.1) / 2.2)) * 2.2
+        const dy = (point.fy - clampUnit(y / 1.6)) * 1.6
+        const dz = (point.fz - clampUnit((z + 2.6) / 5.2)) * 5.2
+        return { zone, dist: dx * dx + dy * dy + dz * dz }
+      })
+      .sort((a, b) => a.dist - b.dist)[0]?.zone
+    if (nearest) onSurfaceTap({ zoneId: nearest.id, point })
+  }, [onSurfaceTap])
 
   React.useEffect(() => {
     if (inView) return
@@ -261,9 +332,9 @@ export function ThreeDVehicleViewer({
         <Environment preset="city" />
 
         <React.Suspense fallback={<LoadingScreen />}>
-          <VehicleModel url={url} />
+          <VehicleModel url={url} onSurfaceTap={onSurfaceTap ? chooseSurface : undefined} onBounds={handleBounds} />
 
-          {ALL_ZONES.map(zone => (
+          {!onSurfaceTap && ALL_ZONES.map(zone => (
             <Hotspot
               key={zone.id}
               zone={zone}
@@ -272,10 +343,33 @@ export function ThreeDVehicleViewer({
               onClick={onZoneClick}
             />
           ))}
+          {modelBounds && damagePins.map(pin => {
+            const { min, size } = modelBounds
+            const position: [number, number, number] = [
+              min[0] + pin.point.fx * size[0],
+              min[1] + pin.point.fy * size[1],
+              min[2] + pin.point.fz * size[2],
+            ]
+            return (
+              <Html key={pin.id} position={position} distanceFactor={6} zIndexRange={[110, 20]}>
+                <button
+                  type="button"
+                  title={`Damage ${pin.number}: ${pin.type || 'Other'}`}
+                  aria-label={`Damage ${pin.number}. Click to inspect this recorded damage`}
+                  aria-pressed={selectedDamageId === pin.id}
+                  onClick={event => { event.stopPropagation(); onDamagePinPress?.(pin.id) }}
+                  disabled={!onDamagePinPress}
+                  className={`flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-black text-white shadow-xl transition focus:outline-none focus:ring-2 focus:ring-white ${selectedDamageId === pin.id ? 'ring-4 ring-primary bg-primary' : pin.type === 'DENT' || pin.type === 'CRACK' ? 'bg-red-600' : 'bg-amber-600'}`}
+                >
+                  {pin.number}{pin.hasPhoto ? <CameraGlyph /> : null}
+                </button>
+              </Html>
+            )
+          })}
         </React.Suspense>
 
         <OrbitControls
-          autoRotate
+          autoRotate={!onSurfaceTap && damagePins.length === 0}
           autoRotateSpeed={0.5}
           enableDamping
           dampingFactor={0.08}
