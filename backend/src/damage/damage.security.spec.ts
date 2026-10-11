@@ -56,7 +56,7 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
     const tx = { listing, user, dealerProfile, dealerStaff, damageRecord };
     const prisma = {
       ...tx,
-      $transaction: jest.fn(async (action: (tx: typeof tx) => Promise<unknown>) => action(tx)),
+      $transaction: jest.fn(async (action: (client: any) => Promise<unknown>) => action(tx)),
     };
     return { service: new DamageAnalysisService(prisma as any), prisma, tx, caller };
   };
