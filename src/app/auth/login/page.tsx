@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { ArrowLeft, Building2, Eye, EyeOff, Loader2 } from "lucide-react"
+import { ArrowLeft, Building2, Eye, EyeOff, Loader2, RefreshCw, ShieldAlert, LogOut, ArrowRight } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/context/AuthContext"
 
@@ -21,13 +21,16 @@ function AppleLogo({ className = "w-5 h-5" }: { className?: string }) {
 function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { user, profile, loading: authLoading } = useAuth()
+    const { user, profile, loading: authLoading, refreshProfile, signOut } = useAuth()
     const [formData, setFormData] = React.useState({ email: "", password: "" })
     const [loading, setLoading] = React.useState(false)
     const [googleLoading, setGoogleLoading] = React.useState(false)
     const [appleLoading, setAppleLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
+    const [retryingProfile, setRetryingProfile] = React.useState(false)
+    const [endingSession, setEndingSession] = React.useState(false)
+    const [showManualNavigation, setShowManualNavigation] = React.useState(false)
     const rawTargetAfterLogin = searchParams?.get("redirect") || "/dashboard"
     const targetAfterLogin =
         rawTargetAfterLogin.startsWith("/") && !rawTargetAfterLogin.startsWith("//")
@@ -44,22 +47,47 @@ function LoginContent() {
         return fallback
     }
 
+    // A genuine backend profile (not Supabase metadata) determines the
+    // dashboard. This preserves exclusive administrator routing.
+    const destination = profile?.role === "ADMIN"
+        ? (targetAfterLogin.startsWith("/dashboard/admin") ? targetAfterLogin : "/dashboard/admin")
+        : profile?.role === "DEALER" && targetAfterLogin === "/dashboard"
+            ? "/dashboard/dealer"
+            : targetAfterLogin
+
     React.useEffect(() => {
-        if (!authLoading && user && profile) {
-            if (profile.role === "ADMIN") {
-                // Preserve a safe admin return path after an auth refresh. The
-                // previous behaviour discarded it and always sent admins to the
-                // command-centre overview, which made a failed mutation look
-                // like the button itself navigated away.
-                const adminTarget = targetAfterLogin.startsWith("/dashboard/admin")
-                    ? targetAfterLogin
-                    : "/dashboard/admin"
-                router.replace(adminTarget)
-                return
-            }
-            router.replace(targetAfterLogin)
+        if (authLoading || !user || !profile) return
+        setShowManualNavigation(false)
+        const timer = window.setTimeout(() => setShowManualNavigation(true), 7000)
+        router.replace(destination)
+        return () => window.clearTimeout(timer)
+    }, [user, profile, authLoading, router, destination])
+
+    const retryAccountVerification = async () => {
+        setRetryingProfile(true)
+        setError(null)
+        try {
+            await refreshProfile()
+        } catch (err: unknown) {
+            setError(getSafeErrorMessage(err, "Unable to check your account right now. Please try again."))
+        } finally {
+            setRetryingProfile(false)
         }
-    }, [user, profile, authLoading, router, targetAfterLogin])
+    }
+
+    const signOutAndRetry = async () => {
+        setEndingSession(true)
+        setError(null)
+        try {
+            await signOut()
+            // Leave the login page mounted: the now-empty session shows the form.
+            router.replace("/auth/login")
+        } catch (err: unknown) {
+            setError(getSafeErrorMessage(err, "Unable to sign out. Please try again."))
+        } finally {
+            setEndingSession(false)
+        }
+    }
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -102,8 +130,63 @@ function LoginContent() {
         }
     }
 
-    if (authLoading || user) {
-        return <div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+    if (authLoading) {
+        return (
+            <div role="status" className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 text-white">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+                <p className="text-sm text-slate-300">Checking your sign-in session...</p>
+            </div>
+        )
+    }
+
+    // Previously any authenticated user stayed on an infinite spinner whenever
+    // /users/me failed, even after the auth context had finished loading.
+    if (user && !profile) {
+        return (
+            <div className="min-h-screen bg-slate-900 px-5 py-24 text-white flex items-center justify-center">
+                <div role="alert" className="w-full max-w-lg rounded-2xl border border-amber-400/30 bg-slate-800/90 p-7 text-center shadow-2xl">
+                    <ShieldAlert className="mx-auto mb-4 h-11 w-11 text-amber-300" aria-hidden="true" />
+                    <h1 className="text-2xl font-black">Account verification temporarily unavailable</h1>
+                    <p className="mt-4 text-sm leading-6 text-slate-200">
+                        You are signed in, but we couldn&apos;t confirm your CarMazium account
+                        details from the server. Your dealer or admin permissions have not been
+                        changed. Try again before signing out.
+                    </p>
+                    {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+                    <button type="button" disabled={retryingProfile || endingSession}
+                        onClick={retryAccountVerification}
+                        className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-white disabled:opacity-60">
+                        {retryingProfile ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                        {retryingProfile ? "Checking account..." : "Retry account verification"}
+                    </button>
+                    <button type="button" disabled={retryingProfile || endingSession}
+                        onClick={signOutAndRetry}
+                        className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-5 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-60">
+                        {endingSession ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            : <LogOut className="h-4 w-4" aria-hidden="true" />}
+                        {endingSession ? "Signing out..." : "Sign out and try another account"}
+                    </button>
+                    <Link href="/" className="mt-5 inline-block text-sm text-slate-300 underline underline-offset-4">
+                        Back to CarMazium
+                    </Link>
+                </div>
+            </div>
+        )
+    }
+
+    if (user && profile) {
+        return (
+            <div role="status" className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-900 px-5 text-center text-white">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+                <p className="text-sm text-slate-200">Opening your dashboard...</p>
+                {showManualNavigation && (
+                    <a href={destination} className="mt-3 inline-flex min-h-12 items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white">
+                        Open dashboard directly <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </a>
+                )}
+            </div>
+        )
     }
 
     return (
