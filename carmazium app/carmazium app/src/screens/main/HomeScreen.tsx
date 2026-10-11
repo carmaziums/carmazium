@@ -24,7 +24,6 @@ import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
-import { ImageCarousel } from '../../components/ImageCarousel';
 import { ImageLightbox } from '../../components/ImageLightbox';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
@@ -70,7 +69,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
-          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
           : <View style={s.cardImgEmpty} />}
         <View style={s.livePill} pointerEvents="none">
           <View style={s.liveDot} />
@@ -112,11 +111,9 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           location={l?.location}
           deliveryAvailable={l?.deliveryAvailable}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-          <Ionicons name="hammer-outline" size={11} color={Colors.textSecondary} />
-          <Text style={s.cardMeta}>{bids} bid{bids !== 1 ? 's' : ''}</Text>
-          <Text style={s.cardMeta}> · </Text>
-          <Text style={[s.cardMeta, { color: Colors.warning }]}>View auction</Text>
+        <View style={s.homeCardCta}>
+          <Text style={s.homeCardCtaLabel}>{bids} bid{bids !== 1 ? 's' : ''} · View auction</Text>
+          <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
         </View>
       </View>
     </TouchableOpacity>
@@ -135,7 +132,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
-          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
           : <View style={s.cardImgEmpty} />}
         <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
           <Ionicons name="calendar-outline" size={9} color={Colors.white} />
@@ -215,7 +212,10 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
     <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {listing.images?.length
-          ? <ImageCarousel images={listing.images} width={240} height={150} onPress={openLightbox} />
+          ? <TouchableOpacity onPress={() => openLightbox(0)} activeOpacity={0.9}
+              accessibilityRole="button" accessibilityLabel="View vehicle photo gallery">
+              <Image source={{ uri: listing.images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+            </TouchableOpacity>
           : <View style={s.cardImgEmpty} />
         }
         {listing.isFeatured && (
@@ -236,10 +236,19 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{listing.make} {listing.model}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{listing.make} {listing.model}</Text>
           <GradeChip grade={listing.exteriorGrade} />
         </View>
         <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
+        <View style={s.retailFactRow}>
+          {!!listing.transmission && <Text style={s.retailFact}>{mapTransmission(listing.transmission)}</Text>}
+          {!!listing.bodyType && <Text style={s.retailFact}>{String(listing.bodyType).replace(/_/g, ' ')}</Text>}
+          {!!listing.location && <Text style={s.retailFact} numberOfLines={1}>{listing.location}</Text>}
+        </View>
+        <View style={s.homeCardCta}>
+          <Text style={s.homeCardCtaLabel}>View Details</Text>
+          <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
+        </View>
       </View>
     </AnimatedTouchable>
     <ImageLightbox
@@ -957,17 +966,23 @@ const s = StyleSheet.create({
   // Making it render on iOS needs a shadow-bearing wrapper around a
   // clipping inner view; left as a follow-up rather than restructuring
   // every card in this screen blind.
-  auctionCard: { width: 282, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
-  listingCard: { width: 240, backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
+  auctionCard: { width: 292, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
+  listingCard: { width: 284, backgroundColor: Colors.bgCardSolid, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.card, overflow: 'hidden', ...Elevation.card },
   cardImgWrap: { position: 'relative', height: 150, backgroundColor: Colors.bgTertiary },
   cardImg: { width: '100%', height: '100%' },
   cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
-  cardBody: { padding: 16 },
-  cardSpecs: { ...TextPresets.eyebrow, fontSize: FontSize.size9, color: Colors.textMuted, marginBottom: 4 },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 10 },
+  cardBody: { padding: 16, backgroundColor: Colors.bgCardSolid, minHeight: 132, gap: 6 },
+  cardSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size11, color: Colors.textSecondary, marginBottom: 4 },
+  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 6 },
   // Prices are mono at heavy weight throughout the brand — this was rendering
   // in the body font like any other text.
-  cardPrice: { ...TextPresets.monoFigure, color: Colors.white },
+  cardPrice: { ...TextPresets.monoFigure, fontSize: FontSize.lg, color: Colors.white, marginTop: 2 },
+  retailFactRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
+  retailFact: { fontFamily: FontFamily.medium, fontSize: FontSize.size11, color: Colors.textSecondary, flexShrink: 1 },
+  homeCardCta: { flexDirection: 'row', minHeight: 42, marginTop: 7, paddingHorizontal: 12,
+    backgroundColor: Colors.accentDeep, borderRadius: 10, justifyContent: 'center',
+    alignItems: 'center', gap: 8 },
+  homeCardCtaLabel: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.sm },
   cardMeta: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary },
 
   // Auction overlays
