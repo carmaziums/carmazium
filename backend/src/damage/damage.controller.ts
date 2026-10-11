@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { DamageAnalysisService } from './damage.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { OptionalSessionAuthGuard } from '../auth/guards/optional-session-auth.guard';
@@ -30,16 +31,26 @@ export class DamageAnalysisController {
     @Param('listingId') listingId: string,
     @Body() body: { detections: any[] },
     @CurrentUser() user: { id: string },
+    @Req() request: Request,
   ) {
-    await this.damageService.saveDamageRecords(listingId, body?.detections, user?.id);
+    // main.ts may hydrate req.user from a cached session identity. The session
+    // userId is the canonical principal for cookie auth; Bearer-token fallback
+    // sets it after verification. Never authorize using a conflicting cache.
+    const principal = request.session?.userId ?? user?.id;
+    await this.damageService.saveDamageRecords(listingId, body?.detections, principal);
     return { success: true };
   }
 
   @Get(':listingId')
   @UseGuards(OptionalSessionAuthGuard)
   @ApiOperation({ summary: 'Get damage records; private drafts require listing owner or dealer permission' })
-  async get(@Param('listingId') listingId: string, @CurrentUser() user?: { id: string }) {
-    const records = await this.damageService.getDamageRecords(listingId, user?.id);
+  async get(
+    @Param('listingId') listingId: string,
+    @CurrentUser() user?: { id: string },
+    @Req() request?: Request,
+  ) {
+    const principal = request?.session?.userId ?? user?.id;
+    const records = await this.damageService.getDamageRecords(listingId, principal);
     return {
       success: true,
       data: records,
