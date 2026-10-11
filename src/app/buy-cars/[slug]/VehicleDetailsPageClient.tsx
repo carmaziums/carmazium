@@ -287,7 +287,18 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [shareToast, setShareToast] = React.useState(false)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
-    const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
+    const selectedDamageZone = damageRecords.find((r: any) => r.id === selectedDamageId)?.part ?? null
+    const buyerDamagePins = damageRecords.flatMap((record: any, index: number) => {
+        const point = record.coords?.surfacePoint
+        if (!point || !['fx', 'fy', 'fz'].every(key =>
+            typeof point[key] === 'number' && Number.isFinite(point[key])
+            && point[key] >= 0 && point[key] <= 1)) return []
+        return [{ id: record.id, number: index + 1,
+            point: { fx: point.fx, fy: point.fy, fz: point.fz },
+            type: String(record.type ?? '').split(' - ')[0].toUpperCase(),
+            hasPhoto: Boolean(record.imageUrl) }]
+    })
     const [deliveryDistanceInfo, setDeliveryDistanceInfo] = React.useState<{ distanceMiles: number } | null>(null)
 
     const handleDealerPhoneClick = React.useCallback(() => {
@@ -1299,7 +1310,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
-                                        ? `${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details`
+                                        ? `${damageRecords.length} damage${damageRecords.length !== 1 ? 's' : ''} reported by seller · ${buyerDamagePins.length} positioned on 3D — click a number or record to inspect`
                                         : 'No damage reported by the seller'}
                                 </p>
 
@@ -1320,7 +1331,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         bodyType={listing.bodyType ?? undefined}
                                         markedZones={damageRecords.map((r: any) => r.part)}
                                         selectedZone={selectedDamageZone}
-                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                        onZoneClick={part => {
+                                            const match = damageRecords.find((record: any) => record.part === part)
+                                            setSelectedDamageId(prev => prev === match?.id ? null : match?.id ?? null)
+                                        }}
+                                        damagePins={buyerDamagePins}
+                                        selectedDamageId={selectedDamageId}
+                                        onDamagePinPress={id => setSelectedDamageId(prev => prev === id ? null : id)}
                                     />
                                 </ThreeDErrorBoundary>
 
@@ -1329,8 +1346,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                     <div className="mt-4 space-y-2">
                                         {damageRecords.map((record: any, i: number) => (
                                             <div
-                                                key={i}
-                                                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)]'}`}
+                                                key={record.id ?? i}
+                                                className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageId === record.id ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--bg-input)] border-[var(--border-default)]'}`}
                                             >
                                                 {/* The photo opens full size; the rest of the row
                                                     still selects the zone on the 3D model. These were
@@ -1352,11 +1369,17 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                 )}
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                    onClick={() => setSelectedDamageId(prev => prev === record.id ? null : record.id)}
+                                                    aria-pressed={selectedDamageId === record.id}
                                                     className="min-w-0 text-left flex-1"
                                                 >
-                                                    <p className="text-sm font-semibold text-[var(--text-primary)]">{record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
-                                                    <p className="text-xs text-[var(--text-muted)]">{record.type}{record.size ? ` — ${record.size}` : ''}</p>
+                                                    <p className="text-sm font-semibold text-[var(--text-primary)]">#{i + 1} · {record.part.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+                                                    <p className="text-xs text-[var(--text-muted)]">{String(record.type || 'OTHER').split(' - ')[0]}{record.size ? ` — ${record.size}` : ''}</p>
+                                                    {String(record.type ?? '').includes(' - ') && (
+                                                        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                                                            {String(record.type).split(' - ').slice(1).join(' - ')}
+                                                        </p>
+                                                    )}
                                                 </button>
                                             </div>
                                         ))}
