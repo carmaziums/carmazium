@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { formatTransmission } from '../lib/transmission';
 
@@ -19,12 +20,15 @@ interface ChipsProps {
   deliveryAvailable?: boolean | null;
 }
 
-const Chip: React.FC<{ icon: any; label: string; accent?: boolean }> = ({ icon, label, accent }) => (
-  <View style={[styles.chip, accent && styles.chipAccent]}>
-    <Ionicons name={icon} size={9} color={accent ? Colors.accentGreen : Colors.textMuted} />
-    <Text style={[styles.chipText, accent && styles.chipTextAccent]} numberOfLines={1}>{label}</Text>
+const Chip: React.FC<{ icon: any; label: string; accent?: boolean }> = ({ icon, label, accent }) => {
+  const { palette } = useNativeAppearance();
+  return (
+  <View style={[styles.chip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }, accent && styles.chipAccent]}>
+    <Ionicons name={icon} size={9} color={accent ? Colors.accentGreen : palette.textMuted} />
+    <Text style={[styles.chipText, { color: palette.textSecondary }, accent && styles.chipTextAccent]} numberOfLines={1}>{label}</Text>
   </View>
-);
+  );
+};
 
 // Meta chip row — year / mileage / fuel / gearbox / body type / location / delivery.
 export const AuctionCardChips: React.FC<ChipsProps> = ({

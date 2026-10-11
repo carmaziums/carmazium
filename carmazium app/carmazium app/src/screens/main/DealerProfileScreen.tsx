@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -84,6 +85,8 @@ const trendStyle = (value: number) =>
 const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' : ''}${value}%`);
 
 export const DealerProfileScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerProfilePalette();
   const navigation = useNavigation<NavProp>();
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
@@ -193,87 +196,87 @@ export const DealerProfileScreen: React.FC = () => {
 
   const renderTodayView = () => {
     return (
-      <View style={styles.tabContent}>
+      <View style={themed.tabContent}>
         {/* INVENTORY SNAPSHOT */}
-        <View style={styles.card}>
-          <View style={styles.snapshotHeader}>
-            <Text style={styles.cardTitle}>INVENTORY SNAPSHOT</Text>
-            <Text style={styles.cardRightText}>{totalInventory} total</Text>
+        <View style={themed.card}>
+          <View style={themed.snapshotHeader}>
+            <Text style={themed.cardTitle}>INVENTORY SNAPSHOT</Text>
+            <Text style={themed.cardRightText}>{totalInventory} total</Text>
           </View>
 
           {/* Segmented bar */}
-          <View style={styles.segmentBar}>
+          <View style={themed.segmentBar}>
             {totalInventory > 0 ? (
               <>
-                <View style={[styles.segment, { flex: liveCount, backgroundColor: Colors.success }]} />
-                <View style={[styles.segment, { flex: pendingCount, backgroundColor: Colors.warning }]} />
-                <View style={[styles.segment, { flex: soldCount, backgroundColor: Colors.error }]} />
+                <View style={[themed.segment, { flex: liveCount, backgroundColor: Colors.success }]} />
+                <View style={[themed.segment, { flex: pendingCount, backgroundColor: Colors.warning }]} />
+                <View style={[themed.segment, { flex: soldCount, backgroundColor: Colors.error }]} />
               </>
             ) : (
-              <View style={[styles.segment, { flex: 1, backgroundColor: Colors.whiteAlpha06 }]} />
+              <View style={[themed.segment, { flex: 1, backgroundColor: Colors.whiteAlpha06 }]} />
             )}
           </View>
 
           {/* Legend */}
-          <View style={styles.legendRow}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-              <Text style={styles.legendText}>{liveCount} Live</Text>
+          <View style={themed.legendRow}>
+            <View style={themed.legendItem}>
+              <View style={[themed.legendDot, { backgroundColor: Colors.success }]} />
+              <Text style={themed.legendText}>{liveCount} Live</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-              <Text style={styles.legendText}>{pendingCount} Pending</Text>
+            <View style={themed.legendItem}>
+              <View style={[themed.legendDot, { backgroundColor: Colors.warning }]} />
+              <Text style={themed.legendText}>{pendingCount} Pending</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.error }]} />
-              <Text style={styles.legendText}>{soldCount} Sold</Text>
+            <View style={themed.legendItem}>
+              <View style={[themed.legendDot, { backgroundColor: Colors.error }]} />
+              <Text style={themed.legendText}>{soldCount} Sold</Text>
             </View>
           </View>
         </View>
 
         {/* TOP LISTINGS • 7D */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>TOP LISTINGS • 7D</Text>
+        <View style={themed.sectionContainer}>
+          <View style={themed.sectionHeaderRow}>
+            <Text style={themed.sectionTitle}>TOP LISTINGS • 7D</Text>
             <TouchableOpacity onPress={() => navigation.navigate('DealerInventory')}>
-              <Text style={styles.sectionActionText}>See all</Text>
+              <Text style={themed.sectionActionText}>See all</Text>
             </TouchableOpacity>
           </View>
 
           {topListings.length > 0 ? (
-            <View style={styles.listingsList}>
+            <View style={themed.listingsList}>
               {topListings.map((vehicle, index) => (
                 <React.Fragment key={vehicle.id}>
-                  <View style={styles.listingRow}>
+                  <View style={themed.listingRow}>
                     <View style={index === 0 ? styles.rankBadgeRed : styles.rankBadgeGray}>
-                      <Text style={styles.rankBadgeText}>{index + 1}</Text>
+                      <Text style={themed.rankBadgeText}>{index + 1}</Text>
                     </View>
                     <Image
                       source={vehicle.image ? { uri: vehicle.image } : undefined}
-                      style={styles.listingThumb}
+                      style={themed.listingThumb}
                       contentFit="cover"
                       transition={200}
                       cachePolicy="memory-disk"
                       alt={vehicle.title}
                     />
-                    <View style={styles.listingInfo}>
-                      <Text style={styles.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
-                      <View style={styles.listingMeta}>
+                    <View style={themed.listingInfo}>
+                      <Text style={themed.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
+                      <View style={themed.listingMeta}>
                         <Ionicons name="eye-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.metaText}>{vehicle.views}</Text>
+                        <Text style={themed.metaText}>{vehicle.views}</Text>
                         <Ionicons name="pricetag-outline" size={13} color={Colors.textSecondary} style={{ marginLeft: 10 }} />
-                        <Text style={styles.metaText}>{vehicle.offerCount}</Text>
+                        <Text style={themed.metaText}>{vehicle.offerCount}</Text>
                       </View>
                     </View>
-                    <Text style={styles.listingPrice}>{formatGBP(vehicle.price)}</Text>
+                    <Text style={themed.listingPrice}>{formatGBP(vehicle.price)}</Text>
                   </View>
-                  {index < topListings.length - 1 && <View style={styles.listDivider} />}
+                  {index < topListings.length - 1 && <View style={themed.listDivider} />}
                 </React.Fragment>
               ))}
             </View>
           ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyCardText}>
+            <View style={themed.emptyCard}>
+              <Text style={themed.emptyCardText}>
                 {loading ? 'Loading your listings…' : 'No listings yet — add your first vehicle to see it ranked here.'}
               </Text>
             </View>
@@ -281,24 +284,24 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* NEEDS ATTENTION */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>NEEDS ATTENTION</Text>
+        <View style={themed.sectionContainer}>
+          <Text style={themed.sectionTitle}>NEEDS ATTENTION</Text>
 
-          <View style={styles.attentionList}>
+          <View style={themed.attentionList}>
             {/* Leads */}
             {canManageCrm && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerLeads')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.errorAlpha08, borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.errorAlpha08, borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
                 <Ionicons name="chatbubble-ellipses" size={18} color={Colors.error} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
-                <Text style={styles.attentionSub}>Tap to view your CRM pipeline</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
+                <Text style={themed.attentionSub}>Tap to view your CRM pipeline</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -309,16 +312,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageOffers && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerOffers')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
                 <Ionicons name="pricetag" size={18} color={Colors.warning} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Direct offers</Text>
-                <Text style={styles.attentionSub}>Review and respond to buyer offers</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Direct offers</Text>
+                <Text style={themed.attentionSub}>Review and respond to buyer offers</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -329,16 +332,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageOffers && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerMyOffers')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
                 <Ionicons name="send-outline" size={18} color={Colors.infoBlueLight} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>My offers</Text>
-                <Text style={styles.attentionSub}>Track offers your dealership has sent</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>My offers</Text>
+                <Text style={themed.attentionSub}>Track offers your dealership has sent</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -349,16 +352,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canViewPurchases && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerPurchases')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
                 <Ionicons name="receipt-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Purchases</Text>
-                <Text style={styles.attentionSub}>Vehicles bought by your dealership</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Purchases</Text>
+                <Text style={themed.attentionSub}>Vehicles bought by your dealership</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -367,32 +370,32 @@ export const DealerProfileScreen: React.FC = () => {
             )}
             {/* Earnings */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerEarnings')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
                 <Ionicons name="cash-outline" size={18} color={Colors.success} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Earnings</Text>
-                <Text style={styles.attentionSub}>Revenue, sales registry and receipts</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Earnings</Text>
+                <Text style={themed.attentionSub}>Revenue, sales registry and receipts</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Live auctions (watch) */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
                 <Ionicons name="time" size={18} color={Colors.infoBlue} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Live auctions</Text>
-                <Text style={styles.attentionSub}>Track your dealership's auctions in real time</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Live auctions</Text>
+                <Text style={themed.attentionSub}>Track your dealership's auctions in real time</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -403,16 +406,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageInventory && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('SellerAuctions')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
                 <Ionicons name="hammer-outline" size={18} color={Colors.accent} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Manage auctions</Text>
-                <Text style={styles.attentionSub}>Schedule, edit or put a listing up for auction</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Manage auctions</Text>
+                <Text style={themed.attentionSub}>Schedule, edit or put a listing up for auction</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -421,16 +424,16 @@ export const DealerProfileScreen: React.FC = () => {
             )}
             {/* Finance applications */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerFinance')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
                 <Ionicons name="card-outline" size={18} color={Colors.infoBlue} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Finance applications</Text>
-                <Text style={styles.attentionSub}>Track vehicle finance you've applied for</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Finance applications</Text>
+                <Text style={themed.attentionSub}>Track vehicle finance you've applied for</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -439,16 +442,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageTeam && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={themed.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerTeam')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
+              <View style={[themed.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
                 <Ionicons name="people-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Team</Text>
-                <Text style={styles.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
+              <View style={themed.attentionTextCol}>
+                <Text style={themed.attentionTitle}>Team</Text>
+                <Text style={themed.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -458,8 +461,8 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* SWITCH BUTTON (buyer/seller) */}
-        <TouchableOpacity style={styles.switchProfileBtn} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
+        <TouchableOpacity style={themed.switchProfileBtn} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
+          <Text style={themed.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
@@ -467,13 +470,13 @@ export const DealerProfileScreen: React.FC = () => {
 
   const renderFunnelBar = (label: string, value: string, percentage: number, color: string) => {
     return (
-      <View style={styles.funnelItem} key={label}>
-        <View style={styles.funnelLabelRow}>
-          <Text style={styles.funnelLabel}>{label}</Text>
-          <Text style={styles.funnelVal}>{value}</Text>
+      <View style={themed.funnelItem} key={label}>
+        <View style={themed.funnelLabelRow}>
+          <Text style={themed.funnelLabel}>{label}</Text>
+          <Text style={themed.funnelVal}>{value}</Text>
         </View>
-        <View style={styles.funnelTrack}>
-          <View style={[styles.funnelFill, { width: `${Math.max(0, Math.min(1, percentage)) * 100}%`, backgroundColor: color }]} />
+        <View style={themed.funnelTrack}>
+          <View style={[themed.funnelFill, { width: `${Math.max(0, Math.min(1, percentage)) * 100}%`, backgroundColor: color }]} />
         </View>
       </View>
     );
@@ -482,71 +485,71 @@ export const DealerProfileScreen: React.FC = () => {
   const renderThisWeekView = () => {
     const kpis = analytics?.kpis;
     return (
-      <View style={styles.tabContent}>
+      <View style={themed.tabContent}>
         {/* REVENUE SALES CARD */}
-        <View style={styles.salesCard}>
+        <View style={themed.salesCard}>
           <LinearGradient
             colors={[Colors.accentAlpha12, 'rgba(59, 130, 246, 0.02)']}
             style={StyleSheet.absoluteFillObject}
           />
-          <Text style={styles.salesLabel}>SALES VALUE • LAST 7 DAYS</Text>
-          <Text style={styles.salesValue}>{formatGBP(kpis?.totalRevenue ?? 0)}</Text>
-          <View style={styles.sparklineIllustration}>
-            <View style={styles.sparklineDotActive} />
-            <View style={styles.sparklineLine} />
+          <Text style={themed.salesLabel}>SALES VALUE • LAST 7 DAYS</Text>
+          <Text style={themed.salesValue}>{formatGBP(kpis?.totalRevenue ?? 0)}</Text>
+          <View style={themed.sparklineIllustration}>
+            <View style={themed.sparklineDotActive} />
+            <View style={themed.sparklineLine} />
           </View>
         </View>
 
         {/* METRICS GRID */}
-        <View style={styles.metricsGrid}>
+        <View style={themed.metricsGrid}>
           {/* Live listings */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>LIVE LISTINGS</Text>
+          <View style={themed.metricCard}>
+            <View style={themed.metricHeader}>
+              <Text style={themed.metricTitle}>LIVE LISTINGS</Text>
               <Ionicons name="cube-outline" size={14} color={Colors.accent} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{liveCount}</Text>
+            <View style={themed.metricValRow}>
+              <Text style={themed.metricNumber}>{liveCount}</Text>
             </View>
           </View>
 
           {/* Units sold */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>UNITS SOLD</Text>
+          <View style={themed.metricCard}>
+            <View style={themed.metricHeader}>
+              <Text style={themed.metricTitle}>UNITS SOLD</Text>
               <Ionicons name="checkmark-done-outline" size={14} color={Colors.accent} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.totalUnitsSold ?? 0}</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.totalUnitsSoldTrend ?? 0)]}>
+            <View style={themed.metricValRow}>
+              <Text style={themed.metricNumber}>{kpis?.totalUnitsSold ?? 0}</Text>
+              <Text style={[themed.metricChangeGreen, trendStyle(kpis?.totalUnitsSoldTrend ?? 0)]}>
                 {trendLabel(kpis?.totalUnitsSoldTrend ?? 0)}
               </Text>
             </View>
           </View>
 
           {/* Avg days to sell */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>AVG DAYS TO SELL</Text>
+          <View style={themed.metricCard}>
+            <View style={themed.metricHeader}>
+              <Text style={themed.metricTitle}>AVG DAYS TO SELL</Text>
               <Ionicons name="time-outline" size={14} color={Colors.warning} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.avgDaysToSellTrend ?? 0)]}>
+            <View style={themed.metricValRow}>
+              <Text style={themed.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
+              <Text style={[themed.metricChangeGreen, trendStyle(kpis?.avgDaysToSellTrend ?? 0)]}>
                 {trendLabel(kpis?.avgDaysToSellTrend ?? 0)}
               </Text>
             </View>
           </View>
 
           {/* Conversion */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>OFFER CONVERSION</Text>
+          <View style={themed.metricCard}>
+            <View style={themed.metricHeader}>
+              <Text style={themed.metricTitle}>OFFER CONVERSION</Text>
               <Ionicons name="bar-chart-outline" size={14} color={Colors.success} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.offerConversionRateTrend ?? 0)]}>
+            <View style={themed.metricValRow}>
+              <Text style={themed.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
+              <Text style={[themed.metricChangeGreen, trendStyle(kpis?.offerConversionRateTrend ?? 0)]}>
                 {trendLabel(kpis?.offerConversionRateTrend ?? 0)}
               </Text>
             </View>
@@ -554,13 +557,13 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* LEAD FUNNEL */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.funnelHeaderRow}>
-            <Text style={styles.sectionTitle}>LEAD FUNNEL</Text>
-            <Text style={styles.funnelRightText}>All time</Text>
+        <View style={themed.sectionContainer}>
+          <View style={themed.funnelHeaderRow}>
+            <Text style={themed.sectionTitle}>LEAD FUNNEL</Text>
+            <Text style={themed.funnelRightText}>All time</Text>
           </View>
 
-          <View style={styles.funnelCard}>
+          <View style={themed.funnelCard}>
             {funnelStages.map((stage) =>
               renderFunnelBar(stage.label, String(stage.value), stage.value / funnelMax, stage.color)
             )}
@@ -570,18 +573,18 @@ export const DealerProfileScreen: React.FC = () => {
         {/* ADD LISTING BUTTON */}
         {canManageInventory && (
           <TouchableOpacity
-            style={styles.addListingCTA}
+            style={themed.addListingCTA}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('SellCarFlow')}
           >
             <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.addListingCTAText}>ADD LISTING</Text>
+            <Text style={themed.addListingCTAText}>ADD LISTING</Text>
           </TouchableOpacity>
         )}
 
         {/* SWITCH BUTTON (buyer/seller) */}
-        <TouchableOpacity style={[styles.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
+        <TouchableOpacity style={[themed.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
+          <Text style={themed.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
@@ -611,12 +614,12 @@ export const DealerProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       {/* Background gradient glow matching the dashboard styling */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, palette.bgBody]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
@@ -624,7 +627,7 @@ export const DealerProfileScreen: React.FC = () => {
 
       <WebsiteTopBar />
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: 12 }]}
+        contentContainerStyle={[themed.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -640,14 +643,14 @@ export const DealerProfileScreen: React.FC = () => {
 
         {showPhoneBanner && (
           <TouchableOpacity
-            style={styles.phoneBanner}
+            style={themed.phoneBanner}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Settings' as any)}
           >
             <Ionicons name="call-outline" size={18} color={Colors.warning} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.phoneBannerTitle}>Add a contact phone</Text>
-              <Text style={styles.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
+              <Text style={themed.phoneBannerTitle}>Add a contact phone</Text>
+              <Text style={themed.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
             </View>
             <TouchableOpacity
               onPress={(e) => { e.stopPropagation(); setPhoneBannerDismissed(true); }}
@@ -674,59 +677,59 @@ export const DealerProfileScreen: React.FC = () => {
         {/* Preserve the pre-existing inventory/lead/sales insights, but put
             them behind a secondary disclosure as on-site Home has one clear
             first-fold hierarchy rather than competing Today/Week dashboards. */}
-        <View style={styles.extraInsights}>
+        <View style={themed.extraInsights}>
           <TouchableOpacity
-            style={styles.extraInsightsToggle}
+            style={themed.extraInsightsToggle}
             onPress={() => setAdvancedExpanded(expanded => !expanded)}
             accessibilityRole="button"
             accessibilityState={{ expanded: advancedExpanded }}
             accessibilityLabel="Additional dealer insights"
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.extraInsightsTitle}>Additional insights</Text>
-              <Text style={styles.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
+              <Text style={themed.extraInsightsTitle}>Additional insights</Text>
+              <Text style={themed.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
             </View>
             <Ionicons name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
               size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
           {advancedExpanded && (
-            <View style={styles.extraInsightsBody}>
+            <View style={themed.extraInsightsBody}>
               {error && <ErrorBanner message={error} onRetry={() => loadData()} />}
           {/* TODAY / THIS WEEK SUB-TABS SELECTOR */}
-          <View style={styles.tabToggleRow}>
+          <View style={themed.tabToggleRow}>
             <TouchableOpacity
-              style={[styles.tabToggleBtn, activeSubTab === 'today' && styles.tabToggleBtnActive]}
+              style={[themed.tabToggleBtn, activeSubTab === 'today' && styles.tabToggleBtnActive]}
               onPress={() => {
                 setActiveSubTab('today');
                 showToast('Today dashboard loaded', 'info');
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabToggleText, activeSubTab === 'today' && styles.tabToggleTextActive]}>
+              <Text style={[themed.tabToggleText, activeSubTab === 'today' && styles.tabToggleTextActive]}>
                 TODAY
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tabToggleBtn, activeSubTab === 'this_week' && styles.tabToggleBtnActive]}
+              style={[themed.tabToggleBtn, activeSubTab === 'this_week' && styles.tabToggleBtnActive]}
               onPress={() => {
                 setActiveSubTab('this_week');
                 showToast('Weekly performance loaded', 'info');
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabToggleText, activeSubTab === 'this_week' && styles.tabToggleTextActive]}>
+              <Text style={[themed.tabToggleText, activeSubTab === 'this_week' && styles.tabToggleTextActive]}>
                 THIS WEEK
               </Text>
             </TouchableOpacity>
           </View>
   
           {loading && !stats && !analytics ? (
-            <View style={styles.loadingWrap}>
+            <View style={themed.loadingWrap}>
               <ActivityIndicator size="small" color={Colors.accent} />
-              <Text style={styles.loadingText}>Loading your dashboard…</Text>
+              <Text style={themed.loadingText}>Loading your dashboard…</Text>
             </View>
           ) : error && !stats && !analytics ? (
-            <Text style={styles.loadingText}>Insights are unavailable. Try again.</Text>
+            <Text style={themed.loadingText}>Insights are unavailable. Try again.</Text>
           ) : (
             activeSubTab === 'today' ? renderTodayView() : renderThisWeekView()
           )}
@@ -1328,3 +1331,47 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 });
+
+function useDealerProfilePalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardTitle: [styles.cardTitle, { color: palette.textPrimary }],
+    cardRightText: [styles.cardRightText, { color: palette.textMuted }],
+    headerTodayTitle: [styles.headerTodayTitle, { color: palette.textPrimary }],
+    headerWeekTitle: [styles.headerWeekTitle, { color: palette.textPrimary }],
+    dealerSub: [styles.dealerSub, { color: palette.textSecondary }],
+    dealerProSub: [styles.dealerProSub, { color: palette.textMuted }],
+    tabToggleRow: [styles.tabToggleRow, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    tabToggleBtn: [styles.tabToggleBtn, { backgroundColor: palette.bgInput }],
+    tabToggleText: [styles.tabToggleText, { color: palette.textSecondary }],
+    loadingText: [styles.loadingText, { color: palette.textMuted }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    sectionActionText: [styles.sectionActionText, { color: palette.textSecondary }],
+    emptyCard: [styles.emptyCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyCardText: [styles.emptyCardText, { color: palette.textMuted }],
+    listingRow: [styles.listingRow, { backgroundColor: palette.bgCard }],
+    listingTitle: [styles.listingTitle, { color: palette.textPrimary }],
+    listingPrice: [styles.listingPrice, { color: palette.textPrimary }],
+    listDivider: [styles.listDivider, { backgroundColor: palette.borderDefault }],
+    attentionRow: [styles.attentionRow, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    attentionTitle: [styles.attentionTitle, { color: palette.textPrimary }],
+    attentionSub: [styles.attentionSub, { color: palette.textSecondary }],
+    salesCard: [styles.salesCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    salesLabel: [styles.salesLabel, { color: palette.textSecondary }],
+    salesValue: [styles.salesValue, { color: palette.textPrimary }],
+    metricCard: [styles.metricCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    metricTitle: [styles.metricTitle, { color: palette.textSecondary }],
+    metricNumber: [styles.metricNumber, { color: palette.textPrimary }],
+    funnelCard: [styles.funnelCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    funnelLabel: [styles.funnelLabel, { color: palette.textSecondary }],
+    funnelVal: [styles.funnelVal, { color: palette.textPrimary }],
+    funnelTrack: [styles.funnelTrack, { backgroundColor: palette.bgInput }],
+    extraInsights: [styles.extraInsights, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    extraInsightsTitle: [styles.extraInsightsTitle, { color: palette.textPrimary }],
+    extraInsightsSub: [styles.extraInsightsSub, { color: palette.textSecondary }],
+    metaText: [styles.metaText, { color: palette.textMuted }],
+  }), [palette]);
+}

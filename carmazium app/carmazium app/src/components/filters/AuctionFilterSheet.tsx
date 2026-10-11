@@ -3,12 +3,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
+import { ThemedTextField } from '../ThemedTextField';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { Colors } from '../../constants/colors';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
@@ -35,30 +36,36 @@ interface Props {
   availableMakes: string[];
 }
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {children}
-  </View>
-);
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+  const { palette } = useNativeAppearance();
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: palette.textPrimary }]}>{title}</Text>
+      {children}
+    </View>
+  );
+};
 
 const Pill: React.FC<{ label: string; selected: boolean; onPress: () => void }> = ({
   label,
   selected,
   onPress,
-}) => (
+}) => {
+  const { palette } = useNativeAppearance();
+  return (
   <TouchableOpacity
-    style={[styles.pill, selected && styles.pillSelected]}
+    style={[styles.pill, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }, selected && styles.pillSelected]}
     onPress={onPress}
     activeOpacity={0.8}
     accessibilityRole="button"
     accessibilityState={{ selected }}
   >
-    <Text style={[styles.pillText, selected && styles.pillTextSelected]} numberOfLines={1}>
+    <Text style={[styles.pillText, { color: selected ? palette.accent : palette.textSecondary }, selected && styles.pillTextSelected]} numberOfLines={1}>
       {label}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 /**
  * Auction filter panel.
@@ -75,6 +82,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   onApply,
   availableMakes,
 }) => {
+  const { palette } = useNativeAppearance();
   const [draft, setDraft] = useState<AuctionFilterState>(value);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
@@ -143,12 +151,11 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           )}
 
           <Section title="Model">
-            <TextInput
+            <ThemedTextField
               style={styles.input}
               value={draft.model}
               onChangeText={(t) => set('model', t)}
               placeholder="e.g. M4, Golf"
-              placeholderTextColor={Colors.inputPlaceholder}
               autoCorrect={false}
             />
           </Section>
@@ -194,57 +201,53 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 
           <Section title="Current bid (£)">
             <View style={styles.row}>
-              <TextInput
+              <ThemedTextField
                 style={[styles.input, styles.inputHalf]}
                 value={draft.minBid}
                 onChangeText={(t) => set('minBid', t)}
                 placeholder="Min"
-                placeholderTextColor={Colors.inputPlaceholder}
                 keyboardType="number-pad"
               />
-              <TextInput
+              <ThemedTextField
                 style={[styles.input, styles.inputHalf]}
                 value={draft.maxBid}
                 onChangeText={(t) => set('maxBid', t)}
                 placeholder="Max"
-                placeholderTextColor={Colors.inputPlaceholder}
                 keyboardType="number-pad"
               />
             </View>
           </Section>
 
           <TouchableOpacity
-            style={styles.moreToggle}
+            style={[styles.moreToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]}
             onPress={() => setShowMoreFilters(v => !v)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityState={{ expanded: showMoreFilters }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.moreTitle}>More auction filters {moreCount > 0 ? `(${moreCount} active)` : ''}</Text>
-              <Text style={styles.moreSubtitle}>Year, mileage, location and delivery</Text>
+              <Text style={[styles.moreTitle, { color: palette.textPrimary }]}>More auction filters {moreCount > 0 ? `(${moreCount} active)` : ''}</Text>
+              <Text style={[styles.moreSubtitle, { color: palette.textSecondary }]}>Year, mileage, location and delivery</Text>
             </View>
-            <Text style={styles.moreChevron}>{showMoreFilters ? '−' : '+'}</Text>
+            <Text style={[styles.moreChevron, { color: palette.textSecondary }]}>{showMoreFilters ? '−' : '+'}</Text>
           </TouchableOpacity>
           {showMoreFilters && (
             <>
           <Section title="Year">
             <View style={styles.row}>
-              <TextInput
+              <ThemedTextField
                 style={[styles.input, styles.inputHalf]}
                 value={draft.minYear}
                 onChangeText={(t) => set('minYear', t)}
                 placeholder="From"
-                placeholderTextColor={Colors.inputPlaceholder}
                 keyboardType="number-pad"
                 maxLength={4}
               />
-              <TextInput
+              <ThemedTextField
                 style={[styles.input, styles.inputHalf]}
                 value={draft.maxYear}
                 onChangeText={(t) => set('maxYear', t)}
                 placeholder="To"
-                placeholderTextColor={Colors.inputPlaceholder}
                 keyboardType="number-pad"
                 maxLength={4}
               />
@@ -252,23 +255,21 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Max mileage">
-            <TextInput
+            <ThemedTextField
               style={styles.input}
               value={draft.maxMileage}
               onChangeText={(t) => set('maxMileage', t)}
               placeholder="e.g. 60000"
-              placeholderTextColor={Colors.inputPlaceholder}
               keyboardType="number-pad"
             />
           </Section>
 
           <Section title="Location">
-            <TextInput
+            <ThemedTextField
               style={styles.input}
               value={draft.location}
               onChangeText={(t) => set('location', t)}
               placeholder="Town, city or county"
-              placeholderTextColor={Colors.inputPlaceholder}
               autoCorrect={false}
             />
           </Section>
@@ -286,14 +287,14 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: palette.borderDefault }]}>
           <TouchableOpacity
-            style={styles.resetBtn}
+            style={[styles.resetBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }]}
             onPress={() => setDraft({ ...INITIAL_AUCTION_FILTERS, sortBy: draft.sortBy })}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Text style={styles.resetText}>
+            <Text style={[styles.resetText, { color: palette.textSecondary }]}>
               {activeCount > 0 ? `Reset (${activeCount})` : 'Reset'}
             </Text>
           </TouchableOpacity>

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TextProps } from 'react-native';
 
 import { Colors } from '@/constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, Type } from '@/constants/typography';
 
 type PriceProps = Omit<TextProps, 'children'> & {
@@ -39,13 +40,14 @@ const formatValue = (value: number | string | null | undefined, fallback: string
  */
 export const Price = React.memo<PriceProps>(
   ({ value, size = Type.h2, currency = '£', muted = false, fallback = '—', style, ...rest }) => {
+    const { palette } = useNativeAppearance();
     const formatted = formatValue(value, fallback);
     const isFallback = formatted === fallback;
 
     return (
       <Text
         {...rest}
-        style={[styles.price, { fontSize: size }, muted && styles.muted, style]}
+        style={[styles.price, { fontSize: size, color: muted ? palette.textSecondary : palette.textPrimary }, style]}
       >
         {isFallback ? formatted : `${currency}${formatted}`}
       </Text>
