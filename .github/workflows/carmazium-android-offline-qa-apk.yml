@@ -4,6 +4,12 @@ name: CarMazium Android standalone QA APK (no Expo credentials)
 # This does NOT distribute to Google Play, update installed production apps,
 # or publish to the production Expo OTA channel.
 on:
+  # Run a private installable QA artifact once when the workflow itself
+  # changes in a same-repository PR. Does not publish customer downloads,
+  # submit stores, or run for untrusted fork pull requests.
+  pull_request:
+    paths:
+      - '.github/workflows/carmazium-android-offline-qa-apk.yml'
   push:
     branches: [main]
     paths:
@@ -29,6 +35,9 @@ concurrency:
 jobs:
   build-qa:
     name: Build read-only QA APK (debug signed, no Expo account)
+    # A fork must not be able to run expensive build jobs or gain access to
+    # same-repository CI artifacts by editing this workflow.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 100
     defaults:
