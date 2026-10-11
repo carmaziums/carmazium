@@ -138,7 +138,7 @@ test('dealer More cannot act as the shared menu or hide the bottom bar', () => {
 
 test('shared drawer does not leave a dealer sheet mounted on top of closed navigation', () => {
   assert.ok(drawer.includes('<Modal'));
-  assert.ok(drawer.includes('visible={isOpen}'));
+  assert.ok(drawer.includes('visible={isOpen && isAuthenticated}'));
   assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
   assert.ok(drawer.includes('onPress={closeDrawer}'));
   assert.ok(drawer.includes('drawerWidth = Math.min(windowWidth * 0.82, 320)'));
@@ -383,4 +383,60 @@ test('Block 8 selected tabs, Menu and Settings categories meet readable dark-mod
   assert.ok(contrast(theme.text, theme.accent) < 4.5, 'old white-on-red selection explains why adjustment is required');
   assert.match(settings, /A live light\/dark switch is not yet supported by the native theme engine/);
   assert.doesNotMatch(settings, /onPress=\{toggleTheme\}|onPress=\{setTheme\}/);
+});
+
+
+test('Block 9 Menu stays scrollable at short heights, never obscures Login after sign-out', () => {
+  const drawer = app('components/GlobalDrawer.tsx');
+  const auth = app('store/authStore.ts');
+  const root = app('navigation/RootNavigator.tsx');
+  const shell = app('../App.tsx');
+
+  const menuStart = drawer.indexOf('        <ScrollView', drawer.indexOf('const drawerContent ='));
+  const footer = drawer.indexOf('          <View style={styles.footer}>', menuStart);
+  const menuEnd = drawer.indexOf('        </ScrollView>', menuStart);
+  assert.ok(menuStart >= 0 && footer > menuStart && menuEnd > footer,
+    'branding footer must be part of scrollable Menu, never permanently occupy bottom space');
+  assert.match(drawer, /<Text style=\{styles\.footerBrand\} maxFontSizeMultiplier=\{2\}>CARMAZIUM<\/Text>/);
+  assert.match(drawer, /<Text style=\{styles\.footerTagline\} maxFontSizeMultiplier=\{2\}>Auction FREE · Retail £1<\/Text>/);
+  assert.match(drawer, /style=\{styles\.scroll\}/);
+  assert.match(drawer, /MAIN_MENU\.map\(item =>/);
+  assert.match(drawer, /item\.children!\.map\(child =>/);
+  assert.match(drawer, /const isAuthenticated = useAuthStore\(\(s\) => s\.isAuthenticated\)/);
+  assert.match(drawer, /if \(!isAuthenticated\) closeDrawer\(\)/);
+  assert.match(drawer, /visible=\{isOpen && isAuthenticated\}/);
+  assert.match(drawer, /if \(!isOpen \|\| !isAuthenticated\) setExpandedMenu\(null\)/);
+  assert.match(root, /: !isAuthenticated \? \(/);
+  assert.match(shell, /<DrawerProvider>[\s\S]*?<GlobalDrawer \/>/);
+  assert.match(auth, /logout: async \(\) =>/);
+  assert.match(auth, /forceLogout: async \(\) =>/);
+});
+
+test('Block 9 MaziuM deferred filter links cannot hijack Menu, Settings or another account', () => {
+  const ai = app('components/GlobalAIChatBot.tsx');
+  const drawer = app('components/GlobalDrawer.tsx');
+  const tabs = app('navigation/TabNavigator.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+
+  assert.match(ai, /const pendingChatNavigation = useRef<ReturnType<typeof setTimeout> \| null>\(null\)/);
+  assert.match(ai, /if \(pendingChatNavigation\.current\) clearTimeout\(pendingChatNavigation\.current\)/);
+  assert.match(ai, /\}, \[authUserId, previewRole, accountRole, isDrawerOpen\]\)/);
+  assert.match(ai, /const sourceUserId = authUserId/);
+  assert.match(ai, /const sourcePreviewRole = previewRole/);
+  assert.match(ai, /const sourceAccountRole = accountRole/);
+  assert.match(ai, /currentAuth\.user\?\.id !== sourceUserId/);
+  assert.match(ai, /currentAuth\.role !== sourcePreviewRole/);
+  assert.match(ai, /currentAuth\.accountRole !== sourceAccountRole/);
+  assert.match(ai, /const currentRoute = navigationRef\.getCurrentRoute\(\)\?\.name/);
+  assert.match(ai, /MAZIUM_PROTECTED_ROUTES\.has\(currentRoute \?\? ''\)/);
+  assert.match(ai, /currentRoute !== sourceRoute/);
+  assert.match(ai, /if \(nav === 'SellCarFlow'\)/);
+  assert.match(ai, /screen: 'Tabs', params: \{ screen: 'Live' \}/);
+  assert.match(ai, /params: \{ screen: 'Search', params: \{ \.\.\.navParams, _t: Date\.now\(\) \} \}/);
+  assert.match(ai, /const launcherSuppressed = assistantBlocked \|\| isKeyboardVisible/);
+  assert.match(ai, /visible=\{isOpen && !assistantBlocked\}/);
+  assert.match(ai, /MAZIUM_PROTECTED_ROUTES\.has\(activeRoute\)/);
+  assert.match(drawer, /visible=\{isOpen && isAuthenticated\}/);
+  assert.match(tabs, /hasPermission\('VIEW_TRADE'\)/);
+  assert.match(settings, /style=\{styles\.signOutRow\}/);
 });
