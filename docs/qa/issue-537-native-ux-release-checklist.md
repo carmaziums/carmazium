@@ -86,4 +86,6 @@ iOS requires an appropriately signed/installed TestFlight or private test build 
 5. Publish only after **separate owner approval**, signed-off private QA, security clearance (#521), and independently verified deployment/rollback procedures.
 6. If rejected, revert the integration commit(s) in reverse dependency order, keep user data/migrations unchanged, then rerun tests; never roll back an unrelated concurrent feature.
 
+**Do not merge or deploy** Issue #537 changes until all device, security and owner approval gates are satisfied.
+
 **Owner approval:** pending. **Android device QA:** pending. **iOS device QA:** pending. **Production release:** prohibited until gates above are met.
