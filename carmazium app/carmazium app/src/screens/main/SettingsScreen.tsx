@@ -657,7 +657,13 @@ export const SettingsScreen: React.FC = () => {
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Back to previous screen"
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              // Direct links and restored sessions may open Settings without a
+              // previous stack entry; Back must still return to the marketplace
+              // instead of appearing broken or leaving the user trapped.
+              if (navigation.canGoBack()) navigation.goBack();
+              else navigation.navigate('Tabs');
+            }}
             style={styles.settingsBackLink}
           >
             <Ionicons name="arrow-back" size={16} color={Colors.accent} accessibilityElementsHidden />
