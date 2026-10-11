@@ -1,0 +1,53 @@
+# Manual, read-only diagnostics for the existing production Fly app.
+# The public GitHub Actions output contains only sanitized aggregates.
+# Pull requests run syntax checks WITHOUT any Fly token. Only a manually
+# dispatched run on reviewed main can access the existing Fly secret.
+name: Fly Connection Diagnostics (Read Only)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/fly-readonly-connection-diagnostics.mjs'
+      - '.github/workflows/fly-connection-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-connection-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate read-only diagnostic source
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check scripts/fly-readonly-connection-diagnostics.mjs
+
+  inspect:
+    name: Inspect Fly backend availability
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out reviewed production source
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install official Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read sanitized Fly machine events and health probes
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: node scripts/fly-readonly-connection-diagnostics.mjs
