@@ -79,7 +79,9 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
-        <View style={s.bidOverlay} pointerEvents="none">
+      </View>
+      <View style={s.cardBody}>
+        <View style={s.bidOverlay}>
           <View style={{ flex: 1 }}>
             <Text style={s.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
             <Text style={s.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
@@ -94,14 +96,12 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
             <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
           </View>
         </View>
-      </View>
-      <View style={s.cardBody}>
         <Text style={s.cardSpecs}>
           {l?.year} · {mapTransmission(l?.transmission)}
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{l?.make ?? ''} {l?.model ?? ''}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -142,7 +142,9 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
-        <View style={s.bidOverlay} pointerEvents="none">
+      </View>
+      <View style={s.cardBody}>
+        <View style={s.bidOverlay}>
           <View style={{ flex: 1 }}>
             <Text style={s.overlayLabel}>STARTING BID</Text>
             <Text style={s.overlayVal}>{formatPrice(startingBid)}</Text>
@@ -152,13 +154,11 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
             <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
           </View>
         </View>
-      </View>
-      <View style={s.cardBody}>
         <Text style={s.cardSpecs}>
           {l?.year}{l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={1}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{l?.make ?? ''} {l?.model ?? ''}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -988,7 +988,8 @@ const s = StyleSheet.create({
   // Auction overlays
   livePill: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Colors.accent, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
   livePillText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.white, letterSpacing: 1 },
-  bidOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', backgroundColor: 'rgba(10,10,12,0.78)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha07, paddingVertical: 9, paddingHorizontal: 14 },
+  // Bid and countdown sit in the opaque details area, never over a vehicle photo.
+  bidOverlay: { flexDirection: 'row', backgroundColor: Colors.bgElevated, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 6 },
   overlayLabel: { fontFamily: FontFamily.medium, fontSize: FontSize.size8, color: Colors.textSecondary, letterSpacing: 1, marginBottom: 2 },
   overlayVal: { ...TextPresets.monoFigure, fontSize: FontSize.size14, color: Colors.white },
 
