@@ -143,11 +143,11 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         
         {/* Header */}
         <View style={themed.header}>
-           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
            <Text style={themed.headerTitle}>Notifications</Text>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={palette.accent} />
                 : <Text style={themed.resetText}>Save</Text>
               }
            </TouchableOpacity>
@@ -273,14 +273,14 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
             persisted anything (savePreferences only lived on the main
             view's header). */}
         <View style={[themed.header, { marginBottom: 32 }]}>
-           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
+           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
            <View style={themed.headerCenter}>
               <Text style={themed.headerSubText}>NOTIFICATIONS</Text>
               <Text style={themed.headerTitleCenter}>Delivery & quiet hours</Text>
            </View>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={palette.accent} />
                 : <Text style={themed.resetText}>Save</Text>
               }
            </TouchableOpacity>
