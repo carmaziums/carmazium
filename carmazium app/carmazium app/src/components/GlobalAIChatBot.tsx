@@ -605,7 +605,7 @@ export const GlobalAIChatBot: React.FC = () => {
 
                 {chatHistory.map((msg) => (
                   <View key={msg.id}>
-                    <View style={[themed.msgBubble, msg.isUser ? styles.msgUser : styles.msgAI]}>
+                    <View style={[themed.msgBubble, msg.isUser ? styles.msgUser : themed.msgAI]}>
                       <Text style={[themed.msgText, msg.isUser ? styles.msgTextUser : themed.msgTextAI]}>
                         {msg.text}
                       </Text>
