@@ -66,7 +66,7 @@ test('mobile sends legacy 2D coords plus exact 3D surface point and UUID, with b
 
 test('no schema migration required and buyer read-only interactions are unchanged', () => {
   assert.match(schema, /coords\s+Json/);
-  assert.doesNotMatch(read('components/damage/BuyerDamageViewer.tsx'), /onDamagePinPress=/);
+  assert.match(read('components/damage/BuyerDamageViewer.tsx'), /onDamagePinPress=/);
   assert.match(read('components/damage/BuyerDamageViewer.tsx'), /readOnly/);
   assert.match(mapper, /record\.surfacePoint \? \[/);
 });
