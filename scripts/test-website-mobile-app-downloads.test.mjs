@@ -134,7 +134,16 @@ test('website navigation, homepage, footer and sitemap all lead to download land
   }
   assert.ok(header.includes('Get the App'));
   assert.ok(home.includes('Get the CarMazium App'));
-  assert.ok(footer.includes('CarMazium for iPhone &amp; Android'));
+  assert.ok(footer.includes('<FooterAppPromo />'));
+  assert.ok(!footer.includes('CarMazium for iPhone &amp; Android'), 'hidden CTA removed');
+  const promo=read('src/components/layout/FooterAppPromo.tsx');
+  assert.ok(promo.includes('Get the'));
+  assert.ok(promo.includes('CarMazium'));
+  assert.ok(promo.includes('Microsoft Store'));
+  assert.ok(promo.includes('Coming soon'));
+  assert.ok(promo.includes('/download-app#iphone-app-title'));
+  assert.ok(promo.includes('/download-app#android-app-title'));
+  assert.ok(!promo.includes('href="https://'), 'never invent official store URLs');
 });
 
 test('download page only offers clickable buttons with genuine validated destinations',()=>{
