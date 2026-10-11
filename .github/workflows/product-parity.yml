@@ -17,6 +17,7 @@ on:
       - 'scripts/test-native-damage-inline-editor-block2.test.mjs'
       - 'scripts/test-native-damage-camera-preview-block3.test.mjs'
       - 'scripts/test-native-damage-durable-upload-block4.test.mjs'
+      - 'scripts/test-native-damage-multiple-pins-block5.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -42,6 +43,8 @@ jobs:
         run: node --test scripts/test-native-damage-camera-preview-block3.test.mjs
       - name: Block 4 — verify durable per-defect photo upload, retry and publish guards
         run: node --test scripts/test-native-damage-durable-upload-block4.test.mjs
+      - name: Block 5 — numbered 3D damage pins, independent records and stable coordinates
+        run: node --test scripts/test-native-damage-multiple-pins-block5.test.mjs
 
   web-typecheck:
     name: Web typecheck
@@ -94,3 +97,5 @@ jobs:
         run: npm test -- --runInBand src/core/account-roles.spec.ts
       - name: Test dealer-only saved auction shortlist
         run: npm test -- --runInBand src/watchlist/watchlist.service.spec.ts
+      - name: Verify same-panel damage rows retain independent IDs and positions
+        run: npm test -- --runInBand src/damage/damage.service.spec.ts

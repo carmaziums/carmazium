@@ -1,11 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface DamageDetection {
+  /** Stable ID of this defect, not its panel. Existing clients may omit it. */
+  id?: string;
   part: string;
   type: string;
   size: string;
-  coords: { x: number; y: number; view: 'FRONT' | 'SIDE' | 'REAR' | 'TOP' };
+  coords: {
+    x: number; y: number;
+    view: 'FRONT' | 'SIDE' | 'REAR' | 'TOP' | 'INTERIOR';
+    /** Exact position on the generic GLB box, independent of the 2D map. */
+    surfacePoint?: { fx: number; fy: number; fz: number };
+  };
   imageUrl: string;
 }
 
@@ -49,6 +56,26 @@ export class DamageAnalysisService {
   }
 
   async saveDamageRecords(listingId: string, detections: DamageDetection[]) {
+    if (!Array.isArray(detections)) throw new BadRequestException('Damage records must be an array.');
+    const ids = new Set<string>();
+    for (const d of detections) {
+      // The DB already has an immutable UUID primary key. Retain it across
+      // full-set replacement instead of creating a new pin identity on edit.
+      // Legacy web submissions without id continue to receive DB-generated ids.
+      if (d.id !== undefined) {
+        if (typeof d.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.id)) {
+          throw new BadRequestException('Invalid damage record identifier.');
+        }
+        if (ids.has(d.id)) throw new BadRequestException('Duplicate damage record identifier.');
+        ids.add(d.id);
+      }
+      const point = d.coords?.surfacePoint;
+      if (point !== undefined && (!point || ![point.fx, point.fy, point.fz].every(
+        n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1,
+      ))) {
+        throw new BadRequestException('Invalid 3D damage marker location.');
+      }
+    }
     // Replace, not append — the wizard resubmits the seller's *complete* current
     // set of marked zones each time (e.g. after editing), not just new ones.
     // Without deleting first, re-saving would duplicate every previously-saved
@@ -57,6 +84,7 @@ export class DamageAnalysisService {
       (this.prisma as any).damageRecord.deleteMany({ where: { listingId } }),
       (this.prisma as any).damageRecord.createMany({
         data: detections.map(d => ({
+          ...(d.id ? { id: d.id } : {}),
           listingId,
           part: d.part,
           type: d.type,
