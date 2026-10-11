@@ -198,6 +198,11 @@ function LoginContent() {
                     <h1 className="text-3xl font-bold mb-2 font-heading">Welcome Back</h1>
                     <p className="text-gray-300">One login for your Personal or Partner Account.</p>
                 </div>
+                {searchParams?.get("reason") === "session-expired" && (
+                    <div role="status" className="mb-6 rounded-xl border border-amber-300/40 bg-amber-400/10 p-4 text-sm text-amber-100">
+                        Your 24-hour sign-in period has ended. Please log in again to continue.
+                    </div>
+                )}
                 {error && <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">{error}</div>}
 
                 <form className="space-y-6" onSubmit={handleLogin}>
@@ -213,7 +218,7 @@ function LoginContent() {
                         </div>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-300 hover:text-white"><input type="checkbox" className="accent-primary h-4 w-4" /> Remember me</label>
+                        <span className="text-gray-300">For security, sign-in expires after 24 hours.</span>
                         <Link href="/auth/forgot-password" className="text-primary hover:text-red-400 font-medium">Forgot Password?</Link>
                     </div>
                     <Button type="submit" disabled={loading} className="w-full h-12 text-lg shadow-[0_4px_15px_rgba(237,28,36,0.4)]" shape="default">{loading ? <Loader2 className="animate-spin" /> : "Log In"}</Button>

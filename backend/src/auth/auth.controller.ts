@@ -19,6 +19,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SessionAuthGuard } from './guards/session-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { resolveFrontendUrl } from '../core/frontend-url';
+import { ABSOLUTE_SESSION_LIFETIME_MS, remainingSessionLifetimeMs, sessionIdFromVerifiedJwt } from './session-lifetime';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -44,6 +45,8 @@ export class AuthController {
             req.session.userId = user.id;
             req.session.userRole = user.role;
             req.session.cachedUser = user;
+            (req.session as any).authenticatedAt = Date.now();
+            req.session.cookie.maxAge = ABSOLUTE_SESSION_LIFETIME_MS;
         }
 
         return {
@@ -73,6 +76,8 @@ export class AuthController {
             req.session.userId = user.id;
             req.session.userRole = user.role;
             req.session.cachedUser = user;
+            (req.session as any).authenticatedAt = Date.now();
+            req.session.cookie.maxAge = ABSOLUTE_SESSION_LIFETIME_MS;
         }
 
         return {
@@ -148,17 +153,47 @@ export class AuthController {
             throw new UnauthorizedException('Invalid Supabase token or user not found in backend');
         }
 
-        // Regenerate the session when a different user is logging in — prevents
-        // session fixation where User A's sid cookie gets reused for User B.
-        if (req.session?.userId && req.session.userId !== user.id) {
-            await new Promise<void>((resolve) => req.session.regenerate(() => resolve()));
+        // auth.getUser() has already verified the supplied JWT. session_id is
+        // stable across refreshes and changes only on a genuinely new login.
+        const supabaseSessionId = sessionIdFromVerifiedJwt(token);
+        if (!supabaseSessionId) {
+            throw new UnauthorizedException('Please sign in again to establish a valid session');
         }
 
-        // Create the backend session
+        const stored = req.session as any;
+        const sameSupabaseSession = stored?.userId === user.id
+            && stored?.supabaseSessionId === supabaseSessionId;
+
+        // Re-bridging the SAME refreshed Supabase session must never turn an
+        // expired 24h login into a new 24h login. This is crucial on desktop
+        // reload and mobile background/foreground transitions.
+        if (sameSupabaseSession && remainingSessionLifetimeMs(stored.authenticatedAt) === 0) {
+            throw new UnauthorizedException('SESSION_EXPIRED_24H');
+        }
+
+        // Switching account or starting a genuinely new Supabase session
+        // rotates the cookie id, even when the account id is unchanged.
+        if (req.session?.userId && !sameSupabaseSession && stored?.supabaseSessionId) {
+            await new Promise<void>((resolve, reject) =>
+                req.session.regenerate((err) => err ? reject(err) : resolve()),
+            );
+        } else if (req.session?.userId && req.session.userId !== user.id) {
+            await new Promise<void>((resolve, reject) =>
+                req.session.regenerate((err) => err ? reject(err) : resolve()),
+            );
+        }
+
         if (req.session) {
+            const now = Date.now();
+            const authenticatedAt = sameSupabaseSession
+                ? (stored.authenticatedAt as number)
+                : now;
             req.session.userId = user.id;
             req.session.userRole = user.role;
             req.session.cachedUser = user;
+            (req.session as any).supabaseSessionId = supabaseSessionId;
+            (req.session as any).authenticatedAt = authenticatedAt;
+            req.session.cookie.maxAge = remainingSessionLifetimeMs(authenticatedAt, now);
         }
 
         return {

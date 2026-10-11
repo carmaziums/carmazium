@@ -64,9 +64,12 @@ export class RolesGuard implements CanActivate {
             effectiveRole = fresh.role;
             request.user = { ...user, role: fresh.role };
 
-            // Keep the session cache consistent so the next request does not
-            // resurrect a role that has just changed in the database.
-            if (request.session) {
+            // Only persist role changes when the caller actually supplied
+            // a reusable backend session. A Bearer-only request may have an
+            // initialized but UNSAVED express-session object. Mutating that
+            // object inserts another phantom PostgreSQL session, including for
+            // read-only admin requests from browsers blocking cross-site cookies.
+            if (request.session?.userId) {
                 request.session.userRole = fresh.role;
                 if (request.session.cachedUser) {
                     request.session.cachedUser = {

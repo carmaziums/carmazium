@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken } from './supabase';
+import { getAccessToken, refreshAccessToken, supabase } from './supabase';
 import { fetchWithRetry } from './fetchWithRetry';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev';
@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly
  * Redirect unauthenticated users to the login page,
  * preserving the current URL so they return after logging in.
  */
-function redirectToLogin() {
+function redirectToLogin(reason?: 'session-expired') {
     if (typeof window === 'undefined') return;
     
     // Prevent redirect loops if we are already on an auth page
@@ -17,7 +17,7 @@ function redirectToLogin() {
     }
 
     const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `/auth/login?redirect=${redirect}`;
+    window.location.href = `/auth/login?redirect=${redirect}${reason ? '&reason=session-expired' : ''}`;
 }
 
 /**
@@ -180,6 +180,23 @@ export async function apiClient<T>(
             // Keep raw text body when it is not valid JSON
         }
         const message = normalizeErrorMessage(parsedBody, response.status, response.statusText);
+
+        if (response.status === 401 && message === 'SESSION_EXPIRED_24H') {
+            // This is an absolute login expiry, not a temporary Fly outage.
+            // Clear the locally cached refresh token before sending the user
+            // to Login, otherwise a stale Supabase session can immediately
+            // re-authenticate and bounce between the dashboard and Login.
+            try {
+                await Promise.race([
+                    supabase.auth.signOut({ scope: 'local' }),
+                    new Promise(resolve => setTimeout(resolve, 3000)),
+                ]);
+            } catch {
+                // Redirect regardless; retry on the Login screen is safe.
+            }
+            redirectToLogin('session-expired');
+            throw new Error('AUTH_REDIRECT');
+        }
 
         if (response.status === 401 && endpoint === '/auth/supabase-session') {
             // A bridge token can be invalidated before its local expiry. Do not
