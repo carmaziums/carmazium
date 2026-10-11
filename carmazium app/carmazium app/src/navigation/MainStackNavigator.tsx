@@ -10,6 +10,7 @@ import { MessagesScreen } from '../screens/main/MessagesScreen';
 import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
+import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerAnalyticsScreen } from '../screens/main/DealerAnalyticsScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
@@ -105,6 +106,8 @@ export type MainStackParamList = {
   ChatScreen: { threadId: string };
   Compare: { initialListing?: CarListing } | undefined;
   Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
+  /** Saved Cars opened from Settings: push a stack page so native Back returns to Settings. */
+  SavedCars: undefined;
   DealerAnalytics: undefined;
   DealerInventory: undefined;
   DealerLeads: undefined;
@@ -238,6 +241,11 @@ export const MainStackNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{ animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="SavedCars"
+        component={SavedScreen}
+        options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="DealerAnalytics"
