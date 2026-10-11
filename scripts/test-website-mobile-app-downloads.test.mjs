@@ -19,11 +19,13 @@ if(typeof resolveMobileAppLinks!=='function') throw Error('Resolver not exported
 const apple='https://apps.apple.com/gb/app/carmazium/id1234567890';
 const play='https://play.google.com/store/apps/details?id=uk.carmazium.app';
 const testflight='https://testflight.apple.com/join/A1b2C3d4';
+const windows='https://apps.microsoft.com/detail/9NBLGGH4R315';
 const hash='a'.repeat(64);
 const testEnv=()=>({
   NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL:apple,
   NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL:testflight,
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL:play,
+  NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL:windows,
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_URL:'https://www.carmazium.com/downloads/carmazium-release.apk',
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_SHA256:hash,
   NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED:'true',
@@ -35,6 +37,7 @@ test('never advertises an unverified or guessed install URL',()=>{
     ios:{href:null,available:false},
     iosTestFlight:{href:null,available:false},
     android:{href:null,available:false},
+    microsoftStore:{href:null,available:false},
     androidApk:{href:null,available:false,sha256:null},
   });
 });
@@ -46,6 +49,7 @@ test('verified official iOS and Google Play store URLs appear as direct destinat
   assert.equal(links.iosTestFlight.href,testflight);
   assert.equal(links.android.href,play);
   assert.equal(links.android.available,true);
+  assert.equal(links.microsoftStore.href,windows);
 });
 
 test('do not allow search results, private TestFlight links, generic Apple pages or fake packages',()=>{
@@ -99,6 +103,20 @@ test('TestFlight links must be from Apple, public join invitations, never privat
   }
 });
 
+test('Microsoft Store is off until an explicitly validated public listing exists',()=>{
+  for (const bad of [
+    'https://apps.microsoft.com/',
+    'https://apps.microsoft.com/search?q=carmazium',
+    'https://apps.microsoft.com/detail/not-a-product',
+    'https://apps.microsoft.com/detail/9NBLGGH4R315?tracking=1',
+    'http://apps.microsoft.com/detail/9NBLGGH4R315',
+    'https://apps.microsoft.com.evil.example/detail/9NBLGGH4R315',
+  ]) {
+    assert.equal(resolveMobileAppLinks({...testEnv(),NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL:bad}).microsoftStore.href,null,bad);
+  }
+  assert.equal(resolveMobileAppLinks({...testEnv(),NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL:undefined}).microsoftStore.href,null);
+});
+
 test('never offer internal APKs or unsigned direct downloads',()=>{
   const common=testEnv();
   for(const patch of [
@@ -144,6 +162,7 @@ test('website navigation, homepage, footer and sitemap all lead to download land
   assert.ok(promo.includes('/download-app#iphone-app-title'));
   assert.ok(promo.includes('/download-app#android-app-title'));
   assert.ok(!promo.includes('href="https://'), 'never invent official store URLs');
+  assert.ok(promo.includes('WindowsMark'), 'Windows branding retained in footer');
 });
 
 test('download page only offers clickable buttons with genuine validated destinations',()=>{
@@ -162,6 +181,15 @@ test('download page only offers clickable buttons with genuine validated destina
   assert.ok(page.includes('Apple App Store'));
   assert.ok(page.includes('Google Play'));
   assert.ok(page.includes('SHA-256'));
+  assert.ok(page.includes('AppPromoShowcase'));
+  assert.ok(page.includes('Microsoft Store'));
+  assert.ok(page.includes('windowsHref ?'));
+  assert.ok(page.includes('id="iphone-app-title"'));
+  assert.ok(page.includes('id="android-app-title"'));
+  const art=read('src/components/features/AppPromoShowcase.tsx');
+  assert.ok(art.includes('sm:grid-cols-3'));
+  assert.ok(art.includes('Microsoft Store'));
+  assert.ok(art.includes('/download-app#windows'));
   assert.ok(!page.includes('https://play.google.com/store/search'),'no fake install links');
   assert.ok(page.includes('href="/search"'),'browser fall-back remains');
 });
