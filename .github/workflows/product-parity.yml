@@ -53,6 +53,8 @@ jobs:
         run: node --test scripts/test-desktop-dealer-auth-loading.test.mjs
       - name: Verify login profile recovery cannot get trapped on a spinner
         run: node --test scripts/test-login-profile-recovery.test.mjs
+      - name: Verify seller and buyer website damage evidence contract
+        run: node --test scripts/test-web-damage-release.test.mjs
       - name: Auction shortlist web regressions
         run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
