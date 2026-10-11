@@ -13,7 +13,7 @@ export default function DashboardPage() {
         if (loading) return
 
         if (!user) {
-            router.push('/auth/login')
+            router.replace('/auth/login')
             return
         }
 
@@ -21,28 +21,27 @@ export default function DashboardPage() {
         // compatibility with existing marketplace rules. Both are now surfaced
         // to the customer as one Partner Account, where business capabilities
         // are additive rather than mutually-exclusive account types.
-        const role = (
-            profile?.role ||
-            (user as any)?.user_metadata?.role ||
-            'BUYER'
-        ).toUpperCase()
+        // Route by the backend profile only: user_metadata can be stale
+        // or self-chosen and must never decide ADMIN access.
+        if (!profile) return
+        const role = String(profile.role || "BUYER").toUpperCase()
 
-        if (role === 'BUYER' || role === 'SELLER') {
-            router.push('/dashboard/user')
+        if (role === 'ADMIN') {
+            router.replace('/dashboard/admin')
+        } else if (role === 'BUYER' || role === 'SELLER') {
+            router.replace('/dashboard/user')
         } else if (role === 'DEALER') {
             // Verified motor-trade users land in the Dealer Command Centre.
             // Partner services remain one tap away from that dashboard.
-            router.push('/dashboard/dealer')
+            router.replace('/dashboard/dealer')
         } else if (role === 'CONTRACTOR') {
-            router.push('/dashboard/partner')
+            router.replace('/dashboard/partner')
         } else if (role === 'FINANCE_PARTNER') {
-            router.push('/dashboard/finance')
+            router.replace('/dashboard/finance')
         } else if (role === 'INSURANCE_PARTNER') {
-            router.push('/dashboard/insurance')
-        } else if (role === 'ADMIN') {
-            router.push('/dashboard/admin')
+            router.replace('/dashboard/insurance')
         } else {
-            router.push('/dashboard/user')
+            router.replace('/dashboard/user')
         }
     }, [user, profile, loading, router])
 
