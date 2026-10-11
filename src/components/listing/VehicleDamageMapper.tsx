@@ -213,6 +213,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   }
 
   function removeRecord(id: string) {
+    if (uploadInFlightRef.current) return
     const updated = records.filter(r => r.id !== id)
     setRecords(updated)
     onComplete(updated)
@@ -373,14 +374,16 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
               </button>
             </div>
             {uploadError && <p role="alert" className="text-xs text-red-500">
-              {uploadError} Your description is still here. Select a photo again to retry.
+              {uploadError} Your damage details remain in this editor. Select the photo again to retry.
+              <button type="button" onClick={() => { setUploadError(null); setPendingPhoto(undefined) }}
+                className="ml-2 underline">Continue without photo</button>
             </p>
             {pendingPhoto ? (
               <div className="relative inline-block">
                 <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
                 <button
                   type="button"
-                  onClick={() => setPendingPhoto(undefined)}
+                  onClick={() => { setPendingPhoto(undefined); setUploadError(null) }}
                   className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
                 >
                   <X size={10} />
