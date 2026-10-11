@@ -143,12 +143,16 @@ export class DamageAnalysisService {
           }
           let photoUrl: URL;
           try { photoUrl = new URL(d.imageUrl); } catch { throw new BadRequestException('Invalid damage evidence URL.'); }
-          const ownerPrefix = listing.sellerId
-            ? '/storage/v1/object/public/listings/' + listing.sellerId + '/'
-            : '';
+          // Seller may upload under their own account. An ACTIVE delegated
+          // dealer agent may also upload into their own authenticated folder,
+          // but never another user's unassigned folder.
+          const permittedUploadOwners = [listing.sellerId, ...(authorisedStaff ? [actor.id] : [])]
+            .filter((id): id is string => !!id);
+          const validOwnerPrefix = permittedUploadOwners.some(ownerId =>
+            photoUrl.pathname.startsWith('/storage/v1/object/public/listings/' + ownerId + '/'));
           const validNewUpload = photoUrl.protocol === 'https:'
             && !!storageOrigin && photoUrl.origin === storageOrigin
-            && !!ownerPrefix && photoUrl.pathname.startsWith(ownerPrefix)
+            && validOwnerPrefix
             && /^\/storage\/v1\/object\/public\/listings\/[^/]+\/(damage|exterior|vehicle|interior)\//.test(photoUrl.pathname)
             && !photoUrl.search && !photoUrl.hash;
           const validExistingUrl = priorPhotoUrls.has(d.imageUrl);
