@@ -174,6 +174,8 @@ export const GlobalAIChatBot: React.FC = () => {
   const { isOpen: isDrawerOpen } = useDrawer();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUserId = useAuthStore((s) => s.user?.id || '');
+  const previewRole = useAuthStore((s) => s.role);
+  const accountRole = useAuthStore((s) => s.accountRole);
   const aiConsentKey = authUserId ? `mazium_ai_consent_v1:${authUserId}` : '';
 
   // Track the keyboard directly instead of wrapping the panel in a
@@ -216,6 +218,16 @@ export const GlobalAIChatBot: React.FC = () => {
   }, []);
 
   const [isOpen, setIsOpen] = useState(false);
+  // AI filter cards defer navigation until the chat Modal has dismissed.
+  // Cancel pending navigation when Menu opens, the role changes, a different
+  // user logs in, or this shared component unmounts.
+  const pendingChatNavigation = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (pendingChatNavigation.current) clearTimeout(pendingChatNavigation.current);
+      pendingChatNavigation.current = null;
+    };
+  }, [authUserId, previewRole, accountRole, isDrawerOpen]);
   const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
   const isKeyboardVisible = keyboardHeight > 0;
   // The shared Menu, Settings and sensitive flows take priority over AI.
@@ -382,7 +394,24 @@ export const GlobalAIChatBot: React.FC = () => {
   const navigateFromChat = (nav?: 'Search' | 'Live' | 'SellCarFlow', navParams?: Record<string, any>) => {
     if (!nav) return;
     setIsOpen(false);
-    setTimeout(() => {
+    if (pendingChatNavigation.current) clearTimeout(pendingChatNavigation.current);
+    const sourceUserId = authUserId;
+    const sourcePreviewRole = previewRole;
+    const sourceAccountRole = accountRole;
+    const sourceRoute = navigationRef.isReady() ? navigationRef.getCurrentRoute()?.name : null;
+    pendingChatNavigation.current = setTimeout(() => {
+      pendingChatNavigation.current = null;
+      const currentAuth = useAuthStore.getState();
+      if (!currentAuth.isAuthenticated
+        || currentAuth.user?.id !== sourceUserId
+        || currentAuth.role !== sourcePreviewRole
+        || currentAuth.accountRole !== sourceAccountRole
+        || !navigationRef.isReady()) return;
+      // Never reopen an AI destination above Account Settings, a protected
+      // payment/verification form, or an unrelated route reached during close.
+      const currentRoute = navigationRef.getCurrentRoute()?.name;
+      if (MAZIUM_PROTECTED_ROUTES.has(currentRoute ?? '')
+        || currentRoute !== sourceRoute) return;
       try {
         if (nav === 'SellCarFlow') {
           (navigationRef as any).navigate('Main', { screen: 'SellCarFlow' });
