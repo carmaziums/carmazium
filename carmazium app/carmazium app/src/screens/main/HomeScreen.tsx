@@ -34,6 +34,17 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
 
+// Avoid titles like "NISSAN nissan qashqai" when DVLA or a valuation source
+// includes the manufacturer inside the model field. Do not change stored data.
+const homeVehicleTitle = (make: unknown, model: unknown): string => {
+  const brand = String(make ?? '').trim();
+  const rawModel = String(model ?? '').trim();
+  const name = brand && rawModel.toLowerCase().startsWith(brand.toLowerCase() + ' ')
+    ? rawModel.slice(brand.length).trim()
+    : rawModel;
+  return [brand, name].filter(Boolean).join(' ');
+};
+
 // ─── Countdown hook ───────────────────────────────────────────────────────────
 
 function useCountdown(targetIso: string) {
@@ -101,7 +112,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -158,7 +169,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           {l?.year}{l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{l?.make ?? ''} {l?.model ?? ''}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -236,7 +247,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{listing.make} {listing.model}</Text>
+          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(listing.make, listing.model)}</Text>
           <GradeChip grade={listing.exteriorGrade} />
         </View>
         <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
@@ -525,7 +536,12 @@ export const HomeScreen: React.FC = () => {
 
   // Sliced once here rather than inside the JSX — a fresh array literal in the
   // render body would give FlatList a new `data` reference every render.
-  const latestEight = useMemo(() => latestListings.slice(0, 8), [latestListings]);
+  // Feature rail is separate: don't immediately show the same Audi/MINI in
+  // Latest and Featured as the owner's QA screenshot showed.
+  const latestEight = useMemo(() => {
+    const featuredIds = new Set(featuredListings.map(listing => listing.id));
+    return latestListings.filter(listing => !featuredIds.has(listing.id)).slice(0, 8);
+  }, [latestListings, featuredListings]);
 
   const recentGrid = latestListings.slice(4, 8);
 
