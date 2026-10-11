@@ -1694,6 +1694,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 await ensureAuctionScheduled(editId)
@@ -1740,6 +1741,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 localStorage.removeItem(draftKeys.draft)
