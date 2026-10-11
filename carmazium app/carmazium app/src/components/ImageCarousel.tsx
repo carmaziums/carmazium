@@ -25,6 +25,8 @@ interface ImageCarouselProps {
   /** Max images to page through — web parity caps this at 8 (4 interior + 4 exterior). */
   maxImages?: number;
   showIndicator?: boolean;
+  /** Insets the indicator above price/auction overlays without affecting paging. */
+  indicatorBottom?: number;
 }
 
 // Native FlatList paging carousel — deliberately not a JS pointer-drag
@@ -39,6 +41,7 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
   onPress,
   maxImages = 8,
   showIndicator = true,
+  indicatorBottom = 8,
 }) => {
   const data = images.slice(0, maxImages);
   const [index, setIndex] = useState(0);
@@ -106,13 +109,13 @@ export const ImageCarousel: React.FC<ImageCarouselProps> = React.memo(({
       />
       {showIndicator && (
         data.length <= 5 ? (
-          <View style={styles.dotsRow} pointerEvents="none">
+          <View style={[styles.dotsRow, { bottom: indicatorBottom }]} pointerEvents="none">
             {data.map((_, i) => (
               <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
             ))}
           </View>
         ) : (
-          <View style={styles.counterBadge} pointerEvents="none">
+          <View style={[styles.counterBadge, { bottom: indicatorBottom }]} pointerEvents="none">
             <Text style={styles.counterText}>{index + 1}/{data.length}</Text>
           </View>
         )
