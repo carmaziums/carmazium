@@ -12,7 +12,14 @@ function redirectToLogin(reason?: 'session-expired') {
     
     // Prevent redirect loops if we are already on an auth page
     const path = window.location.pathname;
-    if (path.includes('/auth/login') || path.includes('/auth/register') || path.includes('/auth/reset-password')) {
+    if (
+        path.includes('/auth/login') ||
+        path.includes('/auth/signup') ||
+        path.includes('/auth/register') ||
+        path.includes('/auth/forgot-password') ||
+        path.includes('/auth/reset-password') ||
+        path.includes('/auth/callback')
+    ) {
         return;
     }
 
@@ -140,7 +147,13 @@ export async function apiClient<T>(
         endpoint.startsWith('/admin/')
         && !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
-    if (response.status === 401 && isAdminMutation) {
+    // Plain reads are safe to replay, so they get the same one-shot refresh: an
+    // access token that expired a moment ago should not bounce a signed-in user
+    // to Login. Auth endpoints are excluded - they manage the session themselves.
+    const isIdempotentRead =
+        ['GET', 'HEAD'].includes(method) && !endpoint.startsWith('/auth/');
+
+    if (response.status === 401 && (isAdminMutation || isIdempotentRead)) {
         const freshToken = await refreshAccessToken();
         if (freshToken) {
             const retryController = new AbortController();
@@ -196,6 +209,13 @@ export async function apiClient<T>(
             }
             redirectToLogin('session-expired');
             throw new Error('AUTH_REDIRECT');
+        }
+
+        if (endpoint === '/auth/logout') {
+            // Sign-out is best-effort. A 401 here means the session is already
+            // gone, which is the goal; redirecting would abort the Supabase
+            // sign-out that follows in AuthContext.signOut().
+            throw new Error(`Logout failed (HTTP ${response.status})`);
         }
 
         if (response.status === 401 && endpoint === '/auth/supabase-session') {
