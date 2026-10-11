@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions, RefreshControl,
-  TextInput, ActivityIndicator, FlatList, Alert,
+  TextInput, ActivityIndicator, FlatList, Alert, useWindowDimensions,
 } from 'react-native';
 import type { ListRenderItem } from 'react-native';
 import { Image } from 'expo-image';
@@ -68,6 +68,7 @@ function useCountdown(targetIso: string) {
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const { width: windowWidth } = useWindowDimensions();
   const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
@@ -77,7 +78,8 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
   const firstOfferFloor = getAuctionFirstOfferFloor(startingBid, Number(auction.reservePrice ?? 0));
 
   return (
-    <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity style={[s.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
+      onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
           ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
@@ -134,13 +136,15 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const { width: windowWidth } = useWindowDimensions();
   const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
   const images: string[] = l?.images ?? [];
   const startingBid = Number(auction.startingBid ?? 0);
 
   return (
-    <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity style={[s.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
+      onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
           ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
@@ -201,6 +205,7 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void }>(({
   listing, onPress
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
   // The card owns its own saved state rather than receiving `saved`/`onToggle`
   // from HomeScreen. Passing it down meant HomeScreen had to subscribe to the
   // watchlist store, so saving any one car re-rendered the whole screen and
@@ -220,7 +225,9 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
 
   return (
     <>
-    <AnimatedTouchable entering={FadeIn.duration(220)} style={s.listingCard} onPress={() => onPress(listing.id)} activeOpacity={0.9}>
+    <AnimatedTouchable entering={FadeIn.duration(220)}
+      style={[s.listingCard, { width: Math.max(220, Math.min(284, windowWidth - 48)) }]}
+      onPress={() => onPress(listing.id)} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {listing.images?.length
           ? <TouchableOpacity onPress={() => openLightbox(0)} activeOpacity={0.9}
