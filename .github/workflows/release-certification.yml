@@ -36,6 +36,7 @@ on:
       - 'scripts/test-native-theme-discovery-block5.test.mjs'
       - 'scripts/test-native-theme-sell-detail-offers-block6.test.mjs'
       - 'scripts/test-native-theme-dealer-workspace-block7.test.mjs'
+      - 'scripts/test-native-theme-messaging-settings-block8.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
@@ -239,6 +240,8 @@ jobs:
         run: node --test scripts/test-native-theme-sell-detail-offers-block6.test.mjs
       - name: Check dealer CRM, inventory, team, analytics and account theme parity
         run: node --test scripts/test-native-theme-dealer-workspace-block7.test.mjs
+      - name: Verify MaziuM, messaging safety, account and notification theme behaviour
+        run: node --test scripts/test-native-theme-messaging-settings-block8.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
         run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Audit Block 3 dealer Home website KPIs and reporting range
