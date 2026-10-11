@@ -140,8 +140,8 @@ function VehicleModel({ url, onSurfaceTap, onBounds }: {
     group.updateMatrixWorld(true)
     const world = new THREE.Box3().setFromObject(group)
     const min = world.min
-    const size = world.getSize(new THREE.Vector3())
-    onBounds?.({ min: [min.x, min.y, min.z], size: [size.x, size.y, size.z] })
+    const worldSize = world.getSize(new THREE.Vector3())
+    onBounds?.({ min: [min.x, min.y, min.z], size: [worldSize.x, worldSize.y, worldSize.z] })
   }, [scene, onBounds])
 
   const handleMeshTap = (event: ThreeEvent<MouseEvent>) => {
