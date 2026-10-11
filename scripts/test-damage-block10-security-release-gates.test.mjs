@@ -13,7 +13,8 @@ const qaWorkflow = read('.github/workflows/carmazium-android-offline-qa-apk.yml'
 test('damage mutation takes validated session principal and performs DB authorization in transaction', () => {
   assert.match(controller, /@UseGuards\(SessionAuthGuard\)/);
   assert.match(controller, /@CurrentUser\(\) user: \{ id: string \}/);
-  assert.match(controller, /saveDamageRecords\(listingId, body\?\.detections, user\?\.id\)/);
+  assert.match(controller, /const principal = request\.session\?\.userId \?\? user\?\.id/);
+  assert.match(controller, /saveDamageRecords\(listingId, body\?\.detections, principal\)/);
   assert.match(service, /async saveDamageRecords\(listingId: string, detections: DamageDetection\[\], callerId: string\)/);
   assert.match(service, /return this\.prisma\.\$transaction\(async tx => \{/);
   assert.match(service, /sellerId === actor\.id/);
@@ -42,7 +43,7 @@ test('damage records validate UUID, geometry and seller-scoped HTTPS photo befor
 
 test('unpublished listing damage is never publicly readable, while active buyer view works', () => {
   assert.match(controller, /@UseGuards\(OptionalSessionAuthGuard\)/);
-  assert.match(controller, /getDamageRecords\(listingId, user\?\.id\)/);
+  assert.match(controller, /getDamageRecords\(listingId, principal\)/);
   assert.match(service, /const visible = \['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'\]/);
   assert.match(service, /if \(!callerId\) throw new NotFoundException/);
   assert.match(service, /if \(!allowed\) throw new NotFoundException/);
