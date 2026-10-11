@@ -3,7 +3,8 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/Button"
-import { Mail, Phone, MapPin, Smartphone, ArrowRight } from "lucide-react"
+import { Mail, Phone, MapPin } from "lucide-react"
+import { FooterAppPromo } from "./FooterAppPromo"
 import { useConsent } from "@/context/ConsentContext"
 
 const footerLinkClass = "rounded-sm text-sm text-slate-300 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
@@ -14,6 +15,7 @@ export function Footer() {
     return (
         <footer className="mt-auto border-t border-white/10 bg-gradient-to-t from-[#172033] to-[#24324f] text-white">
             <div className="container mx-auto px-5 py-12 lg:py-14">
+                <FooterAppPromo />
                 <div className="grid grid-cols-1 gap-9 md:grid-cols-2 lg:grid-cols-4 lg:gap-10">
                     <div>
                         <Link
@@ -32,13 +34,6 @@ export function Footer() {
                         <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">
                             CarMazium brings vehicle buying, selling and automotive services together in one UK marketplace with clear, purpose-built workflows.
                         </p>
-                        <Link href="/download-app"
-                            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-400/35 bg-red-500/15 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-                            aria-label="Get the CarMazium app for iPhone or Android">
-                            <Smartphone size={17} aria-hidden="true" />
-                            CarMazium for iPhone &amp; Android
-                            <ArrowRight size={15} aria-hidden="true" />
-                        </Link>
                     </div>
 
                     <div>
