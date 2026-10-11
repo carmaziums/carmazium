@@ -23,6 +23,7 @@ on:
       - 'scripts/test-native-damage-pin-visibility-block7.test.mjs'
       - 'scripts/test-damage-web-buyer-parity-block8.test.mjs'
       - 'scripts/test-damage-accessibility-gesture-block9.test.mjs'
+      - 'scripts/test-damage-block10-security-release-gates.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -237,6 +238,8 @@ jobs:
         run: node --test scripts/test-damage-web-buyer-parity-block8.test.mjs
       - name: Block 9 — screen-reader navigation, dense pins and small-screen gesture safety
         run: node --test scripts/test-damage-accessibility-gesture-block9.test.mjs
+      - name: Block 10 — validate damage ownership and private Android release gates
+        run: node --test scripts/test-damage-block10-security-release-gates.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
         run: node --test scripts/test-native-app-audit-block8.test.mjs
       - name: Audit Android emulator boot and QA artifact provenance
