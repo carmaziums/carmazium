@@ -1222,8 +1222,8 @@ export const ChatScreen: React.FC = () => {
             style={themed.attachBtn}
             icon={
               uploadingPhoto
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Ionicons name="image-outline" size={18} color={Colors.white} />
+                ? <ActivityIndicator size="small" color={palette.accent} />
+                : <Ionicons name="image-outline" size={18} color={palette.textPrimary} />
             }
             onPress={handlePickPhoto}
             disabled={uploadingPhoto}
@@ -1259,7 +1259,7 @@ export const ChatScreen: React.FC = () => {
               </View>
               <IconButton
                 style={themed.reportModalClose}
-                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                icon={<Ionicons name="close" size={20} color={palette.textPrimary} />}
                 onPress={closeReport}
                 disabled={reporting}
                 accessibilityLabel="Close report"
