@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sanitizeDamageDraft, type DraftDamageRecord } from './damageDraft';
 
 export interface SellWizardDraft {
   vrm: string;
@@ -18,6 +19,8 @@ export interface SellWizardDraft {
 
   // Already-uploaded public URLs only; never temporary local file:// URIs.
   exteriorImages: string[]; interiorImages: string[]; damageImages: string[];
+  /** Only durable media URLs and stable record IDs; no picker/local URIs. */
+  damageRecords: DraftDamageRecord[];
   auctionStartMode: 'NOW' | 'SCHEDULED'; auctionStartDate: string;
   reservePrice: string; startingBid: string; minIncrement: string;
   buyItNowPrice: string;
@@ -38,6 +41,7 @@ export const EMPTY_SELL_DRAFT = {
   isDepartedSale: false, departedRelationship: '',
   departedRelSelect: '', departedRelOther: '', declAcknowledged: false,
   exteriorImages: [] as string[], interiorImages: [] as string[], damageImages: [] as string[],
+  damageRecords: [] as DraftDamageRecord[],
   auctionStartMode: 'NOW' as const, auctionStartDate: '',
   reservePrice: '', startingBid: '', minIncrement: '100', buyItNowPrice: '',
   lastStep: 1,
@@ -52,7 +56,12 @@ export const useSellWizardStore = create<SellWizardDraft>()(
     (set) => ({
       ...EMPTY_SELL_DRAFT,
       clearDraft: () => set({ ...EMPTY_SELL_DRAFT }),
-      updateDraft: (partial) => set((state) => ({ ...state, ...partial })),
+      updateDraft: (partial) => set((state) => ({
+        ...state,
+        ...partial,
+        ...(partial.damageRecords !== undefined
+          ? { damageRecords: sanitizeDamageDraft(partial.damageRecords) } : {}),
+      })),
     }),
     {
       // No draft is hydrated before authentication has identified its owner.
@@ -77,6 +86,7 @@ export const useSellWizardStore = create<SellWizardDraft>()(
         declAcknowledged: state.declAcknowledged,
         exteriorImages: state.exteriorImages,
         interiorImages: state.interiorImages, damageImages: state.damageImages,
+        damageRecords: sanitizeDamageDraft(state.damageRecords),
         auctionStartMode: state.auctionStartMode, auctionStartDate: state.auctionStartDate,
         reservePrice: state.reservePrice, startingBid: state.startingBid,
         minIncrement: state.minIncrement, buyItNowPrice: state.buyItNowPrice,
