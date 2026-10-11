@@ -21,6 +21,9 @@ describe('computeExteriorGrade', () => {
 });
 
 describe('damage pin identity and coordinates — Block 5', () => {
+  const previousSupabaseUrl = process.env.SUPABASE_URL;
+  afterAll(() => { if (previousSupabaseUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousSupabaseUrl; });
   const firstId = 'ad8203b5-4b1c-4e33-89ad-2aaf77010c41';
   const secondId = 'ad8203b5-4b1c-4e33-89ad-2aaf77010c42';
   const base: DamageDetection = {
@@ -28,19 +31,31 @@ describe('damage pin identity and coordinates — Block 5', () => {
     type: 'SCRATCH - small scrape',
     size: 'MODERATE',
     coords: { x: 15, y: 50, view: 'SIDE' },
-    imageUrl: 'https://example.test/photo-one.jpg',
+    imageUrl: 'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-one.jpg',
   };
 
   const create = () => {
+    process.env.SUPABASE_URL = 'https://example.test';
     const damageRecord = {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       createMany: jest.fn().mockResolvedValue({ count: 2 }),
-      findMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
     };
-    const listing = { update: jest.fn().mockResolvedValue({ id: 'car-one', exteriorGrade: 2 }) };
+    const listing = {
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'car-one', sellerId: 'seller-id', images: [], status: 'DRAFT',
+      }),
+      update: jest.fn().mockResolvedValue({ id: 'car-one', exteriorGrade: 2 }),
+    };
+    const user = { findUnique: jest.fn().mockResolvedValue({ id: 'seller-id', role: 'SELLER', deletedAt: null }) };
+    const dealerProfile = { findUnique: jest.fn().mockResolvedValue(null) };
+    const dealerStaff = { findFirst: jest.fn().mockResolvedValue(null) };
     const prisma = {
-      damageRecord, listing,
-      $transaction: jest.fn(async (ops: Array<Promise<unknown>>) => Promise.all(ops)),
+      damageRecord, listing, user, dealerProfile, dealerStaff,
+      $transaction: jest.fn(async (callback: (tx: any) => Promise<unknown>) => callback({
+        damageRecord, listing, user, dealerProfile, dealerStaff,
+      })),
     };
     return { service: new DamageAnalysisService(prisma as any), prisma };
   };
@@ -49,10 +64,10 @@ describe('damage pin identity and coordinates — Block 5', () => {
     const { service, prisma } = create();
     const detections: DamageDetection[] = [
       { ...base, id: firstId, coords: { ...base.coords, surfacePoint: { fx: 0.8, fy: 0.42, fz: 0.61 } } },
-      { ...base, id: secondId, type: 'DENT - lower edge', imageUrl: 'https://example.test/photo-two.jpg',
+      { ...base, id: secondId, type: 'DENT - lower edge', imageUrl: 'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-two.jpg',
         coords: { ...base.coords, surfacePoint: { fx: 0.9, fy: 0.31, fz: 0.33 } } },
     ];
-    await service.saveDamageRecords('car-one', detections);
+    await service.saveDamageRecords('car-one', detections, 'seller-id');
     expect(prisma.damageRecord.deleteMany).toHaveBeenCalledWith({ where: { listingId: 'car-one' } });
     const saved = prisma.damageRecord.createMany.mock.calls[0][0].data;
     expect(saved).toHaveLength(2);
@@ -68,7 +83,7 @@ describe('damage pin identity and coordinates — Block 5', () => {
 
   it('preserves legacy submissions without IDs or 3D surface positions', async () => {
     const { service, prisma } = create();
-    await service.saveDamageRecords('car-one', [{ ...base }]);
+    await service.saveDamageRecords('car-one', [{ ...base }], 'seller-id');
     const saved = prisma.damageRecord.createMany.mock.calls[0][0].data[0];
     expect(saved).not.toHaveProperty('id');
     expect(saved.coords).toEqual(base.coords);
@@ -82,7 +97,7 @@ describe('damage pin identity and coordinates — Block 5', () => {
     ];
     for (const records of bad) {
       const { service, prisma } = create();
-      await expect(service.saveDamageRecords('car-one', records)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.saveDamageRecords('car-one', records, 'seller-id')).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.damageRecord.deleteMany).not.toHaveBeenCalled();
     }
   });
