@@ -357,7 +357,7 @@ function useProviderVerificationScreenPalette() {
     fileButton: [styles.fileButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
     fileButtonText: [styles.fileButtonText, { color: palette.textPrimary }],
     input: [styles.input, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
-    empty: [styles.empty, { color: palette.textMuted }],
+    empty: [styles.empty, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
     actionButton: [styles.actionButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
     actionText: [styles.actionText, { color: palette.textPrimary }],
   }), [palette]);
