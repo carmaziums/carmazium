@@ -146,12 +146,19 @@ test('website navigation, homepage, footer and sitemap all lead to download land
   const header=read('src/components/layout/Header.tsx');
   const footer=read('src/components/layout/Footer.tsx');
   const home=read('src/app/HomeClient.tsx');
+  const homePromo=read('src/components/features/HomeAppPromoCompact.tsx');
   const sitemap=read('src/app/sitemap.ts');
-  for(const source of [header,footer,home,sitemap]){
+  for(const source of [header,footer,homePromo,sitemap]){
     assert.ok(source.includes('/download-app'),'missing app install discovery link');
   }
   assert.ok(header.includes('Get the App'));
-  assert.ok(home.includes('Get the CarMazium App'));
+  assert.ok(home.includes('<HomeAppPromoCompact />'));
+  assert.ok(homePromo.includes('Get the'));
+  assert.ok(homePromo.includes('CarMazium'));
+  assert.ok(homePromo.includes('Microsoft Store'));
+  assert.ok(homePromo.includes('Coming soon'));
+  assert.ok(homePromo.includes('/download-app#iphone'));
+  assert.ok(homePromo.includes('/download-app#android'));
   assert.ok(footer.includes('<FooterAppPromo />'));
   assert.ok(!footer.includes('CarMazium for iPhone &amp; Android'), 'hidden CTA removed');
   const promo=read('src/components/layout/FooterAppPromo.tsx');
