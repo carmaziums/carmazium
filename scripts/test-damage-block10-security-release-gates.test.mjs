@@ -77,3 +77,17 @@ test('private Android QA workflow is isolated from live install, release channel
   assert.match(qaWorkflow, /retention-days: 7/);
   assert.doesNotMatch(qaWorkflow, /eas-cli.*submit/);
 });
+
+test('web and native sellers cannot publish or pay after failed damage evidence save', () => {
+  const web = read('src/components/listing/ListingWizard.tsx');
+  const native = read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx');
+  assert.match(native, /const damageSaved = newListingId \? await saveDamageRecords\(newListingId\) : true;/);
+  assert.match(native, /if \(!damageSaved\) \{[\s\S]*?setHpiDraftListingId\(newListingId\);[\s\S]*?return;/);
+  assert.ok(native.indexOf('if (!damageSaved) {') < native.indexOf('if (isAuction && newListingId) {'));
+  assert.match(native, /if \(!damageSaved\) \{[\s\S]*?Damage not saved[\s\S]*?return;/);
+  assert.match(web, /throw new Error\('Damage evidence was not saved\./);
+  assert.match(web, /throw new Error\('Damage details were not saved\./);
+  assert.match(web, /throw new Error\('The Retail listing was created but its damage details could not be saved\./);
+  const caughtAndRethrown = [...web.matchAll(/catch \(e\) \{[\s\S]{0,160}?console\.error\('Failed to save damage records/g)].length;
+  assert.ok(caughtAndRethrown >= 4);
+});
