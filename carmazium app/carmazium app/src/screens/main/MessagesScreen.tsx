@@ -163,7 +163,7 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
   );
 });
 
-const renderSkeletonRows = () => (
+const renderSkeletonRows = (themed: ReturnType<typeof useMessagesThemeStyles>) => (
   <View style={themed.skeletonList}>
     {Array.from({ length: 5 }).map((_, i) => (
       <View key={`sk-${i}`} style={[themed.threadCard, styles.threadCardSpacing, styles.skeletonRow]}>
@@ -254,7 +254,7 @@ export const MessagesScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
-      {isLoading && rooms.length === 0 ? renderSkeletonRows() : null}
+      {isLoading && rooms.length === 0 ? renderSkeletonRows(themed) : null}
     <FlatList
         data={isLoading && rooms.length === 0 ? [] : filteredRooms}
         keyExtractor={(room) => room.id}
