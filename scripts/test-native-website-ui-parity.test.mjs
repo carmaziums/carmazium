@@ -604,3 +604,47 @@ test('post-build QA: valuation and TradeXchange clear the tab bar and gesture in
   assert.doesNotMatch(valuation, /paddingBottom:110/);
   assert.doesNotMatch(services, /<View style=\{\{ height: 60 \}\} \/>/);
 });
+
+
+test('owner QA: retail quick filters remain legible and scroll with results on short phones', () => {
+  const search = app('screens/main/SearchScreen.tsx');
+  assert.equal((search.match(/<FlatList\b/g) ?? []).length, 1,
+    'one virtualised vertical results list must own all search controls');
+  const navIndex = search.indexOf('<WebsiteTopBar />');
+  const listIndex = search.indexOf('<FlatList', navIndex);
+  const headerIndex = search.indexOf('ListHeaderComponent={', listIndex);
+  const quickIndex = search.indexOf('QUICK FILTERS', headerIndex);
+  const sortIndex = search.indexOf('{/* ── Sort + Filter row ── */}', quickIndex);
+  const emptyIndex = search.indexOf('ListEmptyComponent={', sortIndex);
+  assert.ok(navIndex >= 0 && listIndex > navIndex && headerIndex > listIndex
+    && quickIndex > headerIndex && sortIndex > quickIndex && emptyIndex > sortIndex,
+    'quick-filter bar and Sort/Filters stay together inside the scrollable list header');
+  assert.match(search, /resultsList: \{ flex: 1 \}/);
+  assert.match(search, /searchHeader: \{ marginHorizontal: -24, paddingBottom: 12 \}/);
+  assert.match(search, /quickScroll: \{ height: 68, minHeight: 68, flexShrink: 0, flexGrow: 0/);
+  assert.match(search, /quickRow: \{ paddingHorizontal: 24, paddingVertical: 8/);
+  assert.match(search, /quickChip: \{ minHeight: 44, justifyContent: 'center'/);
+  assert.match(search, /maxFontSizeMultiplier=\{2\}/);
+  assert.match(search, /Swipe to see more →/);
+  assert.match(search, /showsHorizontalScrollIndicator\s+style=\{s\.quickScroll\}/);
+  assert.match(search, /accessibilityState=\{\{ selected: quickFilter === f\.id \}\}/);
+});
+
+test('owner QA: all retail quick filter options and sort/filter functionality survive layout correction', () => {
+  const search = app('screens/main/SearchScreen.tsx');
+  const filters = search.slice(search.indexOf('const QUICK_FILTERS:'), search.indexOf('// The ten shown before'));
+  for (const label of ['All', 'Under £15k', 'Under £30k', 'Electric', 'Hybrid',
+    'SUVs', 'Sedan', '2020+', 'Manual']) {
+    assert.ok(filters.includes("label: '" + label + "'"), 'missing quick filter '+label);
+  }
+  assert.equal((filters.match(/params: \{/g) ?? []).length, 9);
+  assert.match(search, /onPress=\{\(\) => applyQuickFilter\(f\.id\)\}/);
+  assert.match(search, /<Text style=\{s\.sortBtnText\}>Sort<\/Text>/);
+  assert.match(search, /onPress=\{\(\) => setFilterOpen\(true\)\}/);
+  assert.match(search, /<BottomSheet visible=\{showSortMenu\}/);
+  assert.match(search, /<BottomSheet visible=\{filterOpen\}/);
+  assert.match(search, /renderItem=\{renderListingItem\}/);
+  assert.match(search, /onEndReached=\{\(\) => \{ if \(!loading && listings\.length > 0 && hasMore && !loadingMore\) fetch\(false\); \}\}/);
+  assert.match(search, /ListEmptyComponent=\{\s*loading \? \(/);
+  assert.match(search, /onRefresh=\{onRefresh\}/);
+});

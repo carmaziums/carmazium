@@ -612,6 +612,21 @@ export const SearchScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
+      {/* One virtualised vertical list for the search controls AND results.
+          Previously the fixed controls compressed the horizontal Quick Filters
+          viewport on short Android screens, cutting off pill text. The page
+          now scrolls as a whole and the rail retains its full cross-axis height.
+          The shared website navigation bar stays fixed above the list. */}
+      <FlatList
+        style={s.resultsList}
+        data={listings}
+        keyExtractor={item => item.id}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={s.searchHeader}>
       {/* Match website Search title; result counts belong beside sorting,
           not as a changing page title that jumps between 0 and a number. */}
       <View style={[s.header, { paddingTop: 12 }]}>
@@ -671,12 +686,18 @@ export const SearchScreen: React.FC = () => {
         </View>
       )}
 
-      {/* ── Quick filters ── */}
+      {/* Preserve all filters and expose sideways scrolling clearly. */}
+      <View style={s.quickHeader}>
+        <Text style={s.quickHeading} accessibilityRole="header">QUICK FILTERS</Text>
+        <Text style={s.quickHint}>Swipe to see more →</Text>
+      </View>
       <ScrollView
         horizontal
-        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator
         style={s.quickScroll}
         contentContainerStyle={s.quickRow}
+        accessibilityLabel="Quick car filters, scroll horizontally for more options"
       >
         {QUICK_FILTERS.map(f => (
           <TouchableOpacity
@@ -684,8 +705,11 @@ export const SearchScreen: React.FC = () => {
             style={[s.quickChip, quickFilter === f.id && s.quickChipActive]}
             onPress={() => applyQuickFilter(f.id)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={f.label + ' quick filter'}
+            accessibilityState={{ selected: quickFilter === f.id }}
           >
-            <Text style={[s.quickChipText, quickFilter === f.id && s.quickChipTextActive]}>
+            <Text style={[s.quickChipText, quickFilter === f.id && s.quickChipTextActive]} maxFontSizeMultiplier={2}>
               {f.label}
             </Text>
           </TouchableOpacity>
@@ -724,9 +748,10 @@ export const SearchScreen: React.FC = () => {
           <Text style={s.clearBelowText}>Clear {filterCount} {filterCount === 1 ? 'filter' : 'filters'}</Text>
         </TouchableOpacity>
       )}
-
-      {/* ── Results ── */}
-      {loading && listings.length === 0 ? (
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
         <View style={s.skeletonList}>
           {Array.from({ length: 4 }).map((_, i) => (
             <View key={`sk-${i}`} style={s.skeletonCard}>
@@ -739,11 +764,7 @@ export const SearchScreen: React.FC = () => {
             </View>
           ))}
         </View>
-      ) : listings.length === 0 ? (
-        // No-results is the most-hit dead end in the app and had no way out —
-        // the user had to work out for themselves that a filter was the cause.
-        // Deliberately NOT the accent treatment: this is informational, not an
-        // invitation, so the CTA stays quiet.
+          ) : (
         <EmptyState
           icon="search-outline"
           eyebrow="No results"
@@ -752,30 +773,25 @@ export const SearchScreen: React.FC = () => {
           ctaLabel="Clear filters"
           onCtaPress={resetFilters}
         />
-      ) : (
-        <FlatList
-          data={listings}
-          keyExtractor={item => item.id}
-          contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
-          }
-          renderItem={renderListingItem}
-          ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-          onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={s.loadMoreWrap}>
-                <ActivityIndicator size="small" color={Colors.accent} />
-              </View>
-            ) : hasMore ? null : listings.length > 10 ? (
-              <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
-            ) : null
-          }
-        />
-      )}
+          )
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
+        }
+        renderItem={renderListingItem}
+        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        onEndReached={() => { if (!loading && listings.length > 0 && hasMore && !loadingMore) fetch(false); }}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={s.loadMoreWrap}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+            </View>
+          ) : hasMore ? null : listings.length > 10 ? (
+            <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
+          ) : null
+        }
+      />
 
       {/* Sort choices live in a native sheet instead of a narrow overlay. */}
       <BottomSheet visible={showSortMenu} onClose={() => setShowSortMenu(false)} title="Sort cars" maxHeightPercent={65}>
@@ -1513,25 +1529,31 @@ const s = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, height: 52, gap: 10 },
   searchInput: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white },
 
-  // A horizontal ScrollView's cross-axis size is NOT auto-grown by its
-  // scrollable content the way a plain View would be — Yoga never measures
-  // back from contentContainerStyle into the outer scroll viewport for the
-  // cross axis, only the scroll (horizontal) axis reflows freely. Removing
-  // the height entirely (tried previously) doesn't let it size to content —
-  // confirmed on-device it collapses the viewport smaller than 48 ever was,
-  // clipping the pills even harder. So this needs an explicit height, just a
-  // generously large one: pill content is ~36-40px tall in the worst case
-  // (18px padding + up to ~20px line height at a large accessibility font
-  // scale + 2px border), so 64 leaves real headroom instead of the 48 that
-  // was already marginal at default scale.
-  quickScroll: { height: 64, marginBottom: 4 },
-  quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
-  quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
-  quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
+  // FlatList retains 24dp gutters for each vehicle card. The header must
+  // span the full viewport so its own 24dp margins aren't applied twice.
+  resultsList: { flex: 1 },
+  searchHeader: { marginHorizontal: -24, paddingBottom: 12 },
+  quickHeader: { paddingHorizontal: 24, marginTop: 6, marginBottom: 1,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  quickHeading: { fontFamily: FontFamily.bold, fontSize: FontSize.size10,
+    color: Colors.textSecondary, letterSpacing: 1.1 },
+  quickHint: { fontFamily: FontFamily.medium, fontSize: FontSize.xs,
+    color: Colors.textSecondary, flexShrink: 1, textAlign: 'right' },
+  // Unlike the old sibling of the results FlatList, this rail is inside its
+  // scrollable header: no vertical flex compression when device height shrinks.
+  // Keep an explicit viewport height for a horizontal RN ScrollView; font
+  // scaling up to 200% must not hide quick-filter labels.
+  quickScroll: { height: 68, minHeight: 68, flexShrink: 0, flexGrow: 0, marginBottom: 8 },
+  quickRow: { paddingHorizontal: 24, paddingVertical: 8, gap: 10, alignItems: 'center', flexDirection: 'row' },
+  quickChip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 16,
+    paddingVertical: 7, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  quickChipActive: { backgroundColor: Colors.accentDeep, borderColor: Colors.accentDeep },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12,
+    color: Colors.textPrimary },
   quickChipTextActive: { color: Colors.white },
 
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
+    sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
   resultsCount: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
   clearBelowRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 24, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 7, minHeight: 32 },
   clearBelowText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.accent },
