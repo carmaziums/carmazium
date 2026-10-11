@@ -9,6 +9,7 @@ import { Image } from 'expo-image';
 import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctionBuyingSections';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
@@ -57,6 +58,8 @@ const formatDate = (raw?: string | null): string => {
 // actions, especially seller funds confirmation and handover proof: copying
 // those state transitions into this overview would be unsafe.
 export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerBuyBidScreenPalette();
   const { loading: accessLoading, hasPermission } = useDealerAccess(true);
   const { fontScale } = useWindowDimensions();
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
@@ -125,41 +128,41 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   )).length;
 
   const renderCard = ({ item }: { item: OwnedAuction }) => (
-    <TouchableOpacity style={styles.auctionCard}
+    <TouchableOpacity style={themed.auctionCard}
       onPress={openManager} disabled={!canManageInventory}
       accessibilityRole={canManageInventory ? 'button' : undefined}
       accessibilityLabel={`${auctionTitle(item)}, ${statusName(item.status)}. ${canManageInventory ? 'Manage auction' : 'Read-only'}`}>
-      <View style={styles.rowTitle}>
-        <View style={styles.auctionThumb}>
+      <View style={themed.rowTitle}>
+        <View style={themed.auctionThumb}>
           {item.listing?.images?.[0] ? (
-            <Image source={{ uri: item.listing.images[0] }} style={styles.auctionImage}
+            <Image source={{ uri: item.listing.images[0] }} style={themed.auctionImage}
               contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : <Ionicons name="car-outline" size={24} color={Colors.accent} />}
         </View>
-        <View style={styles.rowCopy}>
-          <Text style={styles.vehicleTitle} numberOfLines={2}>{auctionTitle(item)}</Text>
-          <Text style={styles.auctionIdText}>{item.listing?.vrm || 'PRIVATE'}</Text>
+        <View style={themed.rowCopy}>
+          <Text style={themed.vehicleTitle} numberOfLines={2}>{auctionTitle(item)}</Text>
+          <Text style={themed.auctionIdText}>{item.listing?.vrm || 'PRIVATE'}</Text>
         </View>
-        <View style={[styles.statusPill,
+        <View style={[themed.statusPill,
           item.status === 'ACTIVE' && styles.statusPillLive]}>
-          <Text style={[styles.statusText, item.status === 'ACTIVE' && styles.statusTextLive]}>
+          <Text style={[themed.statusText, item.status === 'ACTIVE' && styles.statusTextLive]}>
             {statusName(item.status)}
           </Text>
         </View>
       </View>
-      <View style={styles.auctionMeta}>
-        <Text style={styles.metaText}>
+      <View style={themed.auctionMeta}>
+        <Text style={themed.metaText}>
           {item.status === 'SCHEDULED' ? 'Starts' : 'Ends'} {formatDate(item.status === 'SCHEDULED' ? item.startTime : item.endTime)}
         </Text>
         {item.status === 'ENDED' && !!item.winnerId && (
-          <Text style={styles.metaText}>
+          <Text style={themed.metaText}>
             {item.sellerBonusReleased ? 'Handover complete' : 'Check next handover step'}
           </Text>
         )}
       </View>
       {canManageInventory && (
-        <View style={styles.cardFooter}>
-          <Text style={styles.cardAction}>View auction management and results</Text>
+        <View style={themed.cardFooter}>
+          <Text style={themed.cardAction}>View auction management and results</Text>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
         </View>
       )}
@@ -167,40 +170,40 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={themed.screen}>
       <WebsiteTopBar />
-      <View style={styles.heading}>
-        <Text style={styles.pageTitle}>Auctions & Buying</Text>
-        <Text style={styles.subtitle}>Live auctions, bids and purchases</Text>
+      <View style={themed.heading}>
+        <Text style={themed.pageTitle}>Auctions & Buying</Text>
+        <Text style={themed.subtitle}>Live auctions, bids and purchases</Text>
         {canManageInventory && (
           <TouchableOpacity accessibilityRole="button"
             accessibilityLabel="Create Auction"
-            onPress={openCreate} style={styles.createButton}>
+            onPress={openCreate} style={themed.createButton}>
             <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
-            <Text style={styles.createText}>Create Auction</Text>
+            <Text style={themed.createText}>Create Auction</Text>
           </TouchableOpacity>
         )}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        style={[styles.navScroller, { maxHeight: getScrollableStageHeight(fontScale) + 4 }]} contentContainerStyle={styles.navContent}
+        style={[themed.navScroller, { maxHeight: getScrollableStageHeight(fontScale) + 4 }]} contentContainerStyle={themed.navContent}
         accessibilityLabel="Auction and buying navigation">
         {auctionLinks.filter(link => link.allowed).map(link => (
           <TouchableOpacity key={link.id} onPress={link.onPress}
             accessibilityRole="button" accessibilityLabel={link.label}
             accessibilityState={link.active === undefined ? undefined : { selected: link.active }}
-            style={[styles.navButton, { minHeight: Math.max(44, getScrollableStageHeight(fontScale) - 10) }, link.active && styles.navSelected]}>
+            style={[themed.navButton, { minHeight: Math.max(44, getScrollableStageHeight(fontScale) - 10) }, link.active && styles.navSelected]}>
             <Ionicons name={link.icon as any} size={17}
-              color={link.active ? Colors.white : Colors.textMuted} />
-            <Text style={[styles.navText, link.active && styles.navTextActive]}>
+              color={link.active ? Colors.white : palette.textMuted} />
+            <Text style={[themed.navText, link.active && styles.navTextActive]}>
               {link.label}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
       {section === 'live' ? (
-        <View style={styles.liveContainer}>
+        <View style={themed.liveContainer}>
           {!accessLoading && !canPlaceBid && (
-            <Text style={styles.permissionNotice}>
+            <Text style={themed.permissionNotice}>
               You can browse auctions. Placing bids requires dealer bidding permission.
             </Text>
           )}
@@ -213,42 +216,42 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
       ) : (
         <>
           {canManageInventory && needsHandover > 0 && !error && !loading && (
-            <TouchableOpacity style={styles.warning} onPress={openManager}
+            <TouchableOpacity style={themed.warning} onPress={openManager}
               accessibilityRole="button"
               accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
               <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
-              <Text style={styles.warningText}>
+              <Text style={themed.warningText}>
                 {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
                 Open My Auctions to review funds confirmation, inspection and handover.
               </Text>
             </TouchableOpacity>
           )}
           {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={themed.errorBox}>
+              <Text style={themed.errorText}>{error}</Text>
               <TouchableOpacity accessibilityRole="button" onPress={() => { void fetchOwned(true); }}>
-                <Text style={styles.retryText}>Retry</Text>
+                <Text style={themed.retryText}>Retry</Text>
               </TouchableOpacity>
             </View>
           )}
           {!loading && !error && (
-            <View style={styles.metrics}>
+            <View style={themed.metrics}>
               {[
                 { label: 'My Auctions', count: auctions.length },
                 { label: 'Live', count: active },
                 { label: 'Scheduled', count: scheduled },
                 { label: 'Ended', count: ended },
               ].map(value => (
-                <View key={value.label} style={styles.metric}>
-                  <Text style={styles.metricCount}>{value.count}</Text>
-                  <Text style={styles.metricLabel}>{value.label}</Text>
+                <View key={value.label} style={themed.metric}>
+                  <Text style={themed.metricCount}>{value.count}</Text>
+                  <Text style={themed.metricLabel}>{value.label}</Text>
                 </View>
               ))}
             </View>
           )}
           <FlatList
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
+            style={themed.list}
+            contentContainerStyle={themed.listContent}
             data={error && auctions.length === 0 ? [] : auctions}
             keyExtractor={a => a.id}
             renderItem={renderCard}
@@ -256,24 +259,24 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
               refreshing={refreshing} onRefresh={() => { void fetchOwned(true); }}
               tintColor={Colors.accent} />}
             ListHeaderComponent={
-              <View style={styles.sectionHeading}>
-                <Text style={styles.sectionTitle}>My Auctions</Text>
+              <View style={themed.sectionHeading}>
+                <Text style={themed.sectionTitle}>My Auctions</Text>
                 {canManageInventory && (
                   <TouchableOpacity accessibilityRole="button" onPress={openManager}>
-                    <Text style={styles.manageLink}>Manage Auctions</Text>
+                    <Text style={themed.manageLink}>Manage Auctions</Text>
                   </TouchableOpacity>
                 )}
               </View>
             }
             ListEmptyComponent={
-              loading ? <View style={styles.emptyState}>
+              loading ? <View style={themed.emptyState}>
                 <ActivityIndicator color={Colors.accent} />
-                <Text style={styles.emptyText}>Loading your auctions…</Text>
+                <Text style={themed.emptyText}>Loading your auctions…</Text>
               </View>
-              : error ? null : <View style={styles.emptyState}>
+              : error ? null : <View style={themed.emptyState}>
                 <Ionicons name="hammer-outline" size={26} color={Colors.textMuted} />
-                <Text style={styles.emptyText}>No auctions yet</Text>
-                <Text style={styles.emptyHint}>
+                <Text style={themed.emptyText}>No auctions yet</Text>
+                <Text style={themed.emptyHint}>
                   Your own auctions will appear here. Use Live Auctions to find vehicles to bid on.
                 </Text>
               </View>
@@ -355,3 +358,35 @@ const styles = StyleSheet.create({
   emptyHint: { color: Colors.textMuted, fontFamily: FontFamily.regular,
     fontSize: 12, lineHeight: 18, textAlign: 'center' },
 });
+
+function useDealerBuyBidScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    screen: [styles.screen, { backgroundColor: palette.bgBody }],
+    pageTitle: [styles.pageTitle, { color: palette.textPrimary }],
+    subtitle: [styles.subtitle, { color: palette.textSecondary }],
+    navButton: [styles.navButton, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    navText: [styles.navText, { color: palette.textSecondary }],
+    permissionNotice: [styles.permissionNotice, { color: palette.textSecondary }],
+    warning: [styles.warning, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    warningText: [styles.warningText, { color: palette.textSecondary }],
+    errorBox: [styles.errorBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    metrics: [styles.metrics, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    metric: [styles.metric, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    metricCount: [styles.metricCount, { color: palette.textPrimary }],
+    metricLabel: [styles.metricLabel, { color: palette.textMuted }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    auctionCard: [styles.auctionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    rowTitle: [styles.rowTitle, { color: palette.textPrimary }],
+    vehicleTitle: [styles.vehicleTitle, { color: palette.textPrimary }],
+    auctionIdText: [styles.auctionIdText, { color: palette.textMuted }],
+    auctionMeta: [styles.auctionMeta, { color: palette.textSecondary }],
+    metaText: [styles.metaText, { color: palette.textSecondary }],
+    cardFooter: [styles.cardFooter, { borderTopColor: palette.borderDefault }],
+    cardAction: [styles.cardAction, { color: palette.textSecondary }],
+    emptyState: [styles.emptyState, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyText: [styles.emptyText, { color: palette.textPrimary }],
+    emptyHint: [styles.emptyHint, { color: palette.textMuted }],
+  }), [palette]);
+}
