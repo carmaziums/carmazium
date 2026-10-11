@@ -21,6 +21,7 @@ on:
       - 'scripts/test-native-damage-draft-recovery-block6.test.mjs'
       - 'scripts/test-native-damage-pin-visibility-block7.test.mjs'
       - 'scripts/test-damage-web-buyer-parity-block8.test.mjs'
+      - 'scripts/test-damage-accessibility-gesture-block9.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -54,6 +55,8 @@ jobs:
         run: node --test scripts/test-native-damage-pin-visibility-block7.test.mjs
       - name: Block 8 — website seller and buyer 3D annotation/evidence parity
         run: node --test scripts/test-damage-web-buyer-parity-block8.test.mjs
+      - name: Block 9 — screen-reader navigation, dense pins and small-screen gesture safety
+        run: node --test scripts/test-damage-accessibility-gesture-block9.test.mjs
 
   web-typecheck:
     name: Web typecheck
