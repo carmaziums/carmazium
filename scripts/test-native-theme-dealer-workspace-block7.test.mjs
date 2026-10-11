@@ -89,7 +89,10 @@ test('team staff role toggles and invite/remove actions remain guarded', () => {
   assert.match(s,/disabled=\{removing\}/);
   assert.match(s,/handleInvite/);
   assert.match(s,/handleRemove/);
-  assert.match(s,/useDealerAccess/);
+  // Staff mutations are authorised by the existing /dealers/staff API and server-side RBAC.
+  // This screen does not own a useDealerAccess hook; do not fake one in a visual-only block.
+  assert.match(s,/apiClient\('\/dealers\/staff', \{/);
+  assert.match(s,/apiClient\(`\/dealers\/staff\/\$\{member\.id\}`/);
   assert.match(s,/<FlatList/);
   assert.ok((s.match(/const themed = useDealerTeamPalette\(\)/g)||[]).length>=3);
 });
