@@ -429,7 +429,7 @@ function SectionBox({ title, children, accent, action }: {
 // ─── Interactive Damage Map ───────────────────────────────────────────────────
 
 function Damage3DMapper({
-  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel,
+  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel, onInteractionChange,
 }: {
   records: DamageEntry[];
   onAdd: (entry: DamageEntry) => void;
@@ -437,6 +437,7 @@ function Damage3DMapper({
   onHide: (zoneId: string) => void;
   onPhoto: (zoneId: string, uri: string) => void;
   bodyTypeLabel?: string;
+  onInteractionChange?: (active: boolean) => void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
@@ -487,6 +488,7 @@ function Damage3DMapper({
         onZoneHide={onHide}
         onZonePhoto={onPhoto}
         bodyTypeLabel={bodyTypeLabel}
+        onInteractionChange={onInteractionChange}
       />
 
       {/* Quick-add button list — every zone the web app offers, for faster
@@ -951,6 +953,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
   // Shared across steps since only one step's ScrollView is ever mounted at a time.
   const stepScrollRef = useRef<ScrollView>(null);
+  const [is3DInteracting, set3DInteracting] = useState(false);
 
   // Hydrate only after the authenticated user is known. A previous user's
   // in-memory draft is detached before reading this account's separate key.
@@ -3067,7 +3070,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const remaining = MIN_PHOTOS - totalCount;
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView scrollEnabled={!is3DInteracting} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
         {/* Photo Tracker */}
         <View style={s.photoTracker}>
@@ -3212,6 +3215,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
               <Damage3DMapper
+            onInteractionChange={set3DInteracting}
                 records={damageRecords}
                 onAdd={entry => setDamageRecords(p => [...p, entry])}
                 onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}

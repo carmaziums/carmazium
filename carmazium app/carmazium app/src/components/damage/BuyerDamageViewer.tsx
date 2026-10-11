@@ -27,6 +27,7 @@ interface Props {
    *  (mobile-production-readiness-plan.md F41). */
   hasError?: boolean;
   onRetry?: () => void;
+  onInteractionChange?: (active: boolean) => void;
 }
 
 const PIN_COLORS: Record<string, string> = {
@@ -45,7 +46,7 @@ const formatPart = (part: string): string =>
 // renders the real interactive ThreeDVehicleViewer plus a damage list below it, synced
 // by selection — this mirrors that layout instead of the flat 2D DamageMapViewer that
 // used to render here (see mobile-production-readiness-plan.md F8).
-export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel, hasError, onRetry }) => {
+export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTypeLabel, hasError, onRetry, onInteractionChange }) => {
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
 
   if (isLoading) {
@@ -92,6 +93,7 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
           onZoneClick={toggleZone}
           bodyTypeLabel={bodyTypeLabel}
           readOnly
+          onInteractionChange={onInteractionChange}
         />
       </DamageViewerErrorBoundary>
 
