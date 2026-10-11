@@ -1163,6 +1163,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // effect. handlePublish below treats this draft the same way it treats an
   // existing edit target: PATCH it rather than creating a second listing.
   const [hpiDraftListingId, setHpiDraftListingId] = useState<string | null>(null);
+  // If an atomic auction POST succeeded but damage save failed, retry on this
+  // screen must use that saved listing and must not POST a second Auction row.
+  const [damageRetryHasAuction, setDamageRetryHasAuction] = useState(false);
   const [hpiUnlocking, setHpiUnlocking] = useState(false);
   const [hpiUnlocked, setHpiUnlocked] = useState(false);
   const [hpiSummary, setHpiSummary] = useState<{ isClear?: boolean } | null>(null);
@@ -2730,7 +2733,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         // of this branch (auction scheduling / listing-fee payment /
         // publish) is unchanged either way.
         let newListingId: string | null | undefined;
-        let initialAuctionCreatedAtomically = false;
+        let initialAuctionCreatedAtomically = damageRetryHasAuction;
         if (hpiDraftListingId) {
           await apiClient(`/listings/${hpiDraftListingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
           newListingId = hpiDraftListingId;
@@ -2802,6 +2805,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           // This is still a draft: never schedule/publish an auction or take
           // a Retail listing fee when the seller's damage evidence is missing.
           if (newListingId) setHpiDraftListingId(newListingId);
+          if (initialAuctionCreatedAtomically) setDamageRetryHasAuction(true);
           Alert.alert('Damage details not saved', DAMAGE_SAVE_FAILED_MSG, [
             { text: 'OK' },
             { text: 'View saved drafts', onPress: () => navigation?.navigate(isAuction ? 'SellerAuctions' : 'SellerListings') },
