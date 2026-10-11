@@ -218,19 +218,20 @@ export const GlobalAIChatBot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
   const isKeyboardVisible = keyboardHeight > 0;
-  // A single visible Menu and clear Settings actions take priority over AI.
-  // Hide *both* the trigger and promotional bubble when the menu, keyboard,
-  // or a protected form is active. The chat itself closes on those changes.
-  const assistantSuppressed = isDrawerOpen || isKeyboardVisible
+  // The shared Menu, Settings and sensitive flows take priority over AI.
+  // The keyboard hides the floating trigger, but must NEVER dismiss an open
+  // conversation while its own message input is focused.
+  const assistantBlocked = isDrawerOpen
     || MAZIUM_PROTECTED_ROUTES.has(activeRoute) || !isForeground;
+  const launcherSuppressed = assistantBlocked || isKeyboardVisible;
   const [showGreeting, setShowGreeting] = useState(false);
 
   useEffect(() => {
-    if (assistantSuppressed) {
+    if (assistantBlocked) {
       setIsOpen(false);
       setShowGreeting(false);
     }
-  }, [assistantSuppressed]);
+  }, [assistantBlocked]);
   // Each signed-in account has its own opt-out. Do not reuse a previous
   // account's async read while the shared widget switches users.
   const [greetingState, setGreetingState] = useState<{ userId: string; dismissed: boolean } | null>(null);
@@ -554,7 +555,7 @@ export const GlobalAIChatBot: React.FC = () => {
   return (
     <>
       <Modal
-        visible={isOpen && !assistantSuppressed}
+        visible={isOpen && !assistantBlocked}
         transparent
         animationType="fade"
         statusBarTranslucent
@@ -858,7 +859,7 @@ export const GlobalAIChatBot: React.FC = () => {
       </Modal>
 
       {/* The same standalone 3D PNG used by the website. */}
-      {!isOpen && !assistantSuppressed && (
+      {!isOpen && !launcherSuppressed && (
         <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
           {
             greetingState?.userId === authUserId && showGreeting && (
