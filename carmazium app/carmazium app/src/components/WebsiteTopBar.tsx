@@ -20,9 +20,9 @@ export const WebsiteTopBar: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
-  // except where a narrow device needs room for three 44dp action targets.
-  const logoWidth = Math.min(160, Math.max(110, windowWidth - 202));
+  // Reserve room for a visible Menu label as well as dedicated notification
+  // and account buttons, including on narrower Android screens.
+  const logoWidth = Math.min(160, Math.max(80, windowWidth - 234));
   const user = useAuthStore(s => s.user);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
@@ -46,12 +46,12 @@ export const WebsiteTopBar: React.FC = () => {
           style={styles.accountButton}
           onPress={() => navigation.navigate('Settings')}
           accessibilityRole="button"
-          accessibilityLabel="Account settings"
+          accessibilityLabel="Profile settings"
           accessibilityHint="Opens profile, dealership, verification, notifications and security settings"
           activeOpacity={0.75}
         >
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
-          <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
+          <Ionicons name="settings-outline" size={14} color={Colors.textSecondary} accessibilityElementsHidden />
         </TouchableOpacity>
         <HamburgerButton websiteStyle />
       </View>
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderSubtle,
   },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   notificationButton: {
     width: 44, height: 44, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
@@ -80,9 +80,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(51, 65, 85, 0.58)',
   },
   accountButton: {
-    minWidth: 65, height: 44, paddingHorizontal: 6,
+    minWidth: 56, height: 48, paddingHorizontal: 4,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 7, borderRadius: 11,
+    gap: 2, borderRadius: 11,
     borderWidth: 1, borderColor: Colors.borderSubtle,
     backgroundColor: 'rgba(51, 65, 85, 0.58)',
   },
