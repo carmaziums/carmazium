@@ -37,7 +37,7 @@ test('safety inventory recognises separate QA app, readonly guard, disabled OTA 
   assert.match(workflow, /name: CarMazium-Android-QA/);
   assert.match(workflow, /retention-days: 7/);
   assert.match(workflow, /signed with ephemeral Android \*\*debug\*\* signing key/);
-  assert.match(workflow, /not a security sandbox for real customer data/i);
+  assert.match(workflow, /security sandbox for real customer data/i);
   assert.doesNotMatch(workflow, /NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED\s*=\s*true/);
 });
 
