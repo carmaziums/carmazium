@@ -33,7 +33,7 @@ test('each point projects through live 3D camera, with no idle raycast', () => {
 });
 
 test('numbered saved pin opens exact defect editor, independent from other scratches on the same panel', () => {
-  assert.match(viewer, /placedDamagePins\.map\(placed => \{/);
+  assert.match(viewer, /orderedVisibleDamagePins\.map\(placed => \{/);
   assert.match(viewer, /key=\{pin\.id\}/);
   assert.match(viewer, /onPress=\{\(\) => onDamagePinPress\?\.\(pin\.id\)\}/);
   assert.match(viewer, /\{pin\.number\}/);
