@@ -24,6 +24,11 @@ window._pendingGLB = null;
 window.loadGLB = function(d) { window._pendingGLB = d; };
 window._pendingZones = null;
 window.setZones = function(json) { window._pendingZones = json; };
+// Disabled by default: buyer viewers cannot create seller damage selections.
+window._surfacePickingEnabled = false;
+window.setSurfacePickingEnabled = function(value) {
+  window._surfacePickingEnabled = value === true;
+};
 window.onerror = function() {
   var m = document.getElementById('msg');
   if (m) { m.textContent = '3D viewer unavailable'; m.style.display = 'flex'; }
@@ -112,6 +117,91 @@ window.nudgeVehicle = function(direction) {
 var _modelInfo = null; // { model, min, size, center, scale }
 var _zones = [];
 var _vec = new THREE.Vector3();
+
+/* ── Seller-only direct surface selection ────────────────────────────────────
+   Only raycast on a confirmed short tap, never during an orbit gesture or a
+   render frame. A hit is a preliminary point on the ILLUSTRATIVE mesh; the
+   seller must confirm/change the suggested real vehicle panel in the editor.
+   The original bounding-box fractions are portable across the model's
+   scale/centering transforms. */
+const damageRaycaster = new THREE.Raycaster();
+const damagePointer = new THREE.Vector2();
+var activeTap = null;
+const MAX_TAP_TRAVEL_PX = 10;
+const MAX_TAP_DURATION_MS = 550;
+
+function closestDamageZone(point) {
+  if (!_zones.length || !_modelInfo) return null;
+  var bestId = null;
+  var bestDistance = Infinity;
+  for (var i = 0; i < _zones.length; i++) {
+    var z = _zones[i];
+    // Compare physical coordinates, not percentages, so short axes don't
+    // dominate distance on sedan or SUV models.
+    var dx = (point.fx - z.fx) * _modelInfo.size.x;
+    var dy = (point.fy - z.fy) * _modelInfo.size.y;
+    var dz = (point.fz - z.fz) * _modelInfo.size.z;
+    var distance = dx * dx + dy * dy + dz * dz;
+    if (distance < bestDistance) { bestDistance = distance; bestId = z.id; }
+  }
+  return bestId;
+}
+function pickDamageAt(clientX, clientY) {
+  if (!window._surfacePickingEnabled || !_modelInfo || !window.ReactNativeWebView) return;
+  var bounds = renderer.domElement.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return;
+  damagePointer.set(
+    ((clientX - bounds.left) / bounds.width) * 2 - 1,
+    -((clientY - bounds.top) / bounds.height) * 2 + 1
+  );
+  damageRaycaster.setFromCamera(damagePointer, camera);
+  var hits = damageRaycaster.intersectObject(_modelInfo.model, true);
+  if (!hits.length) return; // Do not create a false mark in empty space.
+  var world = hits[0].point;
+  var m = _modelInfo;
+  var raw = world.clone().divideScalar(m.scale).add(m.center);
+  var axis = function(value, min, size) {
+    return size > 0 ? Math.max(0, Math.min(1, (value - min) / size)) : 0.5;
+  };
+  var point = {
+    fx: axis(raw.x, m.min.x, m.size.x),
+    fy: axis(raw.y, m.min.y, m.size.y),
+    fz: axis(raw.z, m.min.z, m.size.z)
+  };
+  window.ReactNativeWebView.postMessage(JSON.stringify({
+    type: 'surfaceDamageTap',
+    zoneId: closestDamageZone(point),
+    point: point
+  }));
+}
+renderer.domElement.addEventListener('pointerdown', function(event) {
+  if (!window._surfacePickingEnabled || event.isPrimary === false) return;
+  activeTap = { id: event.pointerId, x: event.clientX, y: event.clientY, time: Date.now(), moved: false };
+});
+renderer.domElement.addEventListener('pointermove', function(event) {
+  if (!activeTap || event.pointerId !== activeTap.id) return;
+  if (Math.hypot(event.clientX - activeTap.x, event.clientY - activeTap.y) > MAX_TAP_TRAVEL_PX) {
+    activeTap.moved = true;
+  }
+});
+renderer.domElement.addEventListener('pointerup', function(event) {
+  if (!activeTap || event.pointerId !== activeTap.id) return;
+  var tap = activeTap; activeTap = null;
+  var distance = Math.hypot(event.clientX - tap.x, event.clientY - tap.y);
+  if (!tap.moved && distance <= MAX_TAP_TRAVEL_PX && Date.now() - tap.time <= MAX_TAP_DURATION_MS) {
+    pickDamageAt(event.clientX, event.clientY);
+  }
+});
+renderer.domElement.addEventListener('pointercancel', function() { activeTap = null; });
+renderer.domElement.addEventListener('lostpointercapture', function() { activeTap = null; });
+renderer.domElement.addEventListener('pointerdown', function(event) {
+  // A second finger is always a gesture, not a new damage marker.
+  if (event.isPrimary === false) activeTap = null;
+});
+window.setSurfacePickingEnabled = function(value) {
+  window._surfacePickingEnabled = value === true;
+  if (!window._surfacePickingEnabled) activeTap = null;
+};
 
 function resolveZoneWorldPos(zone) {
   var m = _modelInfo;
