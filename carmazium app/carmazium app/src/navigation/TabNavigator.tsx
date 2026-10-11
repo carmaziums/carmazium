@@ -115,7 +115,7 @@ const TAB_CONFIG: {
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
   { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
-  { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
+  { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'CLIENTS', iconType: 'ionicons' },
   { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Buy & Bid', iconType: 'material-community' },
   { name: 'DealerMore', icon: 'apps-outline', iconActive: 'apps', label: 'More', iconType: 'ionicons' },
 ];
@@ -246,6 +246,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               accessibilityRole="tab"
               accessibilityLabel={route.name === 'DealerMore'
                 ? 'Dealer tools'
+                : route.name === 'DealerCustomers' ? 'Customers'
                 : config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
               accessibilityState={{ selected: isFocused }}
               accessibilityHint={route.name === 'DealerMore' ? 'Opens dealer business tools, not the main Menu' : isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
