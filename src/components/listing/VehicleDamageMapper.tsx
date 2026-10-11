@@ -2,11 +2,11 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react"
+import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2, Pencil, ChevronDown, ChevronUp, Images } from "lucide-react"
 import Image from "next/image"
 import { ALL_ZONES } from "./ThreeDVehicleViewer"
 import { uploadImage } from "@/lib/supabase"
-import type { ThreeDVehicleViewerProps } from "./ThreeDVehicleViewer"
+import type { ThreeDVehicleViewerProps, SurfacePoint } from "./ThreeDVehicleViewer"
 import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 
@@ -32,6 +32,8 @@ export interface DamageRecord {
   zone: string
   description: string
   photoUrl?: string
+  type?: "SCRATCH" | "SCUFF" | "DENT" | "CRACK" | "OTHER"
+  surfacePoint?: SurfacePoint
   bodyType: string
   view: "TOP" | "FRONT"
   x: number
@@ -78,8 +80,15 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [pendingZoneId, setPendingZoneId] = React.useState<string | null>(null)
   const [pendingDesc, setPendingDesc] = React.useState("")
   const [pendingPhoto, setPendingPhoto] = React.useState<string | undefined>()
+  const [pendingSurfacePoint, setPendingSurfacePoint] = React.useState<SurfacePoint | null>(null)
+  const [editingDamageId, setEditingDamageId] = React.useState<string | null>(null)
+  const [pendingType, setPendingType] = React.useState<NonNullable<DamageRecord["type"]>>("SCRATCH")
   const [uploading, setUploading] = React.useState(false)
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const [manualOpen, setManualOpen] = React.useState(false)
+  const uploadInFlightRef = React.useRef(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const cameraInputRef = React.useRef<HTMLInputElement>(null)
 
   const [customZoneInput, setCustomZoneInput] = React.useState('')
   const [pendingCustomLabel, setPendingCustomLabel] = React.useState('')
@@ -91,9 +100,54 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
       : ALL_ZONES.find(z => z.id === pendingZoneId) ?? null
 
   function handleZoneClick(zoneId: string) {
+    if (uploadInFlightRef.current) return
+    setEditingDamageId(null)
     setPendingZoneId(zoneId)
     setPendingDesc("")
     setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setPendingType("SCRATCH")
+    setUploadError(null)
+  }
+
+  function handleSurfaceTap({ zoneId, point }: { zoneId: string; point: SurfacePoint }) {
+    if (uploadInFlightRef.current) return
+    handleZoneClick(zoneId)
+    setPendingSurfacePoint(point)
+    setManualOpen(false)
+  }
+
+  function editRecord(id: string) {
+    if (uploadInFlightRef.current) return
+    const record = records.find(item => item.id === id)
+    if (!record) return
+    setEditingDamageId(id)
+    setPendingZoneId(ALL_ZONES.some(zone => zone.id === record.zone) ? record.zone : "__custom__")
+    if (!ALL_ZONES.some(zone => zone.id === record.zone)) setPendingCustomLabel(record.zone)
+    setPendingDesc(record.description)
+    setPendingPhoto(record.photoUrl)
+    setPendingSurfacePoint(record.surfacePoint ?? null)
+    setPendingType(record.type ?? "OTHER")
+    setUploadError(null)
+    setManualOpen(false)
+  }
+
+  function chooseCorrectedZone(zoneId: string) {
+    if (uploadInFlightRef.current) return
+    // A known panel correction retains the precise original surface point.
+    setPendingZoneId(zoneId)
+    setManualOpen(false)
+  }
+
+  function resetEditor() {
+    setPendingZoneId(null)
+    setPendingDesc("")
+    setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setPendingType("SCRATCH")
+    setEditingDamageId(null)
+    setPendingCustomLabel("")
+    setUploadError(null)
   }
 
   function handleCustomZone() {
@@ -103,69 +157,59 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     setPendingZoneId('__custom__')
     setPendingDesc("")
     setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setEditingDamageId(null)
+    setPendingType("SCRATCH")
+    setManualOpen(false)
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || uploadInFlightRef.current) return
+    uploadInFlightRef.current = true
     setUploading(true)
+    setUploadError(null)
     try {
-      const url = await uploadImage(file, 'listings', 'damage')
+      if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
+        throw new Error("Choose an image smaller than 15 MB.")
+      }
+      const url = await uploadImage(file, "listings", "damage")
+      if (!url.startsWith("https://")) throw new Error("Photo storage did not return a permanent URL.")
       setPendingPhoto(url)
-    } catch {
-      // Fallback: preview the image locally if upload fails
-      const reader = new FileReader()
-      reader.onload = ev => setPendingPhoto(ev.target?.result as string)
-      reader.readAsDataURL(file)
+    } catch (error) {
+      // Never silently commit a base64/data URL as permanent seller evidence.
+      // Seller may select the same image again to retry.
+      setUploadError(error instanceof Error ? error.message : "Photo upload failed. Try again.")
     } finally {
+      uploadInFlightRef.current = false
       setUploading(false)
+      e.target.value = ""
     }
   }
 
   function addRecord() {
-    if (!pendingZoneId || !pendingDesc.trim()) return
-
-    let zoneId: string
-    let x: number
-    let y: number
-
-    if (pendingZoneId === '__custom__') {
-      if (!pendingCustomLabel) return
-      zoneId = pendingCustomLabel
-      x = 0
-      y = 0
-    } else {
-      // Defensive: `pendingZoneId` is set from zone IDs we control (legend
-      // clicks / 3D hotspot clicks), so it should always match an entry in
-      // ALL_ZONES — but a stale ID or future data mismatch must NOT throw
-      // (a non-null assertion here would crash the whole page on click,
-      // since there's no error boundary around event handlers). Fall back
-      // to a safe default position instead.
-      const z = ALL_ZONES.find(z => z.id === pendingZoneId)
-      if (!z) return
-      zoneId = pendingZoneId
-      x = z.position[0]
-      y = z.position[1]
-    }
-
+    if (!pendingZoneId || uploading || uploadError) return
+    const zone = ALL_ZONES.find(item => item.id === pendingZoneId)
+    if (pendingZoneId === "__custom__" && !pendingCustomLabel.trim()) return
+    if (pendingZoneId !== "__custom__" && !zone) return
+    const zoneId = pendingZoneId === "__custom__" ? pendingCustomLabel.trim() : pendingZoneId
+    const edited = records.find(item => item.id === editingDamageId)
     const rec: DamageRecord = {
-      id: crypto.randomUUID(),
+      id: edited?.id ?? crypto.randomUUID(),
       zone: zoneId,
       description: pendingDesc.trim(),
       photoUrl: pendingPhoto,
+      type: pendingType,
+      ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
       bodyType,
-      view: "TOP",
-      x,
-      y,
+      view: edited?.view ?? "TOP",
+      x: edited?.x ?? zone?.position[0] ?? 0,
+      y: edited?.y ?? zone?.position[1] ?? 0,
     }
-    const updated = [...records, rec]
+    const updated = edited ? records.map(item => item.id === edited.id ? rec : item) : [...records, rec]
     setRecords(updated)
     onComplete(updated)
-    setPendingZoneId(null)
-    setPendingDesc("")
-    setPendingPhoto(undefined)
-    setCustomZoneInput('')
-    setPendingCustomLabel('')
+    resetEditor()
   }
 
   function removeRecord(id: string) {
@@ -178,6 +222,10 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     return ALL_ZONES.find(z => z.id === zoneId)?.label ?? zoneId
   }
 
+  const pins = records.flatMap((item, index) => item.surfacePoint
+    ? [{ id: item.id, number: index + 1, point: item.surfacePoint,
+      type: item.type, hasPhoto: Boolean(item.photoUrl) }] : [])
+  const photoCount = records.filter(item => Boolean(item.photoUrl)).length
   const grade = computeExteriorGradeFromDefectCount(records.length)
   const GRADE_META: Record<number, { label: string; desc: string; color: string; bg: string }> = {
     1: { label: 'Excellent', desc: 'Negligible or no cosmetic damage', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
