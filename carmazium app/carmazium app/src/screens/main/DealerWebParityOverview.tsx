@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical web layout: src/app/dashboard/dealer/page.tsx.
@@ -67,6 +68,8 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   userName, canManageInventory, canManageCrm, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerWebParityOverviewPalette();
   const [range, setRange] = useState<Range>(initialRange);
   const [draftAmount, setDraftAmount] = useState('30');
   const [draftUnit, setDraftUnit] = useState<RangeUnit>('days');
@@ -155,42 +158,42 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   ];
 
   return (
-    <View style={styles.main}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeading}>
-          <View style={styles.heroIcon}>
+    <View style={themed.main}>
+      <View style={themed.hero}>
+        <View style={themed.heroHeading}>
+          <View style={themed.heroIcon}>
             <Ionicons name="business-outline" size={24} color={Colors.textPrimary} />
           </View>
-          <View style={styles.heroCopy}>
-            <Text style={styles.heroTitle}>DEALER COMMAND CENTRE</Text>
-            <Text style={styles.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
+          <View style={themed.heroCopy}>
+            <Text style={themed.heroTitle}>DEALER COMMAND CENTRE</Text>
+            <Text style={themed.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
             {summary?.isVerified === true && (
-              <View style={styles.verifiedLine}>
+              <View style={themed.verifiedLine}>
                 <Ionicons name="shield-checkmark-outline" size={14} color={Colors.warning} />
-                <Text style={styles.verifiedText}>Verified Dealer</Text>
+                <Text style={themed.verifiedText}>Verified Dealer</Text>
               </View>
             )}
           </View>
         </View>
       </View>
 
-      <View style={styles.sectionIntro}>
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <Text style={styles.sectionHint}>
+      <View style={themed.sectionIntro}>
+        <Text style={themed.sectionTitle}>Overview</Text>
+        <Text style={themed.sectionHint}>
           Choose days, months or years, or view everything since this dealer account was created.
           Compare with the immediately preceding period.
         </Text>
       </View>
 
-      <View style={styles.rangePanel}>
-        <View style={styles.presetRow}>
+      <View style={themed.rangePanel}>
+        <View style={themed.presetRow}>
           {PRESETS.map(preset => {
             const active = preset.allTime ? range.allTime
               : !range.allTime && range.value === preset.value && range.unit === preset.unit;
             return (
               <TouchableOpacity
                 key={preset.label}
-                style={[styles.preset, active && styles.presetSelected]}
+                style={[themed.preset, active && styles.presetSelected]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={preset.allTime ? 'All time' : preset.label}
@@ -199,14 +202,14 @@ export const DealerWebParityOverview: React.FC<Props> = ({
                   value: preset.value ?? previous.value, unit: preset.unit ?? previous.unit,
                 }))}
               >
-                <Text style={[styles.presetText, active && styles.presetTextSelected]}>{preset.label}</Text>
+                <Text style={[themed.presetText, active && styles.presetTextSelected]}>{preset.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-        <View style={styles.customRow}>
+        <View style={themed.customRow}>
           <TextInput
-            style={styles.amountInput}
+            style={themed.amountInput}
             value={draftAmount}
             onChangeText={setDraftAmount}
             onSubmitEditing={applyCustom}
@@ -220,96 +223,96 @@ export const DealerWebParityOverview: React.FC<Props> = ({
               onPress={() => setDraftUnit(unit)}
               accessibilityRole="button"
               accessibilityState={{ selected: draftUnit === unit }}
-              style={[styles.unitButton, draftUnit === unit && styles.unitSelected]}
+              style={[themed.unitButton, draftUnit === unit && styles.unitSelected]}
             >
-              <Text style={[styles.unitText, draftUnit === unit && styles.unitTextSelected]}>
+              <Text style={[themed.unitText, draftUnit === unit && styles.unitTextSelected]}>
                 {unit === 'days' ? 'Days' : unit === 'months' ? 'Months' : 'Years'}
               </Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity onPress={applyCustom} style={styles.applyButton} accessibilityRole="button">
-            <Text style={styles.applyText}>Apply</Text>
+          <TouchableOpacity onPress={applyCustom} style={themed.applyButton} accessibilityRole="button">
+            <Text style={themed.applyText}>Apply</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity
           accessibilityRole="switch"
           accessibilityState={{ checked: range.compare }}
           accessibilityLabel="Compare previous period"
-          style={styles.compareRow}
+          style={themed.compareRow}
           onPress={() => setRange(previous => ({ ...previous, compare: !previous.compare }))}
         >
           <Ionicons name={range.compare ? 'checkbox' : 'square-outline'} size={21}
             color={range.compare ? Colors.accent : Colors.textMuted} />
-          <Text style={styles.compareText}>Compare previous</Text>
+          <Text style={themed.compareText}>Compare previous</Text>
         </TouchableOpacity>
         {range.allTime && summary?.accountCreatedAt && (
-          <Text style={styles.accountSince}>
+          <Text style={themed.accountSince}>
             All available data since {new Date(summary.accountCreatedAt).toLocaleDateString('en-GB')}
           </Text>
         )}
       </View>
 
       {error && (
-        <Text accessibilityRole="alert" style={styles.error}>
+        <Text accessibilityRole="alert" style={themed.error}>
           Dashboard statistics could not be refreshed. {summary
             ? 'Previously loaded values are shown below.'
             : 'Values are hidden until data is available.'}
         </Text>
       )}
       {loading && !summary && (
-        <View style={styles.loadingLine}>
+        <View style={themed.loadingLine}>
           <ActivityIndicator color={Colors.accent} />
-          <Text style={styles.loadingText}>Loading your dashboard…</Text>
+          <Text style={themed.loadingText}>Loading your dashboard…</Text>
         </View>
       )}
-      <View style={styles.metrics}>
+      <View style={themed.metrics}>
         {metricItems.map(item => {
           const content = (
             <>
-              <View style={styles.metricTop}>
+              <View style={themed.metricTop}>
                 <Ionicons name={item.icon as any} size={19} color={item.color} />
-                <Text style={styles.metricStatus}>{item.status}</Text>
+                <Text style={themed.metricStatus}>{item.status}</Text>
               </View>
-              <Text style={styles.metricValue}>{displayMetric(item.value)}</Text>
-              <Text style={styles.metricTitle}>{item.title}</Text>
-              <Text style={styles.metricDetail}>{item.detail}</Text>
-              {!!item.comparison && <Text style={styles.comparison}>{item.comparison}</Text>}
+              <Text style={themed.metricValue}>{displayMetric(item.value)}</Text>
+              <Text style={themed.metricTitle}>{item.title}</Text>
+              <Text style={themed.metricDetail}>{item.detail}</Text>
+              {!!item.comparison && <Text style={themed.comparison}>{item.comparison}</Text>}
             </>
           );
           return item.destination ? (
             <TouchableOpacity
-              key={item.title} style={styles.metricCard}
+              key={item.title} style={themed.metricCard}
               accessibilityRole="button"
               accessibilityLabel={`${item.title}: ${displayMetric(item.value)}. Open ${item.destination}`}
               onPress={() => onNavigate(item.destination!)}
               activeOpacity={0.8}
             >{content}</TouchableOpacity>
           ) : (
-            <View key={item.title} style={styles.metricCard}>{content}</View>
+            <View key={item.title} style={themed.metricCard}>{content}</View>
           );
         })}
       </View>
 
-      <View style={styles.actionSection}>
-        <Text style={styles.actionsTitle}>Main actions</Text>
-        <Text style={styles.sectionHint}>
+      <View style={themed.actionSection}>
+        <Text style={themed.actionsTitle}>Main actions</Text>
+        <Text style={themed.sectionHint}>
           One entry point for each job. Related tools live inside that area.
         </Text>
         {actions.filter(action => action.show).map(action => (
           <TouchableOpacity
             key={action.destination}
-            style={styles.actionCard}
+            style={themed.actionCard}
             onPress={() => onNavigate(action.destination)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel={action.title}
           >
-            <View style={styles.actionIcon}>
+            <View style={themed.actionIcon}>
               <Ionicons name={action.icon as any} size={22} color={Colors.accent} />
             </View>
-            <View style={styles.actionText}>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionDescription}>{action.description}</Text>
+            <View style={themed.actionText}>
+              <Text style={themed.actionTitle}>{action.title}</Text>
+              <Text style={themed.actionDescription}>{action.description}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
@@ -397,3 +400,36 @@ const styles = StyleSheet.create({
   actionDescription: { fontFamily: FontFamily.regular, color: Colors.textMuted,
     fontSize: 12, lineHeight: 18 },
 });
+
+function useDealerWebParityOverviewPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    hero: [styles.hero, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    heroIcon: [styles.heroIcon, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    heroTitle: [styles.heroTitle, { color: palette.textPrimary }],
+    heroSubtitle: [styles.heroSubtitle, { color: palette.textSecondary }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    sectionHint: [styles.sectionHint, { color: palette.textSecondary }],
+    rangePanel: [styles.rangePanel, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    preset: [styles.preset, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    presetText: [styles.presetText, { color: palette.textSecondary }],
+    amountInput: [styles.amountInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    unitButton: [styles.unitButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    unitText: [styles.unitText, { color: palette.textSecondary }],
+    compareText: [styles.compareText, { color: palette.textSecondary }],
+    accountSince: [styles.accountSince, { color: palette.textMuted }],
+    loadingText: [styles.loadingText, { color: palette.textMuted }],
+    metricCard: [styles.metricCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    metricStatus: [styles.metricStatus, { color: palette.textMuted }],
+    metricValue: [styles.metricValue, { color: palette.textPrimary }],
+    metricTitle: [styles.metricTitle, { color: palette.textPrimary }],
+    metricDetail: [styles.metricDetail, { color: palette.textSecondary }],
+    comparison: [styles.comparison, { color: palette.textSecondary }],
+    actionsTitle: [styles.actionsTitle, { color: palette.textPrimary }],
+    actionCard: [styles.actionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    actionIcon: [styles.actionIcon, { backgroundColor: palette.bgInput }],
+    actionTitle: [styles.actionTitle, { color: palette.textPrimary }],
+    actionDescription: [styles.actionDescription, { color: palette.textSecondary }],
+  }), [palette]);
+}

@@ -18,6 +18,7 @@ import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -42,22 +43,29 @@ type ReviewItem = {
   target?: { displayName?: string };
 };
 
-const SectionHeader: React.FC<{ icon: string; label: string }> = ({ icon, label }) => (
-  <View style={styles.sectionHeader}>
-    <View style={styles.sectionIconWrap}>
+const SectionHeader: React.FC<{ icon: string; label: string }> = ({ icon, label }) => {
+  const { palette } = useNativeAppearance();
+  const themed = useSettingsThemeStyles();
+  return (
+  <View style={themed.sectionHeader}>
+    <View style={themed.sectionIconWrap}>
       <Ionicons name={icon as any} size={14} color={Colors.accent} />
     </View>
-    <Text style={styles.sectionLabel}>{label}</Text>
+    <Text style={themed.sectionLabel}>{label}</Text>
   </View>
-);
+  );
+};
 
-const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
-  <Text style={styles.fieldLabel}>{label}</Text>
-);
+const FieldLabel: React.FC<{ label: string }> = ({ label }) => {
+  const themed = useSettingsThemeStyles();
+  return <Text style={themed.fieldLabel}>{label}</Text>;
+};
 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
 export const SettingsScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useSettingsThemeStyles();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
@@ -573,39 +581,39 @@ export const SettingsScreen: React.FC = () => {
     }
   };
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', palette.bgBody]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
       />
 
       <WebsiteTopBar />
-      <View style={styles.settingsPageHeader}>
-        <Text style={styles.settingsPageTitle}>Account Settings</Text>
-        <Text style={styles.settingsPageSubtitle}>
+      <View style={themed.settingsPageHeader}>
+        <Text style={themed.settingsPageTitle}>Account Settings</Text>
+        <Text style={themed.settingsPageSubtitle}>
           One place for your profile, business, notifications, payouts and security.
         </Text>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
-          onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
+          onPress={() => navigation.goBack()} style={themed.settingsBackLink}>
           <Ionicons name="arrow-back" size={16} color={Colors.accent} />
-          <Text style={styles.settingsBackText}>Back</Text>
+          <Text style={themed.settingsBackText}>Back</Text>
         </TouchableOpacity>
       </View>
       <ScrollView
         ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        style={themed.scroll}
+        contentContainerStyle={[themed.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
 
-        <View style={styles.accountToolsPanel}>
-          <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
-          <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
-          <View style={styles.accountToolsGrid}>
+        <View style={themed.accountToolsPanel}>
+          <Text style={themed.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
+          <Text style={themed.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
+          <View style={themed.accountToolsGrid}>
             {[
               { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
                 action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
@@ -614,19 +622,19 @@ export const SettingsScreen: React.FC = () => {
               { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
                 action: () => navigation.navigate('Notifications') },
             ].map(tool => (
-              <TouchableOpacity key={tool.id} style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]}
+              <TouchableOpacity key={tool.id} style={[themed.accountToolButton, singleColumnSettings && styles.fullWidthTool]}
                 accessibilityRole="button" accessibilityLabel={tool.label}
                 onPress={tool.action}>
                 <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
-                <Text style={styles.accountToolLabel}>{tool.label}</Text>
+                <Text style={themed.accountToolLabel}>{tool.label}</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={[styles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
+            <TouchableOpacity style={[themed.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
               accessibilityLabel="Contact Support" disabled={supportLoading}
               onPress={() => { void handleContactSupport(); }}>
               <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
-              <Text style={styles.accountToolLabel}>
+              <Text style={themed.accountToolLabel}>
                 {supportLoading ? 'Opening support…' : 'Contact Support'}
               </Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
@@ -634,13 +642,13 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.categoryGrid} accessibilityLabel="Account settings categories">
+        <View style={themed.categoryGrid} accessibilityLabel="Account settings categories">
           {categories.map(category => {
             const selected = activeCategory === category.id;
             return (
               <TouchableOpacity
                 key={category.id}
-                style={[styles.categoryButton, singleColumnSettings && styles.fullWidthCategory, selected && styles.categoryButtonSelected]}
+                style={[themed.categoryButton, singleColumnSettings && styles.fullWidthCategory, selected && styles.categoryButtonSelected]}
                 onPress={() => selectCategory(category.id)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
@@ -652,7 +660,7 @@ export const SettingsScreen: React.FC = () => {
                   size={19}
                   color={selected ? Colors.white : Colors.textSecondary}
                 />
-                <Text style={[styles.categoryLabel, selected && styles.categoryLabelSelected]}>
+                <Text style={[themed.categoryLabel, selected && styles.categoryLabelSelected]}>
                   {category.label}
                 </Text>
               </TouchableOpacity>
@@ -664,81 +672,81 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
-        <View style={styles.card}>
+        <View style={themed.card}>
           <TouchableOpacity
-            style={styles.avatarRow}
+            style={themed.avatarRow}
             activeOpacity={0.8}
             onPress={handlePickProfilePhoto}
             disabled={uploadingPhoto}
           >
-            <View style={styles.avatarCircle}>
+            <View style={themed.avatarCircle}>
               {uploadingPhoto ? (
                 <ActivityIndicator size="small" color={Colors.accent} />
               ) : profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatarImage} contentFit="cover" />
+                <Image source={{ uri: profileImage }} style={themed.avatarImage} contentFit="cover" />
               ) : (
-                <Text style={styles.avatarInitials}>{initials}</Text>
+                <Text style={themed.avatarInitials}>{initials}</Text>
               )}
             </View>
             <View>
-              <Text style={styles.avatarChangeText}>Change photo</Text>
-              <Text style={styles.avatarHintText}>JPG or PNG, square works best</Text>
+              <Text style={themed.avatarChangeText}>Change photo</Text>
+              <Text style={themed.avatarHintText}>JPG or PNG, square works best</Text>
             </View>
           </TouchableOpacity>
 
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldWrap}>
+          <View style={themed.fieldRow}>
+            <View style={themed.fieldWrap}>
               <FieldLabel label="FIRST NAME" />
               <TextInput
-                style={styles.fieldInput}
+                style={themed.fieldInput}
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="First name"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
               />
             </View>
-            <View style={styles.fieldDividerV} />
-            <View style={styles.fieldWrap}>
+            <View style={themed.fieldDividerV} />
+            <View style={themed.fieldWrap}>
               <FieldLabel label="LAST NAME" />
               <TextInput
-                style={styles.fieldInput}
+                style={themed.fieldInput}
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Last name"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
               />
             </View>
           </View>
 
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldWrap}>
+          <View style={themed.fieldRow}>
+            <View style={themed.fieldWrap}>
               <FieldLabel label="EMAIL ADDRESS" />
-              <Text style={styles.fieldValueReadonly}>{profileEmail || '—'}</Text>
+              <Text style={themed.fieldValueReadonly}>{profileEmail || '—'}</Text>
             </View>
-            <View style={styles.fieldDividerV} />
-            <View style={styles.fieldWrap}>
+            <View style={themed.fieldDividerV} />
+            <View style={themed.fieldWrap}>
               <FieldLabel label="PHONE NUMBER" />
               <TextInput
-                style={styles.fieldInput}
+                style={themed.fieldInput}
                 value={profilePhone}
                 onChangeText={setProfilePhone}
                 placeholder="Not set"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
                 keyboardType="phone-pad"
               />
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={themed.cardDivider} />
           <TouchableOpacity
-            style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
+            style={[themed.saveBtn, profileSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
             onPress={handleSaveProfile}
             disabled={profileSaving}
           >
             {profileSaving
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>SAVE PROFILE</Text>}
+              : <Text style={themed.saveBtnText}>SAVE PROFILE</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -748,31 +756,31 @@ export const SettingsScreen: React.FC = () => {
           <>
             <SectionHeader icon="notifications-outline" label="NOTIFICATIONS & PRIVACY" />
             <TouchableOpacity
-          style={styles.notificationShortcut}
+          style={themed.notificationShortcut}
           onPress={() => navigation.navigate('NotificationSettings')}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Manage notification preferences"
         >
-          <View style={styles.notificationShortcutIcon}>
+          <View style={themed.notificationShortcutIcon}>
             <Ionicons name="notifications-outline" size={22} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.notificationShortcutTitle}>Notification preferences</Text>
-            <Text style={styles.notificationShortcutHint}>Choose auction, offer and email alerts</Text>
+            <Text style={themed.notificationShortcutTitle}>Notification preferences</Text>
+            <Text style={themed.notificationShortcutHint}>Choose auction, offer and email alerts</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
         </TouchableOpacity>
-            <View style={styles.card}>
+            <View style={themed.card}>
           {!preferencesFetchComplete && (
-            <Text style={styles.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
+            <Text style={themed.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
           )}
           {preferencesFetchComplete && !preferencesLoaded && (
-            <Text style={styles.preferenceNotice}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
+            <Text style={themed.preferenceNotice}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
           )}
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextWrap}>
-              <Text style={styles.toggleTitle}>Email me when a listing is sold</Text>
+          <View style={themed.toggleRow}>
+            <View style={themed.toggleTextWrap}>
+              <Text style={themed.toggleTitle}>Email me when a listing is sold</Text>
             </View>
             <Switch
               value={notifyOnSale}
@@ -784,9 +792,9 @@ export const SettingsScreen: React.FC = () => {
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextWrap}>
-              <Text style={styles.toggleTitle}>Show my profile publicly</Text>
+          <View style={themed.toggleRow}>
+            <View style={themed.toggleTextWrap}>
+              <Text style={themed.toggleTitle}>Show my profile publicly</Text>
             </View>
             <Switch
               value={showPublicProfile}
@@ -798,9 +806,9 @@ export const SettingsScreen: React.FC = () => {
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
-              <View style={styles.cardDivider} />
+              <View style={themed.cardDivider} />
               <TouchableOpacity
-                style={[styles.saveBtn, (preferencesSaving || !preferencesLoaded) && { opacity: 0.55 }]}
+                style={[themed.saveBtn, (preferencesSaving || !preferencesLoaded) && { opacity: 0.55 }]}
                 activeOpacity={0.8}
                 onPress={handleSavePreferences}
                 disabled={preferencesSaving || !preferencesLoaded}
@@ -809,7 +817,7 @@ export const SettingsScreen: React.FC = () => {
               >
                 {preferencesSaving
                   ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={styles.saveBtnText}>SAVE PREFERENCES</Text>}
+                  : <Text style={themed.saveBtnText}>SAVE PREFERENCES</Text>}
               </TouchableOpacity>
             </View>
           </>
@@ -821,38 +829,38 @@ export const SettingsScreen: React.FC = () => {
         {canManageBusiness && (
           <>
             <SectionHeader icon="storefront-outline" label="DEALERSHIP PROFILE" />
-            <View style={styles.card}>
+            <View style={themed.card}>
               <TouchableOpacity
-                style={styles.avatarRow}
+                style={themed.avatarRow}
                 activeOpacity={0.8}
                 onPress={handlePickDealerLogo}
                 disabled={uploadingLogo}
               >
-                <View style={styles.avatarCircle}>
+                <View style={themed.avatarCircle}>
                   {uploadingLogo ? (
                     <ActivityIndicator size="small" color={Colors.accent} />
                   ) : dealerLogo ? (
-                    <Image source={{ uri: dealerLogo }} style={styles.avatarImage} contentFit="cover" />
+                    <Image source={{ uri: dealerLogo }} style={themed.avatarImage} contentFit="cover" />
                   ) : (
                     <Ionicons name="storefront-outline" size={22} color={Colors.iconMuted} />
                   )}
                 </View>
                 <View>
-                  <Text style={styles.avatarChangeText}>Change logo</Text>
-                  <Text style={styles.avatarHintText}>JPG or PNG, square works best</Text>
+                  <Text style={themed.avatarChangeText}>Change logo</Text>
+                  <Text style={themed.avatarHintText}>JPG or PNG, square works best</Text>
                 </View>
               </TouchableOpacity>
 
               <View>
                 <FieldLabel label={isSoleTraderDealer ? "TRADING NAME" : "COMPANY NAME"} />
                 <TextInput
-                  style={styles.inputField}
+                  style={themed.inputField}
                   value={dealerCompanyName}
                   onChangeText={v => { setDealerCompanyName(v); if (dealerFieldErrors.companyName) setDealerFieldErrors(prev => ({ ...prev, companyName: undefined })); }}
                   placeholder={isSoleTraderDealer ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                 />
-                {dealerFieldErrors.companyName ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
+                {dealerFieldErrors.companyName ? <Text style={themed.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
               </View>
 
               {!isSoleTraderDealer ? (
@@ -860,24 +868,24 @@ export const SettingsScreen: React.FC = () => {
                   <View>
                     <FieldLabel label="VAT NUMBER" />
                     <TextInput
-                      style={styles.inputField}
+                      style={themed.inputField}
                       value={dealerVatNumber}
                       onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                       placeholder="e.g. GB 123 456 789"
-                      placeholderTextColor={Colors.iconMuted}
+                      placeholderTextColor={palette.textMuted}
                     />
-                    {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
+                    {dealerFieldErrors.vatNumber ? <Text style={themed.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
                   </View>
 
                   <View>
                     <FieldLabel label="COMPANIES HOUSE REG" />
                     <TextInput
-                      style={styles.inputField}
+                      style={themed.inputField}
                       value={dealerRegNumber}
                       onChangeText={setDealerRegNumber}
                       keyboardType="numeric"
                       placeholder="e.g. 12345678"
-                      placeholderTextColor={Colors.iconMuted}
+                      placeholderTextColor={palette.textMuted}
                     />
                   </View>
                 </>
@@ -886,37 +894,37 @@ export const SettingsScreen: React.FC = () => {
               <View>
                 <FieldLabel label="BUSINESS ADDRESS" />
                 <TextInput
-                  style={styles.inputField}
+                  style={themed.inputField}
                   value={dealerAddress}
                   onChangeText={setDealerAddress}
                   placeholder="e.g. 42 Sloane St, SW1X 9LT"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                 />
               </View>
 
-              <View style={styles.bankRow}>
+              <View style={themed.bankRow}>
                 <View style={{ flex: 1 }}>
                   <FieldLabel label="BUSINESS PHONE" />
                   <TextInput
-                    style={styles.inputField}
+                    style={themed.inputField}
                     value={dealerPhone}
                     onChangeText={setDealerPhone}
                     keyboardType="phone-pad"
                     placeholder="e.g. +44 20 7123 4567"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={palette.textMuted}
                   />
                 </View>
                 <View style={{ width: 12 }} />
                 <View style={{ flex: 1 }}>
                   <FieldLabel label="WEBSITE" />
                   <TextInput
-                    style={styles.inputField}
+                    style={themed.inputField}
                     value={dealerWebsite}
                     onChangeText={setDealerWebsite}
                     autoCapitalize="none"
                     keyboardType="url"
                     placeholder="e.g. yourdealer.co.uk"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={palette.textMuted}
                   />
                 </View>
               </View>
@@ -924,25 +932,25 @@ export const SettingsScreen: React.FC = () => {
               <View>
                 <FieldLabel label="DESCRIPTION / TAGLINE" />
                 <TextInput
-                  style={[styles.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
+                  style={[themed.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
                   value={dealerDescription}
                   onChangeText={setDealerDescription}
                   placeholder="A short line about your dealership"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                   multiline
                 />
               </View>
 
-              <View style={styles.cardDivider} />
+              <View style={themed.cardDivider} />
               <TouchableOpacity
-                style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}
+                style={[themed.saveBtn, dealerSaving && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={handleSaveDealerProfile}
                 disabled={dealerSaving}
               >
                 {dealerSaving
                   ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={styles.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
+                  : <Text style={themed.saveBtnText}>SAVE DEALERSHIP PROFILE</Text>}
               </TouchableOpacity>
             </View>
           </>
@@ -956,22 +964,22 @@ export const SettingsScreen: React.FC = () => {
         {canManageBusiness && (
           <>
             <SectionHeader icon="shield-checkmark-outline" label="BUSINESS VERIFICATION" />
-            <View style={styles.card}>
-              <Text style={styles.payoutDesc}>
+            <View style={themed.card}>
+              <Text style={themed.payoutDesc}>
                 Legal type: {isSoleTraderDealer ? 'Sole Trader' : 'Registered Company'}
                 {dealerKycStatus ? ` • Status: ${dealerKycStatus}` : ''}
               </Text>
-              <Text style={[styles.payoutDesc, { marginTop: 8 }]}>
+              <Text style={[themed.payoutDesc, { marginTop: 8 }]}>
                 Change your legal business type or update an application under review. If your £1 verification fee has
                 already been paid, CarMazium will not charge it again. An approved account stays verified until a
                 different legal type is submitted; it then returns to Pending until the new identity is approved.
               </Text>
               <TouchableOpacity
-                style={[styles.stripeBtn, { marginTop: 16 }]}
+                style={[themed.stripeBtn, { marginTop: 16 }]}
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('DealerKYC', { reverify: dealerKycStatus === 'APPROVED' })}
               >
-                <Text style={styles.stripeBtnText}>
+                <Text style={themed.stripeBtnText}>
                   {dealerKycStatus === 'APPROVED' ? 'CHANGE BUSINESS TYPE / RE-VERIFY' : 'OPEN BUSINESS VERIFICATION'}
                 </Text>
               </TouchableOpacity>
@@ -985,34 +993,34 @@ export const SettingsScreen: React.FC = () => {
             invited users a reachable way in: paste the link/code here. */}
         {!isDealerAccount && !isDealerStaff && (
           <TouchableOpacity
-            style={styles.inviteRow}
+            style={themed.inviteRow}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('AcceptInvite')}
           >
-            <View style={styles.inviteIconWrap}>
+            <View style={themed.inviteIconWrap}>
               <Ionicons name="mail-open-outline" size={16} color={Colors.accent} />
             </View>
-            <Text style={styles.inviteRowText}>Have a dealer team invite? Accept it here</Text>
+            <Text style={themed.inviteRowText}>Have a dealer team invite? Accept it here</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
           </TouchableOpacity>
         )}
 
         {/* ── 3. TRADER VERIFICATION ── */}
         <SectionHeader icon={isAddressVerified ? 'shield-checkmark-outline' : 'shield-outline'} label="TRADER VERIFICATION" />
-        <View style={styles.card}>
-          <Text style={styles.payoutDesc}>
+        <View style={themed.card}>
+          <Text style={themed.payoutDesc}>
             {isAddressVerified
               ? 'Your address is verified. Dealer KYC and other account verification checks are tracked separately.'
               : 'Verify your address to complete this part of account verification. Other checks may still be required.'}
           </Text>
           {isAddressVerified ? (
-            <View style={styles.stripeConnected}>
+            <View style={themed.stripeConnected}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Address verified</Text>
+              <Text style={themed.stripeConnectedText}>Address verified</Text>
             </View>
           ) : (
             <TouchableOpacity
-              style={styles.stripeBtn}
+              style={themed.stripeBtn}
               activeOpacity={0.8}
               onPress={() => {
                 setVerifyStage('address');
@@ -1022,7 +1030,7 @@ export const SettingsScreen: React.FC = () => {
                 setVerifyModalVisible(true);
               }}
             >
-              <Text style={styles.stripeBtnText}>VERIFY ADDRESS</Text>
+              <Text style={themed.stripeBtnText}>VERIFY ADDRESS</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1033,31 +1041,31 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 4. SECURITY & PASSWORD ── */}
         <SectionHeader icon="lock-closed-outline" label="SECURITY & PASSWORD" />
-        <View style={styles.card}>
+        <View style={themed.card}>
           <FieldLabel label="CURRENT PASSWORD" />
-          <View style={styles.pwdInputWrap}>
+          <View style={themed.pwdInputWrap}>
             <TextInput
-              style={styles.pwdInput}
+              style={themed.pwdInput}
               value={currentPwd}
               onChangeText={setCurrentPwd}
               placeholder="••••••••"
-              placeholderTextColor={Colors.iconMuted}
+              placeholderTextColor={palette.textMuted}
               secureTextEntry={!showCurrentPwd}
               autoCapitalize="none"
             />
             <IconButton icon={<Ionicons name={showCurrentPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowCurrentPwd(v => !v)} accessibilityLabel={showCurrentPwd ? 'Hide password' : 'Show password'} />
           </View>
 
-          <View style={styles.pwdRow}>
+          <View style={themed.pwdRow}>
             <View style={{ flex: 1 }}>
               <FieldLabel label="NEW PASSWORD" />
-              <View style={styles.pwdInputWrap}>
+              <View style={themed.pwdInputWrap}>
                 <TextInput
-                  style={styles.pwdInput}
+                  style={themed.pwdInput}
                   value={newPwd}
                   onChangeText={setNewPwd}
                   placeholder="Min. 8 characters"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                   secureTextEntry={!showNewPwd}
                   autoCapitalize="none"
                 />
@@ -1067,13 +1075,13 @@ export const SettingsScreen: React.FC = () => {
             <View style={{ width: 12 }} />
             <View style={{ flex: 1 }}>
               <FieldLabel label="CONFIRM NEW PASSWORD" />
-              <View style={styles.pwdInputWrap}>
+              <View style={themed.pwdInputWrap}>
                 <TextInput
-                  style={styles.pwdInput}
+                  style={themed.pwdInput}
                   value={confirmPwd}
                   onChangeText={setConfirmPwd}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                   secureTextEntry={!showConfirmPwd}
                   autoCapitalize="none"
                 />
@@ -1082,16 +1090,16 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={themed.cardDivider} />
           <TouchableOpacity
-            style={[styles.updatePwdBtn, pwdSaving && { opacity: 0.6 }]}
+            style={[themed.updatePwdBtn, pwdSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
             onPress={handleUpdatePassword}
             disabled={pwdSaving}
           >
             {pwdSaving
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>UPDATE PASSWORD</Text>}
+              : <Text style={themed.saveBtnText}>UPDATE PASSWORD</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -1101,30 +1109,30 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 5. PAYOUTS ── */}
         <SectionHeader icon="card-outline" label="PAYOUTS" />
-        <View style={styles.card}>
-          <Text style={styles.payoutDesc}>
+        <View style={themed.card}>
+          <Text style={themed.payoutDesc}>
             Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
           </Text>
 
           {stripeLoading ? (
             <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 16 }} />
           ) : stripeOnboarded ? (
-            <View style={styles.stripeConnected}>
+            <View style={themed.stripeConnected}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Stripe payouts enabled</Text>
+              <Text style={themed.stripeConnectedText}>Stripe payouts enabled</Text>
             </View>
           ) : (
             <>
               {stripePartial && (
-                <View style={styles.stripeWarning}>
+                <View style={themed.stripeWarning}>
                   <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
-                  <Text style={styles.stripeWarningText}>
+                  <Text style={themed.stripeWarningText}>
                     Stripe payout setup is not yet enabled. Review any outstanding verification or onboarding requirements below.
                   </Text>
                 </View>
               )}
               <TouchableOpacity
-                style={[styles.stripeBtn, stripeConnecting && { opacity: 0.6 }]}
+                style={[themed.stripeBtn, stripeConnecting && { opacity: 0.6 }]}
                 activeOpacity={0.8}
                 onPress={handleConnectStripe}
                 disabled={stripeConnecting}
@@ -1133,10 +1141,10 @@ export const SettingsScreen: React.FC = () => {
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
                       <Ionicons name="arrow-redo-outline" size={16} color={Colors.white} />
-                      <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
+                      <Text style={themed.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
-              <Text style={styles.stripeNote}>
+              <Text style={themed.stripeNote}>
                 You will be taken to Stripe's secure onboarding — this takes about 2 minutes.
               </Text>
             </>
@@ -1145,30 +1153,30 @@ export const SettingsScreen: React.FC = () => {
 
         {/* ── 6. BANK ACCOUNT DETAILS ── */}
         <SectionHeader icon="business-outline" label="BANK ACCOUNT DETAILS" />
-        <View style={styles.card}>
-          <Text style={styles.payoutDesc}>
+        <View style={themed.card}>
+          <Text style={themed.payoutDesc}>
             Provide your UK bank details as a fallback. CarMazium can manually transfer your £100 bonus if Stripe Connect isn't available.
           </Text>
 
           <FieldLabel label="ACCOUNT HOLDER NAME" />
           <TextInput
-            style={styles.inputField}
+            style={themed.inputField}
             value={bankName}
             onChangeText={setBankName}
             placeholder="e.g. John Smith"
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={palette.textMuted}
             autoCapitalize="words"
           />
 
-          <View style={styles.bankRow}>
+          <View style={themed.bankRow}>
             <View style={{ flex: 1 }}>
               <FieldLabel label="SORT CODE" />
               <TextInput
-                style={styles.inputField}
+                style={themed.inputField}
                 value={sortCode}
                 onChangeText={setSortCode}
                 placeholder="e.g. 00-00-00"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
                 keyboardType="numbers-and-punctuation"
               />
             </View>
@@ -1176,27 +1184,27 @@ export const SettingsScreen: React.FC = () => {
             <View style={{ flex: 1 }}>
               <FieldLabel label="ACCOUNT NUMBER" />
               <TextInput
-                style={styles.inputField}
+                style={themed.inputField}
                 value={accountNumber}
                 onChangeText={setAccountNumber}
                 placeholder="e.g. 12345678"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
                 keyboardType="numeric"
                 maxLength={8}
               />
             </View>
           </View>
 
-          <View style={styles.cardDivider} />
+          <View style={themed.cardDivider} />
           <TouchableOpacity
-            style={[styles.bankSaveBtn, bankSaving && { opacity: 0.6 }]}
+            style={[themed.bankSaveBtn, bankSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
             onPress={handleSaveBank}
             disabled={bankSaving}
           >
             {bankSaving
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
+              : <Text style={themed.saveBtnText}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -1205,31 +1213,31 @@ export const SettingsScreen: React.FC = () => {
         {activeCategory === 'security' && (
           <>
         {/* ── Danger zone ── */}
-        <View style={styles.dangerCard}>
+        <View style={themed.dangerCard}>
           <SectionHeader icon="warning-outline" label="DANGER ZONE" />
-          <Text style={styles.dangerCopy}>
+          <Text style={themed.dangerCopy}>
             Deleting your account is permanent. Your active listings are withdrawn and your
             personal details are removed.
           </Text>
           <TouchableOpacity
-            style={styles.deleteBtn}
+            style={themed.deleteBtn}
             activeOpacity={0.8}
             onPress={() => { setDeleteConfirmText(''); setDeleteError(null); setDeleteModalOpen(true); }}
             accessibilityRole="button"
             accessibilityLabel="Delete account"
           >
             <Ionicons name="trash-outline" size={15} color={Colors.error} />
-            <Text style={styles.deleteBtnText}>DELETE ACCOUNT</Text>
+            <Text style={themed.deleteBtnText}>DELETE ACCOUNT</Text>
           </TouchableOpacity>
         </View>
           </>
         )}
 
         {activeCategory === 'appearance' && (
-          <View style={styles.accountSectionCard}>
+          <View style={themed.accountSectionCard}>
             <SectionHeader icon="color-palette-outline" label="APPEARANCE" />
-            <Text style={styles.accountSectionTitle}>Dark appearance</Text>
-            <Text style={styles.accountSectionText}>
+            <Text style={themed.accountSectionTitle}>Dark appearance</Text>
+            <Text style={themed.accountSectionText}>
               The app currently uses the CarMazium website's dark colour palette.
               A live light/dark switch is not yet supported by the native theme engine.
               This screen does not pretend that changing the website theme changes app colours.
@@ -1238,20 +1246,20 @@ export const SettingsScreen: React.FC = () => {
         )}
 
         {activeCategory === 'reviews' && (
-          <View style={styles.accountSectionCard}>
+          <View style={themed.accountSectionCard}>
             <SectionHeader icon="star-outline" label="RATINGS & REVIEWS" />
-            <Text style={styles.accountSectionText}>See what others have written about you and the reviews you have given.</Text>
+            <Text style={themed.accountSectionText}>See what others have written about you and the reviews you have given.</Text>
             {ratingLoading && <ActivityIndicator color={Colors.accent} style={{ marginVertical: 10 }} />}
             {!!ratingError && (
-              <Text style={styles.accountErrorText}>{ratingError}</Text>
+              <Text style={themed.accountErrorText}>{ratingError}</Text>
             )}
             {!!ratingSummary && (
-              <View style={styles.reviewSummary}>
+              <View style={themed.reviewSummary}>
                 <Ionicons name="star" size={20} color={Colors.warning} />
-                <Text style={styles.reviewScore}>
+                <Text style={themed.reviewScore}>
                   {Number(ratingSummary.average).toFixed(1)}
                 </Text>
-                <Text style={styles.accountSectionText}>
+                <Text style={themed.accountSectionText}>
                   ({ratingSummary.count.toLocaleString('en-GB')} reviews)
                 </Text>
               </View>
@@ -1262,25 +1270,25 @@ export const SettingsScreen: React.FC = () => {
                   { label: 'Reviews received', items: ratingReceived, from: 'reviewer' as const },
                   { label: 'Reviews given', items: ratingGiven, from: 'target' as const },
                 ]).map(group => (
-                  <View key={group.label} style={styles.reviewGroup}>
-                    <Text style={styles.accountSectionTitle}>{group.label}</Text>
+                  <View key={group.label} style={themed.reviewGroup}>
+                    <Text style={themed.accountSectionTitle}>{group.label}</Text>
                     {group.items.length === 0 && (
-                      <Text style={styles.accountSectionText}>No {group.label.toLowerCase()} yet.</Text>
+                      <Text style={themed.accountSectionText}>No {group.label.toLowerCase()} yet.</Text>
                     )}
                     {group.items.map(review => (
-                      <View key={review.id} style={styles.reviewRow}>
-                        <View style={styles.reviewRowHeading}>
-                          <Text style={styles.reviewName}>
+                      <View key={review.id} style={themed.reviewRow}>
+                        <View style={themed.reviewRowHeading}>
+                          <Text style={themed.reviewName}>
                             {group.from === 'reviewer'
                               ? review.reviewer?.displayName || 'CarMazium user'
                               : review.target?.displayName || 'CarMazium user'}
                           </Text>
-                          <Text style={styles.reviewStars}>
+                          <Text style={themed.reviewStars}>
                             {Number(review.rating).toFixed(1)} / 5
                           </Text>
                         </View>
-                        {!!review.comment && <Text style={styles.accountSectionText}>{review.comment}</Text>}
-                        <Text style={styles.reviewDate}>
+                        {!!review.comment && <Text style={themed.accountSectionText}>{review.comment}</Text>}
+                        <Text style={themed.reviewDate}>
                           {Number.isFinite(new Date(review.createdAt).getTime())
                             ? new Date(review.createdAt).toLocaleDateString('en-GB')
                             : ''}
@@ -1295,32 +1303,32 @@ export const SettingsScreen: React.FC = () => {
         )}
 
         {activeCategory === 'account' && (
-          <View style={styles.accountSectionCard}>
+          <View style={themed.accountSectionCard}>
             <SectionHeader icon="settings-outline" label="ACCOUNT TYPE" />
-            <Text style={styles.accountSectionTitle}>
+            <Text style={themed.accountSectionTitle}>
               {isDealerStaff ? 'Dealer team member' : isDealerAccount ? 'Partner Account' : 'Personal Account'}
             </Text>
-            <Text style={styles.accountSectionText}>
+            <Text style={themed.accountSectionText}>
               Personal accounts let individuals buy and sell vehicles.
               Partner accounts manage verified trade and business services.
               Changing your dashboard view does not change your verified account permissions.
             </Text>
             {canManageBusiness ? (
-              <TouchableOpacity style={styles.accountAction}
+              <TouchableOpacity style={themed.accountAction}
                 accessibilityRole="button" accessibilityLabel="Review business verification"
                 onPress={() => selectCategory('verification')}>
-                <Text style={styles.accountActionText}>Review business verification</Text>
+                <Text style={themed.accountActionText}>Review business verification</Text>
                 <Ionicons name="chevron-forward" size={17} color={Colors.white} />
               </TouchableOpacity>
             ) : !isDealerStaff ? (
-              <TouchableOpacity style={styles.accountAction}
+              <TouchableOpacity style={themed.accountAction}
                 accessibilityRole="button" accessibilityLabel="Explore Partner Account"
                 onPress={() => navigation.navigate('PartnerDashboard')}>
-                <Text style={styles.accountActionText}>Explore Partner Account</Text>
+                <Text style={themed.accountActionText}>Explore Partner Account</Text>
                 <Ionicons name="chevron-forward" size={17} color={Colors.white} />
               </TouchableOpacity>
             ) : (
-              <Text style={styles.accountSectionText}>
+              <Text style={themed.accountSectionText}>
                 Business ownership, legal type and verification changes must be made by the dealership owner.
               </Text>
             )}
@@ -1338,29 +1346,29 @@ export const SettingsScreen: React.FC = () => {
         title="Delete your account?"
         avoidKeyboard
       >
-        <View style={styles.verifyModalBody}>
+        <View style={themed.verifyModalBody}>
           {deleteError ? (
             <View style={{ marginBottom: 16 }}>
               <ErrorBanner message={deleteError} />
             </View>
           ) : null}
-          <Text style={styles.dangerCopy}>
+          <Text style={themed.dangerCopy}>
             This is permanent and cannot be undone. Your active listings will be withdrawn and
             your personal details removed. Type DELETE below to confirm.
           </Text>
           <FieldLabel label="CONFIRMATION" />
           <TextInput
-            style={styles.inputField}
+            style={themed.inputField}
             value={deleteConfirmText}
             onChangeText={setDeleteConfirmText}
             placeholder="Type DELETE"
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={palette.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             editable={!deleting}
           />
           <TouchableOpacity
-            style={[styles.deleteConfirmBtn, (!canConfirmDelete || deleting) && { opacity: 0.4 }]
+            style={[themed.deleteConfirmBtn, (!canConfirmDelete || deleting) && { opacity: 0.4 }]
             }
             activeOpacity={0.8}
             onPress={handleDeleteAccount}
@@ -1370,14 +1378,14 @@ export const SettingsScreen: React.FC = () => {
           >
             {deleting
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.deleteConfirmBtnText}>DELETE MY ACCOUNT</Text>}
+              : <Text style={themed.deleteConfirmBtnText}>DELETE MY ACCOUNT</Text>}
           </TouchableOpacity>
           <TouchableOpacity
             style={{ alignItems: 'center', marginTop: 14 }}
             onPress={() => { if (!deleting) { setDeleteModalOpen(false); setDeleteError(null); } }}
             disabled={deleting}
           >
-            <Text style={styles.resendLinkText}>Cancel</Text>
+            <Text style={themed.resendLinkText}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </BottomSheet>
@@ -1389,7 +1397,7 @@ export const SettingsScreen: React.FC = () => {
         title={`Trader Verification (Step ${verifyStage === 'address' ? 1 : 2}/2)`}
         avoidKeyboard
       >
-        <View style={styles.verifyModalBody}>
+        <View style={themed.verifyModalBody}>
           {verifyError ? (
             <View style={{ marginBottom: 16 }}>
               <ErrorBanner message={verifyError} />
@@ -1397,56 +1405,56 @@ export const SettingsScreen: React.FC = () => {
           ) : null}
           {verifyStage === 'address' && (
             <View>
-              <Text style={styles.verifyStepTitle}>Confirm Your Address</Text>
-              <Text style={styles.verifyStepSub}>
+              <Text style={themed.verifyStepTitle}>Confirm Your Address</Text>
+              <Text style={themed.verifyStepSub}>
                 Enter your current residential address. We'll email a 6-digit verification code to {user?.email || 'your account email'}.
               </Text>
               <TextInput
-                style={[styles.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
+                style={[themed.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
                 value={verifyAddressInput}
                 onChangeText={setVerifyAddressInput}
                 placeholder="Enter your full address"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
                 autoCapitalize="words"
                 multiline
               />
               <TouchableOpacity
-                style={[styles.stripeBtn, { marginTop: 16 }, verifySending && { opacity: 0.6 }]}
+                style={[themed.stripeBtn, { marginTop: 16 }, verifySending && { opacity: 0.6 }]}
                 onPress={handleSendVerificationCode}
                 disabled={verifySending}
               >
                 {verifySending
                   ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={styles.stripeBtnText}>SEND VERIFICATION CODE</Text>}
+                  : <Text style={themed.stripeBtnText}>SEND VERIFICATION CODE</Text>}
               </TouchableOpacity>
             </View>
           )}
           {verifyStage === 'code' && (
             <View>
-              <Text style={styles.verifyStepTitle}>Enter Verification Code</Text>
-              <Text style={styles.verifyStepSub}>
+              <Text style={themed.verifyStepTitle}>Enter Verification Code</Text>
+              <Text style={themed.verifyStepSub}>
                 We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
               </Text>
               <TextInput
-                style={styles.inputField}
+                style={themed.inputField}
                 value={verificationCode}
                 onChangeText={setVerificationCode}
                 placeholder="Enter 6-digit code"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={palette.textMuted}
                 keyboardType="number-pad"
                 maxLength={6}
               />
               <TouchableOpacity
-                style={[styles.stripeBtn, { marginTop: 16 }, verifyConfirming && { opacity: 0.6 }]}
+                style={[themed.stripeBtn, { marginTop: 16 }, verifyConfirming && { opacity: 0.6 }]}
                 onPress={handleConfirmVerificationCode}
                 disabled={verifyConfirming}
               >
                 {verifyConfirming
                   ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={styles.stripeBtnText}>CONFIRM & VERIFY</Text>}
+                  : <Text style={themed.stripeBtnText}>CONFIRM & VERIFY</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={{ alignItems: 'center', marginTop: 14 }} onPress={() => { setVerifyStage('address'); setVerifyError(null); }}>
-                <Text style={styles.resendLinkText}>Wrong address? Go back</Text>
+                <Text style={themed.resendLinkText}>Wrong address? Go back</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1687,3 +1695,70 @@ const styles = StyleSheet.create({
   verifyStepSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20, marginBottom: 20 },
   resendLinkText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.textSecondary, textDecorationLine: 'underline' },
 });
+
+function useSettingsThemeStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    settingsPageTitle: [styles.settingsPageTitle, { color: palette.textPrimary }],
+    settingsPageSubtitle: [styles.settingsPageSubtitle, { color: palette.textSecondary }],
+    settingsBackText: [styles.settingsBackText, { color: palette.accent }],
+    accountToolsPanel: [styles.accountToolsPanel, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    accountToolsHeading: [styles.accountToolsHeading, { color: palette.textPrimary }],
+    accountToolsSub: [styles.accountToolsSub, { color: palette.textSecondary }],
+    accountToolButton: [styles.accountToolButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    accountToolLabel: [styles.accountToolLabel, { color: palette.textPrimary }],
+    accountSectionCard: [styles.accountSectionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    accountSectionTitle: [styles.accountSectionTitle, { color: palette.textPrimary }],
+    accountSectionText: [styles.accountSectionText, { color: palette.textSecondary }],
+    accountErrorText: [styles.accountErrorText, { color: palette.textMuted }],
+    reviewSummary: [styles.reviewSummary, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    reviewScore: [styles.reviewScore, { color: palette.textPrimary }],
+    reviewGroup: [styles.reviewGroup, { backgroundColor: palette.bgCard }],
+    reviewRow: [styles.reviewRow, { borderBottomColor: palette.borderDefault }],
+    reviewName: [styles.reviewName, { color: palette.textPrimary }],
+    reviewDate: [styles.reviewDate, { color: palette.textMuted }],
+    accountAction: [styles.accountAction, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    accountActionText: [styles.accountActionText, { color: palette.textPrimary }],
+    dangerCard: [styles.dangerCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    dangerCopy: [styles.dangerCopy, { color: palette.textSecondary }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    title: [styles.title, { color: palette.textPrimary }],
+    categoryButton: [styles.categoryButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    categoryLabel: [styles.categoryLabel, { color: palette.textSecondary }],
+    notificationShortcut: [styles.notificationShortcut, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    notificationShortcutTitle: [styles.notificationShortcutTitle, { color: palette.textPrimary }],
+    notificationShortcutHint: [styles.notificationShortcutHint, { color: palette.textSecondary }],
+    preferenceNotice: [styles.preferenceNotice, { color: palette.textMuted }],
+    inviteRow: [styles.inviteRow, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    inviteRowText: [styles.inviteRowText, { color: palette.textPrimary }],
+    sectionHeader: [styles.sectionHeader, { borderBottomColor: palette.borderDefault }],
+    sectionIconWrap: [styles.sectionIconWrap, { backgroundColor: palette.bgInput }],
+    sectionLabel: [styles.sectionLabel, { color: palette.textPrimary }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardDivider: [styles.cardDivider, { backgroundColor: palette.borderDefault }],
+    fieldLabel: [styles.fieldLabel, { color: palette.textSecondary }],
+    fieldErrorText: [styles.fieldErrorText, { color: palette.textMuted }],
+    fieldWrap: [styles.fieldWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    fieldValueReadonly: [styles.fieldValueReadonly, { color: palette.textSecondary }],
+    fieldInput: [styles.fieldInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    avatarChangeText: [styles.avatarChangeText, { color: palette.textPrimary }],
+    avatarHintText: [styles.avatarHintText, { color: palette.textMuted }],
+    toggleTitle: [styles.toggleTitle, { color: palette.textPrimary }],
+    pwdInputWrap: [styles.pwdInputWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    pwdInput: [styles.pwdInput, { color: palette.textPrimary }],
+    payoutDesc: [styles.payoutDesc, { color: palette.textSecondary }],
+    stripeConnected: [styles.stripeConnected, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    stripeConnectedText: [styles.stripeConnectedText, { color: palette.textPrimary }],
+    stripeWarning: [styles.stripeWarning, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    stripeWarningText: [styles.stripeWarningText, { color: palette.textSecondary }],
+    stripeNote: [styles.stripeNote, { color: palette.textMuted }],
+    inputField: [styles.inputField, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    verifyModalBody: [styles.verifyModalBody, { backgroundColor: palette.bgDropdown }],
+    verifyStepTitle: [styles.verifyStepTitle, { color: palette.textPrimary }],
+    verifyStepSub: [styles.verifyStepSub, { color: palette.textSecondary }],
+    resendLinkText: [styles.resendLinkText, { color: palette.accent }],
+  }), [palette]);
+}
