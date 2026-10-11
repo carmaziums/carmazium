@@ -249,7 +249,7 @@ test('Block 6 drawer reads naturally at 200% font, scrolls and distinguishes dea
   const shared = app('components/GlobalDrawer.tsx');
   const menu = app('components/HamburgerButton.tsx');
   const settings = app('screens/main/SettingsScreen.tsx');
-  assert.match(shared, /visible=\{isOpen\}/);
+  assert.match(shared, /visible=\{isOpen && isAuthenticated\}/);
   assert.match(shared, /onRequestClose=\{closeDrawer\}/);
   assert.match(shared, /accessibilityLabel="Close navigation menu"/);
   assert.match(shared, /accessibilityLabel=\{item\.id === 'dashboard' && dealerMode \? 'Dealer Dashboard' : item\.label\}/);
@@ -281,7 +281,7 @@ test('Block 7 drawer dismissals cancel stale taps and reset expanded choices acr
   assert.match(nav, /const accountId = user\?\.id/);
   assert.match(nav, /return \(\) => \{\s*if \(pendingNavigation\.current\) clearTimeout\(pendingNavigation\.current\)/);
   assert.match(nav, /\}, \[accountId, role, accountRole\]\)/);
-  assert.match(nav, /if \(!isOpen\) setExpandedMenu\(null\)/);
+  assert.match(nav, /if \(!isOpen \|\| !isAuthenticated\) setExpandedMenu\(null\)/);
   assert.match(nav, /if \(pendingNavigation\.current\) clearTimeout\(pendingNavigation\.current\)/);
   assert.match(nav, /const currentAuth = useAuthStore\.getState\(\)/);
   assert.match(nav, /if \(!currentAuth\.isAuthenticated\s*\|\| currentAuth\.user\?\.id !== sourceAccountId\s*\|\| currentAuth\.role !== sourceRole\s*\|\| currentAuth\.accountRole !== sourceAccountRole\) return/);
