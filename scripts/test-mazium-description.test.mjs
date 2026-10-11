@@ -12,7 +12,9 @@ assert.ok(start > 0 && end > start, "MaziuM description CTA must exist")
 const cta = wizard.slice(start, end)
 
 test("retail and auction share the MaziuM description CTA", () => {
-    assert.match(sellerPage, /import \{ ListingWizard \}/)
+    // /sell lazy-loads the same wizard for bundle performance. Accept the
+    // actual dynamic import instead of requiring an obsolete static import.
+    assert.match(sellerPage, /import\("@\/components\/listing\/ListingWizard"\)\.then\(\(mod\) => mod\.ListingWizard\)/)
     assert.match(wizard, /MaziuM description/)
     assert.doesNotMatch(cta, /Auto-generate with AI/)
     assert.equal((wizard.match(/data-testid="seller-mazium-description"/g) || []).length, 1)
