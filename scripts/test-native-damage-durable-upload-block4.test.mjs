@@ -15,7 +15,7 @@ test('damage evidence uploads to owner-scoped Supabase storage, never a local fi
   assert.match(uploader, /await uploadToStorage\(compressedUri, 'listings', objectPath, 'image\/jpeg'\)/);
   assert.match(uploader, /source\.startsWith\('https:\/\/'\)/);
   assert.match(uploader, /source\.includes\('\/storage\/v1\/object\/public\/listings\/'\)/);
-  assert.match(uploader, /setDamageRecords\(prev => \{[\s\S]*?damagePhotoUrl: source,[\s\S]*?localDamagePhotoUri: undefined/);
+  assert.match(uploader, /const saved: DamageEntry = \{[\s\S]*?damagePhotoUrl: source,[\s\S]*?localDamagePhotoUri: undefined/);
 });
 
 test('new upload is counted as listing DAMAGE image and limits enforced before storage', () => {
@@ -55,8 +55,11 @@ test('listing cannot be published or advanced with an uncommitted or in-flight d
   assert.match(mapper, /onPendingChange\?\.\(Boolean\(addingZone\) \|\| pickingDamagePhoto \|\| uploadingDamagePhoto\)/);
 });
 
-test('deleting a defect only deletes its unique evidence when no other defect needs the URL', () => {
-  assert.match(seller, /async function handleRemoveDamageEntry\(id: string\)/);
-  assert.match(seller, /!damageRecords\.some\(item => item\.id !== id && item\.damagePhotoUrl === url\)/);
-  assert.match(seller, /await removePhoto\('Damage', encodeVehicleImageCategory\(url, 'DAMAGE'\)\)/);
+test('deleting one defect stages only its unreferenced evidence for safe cleanup', () => {
+  const removed = seller.slice(seller.indexOf('async function handleRemoveDamageEntry('), seller.indexOf('async function handlePickPhoto()', seller.indexOf('async function handleRemoveDamageEntry(')));
+  assert.match(removed, /const remaining = damageRecords\.filter\(item => item\.id !== id\)/);
+  assert.match(removed, /withoutUnreferencedDamagePhoto\(prev, url, remaining\)/);
+  assert.match(removed, /!remaining\.some\(item => item\.damagePhotoUrl === url\)/);
+  assert.match(removed, /markDamagePhotoAbandoned\(currentUserId, url\)/);
+  assert.doesNotMatch(removed, /deletePublicStorageObject|await removePhoto\(/);
 });

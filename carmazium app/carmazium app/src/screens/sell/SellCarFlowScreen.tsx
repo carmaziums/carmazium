@@ -21,6 +21,8 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { convertAndCompress, deletePublicStorageObject, uploadToStorage } from '../../lib/storageHelper';
 import { useSellWizardStore, loadSellWizardDraftForUser } from '../../lib/sellWizardStore';
+import { sanitizeDamageDraft, withoutUnreferencedDamagePhoto } from '../../lib/damageDraft';
+import { markDamagePhotoAbandoned, cleanAbandonedDamagePhotos } from '../../lib/damageOrphanCleanup';
 import { nativeDraftStepOneComplete } from '../../lib/nativeSellerDraftReadiness';
 import { parseNativeAuctionLocalStart, nativeScheduledStartIsValid, nativeAuctionDraftReady } from '../../lib/nativeAuctionDraft';
 import { haptics } from '../../lib/haptics';
@@ -728,6 +730,29 @@ function Damage3DMapper({
                 </View>
               </View>
             )}
+            {preservedDamagePhotoUrl && !pendingDamagePhotoUri && (
+              <View style={s.damagePhotoPreview}>
+                <ExpoImage
+                  source={{ uri: preservedDamagePhotoUrl }}
+                  style={s.damagePhotoPreviewImage}
+                  contentFit="cover"
+                  accessibilityLabel="Previously uploaded photo for this damage"
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.damagePhotoActionText}>Existing uploaded photo</Text>
+                  <TouchableOpacity
+                    style={s.damageRemovePhoto}
+                    onPress={() => setPreservedDamagePhotoUrl(undefined)}
+                    disabled={pickingDamagePhoto || uploadingDamagePhoto}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove existing photo from this damage entry"
+                  >
+                    <Ionicons name="trash-outline" size={15} color={Colors.accent} />
+                    <Text style={s.damagePhotoRemoveText}>Remove photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             {uploadingDamagePhoto && (
               <View style={s.damagePhotoBusy} accessibilityLiveRegion="polite">
                 <ActivityIndicator size="small" color={Colors.accent} />
@@ -1253,6 +1278,62 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   // ── Draft persistence ──
   const { updateDraft, clearDraft } = useSellWizardStore();
+  // Owner gate is separate from screen mount: never overwrite a not-yet-resumed
+  // saved draft with initial [] on app launch or account transition.
+  const [activeDamageDraftOwner, setActiveDamageDraftOwner] = useState<string | null>(null);
+  const clearDraftAndStopDamageAutosave = () => {
+    setActiveDamageDraftOwner(null);
+    clearDraft();
+  };
+  // Abandoned draft evidence is queued for delayed deletion, not immediately
+  // removed from Storage: a previous server-side edit may still need it.
+  const queueDiscardedDamageDraftMedia = (records: ReadonlyArray<{ damagePhotoUrl?: string }>,
+    images: readonly string[]) => {
+    if (!currentUserId || editMode || hpiDraftListingId) return;
+    const urls = new Set<string>();
+    for (const record of records) if (record.damagePhotoUrl) urls.add(record.damagePhotoUrl);
+    for (const value of images) {
+      const source = parseVehicleImageMetadata(value).src;
+      if (source.includes('/damage/')) urls.add(source);
+    }
+    for (const source of urls) {
+      if (backendReferencedPhotoSourcesRef.current.has(source)) continue;
+      void markDamagePhotoAbandoned(currentUserId, source).catch(
+        error => console.warn('Unable to queue abandoned draft damage photo:', error));
+    }
+  };
+  useEffect(() => {
+    if (editMode || !currentUserId || activeDamageDraftOwner !== currentUserId) return;
+    if (damageUploadInFlightRef.current) return;
+    // A confirmed damage is durable in memory after the photo upload resolves.
+    // This effect also covers the case where the seller closes the app without
+    // pressing Next or Save Draft.
+    updateDraft({
+      damageRecords: sanitizeDamageDraft(damageRecords),
+      damageImages,
+    });
+  }, [activeDamageDraftOwner, currentUserId, editMode, damageRecords, damageImages, updateDraft]);
+
+  useEffect(() => {
+    if (!currentUserId || activeDamageDraftOwner !== currentUserId || editMode
+      || hpiDraftListingId || isPublishing || damageEditorPending || damageUploadInFlightRef.current) return;
+    // Reconcile against BOTH the live editor and current owner-scoped persisted
+    // snapshot, as well as known backend references. A mature orphan is never
+    // deleted if a saved listing/draft still mentions it.
+    const draft = useSellWizardStore.getState();
+    const keep = new Set<string>(backendReferencedPhotoSourcesRef.current);
+    for (const record of [...damageRecords, ...sanitizeDamageDraft(draft.damageRecords)]) {
+      if (record.damagePhotoUrl) keep.add(record.damagePhotoUrl);
+    }
+    for (const url of [...damageImages, ...exteriorImages, ...interiorImages,
+      ...(draft.damageImages ?? []), ...(draft.exteriorImages ?? []), ...(draft.interiorImages ?? [])]) {
+      const source = parseVehicleImageMetadata(url).src;
+      if (source) keep.add(source);
+    }
+    void cleanAbandonedDamagePhotos(currentUserId, keep)
+      .catch(error => console.warn('Damage orphan cleanup deferred:', error));
+  }, [currentUserId, activeDamageDraftOwner, editMode, hpiDraftListingId, isPublishing,
+    damageEditorPending, damageRecords, damageImages, exteriorImages, interiorImages]);
 
   // ── Inline validation (Step 1 user-entered fields, Step 3 pricing) ──
   // Touched tracks whether user has interacted with a field (blur or change after focus)
@@ -1271,9 +1352,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       const loaded = await loadSellWizardDraftForUser(currentUserId);
       if (!loaded || cancelled || editMode) return;
       const store = useSellWizardStore.getState();
-      if (!store.make && !store.model && store.lastStep <= 1) return;
+      if (!store.make && !store.model && store.lastStep <= 1
+        && !(store.damageRecords?.length) && !(store.damageImages?.length)
+        && !(store.exteriorImages?.length) && !(store.interiorImages?.length)) {
+        setActiveDamageDraftOwner(currentUserId);
+        return;
+      }
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
-        { text: 'Start fresh', onPress: clearDraft, style: 'cancel' },
+        { text: 'Start fresh', onPress: () => {
+            queueDiscardedDamageDraftMedia(sanitizeDamageDraft(store.damageRecords), store.damageImages ?? []);
+            clearDraftAndStopDamageAutosave();
+            setDamageRecords([]);
+            setDamageImages([]);
+            setActiveDamageDraftOwner(currentUserId);
+          }, style: 'destructive' },
         { text: 'Resume', onPress: () => {
             if (cancelled) return;
             const normalizedVrm = normalizeNativeRegistration(store.vrm);
@@ -1310,7 +1402,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             setDeclAcknowledged(store.declAcknowledged);
             setExteriorImages(store.exteriorImages ?? []);
             setInteriorImages(store.interiorImages ?? []);
-            setDamageImages(store.damageImages ?? []);
+            const recoveredDamage = sanitizeDamageDraft(store.damageRecords);
+            // Keep record-owned evidence visible in the listing gallery even
+            // if the process stopped between the two React state commits.
+            const recoveredDamageImages = [...(store.damageImages ?? [])];
+            for (const record of recoveredDamage) {
+              const source = record.damagePhotoUrl;
+              if (source && !recoveredDamageImages.some(uri =>
+                parseVehicleImageMetadata(uri).src === source)) {
+                recoveredDamageImages.push(encodeVehicleImageCategory(source, 'DAMAGE'));
+              }
+            }
+            setDamageImages(recoveredDamageImages);
+            setDamageRecords(recoveredDamage);
+            setActiveDamageDraftOwner(currentUserId);
             setAuctionStartMode(store.auctionStartMode || 'NOW');
             setAuctionStartDate(store.auctionStartDate || '');
             setReservePrice(store.reservePrice || '');
@@ -1918,10 +2023,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
     if (!entry.localDamagePhotoUri) {
       // Editing an existing defect replaces its record, never duplicates it.
-      // A second defect on the same panel still has its own UUID and row.
+      // Preserve shared gallery photos and defer storage deletion until the
+      // server/listing no longer needs the removed record's previous proof.
+      const original = damageRecords.find(item => item.id === entry.id);
+      const remaining = damageRecords.filter(item => item.id !== entry.id);
       setDamageRecords(prev => prev.some(r => r.id === entry.id)
         ? prev.map(r => r.id === entry.id ? entry : r)
         : [...prev, entry]);
+      if (original?.damagePhotoUrl && original.damagePhotoUrl !== entry.damagePhotoUrl) {
+        setDamageImages(prev => withoutUnreferencedDamagePhoto(prev, original.damagePhotoUrl!, [...remaining, entry]));
+        if (!editMode && !hpiDraftListingId && currentUserId
+          && !remaining.some(item => item.damagePhotoUrl === original.damagePhotoUrl)) {
+          void markDamagePhotoAbandoned(currentUserId, original.damagePhotoUrl)
+            .catch(error => console.warn('Could not queue detached proof:', error));
+        }
+      }
       return;
     }
     const photoCount = exteriorImages.length + interiorImages.length + damageImages.length;
@@ -1946,17 +2062,29 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       newlyUploadedPhotoSourcesRef.current.add(source);
       // Add the same source to listing images for the listing's existing
       // 100-image cap, retention and gallery/metadata rules.
-      setDamageImages(prev => [...prev, encodeVehicleImageCategory(source, 'DAMAGE')]);
-      setDamageRecords(prev => {
-        const saved: DamageEntry = {
-          ...entry,
-          damagePhotoUrl: source,
-          localDamagePhotoUri: undefined,
-        };
-        return prev.some(r => r.id === entry.id)
-          ? prev.map(r => r.id === entry.id ? saved : r)
-          : [...prev, saved];
+      const saved: DamageEntry = {
+        ...entry,
+        damagePhotoUrl: source,
+        localDamagePhotoUri: undefined,
+      };
+      const existing = damageRecords.find(item => item.id === entry.id);
+      const otherRecords = damageRecords.filter(item => item.id !== entry.id);
+      setDamageImages(prev => {
+        const appended = [...prev, encodeVehicleImageCategory(source, 'DAMAGE')];
+        return existing?.damagePhotoUrl
+          ? withoutUnreferencedDamagePhoto(appended, existing.damagePhotoUrl, [...otherRecords, saved])
+          : appended;
       });
+      setDamageRecords(prev => prev.some(r => r.id === entry.id)
+        ? prev.map(r => r.id === entry.id ? saved : r)
+        : [...prev, saved]);
+      // Never delete the previous image immediately: an already-published
+      // listing may still reference it until an edit PATCH is confirmed.
+      if (existing?.damagePhotoUrl && !editMode && !hpiDraftListingId && currentUserId
+        && !otherRecords.some(item => item.damagePhotoUrl === existing.damagePhotoUrl)) {
+        void markDamagePhotoAbandoned(currentUserId, existing.damagePhotoUrl)
+          .catch(error => console.warn('Could not queue retired damage photo:', error));
+      }
       onProgress(100);
     } catch (err: any) {
       throw new Error(err?.message || 'Could not upload the damage photo. Please retry.');
@@ -1966,13 +2094,21 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   async function handleRemoveDamageEntry(id: string): Promise<void> {
+    if (damageUploadInFlightRef.current) return;
     const record = damageRecords.find(item => item.id === id);
     if (!record) return;
-    setDamageRecords(prev => prev.filter(item => item.id !== id));
-    // Never remove evidence referenced by another defect, even on same panel.
+    const remaining = damageRecords.filter(item => item.id !== id);
+    setDamageRecords(remaining);
+    // Drop the gallery reference but defer physical Storage deletion. Drafts
+    // and existing server-side listings can retain independent references.
     const url = record.damagePhotoUrl;
-    if (url && !damageRecords.some(item => item.id !== id && item.damagePhotoUrl === url)) {
-      await removePhoto('Damage', encodeVehicleImageCategory(url, 'DAMAGE'));
+    if (url) {
+      setDamageImages(prev => withoutUnreferencedDamagePhoto(prev, url, remaining));
+      if (!editMode && !hpiDraftListingId && currentUserId
+        && !remaining.some(item => item.damagePhotoUrl === url)) {
+        await markDamagePhotoAbandoned(currentUserId, url).catch(
+          error => console.warn('Could not queue removed damage photo:', error));
+      }
     }
   }
 
@@ -2026,6 +2162,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function removePhoto(tab: string, uri: string) {
     const source = parseVehicleImageMetadata(uri).src;
+    if (tab === 'Damage' && damageRecords.some(item => item.damagePhotoUrl === source)) {
+      Alert.alert('Photo belongs to a damage', 'Remove or edit the linked damage record before removing this evidence.');
+      return;
+    }
 
     // A photo already referenced by an existing/HPI draft listing must not be
     // physically deleted before PATCH succeeds. Removing it from state stages
@@ -2034,6 +2174,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       source
       && newlyUploadedPhotoSourcesRef.current.has(source)
       && !backendReferencedPhotoSourcesRef.current.has(source)
+      && tab !== 'Damage'
     ) {
       try {
         await deletePublicStorageObject(source, 'listings');
@@ -2047,7 +2188,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     if (tab === 'Exterior') setExteriorImages(p => p.filter(x => x !== uri));
     else if (tab === 'Interior') setInteriorImages(p => p.filter(x => x !== uri));
-    else setDamageImages(p => p.filter(x => x !== uri));
+    else {
+      setDamageImages(p => p.filter(x => x !== uri));
+      if (!editMode && !hpiDraftListingId && currentUserId && source) {
+        void markDamagePhotoAbandoned(currentUserId, source).catch(
+          error => console.warn('Could not queue removed gallery damage photo:', error));
+      }
+    }
   }
 
   function movePhoto(tab: string, from: number, to: number) {
@@ -2616,7 +2763,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           try {
             await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
           } catch (pubErr: any) {
-            clearDraft();
+            clearDraftAndStopDamageAutosave();
             Alert.alert(
               'Auction saved, not yet submitted',
               `${pubErr?.message || 'The auction could not be submitted for review.'} Open it from My Auctions to submit it.`,
@@ -2625,7 +2772,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             return;
           }
           haptics.success();
-          clearDraft();
+          clearDraftAndStopDamageAutosave();
           Alert.alert(
             damageSaved ? 'Auction Scheduled!' : 'Auction scheduled — damage details not saved',
             // Auctions require admin review before going live in every case
@@ -2694,7 +2841,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             } catch (secondErr: any) {
               // Charged but not submitted — this is the one state the seller
               // must never be told is fine.
-              clearDraft();
+              clearDraftAndStopDamageAutosave();
               Alert.alert(
                 'Payment received — listing not submitted',
                 `${secondErr?.message || 'The listing could not be submitted for review.'} Your payment went through; publish it again from My Listings and you will not be charged twice.`,
@@ -2711,7 +2858,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           // failed. The auction branch above was already corrected for exactly
           // this; the classified branch had been left behind.
           haptics.success();
-          clearDraft();
+          clearDraftAndStopDamageAutosave();
           Alert.alert(
             damageSaved ? 'Submitted for review' : 'Submitted — damage details not saved',
             damageSaved
@@ -2747,6 +2894,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      damageRecords: sanitizeDamageDraft(damageRecords),
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: nextStep,
     });
@@ -2754,6 +2902,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function handleBack() {
+    if (damageUploadInFlightRef.current || damageEditorPending) {
+      Alert.alert('Finish damage entry', 'Save or cancel the open damage entry before leaving. Wait for the photo upload to finish.');
+      return;
+    }
     if (step > 1) setStep((step - 1) as Step);
     else navigation?.goBack();
   }
@@ -2769,7 +2921,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           text: 'Start Fresh',
           style: 'destructive',
           onPress: () => {
-            clearDraft();
+            queueDiscardedDamageDraftMedia(damageRecords, damageImages);
+            clearDraftAndStopDamageAutosave();
             haptics.light();
             navigation?.replace('SellCarFlow');
           },
@@ -2782,6 +2935,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // resume-draft prompt above); this just surfaces an explicit exit point on
   // any step beyond the first instead of only auto-saving on Next (SE8).
   function handleSaveDraftExit() {
+    if (damageUploadInFlightRef.current || damageEditorPending) {
+      Alert.alert('Finish damage entry', 'Save the selected damage and wait for its photo upload, or cancel that entry before exiting.');
+      return;
+    }
     if (editMode) { navigation?.goBack(); return; }
     updateDraft({
       vrm, vehicleType, make, model, year, mileage, title, fuelType, transmission, bodyType, colour,
@@ -2791,6 +2948,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       notOwnerRelationship, notOwnerRelSelect, notOwnerRelOther,
       isDepartedSale, departedRelationship, departedRelSelect, departedRelOther, declAcknowledged,
       exteriorImages, interiorImages, damageImages,
+      damageRecords: sanitizeDamageDraft(damageRecords),
       auctionStartMode, auctionStartDate, reservePrice, startingBid, minIncrement, buyItNowPrice,
       lastStep: step,
     });
