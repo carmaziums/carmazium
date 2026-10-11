@@ -391,6 +391,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [draftListingId, setDraftListingId] = React.useState<string | null>(null)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
+    // One canonical serializer shared across edit, new auction, new retail
+    // and auction→retail conversion. The previous four separate mappings
+    // discarded stable IDs, typed categories and precise 3D hit positions.
+    const buildDamageDetections = () => damageRecords.map(record => ({
+        id: record.id,
+        part: record.zone,
+        type: record.type
+            ? (record.description.trim() ? `${record.type} - ${record.description.trim()}` : record.type)
+            : record.description,
+        size: "MEDIUM",
+        coords: {
+            x: record.x, y: record.y, view: record.view,
+            ...(record.surfacePoint ? { surfacePoint: record.surfacePoint } : {}),
+        },
+        imageUrl: record.photoUrl?.startsWith("https://") ? record.photoUrl : "",
+    }))
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
     const [auctionSchedule, setAuctionSchedule] = React.useState({ ...EMPTY_SELLER_AUCTION_DRAFT })
 
@@ -553,16 +569,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             })
             .then(damageData => {
                 if (!damageData) return
-                const mapped = damageData.map((r: any) => ({
-                    id: crypto.randomUUID(),
-                    zone: r.part,
-                    description: r.type || '',
-                    photoUrl: r.imageUrl || undefined,
-                    bodyType: r.bodyType || '',
-                    view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
-                    x: r.coords?.x ?? 0,
-                    y: r.coords?.y ?? 0,
-                }))
+                const mapped = damageData.map((r: any) => {
+                    const originalType = String(r.type ?? '')
+                    const match = originalType.match(/^(SCRATCH|SCUFF|DENT|CRACK|OTHER)(?: - (.*))?$/i)
+                    const hit = r.coords?.surfacePoint
+                    const validHit = hit && ['fx', 'fy', 'fz'].every(key =>
+                        typeof hit[key] === 'number' && Number.isFinite(hit[key])
+                        && hit[key] >= 0 && hit[key] <= 1)
+                    return {
+                        id: typeof r.id === 'string' && /^[0-9a-f-]{36}$/i.test(r.id)
+                            ? r.id : crypto.randomUUID(),
+                        zone: r.part,
+                        type: match ? match[1].toUpperCase() as DamageRecord['type'] : 'OTHER' as const,
+                        description: match ? match[2] || '' : originalType,
+                        photoUrl: typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
+                            ? r.imageUrl : undefined,
+                        bodyType: r.bodyType || '',
+                        view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
+                        x: r.coords?.x ?? 0,
+                        y: r.coords?.y ?? 0,
+                        ...(validHit ? { surfacePoint: { fx: hit.fx, fy: hit.fy, fz: hit.fz } } : {}),
+                    }
+                })
                 setDamageRecords(mapped)
             })
             .catch(err => console.error('Failed to load listing for edit:', err))
@@ -1659,13 +1687,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 // Save damage records (overwrites previous damage for this listing)
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${editId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),
@@ -1711,13 +1733,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const finalSlug = response.data.slug
 
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${finalListingId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),
@@ -1845,13 +1861,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Save damage records separately (not part of listing DTO to avoid validation issues)
                 if (damageRecords.length > 0) {
                     try {
-                        const detections = damageRecords.map(r => ({
-                            part: r.zone,
-                            type: r.description,
-                            size: "MEDIUM",
-                            coords: { x: r.x, y: r.y, view: r.view },
-                            imageUrl: r.photoUrl ?? "",
-                        }))
+                        const detections = buildDamageDetections()
                         await apiClient(`/damage/${newListingId}/save`, {
                             method: 'POST',
                             body: JSON.stringify({ detections }),
@@ -1966,13 +1976,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             // records on the reused listing are left untouched.
             if (damageRecords.length > 0) {
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${result.listingId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),

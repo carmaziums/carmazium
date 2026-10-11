@@ -2,11 +2,11 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2 } from "lucide-react"
+import { Camera, X, Plus, AlertTriangle, CheckCircle2, Trash2, Pencil, ChevronDown, ChevronUp, Images } from "lucide-react"
 import Image from "next/image"
 import { ALL_ZONES } from "./ThreeDVehicleViewer"
 import { uploadImage } from "@/lib/supabase"
-import type { ThreeDVehicleViewerProps } from "./ThreeDVehicleViewer"
+import type { ThreeDVehicleViewerProps, SurfacePoint } from "./ThreeDVehicleViewer"
 import { ThreeDErrorBoundary } from "./ThreeDErrorBoundary"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 
@@ -32,6 +32,8 @@ export interface DamageRecord {
   zone: string
   description: string
   photoUrl?: string
+  type?: "SCRATCH" | "SCUFF" | "DENT" | "CRACK" | "OTHER"
+  surfacePoint?: SurfacePoint
   bodyType: string
   view: "TOP" | "FRONT"
   x: number
@@ -78,8 +80,15 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [pendingZoneId, setPendingZoneId] = React.useState<string | null>(null)
   const [pendingDesc, setPendingDesc] = React.useState("")
   const [pendingPhoto, setPendingPhoto] = React.useState<string | undefined>()
+  const [pendingSurfacePoint, setPendingSurfacePoint] = React.useState<SurfacePoint | null>(null)
+  const [editingDamageId, setEditingDamageId] = React.useState<string | null>(null)
+  const [pendingType, setPendingType] = React.useState<NonNullable<DamageRecord["type"]>>("SCRATCH")
   const [uploading, setUploading] = React.useState(false)
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const [manualOpen, setManualOpen] = React.useState(false)
+  const uploadInFlightRef = React.useRef(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const cameraInputRef = React.useRef<HTMLInputElement>(null)
 
   const [customZoneInput, setCustomZoneInput] = React.useState('')
   const [pendingCustomLabel, setPendingCustomLabel] = React.useState('')
@@ -91,9 +100,54 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
       : ALL_ZONES.find(z => z.id === pendingZoneId) ?? null
 
   function handleZoneClick(zoneId: string) {
+    if (uploadInFlightRef.current) return
+    setEditingDamageId(null)
     setPendingZoneId(zoneId)
     setPendingDesc("")
     setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setPendingType("SCRATCH")
+    setUploadError(null)
+  }
+
+  function handleSurfaceTap({ zoneId, point }: { zoneId: string; point: SurfacePoint }) {
+    if (uploadInFlightRef.current) return
+    handleZoneClick(zoneId)
+    setPendingSurfacePoint(point)
+    setManualOpen(false)
+  }
+
+  function editRecord(id: string) {
+    if (uploadInFlightRef.current) return
+    const record = records.find(item => item.id === id)
+    if (!record) return
+    setEditingDamageId(id)
+    setPendingZoneId(ALL_ZONES.some(zone => zone.id === record.zone) ? record.zone : "__custom__")
+    if (!ALL_ZONES.some(zone => zone.id === record.zone)) setPendingCustomLabel(record.zone)
+    setPendingDesc(record.description)
+    setPendingPhoto(record.photoUrl)
+    setPendingSurfacePoint(record.surfacePoint ?? null)
+    setPendingType(record.type ?? "OTHER")
+    setUploadError(null)
+    setManualOpen(false)
+  }
+
+  function chooseCorrectedZone(zoneId: string) {
+    if (uploadInFlightRef.current) return
+    // A known panel correction retains the precise original surface point.
+    setPendingZoneId(zoneId)
+    setManualOpen(false)
+  }
+
+  function resetEditor() {
+    setPendingZoneId(null)
+    setPendingDesc("")
+    setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setPendingType("SCRATCH")
+    setEditingDamageId(null)
+    setPendingCustomLabel("")
+    setUploadError(null)
   }
 
   function handleCustomZone() {
@@ -103,72 +157,63 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     setPendingZoneId('__custom__')
     setPendingDesc("")
     setPendingPhoto(undefined)
+    setPendingSurfacePoint(null)
+    setEditingDamageId(null)
+    setPendingType("SCRATCH")
+    setManualOpen(false)
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || uploadInFlightRef.current) return
+    uploadInFlightRef.current = true
     setUploading(true)
+    setUploadError(null)
     try {
-      const url = await uploadImage(file, 'listings', 'damage')
+      if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
+        throw new Error("Choose an image smaller than 15 MB.")
+      }
+      const url = await uploadImage(file, "listings", "damage")
+      if (!url.startsWith("https://")) throw new Error("Photo storage did not return a permanent URL.")
       setPendingPhoto(url)
-    } catch {
-      // Fallback: preview the image locally if upload fails
-      const reader = new FileReader()
-      reader.onload = ev => setPendingPhoto(ev.target?.result as string)
-      reader.readAsDataURL(file)
+    } catch (error) {
+      // Never silently commit a base64/data URL as permanent seller evidence.
+      // Seller may select the same image again to retry.
+      setUploadError(error instanceof Error ? error.message : "Photo upload failed. Try again.")
     } finally {
+      uploadInFlightRef.current = false
       setUploading(false)
+      e.target.value = ""
     }
   }
 
   function addRecord() {
-    if (!pendingZoneId || !pendingDesc.trim()) return
-
-    let zoneId: string
-    let x: number
-    let y: number
-
-    if (pendingZoneId === '__custom__') {
-      if (!pendingCustomLabel) return
-      zoneId = pendingCustomLabel
-      x = 0
-      y = 0
-    } else {
-      // Defensive: `pendingZoneId` is set from zone IDs we control (legend
-      // clicks / 3D hotspot clicks), so it should always match an entry in
-      // ALL_ZONES — but a stale ID or future data mismatch must NOT throw
-      // (a non-null assertion here would crash the whole page on click,
-      // since there's no error boundary around event handlers). Fall back
-      // to a safe default position instead.
-      const z = ALL_ZONES.find(z => z.id === pendingZoneId)
-      if (!z) return
-      zoneId = pendingZoneId
-      x = z.position[0]
-      y = z.position[1]
-    }
-
+    if (!pendingZoneId || uploading || uploadError) return
+    const zone = ALL_ZONES.find(item => item.id === pendingZoneId)
+    if (pendingZoneId === "__custom__" && !pendingCustomLabel.trim()) return
+    if (pendingZoneId !== "__custom__" && !zone) return
+    const zoneId = pendingZoneId === "__custom__" ? pendingCustomLabel.trim() : pendingZoneId
+    const edited = records.find(item => item.id === editingDamageId)
     const rec: DamageRecord = {
-      id: crypto.randomUUID(),
+      id: edited?.id ?? crypto.randomUUID(),
       zone: zoneId,
       description: pendingDesc.trim(),
       photoUrl: pendingPhoto,
+      type: pendingType,
+      ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
       bodyType,
-      view: "TOP",
-      x,
-      y,
+      view: edited?.view ?? "TOP",
+      x: edited?.x ?? zone?.position[0] ?? 0,
+      y: edited?.y ?? zone?.position[1] ?? 0,
     }
-    const updated = [...records, rec]
+    const updated = edited ? records.map(item => item.id === edited.id ? rec : item) : [...records, rec]
     setRecords(updated)
     onComplete(updated)
-    setPendingZoneId(null)
-    setPendingDesc("")
-    setPendingPhoto(undefined)
-    setCustomZoneInput('')
-    setPendingCustomLabel('')
+    resetEditor()
   }
 
   function removeRecord(id: string) {
+    if (uploadInFlightRef.current) return
     const updated = records.filter(r => r.id !== id)
     setRecords(updated)
     onComplete(updated)
@@ -178,6 +223,10 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
     return ALL_ZONES.find(z => z.id === zoneId)?.label ?? zoneId
   }
 
+  const pins = records.flatMap((item, index) => item.surfacePoint
+    ? [{ id: item.id, number: index + 1, point: item.surfacePoint,
+      type: item.type, hasPhoto: Boolean(item.photoUrl) }] : [])
+  const photoCount = records.filter(item => Boolean(item.photoUrl)).length
   const grade = computeExteriorGradeFromDefectCount(records.length)
   const GRADE_META: Record<number, { label: string; desc: string; color: string; bg: string }> = {
     1: { label: 'Excellent', desc: 'Negligible or no cosmetic damage', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
@@ -199,16 +248,16 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             <p className="text-[11px] text-[var(--text-muted)]">{gm.desc}</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{records.length} zone{records.length !== 1 ? 's' : ''} marked</span>
+        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{records.length} damages · {pins.length} 3D pins · {photoCount} photos</span>
       </div>
 
       {/* Instruction banner */}
       <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
         <p className="text-xs font-bold text-blue-800 dark:text-blue-300 mb-0.5">How to mark damage</p>
         <p className="text-xs text-slate-700 dark:text-[var(--text-muted)]">
-          Rotate the 3D model to inspect all angles. Click any <span className="text-[var(--text-primary)] font-bold">+</span> hotspot
-          on the vehicle to mark a damage zone, then describe it and optionally add a photo.
-          You can also click any zone in the list below the model.
+          Rotate the 3D model, then tap the actual visible car surface. Check the suggested panel,
+          take or choose a photo, select the damage type, and optionally describe it.
+          Press Save &amp; Add Another to mark another point. You can also choose a panel manually.
         </p>
       </div>
 
@@ -254,10 +303,118 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           selectedZone={pendingZoneId}
           markedZones={markedZones}
           onZoneClick={handleZoneClick}
+          onSurfaceTap={handleSurfaceTap}
+          damagePins={pins}
+          onDamagePinPress={editRecord}
+          selectedDamageId={editingDamageId}
         />
       </ThreeDErrorBoundary>
 
-      {/* Zone legend — grouped by area (BCA-standard categories) */}
+      {/* Pending zone panel */}
+      {pendingZone && (
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="text-primary" />
+              <p className="font-bold text-[var(--text-primary)] text-sm">
+                {editingDamageId ? "Editing damage:" : "Selected panel:"} <span className="text-primary">{pendingZone.label}</span>
+              </p>
+            </div>
+            <button type="button" onClick={resetEditor} disabled={uploading} aria-label="Cancel damage entry" className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white">
+              <X size={15} />
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs text-[var(--text-muted)]">
+              {pendingSurfacePoint ? "Suggested from a generic 3D model. Check that this panel matches your vehicle." : "Manually selected area."}
+            </p>
+            <button type="button" onClick={() => setManualOpen(true)} disabled={uploading}
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs text-primary">
+              <Pencil size={13} className="inline mr-1" /> Change panel
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage type</label>
+            <div className="flex flex-wrap gap-2">
+              {(["SCRATCH", "SCUFF", "DENT", "CRACK", "OTHER"] as const).map(type => (
+                <button type="button" key={type} onClick={() => setPendingType(type)}
+                  disabled={uploading} aria-pressed={pendingType === type}
+                  className={`rounded-full border px-3 py-2 text-xs font-semibold ${pendingType === type
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Description (optional)</label>
+            <textarea
+              value={pendingDesc}
+              onChange={e => setPendingDesc(e.target.value)}
+              placeholder="e.g. Deep scratch approx 10cm, paint chipped to metal…"
+              rows={3}
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage photo (optional)</label>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={uploading} onClick={() => cameraInputRef.current?.click()}
+                className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-sm">
+                <Camera size={14} className="inline mr-2" />Take Photo
+              </button>
+              <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-sm">
+                <Images size={14} className="inline mr-2" />Gallery
+              </button>
+            </div>
+            {uploadError && <p role="alert" className="text-xs text-red-500">
+              {uploadError} Your damage details remain in this editor. Select the photo again to retry.
+              <button type="button" onClick={() => { setUploadError(null); setPendingPhoto(undefined) }}
+                className="ml-2 underline">Continue without photo</button>
+            </p>}
+            {pendingPhoto ? (
+              <div className="relative inline-block">
+                <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
+                <button
+                  type="button"
+                  onClick={() => { setPendingPhoto(undefined); setUploadError(null) }}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ) : uploading ? (
+              <p role="status" className="text-xs text-[var(--text-muted)]">Uploading damage photo…</p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={addRecord}
+            disabled={uploading || Boolean(uploadError)}
+            className="w-full py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Plus size={16} /> {editingDamageId ? "Save Changes" : "Save & Add Another"}
+          </button>
+        </div>
+      )}
+
+      <p className="text-xs text-[var(--text-muted)]">
+        {records.length} damages · {pins.length} 3D pins · {photoCount} uploaded photos
+        {records.length > pins.length ? ` · ${records.length - pins.length} manually listed` : ""}
+      </p>
+      <button type="button" onClick={() => setManualOpen(open => !open)}
+        aria-expanded={manualOpen} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] px-4 py-3 text-sm font-semibold">
+        Choose area manually {manualOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+      {manualOpen && <div className="space-y-3">
+        {/* Zone legend — grouped by area (BCA-standard categories) */}
       {[
         {
           label: "Exterior — Front",
@@ -295,7 +452,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 return (
                   <div
                     key={z.id}
-                    onClick={() => handleZoneClick(z.id)}
+                    onClick={() => chooseCorrectedZone(z.id)}
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
                       isSelected
                         ? "bg-primary/15 border-primary/40 text-primary"
@@ -341,72 +498,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         </p>
       </div>
 
-      {/* Pending zone panel */}
-      {pendingZone && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4 animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={15} className="text-primary" />
-              <p className="font-bold text-[var(--text-primary)] text-sm">
-                Marking: <span className="text-primary">{pendingZone.label}</span>
-              </p>
-            </div>
-            <button type="button" onClick={() => { setPendingZoneId(null); setCustomZoneInput(''); setPendingCustomLabel('') }} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white">
-              <X size={15} />
-            </button>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage Description *</label>
-            <textarea
-              value={pendingDesc}
-              onChange={e => setPendingDesc(e.target.value)}
-              placeholder="e.g. Deep scratch approx 10cm, paint chipped to metal…"
-              rows={3}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none resize-none"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Close-up Photo (optional)</label>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            {pendingPhoto ? (
-              <div className="relative inline-block">
-                <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
-                <button
-                  type="button"
-                  onClick={() => setPendingPhoto(undefined)}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-[var(--text-muted)] hover:border-white/40 hover:text-[var(--text-primary)] transition-all text-sm"
-              >
-                {uploading
-                  ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  : <Camera size={14} />
-                }
-                {uploading ? "Uploading…" : "Upload Photo"}
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={addRecord}
-            disabled={!pendingDesc.trim()}
-            className="w-full py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <Plus size={16} /> Confirm Damage
-          </button>
-        </div>
-      )}
+      </div>}
 
       {/* Recorded damage list */}
       {records.length > 0 && (
@@ -414,12 +506,12 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           <div className="flex items-center gap-2">
             <CheckCircle2 size={15} className="text-amber-400" />
             <p className="text-sm font-bold">
-              {records.length} damage area{records.length !== 1 ? "s" : ""} recorded
+              {records.length} damage{records.length !== 1 ? "s" : ""} recorded
             </p>
           </div>
           <div className="space-y-2">
-            {records.map(rec => (
-              <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
+            {records.map((rec, index) => (
+              <div key={rec.id} className={`flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-input)] border ${editingDamageId === rec.id ? "border-primary" : "border-[var(--border-default)]"}`}>
                 {rec.photoUrl && (
                   <Image
                     src={rec.photoUrl}
@@ -430,9 +522,13 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-amber-300">{zoneLabel(rec.zone)}</p>
+                  <p className="text-xs font-bold text-amber-300">#{index + 1} · {zoneLabel(rec.zone)} · {rec.type || "OTHER"}</p>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{rec.description}</p>
                 </div>
+                <button type="button" disabled={uploading} onClick={() => editRecord(rec.id)}
+                  aria-label={`Edit damage ${index + 1}`} className="rounded-lg p-2 text-primary hover:bg-primary/10">
+                  <Pencil size={15} />
+                </button>
                 <button
                   type="button"
                   onClick={() => removeRecord(rec.id)}
