@@ -474,7 +474,8 @@ export function Header() {
                                         className="flex items-center gap-3 px-4 py-2 hover:bg-primary/5 text-sm transition-colors"
                                         style={{ color: 'var(--text-secondary)' }}
                                     >
-                                        <Car size={16} /> Dashboard
+                                        {profile?.role === 'ADMIN' ? <ShieldCheck size={16} /> : <Car size={16} />}
+                                        {profile?.role === 'ADMIN' ? 'Admin Control Panel' : 'Dashboard'}
                                     </Link>
                                     <Link
                                         href="/profile"

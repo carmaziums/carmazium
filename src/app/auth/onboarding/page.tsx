@@ -33,6 +33,13 @@ export default function OnboardingPage() {
     const isVerified = Boolean(user?.email_confirmed_at)
     const accountEmail = user?.email || pendingEmail || ""
 
+    // ADMIN is a server-assigned role. Verified administrators never
+    // complete the buyer/seller/dealer customer profile form.
+    const isVerifiedAdmin = !loading && profile?.role === "ADMIN"
+    useEffect(() => {
+        if (isVerifiedAdmin) router.replace("/dashboard/admin")
+    }, [isVerifiedAdmin, router])
+
     useEffect(() => {
         if (typeof window === "undefined") return
 
@@ -181,6 +188,15 @@ export default function OnboardingPage() {
         } finally {
             setSaving(false)
         }
+    }
+
+    if (isVerifiedAdmin) {
+        return (
+            <div role="status" className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+                <Loader2 className="mr-3 h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+                Opening administrator dashboard...
+            </div>
+        )
     }
 
     if (loading && user) {
