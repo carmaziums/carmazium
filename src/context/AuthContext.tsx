@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // initial /auth/supabase-session failed (or its cookie belonged to a
         // previous account), that could never repair the session. A user click
         // now explicitly re-bridges first, then fetches the verified profile.
-        // Do not call supabase.auth.getSession() directly here: an SDK auth
+        // Avoid directly awaiting the Supabase SDK session getter: its auth
         // lock can stall browser startup. Both token helpers are time-bounded.
         const recovery = (async () => {
             let token = await getAccessToken()
