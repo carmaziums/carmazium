@@ -1352,7 +1352,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       const loaded = await loadSellWizardDraftForUser(currentUserId);
       if (!loaded || cancelled || editMode) return;
       const store = useSellWizardStore.getState();
-      if (!store.make && !store.model && store.lastStep <= 1 && !(store.damageRecords?.length)) {
+      if (!store.make && !store.model && store.lastStep <= 1
+        && !(store.damageRecords?.length) && !(store.damageImages?.length)
+        && !(store.exteriorImages?.length) && !(store.interiorImages?.length)) {
         setActiveDamageDraftOwner(currentUserId);
         return;
       }
