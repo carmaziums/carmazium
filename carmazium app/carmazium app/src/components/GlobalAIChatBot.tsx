@@ -744,7 +744,7 @@ export const GlobalAIChatBot: React.FC = () => {
               </View>
               <IconButton
                 style={themed.aiReportClose}
-                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                icon={<Ionicons name="close" size={20} color={palette.textPrimary} />}
                 onPress={closeAiReport}
                 disabled={aiReporting}
                 accessibilityLabel="Close AI report"
