@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   savedBackText: {
     color: Colors.accent,
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.size13,
+    fontSize: FontSize.size14,
   },
   header: {
     flexDirection: 'row',
