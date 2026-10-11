@@ -24,7 +24,7 @@ test('seller can correct nearest panel with one control and preserves original p
   assert.match(mapper, /setPendingSurfacePoint\(point\);\s*setAddingZone\(zone\.label\);/);
   assert.match(mapper, /accessibilityLabel="Change selected damage panel"/);
   assert.match(mapper, /setCorrectingPanel\(true\); setPanelChooserOpen\(true\)/);
-  assert.match(mapper, /const chooseKnownPanel = \(label: string\) => \{\s*if \(!correctingPanel\) setPendingSurfacePoint\(null\);/);
+  assert.match(mapper, /const chooseKnownPanel = \(label: string\) => \{\s*if \(!correctingPanel\) \{\s*setPendingSurfacePoint\(null\);/);
   assert.match(mapper, /onPress=\{\(\) => \{ if \(!uploadingDamagePhoto\) chooseKnownPanel\(zone\.label\); \}\}/);
   assert.match(mapper, /original tap position is kept/);
   assert.match(mapper, /Suggested from a generic 3D car/);
@@ -33,7 +33,7 @@ test('manual fallback is accessible, initially closed, and clears stale hit coor
   assert.match(mapper, /useState\(false\);\s*const \[correctingPanel, setCorrectingPanel\]/);
   assert.match(mapper, /accessibilityLabel="Choose damage area manually"/);
   assert.match(mapper, /accessibilityState=\{\{ expanded: panelChooserOpen \}\}/);
-  assert.match(mapper, /const selectManualZone = \(label: string\) => \{\s*setPendingSurfacePoint\(null\)/);
+  assert.match(mapper, /const selectManualZone = \(label: string\) => \{[\s\S]*?setPendingSurfacePoint\(null\)/);
   assert.match(mapper, /selectManualZone\(customZoneText\.trim\(\)\)/);
   assert.match(mapper, /surfacePoint: pendingSurfacePoint/);
 });
