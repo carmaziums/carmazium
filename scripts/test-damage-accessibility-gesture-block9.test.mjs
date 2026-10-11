@@ -37,7 +37,7 @@ test('native seller offers individual, accessible 48dp chooser that remains usab
   assert.match(mapper, /records\.map\(\(record, index\) => \{/);
   assert.match(mapper, /key=\{record\.id\}/);
   assert.match(mapper, /onPress=\{\(\) => editDamage\(record\.id\)\}/);
-  assert.match(mapper, /minHeight: 48, minWidth: 74/);
+  assert.match(seller, /minHeight: 48, minWidth: 74/);
   assert.match(mapper, /accessibilityState=\{\{ selected, disabled: uploadingDamagePhoto \|\| pickingDamagePhoto \}\}/);
   assert.match(mapper, /when two 3D marks are close together or you cannot tap the model/);
 });
