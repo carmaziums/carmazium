@@ -72,11 +72,24 @@ function loadGlbBase64(): Promise<string> {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/** Preliminary hit point on an illustrative 3D mesh, not a verified real-panel coordinate. */
+export interface DamageSurfacePoint {
+  fx: number;
+  fy: number;
+  fz: number;
+}
+export interface DamageSurfaceTap {
+  zoneId: string; // closest available panel suggestion; seller can correct it
+  point: DamageSurfacePoint;
+}
+
 export interface ThreeDVehicleViewerProps {
   zones: DamageZone3D[];
   selectedZone: string | null;
   markedZones: string[];
   onZoneClick: (zoneLabel: string) => void;
+  /** Opt-in seller surface tap, on the visible mesh only; disabled in buyer read-only views. */
+  onSurfaceTap?: (tap: DamageSurfaceTap) => void;
   onZoneHide?: (zoneId: string) => void;
   onZonePhoto?: (zoneId: string, imageUri: string) => void;
   height?: number;
@@ -100,6 +113,7 @@ export function ThreeDVehicleViewer({
   selectedZone,
   markedZones,
   onZoneClick,
+  onSurfaceTap,
   onZoneHide,
   onZonePhoto,
   height = 280,
@@ -172,6 +186,11 @@ export function ThreeDVehicleViewer({
       webViewRef.current?.injectJavaScript(
         'window.setZones(' + JSON.stringify(JSON.stringify(zonesForWire)) + '); true;'
       );
+      // Keep buyer viewers read-only: a WebView is not allowed to emit picks
+      // unless the parent explicitly supplies the seller callback.
+      webViewRef.current?.injectJavaScript(
+        'window.setSurfacePickingEnabled(' + JSON.stringify(!readOnly && !!onSurfaceTap) + '); true;'
+      );
     } catch {
       setModelReady(false);
       // Previously silent — the comment here used to claim "the viewer.html
@@ -183,7 +202,7 @@ export function ThreeDVehicleViewer({
       // viewer with no signal at all (F41).
       setGlbError(true);
     }
-  }, []);
+  }, [readOnly, onSurfaceTap]);
 
   const handleWebViewMessage = useCallback((event: { nativeEvent: { data: string } }) => {
     try {
@@ -192,6 +211,16 @@ export function ThreeDVehicleViewer({
         setInteracting(msg.active === true);
       } else if (msg.type === 'modelReady') {
         setModelReady(true);
+      } else if (msg.type === 'surfaceDamageTap' && !readOnly && onSurfaceTap) {
+        const zone = hotspotZonesRef.current.find(z => z.id === msg.zoneId);
+        const point = msg.point;
+        const validPoint = point && ['fx', 'fy', 'fz'].every(
+          key => typeof point[key] === 'number' && Number.isFinite(point[key])
+            && point[key] >= 0 && point[key] <= 1
+        );
+        if (zone && validPoint) {
+          onSurfaceTap({ zoneId: zone.id, point: { fx: point.fx, fy: point.fy, fz: point.fz } });
+        }
       } else if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
         setZoneScreenPos((prev) => {
           let changed = false;
@@ -210,7 +239,7 @@ export function ThreeDVehicleViewer({
     } catch {
       // Ignore malformed messages
     }
-  }, [setInteracting]);
+  }, [setInteracting, readOnly, onSurfaceTap]);
 
   // ── Zone actions: mark / hide / photo ────────────────────────────────────────
 
