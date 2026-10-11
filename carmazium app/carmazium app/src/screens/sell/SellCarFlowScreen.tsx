@@ -94,6 +94,8 @@ interface DamageEntry {
   description: string;
   /** Preliminary surface point; persisted in a later backend migration. */
   surfacePoint?: DamageSurfacePoint;
+  /** Local, temporary photo preview for THIS damage record — NOT a storage URL. */
+  localDamagePhotoUri?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -462,7 +464,48 @@ function Damage3DMapper({
   };
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
+  const [pendingDamagePhotoUri, setPendingDamagePhotoUri] = useState<string | null>(null);
+  const [pickingDamagePhoto, setPickingDamagePhoto] = useState(false);
+  const photoPickerInFlightRef = useRef(false);
   const [customZoneText, setCustomZoneText] = useState('');
+
+  const resetDamageEditor = () => {
+    setAddingZone(null);
+    setPendingSurfacePoint(null);
+    setPanelChooserOpen(false);
+    setCorrectingPanel(false);
+    setDmgType('SCRATCH');
+    setDmgDesc('');
+    setPendingDamagePhotoUri(null);
+  };
+
+  async function pickDamagePhoto(source: 'camera' | 'gallery') {
+    if (photoPickerInFlightRef.current || !addingZone) return;
+    photoPickerInFlightRef.current = true;
+    setPickingDamagePhoto(true);
+    try {
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Camera permission needed', 'Allow camera access in your phone settings to photograph this damage, or choose a photo from your gallery.');
+          return;
+        }
+      }
+      const result = source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: 'images' as any, quality: 0.85 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images' as any, quality: 0.85, allowsMultipleSelection: false });
+      // Cancellation must leave a previously selected photo, selected panel,
+      // description and type untouched.
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setPendingDamagePhotoUri(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('Photo unavailable', 'Could not open the camera or gallery. Your damage details are still here; please try again.');
+    } finally {
+      photoPickerInFlightRef.current = false;
+      setPickingDamagePhoto(false);
+    }
+  }
 
   function confirmAdd() {
     if (!addingZone) return;
@@ -472,13 +515,11 @@ function Damage3DMapper({
       type: dmgType,
       description: dmgDesc.trim(),
       ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
+      ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
     });
-    setAddingZone(null);
-    setPendingSurfacePoint(null);
-    setPanelChooserOpen(false);
-    setCorrectingPanel(false);
-    setDmgType('SCRATCH');
-    setDmgDesc('');
+    // Ready for another direct tap on the same 3D vehicle without revisiting
+    // the manual panel list. Actual photo storage/persistence follows in Block 4.
+    resetDamageEditor();
   }
 
   const markedLabels = records.map(r => r.zone);
@@ -509,6 +550,7 @@ function Damage3DMapper({
         selectedZone={addingZone}
         markedZones={markedLabels}
         onZoneClick={selectManualZone}
+        inlineDamageEditor
         onSurfaceTap={({ zoneId, point }) => {
           const zone = DAMAGE_ZONES_3D.find(z => z.id === zoneId);
           // A surface hit is a panel SUGGESTION from an illustrative car;
@@ -567,6 +609,59 @@ function Damage3DMapper({
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            <SL label="DAMAGE PHOTO (optional)" />
+            <View style={s.damagePhotoActions}>
+              <TouchableOpacity
+                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto}
+                onPress={() => { void pickDamagePhoto('camera'); }}
+                accessibilityRole="button"
+                accessibilityLabel="Take a photo of this damage"
+              >
+                <Ionicons name="camera-outline" size={20} color={Colors.accent} />
+                <Text style={s.damagePhotoActionText}>Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto}
+                onPress={() => { void pickDamagePhoto('gallery'); }}
+                accessibilityRole="button"
+                accessibilityLabel="Choose a damage photo from the gallery"
+              >
+                <Ionicons name="images-outline" size={20} color={Colors.accent} />
+                <Text style={s.damagePhotoActionText}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+            {pickingDamagePhoto && (
+              <View style={s.damagePhotoBusy} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text style={s.zoneHint}>Opening photos…</Text>
+              </View>
+            )}
+            {pendingDamagePhotoUri && (
+              <View style={s.damagePhotoPreview}>
+                <ExpoImage
+                  source={{ uri: pendingDamagePhotoUri }}
+                  style={s.damagePhotoPreviewImage}
+                  contentFit="cover"
+                  accessibilityLabel="Selected photo of this damaged area"
+                />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={s.damagePhotoActionText}>Photo selected</Text>
+                  <Text style={s.zoneHint}>Local preview only — permanent upload is added in the next block.</Text>
+                  <TouchableOpacity
+                    style={s.damageRemovePhoto}
+                    onPress={() => setPendingDamagePhotoUri(null)}
+                    disabled={pickingDamagePhoto}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove selected damage photo"
+                  >
+                    <Ionicons name="trash-outline" size={15} color={Colors.accent} />
+                    <Text style={s.damagePhotoRemoveText}>Remove photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <SL label="DESCRIPTION (optional)" />
             <TextInput
               style={[s.input, { marginBottom: 12 }]}
@@ -579,12 +674,8 @@ function Damage3DMapper({
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
                 style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
-                onPress={() => {
-                  setAddingZone(null);
-                  setPendingSurfacePoint(null);
-                  setPanelChooserOpen(false);
-                  setCorrectingPanel(false);
-                }}
+                onPress={resetDamageEditor}
+                disabled={pickingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel damage entry"
@@ -594,11 +685,12 @@ function Damage3DMapper({
               <TouchableOpacity
                 style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
                 onPress={confirmAdd}
+                disabled={pickingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
-                accessibilityLabel="Mark selected vehicle damage"
+                accessibilityLabel="Save damage and add another"
               >
-                <Text style={s.pillTextActive}>MARK DAMAGE</Text>
+                <Text style={s.pillTextActive}>SAVE & ADD ANOTHER</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -706,6 +798,17 @@ function Damage3DMapper({
               <View style={{ flex: 1 }}>
                 <Text style={s.dmgRecordZone}>{r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
+                {r.localDamagePhotoUri && (
+                  <View style={s.damageSavedPhotoRow}>
+                    <ExpoImage
+                      source={{ uri: r.localDamagePhotoUri }}
+                      style={s.damageRecordThumbnail}
+                      contentFit="cover"
+                      accessibilityLabel={`Photo preview for ${r.zone}`}
+                    />
+                    <Text style={s.zoneHint}>Photo awaiting upload</Text>
+                  </View>
+                )}
               </View>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
@@ -2042,6 +2145,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function handlePublish() {
     if (publishingInFlightRef.current) return;
+    // Fail closed until Block 4 installs durable uploads and per-defect URLs.
+    // Never silently publish a listing that would lose local-only damage evidence.
+    if (damageRecords.some(record => Boolean(record.localDamagePhotoUri))) {
+      setStep(2);
+      setPhotoTab('Damage');
+      Alert.alert(
+        'Damage photos not uploaded',
+        'One or more damage photos are only stored on this device. Publishing is disabled until those photos can be uploaded permanently. Your other listing details have not been submitted.',
+      );
+      return;
+    }
     // A restored review screen may not have passed Step 1 in this session.
     // Validate before any mutation, checkout or fee/grant consumption.
     if (!validateStep(1)) {
@@ -4334,6 +4448,16 @@ const s = StyleSheet.create({
   damageChooserToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, minHeight: 48, marginTop: 10, borderRadius: 10, backgroundColor: Colors.whiteAlpha03, borderWidth: 1, borderColor: Colors.border },
   damageChooserToggleText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary },
   damageManualPanelList: { marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgSecondaryAlt },
+  damagePhotoActions: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  damagePhotoAction: { flex: 1, minHeight: 54, borderRadius: 10, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.whiteAlpha03, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  damagePhotoActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+  damagePhotoBusy: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 },
+  damagePhotoPreview: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: Colors.accentAlpha20 },
+  damagePhotoPreviewImage: { height: 84, width: 96, borderRadius: 8, backgroundColor: Colors.bgPrimary },
+  damageRemovePhoto: { minHeight: 44, flexDirection: 'row', gap: 6, alignItems: 'center' },
+  damagePhotoRemoveText: { fontFamily: FontFamily.medium, color: Colors.accent, fontSize: FontSize.xs },
+  damageSavedPhotoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  damageRecordThumbnail: { width: 64, height: 52, borderRadius: 6, backgroundColor: Colors.bgPrimary },
   dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
   dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.whiteAlpha03, borderRadius: 8, padding: 10, marginBottom: 6 },
