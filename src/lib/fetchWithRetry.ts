@@ -16,8 +16,40 @@ export type RetryableFetchInit = RequestInit & NextFetchOptions;
 
 const DEFAULT_RETRY_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// Abortable backoff: a cancelled page request must not keep retrying in the
+// background. Jitter prevents many Vercel workers/browsers from retrying at
+// precisely the same instant after the single Fly API becomes available.
+function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason ?? new DOMException('Request aborted', 'AbortError'));
+  }
+  return new Promise((resolve, reject) => {
+    const finish = (error?: unknown) => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+      if (error !== undefined) reject(error);
+      else resolve();
+    };
+    const onAbort = () => finish(signal?.reason ?? new DOMException('Request aborted', 'AbortError'));
+    const timer = setTimeout(() => finish(), ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function getRetryDelayMs(attempt: number, baseMs: number, response?: Response): number {
+  // Bounded exponential backoff with jitter, rather than synchronized
+  // 400/800ms retries that amplify a transient Fly availability incident.
+  const capMs = Math.min(4000, Math.max(0, baseMs) * 2 ** attempt);
+  const jitteredMs = Math.round(capMs * (0.5 + Math.random() * 0.5));
+  const retryAfterHeader = response?.headers.get('retry-after');
+  if (!retryAfterHeader) return jitteredMs;
+  const seconds = Number(retryAfterHeader);
+  const retryAfterMs = Number.isFinite(seconds)
+    ? seconds * 1000
+    : Date.parse(retryAfterHeader) - Date.now();
+  return Number.isFinite(retryAfterMs)
+    ? Math.min(4000, Math.max(jitteredMs, retryAfterMs))
+    : jitteredMs;
 }
 
 export async function fetchWithRetry(
@@ -79,7 +111,7 @@ export async function fetchWithRetry(
           // Best-effort cleanup only.
         }
 
-        await sleep(retryDelayMs * (attempt + 1));
+        await sleep(getRetryDelayMs(attempt, retryDelayMs, response), externalSignal);
         continue;
       }
 
@@ -93,7 +125,7 @@ export async function fetchWithRetry(
         throw error;
       }
 
-      await sleep(retryDelayMs * (attempt + 1));
+      await sleep(getRetryDelayMs(attempt, retryDelayMs), externalSignal);
     } finally {
       clearTimeout(timeoutId);
       externalSignal?.removeEventListener('abort', forwardAbort);
