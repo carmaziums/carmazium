@@ -19,6 +19,7 @@ import { HomeScreen } from '../screens/main/HomeScreen';
 import { SearchScreen } from '../screens/main/SearchScreen';
 import { LiveScreen } from '../screens/main/LiveScreen';
 import { SavedScreen } from '../screens/main/SavedScreen';
+import { SellLandingScreen } from '../screens/sell/SellLandingScreen';
 import { DealerProfileScreen } from '../screens/main/DealerProfileScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
@@ -80,6 +81,10 @@ const ProfileTabScreen: React.FC<any> = React.memo((props) => {
 export type TabParamList = {
   Home: undefined;
   Search: undefined;
+  // One-tap customer selling hub with valuation, free auction and £1 retail.
+  Sell: undefined;
+  // Keep the historical auctions tab route for drawer/deep-link compatibility.
+  // It is deliberately hidden from the consumer five-button tab bar.
   Live: undefined;
   Saved: undefined;
   Profile: undefined;
@@ -102,7 +107,8 @@ const TAB_CONFIG: {
   iconType: 'ionicons' | 'material-community';
 }[] = [
   { name: 'Home', icon: 'home-outline', iconActive: 'home', label: 'HOME', iconType: 'ionicons' },
-  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'BUY CARS', iconType: 'ionicons' },
+  { name: 'Search', icon: 'car-outline', iconActive: 'car', label: 'BUY', iconType: 'ionicons' },
+  { name: 'Sell', icon: 'pricetag-outline', iconActive: 'pricetag', label: 'SELL', iconType: 'ionicons' },
   { name: 'Live', icon: 'gavel', iconActive: 'gavel', label: 'AUCTIONS', iconType: 'material-community' },
   { name: 'Saved', icon: 'heart-outline', iconActive: 'heart', label: 'SAVED', iconType: 'ionicons' },
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
@@ -179,7 +185,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const dealerMode = role === 'dealer' && accountRole === 'dealer';
   const { loading: dealerAccessLoading, hasPermission } = useDealerAccess(dealerMode);
   const visibleRoutes = state.routes.filter((route: { name: string }) => {
-    if (!dealerMode) return !route.name.startsWith('Dealer');
+    // Consumer bottom navigation: Home · Buy · Sell · Saved · Dashboard.
+    // Live remains navigable from Buy Cars > Live Auctions and deep links.
+    // Dealer tabs keep website workspace shortcuts and KYC/RBAC gates.
+    if (!dealerMode) return !route.name.startsWith('Dealer') && route.name !== 'Live';
     if (!route.name.startsWith('Dealer')) return false;
     // Website mobile sidebar filters destinations by team permissions.
     // Never put unavailable Stock, CRM or bidding routes in the tab bar.
@@ -229,7 +238,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
         {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
           const isMore = route.name === 'DealerMore';
-          const isFocused = isMore ? isDrawerOpen : state.routes[state.index]?.name === route.name;
+          // A buyer viewing auctions via the drawer remains in the Buy area,
+          // rather than appearing to have no selected primary tab.
+          const isFocused = isMore ? isDrawerOpen
+            : state.routes[state.index]?.name === route.name
+              || (route.name === 'Search' && state.routes[state.index]?.name === 'Live');
           const onPress = pressHandlers[route.key];
 
           return (
@@ -291,6 +304,7 @@ export const TabNavigator: React.FC = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
+      <Tab.Screen name="Sell" component={SellLandingScreen} />
       <Tab.Screen name="Live" component={LiveScreen} />
       <Tab.Screen name="Saved" component={SavedScreen} />
       <Tab.Screen name="Profile" component={ProfileTabScreen} />
