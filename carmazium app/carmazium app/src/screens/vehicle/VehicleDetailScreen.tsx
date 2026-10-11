@@ -163,6 +163,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
+  const [is3DInteracting, set3DInteracting] = useState(false);
   const { isSaved, save, unsave } = useWatchlistStore();
   const { refreshRooms } = useChat();
 
@@ -767,6 +768,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* Main Scrollable Content */}
       <ScrollView
+        scrollEnabled={!is3DInteracting}
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
@@ -1336,7 +1338,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
               <GradeChip grade={listing.exteriorGrade} variant="pill" />
             </View>
-            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
+            <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} onInteractionChange={set3DInteracting} />
             {listing.mechanicalIssues ? (
               <View style={{ marginTop: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
                 <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>
