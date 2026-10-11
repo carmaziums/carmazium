@@ -33,7 +33,8 @@ test('damage records validate UUID, geometry and seller-scoped HTTPS photo befor
   assert.match(service, /Invalid damage map coordinates/);
   assert.match(service, /Invalid 3D damage marker location/);
   assert.match(service, /storageOrigin && photoUrl\.origin === storageOrigin/);
-  assert.match(service, /photoUrl\.pathname\.startsWith\(ownerPrefix\)/);
+  assert.match(service, /permittedUploadOwners\.some\(ownerId =>/);
+  assert.match(service, /validOwnerPrefix/);
   assert.match(service, /Damage photo must belong to this listing/);
   assert.match(service, /priorPhotoUrls\.has\(d\.imageUrl\)/);
   assert.match(service, /await tx\.damageRecord\.deleteMany\(\{ where: \{ listingId \} \}\)/);
