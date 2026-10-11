@@ -168,7 +168,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
     return (
       <TouchableOpacity
         key={n.id}
-        style={[themed.notifRow, !isLast && styles.notifRowBorder]}
+        style={[themed.notifRow, !isLast && themed.notifRowBorder]}
         activeOpacity={0.75}
         onPress={() => handleTap(n)}
       >
@@ -185,7 +185,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           <View style={themed.notifTopRow}>
             <Text
               style={[
-                styles.notifTitle,
+                themed.notifTitle,
                 !n.isRead && styles.notifTitleUnread,
               ]}
               numberOfLines={1}
@@ -200,7 +200,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         </View>
       </TouchableOpacity>
     );
-  }, [handleTap]);
+  }, [handleTap, themed]);
 
   const renderGroup = useCallback(({ item: group }: { item: (typeof groups)[number] }) => (
     <View style={themed.group}>
@@ -221,7 +221,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Subtle gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
@@ -232,7 +232,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* ── Header ── */}
       <View style={themed.header}>
-        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <View style={themed.headerCenter}>
           <Text style={themed.headerTitle}>Notifications</Text>
@@ -247,7 +247,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         <TouchableOpacity
           style={[
-            styles.markAllBtn,
+            themed.markAllBtn,
             (markingAll || unreadCount === 0) && styles.markAllBtnDisabled,
           ]}
           activeOpacity={0.7}
