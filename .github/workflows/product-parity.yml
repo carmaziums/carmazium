@@ -24,6 +24,7 @@ on:
       - 'scripts/test-damage-accessibility-gesture-block9.test.mjs'
       - 'scripts/test-damage-block10-security-release-gates.test.mjs'
       - 'scripts/test-native-simplified-main-menu.test.mjs'
+      - 'scripts/test-native-consumer-bottom-five-tabs.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -63,6 +64,8 @@ jobs:
         run: node --test scripts/test-damage-block10-security-release-gates.test.mjs
       - name: Simplified main menu — verify navigation and settings account consolidation
         run: node --test scripts/test-native-simplified-main-menu.test.mjs
+      - name: Consumer bottom bar — home, buy, sell, saved and dashboard
+        run: node --test scripts/test-native-consumer-bottom-five-tabs.test.mjs
       - name: Verify prior shared header, dealer tabs and unified settings still work
         run: node --test scripts/test-native-website-ui-parity.test.mjs scripts/test-unified-account-settings.test.mjs
 
