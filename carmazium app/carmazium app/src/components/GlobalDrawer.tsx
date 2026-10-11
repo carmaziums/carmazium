@@ -70,6 +70,7 @@ const MAIN_MENU: MenuItem[] = [
 
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -97,11 +98,17 @@ export const GlobalDrawer: React.FC = () => {
     };
   }, [accountId, role, accountRole]);
 
+  // Never leave the Menu Modal covering Login after a remote sign-out or
+  // expired session; DrawerProvider outlives the authenticated navigator.
+  useEffect(() => {
+    if (!isAuthenticated) closeDrawer();
+  }, [isAuthenticated, closeDrawer]);
+
   // Every fresh Menu session should start with Buy and Sell collapsed; a
   // prior expansion must not persist after dismissing via X, Back, or backdrop.
   useEffect(() => {
-    if (!isOpen) setExpandedMenu(null);
-  }, [isOpen]);
+    if (!isOpen || !isAuthenticated) setExpandedMenu(null);
+  }, [isOpen, isAuthenticated]);
 
   const translateX = useSharedValue(drawerWidth);
   const backdropOpacity = useSharedValue(0);
@@ -339,20 +346,22 @@ export const GlobalDrawer: React.FC = () => {
               <Text style={styles.qaFeedbackText} maxFontSizeMultiplier={2}>Share private QA feedback</Text>
             </TouchableOpacity>
           )}
-        </ScrollView>
 
-        {/* ── Footer brand ─────────────────────────────── */}
-        <View style={styles.footer}>
-          <Text style={styles.footerBrand}>CARMAZIUM</Text>
-          <Text style={styles.footerTagline}>Auction FREE · Retail £1</Text>
-        </View>
+          {/* Branding is not a fixed overlay. On short phones and at 200%
+              text sizes the ten menu rows must get the full scroll area,
+              without a pinned footer stealing room or hiding the last item. */}
+          <View style={styles.footer}>
+            <Text style={styles.footerBrand} maxFontSizeMultiplier={2}>CARMAZIUM</Text>
+            <Text style={styles.footerTagline} maxFontSizeMultiplier={2}>Auction FREE · Retail £1</Text>
+          </View>
+        </ScrollView>
       </Animated.View>
     </>
   );
 
   return (
     <Modal
-      visible={isOpen}
+      visible={isOpen && isAuthenticated}
       transparent
       animationType="none"
       statusBarTranslucent
