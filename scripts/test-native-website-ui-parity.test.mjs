@@ -29,11 +29,12 @@ test('web dealer bottom navigation and native route labels have the same informa
     assert.ok(tabs.includes("name: '"+route+"'"),route);
     assert.ok(tabs.includes("label: '"+label+"'"),label);
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
-    assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
+    // Dealer bottom tabs remain, but the hamburger menu intentionally has a
+    // consistent ten-item marketplace hierarchy for every account role.
   }
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
   assert.ok(tabs.includes("openDrawer();"));
-  assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));
+  assert.ok(drawer.includes('EXPLORE CARMAZIUM'));
 });
 
 test('role switching and permissions retain secured routes and consumer deep links', () => {
@@ -43,8 +44,13 @@ test('role switching and permissions retain secured routes and consumer deep lin
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'));
   }
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
-  assert.ok(drawer.includes('hasDealerPermission(item.requiredPermission)'));
+  assert.ok(drawer.includes('MAIN_MENU.map(item =>'));
+  assert.ok(drawer.includes("label: 'User Dashboard'"));
+  assert.ok(drawer.includes("label: 'Profile Settings'"));
+  // Dealer restricted screens remain behind native stack/tab permission gates.
+  const stack = app('navigation/MainStackNavigator.tsx');
+  assert.ok(stack.includes('withDealerGate(DealerInventoryScreen'));
+  assert.ok(stack.includes('withDealerGate(DealerLeadsScreen'));
 });
 
 test('native shared header follows actual website logo, notification, account and More hierarchy', () => {
