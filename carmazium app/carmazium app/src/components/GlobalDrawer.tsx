@@ -11,7 +11,6 @@ import {
   BackHandler,
   Alert,
   ScrollView,
-  ActivityIndicator,
   Platform,
   Share,
 } from 'react-native';
@@ -22,16 +21,12 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDrawer } from '../context/DrawerContext';
 import { useAuthStore } from '../store/authStore';
-import { apiClient } from '../lib/apiClient';
-import { getOrCreateSupportRoom } from '../lib/chatApi';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 import { FontFamily, FontSize } from '../constants/typography';
-import { useDealerAccess } from '../hooks/useDealerAccess';
-import type { DealerPermission } from '../lib/dealerAccessApi';
 
 import { IconButton } from './IconButton';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -175,9 +170,12 @@ export const GlobalDrawer: React.FC = () => {
         return;
       }
       if (item.tabName) {
+        // Existing dealer dashboard is the dealer Home workspace, while
+        // buyer/seller/service dashboards live on the Profile tab.
+        const screen = item.id === 'dashboard' && dealerMode ? 'DealerHome' : item.tabName;
         navigation.navigate('Main', {
           screen: 'Tabs',
-          params: { screen: item.tabName },
+          params: { screen },
         });
       }
     }, 160);
@@ -288,7 +286,8 @@ export const GlobalDrawer: React.FC = () => {
           <Text style={styles.groupLabel}>EXPLORE CARMAZIUM</Text>
           {MAIN_MENU.map(item => {
             const expanded = item.children && expandedMenu === item.id;
-            const active = !!item.tabName && item.tabName === activeTab;
+            const active = !!item.tabName
+              && (item.id === 'dashboard' && dealerMode ? activeTab === 'DealerHome' : item.tabName === activeTab);
             return (
               <View key={item.id}>
                 <TouchableOpacity
