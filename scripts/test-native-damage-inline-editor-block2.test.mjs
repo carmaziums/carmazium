@@ -16,7 +16,8 @@ test('quick damage editor appears before any manual area list directly after 3D 
   assert.ok(recordIndex > chooserIndex, 'records remain after editor');
   assert.match(mapper, /\{addingZone \? \(\s*<View style=\{\[s\.dmgForm/);
   assert.match(mapper, /\{panelChooserOpen && \(\s*<View style=\{s\.damageManualPanelList\}/);
-  assert.doesNotMatch(mapper, /\{DAMAGE_ZONE_SECTIONS\.map\(section =>/, 'manual panels must not render unconditionally');
+  const guardedList = mapper.slice(chooserIndex, recordIndex);
+  assert.ok(guardedList.indexOf('{panelChooserOpen && (') < guardedList.indexOf('{DAMAGE_ZONE_SECTIONS.map(section =>'), 'manual list must be guarded by closed-by-default disclosure');
 });
 test('seller can correct nearest panel with one control and preserves original point for standard known panels', () => {
   assert.match(mapper, /onSurfaceTap=\{\(\{ zoneId, point \}\) =>/);
