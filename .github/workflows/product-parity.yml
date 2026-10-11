@@ -14,6 +14,7 @@ on:
       - 'product-parity.json'
       - 'scripts/check-product-parity.mjs'
       - 'scripts/test-native-damage-surface-tap-block1.test.mjs'
+      - 'scripts/test-native-damage-inline-editor-block2.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -33,6 +34,8 @@ jobs:
         run: node --test scripts/test-mazium-native-visual-parity.test.mjs
       - name: Assert seller-only 3D surface hit and touch-versus-drag contract
         run: node --test scripts/test-native-damage-surface-tap-block1.test.mjs
+      - name: Block 2 — validate fast inline damage editor, panel correction and optional area list
+        run: node --test scripts/test-native-damage-inline-editor-block2.test.mjs
 
   web-typecheck:
     name: Web typecheck
