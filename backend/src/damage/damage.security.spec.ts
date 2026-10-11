@@ -44,8 +44,18 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
       findUnique: jest.fn().mockResolvedValue(options.dealerId ? { id: options.dealerId } : null),
     };
     const dealerStaff = {
-      findFirst: jest.fn().mockResolvedValue(options.membershipRole && options.membershipActive
-        ? { id: 'staff-member', role: options.membershipRole } : null),
+      // Simulate Prisma's actual where filtering: unrelated dealership,
+      // inactive status and unpermitted roles MUST return no matching row.
+      findFirst: jest.fn().mockImplementation(async (args: {
+        where: { userId: string; dealerProfileId: string; isActive: boolean; role: { in: string[] } };
+      }) => options.membershipRole
+          && options.membershipActive
+          && args.where.userId === caller
+          && args.where.dealerProfileId === options.dealerId
+          && args.where.isActive === true
+          && args.where.role.in.includes(options.membershipRole)
+        ? { id: 'staff-member', role: options.membershipRole }
+        : null),
     };
     const damageRecord = {
       findMany: jest.fn().mockResolvedValue(options.existing ?? []),
