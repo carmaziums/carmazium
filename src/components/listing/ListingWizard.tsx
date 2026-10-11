@@ -1870,6 +1870,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         })
                     } catch (e) {
                         console.error('Failed to save damage records:', e)
+                        // A new DRAFT listing already exists. Retain its ID so
+                        // retrying never creates a second record/auction.
+                        setDraftListingId(newListingId)
+                        localStorage.setItem(draftKeys.hpiDraftId, newListingId)
+                        if (isAuctionListing) setExistingAuctionStatus('SCHEDULED')
                         throw new Error('Damage details were not saved. The listing remains a draft; retry before publishing or paying.')
                     }
                 }
