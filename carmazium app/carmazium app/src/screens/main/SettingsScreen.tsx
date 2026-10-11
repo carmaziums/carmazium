@@ -63,8 +63,42 @@ export const SettingsScreen: React.FC = () => {
   const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProp<MainStackParamList, 'Settings'>>();
-  const { user, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
+  const { user, role, setRole, accountRole, updateUser, initializeAuth, logout } = useAuthStore();
+  const [switchingDealerView, setSwitchingDealerView] = useState(false);
   const isDealerAccount = accountRole === 'dealer';
+  const handleSwitchDealerView = async () => {
+    if (switchingDealerView || user?.isDealerStaff) return;
+    if (isDealerAccount) {
+      const next = role === 'dealer' ? 'buyer' : 'dealer';
+      setRole(next);
+      navigation.navigate('Tabs', { screen: next === 'dealer' ? 'DealerHome' : 'Profile' });
+      return;
+    }
+    if (!user?.isVerified) {
+      navigation.navigate('DealerOnboarding');
+      return;
+    }
+    setSwitchingDealerView(true);
+    try {
+      // Match the existing drawer's re-elevation path for someone previously
+      // verified as a dealer; never invent local privileges.
+      await apiClient('/users/elevate', {
+        method: 'POST',
+        body: JSON.stringify({ newRole: 'DEALER' }),
+      });
+      await initializeAuth();
+      setRole('dealer');
+      navigation.navigate('Tabs', { screen: 'DealerHome' });
+    } catch (error: any) {
+      Alert.alert('Could not open dealer account', error?.message || 'Please try again.');
+    } finally {
+      setSwitchingDealerView(false);
+    }
+  };
+  const handleSignOut = () => Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Sign Out', style: 'destructive', onPress: () => { void logout(); } },
+  ]);
   const isDealerStaff = !!user?.isDealerStaff;
   // A team member may edit their OWN personal settings, but is not the dealer owner.
   // Do not display ownership-sensitive business forms or KYC entry points to staff.
@@ -1305,6 +1339,28 @@ export const SettingsScreen: React.FC = () => {
               Partner accounts manage verified trade and business services.
               Changing your dashboard view does not change your verified account permissions.
             </Text>
+            <TouchableOpacity style={styles.accountAction}
+              accessibilityRole="button" accessibilityLabel="Open user dashboard"
+              onPress={() => navigation.navigate('Tabs', { screen: 'Profile' })}>
+              <Text style={styles.accountActionText}>Open User Dashboard</Text>
+              <Ionicons name="chevron-forward" size={17} color={Colors.white} />
+            </TouchableOpacity>
+            {!isDealerStaff && (
+              <TouchableOpacity style={styles.accountAction}
+                accessibilityRole="button"
+                accessibilityLabel={isDealerAccount
+                  ? role === 'dealer' ? 'Switch to personal dashboard' : 'Switch to dealer dashboard'
+                  : user?.isVerified ? 'Switch to verified dealer account' : 'Become a dealer'}
+                disabled={switchingDealerView}
+                onPress={() => { void handleSwitchDealerView(); }}>
+                <Text style={styles.accountActionText}>
+                  {switchingDealerView ? 'Switching account…'
+                    : isDealerAccount ? role === 'dealer' ? 'View Personal Dashboard' : 'Switch to Dealer Dashboard'
+                    : user?.isVerified ? 'Switch to Verified Dealer Account' : 'Become a Dealer'}
+                </Text>
+                <Ionicons name="swap-horizontal-outline" size={17} color={Colors.white} />
+              </TouchableOpacity>
+            )}
             {canManageBusiness ? (
               <TouchableOpacity style={styles.accountAction}
                 accessibilityRole="button" accessibilityLabel="Review business verification"
@@ -1327,6 +1383,16 @@ export const SettingsScreen: React.FC = () => {
           </View>
         )}
 
+        <TouchableOpacity
+          style={[styles.accountAction, { marginTop: 12 }]}
+          onPress={handleSignOut}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out of CarMazium"
+        >
+          <Ionicons name="log-out-outline" size={18} color={Colors.accent} />
+          <Text style={[styles.accountActionText, { color: Colors.accent }]}>Sign Out</Text>
+          <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Delete account — typed confirmation, mirroring web
