@@ -17,6 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { SERVICE_LABELS, getMyCapabilities } from '../../lib/servicesApi';
@@ -41,6 +42,8 @@ const stateColor = (state?: string) => {
 };
 
 export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useProviderVerificationScreenPalette();
   const { capabilityId } = route.params;
   const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<CapabilityVerificationDetail | null>(null);
@@ -168,41 +171,41 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Provider verification</Text>
-        <View style={styles.headerButton} />
+    <View style={[themed.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
+      <View style={themed.header}>
+        <IconButton style={themed.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={themed.headerTitle}>Provider verification</Text>
+        <View style={themed.headerButton} />
       </View>
 
-      {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
-          <Text style={styles.sub}>Complete every required business evidence item before CarMazium approval.</Text>
+      {loading ? <View style={themed.center}><ActivityIndicator color={Colors.accent} /></View> : (
+        <ScrollView contentContainerStyle={themed.content}>
+          <Text style={themed.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
+          <Text style={themed.sub}>Complete every required business evidence item before CarMazium approval.</Text>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={themed.error}>{error}</Text> : null}
 
           {detail ? (
             <>
-              <View style={styles.summaryCard}>
+              <View style={themed.summaryCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>VERIFICATION STATUS</Text>
-                  <Text style={[styles.summaryStatus, { color: stateColor(detail.verification.verificationStatus) }]}>
+                  <Text style={themed.label}>VERIFICATION STATUS</Text>
+                  <Text style={[themed.summaryStatus, { color: stateColor(detail.verification.verificationStatus) }]}>
                     {detail.verification.verificationStatus.replace(/_/g, ' ')}
                   </Text>
                   {detail.verification.verificationExpiresAt ? (
-                    <Text style={styles.cardText}>Expires {new Date(detail.verification.verificationExpiresAt).toLocaleDateString('en-GB')}</Text>
+                    <Text style={themed.cardText}>Expires {new Date(detail.verification.verificationExpiresAt).toLocaleDateString('en-GB')}</Text>
                   ) : null}
                 </View>
                 <Ionicons name="shield-checkmark-outline" size={30} color={stateColor(detail.verification.verificationStatus)} />
               </View>
 
-              <Text style={styles.sectionTitle}>Requirements</Text>
+              <Text style={themed.sectionTitle}>Requirements</Text>
               {detail.verification.requirements.map((req) => (
                 <TouchableOpacity
                   key={req.type}
-                  style={[styles.requirement, evidenceType === req.type && styles.requirementSelected]}
+                  style={[themed.requirement, evidenceType === req.type && styles.requirementSelected]}
                   onPress={() => setEvidenceType(req.type)}
                   activeOpacity={0.8}
                 >
@@ -212,75 +215,75 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                     color={stateColor(req.state)}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{req.title}</Text>
-                    <Text style={styles.cardText}>{req.description}</Text>
-                    <Text style={[styles.stateText, { color: stateColor(req.state) }]}>{req.state}</Text>
+                    <Text style={themed.cardTitle}>{req.title}</Text>
+                    <Text style={themed.cardText}>{req.description}</Text>
+                    <Text style={[themed.stateText, { color: stateColor(req.state) }]}>{req.state}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
 
-              <View style={styles.warningCard}>
+              <View style={themed.warningCard}>
                 <Ionicons name="business-outline" size={18} color={Colors.warning} />
-                <Text style={styles.warningText}>
+                <Text style={themed.warningText}>
                   Upload business, insurance, qualification or regulatory evidence only. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
                 </Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Upload evidence</Text>
-                <Text style={styles.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
+              <View style={themed.card}>
+                <Text style={themed.sectionTitle}>Upload evidence</Text>
+                <Text style={themed.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
 
-                <TouchableOpacity style={styles.fileButton} onPress={pickFile}>
+                <TouchableOpacity style={themed.fileButton} onPress={pickFile}>
                   <Ionicons name="attach-outline" size={17} color={Colors.white} />
-                  <Text style={styles.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
+                  <Text style={themed.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
                 </TouchableOpacity>
 
-                <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={themed.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={palette.textMuted} />
+                <TextInput style={themed.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={palette.textMuted} />
+                <TextInput style={themed.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={palette.textMuted} />
                 <TextInput
-                  style={styles.input}
+                  style={themed.input}
                   value={expiresAt}
                   onChangeText={setExpiresAt}
                   placeholder={selectedRequirement?.expiryRequired ? 'Expiry YYYY-MM-DD (required)' : 'Expiry YYYY-MM-DD (optional)'}
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={palette.textMuted}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
-                  {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="cloud-upload-outline" size={17} color={Colors.white} /><Text style={styles.primaryText}>UPLOAD FOR REVIEW</Text></>}
+                <TouchableOpacity style={[themed.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
+                  {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="cloud-upload-outline" size={17} color={Colors.white} /><Text style={themed.primaryText}>UPLOAD FOR REVIEW</Text></>}
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
+              <Text style={themed.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
               {detail.attachments.length === 0 ? (
-                <View style={styles.empty}><Text style={styles.cardText}>No verification evidence uploaded yet.</Text></View>
+                <View style={themed.empty}><Text style={themed.cardText}>No verification evidence uploaded yet.</Text></View>
               ) : detail.attachments.map((entry) => (
-                <View key={entry.id} style={styles.card}>
-                  <View style={styles.row}>
+                <View key={entry.id} style={themed.card}>
+                  <View style={themed.row}>
                     <Ionicons name="document-text-outline" size={20} color={Colors.accent} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{entry.label || 'Verification evidence'}</Text>
-                      <Text style={styles.cardText}>
+                      <Text style={themed.cardTitle}>{entry.label || 'Verification evidence'}</Text>
+                      <Text style={themed.cardText}>
                         {entry.evidenceIssuer || 'Issuer not supplied'}
                         {entry.evidenceReference ? ` · ${entry.evidenceReference}` : ''}
                       </Text>
-                      <Text style={styles.cardText}>
+                      <Text style={themed.cardText}>
                         Uploaded {new Date(entry.createdAt).toLocaleDateString('en-GB')}
                         {entry.evidenceExpiresAt ? ` · Expires ${new Date(entry.evidenceExpiresAt).toLocaleDateString('en-GB')}` : ''}
                       </Text>
                     </View>
-                    <Text style={[styles.stateText, { color: stateColor(entry.evidenceStatus ?? undefined) }]}>{entry.evidenceStatus || 'PENDING'}</Text>
+                    <Text style={[themed.stateText, { color: stateColor(entry.evidenceStatus ?? undefined) }]}>{entry.evidenceStatus || 'PENDING'}</Text>
                   </View>
-                  {entry.evidenceReviewNote ? <Text style={styles.cardText}>{entry.evidenceReviewNote}</Text> : null}
-                  <View style={styles.actions}>
+                  {entry.evidenceReviewNote ? <Text style={themed.cardText}>{entry.evidenceReviewNote}</Text> : null}
+                  <View style={themed.actions}>
                     {entry.url ? (
-                      <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(entry.url!)}>
-                        <Text style={styles.actionText}>OPEN EVIDENCE</Text>
+                      <TouchableOpacity style={themed.actionButton} onPress={() => Linking.openURL(entry.url!)}>
+                        <Text style={themed.actionText}>OPEN EVIDENCE</Text>
                       </TouchableOpacity>
                     ) : null}
                     {entry.evidenceStatus === 'PENDING' ? (
-                      <TouchableOpacity style={[styles.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
-                        <Text style={[styles.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
+                      <TouchableOpacity style={[themed.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
+                        <Text style={[themed.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -328,3 +331,34 @@ const styles = StyleSheet.create({
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
 });
+
+function useProviderVerificationScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    center: [styles.center, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    headerButton: [styles.headerButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    title: [styles.title, { color: palette.textPrimary }],
+    sub: [styles.sub, { color: palette.textSecondary }],
+    summaryCard: [styles.summaryCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    summaryStatus: [styles.summaryStatus, { color: palette.textSecondary }],
+    label: [styles.label, { color: palette.textMuted }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    requirement: [styles.requirement, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardTitle: [styles.cardTitle, { color: palette.textPrimary }],
+    cardText: [styles.cardText, { color: palette.textSecondary }],
+    stateText: [styles.stateText, { color: palette.textMuted }],
+    warningCard: [styles.warningCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    warningText: [styles.warningText, { color: palette.textSecondary }],
+    fileButton: [styles.fileButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    fileButtonText: [styles.fileButtonText, { color: palette.textPrimary }],
+    input: [styles.input, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    empty: [styles.empty, { color: palette.textMuted }],
+    actionButton: [styles.actionButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    actionText: [styles.actionText, { color: palette.textPrimary }],
+  }), [palette]);
+}
