@@ -22,7 +22,7 @@ test('web dealer bottom navigation and native route labels have the same informa
   for (const [route,label] of [
     ['DealerHome','Home'],
     ['DealerStock','Stock'],
-    ['DealerCustomers','Customers'],
+    ['DealerCustomers','CLIENTS'],
     ['DealerBuyBid','Buy & Bid'],
     ['DealerMore','More'],
   ]) {
@@ -516,4 +516,80 @@ test('Block 10 written release checklist holds APK, owner consent, security and 
   assert.match(ai, /MAZIUM_PROTECTED_ROUTES\.has\(activeRoute\)/);
   assert.match(ai, /hasAiConsent !== true/);
   assert.match(menu, /const currentAuth = useAuthStore\.getState\(\)/);
+});
+
+
+test('post-build QA: no fake Help icons in Menu, dealer More, sorting or settings appearance', () => {
+  const icon = app('components/BrandIcon.tsx');
+  const tabs = app('navigation/TabNavigator.tsx');
+  const header = app('components/HamburgerButton.tsx');
+  const saved = app('screens/main/SavedScreen.tsx');
+  for (const [name, target] of [
+    ['menu', 'Menu'],
+    ['apps-outline', 'LayoutGrid'],
+    ['apps', 'LayoutGrid'],
+    ['swap-vertical-outline', 'ArrowDownUp'],
+    ['color-palette-outline', 'Palette'],
+    ['arrow-forward-outline', 'ArrowRight'],
+  ]) {
+    assert.ok(icon.includes("'" + name + "': '" + target + "'"), 'unmapped icon: ' + name);
+  }
+  assert.match(icon, /const lucideName = ICON_MAP\[name\] \|\| 'Circle'/);
+  assert.doesNotMatch(icon, /const lucideName = ICON_MAP\[name\] \|\| 'HelpCircle'/);
+  assert.match(header, /<Ionicons name="menu" size=\{22\}/);
+  assert.match(tabs, /name: 'DealerMore', icon: 'apps-outline', iconActive: 'apps'/);
+  assert.match(tabs, /name: 'DealerCustomers'.*label: 'CLIENTS'/);
+  assert.match(tabs, /route\.name === 'DealerCustomers' \? 'Customers'/);
+  assert.match(saved, /name="swap-vertical-outline"/);
+});
+
+test('post-build QA: Saved Cars opened from Account Settings has its own stack Back route', () => {
+  const stack = app('navigation/MainStackNavigator.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const saved = app('screens/main/SavedScreen.tsx');
+  const tabs = app('navigation/TabNavigator.tsx');
+  assert.match(stack, /SavedFromSettings: undefined/);
+  assert.match(stack, /<Stack\.Screen name="SavedFromSettings" component=\{SavedScreen\} \/>/);
+  assert.match(settings, /action: \(\) => navigation\.navigate\('SavedFromSettings'\)/);
+  assert.match(saved, /const fromSettings = route\.name === 'SavedFromSettings'/);
+  assert.match(saved, /accessibilityLabel="Back to Account Settings"/);
+  assert.match(saved, /if \(navigation\.canGoBack\(\)\) navigation\.goBack\(\)/);
+  assert.match(saved, /else navigation\.navigate\('Settings'\)/);
+  assert.match(tabs, /<Tab\.Screen name="Saved" component=\{SavedScreen\} \/>/);
+});
+
+test('post-build QA: home rails show exactly one photo with visible facts, price or bid and CTA', () => {
+  const home = app('screens/main/HomeScreen.tsx');
+  const carousel = app('components/ImageCarousel.tsx');
+  const watchlist = app('store/watchlistStore.ts');
+  assert.doesNotMatch(home, /<ImageCarousel/);
+  assert.match(home, /<Image source=\{\{ uri: images\[0\] \}\} style=\{s\.cardImg\}/);
+  assert.match(home, /<Image source=\{\{ uri: listing\.images\[0\] \}\} style=\{s\.cardImg\}/);
+  assert.match(home, /<ImageLightbox[\s\S]*?images=\{listing\.images \?\? \[\]\}/);
+  assert.match(home, /cardBody: \{ padding: 16, backgroundColor: Colors\.bgCardSolid/);
+  assert.match(home, /bidOverlay: \{ flexDirection: 'row', backgroundColor: Colors\.bgElevated/);
+  assert.doesNotMatch(home, /bidOverlay: \{ position: 'absolute'/);
+  assert.match(home, /<Text style=\{s\.cardPrice\}>\{formatPrice\(listing\.price\)\}<\/Text>/);
+  assert.match(home, /<Text style=\{s\.retailFact\}>\{mapTransmission\(listing\.transmission\)\}<\/Text>/);
+  assert.match(home, /<Text style=\{s\.homeCardCtaLabel\}>View Details<\/Text>/);
+  assert.match(home, /<Text style=\{s\.homeCardCtaLabel\}>\{bids\} bid/);
+  assert.match(home, /<GradeChip grade=\{listing\.exteriorGrade\} \/>/);
+  assert.match(home, /<AuctionCardChips/);
+  assert.match(home, /const featuredIds = new Set\(featuredListings\.map\(listing => listing\.id\)\)/);
+  assert.match(home, /latestListings\.filter\(listing => !featuredIds\.has\(listing\.id\)\)/);
+  assert.match(home, /homeVehicleTitle\(l\?\.make, l\?\.model\)/);
+  assert.match(watchlist, /toggle:/);
+  assert.match(carousel, /pagingEnabled/); // full galleries elsewhere remain intact
+});
+
+test('post-build QA: valuation and TradeXchange clear the tab bar and gesture inset', () => {
+  const valuation = app('screens/sell/SellLandingScreen.tsx');
+  const services = app('screens/main/ServicesScreen.tsx');
+  for (const page of [valuation, services]) {
+    assert.match(page, /getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ (?:32|24)/);
+    assert.match(page, /useSafeAreaInsets\(\)/);
+    assert.match(page, /useWindowDimensions\(\)/);
+  }
+  assert.doesNotMatch(valuation, /paddingBottom:110/);
+  assert.doesNotMatch(services, /<View style=\{\{ height: 60 \}\} \/>/);
 });
