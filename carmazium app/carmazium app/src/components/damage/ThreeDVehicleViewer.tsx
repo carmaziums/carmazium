@@ -459,7 +459,7 @@ export function ThreeDVehicleViewer({
         {/* Seller 3D defect pins: each number links to ONE record, even when
             several scratches share a door. Collision layout is native-only:
             stored 3D positions and raycast precision are never modified. */}
-        {!readOnly && placedDamagePins.map(placed => {
+        {(!readOnly || Boolean(onDamagePinPress)) && placedDamagePins.map(placed => {
           const pin = damagePins.find(item => item.id === placed.id);
           const projected = damagePinScreenPos[placed.id];
           if (!pin || !projected) return null;
