@@ -19,6 +19,7 @@ on:
       - 'scripts/test-native-damage-camera-preview-block3.test.mjs'
       - 'scripts/test-native-damage-durable-upload-block4.test.mjs'
       - 'scripts/test-native-damage-multiple-pins-block5.test.mjs'
+      - 'scripts/test-native-damage-draft-recovery-block6.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -225,6 +226,8 @@ jobs:
         run: node --test scripts/test-native-damage-durable-upload-block4.test.mjs
       - name: Block 5 — numbered 3D damage pins, independent records and stable coordinates
         run: node --test scripts/test-native-damage-multiple-pins-block5.test.mjs
+      - name: Block 6 — verify damage draft recovery, photo references and cleanup safeguards
+        run: node --test scripts/test-native-damage-draft-recovery-block6.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
         run: node --test scripts/test-native-app-audit-block8.test.mjs
       - name: Audit Android emulator boot and QA artifact provenance
