@@ -25,7 +25,7 @@ test('seller can correct nearest panel with one control and preserves original p
   assert.match(mapper, /accessibilityLabel="Change selected damage panel"/);
   assert.match(mapper, /setCorrectingPanel\(true\); setPanelChooserOpen\(true\)/);
   assert.match(mapper, /const chooseKnownPanel = \(label: string\) => \{\s*if \(!correctingPanel\) setPendingSurfacePoint\(null\);/);
-  assert.match(mapper, /onPress=\{\(\) => chooseKnownPanel\(zone\.label\)\}/);
+  assert.match(mapper, /onPress=\{\(\) => \{ if \(!uploadingDamagePhoto\) chooseKnownPanel\(zone\.label\); \}\}/);
   assert.match(mapper, /original tap position is kept/);
   assert.match(mapper, /Suggested from a generic 3D car/);
 });
