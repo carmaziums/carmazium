@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/Button"
 import {
     Users,
@@ -351,7 +350,6 @@ const toolGroups: ToolGroup[] = [
 
 export default function AdminDashboard() {
     const { user, profile, loading: authLoading, refreshProfile } = useAuth()
-    const router = useRouter()
     const [stats, setStats] = React.useState<AdminStats | null>(null)
     const [pendingHandovers, setPendingHandovers] = React.useState(0)
     const [loading, setLoading] = React.useState(true)
@@ -362,12 +360,9 @@ export default function AdminDashboard() {
     const [savingCards, setSavingCards] = React.useState(false)
     const [cardSaveError, setCardSaveError] = React.useState<string | null>(null)
 
-    React.useEffect(() => {
-        if (!authLoading) {
-            if (!user) { router.replace('/auth/login'); return }
-            if (profile?.role !== 'ADMIN') { router.replace('/dashboard'); return }
-        }
-    }, [user, profile, authLoading, router])
+    // AdminAccessGate in /dashboard/admin/layout.tsx owns role verification.
+    // A missing /users/me response must never bounce admins to /dashboard
+    // and then through customer onboarding again.
 
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
