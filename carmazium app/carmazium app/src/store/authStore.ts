@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { apiClient } from '../lib/apiClient';
+import { clearDealerAccessCache } from '../lib/dealerAccessApi';
 import * as SecureStore from 'expo-secure-store';
 import { setAuthRedirectHandler, resetAuthRedirectLatch } from '../lib/authEvents';
 import { navigationRef } from '../lib/navigationRef';
@@ -220,6 +221,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Offline or already invalid — the local reset below is what matters.
     }
     await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+    clearDealerAccessCache();
 
     set({
       isAuthenticated: false,
@@ -636,6 +638,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('Supabase logout error:', e);
     } finally {
       await detachSellWizardDraft().catch(error => console.warn('Seller draft detach failed:', error));
+      clearDealerAccessCache();
       set({
         isAuthenticated: false,
         pendingEmailVerification: false,

@@ -56,7 +56,7 @@ test('valuation, TradeXchange, Compare, Pricing and About point to existing dest
 
 test('dashboard stays role-aware and settings preserve every account and dealer control', () => {
   assert.match(mainMenu, /id: 'dashboard'.*tabName: 'Profile'/);
-  assert.match(drawer, /item\.id === 'dashboard' && dealerMode \? 'DealerHome' : item\.tabName/);
+  assert.match(drawer, /const destination = item\.id === 'dashboard' && dealerMode\s*\? 'DealerHome'\s*: item\.tabName/);
   assert.match(mainMenu, /id: 'settings'.*stackScreen: 'Settings'/);
   assert.match(tabs, /role === 'dealer'\) return <DealerProfileScreen/);
   for (const id of ['personal','business','verification','notifications','payouts','appearance','security','reviews','account']) {

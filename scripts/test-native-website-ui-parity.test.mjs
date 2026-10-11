@@ -270,3 +270,58 @@ test('Block 6 drawer reads naturally at 200% font, scrolls and distinguishes dea
   assert.match(settings, /style=\{styles\.signOutRow\}/);
   assert.match(settings, /onPress=\{handleSignOut\}/);
 });
+
+
+test('Block 7 drawer dismissals cancel stale taps and reset expanded choices across account changes', () => {
+  const nav = app('components/GlobalDrawer.tsx');
+  const auth = app('store/authStore.ts');
+  const ctx = app('context/DrawerContext.tsx');
+  assert.match(nav, /const pendingNavigation = useRef<ReturnType<typeof setTimeout> \| null>\(null\)/);
+  assert.match(nav, /const pendingQaShare = useRef<ReturnType<typeof setTimeout> \| null>\(null\)/);
+  assert.match(nav, /const accountId = user\?\.id/);
+  assert.match(nav, /return \(\) => \{\s*if \(pendingNavigation\.current\) clearTimeout\(pendingNavigation\.current\)/);
+  assert.match(nav, /\}, \[accountId, role, accountRole\]\)/);
+  assert.match(nav, /if \(!isOpen\) setExpandedMenu\(null\)/);
+  assert.match(nav, /if \(pendingNavigation\.current\) clearTimeout\(pendingNavigation\.current\)/);
+  assert.match(nav, /const currentAuth = useAuthStore\.getState\(\)/);
+  assert.match(nav, /if \(!currentAuth\.isAuthenticated\s*\|\| currentAuth\.user\?\.id !== sourceAccountId\s*\|\| currentAuth\.role !== sourceRole\s*\|\| currentAuth\.accountRole !== sourceAccountRole\) return/);
+  assert.match(nav, /navigation\.navigate\('Main', \{ screen: item\.stackScreen, params: item\.params \} as never\)/);
+  assert.match(nav, /const destination = item\.id === 'dashboard' && dealerMode\s*\? 'DealerHome'\s*: item\.tabName/);
+  assert.match(nav, /navigation\.navigate\('Main', \{ screen: 'Tabs', params: \{ screen: destination \} \}\)/);
+  assert.match(nav, /if \(!currentAuth\.isAuthenticated \|\| currentAuth\.user\?\.id !== sourceAccountId\) return/);
+  assert.match(ctx, /const closeDrawer = useCallback\(\(\) => setIsOpen\(false\), \[\]\)/);
+  assert.match(auth, /forceLogout: async \(\) =>/);
+  assert.match(auth, /logout: async \(\) =>/);
+});
+
+test('Block 7 dealer permissions remain isolated by authenticated identity and reject stale role requests', () => {
+  const accessApi = app('lib/dealerAccessApi.ts');
+  const hook = app('hooks/useDealerAccess.ts');
+  const auth = app('store/authStore.ts');
+  const tabs = app('navigation/TabNavigator.tsx');
+  const more = app('screens/main/DealerMoreScreen.tsx');
+  const gate = app('components/DealerGate.tsx');
+
+  assert.match(accessApi, /let cachedUserId: string \| null = null/);
+  assert.match(accessApi, /let cacheEpoch = 0/);
+  assert.match(accessApi, /if \(userId && cachedUserId !== userId\)/);
+  assert.match(accessApi, /if \(userId && !force && cachedAccess && Date\.now\(\) - cachedAt < CACHE_MS\)/);
+  assert.match(accessApi, /if \(userId && cachedUserId === userId && cacheEpoch === requestEpoch\)/);
+  assert.match(accessApi, /export function clearDealerAccessCache\(\) \{[\s\S]*?cacheEpoch \+= 1/);
+  assert.match(hook, /const userId = useAuthStore\(s => s\.user\?\.id \?\? null\)/);
+  assert.match(hook, /const activeUserId = enabled && isAuthenticated \? userId : null/);
+  assert.match(hook, /const requestEpoch = useRef\(0\)/);
+  assert.match(hook, /setSnapshot\(\{ userId: activeUserId, access: null, loading: true, error: null \}\)/);
+  assert.match(hook, /await getDealerAccess\(force, activeUserId\)/);
+  assert.match(hook, /requestEpoch\.current !== requestId[\s\S]*?user\?\.id !== activeUserId/);
+  assert.match(hook, /return \(\) => \{ requestEpoch\.current \+= 1; \}/);
+  assert.match(hook, /const matchingIdentity = !!activeUserId && snapshot\.userId === activeUserId/);
+  assert.match(hook, /permission: DealerPermission\) => !loading && !!access\?\.permissions\?\.includes\(permission\)/);
+  assert.match(auth, /import \{ clearDealerAccessCache \} from '\.\.\/lib\/dealerAccessApi'/);
+  assert.ok((auth.match(/clearDealerAccessCache\(\)/g) || []).length >= 2, 'both forced and manual logout clear grants');
+  assert.match(tabs, /route\.name === 'DealerStock'.*?!dealerAccessLoading && hasPermission\('VIEW_INVENTORY'\)/);
+  assert.match(tabs, /route\.name === 'DealerCustomers'.*?!dealerAccessLoading && hasPermission\('MANAGE_CRM'\)/);
+  assert.match(tabs, /route\.name === 'DealerBuyBid'.*?!dealerAccessLoading && hasPermission\('VIEW_TRADE'\)/);
+  assert.match(more, /EXTRA_DEALER_TOOLS\.filter\(tool => hasPermission\(tool\.permission\)\)/);
+  assert.match(gate, /staffVerified =[\s\S]*?access\?\.isVerified === true/);
+});
