@@ -188,6 +188,12 @@ export function ThreeDVehicleViewer({
     }));
     return layoutProjectedDamagePins(projected, viewportSize.width, viewportSize.height);
   }, [damagePins, damagePinScreenPos, viewportSize]);
+  // Render the selected marker last so its focused 44dp target stays above
+  // near-overlapping neighbours even when the collision spiral is saturated.
+  const orderedVisibleDamagePins = useMemo(() =>
+    [...placedDamagePins].sort((left, right) =>
+      Number(left.id === selectedDamageId) - Number(right.id === selectedDamageId)),
+    [placedDamagePins, selectedDamageId]);
   const pinWire = useMemo(() => JSON.stringify(damagePins.map(pin => ({
     id: pin.id, ...pin.point,
   }))), [damagePins]);
@@ -463,7 +469,7 @@ export function ThreeDVehicleViewer({
         {/* Seller 3D defect pins: each number links to ONE record, even when
             several scratches share a door. Collision layout is native-only:
             stored 3D positions and raycast precision are never modified. */}
-        {(!readOnly || Boolean(onDamagePinPress)) && placedDamagePins.map(placed => {
+        {(!readOnly || Boolean(onDamagePinPress)) && orderedVisibleDamagePins.map(placed => {
           const pin = damagePins.find(item => item.id === placed.id);
           const projected = damagePinScreenPos[placed.id];
           if (!pin || !projected) return null;
