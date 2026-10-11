@@ -103,3 +103,56 @@ test('native Sign Out is a contrasting, scrollable row with confirmation at ever
   assert.ok(contrast(fg, bg) >= 4.5, 'Sign Out label must meet WCAG AA');
   assert.ok(contrast(subtitle, bg) >= 4.5, 'Sign Out subtitle must meet WCAG AA');
 });
+
+
+test('native Account Type has one clear dashboard, one optional view switch and owner-only business verification', () => {
+  const settings = read('carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx');
+  const start = settings.indexOf("{activeCategory === 'account' && (");
+  const end = settings.indexOf("{/* Use a fully opaque, high-contrast surface", start);
+  assert.ok(start >= 0 && end > start, 'Account Type section must be present');
+  const account = settings.slice(start, end);
+
+  // One role-aware dashboard destination, never three red dashboard blocks.
+  assert.match(settings, /const partnerViewActive = isDealerAccount && role === 'dealer';/);
+  assert.match(settings, /const openCurrentDashboard = \(\) => navigation\.navigate\('Tabs', \{/);
+  assert.match(settings, /screen: partnerViewActive \? 'DealerHome' : 'Profile'/);
+  assert.equal((account.match(/>Open Dashboard<\/Text>/g) || []).length, 1);
+  assert.match(account, /onPress=\{openCurrentDashboard\}/);
+  assert.match(account, /Current view: \{currentViewLabel\}/);
+  assert.match(account, /accessibilityLabel=\{'Current view: ' \+ currentViewLabel\}/);
+  assert.doesNotMatch(account, /Open User Dashboard|View Personal Dashboard|Switch to Dealer Dashboard|Explore Partner Account/);
+
+  // Existing verified-account switching path remains, without allowing staff.
+  assert.match(account, /\{!isDealerStaff && \(/);
+  assert.match(account, /onPress=\{\(\) => \{ void handleSwitchDealerView\(\); \}\}/);
+  assert.match(account, /partnerViewActive \? 'Switch to Personal View' : 'Switch to Partner View'/);
+  assert.match(settings, /if \(switchingDealerView \|\| user\?\.isDealerStaff\) return;/);
+  assert.match(settings, /await apiClient\('\/users\/elevate'/);
+  assert.match(settings, /navigation\.navigate\('DealerOnboarding'\)/);
+
+  // Owners see business KYC status and its existing Verification route,
+  // staff only a read-only entry, personal accounts only personal checks.
+  assert.match(account, /\{isDealerAccount \? \(\s*canManageBusiness \? \(/);
+  assert.match(account, /<Text style=\{styles\.accountNavTitle\} maxFontSizeMultiplier=\{2\}>Business Verification<\/Text>/);
+  assert.match(account, /Status: \{businessVerificationStatus\}/);
+  assert.match(account, /onPress=\{\(\) => selectCategory\('verification'\)\}/);
+  assert.match(account, /Managed by dealership owner/);
+  assert.match(account, /<View style=\{styles\.accountNavRow\} accessible accessibilityLabel="Business Verification, managed by dealership owner">/);
+  assert.match(account, /Personal Verification/);
+  assert.match(settings, /const canManageBusiness = isDealerAccount && !isDealerStaff;/);
+  assert.match(settings, /dealerKycStatus\s*\?\s*\(\{[\s\S]*?APPROVED: 'Approved'/);
+  assert.match(account, /Business ownership, legal type and verification changes must be made by the dealership owner/);
+
+  // Neutral compact navigational rows remain readable at large system text.
+  assert.match(settings, /accountNavRow: \{\s*minHeight: 60/);
+  assert.match(settings, /accountNavRowPrimary: \{\s*backgroundColor: Colors\.bgCardSolid/);
+  assert.match(settings, /accountNavTitle: \{[\s\S]*?color: Colors\.textPrimary/);
+  assert.match(settings, /accountNavSub: \{[\s\S]*?color: Colors\.textSecondary/);
+  assert.ok((account.match(/maxFontSizeMultiplier=\{2\}/g) || []).length >= 7);
+  assert.doesNotMatch(settings, /accountAction: \{ backgroundColor: Colors\.accent/);
+  assert.doesNotMatch(account, /style=\{styles\.accountAction\}/);
+
+  // Sign Out fix from Block 3 must remain a separate visible and confirmed action.
+  assert.match(settings, /style=\{styles\.signOutRow\}/);
+  assert.match(settings, /onPress=\{handleSignOut\}/);
+});
