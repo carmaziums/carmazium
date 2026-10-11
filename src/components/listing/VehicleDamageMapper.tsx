@@ -316,16 +316,39 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             <div className="flex items-center gap-2">
               <AlertTriangle size={15} className="text-primary" />
               <p className="font-bold text-[var(--text-primary)] text-sm">
-                Marking: <span className="text-primary">{pendingZone.label}</span>
+                {editingDamageId ? "Editing damage:" : "Selected panel:"} <span className="text-primary">{pendingZone.label}</span>
               </p>
             </div>
-            <button type="button" onClick={() => { setPendingZoneId(null); setCustomZoneInput(''); setPendingCustomLabel('') }} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white">
+            <button type="button" onClick={resetEditor} disabled={uploading} aria-label="Cancel damage entry" className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white">
               <X size={15} />
             </button>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage Description *</label>
+            <p className="text-xs text-[var(--text-muted)]">
+              {pendingSurfacePoint ? "Suggested from a generic 3D model. Check that this panel matches your vehicle." : "Manually selected area."}
+            </p>
+            <button type="button" onClick={() => setManualOpen(true)} disabled={uploading}
+              className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-xs text-primary">
+              <Pencil size={13} className="inline mr-1" /> Change panel
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage type</label>
+            <div className="flex flex-wrap gap-2">
+              {(["SCRATCH", "SCUFF", "DENT", "CRACK", "OTHER"] as const).map(type => (
+                <button type="button" key={type} onClick={() => setPendingType(type)}
+                  disabled={uploading} aria-pressed={pendingType === type}
+                  className={`rounded-full border px-3 py-2 text-xs font-semibold ${pendingType === type
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Description (optional)</label>
             <textarea
               value={pendingDesc}
               onChange={e => setPendingDesc(e.target.value)}
@@ -336,8 +359,22 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Close-up Photo (optional)</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Damage photo (optional)</label>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={uploading} onClick={() => cameraInputRef.current?.click()}
+                className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-sm">
+                <Camera size={14} className="inline mr-2" />Take Photo
+              </button>
+              <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl border border-[var(--border-default)] px-3 py-2 text-sm">
+                <Images size={14} className="inline mr-2" />Gallery
+              </button>
+            </div>
+            {uploadError && <p role="alert" className="text-xs text-red-500">
+              {uploadError} Your description is still here. Select a photo again to retry.
+            </p>
             {pendingPhoto ? (
               <div className="relative inline-block">
                 <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
@@ -349,29 +386,18 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                   <X size={10} />
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 text-[var(--text-muted)] hover:border-white/40 hover:text-[var(--text-primary)] transition-all text-sm"
-              >
-                {uploading
-                  ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  : <Camera size={14} />
-                }
-                {uploading ? "Uploading…" : "Upload Photo"}
-              </button>
-            )}
+            ) : uploading ? (
+              <p role="status" className="text-xs text-[var(--text-muted)]">Uploading damage photo…</p>
+            ) : null}
           </div>
 
           <button
             type="button"
             onClick={addRecord}
-            disabled={!pendingDesc.trim()}
+            disabled={uploading || Boolean(uploadError)}
             className="w-full py-2.5 rounded-xl bg-primary hover:bg-red-600 text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Plus size={16} /> Confirm Damage
+            <Plus size={16} /> {editingDamageId ? "Save Changes" : "Save & Add Another"}
           </button>
         </div>
       )}
@@ -477,12 +503,12 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           <div className="flex items-center gap-2">
             <CheckCircle2 size={15} className="text-amber-400" />
             <p className="text-sm font-bold">
-              {records.length} damage area{records.length !== 1 ? "s" : ""} recorded
+              {records.length} damage{records.length !== 1 ? "s" : ""} recorded
             </p>
           </div>
           <div className="space-y-2">
-            {records.map(rec => (
-              <div key={rec.id} className="flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
+            {records.map((rec, index) => (
+              <div key={rec.id} className={`flex items-start gap-3 p-3 rounded-xl bg-[var(--bg-input)] border ${editingDamageId === rec.id ? "border-primary" : "border-[var(--border-default)]"}`}>
                 {rec.photoUrl && (
                   <Image
                     src={rec.photoUrl}
@@ -493,9 +519,13 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-amber-300">{zoneLabel(rec.zone)}</p>
+                  <p className="text-xs font-bold text-amber-300">#{index + 1} · {zoneLabel(rec.zone)} · {rec.type || "OTHER"}</p>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{rec.description}</p>
                 </div>
+                <button type="button" disabled={uploading} onClick={() => editRecord(rec.id)}
+                  aria-label={`Edit damage ${index + 1}`} className="rounded-lg p-2 text-primary hover:bg-primary/10">
+                  <Pencil size={15} />
+                </button>
                 <button
                   type="button"
                   onClick={() => removeRecord(rec.id)}
