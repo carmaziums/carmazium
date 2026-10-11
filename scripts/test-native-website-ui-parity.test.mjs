@@ -98,3 +98,21 @@ test('buyer home uses the current website sale-first proposition and brand heade
   assert.ok(home.includes("navigation.navigate('SellLanding')"));
   assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
 });
+
+test('native header exposes one labelled Menu, with distinct avatar Settings and bell Notifications', () => {
+  const button = app('components/HamburgerButton.tsx');
+  assert.match(button, /accessibilityLabel=\{websiteStyle \? 'Menu' : 'Open navigation menu'\}/);
+  assert.match(button, /<Ionicons name="menu" size=\{22\}/);
+  assert.match(button, /<Text style=\{styles\.websiteLabel\} maxFontSizeMultiplier=\{2\}>Menu<\/Text>/);
+  assert.match(button, /onPress=\{openDrawer\}/);
+  assert.match(button, /disabled=\{isOpen\}/);
+  assert.doesNotMatch(button, /isOpen \? 'close' : 'menu'/);
+  assert.match(bar, /onPress=\{\(\) => navigation\.navigate\('Settings'\)\}/);
+  assert.match(bar, /accessibilityLabel="Profile settings"/);
+  assert.match(bar, /name="settings-outline"/);
+  assert.doesNotMatch(bar, /name="chevron-down"/);
+  assert.match(bar, /onPress=\{\(\) => navigation\.navigate\('Notifications'\)\}/);
+  assert.match(bar, /<HamburgerButton websiteStyle \/>/);
+  // The dealer workspace tab policy from PR #534 is intentionally untouched.
+  assert.match(tabs, /if \(!dealerMode\) return !route\.name\.startsWith\('Dealer'\) && route\.name !== 'Live';/);
+});
