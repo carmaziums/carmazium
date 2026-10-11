@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
@@ -123,6 +123,9 @@ export function ThreeDVehicleViewer({
 
   // viewerHtml drives whether the WebView mounts at all; null = still loading
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
+  // Keep the native WebView's `source` object stable while the RN hotspot
+  // overlay updates; avoid WebView reload risk on repeated React renders.
+  const viewerSource = useMemo(() => viewerHtml ? { html: viewerHtml } : null, [viewerHtml]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Zone-level actions — id-keyed so they survive independently of `markedZones`
@@ -135,7 +138,7 @@ export function ThreeDVehicleViewer({
   // Only zones with a `box` (exterior) fraction get an entry here; interior
   // zones have no exterior 3D position and are never rendered as hotspots.
   const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
-  const hotspotZones = zones.filter((z) => z.box);
+  const hotspotZones = useMemo(() => zones.filter((z) => z.box), [zones]);
   const hotspotZonesRef = useRef(hotspotZones);
   hotspotZonesRef.current = hotspotZones;
 
@@ -255,7 +258,7 @@ export function ThreeDVehicleViewer({
       {viewerHtml ? (
         <WebView
           ref={webViewRef}
-          source={{ html: viewerHtml }}
+          source={viewerSource!}
           onLoad={handleWebViewLoad}
           onMessage={handleWebViewMessage}
           scrollEnabled={false}
