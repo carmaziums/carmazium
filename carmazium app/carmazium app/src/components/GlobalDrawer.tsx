@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -82,6 +82,26 @@ export const GlobalDrawer: React.FC = () => {
   const { width: windowWidth } = useWindowDimensions();
   const drawerWidth = Math.min(windowWidth * 0.82, 320);
   const navigation = useNavigation<NavProp>();
+  // Prevent a drawer destination queued during dismissal from navigating a
+  // new account/session after fast logout, role changes, or screen unmount.
+  const pendingNavigation = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingQaShare = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accountId = user?.id;
+
+  useEffect(() => {
+    return () => {
+      if (pendingNavigation.current) clearTimeout(pendingNavigation.current);
+      if (pendingQaShare.current) clearTimeout(pendingQaShare.current);
+      pendingNavigation.current = null;
+      pendingQaShare.current = null;
+    };
+  }, [accountId, role, accountRole]);
+
+  // Every fresh Menu session should start with Buy and Sell collapsed; a
+  // prior expansion must not persist after dismissing via X, Back, or backdrop.
+  useEffect(() => {
+    if (!isOpen) setExpandedMenu(null);
+  }, [isOpen]);
 
   const translateX = useSharedValue(drawerWidth);
   const backdropOpacity = useSharedValue(0);
@@ -136,19 +156,24 @@ export const GlobalDrawer: React.FC = () => {
     }
     closeDrawer();
     setExpandedMenu(null);
-    setTimeout(() => {
+    if (pendingNavigation.current) clearTimeout(pendingNavigation.current);
+    const sourceAccountId = accountId;
+    const sourceRole = role;
+    const sourceAccountRole = accountRole;
+    const destination = item.id === 'dashboard' && dealerMode
+      ? 'DealerHome'
+      : item.tabName;
+    pendingNavigation.current = setTimeout(() => {
+      pendingNavigation.current = null;
+      const currentAuth = useAuthStore.getState();
+      if (!currentAuth.isAuthenticated
+        || currentAuth.user?.id !== sourceAccountId
+        || currentAuth.role !== sourceRole
+        || currentAuth.accountRole !== sourceAccountRole) return;
       if (item.stackScreen) {
         navigation.navigate('Main', { screen: item.stackScreen, params: item.params } as never);
-        return;
-      }
-      if (item.tabName) {
-        // Existing dealer dashboard is the dealer Home workspace, while
-        // buyer/seller/service dashboards live on the Profile tab.
-        const screen = item.id === 'dashboard' && dealerMode ? 'DealerHome' : item.tabName;
-        navigation.navigate('Main', {
-          screen: 'Tabs',
-          params: { screen },
-        });
+      } else if (destination) {
+        navigation.navigate('Main', { screen: 'Tabs', params: { screen: destination } });
       }
     }, 160);
   };
@@ -158,8 +183,13 @@ export const GlobalDrawer: React.FC = () => {
   // The user decides whether and where to share the review notes.
   const handleShareQaFeedback = () => {
     closeDrawer();
+    if (pendingQaShare.current) clearTimeout(pendingQaShare.current);
+    const sourceAccountId = accountId;
     const sourceSha = process.env.EXPO_PUBLIC_QA_COMMIT_SHA || 'unknown';
-    setTimeout(() => {
+    pendingQaShare.current = setTimeout(() => {
+      pendingQaShare.current = null;
+      const currentAuth = useAuthStore.getState();
+      if (!currentAuth.isAuthenticated || currentAuth.user?.id !== sourceAccountId) return;
       void Share.share({
         title: 'CarMazium QA interface feedback',
         message: [
