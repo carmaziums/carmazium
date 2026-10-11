@@ -83,10 +83,20 @@ export interface DamageSurfaceTap {
   point: DamageSurfacePoint;
 }
 
+/** Every saved defect retains an independent normalized position on the car. */
+export interface DamagePin3D {
+  id: string;
+  number: number;
+  point: DamageSurfacePoint;
+}
+
 export interface ThreeDVehicleViewerProps {
   zones: DamageZone3D[];
   selectedZone: string | null;
   markedZones: string[];
+  damagePins?: DamagePin3D[];
+  onDamagePinPress?: (damageId: string) => void;
+  selectedDamageId?: string | null;
   onZoneClick: (zoneLabel: string) => void;
   /** Opt-in seller surface tap, on the visible mesh only; disabled in buyer read-only views. */
   onSurfaceTap?: (tap: DamageSurfaceTap) => void;
@@ -114,6 +124,9 @@ export function ThreeDVehicleViewer({
   zones,
   selectedZone,
   markedZones,
+  damagePins = [],
+  onDamagePinPress,
+  selectedDamageId,
   onZoneClick,
   onSurfaceTap,
   onZoneHide,
@@ -155,6 +168,17 @@ export function ThreeDVehicleViewer({
   // Only zones with a `box` (exterior) fraction get an entry here; interior
   // zones have no exterior 3D position and are never rendered as hotspots.
   const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
+  const [damagePinScreenPos, setDamagePinScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
+  const pinWire = useMemo(() => JSON.stringify(damagePins.map(pin => ({
+    id: pin.id, ...pin.point,
+  }))), [damagePins]);
+  useEffect(() => {
+    if (!modelReady) return;
+    webViewRef.current?.injectJavaScript(
+      'window.setDamagePins(' + JSON.stringify(pinWire) + '); true;'
+    );
+    if (!damagePins.length) setDamagePinScreenPos({});
+  }, [modelReady, pinWire]);
   const hotspotZones = useMemo(() => zones.filter((z) => z.box), [zones]);
   const hotspotZonesRef = useRef(hotspotZones);
   hotspotZonesRef.current = hotspotZones;
@@ -224,6 +248,14 @@ export function ThreeDVehicleViewer({
         if (zone && validPoint) {
           onSurfaceTap({ zoneId: zone.id, point: { fx: point.fx, fy: point.fy, fz: point.fz } });
         }
+      } else if (msg.type === 'damagePinPositions' && Array.isArray(msg.positions)) {
+        // Clear stale positions when defects are removed, even after an orbit.
+        const next: Record<string, { x: number; y: number; visible: boolean }> = {};
+        for (const p of msg.positions) {
+          if (typeof p.id !== 'string' || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+          next[p.id] = { x: p.x, y: p.y, visible: p.visible === true };
+        }
+        setDamagePinScreenPos(next);
       } else if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
         setZoneScreenPos((prev) => {
           let changed = false;
@@ -388,6 +420,29 @@ export function ThreeDVehicleViewer({
                   <Ionicons name="camera" size={8} color={Colors.white} />
                 </View>
               )}
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Independent numbered defect pins. Tapping one edits that exact
+            defect, not every scratch/dent on its parent panel. */}
+        {damagePins.map(pin => {
+          const pos = damagePinScreenPos[pin.id];
+          if (!pos?.visible) return null;
+          return (
+            <TouchableOpacity
+              key={pin.id}
+              style={[styles.damagePin, {
+                left: `${pos.x}%` as any,
+                top: `${pos.y}%` as any,
+              }, selectedDamageId === pin.id && styles.damagePinSelected]}
+              onPress={() => onDamagePinPress?.(pin.id)}
+              disabled={!onDamagePinPress}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Damage ${pin.number}. Edit this damage`}
+            >
+              <Text style={styles.damagePinText}>{pin.number}</Text>
             </TouchableOpacity>
           );
         })}
@@ -565,6 +620,22 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 
+  damagePin: {
+    position: 'absolute',
+    zIndex: 12,
+    width: 26,
+    height: 26,
+    marginLeft: -13,
+    marginTop: -13,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: Colors.white,
+    backgroundColor: Colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  damagePinSelected: { backgroundColor: Colors.accent, width: 30, height: 30, borderRadius: 15, marginLeft: -15, marginTop: -15 },
+  damagePinText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
   // Zone hotspots (same sizing as the original SVG overlay)
   hotspot: {
     position: 'absolute',
