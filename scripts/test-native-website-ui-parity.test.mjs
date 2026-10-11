@@ -150,3 +150,50 @@ test('shared drawer does not leave a dealer sheet mounted on top of closed navig
   assert.ok(!drawer.includes('dealerTabBarHeight'));
   assert.ok(tabs.includes("backgroundColor: '#243047'"));
 });
+
+
+test('MaziuM launcher yields to account settings, protected forms, menu and keyboard without obscuring tabs', () => {
+  const ai = app('components/GlobalAIChatBot.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const shell = app('../App.tsx');
+  const drawerContext = app('context/DrawerContext.tsx');
+  const layout = app('lib/nativeLayoutParity.ts');
+
+  // DrawerProvider is genuinely above the widget, not an inert context fallback.
+  assert.match(shell, /<DrawerProvider>[\s\S]*?<GlobalDrawer \/>[\s\S]*?<GlobalAIChatBot \/>[\s\S]*?<\/DrawerProvider>/);
+  assert.match(ai, /import \{ useDrawer \} from '\.\.\/context\/DrawerContext'/);
+  assert.match(ai, /const \{ isOpen: isDrawerOpen \} = useDrawer\(\);/);
+  assert.match(drawerContext, /const \[isOpen, setIsOpen\] = useState\(false\)/);
+
+  // Account Settings (including Sign Out) and personal/financial flows never
+  // render the floating launcher or a competing promotional chat overlay.
+  for (const route of ['Settings', 'NotificationSettings', 'DealerKYC', 'DealerOnboarding', 'PurchaseFlow', 'AcceptInvite']) {
+    assert.ok(ai.includes("  '"+route+"',"), 'protected route: '+route);
+  }
+  assert.match(ai, /const assistantBlocked = isDrawerOpen\s*\|\| MAZIUM_PROTECTED_ROUTES\.has\(activeRoute\) \|\| !isForeground/);
+  assert.match(ai, /const launcherSuppressed = assistantBlocked \|\| isKeyboardVisible/);
+  assert.match(ai, /if \(assistantBlocked\) \{\s*setIsOpen\(false\);\s*setShowGreeting\(false\)/);
+  assert.match(ai, /visible=\{isOpen && !assistantBlocked\}/);
+  assert.match(ai, /\{!isOpen && !launcherSuppressed && \(/);
+
+  // The keyboard hides ONLY the launcher, not a user-opened conversation:
+  // the chat input can still be used while its own keyboard is visible.
+  assert.doesNotMatch(ai, /visible=\{isOpen && !launcherSuppressed\}/);
+  assert.doesNotMatch(ai, /if \(launcherSuppressed\) \{\s*setIsOpen\(false\)/);
+  assert.match(ai, /const dynamicBottom = isKeyboardVisible \? keyboardHeight \+ 8 : chatBottom/);
+
+  // The tab's bottom inset is already inside getBottomTabBarHeight, so it
+  // cannot be double-counted on Android/iOS gesture-nav devices.
+  assert.match(ai, /const floatingBottom = getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 12/);
+  assert.match(layout, /getBottomTabItemHeight\(fontScale\) \+ 16 \+ Math\.max\(0, bottomInset\)/);
+  assert.doesNotMatch(ai, /MAZIUM_TAB_CLEARANCE|Math\.max\(insets\.bottom, 16\) \+ tabClearance/);
+  assert.match(ai, /<View style=\{\[styles\.container, \{ bottom: floatingBottom \}\]\} pointerEvents="box-none">/);
+  assert.match(ai, /<Animated\.View\s+pointerEvents="box-none"\s+style=\{\[styles\.greetingBubble/);
+  assert.match(ai, /accessibilityLabel="Permanently dismiss Mazium greeting"/);
+
+  // Sign Out retains the independent confirmation and bottom scroll space.
+  assert.match(settings, /style=\{styles\.signOutRow\}/);
+  assert.match(settings, /onPress=\{handleSignOut\}/);
+  assert.match(settings, /getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 128/);
+  assert.match(settings, /const handleSignOut = \(\) => Alert\.alert\('Sign Out'/);
+});

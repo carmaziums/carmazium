@@ -18,15 +18,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
+import { useDrawer } from '../context/DrawerContext';
 
 // Bundle the exact approved transparent mascot used by the website widget.
 // This avoids a network-dependent icon or any visual placeholder.
 const MAZIUM_MASCOT = require('../../assets/images/mazium-bot-3d.png');
 const MAZIUM_TRIGGER_SIZE = 64;
-const MAZIUM_TAB_CLEARANCE = 96;
 const MAZIUM_CHAT_GAP = 12;
 const MAZIUM_GREETING_INTERVAL_MS = 20_000;
 const MAZIUM_GREETING_STORAGE_PREFIX = 'mazium_greeting_dismissed:';
+
+// Account verification and payment forms must never sit behind a fixed
+// assistant trigger. The same rule hides the launcher on Account Settings
+// where Sign Out is always a user-owned, unobstructed action.
+const MAZIUM_PROTECTED_ROUTES = new Set([
+  'Settings',
+  'NotificationSettings',
+  'DealerKYC',
+  'DealerOnboarding',
+  'PurchaseFlow',
+  'AcceptInvite',
+]);
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -159,6 +171,7 @@ class ChatErrorBoundary extends React.Component<
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth, fontScale } = useWindowDimensions();
+  const { isOpen: isDrawerOpen } = useDrawer();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUserId = useAuthStore((s) => s.user?.id || '');
   const aiConsentKey = authUserId ? `mazium_ai_consent_v1:${authUserId}` : '';
@@ -204,7 +217,21 @@ export const GlobalAIChatBot: React.FC = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [isForeground, setIsForeground] = useState(AppState.currentState === 'active');
+  const isKeyboardVisible = keyboardHeight > 0;
+  // The shared Menu, Settings and sensitive flows take priority over AI.
+  // The keyboard hides the floating trigger, but must NEVER dismiss an open
+  // conversation while its own message input is focused.
+  const assistantBlocked = isDrawerOpen
+    || MAZIUM_PROTECTED_ROUTES.has(activeRoute) || !isForeground;
+  const launcherSuppressed = assistantBlocked || isKeyboardVisible;
   const [showGreeting, setShowGreeting] = useState(false);
+
+  useEffect(() => {
+    if (assistantBlocked) {
+      setIsOpen(false);
+      setShowGreeting(false);
+    }
+  }, [assistantBlocked]);
   // Each signed-in account has its own opt-out. Do not reuse a previous
   // account's async read while the shared widget switches users.
   const [greetingState, setGreetingState] = useState<{ userId: string; dismissed: boolean } | null>(null);
@@ -512,13 +539,12 @@ export const GlobalAIChatBot: React.FC = () => {
     setAiReportDetails('');
   };
 
-  // Reuse the same large-text bottom bar geometry as dealer More; the AI
-  // launcher must stay above the expanded tabs at 200% system font size.
-  // On the normal scale retain the established trigger position.
-  const tabClearance = Math.max(MAZIUM_TAB_CLEARANCE, getBottomTabBarHeight(fontScale) + 8);
-  const floatingBottom = Math.max(insets.bottom, 16) + tabClearance;
+  // The native tab bar already includes the gesture inset in its measured
+  // height. Count it once, then add a small gap above the full-width bar.
+  // This holds for normal text and 200% system font scale without lifting the
+  // assistant unnecessarily far into the screen's tappable content.
+  const floatingBottom = getBottomTabBarHeight(fontScale, insets.bottom) + 12;
   const chatBottom = floatingBottom + MAZIUM_TRIGGER_SIZE + MAZIUM_CHAT_GAP;
-  const isKeyboardVisible = keyboardHeight > 0;
   const dynamicBottom = isKeyboardVisible ? keyboardHeight + 8 : chatBottom;
   const maxBoxHeight = windowHeight - insets.top - dynamicBottom - 24;
   // Match the web assistant's roomy conversation panel while respecting
@@ -529,7 +555,7 @@ export const GlobalAIChatBot: React.FC = () => {
   return (
     <>
       <Modal
-        visible={isOpen}
+        visible={isOpen && !assistantBlocked}
         transparent
         animationType="fade"
         statusBarTranslucent
@@ -833,11 +859,12 @@ export const GlobalAIChatBot: React.FC = () => {
       </Modal>
 
       {/* The same standalone 3D PNG used by the website. */}
-      {!isOpen && (
+      {!isOpen && !launcherSuppressed && (
         <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
-          {isForeground && !isKeyboardVisible && activeRoute !== 'LiveAuctionDetailed' &&
+          {
             greetingState?.userId === authUserId && showGreeting && (
             <Animated.View
+              pointerEvents="box-none"
               style={[styles.greetingBubble, {
                 width: Math.min(260, windowWidth - 32),
                 opacity: greetingOpacity,
