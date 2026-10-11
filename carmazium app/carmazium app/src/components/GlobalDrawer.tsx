@@ -217,7 +217,7 @@ export const GlobalDrawer: React.FC = () => {
         ]}
       >
         {/* ── Close button ─────────────────────────────── */}
-        <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
+        <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close navigation menu" />
 
         {/* ── User card ────────────────────────────────── */}
         <View style={styles.userCard}>
@@ -225,9 +225,9 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
           <View style={styles.userMeta}>
-            <Text style={styles.userName}>{userName}</Text>
+            <Text style={styles.userName} maxFontSizeMultiplier={2} numberOfLines={2}>{userName}</Text>
             {!!userEmail && (
-              <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
+              <Text style={styles.userEmail} numberOfLines={1} maxFontSizeMultiplier={2} ellipsizeMode="middle">{userEmail}</Text>
             )}
           </View>
           {(user?.isAddressVerified === true && user?.isVerified === true) && (
@@ -258,8 +258,10 @@ export const GlobalDrawer: React.FC = () => {
                   style={[styles.row, active && styles.rowActive]}
                   onPress={() => handleItem(item)}
                   accessibilityRole="button"
-                  accessibilityLabel={item.label}
-                  accessibilityHint={item.children ? 'Shows two choices' : 'Opens ' + item.label}
+                  accessibilityLabel={item.id === 'dashboard' && dealerMode ? 'Dealer Dashboard' : item.label}
+                  accessibilityHint={item.children
+                    ? (expanded ? 'Collapse ' + item.label + ' choices' : 'Expand ' + item.label + ' choices')
+                    : 'Opens ' + (item.id === 'dashboard' && dealerMode ? 'Dealer Dashboard' : item.label)}
                   accessibilityState={item.children ? { expanded: !!expanded } : { selected: active }}
                   activeOpacity={0.75}
                 >
@@ -267,7 +269,7 @@ export const GlobalDrawer: React.FC = () => {
                   <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
                     {renderIcon(item, active)}
                   </View>
-                  <Text style={[styles.rowLabel, active && styles.rowLabelActive]}>{item.label}</Text>
+                  <Text style={[styles.rowLabel, active && styles.rowLabelActive]} maxFontSizeMultiplier={2}>{item.label}</Text>
                   {item.children ? (
                     <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18}
                       color={Colors.lightGrey} accessibilityElementsHidden />
@@ -289,7 +291,7 @@ export const GlobalDrawer: React.FC = () => {
                         activeOpacity={0.75}
                       >
                         <View style={styles.subMenuIcon}>{renderIcon(child, false)}</View>
-                        <Text style={styles.subMenuText}>{child.label}</Text>
+                        <Text style={styles.subMenuText} maxFontSizeMultiplier={2}>{child.label}</Text>
                         <Ionicons name="arrow-forward" size={16} color={Colors.textSecondary} accessibilityElementsHidden />
                       </TouchableOpacity>
                     ))}
@@ -304,7 +306,7 @@ export const GlobalDrawer: React.FC = () => {
             <TouchableOpacity style={styles.qaFeedback} onPress={handleShareQaFeedback}
               accessibilityRole="button" accessibilityLabel="Share QA feedback">
               <Ionicons name="share-social-outline" size={18} color={Colors.textSecondary} />
-              <Text style={styles.qaFeedbackText}>Share private QA feedback</Text>
+              <Text style={styles.qaFeedbackText} maxFontSizeMultiplier={2}>Share private QA feedback</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -405,8 +407,10 @@ const styles = StyleSheet.create({
   },
   userMeta: {
     flex: 1,
+    minWidth: 0,
   },
   userName: {
+    flexShrink: 1,
     fontSize: FontSize.base,
     fontFamily: FontFamily.bold,
     color: Colors.white,
@@ -445,7 +449,7 @@ const styles = StyleSheet.create({
     minHeight: 48, gap: 10, paddingVertical: 7, paddingHorizontal: 4,
   },
   subMenuIcon: { width: 28, alignItems: 'center' },
-  subMenuText: { flex: 1, color: Colors.white, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
+  subMenuText: { flex: 1, minWidth: 0, flexShrink: 1, color: Colors.white, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
   qaFeedback: { marginTop: 14, marginHorizontal: 15, paddingVertical: 12,
     flexDirection: 'row', alignItems: 'center', gap: 9 },
   qaFeedbackText: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
@@ -530,6 +534,8 @@ const styles = StyleSheet.create({
   // Labels
   rowLabel: {
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     fontSize: FontSize.base,
     fontFamily: FontFamily.medium,
     color: Colors.lightGrey,
