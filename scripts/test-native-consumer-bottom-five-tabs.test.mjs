@@ -85,7 +85,7 @@ test('dealer bottom workspace routes and backend-independent staff gates are unc
 
 test('navigation remains accessible and simple menu does not duplicate bottom tab selling destinations', () => {
   assert.match(tabs, /accessibilityRole="tab"/);
-  assert.match(tabs, /accessibilityLabel=\{config\.label === 'DASHBOARD' \? 'Dashboard' : config\.label\}/);
+  assert.match(tabs, /route\.name === 'DealerMore'[\s\S]*?'Dealer tools'[\s\S]*?config\.label === 'DASHBOARD' \? 'Dashboard' : config\.label/);
   assert.match(tabs, /numberOfLines=\{2\}/);
   assert.match(drawer, /MAIN_MENU\.map\(item =>/);
   assert.match(drawer, /id: 'sell-auction'/);
