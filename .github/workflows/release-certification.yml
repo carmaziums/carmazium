@@ -225,6 +225,8 @@ jobs:
         run: node --test scripts/test-native-visual-parity-block5.test.mjs
       - name: Audit Block 6 dealer auction hub, shortlist and bid positions
         run: node --test scripts/test-native-visual-parity-block6.test.mjs
+      - name: Verify native swipe galleries and fullscreen auction/retail photos
+        run: node --test scripts/test-native-photo-gallery-ux.test.mjs
       - name: Audit Block 7 retail Browse, Sell and free valuation parity
         run: node --test scripts/test-native-visual-parity-block7.test.mjs
       - name: Audit Block 8 Account Settings and shared account tools

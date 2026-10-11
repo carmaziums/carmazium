@@ -696,14 +696,41 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       }
     });
 
+  // Unzoomed photos swipe left/right; after pinch-zoom, the same gesture
+  // pans the enlarged photo instead of unexpectedly changing images.
+  const changeFullscreenPhoto = useCallback((delta: number) => {
+    setFullscreenIndex(current => Math.max(0, Math.min(totalImages - 1, current + delta)));
+    pinchScale.value = withSpring(1);
+    panX.value = withSpring(0);
+    panY.value = withSpring(0);
+    savedPanX.value = 0;
+    savedPanY.value = 0;
+  }, [totalImages, pinchScale, panX, panY, savedPanX, savedPanY]);
+
   const fullscreenPanGesture = Gesture.Pan()
     .onUpdate((e) => {
-      panX.value = savedPanX.value + e.translationX;
-      panY.value = savedPanY.value + e.translationY;
+      if (pinchScale.value <= 1.05) {
+        panX.value = e.translationX;
+        panY.value = 0;
+      } else {
+        panX.value = savedPanX.value + e.translationX;
+        panY.value = savedPanY.value + e.translationY;
+      }
     })
-    .onEnd(() => {
-      savedPanX.value = panX.value;
-      savedPanY.value = panY.value;
+    .onEnd((e) => {
+      if (pinchScale.value <= 1.05) {
+        if (Math.abs(e.translationX) >= SCREEN_WIDTH * 0.15 &&
+            Math.abs(e.translationX) > Math.abs(e.translationY) * 1.25) {
+          runOnJS(changeFullscreenPhoto)(e.translationX < 0 ? 1 : -1);
+        }
+        panX.value = withSpring(0);
+        panY.value = withSpring(0);
+        savedPanX.value = 0;
+        savedPanY.value = 0;
+      } else {
+        savedPanX.value = panX.value;
+        savedPanY.value = panY.value;
+      }
     });
 
   const combinedFullscreenGesture = Gesture.Simultaneous(pinchGesture, fullscreenPanGesture);
@@ -2301,7 +2328,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </View>
 
-          {/* Zoomable image */}
+          {/* Zoomable image, swipeable at 1x; left/right buttons are accessible alternatives. */}
           <GestureDetector gesture={combinedFullscreenGesture}>
             <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
               <Image
@@ -2314,6 +2341,24 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               />
             </Animated.View>
           </GestureDetector>
+          {totalImages > 1 && (
+            <View style={styles.fullscreenPhotoArrows} pointerEvents="box-none">
+              <IconButton
+                style={styles.fullscreenPhotoArrow}
+                icon={<Ionicons name="chevron-back" size={26} color={Colors.white} />}
+                accessibilityLabel="Previous vehicle photo"
+                disabled={fullscreenIndex === 0}
+                onPress={() => changeFullscreenPhoto(-1)}
+              />
+              <IconButton
+                style={styles.fullscreenPhotoArrow}
+                icon={<Ionicons name="chevron-forward" size={26} color={Colors.white} />}
+                accessibilityLabel="Next vehicle photo"
+                disabled={fullscreenIndex === totalImages - 1}
+                onPress={() => changeFullscreenPhoto(1)}
+              />
+            </View>
+          )}
         </View>
       </Modal>
     </View>
@@ -3735,6 +3780,19 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.mono,
     fontSize: FontSize.sm,
     color: Colors.white,
+  },
+  fullscreenPhotoArrows: {
+    position: 'absolute',
+    top: '48%',
+    left: 8,
+    right: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    zIndex: 98,
+  },
+  fullscreenPhotoArrow: {
+    backgroundColor: Colors.blackAlpha55,
+    borderRadius: 24,
   },
   fullscreenImageWrap: {
     width: SCREEN_WIDTH,

@@ -4,9 +4,9 @@ import {
   Dimensions, StatusBar, TextInput, ActivityIndicator,
   Share, Alert, Keyboard, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
-// expo-image: caching/recycling for the hero auction photo (large, full-bleed,
-// shown on a screen users keep open while live-bidding).
-import { Image } from 'expo-image';
+// Reuse the photo pager and full-screen swipeable viewer across auction/retail.
+import { ImageCarousel } from '../../components/ImageCarousel';
+import { ImageLightbox } from '../../components/ImageLightbox';
 import { Ionicons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -203,6 +203,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── Auction state ──
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryInitialIndex, setGalleryInitialIndex] = useState(0);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1027,11 +1029,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const quickBidAmounts = hasRealBids
     ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
     : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
-  const image = String(
-    (auction && auction.listing && auction.listing.images && auction.listing.images[0])
-    || (listing.images && listing.images[0])
-    || ''
-  );
+  // Use the real auction listing's image set (or the initial listing while
+  // loading). Never swap in an unrelated stock car photo when media is empty.
+  const galleryImages: string[] = (
+    (auction?.listing?.images?.length ? auction.listing.images : listing.images) ?? []
+  ).filter((url): url is string => typeof url === 'string' && url.length > 0);
   const title = String(
     (auction && auction.listing && auction.listing.title)
     || `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim()
@@ -1401,11 +1403,33 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Hero image */}
         <View style={s.heroWrap}>
-          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={s.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-          <LinearGradient colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
+          {galleryImages.length > 0 ? (
+            <ImageCarousel
+              images={galleryImages}
+              width={SW - 28}
+              height={240}
+              showIndicator={false}
+              onPress={(index) => {
+                setGalleryInitialIndex(index);
+                setGalleryOpen(true);
+              }}
+            />
+          ) : (
+            <View style={[s.heroImg, { alignItems: 'center', justifyContent: 'center' }]}>
+              <Ionicons name="car-outline" size={28} color={Colors.textMuted} />
+              <Text style={{ color: Colors.textMuted }}>No vehicle photo available</Text>
+            </View>
+          )}
+          <LinearGradient pointerEvents="none" colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
+          {galleryImages.length > 1 && (
+            <View style={s.heroPhotoHint} pointerEvents="none">
+              <Ionicons name="images-outline" size={13} color={Colors.white} />
+              <Text style={s.heroPhotoHintText}>Swipe photos · Tap to enlarge</Text>
+            </View>
+          )}
 
           {/* Image overlays */}
-          <View style={s.heroTopLeft}>
+          <View style={s.heroTopLeft} pointerEvents="none">
             {isActive && (
               <View style={s.livePill}>
                 <View style={s.liveDot} />
@@ -1425,7 +1449,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroTopRight}>
+          <View style={s.heroTopRight} pointerEvents="none">
             {isActive && isWinning && !isSeller && (
               <View style={s.winningBadge}>
                 <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
@@ -1459,7 +1483,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
 
-          <View style={s.heroBottom}>
+          <View style={s.heroBottom} pointerEvents="none">
             <View style={{ flex: 1 }}>
               <Text style={s.heroBidLabel}>
                 {isEnded ? (hasRealBids ? 'FINAL BID' : 'NO BIDS') : isScheduled || !hasRealBids ? 'STARTING BID' : 'CURRENT BID'}
@@ -2400,6 +2424,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         )}
       </View>
+      <ImageLightbox
+        visible={galleryOpen && galleryImages.length > 0}
+        images={galleryImages}
+        initialIndex={galleryInitialIndex}
+        onClose={() => setGalleryOpen(false)}
+      />
     </ScreenWrapper>
   );
 };
@@ -2498,6 +2528,8 @@ const s = StyleSheet.create({
   // Hero image
   heroWrap: { height: 240, borderRadius: Radius.card, overflow: 'hidden', marginBottom: 14, position: 'relative', backgroundColor: Colors.bgSecondary },
   heroImg: { width: '100%', height: '100%' },
+  heroPhotoHint: { position: 'absolute', top: 44, left: 12, flexDirection: 'row', alignItems: 'center', gap: 5, zIndex: 3, backgroundColor: Colors.blackAlpha75, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+  heroPhotoHintText: { color: Colors.white, fontFamily: FontFamily.medium, fontSize: FontSize.size10 },
   heroTopLeft: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', gap: 6, zIndex: 2 },
   heroTopRight: { position: 'absolute', top: 12, right: 12, gap: 6, alignItems: 'flex-end', zIndex: 2 },
   importedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FACC15', borderWidth: 1, borderColor: '#FDE68A', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },

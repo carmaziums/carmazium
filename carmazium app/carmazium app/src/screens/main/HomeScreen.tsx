@@ -70,7 +70,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
-          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} indicatorBottom={72} />
           : <View style={s.cardImgEmpty} />}
         <View style={s.livePill} pointerEvents="none">
           <View style={s.liveDot} />
@@ -135,7 +135,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
     <TouchableOpacity style={s.auctionCard} onPress={onPress} activeOpacity={0.9}>
       <View style={s.cardImgWrap}>
         {images.length > 0
-          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} showIndicator={false} />
+          ? <ImageCarousel images={images} width={282} height={150} onPress={onPress} indicatorBottom={72} />
           : <View style={s.cardImgEmpty} />}
         <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
           <Ionicons name="calendar-outline" size={9} color={Colors.white} />
