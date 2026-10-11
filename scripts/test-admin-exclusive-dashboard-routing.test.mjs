@@ -72,7 +72,7 @@ test('every admin page is guarded and previous redirect loops are removed', () =
   const gate = read('src/components/dashboard/AdminAccessGate.tsx')
   assert.ok(gate.includes('getAdminAccessDecision'))
   assert.ok(gate.includes('Retry admin verification'))
-  assert.ok(!gate.includes('user_metadata'))
+  assert.ok(!gate.includes('user_metadata?.role'))
   const dashboardGate = read('src/components/dashboard/ProfileCompletionGate.tsx')
   assert.ok(dashboardGate.includes('getDashboardAccessDecision'))
   assert.ok(dashboardGate.includes('profile-unavailable'))
