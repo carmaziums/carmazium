@@ -79,7 +79,7 @@ describe('damage pin identity and coordinates — Block 5', () => {
       'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-one.jpg',
       'https://example.test/storage/v1/object/public/listings/seller-id/damage/photo-two.jpg',
     ]);
-    expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'car-one' }, data: { exteriorGrade: 2 } });
+    expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'car-one', sellerId: 'seller-id' }, data: { exteriorGrade: 2 } });
   });
 
   it('preserves legacy submissions without IDs or 3D surface positions', async () => {
