@@ -972,6 +972,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [interiorImages, setInteriorImages] = useState<string[]>([]);
   const [damageImages, setDamageImages] = useState<string[]>([]);
   const [damageRecords, setDamageRecords] = useState<DamageEntry[]>([]);
+  const [damageEditorPending, setDamageEditorPending] = useState(false);
+  const damageUploadInFlightRef = useRef(false);
+  const handleDamagePendingChange = useCallback((pending: boolean) => setDamageEditorPending(pending), []);
   const [hiddenZoneIds, setHiddenZoneIds] = useState<string[]>([]);
   const [zonePhotos, setZonePhotos] = useState<Record<string, string>>({});
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -1421,6 +1424,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 zone: zone?.label ?? r.part,
                 type: (r.type as DamageEntry['type']) || 'OTHER',
                 description: '',
+                // The URL belongs to this defect, not just its panel. Hydrate
+                // legacy backend records when editing to preserve their evidence.
+                ...(typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
+                  ? { damagePhotoUrl: parseVehicleImageMetadata(r.imageUrl).src }
+                  : {}),
               });
               if (zone && r.imageUrl) nextPhotos[zone.id] = r.imageUrl;
             });
@@ -1838,6 +1846,70 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return encodedUrl;
   }
 
+  /**
+   * Commit exactly one marked defect. Successful evidence uploads are stored
+   * under the authenticated seller's damage folder and linked to this record.
+   * A failed upload rejects: the inline editor stays open with its local photo,
+   * description and panel for one-tap Retry Save. No device URI reaches the API.
+   */
+  async function handleAddDamageEntry(
+    entry: DamageEntry,
+    onProgress: (percent: number) => void,
+  ): Promise<void> {
+    if (damageUploadInFlightRef.current || uploadingPhoto) {
+      throw new Error('Another photo is uploading. Wait for it to finish.');
+    }
+    if (!entry.localDamagePhotoUri) {
+      setDamageRecords(prev => [...prev, entry]);
+      return;
+    }
+    const photoCount = exteriorImages.length + interiorImages.length + damageImages.length;
+    if (photoCount >= MAX_PHOTOS) {
+      throw new Error(`Photo limit reached. Listings support up to ${MAX_PHOTOS} photos.`);
+    }
+    const sellerId = useAuthStore.getState().user?.id;
+    if (!sellerId) throw new Error('Sign in before uploading damage photos.');
+    damageUploadInFlightRef.current = true;
+    try {
+      onProgress(10);
+      const compressedUri = await convertAndCompress(entry.localDamagePhotoUri);
+      onProgress(45);
+      // New random ID for every retry avoids name collisions and overwrites.
+      const objectPath = `${sellerId}/damage/${createValuationJourneyId()}.jpg`;
+      const durableUrl = await uploadToStorage(compressedUri, 'listings', objectPath, 'image/jpeg');
+      const source = parseVehicleImageMetadata(durableUrl).src;
+      if (!source.startsWith('https://') || !source.includes('/storage/v1/object/public/listings/')) {
+        throw new Error('The photo service did not return a valid permanent image URL.');
+      }
+      onProgress(90);
+      newlyUploadedPhotoSourcesRef.current.add(source);
+      // Add the same source to listing images for the listing's existing
+      // 100-image cap, retention and gallery/metadata rules.
+      setDamageImages(prev => [...prev, encodeVehicleImageCategory(source, 'DAMAGE')]);
+      setDamageRecords(prev => [...prev, {
+        ...entry,
+        damagePhotoUrl: source,
+        localDamagePhotoUri: undefined,
+      }]);
+      onProgress(100);
+    } catch (err: any) {
+      throw new Error(err?.message || 'Could not upload the damage photo. Please retry.');
+    } finally {
+      damageUploadInFlightRef.current = false;
+    }
+  }
+
+  async function handleRemoveDamageEntry(id: string): Promise<void> {
+    const record = damageRecords.find(item => item.id === id);
+    if (!record) return;
+    setDamageRecords(prev => prev.filter(item => item.id !== id));
+    // Never remove evidence referenced by another defect, even on same panel.
+    const url = record.damagePhotoUrl;
+    if (url && !damageRecords.some(item => item.id !== id && item.damagePhotoUrl === url)) {
+      await removePhoto('Damage', encodeVehicleImageCategory(url, 'DAMAGE'));
+    }
+  }
+
   async function handlePickPhoto() {
     const currentCount = exteriorImages.length + interiorImages.length + damageImages.length;
     const remainingSlots = MAX_PHOTOS - currentCount;
@@ -1974,6 +2046,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       }
     }
     if (s === 2) {
+      if (damageUploadInFlightRef.current || damageEditorPending) {
+        setPhotoTab('Damage');
+        Alert.alert('Finish damage details', 'Save or cancel your current damage entry before leaving the Media step. Wait for any photo upload to finish.');
+        return false;
+      }
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
       if (allImages.length < MIN_PHOTOS) {
@@ -2185,14 +2262,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   async function handlePublish() {
     if (publishingInFlightRef.current) return;
-    // Fail closed until Block 4 installs durable uploads and per-defect URLs.
-    // Never silently publish a listing that would lose local-only damage evidence.
-    if (damageRecords.some(record => Boolean(record.localDamagePhotoUri))) {
+    // Fail closed before any listing mutation/fee while evidence is uploading,
+    // uncommitted, or still a local phone URI.
+    if (damageUploadInFlightRef.current || damageEditorPending || damageRecords.some(
+      record => Boolean(record.localDamagePhotoUri)
+        || (Boolean(record.damagePhotoUrl) && !record.damagePhotoUrl!.startsWith('https://')),
+    )) {
       setStep(2);
       setPhotoTab('Damage');
       Alert.alert(
         'Damage photos not uploaded',
-        'One or more damage photos are only stored on this device. Publishing is disabled until those photos can be uploaded permanently. Your other listing details have not been submitted.',
+        'Finish saving the selected damage and wait for its photo upload. If an upload failed, open the damage editor and retry before publishing.',
       );
       return;
     }
@@ -2315,7 +2395,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 type,
                 size: 'MODERATE',
                 coords: zone?.coords,
-                imageUrl: zone ? zonePhotos[zone.id] : undefined,
+                // Each defect owns its own durable image URL. Never use the
+                // zone-keyed legacy map (which confused separate defects on
+                // the same panel), or a device-local file:// URI.
+                imageUrl: r.damagePhotoUrl && r.damagePhotoUrl.startsWith('https://')
+                  ? parseVehicleImageMetadata(r.damagePhotoUrl).src
+                  : undefined,
               };
             }),
           }),
@@ -3485,8 +3570,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Damage3DMapper
             onInteractionChange={set3DInteracting}
                 records={damageRecords}
-                onAdd={entry => setDamageRecords(p => [...p, entry])}
-                onRemove={id => setDamageRecords(p => p.filter(r => r.id !== id))}
+                onAdd={handleAddDamageEntry}
+                onRemove={id => { void handleRemoveDamageEntry(id); }}
+                onPendingChange={handleDamagePendingChange}
                 onHide={handleZoneHide}
                 onPhoto={handleZonePhoto}
                 bodyTypeLabel={BODY_TYPES.find(bt => bt.v === bodyType)?.l}
