@@ -2727,7 +2727,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           try {
             await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
           } catch (pubErr: any) {
-            clearDraft();
+            clearDraftAndStopDamageAutosave();
             Alert.alert(
               'Auction saved, not yet submitted',
               `${pubErr?.message || 'The auction could not be submitted for review.'} Open it from My Auctions to submit it.`,
@@ -2736,7 +2736,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             return;
           }
           haptics.success();
-          clearDraft();
+          clearDraftAndStopDamageAutosave();
           Alert.alert(
             damageSaved ? 'Auction Scheduled!' : 'Auction scheduled — damage details not saved',
             // Auctions require admin review before going live in every case
@@ -2805,7 +2805,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             } catch (secondErr: any) {
               // Charged but not submitted — this is the one state the seller
               // must never be told is fine.
-              clearDraft();
+              clearDraftAndStopDamageAutosave();
               Alert.alert(
                 'Payment received — listing not submitted',
                 `${secondErr?.message || 'The listing could not be submitted for review.'} Your payment went through; publish it again from My Listings and you will not be charged twice.`,
@@ -2822,7 +2822,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           // failed. The auction branch above was already corrected for exactly
           // this; the classified branch had been left behind.
           haptics.success();
-          clearDraft();
+          clearDraftAndStopDamageAutosave();
           Alert.alert(
             damageSaved ? 'Submitted for review' : 'Submitted — damage details not saved',
             damageSaved
