@@ -39,6 +39,7 @@ test('damage records validate UUID, geometry and seller-scoped HTTPS photo befor
   assert.match(service, /Damage photo must belong to this listing/);
   assert.match(service, /priorPhotoUrls\.has\(d\.imageUrl\)/);
   assert.match(service, /await tx\.damageRecord\.deleteMany\(\{ where: \{ listingId \} \}\)/);
+  assert.match(service, /where: \{ id: listingId, sellerId: listing\.sellerId \}/);
 });
 
 test('unpublished listing damage is never publicly readable, while active buyer view works', () => {
