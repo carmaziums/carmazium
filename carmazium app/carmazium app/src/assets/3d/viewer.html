@@ -24,6 +24,8 @@ window._pendingGLB = null;
 window.loadGLB = function(d) { window._pendingGLB = d; };
 window._pendingZones = null;
 window.setZones = function(json) { window._pendingZones = json; };
+window._pendingDamagePins = null;
+window.setDamagePins = function(json) { window._pendingDamagePins = json; };
 // Disabled by default: buyer viewers cannot create seller damage selections.
 window._surfacePickingEnabled = false;
 window.setSurfacePickingEnabled = function(value) {
@@ -116,6 +118,9 @@ window.nudgeVehicle = function(direction) {
    cause of the jank on this screen. */
 var _modelInfo = null; // { model, min, size, center, scale }
 var _zones = [];
+// Each entry is a separate defect, even when several share the same panel.
+// Pins use immutable record IDs and normalized mesh coordinates.
+var _damagePins = [];
 var _vec = new THREE.Vector3();
 
 /* ── Seller-only direct surface selection ────────────────────────────────────
@@ -240,6 +245,31 @@ function postZonePositions() {
     });
   }
   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'zonePositions', positions: out }));
+  // Only calculate during the existing throttled projection pass (~10Hz).
+  // No mesh raycasts: hit-testing remains confined to seller finger taps.
+  var pins = [];
+  for (var j = 0; j < _damagePins.length; j++) {
+    var pin = _damagePins[j];
+    var pinWorld = resolveZoneWorldPos(pin);
+    var projected = pinWorld.clone().project(camera);
+    var visible = projected.z > -1 && projected.z < 1
+      && Math.abs(projected.x) <= 1 && Math.abs(projected.y) <= 1;
+    var normal = _vec.set(
+      (pin.fx - 0.5) * m.size.x,
+      (pin.fy - 0.5) * m.size.y,
+      (pin.fz - 0.5) * m.size.z
+    ).normalize();
+    var toCamera = camera.position.clone().sub(pinWorld).normalize();
+    // Same approximate occlusion convention as legacy zone hotspots.
+    visible = visible && normal.dot(toCamera) > -0.15;
+    pins.push({
+      id: pin.id,
+      x: (projected.x * 0.5 + 0.5) * 100,
+      y: (1 - (projected.y * 0.5 + 0.5)) * 100,
+      visible: visible
+    });
+  }
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'damagePinPositions', positions: pins }));
 }
 
 /* ── Render only on a camera/model change ──
@@ -318,14 +348,28 @@ function doSetZones(json) {
   try { _zones = JSON.parse(json); } catch (e) { _zones = []; }
   invalidate();
 }
+function doSetDamagePins(json) {
+  try {
+    var parsed = JSON.parse(json);
+    _damagePins = Array.isArray(parsed) ? parsed.filter(function(pin) {
+      return pin && typeof pin.id === 'string'
+        && ['fx','fy','fz'].every(function(k) {
+          return typeof pin[k] === 'number' && isFinite(pin[k]) && pin[k] >= 0 && pin[k] <= 1;
+        });
+    }) : [];
+  } catch (e) { _damagePins = []; }
+  invalidate();
+}
 
 /* Pick up anything that arrived while the module was still loading */
 if (window._pendingGLB) { doLoad(window._pendingGLB); }
 if (window._pendingZones) { doSetZones(window._pendingZones); }
+if (window._pendingDamagePins) { doSetDamagePins(window._pendingDamagePins); }
 
 /* Override stubs with real implementations */
 window.loadGLB = doLoad;
 window.setZones = doSetZones;
+window.setDamagePins = doSetDamagePins;
 </script>
 
 </body>
