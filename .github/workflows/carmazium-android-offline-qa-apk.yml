@@ -10,6 +10,11 @@ on:
   pull_request:
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
+      # Navigation UX review needs an installable private APK from the same
+      # PR head as the verified app source, not an earlier menu/3D build.
+      - 'carmazium app/carmazium app/src/navigation/TabNavigator.tsx'
+      - 'carmazium app/carmazium app/src/components/GlobalDrawer.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx'
   push:
     branches: [main]
     paths:
