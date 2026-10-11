@@ -103,3 +103,18 @@ test('website existing listings recover IDs, typed descriptions and exact positi
   assert.match(listingWizard, /photoUrl: typeof r\.imageUrl === 'string' && r\.imageUrl\.startsWith\('https:\/\/'\)/);
   assert.match(listingWizard, /surfacePoint: \{ fx: hit\.fx, fy: hit\.fy, fz: hit\.fz \}/);
 });
+
+
+test('website damage wizard does not discard an unfinished editor, photo upload or panel correction', () => {
+  assert.match(webSeller, /onPendingChange\?: \(hasUncommittedDamage: boolean\) => void/);
+  assert.match(webSeller, /onPendingChange\?\.\(Boolean\(pendingZoneId\) \|\| uploading\)/);
+  assert.match(webSeller, /function blockUnfinishedEditor\(\): boolean/);
+  assert.match(webSeller, /if \(blockUnfinishedEditor\(\)\) return/g);
+  assert.match(webSeller, /Save or cancel the current damage entry/);
+  assert.match(webSeller, /if \(pendingZoneId\) \{[\s\S]*?setPendingCustomLabel\(label\)[\s\S]*?setPendingSurfacePoint\(null\)/);
+  assert.match(listingWizard, /onPendingChange=\{setDamageEntryPending\}/);
+  assert.match(listingWizard, /if \(damageEntryPending\) \{/);
+  assert.match(listingWizard, /const confirmDamageNavigation = \(\)/);
+  assert.match(webSeller, /aria-label=\{`Select damaged area:/);
+  assert.match(webSeller, /aria-label=\{`Remove damage/);
+});

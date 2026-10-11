@@ -391,6 +391,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [draftListingId, setDraftListingId] = React.useState<string | null>(null)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
+    const [damageEntryPending, setDamageEntryPending] = React.useState(false)
     // One canonical serializer shared across edit, new auction, new retail
     // and auction→retail conversion. The previous four separate mappings
     // discarded stable IDs, typed categories and precise 3D hit positions.
@@ -1188,6 +1189,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     : null
             }
             case 2: {
+                if (damageEntryPending) {
+                    return 'Please save or cancel the open damage entry before leaving Photos. Wait for any photo upload to finish.'
+                }
                 const missingPhotos = Math.max(0, 10 - formData.images.length)
                 return missingPhotos > 0
                     ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. HPI is optional.`
@@ -1311,8 +1315,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         })
         setCurrentStep(prev => Math.min(prev + 1, totalSteps))
     }
-    const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
-    const goToStep = (n: number) => setCurrentStep(n)
+    const confirmDamageNavigation = (): boolean => {
+        if (currentStep !== 2 || !damageEntryPending) return true
+        alert('Please save or cancel the current damage entry before leaving this step. Any photo upload must finish first.')
+        return false
+    }
+    const handleBack = () => {
+        if (confirmDamageNavigation()) setCurrentStep(prev => Math.max(prev - 1, 1))
+    }
+    const goToStep = (n: number) => {
+        if (confirmDamageNavigation()) setCurrentStep(n)
+    }
 
     const handleMethodClick = () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
@@ -3145,6 +3158,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     bodyType={formData.bodyType || undefined}
                                     existingRecords={damageRecords}
                                     onComplete={(records) => setDamageRecords(records)}
+                                    onPendingChange={setDamageEntryPending}
                                 />
                             </div>
 

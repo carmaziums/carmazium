@@ -43,6 +43,7 @@ export interface DamageRecord {
 interface VehicleDamageMapperProps {
   bodyType?: string
   onComplete: (records: DamageRecord[]) => void
+  onPendingChange?: (hasUncommittedDamage: boolean) => void
   existingRecords?: DamageRecord[]
 }
 
@@ -57,7 +58,7 @@ const BODY_TYPE_LABELS: Record<string, string> = {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, existingRecords = [] }: VehicleDamageMapperProps) {
+export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, onPendingChange, existingRecords = [] }: VehicleDamageMapperProps) {
   // Internally we only need one of the 3 model categories for body type selection
   function resolveBodyType(bt: string | undefined): string {
     if (!bt) return "SEDAN"
@@ -85,6 +86,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [pendingType, setPendingType] = React.useState<NonNullable<DamageRecord["type"]>>("SCRATCH")
   const [uploading, setUploading] = React.useState(false)
   const [uploadError, setUploadError] = React.useState<string | null>(null)
+  const [editorNotice, setEditorNotice] = React.useState<string | null>(null)
   const [manualOpen, setManualOpen] = React.useState(false)
   const uploadInFlightRef = React.useRef(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -93,14 +95,28 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   const [customZoneInput, setCustomZoneInput] = React.useState('')
   const [pendingCustomLabel, setPendingCustomLabel] = React.useState('')
 
+  // Keep wizard navigation blocked while a damage edit is unfinished or a photo
+  // upload is still in progress. Leaving Step 2 cannot discard this entry.
+  React.useEffect(() => {
+    onPendingChange?.(Boolean(pendingZoneId) || uploading)
+  }, [pendingZoneId, uploading, onPendingChange])
+
   const markedZones = records.map(r => r.zone)
   const pendingZone =
     pendingZoneId === '__custom__'
       ? { id: '__custom__', label: pendingCustomLabel, position: [0, 0, 0] as [number, number, number] }
       : ALL_ZONES.find(z => z.id === pendingZoneId) ?? null
 
+  function blockUnfinishedEditor(): boolean {
+    if (uploadInFlightRef.current) return true
+    if (!pendingZoneId) return false
+    setEditorNotice("Save or cancel the current damage entry before choosing another location. Your details have been kept.")
+    return true
+  }
+
   function handleZoneClick(zoneId: string) {
-    if (uploadInFlightRef.current) return
+    if (blockUnfinishedEditor()) return
+    setEditorNotice(null)
     setEditingDamageId(null)
     setPendingZoneId(zoneId)
     setPendingDesc("")
@@ -111,14 +127,15 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   }
 
   function handleSurfaceTap({ zoneId, point }: { zoneId: string; point: SurfacePoint }) {
-    if (uploadInFlightRef.current) return
+    if (blockUnfinishedEditor()) return
     handleZoneClick(zoneId)
     setPendingSurfacePoint(point)
     setManualOpen(false)
   }
 
   function editRecord(id: string) {
-    if (uploadInFlightRef.current) return
+    if (blockUnfinishedEditor()) return
+    setEditorNotice(null)
     const record = records.find(item => item.id === id)
     if (!record) return
     setEditingDamageId(id)
@@ -140,6 +157,8 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   }
 
   function resetEditor() {
+    if (uploadInFlightRef.current) return
+    setEditorNotice(null)
     setPendingZoneId(null)
     setPendingDesc("")
     setPendingPhoto(undefined)
@@ -152,7 +171,17 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
 
   function handleCustomZone() {
     const label = customZoneInput.trim()
-    if (!label) return
+    if (!label || uploadInFlightRef.current) return
+    // Manual area correction keeps the open editor fields and photo intact.
+    // An arbitrary custom area cannot imply a precise physical 3D hit.
+    if (pendingZoneId) {
+      setPendingCustomLabel(label)
+      setPendingZoneId('__custom__')
+      setPendingSurfacePoint(null)
+      setEditorNotice(null)
+      setManualOpen(false)
+      return
+    }
     setPendingCustomLabel(label)
     setPendingZoneId('__custom__')
     setPendingDesc("")
@@ -213,7 +242,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
   }
 
   function removeRecord(id: string) {
-    if (uploadInFlightRef.current) return
+    if (blockUnfinishedEditor()) return
     const updated = records.filter(r => r.id !== id)
     setRecords(updated)
     onComplete(updated)
@@ -325,6 +354,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             </button>
           </div>
 
+          {editorNotice && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">{editorNotice}</p>}
           <div className="space-y-1.5">
             <p className="text-xs text-[var(--text-muted)]">
               {pendingSurfacePoint ? "Suggested from a generic 3D model. Check that this panel matches your vehicle." : "Manually selected area."}
@@ -450,10 +480,14 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 const isMarked = records.some(r => r.zone === z.id)
                 const isSelected = pendingZoneId === z.id
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={z.id}
                     onClick={() => chooseCorrectedZone(z.id)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
+                    disabled={uploading}
+                    aria-pressed={isSelected}
+                    aria-label={`Select damaged area: ${z.label}`}
+                    className={`flex items-center gap-2 min-h-11 px-2.5 py-2 rounded-lg text-left text-xs border cursor-pointer transition-colors disabled:opacity-50 ${
                       isSelected
                         ? "bg-primary/15 border-primary/40 text-primary"
                         : isMarked
@@ -463,7 +497,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                   >
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
                     {z.label}
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -532,7 +566,9 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
                 <button
                   type="button"
                   onClick={() => removeRecord(rec.id)}
-                  className="text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0"
+                  disabled={uploading}
+                  aria-label={`Remove damage ${index + 1}`}
+                  className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0 disabled:opacity-50"
                 >
                   <Trash2 size={13} />
                 </button>
