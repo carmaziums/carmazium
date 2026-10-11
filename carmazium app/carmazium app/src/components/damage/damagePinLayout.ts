@@ -18,7 +18,7 @@ export interface PlacedDamagePin {
   top: number;
   displaced: boolean;
 }
-const MIN_DISTANCE = 39;
+const MIN_DISTANCE = 49;
 const BORDER_X = 25;
 const BORDER_TOP = 48; // avoid model's generic-body-type warning banner
 const BORDER_BOTTOM = 30;
@@ -29,9 +29,9 @@ function clamp(value: number, min: number, max: number): number {
 
 /** Limited spiral: keeps pin ordering stable during orbit and near edges. */
 const OFFSETS: ReadonlyArray<readonly [number, number]> = [
-  [0, 0], [40, 0], [-40, 0], [0, 40], [0, -40],
-  [38, 38], [-38, 38], [38, -38], [-38, -38],
-  [80, 0], [-80, 0], [0, 80], [0, -80],
+  [0, 0], [50, 0], [-50, 0], [0, 50], [0, -50],
+  [48, 48], [-48, 48], [48, -48], [-48, -48],
+  [100, 0], [-100, 0], [0, 100], [0, -100],
   [74, 42], [-74, 42], [74, -42], [-74, -42],
   [46, 74], [-46, 74], [46, -74], [-46, -74],
 ];
