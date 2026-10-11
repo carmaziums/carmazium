@@ -325,3 +325,62 @@ test('Block 7 dealer permissions remain isolated by authenticated identity and r
   assert.match(more, /EXTRA_DEALER_TOOLS\.filter\(tool => hasPermission\(tool\.permission\)\)/);
   assert.match(gate, /staffVerified =[\s\S]*?access\?\.isVerified === true/);
 });
+
+
+test('Block 8 mobile Settings title scrolls, while account actions and Sign Out retain large-text clearance', () => {
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const layout = app('lib/nativeLayoutParity.ts');
+  assert.match(settings, /<WebsiteTopBar \/>[\s\S]*?<ScrollView[\s\S]*?automaticallyAdjustKeyboardInsets[\s\S]*?<View style=\{styles\.settingsPageHeader\}>/);
+  const scrollStart = settings.indexOf('      <ScrollView', settings.indexOf('<WebsiteTopBar />'));
+  const pageHeader = settings.indexOf('        <View style={styles.settingsPageHeader}>', scrollStart);
+  const tools = settings.indexOf('        <View style={styles.accountToolsPanel}>', scrollStart);
+  assert.ok(scrollStart >= 0 && pageHeader > scrollStart && tools > pageHeader, 'page header must scroll before tools');
+  assert.match(settings, /<Text style=\{styles\.settingsPageTitle\} maxFontSizeMultiplier=\{2\} accessibilityRole="header">Account Settings<\/Text>/);
+  assert.match(settings, /<Text style=\{styles\.settingsPageSubtitle\} maxFontSizeMultiplier=\{2\}>/);
+  assert.match(settings, /<Text style=\{styles\.settingsBackText\} maxFontSizeMultiplier=\{2\}>Back<\/Text>/);
+  assert.match(settings, /settingsPageHeader: \{ paddingHorizontal: 0, paddingTop: 12, paddingBottom: 14 \}/);
+  assert.match(settings, /<Text style=\{styles\.accountToolLabel\} maxFontSizeMultiplier=\{2\}>\{tool\.label\}<\/Text>/);
+  assert.match(settings, /<Text style=\{\[styles\.categoryLabel, selected && styles\.categoryLabelSelected\]\} maxFontSizeMultiplier=\{2\}>/);
+  assert.match(settings, /accountToolLabel: \{[\s\S]*?minWidth: 0, flexShrink: 1/);
+  assert.match(settings, /categoryLabel: \{ flex: 1, minWidth: 0, flexShrink: 1/);
+  assert.match(settings, /singleColumnSettings && styles\.fullWidthTool/);
+  assert.match(settings, /singleColumnSettings && styles\.fullWidthCategory/);
+  assert.match(layout, /width < 360 \|\| fontScale >= 1\.5/);
+  assert.match(settings, /const settingsBottomClearance = getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 128/);
+  assert.match(settings, /style=\{styles\.signOutRow\}/);
+  assert.match(settings, /onPress=\{handleSignOut\}/);
+});
+
+test('Block 8 selected tabs, Menu and Settings categories meet readable dark-mode contrast without fake light-mode switches', () => {
+  const colors = app('constants/colors.ts');
+  const tabs = app('navigation/TabNavigator.tsx');
+  const drawer = app('components/GlobalDrawer.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const luminance = hex => {
+    const channels = hex.slice(1).match(/../g).map(x => parseInt(x, 16) / 255);
+    return channels.map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4)
+      .reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+  };
+  const contrast = (a, b) => {
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05);
+  };
+  const theme = {
+    text: colors.match(/textPrimary: '(#[0-9A-Fa-f]{6})'/)?.[1],
+    accent: colors.match(/const accent = '(#[0-9A-Fa-f]{6})'/)?.[1],
+    accentDeep: colors.match(/const accentDeep = '(#[0-9A-Fa-f]{6})'/)?.[1],
+    navy: '#243047',
+  };
+  assert.ok(theme.text && theme.accent && theme.accentDeep);
+  assert.match(tabs, /tabLabelActive: \{\s*color: Colors\.textPrimary/);
+  assert.match(tabs, /color=\{isFocused \? Colors\.accent : Colors\.tabInactive\}/);
+  assert.match(drawer, /rowLabelActive: \{\s*fontFamily: FontFamily\.bold,\s*color: Colors\.textPrimary/);
+  assert.match(drawer, /barActive: \{\s*backgroundColor: Colors\.accent/);
+  assert.match(settings, /categoryButtonSelected: \{ backgroundColor: Colors\.accentDeep, borderColor: Colors\.accentDeep \}/);
+  assert.match(settings, /categoryLabelSelected: \{ color: Colors\.white \}/);
+  assert.ok(contrast(theme.text, theme.navy) >= 4.5, 'selected nav label AA');
+  assert.ok(contrast(theme.text, theme.accentDeep) >= 4.5, 'selected Settings label AA');
+  assert.ok(contrast(theme.text, theme.accent) < 4.5, 'old white-on-red selection explains why adjustment is required');
+  assert.match(settings, /A live light\/dark switch is not yet supported by the native theme engine/);
+  assert.doesNotMatch(settings, /onPress=\{toggleTheme\}|onPress=\{setTheme\}/);
+});
