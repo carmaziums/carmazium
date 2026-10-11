@@ -222,6 +222,11 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
     setLightboxIndex(index);
     setLightboxOpen(true);
   };
+  const rawCategory = String(listing.writeOffCategory || listing.conditionRaw || '')
+    .toUpperCase().replace(/^CAT_/, '');
+  const writeOffBadge = rawCategory === 'S' || rawCategory === 'N'
+    ? 'Category ' + rawCategory : '';
+  const hpiIncludedByTier = listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM';
 
   return (
     <>
@@ -258,6 +263,19 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           <GradeChip grade={listing.exteriorGrade} />
         </View>
         <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
+        {(!!writeOffBadge || listing.isSellerVerified === true || hpiIncludedByTier) && (
+          <View style={s.homeBadgesRow}>
+            {!!writeOffBadge && <View style={[s.homeBadge, s.homeCategoryBadge]}>
+              <Text style={s.homeBadgeText}>{writeOffBadge}</Text>
+            </View>}
+            {listing.isSellerVerified === true && <View style={[s.homeBadge, s.homeVerifiedBadge]}>
+              <Text style={s.homeBadgeText}>Verified seller</Text>
+            </View>}
+            {hpiIncludedByTier && <View style={[s.homeBadge, s.homeHpiBadge]}>
+              <Text style={s.homeBadgeText}>HPI Included</Text>
+            </View>}
+          </View>
+        )}
         <View style={s.retailFactRow}>
           {!!listing.transmission && <Text style={s.retailFact}>{mapTransmission(listing.transmission)}</Text>}
           {!!listing.location && <Text style={s.retailFact} numberOfLines={1}>{listing.location}</Text>}
@@ -999,6 +1017,12 @@ const s = StyleSheet.create({
   // Prices are mono at heavy weight throughout the brand — this was rendering
   // in the body font like any other text.
   cardPrice: { ...TextPresets.monoFigure, fontSize: FontSize.lg, color: Colors.white, marginTop: 2 },
+  homeBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 2 },
+  homeBadge: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 7, borderWidth: 1 },
+  homeBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textPrimary },
+  homeCategoryBadge: { borderColor: Colors.warningAlpha25, backgroundColor: Colors.warningAlpha12 },
+  homeVerifiedBadge: { borderColor: Colors.successAlpha25, backgroundColor: Colors.successAlpha10 },
+  homeHpiBadge: { borderColor: Colors.infoBlueAlpha20, backgroundColor: Colors.infoBlueAlpha10 },
   retailFactRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
   retailFact: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, flexShrink: 1 },
   homeCardCta: { flexDirection: 'row', minHeight: 42, marginTop: 7, paddingHorizontal: 12,
