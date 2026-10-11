@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, TextInput, ActivityIndicator, Alert,
@@ -1467,10 +1467,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             records.forEach((r: any) => {
               const zone = DAMAGE_ZONES_3D.find(z => z.id === r.part);
               mappedEntries.push({
-                id: `${r.part}-${Date.now()}-${Math.random()}`,
+                id: typeof r.id === 'string' && /^[0-9a-f-]{36}$/i.test(r.id)
+                  ? r.id : createValuationJourneyId(),
                 zone: zone?.label ?? r.part,
-                type: (r.type as DamageEntry['type']) || 'OTHER',
-                description: '',
+                type: (() => {
+                  const initial = String(r.type ?? '').split(' - ')[0].toUpperCase();
+                  return DAMAGE_TYPES.includes(initial) ? initial as DamageEntry['type'] : 'OTHER';
+                })(),
+                description: String(r.type ?? '').includes(' - ')
+                  ? String(r.type).slice(String(r.type).indexOf(' - ') + 3)
+                  : (DAMAGE_TYPES.includes(String(r.type ?? '').toUpperCase()) ? '' : String(r.type ?? '')),
+                surfacePoint: r.coords?.surfacePoint
+                  && ['fx', 'fy', 'fz'].every(k => typeof r.coords.surfacePoint[k] === 'number'
+                    && r.coords.surfacePoint[k] >= 0 && r.coords.surfacePoint[k] <= 1)
+                  ? r.coords.surfacePoint : undefined,
                 // The URL belongs to this defect, not just its panel. Hydrate
                 // legacy backend records when editing to preserve their evidence.
                 ...(typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
@@ -1907,7 +1917,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       throw new Error('Another photo is uploading. Wait for it to finish.');
     }
     if (!entry.localDamagePhotoUri) {
-      setDamageRecords(prev => [...prev, entry]);
+      // Editing an existing defect replaces its record, never duplicates it.
+      // A second defect on the same panel still has its own UUID and row.
+      setDamageRecords(prev => prev.some(r => r.id === entry.id)
+        ? prev.map(r => r.id === entry.id ? entry : r)
+        : [...prev, entry]);
       return;
     }
     const photoCount = exteriorImages.length + interiorImages.length + damageImages.length;
@@ -1933,11 +1947,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // Add the same source to listing images for the listing's existing
       // 100-image cap, retention and gallery/metadata rules.
       setDamageImages(prev => [...prev, encodeVehicleImageCategory(source, 'DAMAGE')]);
-      setDamageRecords(prev => [...prev, {
-        ...entry,
-        damagePhotoUrl: source,
-        localDamagePhotoUri: undefined,
-      }]);
+      setDamageRecords(prev => {
+        const saved: DamageEntry = {
+          ...entry,
+          damagePhotoUrl: source,
+          localDamagePhotoUri: undefined,
+        };
+        return prev.some(r => r.id === entry.id)
+          ? prev.map(r => r.id === entry.id ? saved : r)
+          : [...prev, saved];
+      });
       onProgress(100);
     } catch (err: any) {
       throw new Error(err?.message || 'Could not upload the damage photo. Please retry.');
@@ -2438,10 +2457,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               // prefix so it isn't lost, but no longer discard the text.
               const type = r.description.trim() ? `${r.type} - ${r.description.trim()}` : r.type;
               return {
+                id: r.id,
                 part: zone?.id ?? r.zone,
                 type,
                 size: 'MODERATE',
-                coords: zone?.coords,
+                coords: {
+                  ...(zone?.coords ?? { x: 50, y: 50, view: 'INTERIOR' }),
+                  ...(r.surfacePoint ? { surfacePoint: r.surfacePoint } : {}),
+                },
                 // Each defect owns its own durable image URL. Never use the
                 // zone-keyed legacy map (which confused separate defects on
                 // the same panel), or a device-local file:// URI.
