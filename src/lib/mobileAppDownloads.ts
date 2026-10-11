@@ -12,6 +12,7 @@ export type MobileAppLinks = {
   ios: MobileAppDestination
   iosTestFlight: MobileAppDestination
   android: MobileAppDestination
+  microsoftStore: MobileAppDestination
   androidApk: MobileAppDestination & { sha256: string | null }
 }
 
@@ -56,6 +57,21 @@ const googlePlay = (raw?: string): string | null => {
 }
 
 /**
+ * Windows availability is opt-in. No Microsoft Store listing exists by
+ * assumption: an actual public product URL must be verified before enabling.
+ */
+const microsoftStore = (raw?: string): string | null => {
+  if (!raw) return null
+  try {
+    const url = new URL(raw.trim())
+    if (url.protocol !== "https:" || url.hostname !== "apps.microsoft.com" ||
+        url.port || url.username || url.password || url.search || url.hash ||
+        !/^\/detail\/9[A-Z0-9]{11}\/?$/i.test(url.pathname)) return null
+    return url.toString()
+  } catch { return null }
+}
+
+/**
  * Direct Android APK is optional. Only an owner-approved, signed RELEASE
  * artifact on CarMazium's own HTTPS domain, with a declared SHA-256, may be
  * offered. Internal Expo preview / development builds must never be linked.
@@ -80,11 +96,13 @@ export function resolveMobileAppLinks(env: AppDownloadEnv): MobileAppLinks {
   const ios = iosStore(env.NEXT_PUBLIC_CARMAZIUM_IOS_APP_URL)
   const iosTestFlight = publicTestFlight(env.NEXT_PUBLIC_CARMAZIUM_IOS_TESTFLIGHT_URL)
   const android = googlePlay(env.NEXT_PUBLIC_CARMAZIUM_ANDROID_APP_URL)
+  const windows = microsoftStore(env.NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL)
   const apk = approvedAndroidApk(env)
   return {
     ios: { href: ios, available: Boolean(ios) },
     iosTestFlight: { href: iosTestFlight, available: Boolean(iosTestFlight) },
     android: { href: android, available: Boolean(android) },
+    microsoftStore: { href: windows, available: Boolean(windows) },
     androidApk: { href: apk.href, sha256: apk.sha256, available: Boolean(apk.href) },
   }
 }

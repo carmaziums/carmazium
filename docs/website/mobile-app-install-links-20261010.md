@@ -56,3 +56,12 @@ The `src/lib/mobileAppDownloads.ts` resolver only shows links when format and pl
 This PR changes **website-only marketing and download configuration**, not the native app, backend, KYC, bids, Stripe payment flow, production datasets, Expo signing, Play/App Store accounts or app distribution. Roll back this feature PR independently if necessary.
 
 **Launch status: the website supports an approved iPhone TestFlight beta and a signed Android APK for pre-store distribution. Neither link is yet activated: no approved public TestFlight invitation or signed production Android release artifact has been verified.**
+
+## 11 October 2026 — refreshed app promotion and Windows option
+
+- Replaced the small footer download tab with a colourful responsive full-width app showcase, matching the approved visual direction, with accessible HTML links into the installation page.
+- Rebuilt `/download-app` with a bright hero, CSS device mock-ups, visually differentiated installation cards and a Microsoft Store card.
+- **Microsoft Store is not yet verified or available.** Its marketing art is not a claim of a published Windows app. The Windows card shows a coming-soon notice and offers the web marketplace unless an actual verified store listing is configured.
+- Optional Windows environment variable: `NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL`, set only after verifying the CarMazium publisher, product ID, public listing and a working Windows install. Example format: `https://apps.microsoft.com/detail/9NBLGGH4R315` (illustrative ID only; **not a CarMazium listing**).
+- Release state for iPhone, Android and Windows is checked independently. Decorative mock-ups are conceptual marketing visuals; they must not be confused with certified screenshots of a shipped native build.
+- All original Apple TestFlight / Android APK approval controls remain in force; no production APK is made public by this visual change.

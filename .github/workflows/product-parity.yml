@@ -43,6 +43,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: node scripts/check-auction-seller-sequencing.mjs
+      - name: Verify app installation buttons, links and release gating
+        run: node --test scripts/test-website-mobile-app-downloads.test.mjs
       - name: Auction shortlist web regressions
         run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
