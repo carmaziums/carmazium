@@ -253,7 +253,6 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
         <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
         <View style={s.retailFactRow}>
           {!!listing.transmission && <Text style={s.retailFact}>{mapTransmission(listing.transmission)}</Text>}
-          {!!listing.bodyType && <Text style={s.retailFact}>{String(listing.bodyType).replace(/_/g, ' ')}</Text>}
           {!!listing.location && <Text style={s.retailFact} numberOfLines={1}>{listing.location}</Text>}
         </View>
         <View style={s.homeCardCta}>
@@ -988,13 +987,13 @@ const s = StyleSheet.create({
   cardImg: { width: '100%', height: '100%' },
   cardImgEmpty: { width: '100%', height: '100%', backgroundColor: Colors.bgTertiary },
   cardBody: { padding: 16, backgroundColor: Colors.bgCardSolid, minHeight: 132, gap: 6 },
-  cardSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.size11, color: Colors.textSecondary, marginBottom: 4 },
+  cardSpecs: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, marginBottom: 4 },
   cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.md, color: Colors.white, marginBottom: 6 },
   // Prices are mono at heavy weight throughout the brand — this was rendering
   // in the body font like any other text.
   cardPrice: { ...TextPresets.monoFigure, fontSize: FontSize.lg, color: Colors.white, marginTop: 2 },
   retailFactRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 },
-  retailFact: { fontFamily: FontFamily.medium, fontSize: FontSize.size11, color: Colors.textSecondary, flexShrink: 1 },
+  retailFact: { fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, flexShrink: 1 },
   homeCardCta: { flexDirection: 'row', minHeight: 42, marginTop: 7, paddingHorizontal: 12,
     backgroundColor: Colors.accentDeep, borderRadius: 10, justifyContent: 'center',
     alignItems: 'center', gap: 8 },
