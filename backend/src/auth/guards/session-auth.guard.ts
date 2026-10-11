@@ -11,7 +11,10 @@ import { AuthService } from '../auth.service';
  * Dual-mode authentication guard.
  * 1. Checks for a valid session cookie (req.session.userId) — preferred path.
  * 2. Falls back to verifying a Supabase Bearer token from the Authorization header.
- *    On success, auto-creates a session so future requests use the cookie path.
+ *    Bearer-only requests stay stateless: cross-site browsers can omit the sid
+ *    cookie, so saving a new session on every GET creates thousands of rows.
+ *    The explicit /auth/supabase-session login bridge remains responsible for
+ *    intentionally creating a persistent session.
  */
 @Injectable()
 export class SessionAuthGuard implements CanActivate {
@@ -40,18 +43,11 @@ export class SessionAuthGuard implements CanActivate {
             const user = await this.authService.verifySupabaseToken(token);
 
             if (user) {
-                // Auto-create session for subsequent requests
-                if (request.session) {
-                    request.session.userId = user.id;
-                    request.session.userRole = user.role;
-                    // Keep cachedUser in lockstep with userId/userRole — main.ts's
-                    // hydration middleware trusts cachedUser blindly on later
-                    // requests. Leaving it unset here let a stale cachedUser from
-                    // a previous occupant of this session record (wrong profile,
-                    // wrong role) survive and be served back to this user.
-                    request.session.cachedUser = user;
-                }
-                // Populate req.user so @CurrentUser() works immediately
+                // Authenticate the request without modifying req.session.
+                // express-session has saveUninitialized:false; creating
+                // userId/userRole/cachedUser here would insert a new PostgreSQL
+                // session for every request whose third-party cookie was blocked.
+                // A deliberate login bridge creates cookies separately.
                 (request as any).user = user;
                 return true;
             }
