@@ -23,7 +23,7 @@ test('every saved damage keeps its own number, type, photo indicator and exact p
 test('seller-specific pins are 44dp tappable and do not block generic mesh surface selection', () => {
   assert.match(viewer, /width: 44,\s*height: 44/);
   assert.match(viewer, /!inlineDamageEditor && hotspotZones\.map/);
-  assert.match(viewer, /\{\(!readOnly \|\| Boolean\(onDamagePinPress\)\) && placedDamagePins\.map/);
+  assert.match(viewer, /\{\(!readOnly \|\| Boolean\(onDamagePinPress\)\) && orderedVisibleDamagePins\.map/);
   assert.match(viewer, /pointerEvents="box-none"/);
   assert.match(viewer, /onSurfaceTap/);
   assert.match(viewer, /styles\.damagePinSelected/);
