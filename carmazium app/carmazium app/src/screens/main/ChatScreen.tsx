@@ -206,7 +206,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           <View
             style={[
               styles.photoMessageBubble,
-              isOwn ? styles.bubbleUser : styles.bubbleDealer,
+              isOwn ? styles.bubbleUser : themed.bubbleDealer,
               msg.deliveryStatus === 'failed' && styles.bubbleFailed,
             ]}
           >
@@ -307,7 +307,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         <View
           style={[
             styles.bubble,
-            isOwn ? styles.bubbleUser : styles.bubbleDealer,
+            isOwn ? styles.bubbleUser : themed.bubbleDealer,
             msg.deliveryStatus === 'failed' && styles.bubbleFailed,
           ]}
         >
