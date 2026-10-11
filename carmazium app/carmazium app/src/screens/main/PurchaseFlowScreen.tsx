@@ -18,6 +18,7 @@ import { Radius } from '../../constants/spacing';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 
 import { IconButton } from '../../components/IconButton';
 // ─────────────────────────────── types ────────────────────────────────
@@ -69,6 +70,8 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   navigation,
   route,
 }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = usePurchaseFlowScreenPalette();
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
@@ -256,19 +259,19 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   // Legacy retail callers must fail closed rather than opening a vehicle-money Payment Sheet.
   if (paymentType !== 'COMMISSION') {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={themed.container}>
+        <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
         <View style={{ paddingTop: insets.top + 24, paddingHorizontal: 20, flex: 1 }}>
           <IconButton
-            style={styles.backBtn}
-            icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />}
+            style={themed.backBtn}
+            icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />}
             onPress={() => navigation?.goBack()}
             accessibilityLabel="Go back"
           />
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
             <Ionicons name="shield-checkmark-outline" size={42} color={Colors.accentGreen} />
-            <Text style={[styles.headerTitle, { fontSize: FontSize.xl, marginTop: 16 }]}>Pay the seller directly</Text>
-            <Text style={[styles.commissionNote, { marginTop: 12, fontSize: FontSize.size14, lineHeight: 22 }]}>
+            <Text style={[themed.headerTitle, { fontSize: FontSize.xl, marginTop: 16 }]}>Pay the seller directly</Text>
+            <Text style={[themed.commissionNote, { marginTop: 12, fontSize: FontSize.size14, lineHeight: 22 }]}>
               CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
             </Text>
           </View>
@@ -280,23 +283,23 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   // ── Success screen ────────────────────────────────────────────────
   if (paid) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={themed.container}>
+        <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
         <LinearGradient
           colors={[Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.4 }}
         />
-        <View style={[styles.successWrap, { paddingTop: insets.top + 60 }]}>
-          <View style={styles.successCircle}>
+        <View style={[themed.successWrap, { paddingTop: insets.top + 60 }]}>
+          <View style={themed.successCircle}>
             <Ionicons name="checkmark-circle" size={56} color={Colors.accentGreen} />
           </View>
-          <Text style={styles.successTitle}>Payment successful</Text>
-          <Text style={styles.successSub}>
+          <Text style={themed.successTitle}>Payment successful</Text>
+          <Text style={themed.successSub}>
             {fmt(total)} · {listingTitle}
           </Text>
-          <Text style={styles.successNote}>
+          <Text style={themed.successNote}>
             {isWonAuctionFee
               ? 'Your payment has been received. Next, arrange handover with the seller from your won auctions.'
               : 'Your payment has been received. The seller will be in touch to arrange handover.'}
@@ -307,7 +310,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
               auction buyer-fee payment to their won-auctions list precisely so
               they go on to submit handover proof. */}
           <TouchableOpacity
-            style={styles.doneBtn}
+            style={themed.doneBtn}
             activeOpacity={0.8}
             onPress={() =>
               isWonAuctionFee
@@ -315,7 +318,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
                 : navigation?.navigate('Tabs')
             }
           >
-            <Text style={styles.doneBtnText}>
+            <Text style={themed.doneBtnText}>
               {isWonAuctionFee ? 'VIEW MY AUCTIONS' : 'BACK TO HOME'}
             </Text>
           </TouchableOpacity>
@@ -326,8 +329,8 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
   // ── Payment screen ────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -343,13 +346,13 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         ]}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerSub}>
+        <View style={themed.header}>
+          <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <View style={themed.headerCenter}>
+            <Text style={themed.headerSub}>
               {isCommission ? 'AUCTION WON' : 'OFFER ACCEPTED'}
             </Text>
-            <Text style={styles.headerTitle}>
+            <Text style={themed.headerTitle}>
               {isCommission ? 'Pay auction fee' : 'Complete purchase'}
             </Text>
           </View>
@@ -357,44 +360,44 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         </View>
 
         {/* Hero Card */}
-        <View style={styles.heroCard}>
+        <View style={themed.heroCard}>
           {listingImage ? (
-            <Image source={{ uri: listingImage }} style={styles.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <Image source={{ uri: listingImage }} style={themed.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
-            <View style={[styles.heroImg, styles.heroImgPlaceholder]}>
+            <View style={[themed.heroImg, styles.heroImgPlaceholder]}>
               <Ionicons name="car-outline" size={24} color={Colors.iconMuted} />
             </View>
           )}
-          <View style={styles.heroInfo}>
-            <View style={styles.successRow}>
+          <View style={themed.heroInfo}>
+            <View style={themed.successRow}>
               <Ionicons
                 name={isCommission ? 'trophy-outline' : 'checkmark-circle-outline'}
                 size={14}
                 color={Colors.accentGreen}
               />
-              <Text style={styles.successText}>
+              <Text style={themed.successText}>
                 {isCommission ? 'You won this auction' : 'Seller accepted your offer'}
               </Text>
             </View>
-            <Text style={styles.heroCarTitle} numberOfLines={2}>
+            <Text style={themed.heroCarTitle} numberOfLines={2}>
               {listingTitle}
             </Text>
-            {sellerName ? <Text style={styles.heroDealer}>{sellerName}</Text> : null}
+            {sellerName ? <Text style={themed.heroDealer}>{sellerName}</Text> : null}
           </View>
         </View>
 
         {/* Order Summary */}
-        <Text style={styles.sectionTitle}>
+        <Text style={themed.sectionTitle}>
           {isCommission ? 'FEE BREAKDOWN' : 'ORDER SUMMARY'}
         </Text>
-        <View style={styles.summaryBox}>
+        <View style={themed.summaryBox}>
           {isCommission ? (
             <>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Auction buyer fee</Text>
-                <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
+              <View style={themed.summaryRow}>
+                <Text style={themed.summaryLabel}>Auction buyer fee</Text>
+                <Text style={themed.summaryValue}>{fmt(buyerFee)}</Text>
               </View>
-              <Text style={styles.commissionNote}>
+              <Text style={themed.commissionNote}>
                 Unlocks chat with the seller and releases the £100 seller payout on
                 handover approval. The winning bid is paid to the seller directly
                 out-of-band.
@@ -402,43 +405,43 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             </>
           ) : (
             <>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Agreed sale price</Text>
-                <Text style={styles.summaryValue}>{fmt(salePrice)}</Text>
+              <View style={themed.summaryRow}>
+                <Text style={themed.summaryLabel}>Agreed sale price</Text>
+                <Text style={themed.summaryValue}>{fmt(salePrice)}</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Carmazium buyer fee</Text>
-                <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
+              <View style={themed.summaryRow}>
+                <Text style={themed.summaryLabel}>Carmazium buyer fee</Text>
+                <Text style={themed.summaryValue}>{fmt(buyerFee)}</Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>HPI check</Text>
-                <Text style={styles.summaryValueGreen}>Included</Text>
+              <View style={themed.summaryRow}>
+                <Text style={themed.summaryLabel}>HPI check</Text>
+                <Text style={themed.summaryValueGreen}>Included</Text>
               </View>
             </>
           )}
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryTotalRow}>
-            <Text style={styles.summaryTotalLabel}>TOTAL PAYABLE</Text>
-            <Text style={styles.summaryTotalValue}>{fmt(total)}</Text>
+          <View style={themed.summaryDivider} />
+          <View style={themed.summaryTotalRow}>
+            <Text style={themed.summaryTotalLabel}>TOTAL PAYABLE</Text>
+            <Text style={themed.summaryTotalValue}>{fmt(total)}</Text>
           </View>
         </View>
 
         {/* Payment method note */}
-        <View style={styles.paymentNote}>
+        <View style={themed.paymentNote}>
           <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
-          <Text style={styles.paymentNoteText}>
+          <Text style={themed.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
         </View>
 
-        <Text style={styles.bottomNote}>
+        <Text style={themed.bottomNote}>
           Payment is processed securely via Stripe. The seller will be notified to arrange handover once payment is received.
         </Text>
 
         {pendingConfirmationId ? (
-          <View style={styles.paymentNote}>
+          <View style={themed.paymentNote}>
             <Ionicons name="time-outline" size={16} color={Colors.warning} />
-            <Text style={styles.paymentNoteText}>
+            <Text style={themed.paymentNoteText}>
               Your card payment was submitted. Do not pay again — confirm the same payment status below.
             </Text>
           </View>
@@ -446,9 +449,9 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       </ScrollView>
 
       {/* Floating CTA */}
-      <View style={[styles.floatingBottom, { paddingBottom: insets.bottom || 20 }]}>
+      <View style={[themed.floatingBottom, { paddingBottom: insets.bottom || 20 }]}>
         <TouchableOpacity
-          style={[styles.mainBtn, paying && styles.mainBtnDisabled]}
+          style={[themed.mainBtn, paying && styles.mainBtnDisabled]}
           onPress={handlePay}
           activeOpacity={0.85}
           disabled={paying}
@@ -456,9 +459,9 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
           {paying ? (
             <ActivityIndicator color={Colors.white} style={{ marginRight: 10 }} />
           ) : (
-            <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={styles.btnIconLeft} />
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={themed.btnIconLeft} />
           )}
-          <Text style={styles.mainBtnText}>
+          <Text style={themed.mainBtnText}>
             {paying
               ? 'PROCESSING…'
               : pendingConfirmationId
@@ -686,3 +689,35 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 });
+
+function usePurchaseFlowScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerSub: [styles.headerSub, { color: palette.textMuted }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    heroCard: [styles.heroCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    heroCarTitle: [styles.heroCarTitle, { color: palette.textPrimary }],
+    heroDealer: [styles.heroDealer, { color: palette.textSecondary }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    summaryBox: [styles.summaryBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    summaryRow: [styles.summaryRow, { borderBottomColor: palette.borderDefault }],
+    summaryLabel: [styles.summaryLabel, { color: palette.textSecondary }],
+    summaryValue: [styles.summaryValue, { color: palette.textPrimary }],
+    commissionNote: [styles.commissionNote, { color: palette.textSecondary }],
+    summaryDivider: [styles.summaryDivider, { backgroundColor: palette.borderDefault }],
+    summaryTotalLabel: [styles.summaryTotalLabel, { color: palette.textPrimary }],
+    summaryTotalValue: [styles.summaryTotalValue, { color: palette.textPrimary }],
+    paymentNote: [styles.paymentNote, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    paymentNoteText: [styles.paymentNoteText, { color: palette.textSecondary }],
+    bottomNote: [styles.bottomNote, { color: palette.textMuted }],
+    floatingBottom: [styles.floatingBottom, { backgroundColor: palette.bgBody, borderTopColor: palette.borderDefault }],
+    successWrap: [styles.successWrap, { backgroundColor: palette.bgBody }],
+    successTitle: [styles.successTitle, { color: palette.textPrimary }],
+    successSub: [styles.successSub, { color: palette.textSecondary }],
+    successNote: [styles.successNote, { color: palette.textMuted }],
+  }), [palette]);
+}
