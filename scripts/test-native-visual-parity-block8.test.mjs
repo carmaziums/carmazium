@@ -42,7 +42,8 @@ test('one hub opens existing Saved, Messages, Notifications, and REAL Support th
   for (const name of ['YOUR ACCOUNT TOOLS','Saved Cars','Messages','Notifications','Contact Support']) {
     assert.ok(settings.includes(name), name);
   }
-  assert.ok(settings.includes("navigation.navigate('Tabs', { screen: 'Saved' })"));
+  assert.ok(settings.includes("navigation.navigate('SavedCars')"), "Settings must preserve a back-stack route to Saved");
+  assert.ok(nav.includes('name="SavedCars"'), "stack destination exists for Settings back");
   assert.ok(settings.includes("navigation.navigate('Messages')"));
   assert.ok(settings.includes("navigation.navigate('Notifications')"));
   assert.ok(settings.includes('getOrCreateSupportRoom()'));
