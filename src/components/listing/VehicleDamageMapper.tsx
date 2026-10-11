@@ -247,16 +247,16 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
             <p className="text-[11px] text-[var(--text-muted)]">{gm.desc}</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{records.length} zone{records.length !== 1 ? 's' : ''} marked</span>
+        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wide">{records.length} damages · {pins.length} 3D pins · {photoCount} photos</span>
       </div>
 
       {/* Instruction banner */}
       <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
         <p className="text-xs font-bold text-blue-800 dark:text-blue-300 mb-0.5">How to mark damage</p>
         <p className="text-xs text-slate-700 dark:text-[var(--text-muted)]">
-          Rotate the 3D model to inspect all angles. Click any <span className="text-[var(--text-primary)] font-bold">+</span> hotspot
-          on the vehicle to mark a damage zone, then describe it and optionally add a photo.
-          You can also click any zone in the list below the model.
+          Rotate the 3D model, then tap the actual visible car surface. Check the suggested panel,
+          take or choose a photo, select the damage type, and optionally describe it.
+          Press Save &amp; Add Another to mark another point. You can also choose a panel manually.
         </p>
       </div>
 
@@ -302,92 +302,12 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           selectedZone={pendingZoneId}
           markedZones={markedZones}
           onZoneClick={handleZoneClick}
+          onSurfaceTap={handleSurfaceTap}
+          damagePins={pins}
+          onDamagePinPress={editRecord}
+          selectedDamageId={editingDamageId}
         />
       </ThreeDErrorBoundary>
-
-      {/* Zone legend — grouped by area (BCA-standard categories) */}
-      {[
-        {
-          label: "Exterior — Front",
-          ids: ["front-bumper", "ns-headlight", "os-headlight", "bonnet", "nsf-wing", "osf-wing"],
-        },
-        {
-          label: "Exterior — Windscreens & Roof",
-          ids: ["windshield", "rear-windshield", "roof"],
-        },
-        {
-          label: "Exterior — Doors & Sills",
-          ids: ["front-left-door", "front-right-door", "rear-left-door", "rear-right-door", "ns-sill", "os-sill"],
-        },
-        {
-          label: "Exterior — Rear",
-          ids: ["nsr-quarter", "osr-quarter", "boot", "ns-rear-light", "os-rear-light", "rear-bumper"],
-        },
-        {
-          label: "Wheels",
-          ids: ["nsf-wheel", "osf-wheel", "nsr-wheel", "osr-wheel"],
-        },
-        {
-          label: "Interior",
-          ids: ["dashboard", "steering-wheel", "driver-seat", "passenger-seat", "rear-seat", "centre-console", "headlining", "boot-interior"],
-        },
-      ].map(group => {
-        const groupZones = ALL_ZONES.filter(z => group.ids.includes(z.id))
-        return (
-          <div key={group.label} className="space-y-1">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-secondary)] pt-1">{group.label}</p>
-            <div className="grid grid-cols-2 gap-1">
-              {groupZones.map(z => {
-                const isMarked = records.some(r => r.zone === z.id)
-                const isSelected = pendingZoneId === z.id
-                return (
-                  <div
-                    key={z.id}
-                    onClick={() => handleZoneClick(z.id)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
-                      isSelected
-                        ? "bg-primary/15 border-primary/40 text-primary"
-                        : isMarked
-                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                          : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/20 hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
-                    {z.label}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
-
-      {/* Custom area input */}
-      <div className="space-y-1.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Other Damage Area</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="e.g. Interior – Driver Seat, Engine Bay…"
-            value={customZoneInput}
-            onChange={e => setCustomZoneInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCustomZone()}
-            className="flex-1 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none"
-            maxLength={80}
-          />
-          <button
-            type="button"
-            onClick={handleCustomZone}
-            disabled={!customZoneInput.trim()}
-            className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold text-white hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Mark
-          </button>
-        </div>
-        <p className="text-[10px] text-[var(--text-secondary)]">
-          Not in the list above? Type any area and press Mark to describe the damage.
-        </p>
-      </div>
 
       {/* Pending zone panel */}
       {pendingZone && (
@@ -455,6 +375,101 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
           </button>
         </div>
       )}
+
+      <p className="text-xs text-[var(--text-muted)]">
+        {records.length} damages · {pins.length} 3D pins · {photoCount} uploaded photos
+        {records.length > pins.length ? ` · ${records.length - pins.length} manually listed` : ""}
+      </p>
+      <button type="button" onClick={() => setManualOpen(open => !open)}
+        aria-expanded={manualOpen} className="flex w-full items-center justify-between rounded-xl border border-[var(--border-default)] px-4 py-3 text-sm font-semibold">
+        Choose area manually {manualOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
+      {manualOpen && <div className="space-y-3">
+        {/* Zone legend — grouped by area (BCA-standard categories) */}
+      {[
+        {
+          label: "Exterior — Front",
+          ids: ["front-bumper", "ns-headlight", "os-headlight", "bonnet", "nsf-wing", "osf-wing"],
+        },
+        {
+          label: "Exterior — Windscreens & Roof",
+          ids: ["windshield", "rear-windshield", "roof"],
+        },
+        {
+          label: "Exterior — Doors & Sills",
+          ids: ["front-left-door", "front-right-door", "rear-left-door", "rear-right-door", "ns-sill", "os-sill"],
+        },
+        {
+          label: "Exterior — Rear",
+          ids: ["nsr-quarter", "osr-quarter", "boot", "ns-rear-light", "os-rear-light", "rear-bumper"],
+        },
+        {
+          label: "Wheels",
+          ids: ["nsf-wheel", "osf-wheel", "nsr-wheel", "osr-wheel"],
+        },
+        {
+          label: "Interior",
+          ids: ["dashboard", "steering-wheel", "driver-seat", "passenger-seat", "rear-seat", "centre-console", "headlining", "boot-interior"],
+        },
+      ].map(group => {
+        const groupZones = ALL_ZONES.filter(z => group.ids.includes(z.id))
+        return (
+          <div key={group.label} className="space-y-1">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-secondary)] pt-1">{group.label}</p>
+            <div className="grid grid-cols-2 gap-1">
+              {groupZones.map(z => {
+                const isMarked = records.some(r => r.zone === z.id)
+                const isSelected = pendingZoneId === z.id
+                return (
+                  <div
+                    key={z.id}
+                    onClick={() => chooseCorrectedZone(z.id)}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[10px] border cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-primary/15 border-primary/40 text-primary"
+                        : isMarked
+                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                          : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/20 hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? "bg-primary" : isMarked ? "bg-amber-400" : "bg-gray-600"}`} />
+                    {z.label}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Custom area input */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Other Damage Area</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="e.g. Interior – Driver Seat, Engine Bay…"
+            value={customZoneInput}
+            onChange={e => setCustomZoneInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleCustomZone()}
+            className="flex-1 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] px-3 py-2 text-sm placeholder:text-[var(--text-secondary)] focus:border-primary focus:outline-none"
+            maxLength={80}
+          />
+          <button
+            type="button"
+            onClick={handleCustomZone}
+            disabled={!customZoneInput.trim()}
+            className="rounded-xl bg-slate-700 px-4 py-2 text-sm font-bold text-white hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Mark
+          </button>
+        </div>
+        <p className="text-[10px] text-[var(--text-secondary)]">
+          Not in the list above? Type any area and press Mark to describe the damage.
+        </p>
+      </div>
+
+      </div>
 
       {/* Recorded damage list */}
       {records.length > 0 && (
