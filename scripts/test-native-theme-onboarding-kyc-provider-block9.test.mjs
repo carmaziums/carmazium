@@ -72,7 +72,8 @@ test('provider verification and jobs keep evidence upload, pricing and completio
   assert.match(files.providerVerify, /uploadCapabilityAttachment\(/);
   assert.match(files.providerVerify, /disabled=\{busy \|\| !file \|\| !evidenceType\}/);
   assert.match(files.providerVerify, /deleteCapabilityAttachment\(/);
-  assert.match(files.providerJobs, /getProviderJobs|fetchProviderJobs|listProviderJobs/);
+  assert.match(files.providerJobs, /getJobFeedPage\(/);
+  assert.match(files.providerJobs, /getAssignedJobsPage\(/);
   assert.match(files.providerDetail, /upsertProviderQuote\(/);
   assert.match(files.providerDetail, /withdrawProviderQuote\(/);
   assert.match(files.providerDetail, /completeProviderJob\(/);
