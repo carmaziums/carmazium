@@ -116,3 +116,5 @@ jobs:
         run: npm test -- --runInBand src/damage/damage.service.spec.ts
       - name: Reject cross-seller damage writes, foreign photos and private draft reads
         run: npm test -- --runInBand src/damage/damage.security.spec.ts
+      - name: Validate cookie-vs-cached-user identity for damage controller
+        run: npm test -- --runInBand src/damage/damage.controller.spec.ts
