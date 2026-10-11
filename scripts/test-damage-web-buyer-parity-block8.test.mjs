@@ -6,6 +6,7 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const webModel = read('src/components/listing/ThreeDVehicleViewer.tsx');
 const webSeller = read('src/components/listing/VehicleDamageMapper.tsx');
 const webBuyer = read('src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx');
+const listingWizard = read('src/components/listing/ListingWizard.tsx');
 const nativeBuyer = read('carmazium app/carmazium app/src/components/damage/BuyerDamageViewer.tsx');
 const nativeViewer = read('carmazium app/carmazium app/src/components/damage/ThreeDVehicleViewer.tsx');
 
@@ -81,4 +82,24 @@ test('seller-reported damage is not falsely represented as independent vehicle i
   assert.match(nativeBuyer, /No damage reported by the seller/);
   assert.match(webBuyer, /No damage reported by the seller/);
   assert.match(nativeBuyer, /getDescription\(selectedRecord\.type\)/);
+});
+
+test('website listing wizard saves per-record IDs, type, photo and 3D point through all four listing pathways', () => {
+  assert.match(listingWizard, /const buildDamageDetections = \(\) => damageRecords\.map\(record => \(\{/);
+  assert.match(listingWizard, /id: record\.id,/);
+  assert.match(listingWizard, /part: record\.zone,/);
+  assert.match(listingWizard, /record\.type[\s\S]*?record\.description\.trim\(\)/);
+  assert.match(listingWizard, /surfacePoint: record\.surfacePoint/);
+  assert.match(listingWizard, /imageUrl: record\.photoUrl\?\.startsWith\("https:\/\/"\)/);
+  const count = (listingWizard.match(/const detections = buildDamageDetections\(\)/g) || []).length;
+  assert.equal(count, 4, 'edit, new auction, retail and retail conversion all serialize the same records');
+  assert.doesNotMatch(listingWizard, /const detections = damageRecords\.map\(r =>/);
+});
+
+test('website existing listings recover IDs, typed descriptions and exact position independently', () => {
+  assert.match(listingWizard, /const originalType = String\(r\.type \?\? ''\)/);
+  assert.match(listingWizard, /match = originalType\.match/);
+  assert.match(listingWizard, /id: typeof r\.id === 'string'/);
+  assert.match(listingWizard, /photoUrl: typeof r\.imageUrl === 'string' && r\.imageUrl\.startsWith\('https:\/\/'\)/);
+  assert.match(listingWizard, /surfacePoint: \{ fx: hit\.fx, fy: hit\.fy, fz: hit\.fz \}/);
 });
