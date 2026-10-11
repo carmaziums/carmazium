@@ -156,7 +156,7 @@ test('website navigation, homepage, footer and sitemap all lead to download land
   assert.ok(homePromo.includes('Get the'));
   assert.ok(homePromo.includes('CarMazium'));
   assert.ok(homePromo.includes('Microsoft Store'));
-  assert.ok(homePromo.includes('Coming soon'));
+  assert.ok(homePromo.includes('href="/download-app#windows"'));
   assert.ok(homePromo.includes('/download-app#iphone'));
   assert.ok(homePromo.includes('/download-app#android'));
   assert.ok(footer.includes('<FooterAppPromo />'));
@@ -165,7 +165,7 @@ test('website navigation, homepage, footer and sitemap all lead to download land
   assert.ok(promo.includes('Get the'));
   assert.ok(promo.includes('CarMazium'));
   assert.ok(promo.includes('Microsoft Store'));
-  assert.ok(promo.includes('Coming soon'));
+  assert.ok(promo.includes('href="/download-app#windows"'));
   assert.ok(promo.includes('/download-app#iphone-app-title'));
   assert.ok(promo.includes('/download-app#android-app-title'));
   assert.ok(!promo.includes('href="https://'), 'never invent official store URLs');
@@ -197,6 +197,11 @@ test('download page only offers clickable buttons with genuine validated destina
   assert.ok(art.includes('sm:grid-cols-3'));
   assert.ok(art.includes('Microsoft Store'));
   assert.ok(art.includes('/download-app#windows'));
+  // A working Windows CTA routes to its availability section; only a real
+  // configured Microsoft Store listing may become the external download link.
+  assert.ok(page.includes('href={windowsHref ?? "#windows"}'));
+  assert.ok(page.includes('href={windowsHref}'));
+  assert.ok(page.includes('windowsHref ? ('));
   assert.ok(!page.includes('https://play.google.com/store/search'),'no fake install links');
   assert.ok(page.includes('href="/search"'),'browser fall-back remains');
 });

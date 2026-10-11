@@ -7,7 +7,8 @@ import { FaApple, FaGooglePlay } from "react-icons/fa"
  * as FooterAppPromo. This intentionally is not another giant hero section.
  *
  * iPhone and Android lead to the verified-installation status page.
- * Microsoft Store has no confirmed listing and is not a download action.
+ * Microsoft Store is an active link to the verified-installation status page.
+ * Only /download-app offers a direct store install after a valid release URL is configured.
  */
 export function HomeAppPromoCompact() {
   const installClass =
@@ -63,16 +64,17 @@ export function HomeAppPromoCompact() {
                 </span>
                 <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
               </Link>
-              <div className="flex min-h-[68px] cursor-default items-center gap-3 rounded-2xl border border-cyan-200/20 bg-[#071436]/60 px-4 py-3 text-white/85" aria-label="Microsoft Store app coming soon">
+              <Link href="/download-app#windows" className={installClass} aria-label="Check official CarMazium Microsoft Store installation options">
                 <span aria-hidden="true" className="grid h-7 w-7 shrink-0 grid-cols-2 gap-[2px]">
                   <span className="bg-[#f35325]" /><span className="bg-[#81bc06]" />
                   <span className="bg-[#05a6f0]" /><span className="bg-[#ffba08]" />
                 </span>
-                <span className="min-w-0">
-                  <span className="block text-[11px] text-blue-100">Microsoft Store</span>
-                  <span className="block text-sm font-black">Coming soon</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] text-blue-100">Get it from</span>
+                  <span className="block text-sm font-black leading-tight">Microsoft Store</span>
                 </span>
-              </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-cyan-200 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none" aria-hidden="true" />
+              </Link>
             </div>
             <p className="mt-3 text-xs leading-5 text-blue-100">
               Official installation links are offered only when a verified release is ready.
