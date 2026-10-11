@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111113;overflow:hidden;width:100vw;height:100vh}
+html,body{background:#111113;overflow:hidden;width:100vw;height:100vh;touch-action:none;overscroll-behavior:none}
+canvas{display:block;touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #msg{
   position:fixed;inset:0;
   display:flex;align-items:center;justify-content:center;
@@ -38,8 +39,10 @@ window.addEventListener('unhandledrejection', function() {
 const { THREE, GLTFLoader, OrbitControls } = window.__CARMAZIUM_THREE__;
 
 /* ── Renderer ── */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+// A 2x phone DPR quadruples WebGL pixels; 1.5x reduces GPU fill while
+// preserving sufficient detail for the damage-zone overlay on small screens.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x111113, 1);
 document.body.appendChild(renderer.domElement);
@@ -67,6 +70,35 @@ controls.enablePan = false;
 controls.autoRotate = false;
 controls.minPolarAngle = 0.2;
 controls.maxPolarAngle = Math.PI * 0.72;
+
+// Keep native ScrollView out of an active car-rotation gesture.  This complements
+// the RN-side touch capture: WebView is a separate touch-handling surface.
+function reportInteraction(active) {
+  if (!window.ReactNativeWebView) return;
+  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'orbitInteraction', active: !!active }));
+}
+controls.addEventListener('start', function() { reportInteraction(true); });
+controls.addEventListener('end', function() { reportInteraction(false); });
+
+// Native buttons provide a reliable alternative to drag, especially for users
+// who struggle with touch gesture arbitration.  Tilt respects OrbitControls'
+// original vertical safety limits, and never enables free pan or zoom.
+window.nudgeVehicle = function(direction) {
+  if (!_modelInfo) return;
+  var offset = camera.position.clone().sub(controls.target);
+  var spherical = new THREE.Spherical().setFromVector3(offset);
+  var step = Math.PI / 12;
+  if (direction === 'left') spherical.theta += step;
+  else if (direction === 'right') spherical.theta -= step;
+  else if (direction === 'up') spherical.phi -= step;
+  else if (direction === 'down') spherical.phi += step;
+  else return;
+  spherical.phi = Math.max(controls.minPolarAngle, Math.min(controls.maxPolarAngle, spherical.phi));
+  camera.position.copy(controls.target).add(offset.setFromSpherical(spherical));
+  camera.lookAt(controls.target);
+  controls.update();
+  invalidate();
+};
 
 /* ── Zone projection: keeps hotspots glued to the model as it rotates ──
    Zones are authored as fractions of the loaded model's own bounding box
@@ -120,23 +152,43 @@ function postZonePositions() {
   window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'zonePositions', positions: out }));
 }
 
-/* ── Render loop ── */
-(function loop() {
-  requestAnimationFrame(loop);
-  controls.update();
-  renderer.render(scene, camera);
-})();
+/* ── Render only on a camera/model change ──
+   OrbitControls damping still advances each animation frame, but a stationary
+   car no longer submits redundant GPU draw calls or hotspot bridge messages.
+   Project at most 10 times/s while moving, plus the last settled frame. */
+var renderPending = true;
+var projectionPending = true;
+var lastProjectionMs = -1000;
+function invalidate() {
+  renderPending = true;
+  projectionPending = true;
+}
+controls.addEventListener('change', invalidate);
 
-/* Zone positions update on their own timer, independent of render FPS —
-   ~8fps is plenty for hotspots tracking a drag-to-rotate gesture and keeps
-   the render loop itself free of per-frame extra work. */
-setInterval(postZonePositions, 120);
+(function loop(now) {
+  requestAnimationFrame(loop);
+  if (document.hidden) return;
+  controls.update();
+  if (renderPending) {
+    renderPending = false;
+    renderer.render(scene, camera);
+  }
+  if (projectionPending && _modelInfo && _zones.length && now - lastProjectionMs >= 100) {
+    projectionPending = false;
+    lastProjectionMs = now;
+    postZonePositions();
+  }
+})(0);
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) invalidate();
+});
 
 /* ── Resize ── */
 window.addEventListener('resize', function() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  invalidate();
 });
 
 /* ── GLB loader called from RN via injectJavaScript ── */
@@ -161,6 +213,7 @@ function doLoad(dataUrl) {
       scene.add(model);
       controls.target.set(0, size.y * scale * 0.3, 0);
       controls.update();
+      invalidate();
     },
     undefined,
     function() {
@@ -172,6 +225,7 @@ function doLoad(dataUrl) {
 
 function doSetZones(json) {
   try { _zones = JSON.parse(json); } catch (e) { _zones = []; }
+  invalidate();
 }
 
 /* Pick up anything that arrived while the module was still loading */
