@@ -102,9 +102,9 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
   return (
     <TouchableOpacity
       style={[
-        styles.threadCard,
+        themed.threadCard,
         styles.threadCardSpacing,
-        isUnread && styles.threadCardUnread,
+        isUnread && themed.threadCardUnread,
       ]}
       onPress={() => onPress(room.id)}
       activeOpacity={0.85}
@@ -143,7 +143,7 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
         ) : (
           <Text
             style={[
-              styles.lastMessageText,
+              themed.lastMessageText,
               isUnread && styles.lastMessageTextUnread
             ]}
             numberOfLines={1}
