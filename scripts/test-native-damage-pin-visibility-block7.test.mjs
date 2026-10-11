@@ -16,7 +16,7 @@ test('every saved damage keeps its own number, type, photo indicator and exact p
   assert.match(viewer, /const pin = damagePins\.find\(item => item\.id === placed\.id\)/);
   assert.match(viewer, /key=\{pin\.id\}/);
   assert.match(viewer, /onDamagePinPress\?\.\(pin\.id\)/);
-  assert.match(viewer, /accessibilityState=\{\{ selected \}\}/);
+  assert.match(viewer, /accessibilityState=\{\{ selected, disabled: !onDamagePinPress \}\}/);
   assert.match(viewer, /pin\.hasPhoto && <View style=\{styles\.damagePinPhoto\}>/);
 });
 
