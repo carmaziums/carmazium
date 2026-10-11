@@ -23,7 +23,7 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
 
   const harness = (options: {
     caller?: string; role?: string; sellerId?: string | null; deleted?: boolean;
-    membershipRole?: string; membershipActive?: boolean; dealerId?: string;
+    membershipRole?: string; membershipActive?: boolean; dealerId?: string; staffDealerId?: string;
     status?: string; existing?: { id: string; imageUrl: string | null }[];
     images?: string[];
   } = {}) => {
@@ -51,7 +51,7 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
       }) => options.membershipRole
           && options.membershipActive
           && args.where.userId === caller
-          && args.where.dealerProfileId === options.dealerId
+          && args.where.dealerProfileId === (options.staffDealerId ?? options.dealerId)
           && args.where.isActive === true
           && args.where.role.in.includes(options.membershipRole)
         ? { id: 'staff-member', role: options.membershipRole }
@@ -118,6 +118,7 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
       { membershipRole: 'SALES_AGENT', membershipActive: false },
       { membershipRole: 'FINANCE_MANAGER', membershipActive: true },
       { membershipRole: undefined, membershipActive: true },
+      { membershipRole: 'ADMIN', membershipActive: true, staffDealerId: 'other-dealership' },
     ]) {
       const h = harness({ caller: outsider, dealerId: 'owner-dealer', ...opts });
       await expect(h.service.saveDamageRecords('listing-one', [defect], outsider)).rejects.toBeInstanceOf(ForbiddenException);
