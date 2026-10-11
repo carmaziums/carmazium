@@ -70,6 +70,7 @@ const MAIN_MENU: MenuItem[] = [
 
 export const GlobalDrawer: React.FC = () => {
   const { isOpen, closeDrawer } = useDrawer();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -97,11 +98,17 @@ export const GlobalDrawer: React.FC = () => {
     };
   }, [accountId, role, accountRole]);
 
+  // Never leave the Menu Modal covering Login after a remote sign-out or
+  // expired session; DrawerProvider outlives the authenticated navigator.
+  useEffect(() => {
+    if (!isAuthenticated) closeDrawer();
+  }, [isAuthenticated, closeDrawer]);
+
   // Every fresh Menu session should start with Buy and Sell collapsed; a
   // prior expansion must not persist after dismissing via X, Back, or backdrop.
   useEffect(() => {
-    if (!isOpen) setExpandedMenu(null);
-  }, [isOpen]);
+    if (!isOpen || !isAuthenticated) setExpandedMenu(null);
+  }, [isOpen, isAuthenticated]);
 
   const translateX = useSharedValue(drawerWidth);
   const backdropOpacity = useSharedValue(0);
@@ -354,7 +361,7 @@ export const GlobalDrawer: React.FC = () => {
 
   return (
     <Modal
-      visible={isOpen}
+      visible={isOpen && isAuthenticated}
       transparent
       animationType="none"
       statusBarTranslucent
