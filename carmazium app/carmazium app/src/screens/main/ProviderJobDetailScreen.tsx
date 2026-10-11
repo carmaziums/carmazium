@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -54,6 +55,8 @@ const requestedText = (job: ServiceJob) => {
 const statusText = (status: ServiceJob['status']) => status.replace(/_/g, ' ');
 
 export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useProviderJobDetailScreenPalette();
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
 
@@ -263,7 +266,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[themed.container, styles.center, { paddingTop: insets.top }]}>
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -271,23 +274,23 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   if (!job) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[themed.container, { paddingTop: insets.top }]}>
+        <View style={themed.header}>
           <IconButton
-            style={styles.headerButton}
+            style={themed.headerButton}
             icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
-          <Text style={styles.headerTitle}>Partner Job</Text>
+          <Text style={themed.headerTitle}>Partner Job</Text>
           <View style={{ width: 38 }} />
         </View>
-        <View style={styles.centerCard}>
+        <View style={themed.centerCard}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.cardTitle}>Job unavailable</Text>
-          <Text style={styles.bodyText}>{error || 'This job could not be loaded.'}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load()}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={themed.cardTitle}>Job unavailable</Text>
+          <Text style={themed.bodyText}>{error || 'This job could not be loaded.'}</Text>
+          <TouchableOpacity style={themed.primaryButton} onPress={() => void load()}>
+            <Text style={themed.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -295,71 +298,71 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[themed.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
-      <View style={styles.header}>
+      <View style={themed.header}>
         <IconButton
-          style={styles.headerButton}
+          style={themed.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Partner Job</Text>
-          <Text style={styles.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
+          <Text style={themed.headerTitle}>Partner Job</Text>
+          <Text style={themed.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
         </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{statusText(job.status)}</Text>
+        <View style={themed.statusPill}>
+          <Text style={themed.statusText}>{statusText(job.status)}</Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={themed.content} showsVerticalScrollIndicator={false}>
         {flash ? (
-          <View style={styles.successCard}>
+          <View style={themed.successCard}>
             <Ionicons name="checkmark-circle-outline" size={18} color={Colors.accentGreen} />
-            <Text style={styles.successText}>{flash}</Text>
+            <Text style={themed.successText}>{flash}</Text>
           </View>
         ) : null}
 
         {error ? (
-          <View style={styles.errorCard}>
+          <View style={themed.errorCard}>
             <Ionicons name="alert-circle-outline" size={18} color={Colors.accent} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={themed.errorText}>{error}</Text>
           </View>
         ) : null}
 
-        <View style={styles.nextStepCard}>
+        <View style={themed.nextStepCard}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.nextStepLabel}>WHAT HAPPENS NEXT</Text>
-            <Text style={styles.bodyText}>{nextStep}</Text>
+            <Text style={themed.nextStepLabel}>WHAT HAPPENS NEXT</Text>
+            <Text style={themed.bodyText}>{nextStep}</Text>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>
+        <View style={themed.card}>
+          <Text style={themed.eyebrow}>
             {job.serviceType === 'DELIVERY' && job.isRecovery ? 'RECOVERY' : SERVICE_LABELS[job.serviceType].toUpperCase()}
           </Text>
-          <Text style={styles.title}>{job.title}</Text>
+          <Text style={themed.title}>{job.title}</Text>
 
-          <View style={styles.infoRow}>
+          <View style={themed.infoRow}>
             <Ionicons name="location-outline" size={16} color={Colors.accent} />
-            <Text style={styles.infoText}>{routeText(job)}</Text>
+            <Text style={themed.infoText}>{routeText(job)}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={themed.infoRow}>
             <Ionicons name="time-outline" size={16} color={Colors.warning} />
-            <Text style={styles.infoText}>{requestedText(job)}</Text>
+            <Text style={themed.infoText}>{requestedText(job)}</Text>
           </View>
 
-          {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
+          {job.description ? <Text style={themed.description}>{job.description}</Text> : null}
         </View>
 
         {isMine && (
           job.pickupAddress || job.deliveryAddress || job.serviceAddress
         ) ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Full job location</Text>
+          <View style={themed.card}>
+            <Text style={themed.cardTitle}>Full job location</Text>
             {job.pickupAddress ? (
               <Info label="Pickup" value={`${job.pickupAddress}, ${job.pickupPostcode || ''}`} />
             ) : null}
@@ -372,92 +375,92 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
           </View>
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Vehicle{job.vehicles.length === 1 ? '' : 's'}</Text>
+        <View style={themed.card}>
+          <Text style={themed.cardTitle}>Vehicle{job.vehicles.length === 1 ? '' : 's'}</Text>
           {job.vehicles.length ? job.vehicles.map((vehicle, index) => (
-            <View key={vehicle.id || `${vehicle.registration || 'vehicle'}-${index}`} style={styles.vehicleRow}>
+            <View key={vehicle.id || `${vehicle.registration || 'vehicle'}-${index}`} style={themed.vehicleRow}>
               <Ionicons name="car-outline" size={18} color={Colors.textMuted} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.vehicleTitle}>
+                <Text style={themed.vehicleTitle}>
                   {[vehicle.registration, vehicle.make, vehicle.model].filter(Boolean).join(' · ') || `Vehicle ${index + 1}`}
                 </Text>
-                <Text style={styles.smallText}>
+                <Text style={themed.smallText}>
                   {[vehicle.year, vehicle.notes].filter(Boolean).join(' · ') || 'No extra vehicle notes'}
                 </Text>
               </View>
             </View>
-          )) : <Text style={styles.bodyText}>No vehicle details supplied.</Text>}
+          )) : <Text style={themed.bodyText}>No vehicle details supplied.</Text>}
         </View>
 
         {canQuote ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
+          <View style={themed.card}>
+            <Text style={themed.cardTitle}>
               {myQuote?.status === 'ACTIVE' ? 'Your quote' : 'Quote this job'}
             </Text>
 
-            <Text style={styles.label}>Customer price</Text>
-            <View style={styles.moneyInput}>
-              <Text style={styles.currency}>£</Text>
+            <Text style={themed.label}>Customer price</Text>
+            <View style={themed.moneyInput}>
+              <Text style={themed.currency}>£</Text>
               <TextInput
-                style={styles.moneyField}
+                style={themed.moneyField}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={palette.textMuted}
                 keyboardType="decimal-pad"
               />
             </View>
 
             {providerPence != null ? (
-              <Text style={styles.payoutHint}>
+              <Text style={themed.payoutHint}>
                 Customer pays {formatPence(amountPence)}. Your business receives approximately {formatPence(providerPence)} after the current CarMazium platform fee.
               </Text>
             ) : null}
 
-            <Text style={styles.label}>Quote message</Text>
+            <Text style={themed.label}>Quote message</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[themed.input, styles.textArea]}
               value={quoteMessage}
               onChangeText={setQuoteMessage}
               multiline
               maxLength={1000}
               placeholder="Collection window, vehicle type, anything that helps the customer choose you"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={palette.textMuted}
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, (busy === 'quote' || amountPence < 100) && styles.disabled]}
+              style={[themed.primaryButton, (busy === 'quote' || amountPence < 100) && styles.disabled]}
               disabled={busy === 'quote' || amountPence < 100}
               onPress={() => void sendQuote()}
             >
               {busy === 'quote'
                 ? <ActivityIndicator color={Colors.white} />
-                : <Text style={styles.primaryText}>
+                : <Text style={themed.primaryText}>
                     {myQuote?.status === 'ACTIVE' ? 'UPDATE QUOTE' : 'SEND QUOTE'}
                   </Text>}
             </TouchableOpacity>
 
             {myQuote?.status === 'ACTIVE' ? (
               <TouchableOpacity
-                style={styles.dangerButton}
+                style={themed.dangerButton}
                 disabled={busy === 'withdraw'}
                 onPress={withdraw}
               >
                 {busy === 'withdraw'
                   ? <ActivityIndicator color={Colors.accent} />
-                  : <Text style={styles.dangerText}>WITHDRAW QUOTE</Text>}
+                  : <Text style={themed.dangerText}>WITHDRAW QUOTE</Text>}
               </TouchableOpacity>
             ) : null}
           </View>
         ) : null}
 
         {isMine && job.agreedAmountPence != null ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Your payout</Text>
-            <Text style={styles.payoutAmount}>
+          <View style={themed.card}>
+            <Text style={themed.cardTitle}>Your payout</Text>
+            <Text style={themed.payoutAmount}>
               {formatPence(job.contractorAmountPence ?? 0)}
             </Text>
-            <Text style={styles.bodyText}>
+            <Text style={themed.bodyText}>
               From {formatPence(job.agreedAmountPence)} customer price. {
                 job.payment?.status === 'RELEASED'
                   ? 'Transferred to your Stripe business account.'
@@ -470,32 +473,32 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.customer && ACTIVE_JOB_STATUSES.includes(job.status) ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Customer</Text>
-            <Text style={styles.customerName}>
+          <View style={themed.card}>
+            <Text style={themed.cardTitle}>Customer</Text>
+            <Text style={themed.customerName}>
               {[job.customer.firstName, job.customer.lastName].filter(Boolean).join(' ') || 'Customer'}
             </Text>
             {job.customer.phone ? (
               <TouchableOpacity
-                style={styles.contactRow}
+                style={themed.contactRow}
                 onPress={() => void Linking.openURL(`tel:${job.customer?.phone}`)}
               >
                 <Ionicons name="call-outline" size={16} color={Colors.accent} />
-                <Text style={styles.contactText}>{job.customer.phone}</Text>
+                <Text style={themed.contactText}>{job.customer.phone}</Text>
               </TouchableOpacity>
             ) : null}
             {job.customer.email ? (
               <TouchableOpacity
-                style={styles.contactRow}
+                style={themed.contactRow}
                 onPress={() => void Linking.openURL(`mailto:${job.customer?.email}`)}
               >
                 <Ionicons name="mail-outline" size={16} color={Colors.accent} />
-                <Text style={styles.contactText}>{job.customer.email}</Text>
+                <Text style={themed.contactText}>{job.customer.email}</Text>
               </TouchableOpacity>
             ) : null}
             {canMessageCustomer ? (
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={themed.secondaryButton}
                 disabled={busy === 'chat'}
                 onPress={() => void openChat()}
               >
@@ -503,7 +506,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   ? <ActivityIndicator color={Colors.white} />
                   : <>
                       <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
-                      <Text style={styles.secondaryText}>MESSAGE CUSTOMER</Text>
+                      <Text style={themed.secondaryText}>MESSAGE CUSTOMER</Text>
                     </>}
               </TouchableOpacity>
             ) : null}
@@ -511,69 +514,69 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && (job.status === 'PAID' || job.status === 'IN_PROGRESS') ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Work status</Text>
+          <View style={themed.card}>
+            <Text style={themed.cardTitle}>Work status</Text>
 
             {job.status === 'PAID' ? (
               <>
-                <Text style={styles.bodyText}>Customer payment is confirmed. Start the job when work begins.</Text>
+                <Text style={themed.bodyText}>Customer payment is confirmed. Start the job when work begins.</Text>
                 <TouchableOpacity
-                  style={styles.primaryButton}
+                  style={themed.primaryButton}
                   disabled={busy === 'start'}
                   onPress={start}
                 >
                   {busy === 'start'
                     ? <ActivityIndicator color={Colors.white} />
-                    : <Text style={styles.primaryText}>START JOB</Text>}
+                    : <Text style={themed.primaryText}>START JOB</Text>}
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 {job.serviceType === 'INSPECTION' ? (
                   <>
-                    <Text style={styles.label}>Inspection outcome</Text>
-                    <View style={styles.choiceRow}>
+                    <Text style={themed.label}>Inspection outcome</Text>
+                    <View style={themed.choiceRow}>
                       <TouchableOpacity
-                        style={[styles.choice, inspectionOutcome === 'PASS' && styles.choiceActive]}
+                        style={[themed.choice, inspectionOutcome === 'PASS' && styles.choiceActive]}
                         onPress={() => setInspectionOutcome('PASS')}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: inspectionOutcome === 'PASS' }}
                         accessibilityLabel="Inspection passed"
                       >
-                        <Text style={[styles.choiceText, inspectionOutcome === 'PASS' && styles.choiceTextActive]}>
+                        <Text style={[themed.choiceText, inspectionOutcome === 'PASS' && styles.choiceTextActive]}>
                           PASS
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.choice, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceActiveWarning]}
+                        style={[themed.choice, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceActiveWarning]}
                         onPress={() => setInspectionOutcome('FAULTS_FOUND')}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: inspectionOutcome === 'FAULTS_FOUND' }}
                         accessibilityLabel="Faults found at inspection"
                       >
-                        <Text style={[styles.choiceText, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceTextWarning]}>
+                        <Text style={[themed.choiceText, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceTextWarning]}>
                           FAULTS FOUND
                         </Text>
                       </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.label}>
+                    <Text style={themed.label}>
                       Inspection summary {inspectionOutcome === 'FAULTS_FOUND' ? '· required' : '· optional'}
                     </Text>
                     <TextInput
-                      style={[styles.input, styles.textArea]}
+                      style={[themed.input, styles.textArea]}
                       value={inspectionSummary}
                       onChangeText={setInspectionSummary}
                       multiline
                       maxLength={2000}
                       placeholder="Condition, checks completed and any faults found"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={palette.textMuted}
                     />
 
                     {inspectionOutcome === 'FAULTS_FOUND' ? (
-                      <View style={styles.warningCard}>
+                      <View style={themed.warningCard}>
                         <Ionicons name="warning-outline" size={16} color={Colors.warning} />
-                        <Text style={styles.warningText}>
+                        <Text style={themed.warningText}>
                           A verified fault outcome can allow a linked auction buyer to refuse the vehicle before approved handover and receive the full buyer-fee refund.
                         </Text>
                       </View>
@@ -607,7 +610,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 >
                   {busy === 'complete'
                     ? <ActivityIndicator color={Colors.white} />
-                    : <Text style={styles.primaryText}>MARK COMPLETE</Text>}
+                    : <Text style={themed.primaryText}>MARK COMPLETE</Text>}
                 </TouchableOpacity>
               </>
             )}
@@ -615,8 +618,8 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.status === 'ACCEPTED' ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>
+          <View style={themed.noticeCard}>
+            <Text style={themed.bodyText}>
               Your quote was accepted. Waiting for customer payment{
                 settings ? ` within ${settings.acceptedPaymentTimeoutMinutes} minutes` : ''
               }. If payment is not completed, the backend safely reopens the job.
@@ -625,16 +628,16 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.status === 'COMPLETED' ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>
+          <View style={themed.noticeCard}>
+            <Text style={themed.bodyText}>
               Waiting for the customer to confirm completion. The backend auto-releases payout after the configured confirmation period.
             </Text>
           </View>
         ) : null}
 
         {!isMine && !canQuote ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>This job is no longer open for quoting.</Text>
+          <View style={themed.noticeCard}>
+            <Text style={themed.bodyText}>This job is no longer open for quoting.</Text>
           </View>
         ) : null}
 
@@ -645,9 +648,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 };
 
 const Info = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoLine}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
+  <View style={themed.infoLine}>
+    <Text style={themed.infoLabel}>{label}</Text>
+    <Text style={themed.infoValue}>{value}</Text>
   </View>
 );
 
@@ -724,3 +727,49 @@ const styles = StyleSheet.create({
   choiceTextActive: { color: Colors.accentGreen },
   choiceTextWarning: { color: Colors.warning },
 });
+
+function useProviderJobDetailScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    center: [styles.center, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    headerButton: [styles.headerButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    headerSub: [styles.headerSub, { color: palette.textMuted }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    nextStepCard: [styles.nextStepCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    nextStepLabel: [styles.nextStepLabel, { color: palette.textSecondary }],
+    noticeCard: [styles.noticeCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    successCard: [styles.successCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    successText: [styles.successText, { color: palette.textPrimary }],
+    errorCard: [styles.errorCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    warningCard: [styles.warningCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    eyebrow: [styles.eyebrow, { color: palette.textMuted }],
+    title: [styles.title, { color: palette.textPrimary }],
+    cardTitle: [styles.cardTitle, { color: palette.textPrimary }],
+    bodyText: [styles.bodyText, { color: palette.textSecondary }],
+    description: [styles.description, { color: palette.textSecondary }],
+    infoRow: [styles.infoRow, { borderBottomColor: palette.borderDefault }],
+    infoText: [styles.infoText, { color: palette.textSecondary }],
+    infoLabel: [styles.infoLabel, { color: palette.textMuted }],
+    infoValue: [styles.infoValue, { color: palette.textPrimary }],
+    vehicleTitle: [styles.vehicleTitle, { color: palette.textPrimary }],
+    smallText: [styles.smallText, { color: palette.textMuted }],
+    label: [styles.label, { color: palette.textSecondary }],
+    input: [styles.input, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    textArea: [styles.textArea, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    moneyInput: [styles.moneyInput, { color: palette.textPrimary }],
+    moneyField: [styles.moneyField, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    currency: [styles.currency, { color: palette.textSecondary }],
+    payoutHint: [styles.payoutHint, { color: palette.textMuted }],
+    payoutAmount: [styles.payoutAmount, { color: palette.textPrimary }],
+    customerName: [styles.customerName, { color: palette.textPrimary }],
+    contactText: [styles.contactText, { color: palette.textSecondary }],
+    secondaryButton: [styles.secondaryButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    secondaryText: [styles.secondaryText, { color: palette.textPrimary }],
+    choice: [styles.choice, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    choiceText: [styles.choiceText, { color: palette.textSecondary }],
+  }), [palette]);
+}
