@@ -244,13 +244,15 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               onPress={onPress}
               activeOpacity={0.75}
               accessibilityRole="tab"
-              accessibilityLabel={config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
+              accessibilityLabel={route.name === 'DealerMore'
+                ? 'Dealer tools'
+                : config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
               accessibilityState={{ selected: isFocused }}
               accessibilityHint={route.name === 'DealerMore' ? 'Opens dealer business tools, not the main Menu' : isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
             >
               {/* Active dot above focused tabs */}
               {isFocused && (
-                <View style={styles.activeDot} />
+                <View style={styles.activeDot} accessibilityElementsHidden importantForAccessibility="no" />
               )}
               <View style={styles.iconWrapper}>
                 <AnimatedTabIcon
