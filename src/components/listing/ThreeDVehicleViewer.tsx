@@ -308,6 +308,10 @@ export function ThreeDVehicleViewer({
     <div
       ref={containerRef}
       className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
+      role="group"
+      aria-label={onSurfaceTap
+        ? "Interactive 3D vehicle marking area. Tap the surface or use the manual area selector. Use the saved damage list for keyboard navigation."
+        : "Interactive 3D vehicle damage view. Numbered buttons open individual seller damage reports; the damage list is also available."}
       style={{ height: 400 }}
     >
       {!inView ? (
