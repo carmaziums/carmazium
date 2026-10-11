@@ -155,7 +155,7 @@ test('shared drawer does not leave a dealer sheet mounted on top of closed navig
 test('MaziuM launcher yields to account settings, protected forms, menu and keyboard without obscuring tabs', () => {
   const ai = app('components/GlobalAIChatBot.tsx');
   const settings = app('screens/main/SettingsScreen.tsx');
-  const shell = app('../../App.tsx');
+  const shell = app('../App.tsx');
   const drawerContext = app('context/DrawerContext.tsx');
   const layout = app('lib/nativeLayoutParity.ts');
 
