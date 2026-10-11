@@ -1,10 +1,14 @@
 # Manual, read-only diagnostics for the existing production Fly app.
 # The public GitHub Actions output contains only sanitized aggregates.
-# No pull_request/push trigger: a Fly deployment token must not be exposed to
-# arbitrary PR or branch code. This workflow never deploys/restarts machines.
+# Pull requests run syntax checks WITHOUT any Fly token. Only a manually
+# dispatched run on reviewed main can access the existing Fly secret.
 name: Fly Connection Diagnostics (Read Only)
 
 on:
+  pull_request:
+    paths:
+      - 'scripts/fly-readonly-connection-diagnostics.mjs'
+      - '.github/workflows/fly-connection-diagnostics.yml'
   workflow_dispatch:
 
 permissions:
@@ -15,8 +19,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate read-only diagnostic source
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --check scripts/fly-readonly-connection-diagnostics.mjs
+
   inspect:
     name: Inspect Fly backend availability
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
