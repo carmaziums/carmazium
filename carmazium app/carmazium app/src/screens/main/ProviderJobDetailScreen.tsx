@@ -647,12 +647,15 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   );
 };
 
-const Info = ({ label, value }: { label: string; value: string }) => (
-  <View style={themed.infoLine}>
-    <Text style={themed.infoLabel}>{label}</Text>
-    <Text style={themed.infoValue}>{value}</Text>
-  </View>
-);
+const Info = ({ label, value }: { label: string; value: string }) => {
+  const themed = useProviderJobDetailScreenPalette();
+  return (
+    <View style={themed.infoLine}>
+      <Text style={themed.infoLabel}>{label}</Text>
+      <Text style={themed.infoValue}>{value}</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
@@ -760,8 +763,8 @@ function useProviderJobDetailScreenPalette() {
     label: [styles.label, { color: palette.textSecondary }],
     input: [styles.input, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
     textArea: [styles.textArea, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
-    moneyInput: [styles.moneyInput, { color: palette.textPrimary }],
-    moneyField: [styles.moneyField, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    moneyInput: [styles.moneyInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    moneyField: [styles.moneyField, { color: palette.textPrimary }],
     currency: [styles.currency, { color: palette.textSecondary }],
     payoutHint: [styles.payoutHint, { color: palette.textMuted }],
     payoutAmount: [styles.payoutAmount, { color: palette.textPrimary }],
