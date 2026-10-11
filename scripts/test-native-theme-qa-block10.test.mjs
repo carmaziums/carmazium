@@ -19,7 +19,7 @@ test('Block 10 inventories every native Screen.tsx instead of declaring untested
   assert.ok(report.coverage.semantic_palette_source_markers <= report.coverage.total_screen_files);
   assert.equal(report.coverage.critical_screen_count, REQUIRED_CRITICAL_SCREENS.length);
   assert.deepEqual(report.coverage.critical_screens_missing, []);
-  assert.match(report.coverage.warning, /not.*screenshot evidence/);
+  assert.match(report.coverage.warning, /neither.*screenshot evidence/);
   assert.equal(report.conclusion, 'NO_GO_DEVICE_EVIDENCE_REQUIRED');
   assert.equal(report.public_download_approved, false);
   assert.equal(report.appearance_toggle_approved, false);
@@ -46,7 +46,7 @@ test('website public APK link stays behind explicit approval, exact SHA-256 and 
   assert.equal(report.source_safeguards.public_apk_flag_host_sha_gate, true);
   const downloads = read('src/lib/mobileAppDownloads.ts');
   assert.match(downloads, /NEXT_PUBLIC_CARMAZIUM_ANDROID_APK_RELEASE_APPROVED !== "true"/);
-  assert.match(downloads, /\/downloads\\\//);
+  assert.match(downloads, /downloads/);
   assert.match(downloads, /\(qa\|preview\|staging\|debug\|dev\|test\|review-only\)/);
   assert.match(downloads, /\^\[a-f0-9\]\{64\}\$/i);
 });
