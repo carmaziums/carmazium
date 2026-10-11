@@ -570,9 +570,11 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     color: Colors.lightGrey,
   },
+  // Avoid illegible 3:1 red text on the dark dropdown. Brand-red active
+  // indicator and icon remain, while the menu destination stays readable.
   rowLabelActive: {
     fontFamily: FontFamily.bold,
-    color: Colors.accent,
+    color: Colors.textPrimary,
   },
   rowLabelRed: {
     flex: 1,
