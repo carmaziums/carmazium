@@ -377,7 +377,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
               {uploadError} Your damage details remain in this editor. Select the photo again to retry.
               <button type="button" onClick={() => { setUploadError(null); setPendingPhoto(undefined) }}
                 className="ml-2 underline">Continue without photo</button>
-            </p>
+            </p>}
             {pendingPhoto ? (
               <div className="relative inline-block">
                 <Image src={pendingPhoto} alt="damage" width={120} height={90} className="rounded-xl object-cover border border-[var(--border-default)]" />
@@ -498,7 +498,7 @@ export function VehicleDamageMapper({ bodyType: initialBodyType, onComplete, exi
         </p>
       </div>
 
-      </div>
+      </div>}
 
       {/* Recorded damage list */}
       {records.length > 0 && (
