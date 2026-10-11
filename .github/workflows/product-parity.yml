@@ -45,6 +45,8 @@ jobs:
       - run: node scripts/check-auction-seller-sequencing.mjs
       - name: Verify app installation buttons, links and release gating
         run: node --test scripts/test-website-mobile-app-downloads.test.mjs
+      - name: Verify administrator-only dashboard navigation and customer onboarding isolation
+        run: node --test scripts/test-admin-exclusive-dashboard-routing.test.mjs
       - name: Auction shortlist web regressions
         run: node --test scripts/test-auction-shortlist.test.mjs
       - run: npx tsc --noEmit
