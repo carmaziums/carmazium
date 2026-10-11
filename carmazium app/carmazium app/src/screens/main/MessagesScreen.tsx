@@ -268,12 +268,12 @@ export const MessagesScreen: React.FC = () => {
             {/* Header navigation bar */}
             <View style={themed.header}>
               <View>
-                <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+                <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
                 <Text style={themed.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
                 <Text style={themed.title}>Messages</Text>
               </View>
 
-              <IconButton style={themed.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
+              <IconButton style={themed.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={palette.textPrimary} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
             </View>
 
             {/* Website-style search is always visible and usable. */}
