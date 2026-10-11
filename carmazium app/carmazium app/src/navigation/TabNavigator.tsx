@@ -115,7 +115,7 @@ const TAB_CONFIG: {
   { name: 'Profile', icon: 'grid-outline', iconActive: 'grid', label: 'DASHBOARD', iconType: 'ionicons' },
   { name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Home', iconType: 'ionicons' },
   { name: 'DealerStock', icon: 'car-outline', iconActive: 'car', label: 'Stock', iconType: 'ionicons' },
-  { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'CLIENTS', iconType: 'ionicons' },
+  { name: 'DealerCustomers', icon: 'people-outline', iconActive: 'people', label: 'Customers', iconType: 'ionicons' },
   { name: 'DealerBuyBid', icon: 'gavel', iconActive: 'gavel', label: 'Buy & Bid', iconType: 'material-community' },
   { name: 'DealerMore', icon: 'apps-outline', iconActive: 'apps', label: 'More', iconType: 'ionicons' },
 ];
@@ -273,7 +273,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 maxFontSizeMultiplier={2}
                 ellipsizeMode="tail"
               >
-                {config.label}
+                {route.name === 'DealerCustomers' ? 'CLIENTS' : config.label}
               </Text>
             </TouchableOpacity>
           );
