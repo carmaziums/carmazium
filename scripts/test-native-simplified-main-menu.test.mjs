@@ -11,19 +11,13 @@ const valuation = app('screens/sell/SellLandingScreen.tsx');
 const dealer = app('screens/main/DealerProfileScreen.tsx');
 
 const mainMenu = drawer.slice(drawer.indexOf('const MAIN_MENU: MenuItem[] = ['), drawer.indexOf('export const GlobalDrawer'));
-const topLevel = [...mainMenu.matchAll(/^  \{ id: '([^']+)', label: '([^']+)'/gm)];
-const nestedTopLevel = [...mainMenu.matchAll(/^    id: '([^']+)', label: '([^']+)'/gm)];
+const topLevel = [...mainMenu.matchAll(/^(?:  \\{ id:|    id:) '([^']+)'/gm)];
 test('ten consistent public menu choices, ordered exactly as requested', () => {
-  const single = topLevel.map(m => m[1]);
-  const expanded = nestedTopLevel.map(m => m[1]);
-  const ids = [...single, ...expanded];
-  assert.deepEqual(ids, ['home','valuation','tradexchange','compare','pricing','about','settings','dashboard','buy','sell'].sort((a,b) => {
-    const order=['home','valuation','buy','sell','tradexchange','compare','pricing','about','settings','dashboard'];
-    return order.indexOf(a)-order.indexOf(b);
-  }).sort((a,b) => {
-    const order=['home','valuation','tradexchange','compare','pricing','about','settings','dashboard','buy','sell'];
-    return order.indexOf(a)-order.indexOf(b);
-  }));
+  const ids = topLevel.map(match => match[1]);
+  assert.deepEqual(ids, [
+    'home', 'valuation', 'buy', 'sell', 'tradexchange', 'compare',
+    'pricing', 'about', 'settings', 'dashboard',
+  ]);
   assert.equal(ids.length,10);
   const labels = ['Home','Get Valuation','Buy Cars','Sell Cars','TradeXchange','Compare','Pricing','About','Profile Settings','User Dashboard'];
   for (const label of labels) assert.ok(mainMenu.includes(`label: '${label}'`), label);
