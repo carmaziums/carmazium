@@ -493,8 +493,16 @@ function Damage3DMapper({
   }, [addingZone, pickingDamagePhoto, uploadingDamagePhoto, onPendingChange]);
   const [customZoneText, setCustomZoneText] = useState('');
   const damagePins = useMemo(() => records.flatMap((record, index) =>
-    record.surfacePoint ? [{ id: record.id, number: index + 1, point: record.surfacePoint }] : []
+    record.surfacePoint ? [{
+      id: record.id, number: index + 1, point: record.surfacePoint,
+      type: record.type, zone: record.zone, hasPhoto: Boolean(record.damagePhotoUrl),
+    }] : []
   ), [records]);
+  const photoProofCount = records.filter(record => Boolean(record.damagePhotoUrl)).length;
+  const manuallyLocatedCount = records.length - damagePins.length;
+  const damageTypeCounts = DAMAGE_TYPES.map(type => ({
+    type, count: records.filter(record => record.type === type).length,
+  })).filter(item => item.count > 0);
 
   const editDamage = (id: string) => {
     if (uploadingDamagePhoto || pickingDamagePhoto) return;
@@ -597,12 +605,34 @@ function Damage3DMapper({
     <View>
       <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderMuted, backgroundColor: Colors.darkBlue_2a2a35 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabels[grade]}</Text>
-            <Text style={[s.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
+            <Text style={[s.fieldHint, { marginTop: 3 }]}>
+              Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.
+            </Text>
           </View>
           <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.lg }}>{grade}</Text>
         </View>
+        <View style={s.damageSummaryRow} accessibilityLabel="Recorded vehicle damage summary">
+          <View style={s.damageSummaryItem}>
+            <Text style={s.damageSummaryNumber}>{records.length}</Text>
+            <Text style={s.damageSummaryCaption}>Damages</Text>
+          </View>
+          <View style={s.damageSummaryItem}>
+            <Text style={s.damageSummaryNumber}>{damagePins.length}</Text>
+            <Text style={s.damageSummaryCaption}>3D pins</Text>
+          </View>
+          <View style={s.damageSummaryItem}>
+            <Text style={s.damageSummaryNumber}>{photoProofCount}</Text>
+            <Text style={s.damageSummaryCaption}>Photos</Text>
+          </View>
+        </View>
+        {records.length > 0 && (
+          <Text style={[s.zoneHint, { marginTop: 8 }]}>
+            {damageTypeCounts.map(({ type, count }) => `${count} ${type.toLowerCase()}`).join(' · ')}
+            {manuallyLocatedCount > 0 ? ` · ${manuallyLocatedCount} manually placed (see list)` : ''}
+          </Text>
+        )}
       </View>
 
       {/* 3D vehicle viewer with tappable damage hotspots */}
@@ -633,6 +663,14 @@ function Damage3DMapper({
         bodyTypeLabel={bodyTypeLabel}
         onInteractionChange={onInteractionChange}
       />
+      <View style={s.damagePinLegend}>
+        <View style={[s.damageLegendDot, { backgroundColor: Colors.warning }]} />
+        <Text style={s.damageLegendText}>Scratch / Scuff</Text>
+        <View style={[s.damageLegendDot, { backgroundColor: Colors.error }]} />
+        <Text style={s.damageLegendText}>Dent / Crack</Text>
+        <View style={[s.damageLegendDot, { backgroundColor: Colors.accent }]} />
+        <Text style={s.damageLegendText}>Other</Text>
+      </View>
 
       {/* One-tap quick editor immediately below the 3D model. The surface
           chooser infers a panel from the illustrative model, never a verified
@@ -898,9 +936,9 @@ function Damage3DMapper({
         <View style={{ marginTop: 16 }}>
           <SL label={`DAMAGE RECORDS (${records.length})`} />
           {records.map(r => (
-            <View key={r.id} style={s.dmgRecord}>
+            <View key={r.id} style={[s.dmgRecord, editingDamageId === r.id && s.dmgRecordSelected]}>
               <View style={{ flex: 1 }}>
-                <Text style={s.dmgRecordZone}>Damage {records.indexOf(r) + 1} · {r.zone}</Text>
+                <Text style={s.dmgRecordZone}>#{records.indexOf(r) + 1} · {r.zone}{editingDamageId === r.id ? ' · Editing' : ''}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
                 {(r.damagePhotoUrl || r.localDamagePhotoUri) && (
                   <View style={s.damageSavedPhotoRow}>
@@ -4814,7 +4852,15 @@ const s = StyleSheet.create({
   damageRecordThumbnail: { width: 64, height: 52, borderRadius: 6, backgroundColor: Colors.bgPrimary },
   dmgForm: { backgroundColor: Colors.bgSecondaryAlt, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha20, padding: 14, marginBottom: 12 },
   dmgFormTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: 12 },
+  damageSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, gap: 8 },
+  damageSummaryItem: { flex: 1, alignItems: 'center', paddingVertical: 8, borderWidth: 1, borderColor: Colors.borderMuted, borderRadius: 8 },
+  damageSummaryNumber: { fontSize: FontSize.lg, fontFamily: FontFamily.bold, color: Colors.white },
+  damageSummaryCaption: { fontSize: FontSize.xs, fontFamily: FontFamily.medium, color: Colors.iconMuted },
+  damagePinLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8, marginBottom: 4 },
+  damageLegendDot: { width: 10, height: 10, borderRadius: 5 },
+  damageLegendText: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.xs },
   dmgRecord: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: Colors.whiteAlpha03, borderRadius: 8, padding: 10, marginBottom: 6 },
+  dmgRecordSelected: { borderColor: Colors.accent, borderWidth: 2, backgroundColor: Colors.accentAlpha22 },
   dmgRecordZone: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 2 },
   dmgRecordMeta: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted },
 
