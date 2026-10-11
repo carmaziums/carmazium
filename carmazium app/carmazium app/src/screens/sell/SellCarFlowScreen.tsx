@@ -607,6 +607,7 @@ function Damage3DMapper({
               accessibilityRole="button"
               accessibilityLabel="Change selected damage panel"
               onPress={() => { setCorrectingPanel(true); setPanelChooserOpen(true); }}
+              disabled={uploadingDamagePhoto}
               style={s.damageChangePanelButton}
               activeOpacity={0.8}
             >
@@ -638,8 +639,8 @@ function Damage3DMapper({
             <SL label="DAMAGE PHOTO (optional)" />
             <View style={s.damagePhotoActions}>
               <TouchableOpacity
-                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
-                disabled={pickingDamagePhoto}
+                style={[s.damagePhotoAction, (pickingDamagePhoto || uploadingDamagePhoto) && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 onPress={() => { void pickDamagePhoto('camera'); }}
                 accessibilityRole="button"
                 accessibilityLabel="Take a photo of this damage"
@@ -648,8 +649,8 @@ function Damage3DMapper({
                 <Text style={s.damagePhotoActionText}>Take Photo</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.damagePhotoAction, pickingDamagePhoto && { opacity: 0.5 }]}
-                disabled={pickingDamagePhoto}
+                style={[s.damagePhotoAction, (pickingDamagePhoto || uploadingDamagePhoto) && { opacity: 0.5 }]}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 onPress={() => { void pickDamagePhoto('gallery'); }}
                 accessibilityRole="button"
                 accessibilityLabel="Choose a damage photo from the gallery"
@@ -674,11 +675,11 @@ function Damage3DMapper({
                 />
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={s.damagePhotoActionText}>Photo selected</Text>
-                  <Text style={s.zoneHint}>Local preview only — permanent upload is added in the next block.</Text>
+                  <Text style={s.zoneHint}>This photo will be uploaded when you save the damage.</Text>
                   <TouchableOpacity
                     style={s.damageRemovePhoto}
                     onPress={() => setPendingDamagePhotoUri(null)}
-                    disabled={pickingDamagePhoto}
+                    disabled={pickingDamagePhoto || uploadingDamagePhoto}
                     accessibilityRole="button"
                     accessibilityLabel="Remove selected damage photo"
                   >
@@ -687,6 +688,17 @@ function Damage3DMapper({
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
+            {uploadingDamagePhoto && (
+              <View style={s.damagePhotoBusy} accessibilityLiveRegion="polite">
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text style={s.damagePhotoActionText}>Uploading damage photo — {damageUploadPercent}%</Text>
+              </View>
+            )}
+            {damageUploadError && (
+              <Text style={s.inlineError} accessibilityLiveRegion="polite">
+                {damageUploadError} Your photo and description are still here. Tap Retry Save to try again.
+              </Text>
             )}
             <SL label="DESCRIPTION (optional)" />
             <TextInput
@@ -701,7 +713,7 @@ function Damage3DMapper({
               <TouchableOpacity
                 style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
                 onPress={resetDamageEditor}
-                disabled={pickingDamagePhoto}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel damage entry"
@@ -711,12 +723,12 @@ function Damage3DMapper({
               <TouchableOpacity
                 style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12, minHeight: 44 }]}
                 onPress={confirmAdd}
-                disabled={pickingDamagePhoto}
+                disabled={pickingDamagePhoto || uploadingDamagePhoto}
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel="Save damage and add another"
               >
-                <Text style={s.pillTextActive}>SAVE & ADD ANOTHER</Text>
+                <Text style={s.pillTextActive}>{uploadingDamagePhoto ? 'UPLOADING...' : damageUploadError ? 'RETRY SAVE' : 'SAVE & ADD ANOTHER'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -732,6 +744,7 @@ function Damage3DMapper({
       <TouchableOpacity
         style={s.damageChooserToggle}
         onPress={() => {
+          if (uploadingDamagePhoto) return;
           if (panelChooserOpen) {
             setPanelChooserOpen(false);
             setCorrectingPanel(false);
@@ -771,7 +784,7 @@ function Damage3DMapper({
                     <TouchableOpacity
                       key={zone.id}
                       style={[s.pill, (isMarked || isSelected) && s.pillActive]}
-                      onPress={() => chooseKnownPanel(zone.label)}
+                      onPress={() => { if (!uploadingDamagePhoto) chooseKnownPanel(zone.label); }}
                       activeOpacity={0.7}
                       accessibilityRole="button"
                       accessibilityLabel={`Select ${zone.label} as damaged area`}
@@ -800,6 +813,7 @@ function Damage3DMapper({
                 disabled={!customZoneText.trim()}
                 onPress={() => {
                   // Custom areas do not have known model coordinates.
+                  if (uploadingDamagePhoto) return;
                   selectManualZone(customZoneText.trim());
                   setCustomZoneText('');
                 }}
@@ -824,17 +838,17 @@ function Damage3DMapper({
               <View style={{ flex: 1 }}>
                 <Text style={s.dmgRecordZone}>{r.zone}</Text>
                 <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
-                {r.localDamagePhotoUri && (
+                {(r.damagePhotoUrl || r.localDamagePhotoUri) && (
                   <View style={s.damageSavedPhotoRow}>
                     <ExpoImage
-                      source={{ uri: r.localDamagePhotoUri }}
+                      source={{ uri: r.damagePhotoUrl || r.localDamagePhotoUri }}
                       style={s.damageRecordThumbnail}
                       contentFit="cover"
-                      accessibilityLabel={`Photo preview for ${r.zone}`}
+                      accessibilityLabel={`Damage evidence for ${r.zone}`}
                     />
-                    <Text style={s.zoneHint}>Photo awaiting upload</Text>
+                    <Text style={s.zoneHint}>{r.damagePhotoUrl ? 'Photo uploaded' : 'Photo awaiting upload'}</Text>
                   </View>
-                )}
+                )
               </View>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
