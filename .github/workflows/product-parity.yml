@@ -19,6 +19,7 @@ on:
       - 'scripts/test-native-damage-durable-upload-block4.test.mjs'
       - 'scripts/test-native-damage-multiple-pins-block5.test.mjs'
       - 'scripts/test-native-damage-draft-recovery-block6.test.mjs'
+      - 'scripts/test-native-damage-pin-visibility-block7.test.mjs'
       - '.github/workflows/product-parity.yml'
 
 jobs:
@@ -48,6 +49,8 @@ jobs:
         run: node --test scripts/test-native-damage-multiple-pins-block5.test.mjs
       - name: Block 6 — verify damage draft recovery, photo references and cleanup safeguards
         run: node --test scripts/test-native-damage-draft-recovery-block6.test.mjs
+      - name: Block 7 — camera-following damage pins, collision visibility and grade summary
+        run: node --test scripts/test-native-damage-pin-visibility-block7.test.mjs
 
   web-typecheck:
     name: Web typecheck

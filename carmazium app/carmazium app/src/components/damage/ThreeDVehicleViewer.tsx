@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { layoutProjectedDamagePins } from './damagePinLayout';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -88,6 +89,9 @@ export interface DamagePin3D {
   id: string;
   number: number;
   point: DamageSurfacePoint;
+  type?: 'SCRATCH' | 'SCUFF' | 'DENT' | 'CRACK' | 'OTHER';
+  zone?: string;
+  hasPhoto?: boolean;
 }
 
 export interface ThreeDVehicleViewerProps {
@@ -169,6 +173,21 @@ export function ThreeDVehicleViewer({
   // zones have no exterior 3D position and are never rendered as hotspots.
   const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
   const [damagePinScreenPos, setDamagePinScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
+  const [viewportSize, setViewportSize] = useState({ width: 0, height });
+  const handleViewportLayout = useCallback((event: { nativeEvent: { layout: { width: number; height: number } } }) => {
+    const { width, height: measuredHeight } = event.nativeEvent.layout;
+    setViewportSize(prev => Math.abs(prev.width - width) > 1 || Math.abs(prev.height - measuredHeight) > 1
+      ? { width, height: measuredHeight } : prev);
+  }, []);
+  const placedDamagePins = useMemo(() => {
+    const projected = damagePins.map(pin => ({
+      id: pin.id,
+      x: damagePinScreenPos[pin.id]?.x ?? 0,
+      y: damagePinScreenPos[pin.id]?.y ?? 0,
+      visible: damagePinScreenPos[pin.id]?.visible ?? false,
+    }));
+    return layoutProjectedDamagePins(projected, viewportSize.width, viewportSize.height);
+  }, [damagePins, damagePinScreenPos, viewportSize]);
   const pinWire = useMemo(() => JSON.stringify(damagePins.map(pin => ({
     id: pin.id, ...pin.point,
   }))), [damagePins]);
@@ -177,7 +196,9 @@ export function ThreeDVehicleViewer({
     webViewRef.current?.injectJavaScript(
       'window.setDamagePins(' + JSON.stringify(pinWire) + '); true;'
     );
-    if (!damagePins.length) setDamagePinScreenPos({});
+    if (!damagePins.length) {
+      setDamagePinScreenPos(prev => Object.keys(prev).length ? {} : prev);
+    }
   }, [modelReady, pinWire]);
   const hotspotZones = useMemo(() => zones.filter((z) => z.box), [zones]);
   const hotspotZonesRef = useRef(hotspotZones);
@@ -255,7 +276,17 @@ export function ThreeDVehicleViewer({
           if (typeof p.id !== 'string' || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
           next[p.id] = { x: p.x, y: p.y, visible: p.visible === true };
         }
-        setDamagePinScreenPos(next);
+        // Avoid re-rendering every bridge tick if projection did not move.
+        setDamagePinScreenPos(prev => {
+          const keys = Object.keys(next);
+          if (keys.length === Object.keys(prev).length && keys.every(id =>
+            prev[id] && prev[id].visible === next[id].visible
+            && Math.abs(prev[id].x - next[id].x) <= 0.16
+            && Math.abs(prev[id].y - next[id].y) <= 0.16)) {
+            return prev;
+          }
+          return next;
+        });
       } else if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
         setZoneScreenPos((prev) => {
           let changed = false;
@@ -313,6 +344,7 @@ export function ThreeDVehicleViewer({
     <View>
       <View
         style={[styles.wrap, { height }]}
+        onLayout={handleViewportLayout}
         onTouchStart={() => setInteracting(true)}
         onTouchEnd={() => setInteracting(false)}
         onTouchCancel={() => setInteracting(false)}
@@ -380,7 +412,7 @@ export function ThreeDVehicleViewer({
           pointerEvents="box-none" lets touches that miss a hotspot fall
           through to the WebView so orbit drag still works */}
       <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
-        {hotspotZones.map((zone) => {
+        {!inlineDamageEditor && hotspotZones.map((zone) => {
           const screenPos = zoneScreenPos[zone.id];
           // Nothing projected yet (viewer/model still loading) or the zone is
           // on the far side of the car / off-screen from the current angle.
@@ -424,26 +456,50 @@ export function ThreeDVehicleViewer({
           );
         })}
 
-        {/* Independent numbered defect pins. Tapping one edits that exact
-            defect, not every scratch/dent on its parent panel. */}
-        {damagePins.map(pin => {
-          const pos = damagePinScreenPos[pin.id];
-          if (!pos?.visible) return null;
+        {/* Seller 3D defect pins: each number links to ONE record, even when
+            several scratches share a door. Collision layout is native-only:
+            stored 3D positions and raycast precision are never modified. */}
+        {!readOnly && placedDamagePins.map(placed => {
+          const pin = damagePins.find(item => item.id === placed.id);
+          const projected = damagePinScreenPos[placed.id];
+          if (!pin || !projected) return null;
+          const selected = selectedDamageId === pin.id;
+          const typeColor = pin.type === 'CRACK' || pin.type === 'DENT'
+            ? Colors.error : pin.type === 'SCRATCH' || pin.type === 'SCUFF'
+              ? Colors.warning : Colors.accent;
+          const originalX = viewportSize.width * projected.x / 100;
+          const originalY = viewportSize.height * projected.y / 100;
+          const midX = (originalX + placed.left) / 2;
+          const midY = (originalY + placed.top) / 2;
+          const tetherLength = Math.hypot(placed.left - originalX, placed.top - originalY);
+          const tetherAngle = Math.atan2(placed.top - originalY, placed.left - originalX) * 180 / Math.PI;
           return (
-            <TouchableOpacity
-              key={pin.id}
-              style={[styles.damagePin, {
-                left: `${pos.x}%` as any,
-                top: `${pos.y}%` as any,
-              }, selectedDamageId === pin.id && styles.damagePinSelected]}
-              onPress={() => onDamagePinPress?.(pin.id)}
-              disabled={!onDamagePinPress}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={`Damage ${pin.number}. Edit this damage`}
-            >
-              <Text style={styles.damagePinText}>{pin.number}</Text>
-            </TouchableOpacity>
+            <React.Fragment key={pin.id}>
+              {placed.displaced && tetherLength > 6 && (
+                <View pointerEvents="none" style={[styles.damagePinTether, {
+                  left: midX - tetherLength / 2,
+                  top: midY,
+                  width: tetherLength,
+                  transform: [{ rotate: `${tetherAngle}deg` }],
+                }]} />
+              )}
+              <TouchableOpacity
+                style={[styles.damagePin, {
+                  left: placed.left - 22,
+                  top: placed.top - 22,
+                  backgroundColor: typeColor,
+                }, selected && styles.damagePinSelected]}
+                onPress={() => onDamagePinPress?.(pin.id)}
+                disabled={!onDamagePinPress}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`Damage ${pin.number}. ${pin.type || 'Other'} on ${pin.zone || 'vehicle'}. Edit this damage`}
+              >
+                <Text style={styles.damagePinText}>{pin.number}</Text>
+                {pin.hasPhoto && <View style={styles.damagePinPhoto}><Ionicons name="camera" size={9} color={Colors.white} /></View>}
+              </TouchableOpacity>
+            </React.Fragment>
           );
         })}
 
@@ -491,7 +547,9 @@ export function ThreeDVehicleViewer({
       {/* Hint */}
       <View style={styles.hint} pointerEvents="none">
         <Text style={styles.hintText}>
-          {readOnly ? 'Drag to rotate · Tap a marked zone for details' : 'Drag to rotate · Tap a zone to mark damage'}
+          {readOnly ? 'Drag to rotate · Tap a marked zone for details' : inlineDamageEditor
+            ? 'Tap car to add · Tap numbered pin to edit · Drag to rotate'
+            : 'Drag to rotate · Tap a zone to mark damage'}
         </Text>
       </View>
 
@@ -623,19 +681,23 @@ const styles = StyleSheet.create({
   damagePin: {
     position: 'absolute',
     zIndex: 12,
-    width: 26,
-    height: 26,
-    marginLeft: -13,
-    marginTop: -13,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: Colors.white,
-    backgroundColor: Colors.error,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 5,
   },
-  damagePinSelected: { backgroundColor: Colors.accent, width: 30, height: 30, borderRadius: 15, marginLeft: -15, marginTop: -15 },
-  damagePinText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  damagePinSelected: { borderWidth: 4, borderColor: Colors.accent, elevation: 9 },
+  damagePinText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  damagePinPhoto: {
+    position: 'absolute', right: -4, top: -6, backgroundColor: Colors.deepNearBlack,
+    borderColor: Colors.white, borderWidth: 1, width: 18, height: 18, borderRadius: 9,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  damagePinTether: { position: 'absolute', zIndex: 11, height: 2, backgroundColor: Colors.white },
   // Zone hotspots (same sizing as the original SVG overlay)
   hotspot: {
     position: 'absolute',

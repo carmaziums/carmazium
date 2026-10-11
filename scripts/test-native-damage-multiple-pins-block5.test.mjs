@@ -14,7 +14,7 @@ const schema = readFileSync(new URL('../backend/prisma/schema.prisma', import.me
 test('saved defects have independent UUIDs, never use the parent panel as ID', () => {
   assert.match(mapper, /id: editingDamageId \?\? createValuationJourneyId\(\)/);
   assert.match(seller, /id: typeof r\.id === 'string'/);
-  assert.match(mapper, /records\.flatMap\(\(record, index\) =>\s*record\.surfacePoint \? \[\{ id: record\.id, number: index \+ 1, point: record\.surfacePoint \}\]/);
+  assert.match(mapper, /records\.flatMap\(\(record, index\) =>\s*record\.surfacePoint \? \[\{[\s\S]*?id: record\.id, number: index \+ 1, point: record\.surfacePoint/);
   assert.match(schema, /model DamageRecord \{[\s\S]*?id\s+String\s+@id @default\(uuid\(\)\)/);
 });
 
@@ -33,7 +33,7 @@ test('each point projects through live 3D camera, with no idle raycast', () => {
 });
 
 test('numbered saved pin opens exact defect editor, independent from other scratches on the same panel', () => {
-  assert.match(viewer, /damagePins\.map\(pin => \{/);
+  assert.match(viewer, /placedDamagePins\.map\(placed => \{/);
   assert.match(viewer, /key=\{pin\.id\}/);
   assert.match(viewer, /onPress=\{\(\) => onDamagePinPress\?\.\(pin\.id\)\}/);
   assert.match(viewer, /\{pin\.number\}/);
