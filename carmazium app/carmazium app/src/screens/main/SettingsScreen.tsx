@@ -107,6 +107,14 @@ export const SettingsScreen: React.FC = () => {
   // A team member may edit their OWN personal settings, but is not the dealer owner.
   // Do not display ownership-sensitive business forms or KYC entry points to staff.
   const canManageBusiness = isDealerAccount && !isDealerStaff;
+  const partnerViewActive = isDealerAccount && role === 'dealer';
+  const currentViewLabel = partnerViewActive ? 'Partner' : 'Personal';
+  // Dashboard targets the workspace the user is currently viewing, not an
+  // ambiguous second personal/dealer dashboard. Authoritative role and staff
+  // permissions remain enforced by the existing navigators and server.
+  const openCurrentDashboard = () => navigation.navigate('Tabs', {
+    screen: partnerViewActive ? 'DealerHome' : 'Profile',
+  });
   const requestedSection = route.params?.section;
   const resolveCategory = (section: unknown): SettingsCategory =>
     isSettingsCategory(section) && (section !== 'business' || canManageBusiness)
@@ -285,6 +293,15 @@ export const SettingsScreen: React.FC = () => {
   const [dealerFieldErrors, setDealerFieldErrors] = useState<{ companyName?: string; vatNumber?: string }>({});
   const [dealerBusinessType, setDealerBusinessType] = useState<'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP'>('PRIVATE_LIMITED');
   const [dealerKycStatus, setDealerKycStatus] = useState<string | null>(null);
+  const businessVerificationStatus = dealerKycStatus
+    ? ({
+        APPROVED: 'Approved',
+        PENDING: 'Pending review',
+        IN_REVIEW: 'Under review',
+        REJECTED: 'Action required',
+      } as Record<string, string>)[dealerKycStatus] ?? dealerKycStatus.replace(/_/g, ' ')
+    : 'Status unavailable';
+
   const isSoleTraderDealer = dealerBusinessType === 'SOLE_PROPRIETORSHIP';
 
   const handlePickDealerLogo = async () => {
@@ -1339,48 +1356,130 @@ export const SettingsScreen: React.FC = () => {
             <Text style={styles.accountSectionTitle}>
               {isDealerStaff ? 'Dealer team member' : isDealerAccount ? 'Partner Account' : 'Personal Account'}
             </Text>
+            <View style={styles.accountViewBanner} accessibilityLabel={'Current view: ' + currentViewLabel}>
+              <Ionicons name="eye-outline" size={17} color={Colors.textSecondary} accessibilityElementsHidden />
+              <Text style={styles.accountViewText} maxFontSizeMultiplier={2}>
+                Current view: {currentViewLabel}
+              </Text>
+            </View>
             <Text style={styles.accountSectionText}>
-              Personal accounts let individuals buy and sell vehicles.
-              Partner accounts manage verified trade and business services.
-              Changing your dashboard view does not change your verified account permissions.
+              Personal view is for buying and selling as an individual. Partner view is for dealer work.
+              Switching views does not change your verified account permissions.
             </Text>
-            <TouchableOpacity style={styles.accountAction}
-              accessibilityRole="button" accessibilityLabel="Open user dashboard"
-              onPress={() => navigation.navigate('Tabs', { screen: 'Profile' })}>
-              <Text style={styles.accountActionText}>Open User Dashboard</Text>
-              <Ionicons name="chevron-forward" size={17} color={Colors.white} />
-            </TouchableOpacity>
-            {!isDealerStaff && (
-              <TouchableOpacity style={styles.accountAction}
-                accessibilityRole="button"
-                accessibilityLabel={isDealerAccount
-                  ? role === 'dealer' ? 'Switch to personal dashboard' : 'Switch to dealer dashboard'
-                  : user?.isVerified ? 'Switch to verified dealer account' : 'Become a dealer'}
-                disabled={switchingDealerView}
-                onPress={() => { void handleSwitchDealerView(); }}>
-                <Text style={styles.accountActionText}>
-                  {switchingDealerView ? 'Switching account…'
-                    : isDealerAccount ? role === 'dealer' ? 'View Personal Dashboard' : 'Switch to Dealer Dashboard'
-                    : user?.isVerified ? 'Switch to Verified Dealer Account' : 'Become a Dealer'}
+
+            {/* One primary route: it always opens the CURRENT role's dashboard. */}
+            <TouchableOpacity
+              style={[styles.accountNavRow, styles.accountNavRowPrimary]}
+              onPress={openCurrentDashboard}
+              accessibilityRole="button"
+              accessibilityLabel="Open Dashboard"
+              accessibilityHint={'Opens your ' + currentViewLabel.toLowerCase() + ' dashboard'}
+              activeOpacity={0.8}
+            >
+              <View style={styles.accountNavIcon}>
+                <Ionicons name="grid-outline" size={20} color={Colors.white} accessibilityElementsHidden />
+              </View>
+              <View style={styles.accountNavCopy}>
+                <Text style={styles.accountNavTitle} maxFontSizeMultiplier={2}>Open Dashboard</Text>
+                <Text style={styles.accountNavSub} maxFontSizeMultiplier={2}>
+                  {currentViewLabel} dashboard
                 </Text>
-                <Ionicons name="swap-horizontal-outline" size={17} color={Colors.white} />
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
+            </TouchableOpacity>
+
+            {/* Staff cannot switch account owner/partner view or gain KYC access. */}
+            {!isDealerStaff && (
+              <TouchableOpacity
+                style={styles.accountNavRow}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isDealerAccount
+                    ? partnerViewActive ? 'Switch to Personal View' : 'Switch to Partner View'
+                    : user?.isVerified ? 'Switch to Partner View' : 'Become a Partner'
+                }
+                disabled={switchingDealerView}
+                accessibilityState={{ disabled: switchingDealerView }}
+                onPress={() => { void handleSwitchDealerView(); }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.accountNavIcon}>
+                  <Ionicons name="swap-horizontal-outline" size={20} color={Colors.textSecondary} accessibilityElementsHidden />
+                </View>
+                <View style={styles.accountNavCopy}>
+                  <Text style={styles.accountNavTitle} maxFontSizeMultiplier={2}>
+                    {switchingDealerView ? 'Switching view…'
+                      : isDealerAccount
+                        ? partnerViewActive ? 'Switch to Personal View' : 'Switch to Partner View'
+                        : user?.isVerified ? 'Switch to Partner View' : 'Become a Partner'}
+                  </Text>
+                  <Text style={styles.accountNavSub} maxFontSizeMultiplier={2}>
+                    {isDealerAccount
+                      ? partnerViewActive ? 'Browse as an individual' : 'Return to your dealer workspace'
+                      : user?.isVerified ? 'Request access to dealer tools' : 'Start partner registration and verification'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
               </TouchableOpacity>
             )}
-            {canManageBusiness ? (
-              <TouchableOpacity style={styles.accountAction}
-                accessibilityRole="button" accessibilityLabel="Review business verification"
-                onPress={() => selectCategory('verification')}>
-                <Text style={styles.accountActionText}>Review business verification</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
-              </TouchableOpacity>
-            ) : !isDealerStaff ? (
-              <TouchableOpacity style={styles.accountAction}
-                accessibilityRole="button" accessibilityLabel="Explore Partner Account"
-                onPress={() => navigation.navigate('PartnerDashboard')}>
-                <Text style={styles.accountActionText}>Explore Partner Account</Text>
-                <Ionicons name="chevron-forward" size={17} color={Colors.white} />
-              </TouchableOpacity>
+
+            {isDealerAccount ? (
+              canManageBusiness ? (
+                <TouchableOpacity
+                  style={styles.accountNavRow}
+                  accessibilityRole="button"
+                  accessibilityLabel="Business Verification"
+                  accessibilityHint="Review your dealer verification status and requirements"
+                  onPress={() => selectCategory('verification')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.accountNavIcon}>
+                    <Ionicons name="shield-checkmark-outline" size={20} color={Colors.textSecondary} accessibilityElementsHidden />
+                  </View>
+                  <View style={styles.accountNavCopy}>
+                    <Text style={styles.accountNavTitle} maxFontSizeMultiplier={2}>Business Verification</Text>
+                    <Text style={styles.accountNavSub} maxFontSizeMultiplier={2}>
+                      Status: {businessVerificationStatus}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.accountNavRow} accessible accessibilityLabel="Business Verification, managed by dealership owner">
+                  <View style={styles.accountNavIcon}>
+                    <Ionicons name="shield-checkmark-outline" size={20} color={Colors.textSecondary} accessibilityElementsHidden />
+                  </View>
+                  <View style={styles.accountNavCopy}>
+                    <Text style={styles.accountNavTitle} maxFontSizeMultiplier={2}>Business Verification</Text>
+                    <Text style={styles.accountNavSub} maxFontSizeMultiplier={2}>
+                      Managed by dealership owner
+                    </Text>
+                  </View>
+                  <Ionicons name="lock-closed-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
+                </View>
+              )
             ) : (
+              <TouchableOpacity
+                style={styles.accountNavRow}
+                accessibilityRole="button"
+                accessibilityLabel="Personal Verification"
+                onPress={() => selectCategory('verification')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.accountNavIcon}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={Colors.textSecondary} accessibilityElementsHidden />
+                </View>
+                <View style={styles.accountNavCopy}>
+                  <Text style={styles.accountNavTitle} maxFontSizeMultiplier={2}>Personal Verification</Text>
+                  <Text style={styles.accountNavSub} maxFontSizeMultiplier={2}>
+                    Review identity and address checks
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
+              </TouchableOpacity>
+            )}
+
+            {isDealerStaff && (
               <Text style={styles.accountSectionText}>
                 Business ownership, legal type and verification changes must be made by the dealership owner.
               </Text>
@@ -1576,10 +1675,35 @@ const styles = StyleSheet.create({
   reviewName: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 12, flex: 1 },
   reviewStars: { color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 12 },
   reviewDate: { color: Colors.textMuted, fontFamily: FontFamily.medium, fontSize: 10 },
-  accountAction: { backgroundColor: Colors.accent, borderRadius: 11, minHeight: 46,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 13 },
-  accountActionText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 },
+  // Compact neutral settings actions. Brand red remains reserved for true
+  // primary save/critical actions elsewhere; account navigation is calm and clear.
+  accountViewBanner: {
+    minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.bgElevated, borderColor: Colors.borderSubtle,
+    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+  },
+  accountViewText: {
+    flexShrink: 1, color: Colors.textPrimary, fontFamily: FontFamily.semiBold, fontSize: 13,
+  },
+  accountNavRow: {
+    minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12,
+    backgroundColor: Colors.bgElevated, borderColor: Colors.borderSubtle, borderWidth: 1,
+  },
+  accountNavRowPrimary: {
+    backgroundColor: Colors.bgCardSolid, borderColor: Colors.borderStrong,
+  },
+  accountNavIcon: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: Colors.whiteAlpha06, alignItems: 'center', justifyContent: 'center',
+  },
+  accountNavCopy: { flex: 1, minWidth: 0, gap: 3 },
+  accountNavTitle: {
+    fontFamily: FontFamily.bold, fontSize: 14, color: Colors.textPrimary, flexShrink: 1,
+  },
+  accountNavSub: {
+    fontFamily: FontFamily.medium, fontSize: 12, color: Colors.textSecondary, flexShrink: 1,
+  },
   // Opaque contrasting row: white-on-slate stays legible in both system
   // appearance settings, and the label may wrap at 200% system font size.
   signOutRow: {
