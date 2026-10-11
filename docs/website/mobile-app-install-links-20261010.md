@@ -65,3 +65,12 @@ This PR changes **website-only marketing and download configuration**, not the n
 - Optional Windows environment variable: `NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL`, set only after verifying the CarMazium publisher, product ID, public listing and a working Windows install. Example format: `https://apps.microsoft.com/detail/9NBLGGH4R315` (illustrative ID only; **not a CarMazium listing**).
 - Release state for iPhone, Android and Windows is checked independently. Decorative mock-ups are conceptual marketing visuals; they must not be confused with certified screenshots of a shipped native build.
 - All original Apple TestFlight / Android APK approval controls remain in force; no production APK is made public by this visual change.
+
+## 11 October 2026 — clickable Microsoft Store buttons on all site promotions
+
+- The compact homepage banner and the large footer campaign now include an **active**, keyboard-accessible Microsoft Store link with the same button styling, hover state and focus affordances as iPhone and Android.
+- All three buttons navigate to the appropriate platform section on `/download-app` (Windows: `/download-app#windows`). The `AppPromoShowcase` fallback already includes this same working Microsoft Store navigation.
+- **Active button does not mean a published Windows build exists.** The download page checks `getMobileAppLinks().microsoftStore.href`. Until a verified public Microsoft Store product page has been configured, it states that the Windows store app is not yet available and allows normal browser access.
+- When the CarMazium Windows app has been published, verify the actual listing and set `NEXT_PUBLIC_CARMAZIUM_MICROSOFT_STORE_URL` on the production Vercel project to its real `https://apps.microsoft.com/detail/<product-id>` URL, then redeploy. Do not use the example product ID documented above.
+- Once that environment value is configured and a deployment is ready, the Windows destination on the landing page automatically becomes a Microsoft Store install link, without further code edits to the promotional banners.
+- No seller/dealer/admin permissions, apps, binaries, or backend release settings are changed by this website-only update.
