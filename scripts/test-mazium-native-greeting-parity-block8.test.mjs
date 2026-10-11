@@ -12,7 +12,7 @@ test('native greeting uses the real website mascot, copy, green status and speec
   assert.match(web, /How can I help you today\?/);
   assert.match(native, /Hi, I'm Mazium! 👋/);
   assert.match(native, /How can I help you today\?/);
-  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{styles\.greetingAvatarImage\}/);
+  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{themed\.greetingAvatarImage\}/);
   assert.match(native, /greetingOnlineDot:[\s\S]*?backgroundColor: Colors\.success/);
   assert.match(native, /greetingArrow:[\s\S]*?rotate: '45deg'/);
   assert.match(native, /width: Math\.min\(260, windowWidth - 32\)/);

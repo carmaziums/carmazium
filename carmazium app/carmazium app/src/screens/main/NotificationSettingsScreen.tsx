@@ -16,6 +16,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { useAuthStore } from '../../store/authStore';
 
@@ -34,6 +35,8 @@ const cycleTime = (current: string) => {
 };
 
 export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useNotificationSettingsThemeStyles();
   const insets = useSafeAreaInsets();
   const { showToast } = useContext(GlobalToastContext);
   const { user } = useAuthStore();
@@ -127,131 +130,131 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
     <Switch
        value={value}
        onValueChange={onValueChange}
-       trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
+       trackColor={{ false: palette.borderDefault, true: activeColor }}
        thumbColor={Colors.white}
-       ios_backgroundColor={Colors.whiteAlpha10}
+       ios_backgroundColor={palette.borderDefault}
        disabled={disabled}
     />
   );
 
   const renderMainView = () => (
     <View style={{ flex: 1 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[themed.scrollContent, { paddingTop: insets.top + 14 }]}>
         
         {/* Header */}
-        <View style={styles.header}>
-           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-           <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={themed.header}>
+           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+           <Text style={themed.headerTitle}>Notifications</Text>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={styles.resetText}>Save</Text>
+                ? <ActivityIndicator size="small" color={palette.accent} />
+                : <Text style={themed.resetText}>Save</Text>
               }
            </TouchableOpacity>
         </View>
 
         {/* Mute All Box */}
-        <View style={styles.muteAllBox}>
+        <View style={themed.muteAllBox}>
            <LinearGradient
              colors={[Colors.accentAlpha15, Colors.accentAlpha03]}
              style={StyleSheet.absoluteFillObject}
              start={{ x: 0, y: 0 }}
              end={{ x: 1, y: 1 }}
            />
-           <View style={styles.muteIconWrap}>
+           <View style={themed.muteIconWrap}>
               <Ionicons name="notifications-off-outline" size={18} color={Colors.accent} />
            </View>
-           <View style={styles.muteTextWrap}>
-              <Text style={styles.muteTitle}>Mute all notifications</Text>
-              <Text style={styles.muteSub}>Override all settings below</Text>
+           <View style={themed.muteTextWrap}>
+              <Text style={themed.muteTitle}>Mute all notifications</Text>
+              <Text style={themed.muteSub}>Override all settings below</Text>
            </View>
            <CustomSwitch value={muteAll} onValueChange={setMuteAll} />
         </View>
 
         {/* BIDS & AUCTIONS */}
-        <View style={styles.sectionHeaderWrap}>
-           <View style={styles.sectionIconWrapRed}>
+        <View style={themed.sectionHeaderWrap}>
+           <View style={themed.sectionIconWrapRed}>
               <Ionicons name="hammer-outline" size={12} color={Colors.accent} />
            </View>
-           <Text style={styles.sectionTitle}>BIDS & AUCTIONS</Text>
+           <Text style={themed.sectionTitle}>BIDS & AUCTIONS</Text>
         </View>
 
-        <View style={styles.cardBlock}>
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Outbid alerts</Text>
-                 <Text style={styles.toggleSub}>Notify me the moment someone outbids me</Text>
+        <View style={themed.cardBlock}>
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Outbid alerts</Text>
+                 <Text style={themed.toggleSub}>Notify me the moment someone outbids me</Text>
               </View>
               <CustomSwitch value={outbid} onValueChange={setOutbid} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>You're winning</Text>
-                 <Text style={styles.toggleSub}>Confirmation when you take the lead</Text>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>You're winning</Text>
+                 <Text style={themed.toggleSub}>Confirmation when you take the lead</Text>
               </View>
               <CustomSwitch value={winning} onValueChange={setWinning} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Ending soon</Text>
-                 <Text style={styles.toggleSub}>15 min warning on watched auctions</Text>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Ending soon</Text>
+                 <Text style={themed.toggleSub}>15 min warning on watched auctions</Text>
               </View>
               <CustomSwitch value={endingSoon} onValueChange={setEndingSoon} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>New lot added</Text>
-                 <Text style={styles.toggleSub}>Cars matching your saved searches</Text>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>New lot added</Text>
+                 <Text style={themed.toggleSub}>Cars matching your saved searches</Text>
               </View>
               <CustomSwitch value={newLot} onValueChange={setNewLot} />
            </View>
         </View>
 
         {/* OFFERS */}
-        <View style={styles.sectionHeaderWrap}>
-           <View style={styles.sectionIconWrapYellow}>
+        <View style={themed.sectionHeaderWrap}>
+           <View style={themed.sectionIconWrapYellow}>
               <Ionicons name="pricetag-outline" size={12} color={Colors.warning} />
            </View>
-           <Text style={styles.sectionTitle}>OFFERS</Text>
+           <Text style={themed.sectionTitle}>OFFERS</Text>
         </View>
 
-        <View style={styles.cardBlock}>
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Counter-offer received</Text>
-                 <Text style={styles.toggleSub}>Seller responded to your offer</Text>
+        <View style={themed.cardBlock}>
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Counter-offer received</Text>
+                 <Text style={themed.toggleSub}>Seller responded to your offer</Text>
               </View>
               <CustomSwitch value={counterOffer} onValueChange={setCounterOffer} activeColor={Colors.warning} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Offer accepted</Text>
-                 <Text style={styles.toggleSub}>Great news — proceed to payment</Text>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Offer accepted</Text>
+                 <Text style={themed.toggleSub}>Great news — proceed to payment</Text>
               </View>
               <CustomSwitch value={offerAccepted} onValueChange={setOfferAccepted} activeColor={Colors.warning} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Offer declined</Text>
-                 <Text style={styles.toggleSub}>Seller rejected your offer</Text>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Offer declined</Text>
+                 <Text style={themed.toggleSub}>Seller rejected your offer</Text>
               </View>
               <CustomSwitch value={offerDeclined} onValueChange={setOfferDeclined} activeColor={Colors.warning} />
            </View>
         </View>
 
         {/* ADVANCED */}
-        <View style={styles.sectionHeaderWrap}>
-           <Text style={styles.sectionTitle}>ADVANCED</Text>
+        <View style={themed.sectionHeaderWrap}>
+           <Text style={themed.sectionTitle}>ADVANCED</Text>
         </View>
-        <TouchableOpacity style={styles.deliveryBtn} onPress={() => setView('delivery')} activeOpacity={0.7}>
-           <View style={styles.deliveryTextWrap}>
-              <Text style={styles.toggleTitle}>Delivery & quiet hours</Text>
-              <Text style={styles.toggleSub}>Manage push, email and quiet hours</Text>
+        <TouchableOpacity style={themed.deliveryBtn} onPress={() => setView('delivery')} activeOpacity={0.7}>
+           <View style={themed.deliveryTextWrap}>
+              <Text style={themed.toggleTitle}>Delivery & quiet hours</Text>
+              <Text style={themed.toggleSub}>Manage push, email and quiet hours</Text>
            </View>
            <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
@@ -263,102 +266,102 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
 
   const renderDeliveryView = () => (
     <View style={{ flex: 1 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[themed.scrollContent, { paddingTop: insets.top + 14 }]}>
          
         {/* Header — was missing a Save action entirely, so toggling push/
             email/SMS/quiet hours here and backing out via the chevron never
             persisted anything (savePreferences only lived on the main
             view's header). */}
-        <View style={[styles.header, { marginBottom: 32 }]}>
-           <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
-           <View style={styles.headerCenter}>
-              <Text style={styles.headerSubText}>NOTIFICATIONS</Text>
-              <Text style={styles.headerTitleCenter}>Delivery & quiet hours</Text>
+        <View style={[themed.header, { marginBottom: 32 }]}>
+           <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => setView('main')} accessibilityLabel="Go back" />
+           <View style={themed.headerCenter}>
+              <Text style={themed.headerSubText}>NOTIFICATIONS</Text>
+              <Text style={themed.headerTitleCenter}>Delivery & quiet hours</Text>
            </View>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={styles.resetText}>Save</Text>
+                ? <ActivityIndicator size="small" color={palette.accent} />
+                : <Text style={themed.resetText}>Save</Text>
               }
            </TouchableOpacity>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16 }]}>DELIVERY CHANNELS</Text>
+        <Text style={[themed.sectionTitle, { marginLeft: 24, marginBottom: 16 }]}>DELIVERY CHANNELS</Text>
 
-        <View style={styles.cardBlock}>
-           <View style={styles.toggleRow}>
-              <View style={styles.channelIconRed}>
+        <View style={themed.cardBlock}>
+           <View style={themed.toggleRow}>
+              <View style={themed.channelIconRed}>
                  <Ionicons name="notifications-outline" size={16} color={Colors.accent} />
               </View>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Push</Text>
-                 <Text style={styles.toggleSub}>Android and iPhone notifications</Text>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Push</Text>
+                 <Text style={themed.toggleSub}>Android and iPhone notifications</Text>
               </View>
               <CustomSwitch value={push} onValueChange={setPush} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.channelIconRed}>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.channelIconRed}>
                  <Ionicons name="mail-outline" size={16} color={Colors.accent} />
               </View>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Email</Text>
-                 <Text style={styles.toggleSub}>{user?.email || 'Not set'}</Text>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Email</Text>
+                 <Text style={themed.toggleSub}>{user?.email || 'Not set'}</Text>
               </View>
               <CustomSwitch value={email} onValueChange={setEmail} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.toggleRow}>
-              <View style={styles.channelIconGrey}>
+           <View style={themed.divider} />
+           <View style={themed.toggleRow}>
+              <View style={themed.channelIconGrey}>
                  <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
               </View>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>SMS</Text>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>SMS</Text>
                  {/* No SMS provider exists in the backend at all — this toggle
                      could never have worked regardless of preference-reading
                      fixes elsewhere (mobile-production-readiness-plan.md F23).
                      Disabled + labeled, not silently inert, matching the
                      Apple sign-in / Finance Calculator "Coming Soon" pattern
                      already used elsewhere in this app. */}
-                 <Text style={styles.toggleSub}>Coming soon</Text>
+                 <Text style={themed.toggleSub}>Coming soon</Text>
               </View>
               <CustomSwitch value={false} onValueChange={() => {}} disabled />
            </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>ALERT DELIVERY</Text>
-        <View style={styles.cardBlock}>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextWrap}>
-              <Text style={styles.toggleTitle}>Alerts are sent as they happen</Text>
-              <Text style={styles.toggleSub}>30-minute and daily digests are not available yet.</Text>
+        <Text style={[themed.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>ALERT DELIVERY</Text>
+        <View style={themed.cardBlock}>
+          <View style={themed.toggleRow}>
+            <View style={themed.toggleTextWrap}>
+              <Text style={themed.toggleTitle}>Alerts are sent as they happen</Text>
+              <Text style={themed.toggleSub}>30-minute and daily digests are not available yet.</Text>
             </View>
           </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>QUIET HOURS</Text>
+        <Text style={[themed.sectionTitle, { marginLeft: 24, marginBottom: 16, marginTop: 8 }]}>QUIET HOURS</Text>
 
-        <View style={styles.cardBlock}>
-           <View style={styles.toggleRow}>
-              <View style={styles.toggleTextWrap}>
-                 <Text style={styles.toggleTitle}>Enable quiet hours</Text>
-                 <Text style={styles.toggleSub}>No push notifications during these times</Text>
+        <View style={themed.cardBlock}>
+           <View style={themed.toggleRow}>
+              <View style={themed.toggleTextWrap}>
+                 <Text style={themed.toggleTitle}>Enable quiet hours</Text>
+                 <Text style={themed.toggleSub}>No push notifications during these times</Text>
               </View>
               <CustomSwitch value={quietHours} onValueChange={setQuietHours} />
            </View>
-           <View style={styles.divider} />
-           <View style={styles.quietTimeRow}>
-              <View style={styles.timeBlock}>
-                 <Text style={styles.timeLabel}>FROM</Text>
-                 <TouchableOpacity style={styles.timeInput} onPress={() => setQuietStart(cycleTime(quietStart))} activeOpacity={0.7}>
-                    <Text style={styles.timeText}>{quietStart}</Text>
+           <View style={themed.divider} />
+           <View style={themed.quietTimeRow}>
+              <View style={themed.timeBlock}>
+                 <Text style={themed.timeLabel}>FROM</Text>
+                 <TouchableOpacity style={themed.timeInput} onPress={() => setQuietStart(cycleTime(quietStart))} activeOpacity={0.7}>
+                    <Text style={themed.timeText}>{quietStart}</Text>
                     <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
                  </TouchableOpacity>
               </View>
-              <View style={styles.timeBlock}>
-                 <Text style={styles.timeLabel}>UNTIL</Text>
-                 <TouchableOpacity style={styles.timeInput} onPress={() => setQuietEnd(cycleTime(quietEnd))} activeOpacity={0.7}>
-                    <Text style={styles.timeText}>{quietEnd}</Text>
+              <View style={themed.timeBlock}>
+                 <Text style={themed.timeLabel}>UNTIL</Text>
+                 <TouchableOpacity style={themed.timeInput} onPress={() => setQuietEnd(cycleTime(quietEnd))} activeOpacity={0.7}>
+                    <Text style={themed.timeText}>{quietEnd}</Text>
                     <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
                  </TouchableOpacity>
               </View>
@@ -371,21 +374,21 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
       />
       {loading ? (
-        <View style={styles.loadingWrap}>
+        <View style={themed.loadingWrap}>
           <ActivityIndicator size="large" color={Colors.accent} />
         </View>
       ) : loadError ? (
         <View style={{ paddingHorizontal: 24, paddingTop: insets.top + 32 }}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={themed.headerTitle}>Notifications</Text>
           <ErrorBanner message={loadError} onRetry={() => { setLoading(true); setLoadAttempt(n => n + 1); }} />
         </View>
       ) : (
@@ -578,3 +581,33 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, marginTop: 4, letterSpacing: 0.5
   }
 });
+
+function useNotificationSettingsThemeStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    resetText: [styles.resetText, { color: palette.accent }],
+    headerSubText: [styles.headerSubText, { color: palette.textMuted }],
+    headerTitleCenter: [styles.headerTitleCenter, { color: palette.textPrimary }],
+    muteAllBox: [styles.muteAllBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    muteTitle: [styles.muteTitle, { color: palette.textPrimary }],
+    muteSub: [styles.muteSub, { color: palette.textSecondary }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    cardBlock: [styles.cardBlock, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    toggleRow: [styles.toggleRow, { borderBottomColor: palette.borderDefault }],
+    toggleTitle: [styles.toggleTitle, { color: palette.textPrimary }],
+    toggleSub: [styles.toggleSub, { color: palette.textMuted }],
+    divider: [styles.divider, { backgroundColor: palette.borderDefault }],
+    deliveryBtn: [styles.deliveryBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    freqRow: [styles.freqRow, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    freqTitle: [styles.freqTitle, { color: palette.textPrimary }],
+    quietTimeRow: [styles.quietTimeRow, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    timeLabel: [styles.timeLabel, { color: palette.textMuted }],
+    timeInput: [styles.timeInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    timeText: [styles.timeText, { color: palette.textPrimary }],
+  }), [palette]);
+}

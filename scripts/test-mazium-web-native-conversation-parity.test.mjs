@@ -39,7 +39,7 @@ test('same welcome, assistant title, subtitle and message placeholder', () => {
 });
 
 test('native follows website chat layout, status indicator and persistent quick-reply rail', () => {
-  assert.match(native, /<LinearGradient colors=\{\[Colors\.bgBody, Colors\.bgElevated\]\}/);
+  assert.match(native, /<LinearGradient colors=\{\[palette\.bgHeader, palette\.bgDropdown\]\}/);
   assert.match(native, /botAccentDot:[\s\S]*?backgroundColor: Colors\.success/);
   assert.match(native, /Math\.min\(540, maxBoxHeight\)/);
   assert.match(native, /Math\.min\(340, windowWidth - 24\)/);
@@ -60,7 +60,7 @@ test('both platforms require explicit AI consent and expose accessible withdrawa
   assert.match(native, /accessibilityLabel="AI privacy"/);
   assert.match(native, /AsyncStorage\.removeItem\(aiConsentKey\)/);
   assert.match(web, /localStorage\.removeItem\("mazium_ai_consent_v1"\)/);
-  assert.match(native, /hasAiConsent === true && \(\s*<View style=\{styles\.aiPrivacyFooter\}>/);
+  assert.match(native, /hasAiConsent === true && \(\s*<View style=\{themed\.aiPrivacyFooter\}>/);
 });
 
 test('both send exactly one user prompt per request with bounded 10-message history', () => {

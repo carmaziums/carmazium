@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { BottomSheet } from '@/components/BottomSheet';
+import { ThemedTextField } from './ThemedTextField';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
@@ -34,6 +36,7 @@ import { FontFamily, FontSize } from '../constants/typography';
 let dismissedThisSession = false;
 
 export const LocationPromptSheet: React.FC = () => {
+  const { palette } = useNativeAppearance();
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
@@ -91,29 +94,27 @@ export const LocationPromptSheet: React.FC = () => {
           <Ionicons name="location-outline" size={20} color={Colors.accent} />
         </View>
 
-        <Text style={styles.blurb}>
+        <Text style={[styles.blurb, { color: palette.textSecondary }]}>
           Add your town and postcode so we can show you distance to vehicles and
           accurate delivery estimates.
         </Text>
 
-        <Text style={styles.label}>Town or city</Text>
-        <TextInput
+        <Text style={[styles.label, { color: palette.textSecondary }]}>Town or city</Text>
+        <ThemedTextField
           style={styles.input}
           value={location}
           onChangeText={setLocation}
           placeholder="e.g. Manchester"
-          placeholderTextColor={Colors.inputPlaceholder}
           autoCorrect={false}
           editable={!saving}
         />
 
-        <Text style={styles.label}>Postcode</Text>
-        <TextInput
+        <Text style={[styles.label, { color: palette.textSecondary }]}>Postcode</Text>
+        <ThemedTextField
           style={styles.input}
           value={postcode}
           onChangeText={setPostcode}
           placeholder="e.g. M1 2AB"
-          placeholderTextColor={Colors.inputPlaceholder}
           autoCapitalize="characters"
           autoCorrect={false}
           editable={!saving}
@@ -141,7 +142,7 @@ export const LocationPromptSheet: React.FC = () => {
           activeOpacity={0.7}
           accessibilityRole="button"
         >
-          <Text style={styles.laterText}>Not now</Text>
+          <Text style={[styles.laterText, { color: palette.textMuted }]}>Not now</Text>
         </TouchableOpacity>
       </View>
     </BottomSheet>

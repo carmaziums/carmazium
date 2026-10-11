@@ -21,6 +21,7 @@ import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -157,6 +158,8 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useSellerOfferStyles();
   const insets = useSafeAreaInsets();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -371,10 +374,10 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard}>
-        <View style={styles.skeletonCardTop}>
+      <View key={`sk-${i}`} style={themed.skeletonCard}>
+        <View style={themed.skeletonCardTop}>
           <Skeleton w={36} h={36} r={18} />
-          <View style={styles.skeletonCardCenter}>
+          <View style={themed.skeletonCardCenter}>
             <Skeleton w={120} h={14} r={6} />
             <Skeleton w={60} h={18} r={8} />
           </View>
@@ -418,43 +421,43 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     const sellerCounterLocked = (offer.counterAttemptsSeller ?? 0) >= 5;
 
     return (
-      <View key={offer.id} style={[styles.offerCard, { borderLeftColor: cfg.leftBorder }]}>
+      <View key={offer.id} style={[themed.offerCard, { borderLeftColor: cfg.leftBorder }]}>
         {/* Top row */}
-        <View style={styles.cardTopRow}>
+        <View style={themed.cardTopRow}>
           {/* Buyer avatar */}
           <LinearGradient
             colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
-            style={styles.buyerAvatar}
+            style={themed.buyerAvatar}
           >
-            <Text style={styles.buyerInitials}>{initials}</Text>
+            <Text style={themed.buyerInitials}>{initials}</Text>
           </LinearGradient>
 
           {/* Name + chip */}
-          <View style={styles.cardTopCenter}>
-            <Text style={styles.buyerName} numberOfLines={1}>{name}</Text>
-            <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
+          <View style={themed.cardTopCenter}>
+            <Text style={themed.buyerName} numberOfLines={1}>{name}</Text>
+            <View style={[themed.statusChip, { backgroundColor: cfg.chipBg }]}>
+              <Text style={[themed.statusChipText, { color: cfg.chipText }]}>
                 {cfg.chipLabel}
               </Text>
             </View>
           </View>
 
           {/* Time */}
-          <Text style={styles.timeAgo}>{timeAgo(offer.createdAt)}</Text>
+          <Text style={themed.timeAgo}>{timeAgo(offer.createdAt)}</Text>
         </View>
 
         {/* Amount row */}
-        <View style={styles.amountRow}>
-          <Text style={styles.offerAmount}>{formatPrice(offer.amount)}</Text>
+        <View style={themed.amountRow}>
+          <Text style={themed.offerAmount}>{formatPrice(offer.amount)}</Text>
           {diff != null && (
-            <Text style={[styles.diffText, { color: diff >= 0 ? Colors.success : Colors.accent }]}>
+            <Text style={[themed.diffText, { color: diff >= 0 ? Colors.success : Colors.accent }]}>
               {diff >= 0 ? `+${formatPrice(diff)}` : formatPrice(diff)} vs asking
             </Text>
           )}
         </View>
 
         {/* Listing name */}
-        <Text style={styles.listingName} numberOfLines={1}>{listingTitle}</Text>
+        <Text style={themed.listingName} numberOfLines={1}>{listingTitle}</Text>
 
         {/* Negotiation history — visible whenever any counter has occurred */}
         {(offer.sellerCounterAmount != null ||
@@ -482,9 +485,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         {isCountered && (
           buyerCounteredBack ? (
             // Buyer has counter-backed — show their amount and flag that the seller must act
-            <View style={styles.buyerCounteredChip}>
+            <View style={themed.buyerCounteredChip}>
               <Ionicons name="swap-horizontal-outline" size={12} color={Colors.warning} />
-              <Text style={styles.buyerCounteredText}>
+              <Text style={themed.buyerCounteredText}>
                 BUYER COUNTERED
                 {offer.buyerCounterAmount != null
                   ? ` — ${formatPrice(offer.buyerCounterAmount)}`
@@ -493,9 +496,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             </View>
           ) : (
             // Seller's counter is out — show the amount sent and wait for buyer
-            <View style={styles.counterSentChip}>
+            <View style={themed.counterSentChip}>
               <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
-              <Text style={styles.counterSentText}>
+              <Text style={themed.counterSentText}>
                 Counter sent{displayedSellerCounter != null ? ` · ${formatPrice(displayedSellerCounter)}` : ''} — awaiting buyer response
               </Text>
             </View>
@@ -506,39 +509,39 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         {showActions && (
           <>
           {sellerCounterLocked && (
-            <View style={styles.counterLockedBanner}>
+            <View style={themed.counterLockedBanner}>
               <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
-              <Text style={styles.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
+              <Text style={themed.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
             </View>
           )}
-          <View style={[styles.actionsRow, { opacity: isActioning ? 0.5 : 1 }]}>
+          <View style={[themed.actionsRow, { opacity: isActioning ? 0.5 : 1 }]}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDecline]}
+              style={[themed.actionBtn, styles.actionBtnDecline]}
               activeOpacity={0.75}
               onPress={() => handleDecline(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Decline</Text>
+              <Text style={[themed.actionBtnText, { color: Colors.accent }]}>Decline</Text>
             </TouchableOpacity>
 
             {!sellerCounterLocked && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnCounter]}
+                style={[themed.actionBtn, styles.actionBtnCounter]}
                 activeOpacity={0.75}
                 onPress={() => openCounterModal(offer)}
                 disabled={isActioning}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Counter</Text>
+                <Text style={[themed.actionBtnText, { color: Colors.warning }]}>Counter</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAccept]}
+              style={[themed.actionBtn, styles.actionBtnAccept]}
               activeOpacity={0.75}
               onPress={() => handleAccept(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Accept</Text>
+              <Text style={[themed.actionBtnText, { color: Colors.white }]}>Accept</Text>
             </TouchableOpacity>
           </View>
           </>
@@ -552,15 +555,15 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             have been offered at all. DealerOffersScreen was fixed for this;
             this screen was missed, so private sellers still hit it. */}
         {offer.status === 'ACCEPTED' && offer.listing?.status === 'SOLD' && (
-          <View style={styles.soldNoticeBanner}>
+          <View style={themed.soldNoticeBanner}>
             <Ionicons name="checkmark-circle" size={13} color={Colors.accentGreen} />
-            <Text style={styles.soldNoticeText}>Vehicle already sold</Text>
+            <Text style={themed.soldNoticeText}>Vehicle already sold</Text>
           </View>
         )}
         {offer.status === 'ACCEPTED' && offer.listing?.status !== 'SOLD' && (
-          <View style={[styles.actionsRow, { flexWrap: 'wrap' }]}>
+          <View style={[themed.actionsRow, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnMessage]}
+              style={[themed.actionBtn, styles.actionBtnMessage]}
               activeOpacity={0.75}
               onPress={() => handleMessageBuyer(offer)}
               disabled={messagingBuyerId === offer.id}
@@ -568,29 +571,29 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               {messagingBuyerId === offer.id ? (
                 <ActivityIndicator size="small" color={Colors.infoBlue} />
               ) : (
-                <Text style={[styles.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
+                <Text style={[themed.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnMarkSold]}
+              style={[themed.actionBtn, styles.actionBtnMarkSold]}
               activeOpacity={0.75}
               onPress={() => openSaleModal(offer)}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
+              <Text style={[themed.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
             </TouchableOpacity>
 
           </View>
         )}
         {offer.status === 'ACCEPTED' && (
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
+            style={[themed.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
             activeOpacity={0.75}
             onPress={() => setCancelOffer(offer)}
             disabled={isActioning}
           >
             <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
-            <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
+            <Text style={[themed.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -603,12 +606,13 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
     messagingBuyerId,
     handleMessageBuyer,
     openSaleModal,
+    themed,
   ]);
 
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={themed.container}>
       {cancelOffer && (
         <SaleCancellationSheet
           visible={cancelOffer != null}
@@ -618,9 +622,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', palette.bgBody]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -630,15 +634,15 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={themed.header}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Incoming Offers</Text>
+        <Text style={themed.headerTitle}>Incoming Offers</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {pendingCount > 0 && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+            <View style={themed.pendingBadge}>
+              <Text style={themed.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
             </View>
           )}
           <HamburgerButton />
@@ -647,9 +651,9 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
 
       {/* Inline auto-reject toast — surfaces the sibling auto-decline behavior */}
       {toast && (
-        <View style={styles.toast}>
+        <View style={themed.toast}>
           <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
-          <Text style={styles.toastText}>{toast}</Text>
+          <Text style={themed.toastText}>{toast}</Text>
           <IconButton icon={<Ionicons name="close" size={14} color={Colors.textMuted} />} onPress={() => setToast(null)} accessibilityLabel="Dismiss notification" />
         </View>
       )}
@@ -657,8 +661,8 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       {/* ── Content ── */}
       {loading || offers.length === 0 ? (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={themed.scroll}
+          contentContainerStyle={themed.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -678,8 +682,8 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
         // FlatList so a long offer history virtualizes instead of mounting every
         // card at once (mobile-audit.md P3).
         <FlatList
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={themed.scroll}
+          contentContainerStyle={themed.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -709,37 +713,37 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             own sheet style doesn't provide */}
         <View style={{ gap: 14 }}>
           {counterModalOffer && (
-            <Text style={styles.modalSubtitle}>
+            <Text style={themed.modalSubtitle}>
               Buyer offered {formatPrice(counterModalOffer.amount)} on{' '}
               {counterModalOffer.listing?.title ?? 'your listing'}
             </Text>
           )}
 
-          <Text style={styles.inputLabel}>Your counter amount (£)</Text>
+          <Text style={themed.inputLabel}>Your counter amount (£)</Text>
           <TextInput
-            style={styles.counterInput}
+            style={themed.counterInput}
             value={counterAmount}
             onChangeText={setCounterAmount}
             keyboardType="numeric"
             placeholder="Enter amount"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={palette.textMuted}
             selectionColor={Colors.accent}
           />
 
-          <View style={styles.modalActions}>
+          <View style={themed.modalActions}>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnCancel]}
+              style={[themed.modalBtn, styles.modalBtnCancel]}
               activeOpacity={0.75}
               onPress={() => setCounterModalOffer(null)}
             >
-              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              <Text style={themed.modalBtnCancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnConfirm]}
+              style={[themed.modalBtn, styles.modalBtnConfirm]}
               activeOpacity={0.75}
               onPress={submitCounter}
             >
-              <Text style={styles.modalBtnConfirmText}>Send Counter</Text>
+              <Text style={themed.modalBtnConfirmText}>Send Counter</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -755,43 +759,43 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
       >
         <View style={{ gap: 14 }}>
           {saleModalOffer && (
-            <Text style={styles.modalSubtitle}>
+            <Text style={themed.modalSubtitle}>
               The accepted buyer and agreed price are locked to this deal for{' '}
               {saleModalOffer.listing?.title ?? 'this listing'}.
             </Text>
           )}
 
-          <Text style={styles.inputLabel}>Accepted buyer</Text>
-          <View style={[styles.counterInput, { justifyContent: 'center', opacity: 0.85 }]}>
+          <Text style={themed.inputLabel}>Accepted buyer</Text>
+          <View style={[themed.counterInput, { justifyContent: 'center', opacity: 0.85 }]}>
             <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.medium }}>
               {saleModalOffer ? getBuyerName(saleModalOffer.buyer) : 'Buyer'}
             </Text>
           </View>
 
-          <Text style={styles.inputLabel}>Agreed sale price (£)</Text>
+          <Text style={themed.inputLabel}>Agreed sale price (£)</Text>
           <TextInput
-            style={[styles.counterInput, { opacity: 0.85 }]}
+            style={[themed.counterInput, { opacity: 0.85 }]}
             value={saleSoldPrice}
             editable={false}
             keyboardType="numeric"
             placeholder="Agreed price"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={palette.textMuted}
             selectionColor={Colors.accent}
           />
 
           {saleError && <ErrorBanner message={saleError} />}
 
-          <View style={styles.modalActions}>
+          <View style={themed.modalActions}>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnCancel]}
+              style={[themed.modalBtn, styles.modalBtnCancel]}
               activeOpacity={0.75}
               onPress={() => setSaleModalOffer(null)}
               disabled={saleSubmitting}
             >
-              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              <Text style={themed.modalBtnCancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnConfirmSale, saleSubmitting && { opacity: 0.6 }]}
+              style={[themed.modalBtn, styles.modalBtnConfirmSale, saleSubmitting && { opacity: 0.6 }]}
               activeOpacity={0.75}
               onPress={handleConfirmSale}
               disabled={saleSubmitting}
@@ -799,7 +803,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
               {saleSubmitting ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.modalBtnConfirmSaleText}>Confirm Sold</Text>
+                <Text style={themed.modalBtnConfirmSaleText}>Confirm Sold</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -1159,3 +1163,30 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 });
+
+function useSellerOfferStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    skeletonCard: [styles.skeletonCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    offerCard: [styles.offerCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    buyerName: [styles.buyerName, { color: palette.textPrimary }],
+    timeAgo: [styles.timeAgo, { color: palette.textMuted }],
+    amountRow: [styles.amountRow, { borderBottomColor: palette.borderDefault }],
+    offerAmount: [styles.offerAmount, { color: palette.textPrimary }],
+    listingName: [styles.listingName, { color: palette.textSecondary }],
+    actionsRow: [styles.actionsRow, { borderTopColor: palette.borderDefault }],
+    actionBtn: [styles.actionBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    actionBtnText: [styles.actionBtnText, { color: palette.textPrimary }],
+    modalSubtitle: [styles.modalSubtitle, { color: palette.textSecondary }],
+    inputLabel: [styles.inputLabel, { color: palette.textSecondary }],
+    counterInput: [styles.counterInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    modalBtnCancel: [styles.modalBtnCancel, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    modalBtnCancelText: [styles.modalBtnCancelText, { color: palette.textPrimary }],
+    toast: [styles.toast, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    toastText: [styles.toastText, { color: palette.textSecondary }],
+  }), [palette]);
+}

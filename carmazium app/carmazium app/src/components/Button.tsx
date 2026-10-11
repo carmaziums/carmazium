@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 
 // Mirrors the web app's `src/components/ui/Button.tsx` variant system
@@ -57,6 +58,7 @@ export const Button: React.FC<ButtonProps> = ({
   accessibilityLabel,
   accessibilityHint,
 }) => {
+  const { palette } = useNativeAppearance();
   const isDisabled = disabled || loading;
   const height = SIZE_HEIGHT[size];
   const resolvedAccessibilityLabel = accessibilityLabel ?? label ?? 'Button';
@@ -72,7 +74,11 @@ export const Button: React.FC<ButtonProps> = ({
       // Web's signature clipped bottom-right corner ("clip-path-carmazium").
       : styles.clippedCorner;
 
-  const labelColor = variant === 'outline' || variant === 'ghost' ? Colors.accent : Colors.textPrimary;
+  // Red CTAs need a white label in BOTH modes. Neutral secondary
+  // buttons must use the foreground of their actual current surface.
+  const labelColor = variant === 'outline' || variant === 'ghost'
+    ? palette.accent
+    : variant === 'primary' ? palette.accentForeground : palette.textPrimary;
 
   const content = (
     <>
@@ -98,8 +104,8 @@ export const Button: React.FC<ButtonProps> = ({
     shapeStyle,
     { height, paddingHorizontal: SIZE_PADDING_H[size] },
     fullWidth && styles.fullWidth,
-    variant === 'outline' && styles.outline,
-    variant === 'dark' && styles.dark,
+    variant === 'outline' && [styles.outline, { borderColor: palette.accent }],
+    variant === 'dark' && [styles.dark, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
     isDisabled && styles.disabled,
     style,
   ];

@@ -44,6 +44,7 @@ import {
 } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -172,6 +173,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   initials,
   onRetry,
 }) => {
+  const { palette } = useNativeAppearance();
+  const themed = useChatThemeStyles();
   const parsedSpecial = parseSpecialMessage(msg.content);
   const showSeenIndicator = isOwn && !msg.deliveryStatus && msg.isRead && isLastOwnMessage;
 
@@ -180,7 +183,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       disabled={msg.deliveryStatus !== 'failed'}
       onPress={() => onRetry(msg)}
       activeOpacity={0.7}
-      style={styles.deliveryStateRow}
+      style={themed.deliveryStateRow}
       accessibilityRole="button"
       accessibilityLabel={msg.deliveryStatus === 'failed' ? 'Message not sent. Retry message' : 'Message sending'}
       accessibilityState={{ disabled: msg.deliveryStatus !== 'failed', busy: msg.deliveryStatus !== 'failed' }}
@@ -203,27 +206,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           <View
             style={[
               styles.photoMessageBubble,
-              isOwn ? styles.bubbleUser : styles.bubbleDealer,
+              isOwn ? styles.bubbleUser : themed.bubbleDealer,
               msg.deliveryStatus === 'failed' && styles.bubbleFailed,
             ]}
           >
             {msg.attachmentUrl ? (
               <Image
                 source={{ uri: msg.attachmentUrl }}
-                style={styles.chatPhoto}
+                style={themed.chatPhoto}
                 contentFit="cover"
                 transition={150}
               />
             ) : (
-              <View style={styles.chatPhotoUnavailable}>
+              <View style={themed.chatPhotoUnavailable}>
                 <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
-                <Text style={styles.chatPhotoUnavailableText}>
+                <Text style={themed.chatPhotoUnavailableText}>
                   Private photo unavailable. Reopen the conversation to refresh access.
                 </Text>
               </View>
             )}
-            {!!msg.content && <Text style={[styles.bubbleText, styles.photoCaption]}>{msg.content}</Text>}
-            <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
+            {!!msg.content && <Text style={[themed.bubbleText, styles.photoCaption]}>{msg.content}</Text>}
+            <View style={[themed.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
               <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
                 {formatMessageTime(msg.createdAt)}
               </Text>
@@ -232,7 +235,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                   size={14}
                   color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
-                  style={styles.readTick}
+                  style={themed.readTick}
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
                 />
@@ -241,11 +244,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           </View>
           {deliveryState}
           {showSeenIndicator && (
-            <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
-              <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
-                <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+            <View style={themed.seenRow} accessible accessibilityLabel="Message seen">
+              <View style={[themed.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+                <Text style={themed.seenAvatarText}>{initials.slice(0, 1)}</Text>
               </View>
-              <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+              <Text style={themed.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
             </View>
           )}
         </View>
@@ -256,15 +259,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   if (parsedSpecial?.type === 'offer') {
     return (
       <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.offerMessageBubble}>
-          <View style={styles.offerTagHeader}>
+        <View style={themed.offerMessageBubble}>
+          <View style={themed.offerTagHeader}>
             <Ionicons name="pricetag" size={12} color={Colors.white} />
-            <Text style={styles.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
-            <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+            <Text style={themed.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
+            <Text style={themed.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
-          <Text style={styles.offerText}>{msg.content}</Text>
+          <Text style={themed.offerText}>{msg.content}</Text>
           <Text
-            style={styles.timeTextRight}
+            style={themed.timeTextRight}
             accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
           >
             {formatMessageTime(msg.createdAt)}
@@ -279,11 +282,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   if (parsedSpecial?.type === 'counter') {
     return (
       <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.counterMessageCard}>
-          <View style={styles.counterHeader}>
+        <View style={themed.counterMessageCard}>
+          <View style={themed.counterHeader}>
             <Ionicons name="pricetag" size={12} color={Colors.lightGrey} />
-            <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
-            <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+            <Text style={themed.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
+            <Text style={themed.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
           <Text
             style={isOwn ? styles.timeTextRight : styles.timeTextLeft}
@@ -304,12 +307,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         <View
           style={[
             styles.bubble,
-            isOwn ? styles.bubbleUser : styles.bubbleDealer,
+            isOwn ? styles.bubbleUser : themed.bubbleDealer,
             msg.deliveryStatus === 'failed' && styles.bubbleFailed,
           ]}
         >
-          <Text style={styles.bubbleText}>{msg.content}</Text>
-          <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
+          <Text style={[themed.bubbleText, isOwn && { color: Colors.white }]}>{msg.content}</Text>
+          <View style={[themed.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
             <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
             </Text>
@@ -318,7 +321,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
                 color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
-                style={styles.readTick}
+                style={themed.readTick}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               />
@@ -329,11 +332,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         {deliveryState}
 
         {showSeenIndicator && (
-          <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
-            <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
-              <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+          <View style={themed.seenRow} accessible accessibilityLabel="Message seen">
+            <View style={[themed.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+              <Text style={themed.seenAvatarText}>{initials.slice(0, 1)}</Text>
             </View>
-            <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+            <Text style={themed.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
           </View>
         )}
       </View>
@@ -342,6 +345,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 });
 
 export const ChatScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useChatThemeStyles();
   const insets = useSafeAreaInsets();
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
@@ -742,19 +747,19 @@ export const ChatScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={themed.errorContainer}>
         <ActivityIndicator size="large" color={Colors.accent} accessibilityLabel="Loading conversation" />
-        <Text style={[styles.errorText, { marginTop: 12 }]} accessibilityLiveRegion="polite">Loading conversation...</Text>
+        <Text style={[themed.errorText, { marginTop: 12 }]} accessibilityLiveRegion="polite">Loading conversation...</Text>
       </View>
     );
   }
 
   if (!room) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Conversation not found</Text>
+      <View style={themed.errorContainer}>
+        <Text style={themed.errorText}>Conversation not found</Text>
         <TouchableOpacity
-          style={styles.backBtnText}
+          style={themed.backBtnText}
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -996,31 +1001,31 @@ export const ChatScreen: React.FC = () => {
   // render since Platform.OS never changes at runtime.
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
   const screenWrapperProps = Platform.OS === 'ios'
-    ? { style: styles.container, behavior: 'padding' as const }
-    : { style: [styles.container, { marginBottom: androidKeyboardHeight }] };
+    ? { style: themed.container, behavior: 'padding' as const }
+    : { style: [themed.container, { marginBottom: androidKeyboardHeight }] };
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       {/* Top Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={[themed.header, { paddingTop: insets.top + 8 }]}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         {/* Avatar */}
-        <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={[themed.avatar, { backgroundColor: getAvatarBg(initials) }]}>
+          <Text style={themed.avatarText}>{initials}</Text>
         </View>
 
         {/* Dealer name and status */}
-        <View style={styles.headerInfo}>
-          <View style={styles.nameRow}>
-            <Text style={styles.dealerName} numberOfLines={1}>{displayName}</Text>
+        <View style={themed.headerInfo}>
+          <View style={themed.nameRow}>
+            <Text style={themed.dealerName} numberOfLines={1}>{displayName}</Text>
           </View>
           {otherUserTyping ? (
-            <Text style={[styles.onlineStatus, { color: Colors.accent }]}>typing…</Text>
+            <Text style={[themed.onlineStatus, { color: Colors.accent }]}>typing…</Text>
           ) : (
-            <Text style={styles.onlineStatus}>
+            <Text style={themed.onlineStatus}>
               {onlineUserIds.has(room.otherUser.id) ? '● Online' : 'Conversation'}
             </Text>
           )}
@@ -1028,7 +1033,7 @@ export const ChatScreen: React.FC = () => {
 
         {(room.canBlockChat || room.canUnblockChat) && (
           <IconButton
-            style={styles.safetyHeaderButton}
+            style={themed.safetyHeaderButton}
             icon={
               changingBlock
                 ? <ActivityIndicator size="small" color={Colors.white} />
@@ -1049,7 +1054,7 @@ export const ChatScreen: React.FC = () => {
       {/* Listing context banner */}
       {room.listing && (
         <TouchableOpacity
-          style={styles.listingBanner}
+          style={themed.listingBanner}
           activeOpacity={0.8}
           onPress={handleOpenListing}
           disabled={openingListing}
@@ -1058,11 +1063,11 @@ export const ChatScreen: React.FC = () => {
           accessibilityState={{ disabled: openingListing, busy: openingListing }}
         >
           {room.listing.images?.[0]
-            ? <Image source={{ uri: room.listing.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            : <View style={[styles.carImg, styles.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
-          <View style={styles.carMeta}>
-            <Text style={styles.carTitle} numberOfLines={1}>{room.listing.title}</Text>
-            <Text style={styles.carPrice}>
+            ? <Image source={{ uri: room.listing.images[0] }} style={themed.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            : <View style={[themed.carImg, styles.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
+          <View style={themed.carMeta}>
+            <Text style={themed.carTitle} numberOfLines={1}>{room.listing.title}</Text>
+            <Text style={themed.carPrice}>
               {isAuction && room.listing.auction?.winningBidAmount 
                 ? `Winning Bid: £${parseFloat(String(room.listing.auction.winningBidAmount)).toLocaleString('en-GB')}`
                 : `Price: £${carPrice.toLocaleString('en-GB')}`}
@@ -1073,11 +1078,11 @@ export const ChatScreen: React.FC = () => {
       )}
 
       {room.chatBlocked && !shouldBlockChat && (
-        <View style={styles.chatBlockedBanner}>
+        <View style={themed.chatBlockedBanner}>
           <Ionicons name="ban-outline" size={16} color={Colors.warning} />
-          <View style={styles.chatBlockedCopy}>
-            <Text style={styles.chatBlockedTitle}>Messaging blocked</Text>
-            <Text style={styles.chatBlockedText}>
+          <View style={themed.chatBlockedCopy}>
+            <Text style={themed.chatBlockedTitle}>Messaging blocked</Text>
+            <Text style={themed.chatBlockedText}>
               {room.blockedByMe
                 ? 'You blocked this conversation. The transcript remains available and messages can still be reported.'
                 : 'Messaging is paused because this conversation has been blocked. The transcript remains available.'}
@@ -1087,10 +1092,10 @@ export const ChatScreen: React.FC = () => {
             <TouchableOpacity
               onPress={handleBlockToggle}
               disabled={changingBlock}
-              style={styles.unblockInlineButton}
+              style={themed.unblockInlineButton}
               activeOpacity={0.75}
             >
-              <Text style={styles.unblockInlineText}>Unblock</Text>
+              <Text style={themed.unblockInlineText}>Unblock</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1103,8 +1108,8 @@ export const ChatScreen: React.FC = () => {
             scrollToEnd() timing hack (mobile-audit.md P2). Inverted flips header/footer:
             ListHeaderComponent renders at the visual bottom, ListFooterComponent at the top. */}
         <FlatList
-          style={styles.chatArea}
-          contentContainerStyle={styles.chatScroll}
+          style={themed.chatArea}
+          contentContainerStyle={themed.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
           maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
@@ -1113,8 +1118,8 @@ export const ChatScreen: React.FC = () => {
           renderItem={renderMessageItem}
           ListHeaderComponent={
             otherUserTyping ? (
-              <View style={styles.dealerBubbleWrapper}>
-                <View style={[styles.bubble, styles.bubbleDealer, styles.typingBubble]}>
+              <View style={themed.dealerBubbleWrapper}>
+                <View style={[themed.bubble, styles.bubbleDealer, styles.typingBubble]}>
                   <TypingDots />
                 </View>
               </View>
@@ -1124,7 +1129,7 @@ export const ChatScreen: React.FC = () => {
             <View>
               {hasMore && (
                 <TouchableOpacity
-                  style={styles.loadEarlierButton}
+                  style={themed.loadEarlierButton}
                   onPress={loadOlderMessages}
                   disabled={loadingOlder}
                   activeOpacity={0.75}
@@ -1135,11 +1140,11 @@ export const ChatScreen: React.FC = () => {
                   {loadingOlder ? (
                     <ActivityIndicator size="small" color={Colors.textSecondary} />
                   ) : (
-                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                    <Text style={themed.loadEarlierText}>Load earlier messages</Text>
                   )}
                 </TouchableOpacity>
               )}
-              <Text style={styles.dateSeparator}>
+              <Text style={themed.dateSeparator}>
                 {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
               </Text>
             </View>
@@ -1148,37 +1153,37 @@ export const ChatScreen: React.FC = () => {
 
         {/* Blocking Overlay for deposit check */}
         {shouldBlockChat && (
-          <View style={styles.blockingOverlay}>
-            <View style={styles.blockingCard}>
-              <View style={styles.trophyIconWrap}>
+          <View style={themed.blockingOverlay}>
+            <View style={themed.blockingCard}>
+              <View style={themed.trophyIconWrap}>
                 <Ionicons name="trophy" size={40} color={Colors.warning} />
               </View>
-              <Text style={styles.blockingTitle}>£125 Buyer Fee Due</Text>
-              <Text style={styles.blockingDesc}>
+              <Text style={themed.blockingTitle}>£125 Buyer Fee Due</Text>
+              <Text style={themed.blockingDesc}>
                 You won this auction! To unlock chat with the seller and secure the vehicle, you must pay the £125 buyer fee.
               </Text>
-              <Text style={styles.blockingSubDesc}>
+              <Text style={themed.blockingSubDesc}>
                 • £100 is released to the seller as a completion bonus.{"\n"}
                 • £25 covers the Carmazium platform fee.{"\n"}
                 • The buyer fee is non-refundable; the agreed hammer price is settled directly with the seller at handover.
               </Text>
 
               <TouchableOpacity
-                style={styles.payOverlayBtn}
+                style={themed.payOverlayBtn}
                 onPress={handlePayDeposit}
                 activeOpacity={0.8}
               >
                 <Ionicons name="card" size={18} color={Colors.bgPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
+                <Text style={themed.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.refreshOverlayBtn} 
+                style={themed.refreshOverlayBtn} 
                 onPress={handleRefreshStatus}
                 activeOpacity={0.7}
               >
                 <Ionicons name="refresh" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={styles.refreshOverlayBtnText}>I've paid, refresh chat</Text>
+                <Text style={themed.refreshOverlayBtnText}>I've paid, refresh chat</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1187,24 +1192,24 @@ export const ChatScreen: React.FC = () => {
 
       {/* Sticky action CTAs bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && room.listing && (
-        <View style={styles.actionsBar}>
+        <View style={themed.actionsBar}>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnOutlineRed]}
+            style={[themed.actionBtn, styles.actionBtnOutlineRed]}
             onPress={handleCounterOffer}
             activeOpacity={0.7}
           >
             <Ionicons name="pricetag-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={[styles.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
+            <Text style={[themed.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
           </TouchableOpacity>
 
           {!offerAccepted && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnGreen]}
+              style={[themed.actionBtn, styles.actionBtnGreen]}
               onPress={handleAcceptOffer}
               activeOpacity={0.7}
             >
               <Ionicons name="checkmark-circle-outline" size={13} color={Colors.white} style={{ marginRight: 4 }} />
-              <Text style={styles.actionLabel}>Accept Offer</Text>
+              <Text style={themed.actionLabel}>Accept Offer</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1212,30 +1217,30 @@ export const ChatScreen: React.FC = () => {
 
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && (
-        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[themed.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <IconButton
-            style={styles.attachBtn}
+            style={themed.attachBtn}
             icon={
               uploadingPhoto
-                ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Ionicons name="image-outline" size={18} color={Colors.white} />
+                ? <ActivityIndicator size="small" color={palette.accent} />
+                : <Ionicons name="image-outline" size={18} color={palette.textPrimary} />
             }
             onPress={handlePickPhoto}
             disabled={uploadingPhoto}
             accessibilityLabel="Send photo"
           />
           <TextInput
-            style={styles.textInput}
+            style={themed.textInput}
             value={inputVal}
             onChangeText={handleTextChange}
             placeholder="Type a message..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={palette.textMuted}
             multiline
             accessibilityLabel="Message"
             accessibilityHint="Type a message to send in this conversation"
           />
 
-          <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
+          <IconButton style={[themed.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
 
@@ -1245,36 +1250,36 @@ export const ChatScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={closeReport}
       >
-        <View style={styles.reportModalBackdrop}>
-          <View style={styles.reportModalCard}>
-            <View style={styles.reportModalHeader}>
+        <View style={themed.reportModalBackdrop}>
+          <View style={themed.reportModalCard}>
+            <View style={themed.reportModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.reportModalEyebrow}>Safety</Text>
-                <Text style={styles.reportModalTitle}>Report message</Text>
+                <Text style={themed.reportModalEyebrow}>Safety</Text>
+                <Text style={themed.reportModalTitle}>Report message</Text>
               </View>
               <IconButton
-                style={styles.reportModalClose}
-                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                style={themed.reportModalClose}
+                icon={<Ionicons name="close" size={20} color={palette.textPrimary} />}
                 onPress={closeReport}
                 disabled={reporting}
                 accessibilityLabel="Close report"
               />
             </View>
 
-            <Text style={styles.reportModalHelp}>
+            <Text style={themed.reportModalHelp}>
               CarMazium moderators receive only the reported message and its attachment evidence, not your surrounding private conversation.
             </Text>
 
             {reportTarget && (
-              <View style={styles.reportPreview}>
-                <Text style={styles.reportPreviewText} numberOfLines={4}>
+              <View style={themed.reportPreview}>
+                <Text style={themed.reportPreviewText} numberOfLines={4}>
                   {reportTarget.content || (reportTarget.attachmentPath ? 'Photo message' : 'Message')}
                 </Text>
               </View>
             )}
 
-            <Text style={styles.reportSectionLabel}>Reason</Text>
-            <View style={styles.reportReasonWrap}>
+            <Text style={themed.reportSectionLabel}>Reason</Text>
+            <View style={themed.reportReasonWrap}>
               {REPORT_REASONS.map((reason) => {
                 const selected = reportReason === reason.value;
                 return (
@@ -1303,20 +1308,20 @@ export const ChatScreen: React.FC = () => {
               })}
             </View>
 
-            <Text style={styles.reportSectionLabel}>Additional details (optional)</Text>
+            <Text style={themed.reportSectionLabel}>Additional details (optional)</Text>
             <TextInput
-              style={styles.reportDetailsInput}
+              style={themed.reportDetailsInput}
               value={reportDetails}
               onChangeText={(value) => setReportDetails(value.slice(0, 1000))}
               placeholder="Tell the moderator what happened"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={palette.textMuted}
               multiline
               maxLength={1000}
             />
 
-            <View style={styles.reportModalActions}>
+            <View style={themed.reportModalActions}>
               <TouchableOpacity
-                style={styles.reportCancelButton}
+                style={themed.reportCancelButton}
                 onPress={closeReport}
                 disabled={reporting}
                 activeOpacity={0.75}
@@ -1324,7 +1329,7 @@ export const ChatScreen: React.FC = () => {
                 accessibilityLabel="Cancel message report"
                 accessibilityState={{ disabled: reporting }}
               >
-                <Text style={styles.reportCancelText}>Cancel</Text>
+                <Text style={themed.reportCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -1343,7 +1348,7 @@ export const ChatScreen: React.FC = () => {
                 ) : (
                   <Ionicons name="flag-outline" size={16} color={Colors.white} />
                 )}
-                <Text style={styles.reportSubmitText}>Submit report</Text>
+                <Text style={themed.reportSubmitText}>Submit report</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2147,3 +2152,73 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+
+function useChatThemeStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    errorContainer: [styles.errorContainer, { backgroundColor: palette.bgBody }],
+    errorText: [styles.errorText, { color: palette.textPrimary }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    dealerName: [styles.dealerName, { color: palette.textPrimary }],
+    onlineStatus: [styles.onlineStatus, { color: palette.textSecondary }],
+    safetyHeaderButton: [styles.safetyHeaderButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    messageReportText: [styles.messageReportText, { color: palette.textMuted }],
+    messageReportedText: [styles.messageReportedText, { color: palette.textSecondary }],
+    chatBlockedBanner: [styles.chatBlockedBanner, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    chatBlockedTitle: [styles.chatBlockedTitle, { color: palette.textPrimary }],
+    chatBlockedText: [styles.chatBlockedText, { color: palette.textSecondary }],
+    unblockInlineText: [styles.unblockInlineText, { color: palette.textPrimary }],
+    listingBanner: [styles.listingBanner, { backgroundColor: palette.bgCard, borderBottomColor: palette.borderDefault }],
+    carTitle: [styles.carTitle, { color: palette.textPrimary }],
+    carPrice: [styles.carPrice, { color: palette.textSecondary }],
+    chatArea: [styles.chatArea, { backgroundColor: palette.bgBody }],
+    loadEarlierButton: [styles.loadEarlierButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    loadEarlierText: [styles.loadEarlierText, { color: palette.textSecondary }],
+    dateSeparator: [styles.dateSeparator, { color: palette.textMuted }],
+    bubbleDealer: [styles.bubbleDealer, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    bubbleText: [styles.bubbleText, { color: palette.textPrimary }],
+    timeTextLeft: [styles.timeTextLeft, { color: palette.textMuted }],
+    timeTextLeftInline: [styles.timeTextLeftInline, { color: palette.textMuted }],
+    seenText: [styles.seenText, { color: palette.textSecondary }],
+    deliveryStateText: [styles.deliveryStateText, { color: palette.textMuted }],
+    offerMessageBubble: [styles.offerMessageBubble, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    offerTagTitle: [styles.offerTagTitle, { color: palette.textSecondary }],
+    offerTagAmount: [styles.offerTagAmount, { color: palette.textPrimary }],
+    offerText: [styles.offerText, { color: palette.textSecondary }],
+    counterMessageCard: [styles.counterMessageCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    counterTitle: [styles.counterTitle, { color: palette.textSecondary }],
+    counterAmount: [styles.counterAmount, { color: palette.textPrimary }],
+    typingBubble: [styles.typingBubble, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    typingText: [styles.typingText, { color: palette.textMuted }],
+    actionsBar: [styles.actionsBar, { backgroundColor: palette.bgBody, borderTopColor: palette.borderDefault }],
+    actionBtnOutlineDark: [styles.actionBtnOutlineDark, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    photoMessageBubble: [styles.photoMessageBubble, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    chatPhotoUnavailable: [styles.chatPhotoUnavailable, { backgroundColor: palette.bgInput }],
+    chatPhotoUnavailableText: [styles.chatPhotoUnavailableText, { color: palette.textMuted }],
+    photoCaption: [styles.photoCaption, { color: palette.textSecondary }],
+    inputBar: [styles.inputBar, { backgroundColor: palette.bgDropdown, borderTopColor: palette.borderDefault }],
+    textInput: [styles.textInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    attachBtn: [styles.attachBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    reportModalCard: [styles.reportModalCard, { backgroundColor: palette.bgDropdown, borderColor: palette.borderDefault }],
+    reportModalHeader: [styles.reportModalHeader, { borderBottomColor: palette.borderDefault }],
+    reportModalTitle: [styles.reportModalTitle, { color: palette.textPrimary }],
+    reportModalHelp: [styles.reportModalHelp, { color: palette.textSecondary }],
+    reportPreview: [styles.reportPreview, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    reportPreviewText: [styles.reportPreviewText, { color: palette.textPrimary }],
+    reportSectionLabel: [styles.reportSectionLabel, { color: palette.textSecondary }],
+    reportReasonChip: [styles.reportReasonChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    reportReasonText: [styles.reportReasonText, { color: palette.textSecondary }],
+    reportDetailsInput: [styles.reportDetailsInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    reportCancelButton: [styles.reportCancelButton, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    reportCancelText: [styles.reportCancelText, { color: palette.textPrimary }],
+    blockingCard: [styles.blockingCard, { backgroundColor: palette.bgDropdown, borderColor: palette.borderDefault }],
+    blockingTitle: [styles.blockingTitle, { color: palette.textPrimary }],
+    blockingDesc: [styles.blockingDesc, { color: palette.textSecondary }],
+    blockingSubDesc: [styles.blockingSubDesc, { color: palette.textMuted }],
+    refreshOverlayBtn: [styles.refreshOverlayBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    refreshOverlayBtnText: [styles.refreshOverlayBtnText, { color: palette.textPrimary }],
+  }), [palette]);
+}

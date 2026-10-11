@@ -22,14 +22,19 @@ test('actual website dealer bottom More panel is matched by native dealer mode o
   assert.ok(drawer.includes('dealerMode ? styles.dealerBottomSheet : styles.sidePanel'));
   assert.ok(drawer.includes("width: '100%'"));
   assert.ok(drawer.includes('borderTopLeftRadius: 20'));
-  assert.ok(drawer.includes('translateY: translateY.value'));
-  assert.ok(drawer.includes('translateX: translateX.value'));
+  // A native Modal avoids the clipped inline root overlay observed on
+  // physical Samsung QA builds; the old translateY/handle view was not usable.
+  assert.ok(drawer.includes('return dealerMode ? ('));
+  assert.ok(drawer.includes('animationType="slide"'));
+  assert.ok(drawer.includes('visible={isOpen}'));
   assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
   assert.ok(drawer.includes('<TouchableWithoutFeedback onPress={closeDrawer}>'));
   assert.ok(drawer.includes('height: sheetHeight'));
-  assert.ok(drawer.includes('dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom)'));
-  assert.ok(drawer.includes('bottom: dealerTabBarHeight'));
-  assert.ok(drawer.includes("pointerEvents={isOpen ? 'box-none' : 'none'}"));
+  assert.ok(drawer.includes('bottom: Math.max(insets.bottom, 8)'));
+  assert.ok(drawer.includes('flex: 1,'));
+  assert.ok(drawer.includes('<Text style={[styles.dealerMenuHeading, { color: drawerForeground }]} accessibilityRole="header">Navigation menu</Text>'));
+  assert.ok(!drawer.includes('translateY: translateY.value'));
+  assert.ok(!drawer.includes('sheetHandle'));
   assert.ok(drawer.includes("BackHandler.addEventListener('hardwareBackPress'"));
 });
 
@@ -50,7 +55,9 @@ test('website-styled header uses the real asset, adapts logo to viewport and tog
   assert.ok(top.includes('useWindowDimensions()'));
   assert.ok(top.includes('Math.min(160, Math.max(110, windowWidth - 202))'));
   assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'));
-  assert.ok(logo.includes("const LOGO_SOURCE = require('../../assets/images/logo.png')"));
+  assert.ok(logo.includes("const DARK_LOGO_SOURCE = require('../../assets/images/logo.png')"));
+  assert.ok(logo.includes("const LIGHT_LOGO_SOURCE = require('../../assets/images/logo-light.png')"));
+  assert.ok(logo.includes("resolvedAppearance === 'light' ? LIGHT_LOGO_SOURCE : DARK_LOGO_SOURCE"));
   assert.ok(logo.includes("const width = overrideWidth ??"));
   assert.ok(hamburger.includes("name={isOpen ? 'close' : 'menu'}"));
   assert.ok(hamburger.includes("style={[styles.btn, websiteStyle && styles.websiteButton]}"));

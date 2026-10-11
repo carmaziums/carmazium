@@ -25,6 +25,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { useAuthStore } from '../../store/authStore';
 import {
   getAuction, placeBid,
@@ -188,6 +189,8 @@ const AuctionDetailSkeleton: React.FC = () => (
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useAuctionDetailStyles();
   const { listing } = route.params;
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
@@ -1075,12 +1078,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   if (loadError) {
     return (
-      <View style={[s.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[themed.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
+        <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
         <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
-        <Text style={s.muted}>{loadError}</Text>
-        <TouchableOpacity style={s.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
-          <Text style={s.retryBtnText}>Try Again</Text>
+        <Text style={themed.muted}>{loadError}</Text>
+        <TouchableOpacity style={themed.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
+          <Text style={themed.retryBtnText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1095,81 +1098,81 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // applied in ChatScreen.tsx for its message input bar).
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
   const screenWrapperProps = Platform.OS === 'ios'
-    ? { style: s.container, behavior: 'padding' as const }
-    : { style: [s.container, { marginBottom: androidKeyboardHeight }] };
+    ? { style: themed.container, behavior: 'padding' as const }
+    : { style: [themed.container, { marginBottom: androidKeyboardHeight }] };
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
 
       {/* Anti-snipe floating toast */}
       {antiSnipeToast && (
-        <View style={[s.antiSnipeToast, { top: insets.top + 60 }]}>
+        <View style={[themed.antiSnipeToast, { top: insets.top + 60 }]}>
           <Ionicons name="flash" size={13} color={Colors.black} />
-          <Text style={s.antiSnipeToastText}>Anti-Snipe — Auction extended 3 min!</Text>
+          <Text style={themed.antiSnipeToastText}>Anti-Snipe — Auction extended 3 min!</Text>
         </View>
       )}
 
       {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
-        <IconButton style={s.iconBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={[themed.header, { paddingTop: insets.top + 10 }]}>
+        <IconButton style={themed.iconBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <View style={s.headerCenter}>
+        <View style={themed.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
             {isActive && (
-              <View style={s.livePill}>
-                <View style={s.liveDot} />
-                <Text style={s.livePillText}>LIVE</Text>
+              <View style={themed.livePill}>
+                <View style={themed.liveDot} />
+                <Text style={themed.livePillText}>LIVE</Text>
               </View>
             )}
             {isScheduled && (
-              <View style={[s.statusPill, { backgroundColor: Colors.infoBlueAlpha20, borderColor: Colors.infoBlueAlpha30 }]}>
-                <Text style={[s.statusPillText, { color: Colors.infoBlueLight }]}>SCHEDULED</Text>
+              <View style={[themed.statusPill, { backgroundColor: Colors.infoBlueAlpha20, borderColor: Colors.infoBlueAlpha30 }]}>
+                <Text style={[themed.statusPillText, { color: Colors.infoBlueLight }]}>SCHEDULED</Text>
               </View>
             )}
             {isEnded && (
-              <View style={[s.statusPill]}>
-                <Text style={s.statusPillText}>ENDED</Text>
+              <View style={[themed.statusPill]}>
+                <Text style={themed.statusPillText}>ENDED</Text>
               </View>
             )}
             {isCancelled && (
-              <View style={[s.statusPill, { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha20 }]}>
-                <Text style={[s.statusPillText, { color: Colors.accent }]}>CANCELLED</Text>
+              <View style={[themed.statusPill, { backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha20 }]}>
+                <Text style={[themed.statusPillText, { color: Colors.accent }]}>CANCELLED</Text>
               </View>
             )}
             {antiSnipeActive && isActive && (
-              <View style={[s.statusPill, { backgroundColor: Colors.warningAlpha20, borderColor: Colors.warningAlpha30 }]}>
+              <View style={[themed.statusPill, { backgroundColor: Colors.warningAlpha20, borderColor: Colors.warningAlpha30 }]}>
                 <Ionicons name="flash" size={8} color={Colors.warning} />
-                <Text style={[s.statusPillText, { color: Colors.warning }]}>ANTI-SNIPE</Text>
+                <Text style={[themed.statusPillText, { color: Colors.warning }]}>ANTI-SNIPE</Text>
               </View>
             )}
           </View>
-          <Text style={s.headerTitle} numberOfLines={1}>{title}</Text>
+          <Text style={themed.headerTitle} numberOfLines={1}>{title}</Text>
         </View>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={s.watcherChip}>
+          <View style={themed.watcherChip}>
             <Ionicons name="eye-outline" size={11} color={Colors.accent} />
-            <Text style={s.watcherText}>{watchers}</Text>
+            <Text style={themed.watcherText}>{watchers}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <View style={[s.connDot, { backgroundColor: connected ? Colors.accentGreen : Colors.accent }]} />
+            <View style={[themed.connDot, { backgroundColor: connected ? Colors.accentGreen : Colors.accent }]} />
           </View>
-          <IconButton style={s.iconBtn} icon={<Ionicons name="share-social-outline" size={17} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this auction: ${title}` })} accessibilityLabel="Share" />
+          <IconButton style={themed.iconBtn} icon={<Ionicons name="share-social-outline" size={17} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this auction: ${title}` })} accessibilityLabel="Share" />
         </View>
       </View>
 
       {/* Status banners */}
       {isCancelled && (
-        <View style={[s.banner, s.bannerRed]}>
+        <View style={[themed.banner, s.bannerRed]}>
           <Ionicons name="ban-outline" size={14} color={Colors.accent} />
-          <Text style={[s.bannerText, { color: Colors.accent }]}>This auction has been cancelled by the seller.</Text>
+          <Text style={[themed.bannerText, { color: Colors.accent }]}>This auction has been cancelled by the seller.</Text>
         </View>
       )}
       {isSeller && !isCancelled && (
-        <View style={[s.banner, s.bannerBlue]}>
+        <View style={[themed.banner, s.bannerBlue]}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
-          <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+          <Text style={[themed.bannerText, { color: Colors.infoLight }]}>
             <Text style={{ fontFamily: FontFamily.bold }}>This is your auction. </Text>
             {isActive ? 'Bids appear in real time.' : isScheduled ? 'Will start automatically.' : 'Your auction has ended.'}
           </Text>
@@ -1177,123 +1180,123 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       )}
       {/* Seller quick-close control — only when auction is actively running */}
       {canManageSellerAuction && isBiddingOpen && !reserveMet && (
-        <View style={s.sellerToolsRow}>
+        <View style={themed.sellerToolsRow}>
           <Ionicons name="settings-outline" size={13} color={Colors.warning} />
-          <Text style={s.sellerToolsLabel}>Seller Tools</Text>
+          <Text style={themed.sellerToolsLabel}>Seller Tools</Text>
           <TouchableOpacity
-            style={[s.sellerCloseBtn, (closingEarly || reserveMet) && { opacity: 0.6 }]}
+            style={[themed.sellerCloseBtn, (closingEarly || reserveMet) && { opacity: 0.6 }]}
             onPress={handleCloseEarly}
             disabled={closingEarly || reserveMet}
             activeOpacity={0.8}
           >
             {closingEarly
               ? <ActivityIndicator size="small" color={Colors.accent} />
-              : <Text style={s.sellerCloseBtnText}>Close Auction Now</Text>
+              : <Text style={themed.sellerCloseBtnText}>Close Auction Now</Text>
             }
           </TouchableOpacity>
         </View>
       )}
       {canManageSellerAuction && (isBiddingOpen || provisionalPending) && !reserveMet && bidHistory[0]?.id && (
-        <View style={[s.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
+        <View style={[themed.binSellerPanel, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha08 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="cash-outline" size={16} color={Colors.accentGreen} />
             <View style={{ flex: 1 }}>
-              <Text style={[s.binSellerTitle, { color: Colors.accentGreen }]}>{provisionalPending ? 'Provisionally sold — your decision' : 'Highest offer received'}</Text>
-              <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono, marginTop: 2 }]}>{fmt(bidHistory[0].amount)}</Text>
-              <Text style={[s.muted, { marginTop: 2 }]}>
+              <Text style={[themed.binSellerTitle, { color: Colors.accentGreen }]}>{provisionalPending ? 'Provisionally sold — your decision' : 'Highest offer received'}</Text>
+              <Text style={[themed.currentBidVal, { fontFamily: FontFamily.mono, marginTop: 2 }]}>{fmt(bidHistory[0].amount)}</Text>
+              <Text style={[themed.muted, { marginTop: 2 }]}>
                 Your reserve is {fmt(reservePrice)}. {provisionalPending ? 'Accept this offer or re-list in auction or Retail. No sale is final yet.' : 'Accept this offer now or keep the auction running for more bids.'}
               </Text>
             </View>
           </View>
           <TouchableOpacity
-            style={[s.binSellerConfirmBtn, { marginTop: 10 }, acceptingBidId === bidHistory[0].id && { opacity: 0.6 }]}
+            style={[themed.binSellerConfirmBtn, { marginTop: 10 }, acceptingBidId === bidHistory[0].id && { opacity: 0.6 }]}
             onPress={() => handleAcceptBid(bidHistory[0])}
             disabled={!!acceptingBidId}
             activeOpacity={0.8}
           >
             {acceptingBidId === bidHistory[0].id
               ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={s.binSellerConfirmText}>{provisionalPending ? `Accept ${fmt(bidHistory[0].amount)} & Confirm Sale` : `Accept ${fmt(bidHistory[0].amount)} & End Auction`}</Text>
+              : <Text style={themed.binSellerConfirmText}>{provisionalPending ? `Accept ${fmt(bidHistory[0].amount)} & Confirm Sale` : `Accept ${fmt(bidHistory[0].amount)} & End Auction`}</Text>
             }
           </TouchableOpacity>
-          <Text style={[s.muted, { textAlign: 'center', marginTop: 6, fontSize: FontSize.size10 }]}>
+          <Text style={[themed.muted, { textAlign: 'center', marginTop: 6, fontSize: FontSize.size10 }]}>
             {provisionalPending ? 'Accepting declares a winner; the £125 buyer fee remains required before handover.' : 'If you wait, verified dealers can continue increasing the bid normally.'}
           </Text>
           {provisionalPending && (
             <View style={{ gap: 10, marginTop: 12 }}>
-              <TouchableOpacity style={s.sellerCloseBtn}
+              <TouchableOpacity style={themed.sellerCloseBtn}
                 onPress={() => navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>Re-list in Auction</Text>
+                <Text style={themed.sellerCloseBtnText}>Re-list in Auction</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.sellerCloseBtn}
+              <TouchableOpacity style={themed.sellerCloseBtn}
                 onPress={() => auction?.listing?.linkedListingId
                   ? navigation.navigate('SellerListings')
                   : navigation.navigate('SellCarFlow', { listingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+                <Text style={themed.sellerCloseBtnText}>{auction?.listing?.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
       )}
       {isScheduled && !isSeller && startTime && (
-        <View style={[s.banner, s.bannerBlue]}>
+        <View style={[themed.banner, s.bannerBlue]}>
           <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
-          <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+          <Text style={[themed.bannerText, { color: Colors.infoLight }]}>
             This auction hasn't started yet — opens automatically at{' '}
             <Text style={{ fontFamily: FontFamily.bold }}>{fmtDate(startTime.toISOString())}</Text>.
           </Text>
         </View>
       )}
       {!connected && isActive && (
-        <View style={[s.banner, s.bannerAmber]}>
+        <View style={[themed.banner, s.bannerAmber]}>
           <Ionicons name="wifi-outline" size={14} color={Colors.warning} />
-          <Text style={[s.bannerText, { color: Colors.lightYellow }]}>Connection lost — bids may not update in real time.</Text>
+          <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>Connection lost — bids may not update in real time.</Text>
         </View>
       )}
       {/* ── Seller BIN confirmation panel ── */}
       {canManageSellerAuction && isBiddingOpen && binPendingBuyerId && auction?.buyItNowPrice && (
-        <View style={s.binSellerPanel}>
+        <View style={themed.binSellerPanel}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
             <Ionicons name="pricetag" size={16} color={Colors.warning} />
-            <Text style={s.binSellerTitle}>Buy It Now Request</Text>
+            <Text style={themed.binSellerTitle}>Buy It Now Request</Text>
           </View>
-          <Text style={s.binSellerBody}>
+          <Text style={themed.binSellerBody}>
             A buyer wants to purchase this vehicle right now at{' '}
             <Text style={{ fontFamily: FontFamily.mono, color: Colors.white }}>{fmt(Number(auction.buyItNowPrice))}</Text>.
             {'\n'}Confirm to end the auction immediately, or decline to continue bidding.
           </Text>
           {binResponseDeadline ? (
-            <Text style={[s.binSellerBody, { marginTop: 6, fontFamily: FontFamily.mono }]}>
+            <Text style={[themed.binSellerBody, { marginTop: 6, fontFamily: FontFamily.mono }]}>
               Respond within {formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)}
             </Text>
           ) : null}
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
             <TouchableOpacity
-              style={[s.binSellerDeclineBtn, binLoading && { opacity: 0.5 }]}
+              style={[themed.binSellerDeclineBtn, binLoading && { opacity: 0.5 }]}
               onPress={handleDeclineBin}
               disabled={binLoading}
               activeOpacity={0.8}
             >
-              <Text style={s.binSellerDeclineText}>Decline</Text>
+              <Text style={themed.binSellerDeclineText}>Decline</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.binSellerConfirmBtn, binLoading && { opacity: 0.5 }]}
+              style={[themed.binSellerConfirmBtn, binLoading && { opacity: 0.5 }]}
               onPress={handleConfirmBin}
               disabled={binLoading}
               activeOpacity={0.8}
             >
               {binLoading
                 ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={s.binSellerConfirmText}>Confirm Sale — {fmt(Number(auction.buyItNowPrice))}</Text>
+                : <Text style={themed.binSellerConfirmText}>Confirm Sale — {fmt(Number(auction.buyItNowPrice))}</Text>
               }
             </TouchableOpacity>
           </View>
         </View>
       )}
       {binPendingBuyerId && !isSeller && !binBannerDismissed && (
-        <View style={[s.banner, s.bannerAmber, { alignItems: 'center' }]}>
+        <View style={[themed.banner, s.bannerAmber, { alignItems: 'center' }]}>
           <Ionicons name="pricetag-outline" size={14} color={Colors.warning} />
-          <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+          <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
             A buyer has requested to Buy It Now — seller is reviewing.
             {binResponseDeadline
               ? ` Response time left: ${formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)}.`
@@ -1303,27 +1306,27 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
       {auction?.listing?.linkedListingId && auction.listing.linkedListing?.type === 'CLASSIFIED' && (
-        <View style={[s.banner, s.bannerDark]}>
+        <View style={[themed.banner, s.bannerDark]}>
           <Ionicons name="pricetag-outline" size={14} color={Colors.textSecondary} />
-          <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
+          <Text style={[themed.bannerText, { color: Colors.textSecondary }]}>
             Also available as a classified listing — make an offer without bidding.
           </Text>
         </View>
       )}
       {isEnded && (
-        <View style={[s.banner, userWon ? s.bannerGreen : s.bannerDark]}>
+        <View style={[themed.banner, userWon ? s.bannerGreen : s.bannerDark]}>
           {userWon ? (
             <>
               <Ionicons name="trophy" size={16} color={Colors.accentGreen} />
               <View style={{ flex: 1 }}>
-                <Text style={[s.bannerText, { color: Colors.accentGreen, fontFamily: FontFamily.bold }]}>You won this auction!</Text>
-                <Text style={[s.bannerText, { color: Colors.lightGreen_6ee7b7, fontSize: FontSize.xs }]}>
+                <Text style={[themed.bannerText, { color: Colors.accentGreen, fontFamily: FontFamily.bold }]}>You won this auction!</Text>
+                <Text style={[themed.bannerText, { color: Colors.lightGreen_6ee7b7, fontSize: FontSize.xs }]}>
                   Winning bid: {fmt(Number(endedPayload?.winningBidAmount ?? 0))}
                 </Text>
               </View>
               {auction?.buyerFeePaid ? (
                 <TouchableOpacity
-                  style={s.bannerBtn}
+                  style={themed.bannerBtn}
                   disabled={connectingChat}
                   activeOpacity={0.8}
                   onPress={async () => {
@@ -1342,12 +1345,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 >
                   {connectingChat
                     ? <ActivityIndicator size="small" color={Colors.white} />
-                    : <Text style={s.bannerBtnText}>Message Seller</Text>
+                    : <Text style={themed.bannerBtnText}>Message Seller</Text>
                   }
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={s.bannerBtn}
+                  style={themed.bannerBtn}
                   activeOpacity={0.8}
                   onPress={() =>
                     navigation.navigate('PurchaseFlow' as any, {
@@ -1364,84 +1367,84 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     })
                   }
                 >
-                  <Text style={s.bannerBtnText}>Pay £125 Fee</Text>
+                  <Text style={themed.bannerBtnText}>Pay £125 Fee</Text>
                 </TouchableOpacity>
               )}
             </>
           ) : provisionalPending ? (
             <>
               <Ionicons name="hand-left-outline" size={14} color={Colors.warning} />
-              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>Provisionally sold — seller decision pending. No completed sale yet.</Text>
+              <Text style={[themed.bannerText, { color: Colors.textSecondary }]}>Provisionally sold — seller decision pending. No completed sale yet.</Text>
             </>
           ) : endedPayload?.reserveMet === false ? (
             <>
               <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
-              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
+              <Text style={[themed.bannerText, { color: Colors.textSecondary }]}>
                 Auction ended — the vehicle didn't reach the seller's minimum. No sale completed.
               </Text>
             </>
           ) : endedPayload?.winnerId ? (
             <>
               <Ionicons name="hammer-outline" size={14} color={Colors.iconMuted} />
-              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>
+              <Text style={[themed.bannerText, { color: Colors.textSecondary }]}>
                 Auction ended. Winning bid: <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>{fmt(Number(endedPayload?.winningBidAmount ?? 0))}</Text>
               </Text>
             </>
           ) : (
             <>
               <Ionicons name="hammer-outline" size={14} color={Colors.iconMuted} />
-              <Text style={[s.bannerText, { color: Colors.textSecondary }]}>Auction ended with no bids placed.</Text>
+              <Text style={[themed.bannerText, { color: Colors.textSecondary }]}>Auction ended with no bids placed.</Text>
             </>
           )}
         </View>
       )}
 
       {/* Main scroll */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={themed.scroll}>
 
         {/* Hero image */}
-        <View style={s.heroWrap}>
-          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={s.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+        <View style={themed.heroWrap}>
+          <Image source={{ uri: image || 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=900' }} style={themed.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           <LinearGradient colors={['transparent', 'rgba(10,10,12,0.9)']} style={[StyleSheet.absoluteFillObject, { top: '40%' }]} />
 
           {/* Image overlays */}
-          <View style={s.heroTopLeft}>
+          <View style={themed.heroTopLeft}>
             {isActive && (
-              <View style={s.livePill}>
-                <View style={s.liveDot} />
-                <Text style={s.livePillText}>LIVE</Text>
+              <View style={themed.livePill}>
+                <View style={themed.liveDot} />
+                <Text style={themed.livePillText}>LIVE</Text>
               </View>
             )}
             {isScheduled && (
-              <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]}>
-                <Text style={s.livePillText}>UPCOMING</Text>
+              <View style={[themed.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]}>
+                <Text style={themed.livePillText}>UPCOMING</Text>
               </View>
             )}
             {(auction?.listing?.isImported ?? listing.isImported) && (
-              <View style={s.importedPill}>
+              <View style={themed.importedPill}>
                 <Ionicons name="globe-outline" size={10} color="#111827" />
-                <Text style={s.importedPillText}>IMPORTED</Text>
+                <Text style={themed.importedPillText}>IMPORTED</Text>
               </View>
             )}
           </View>
 
-          <View style={s.heroTopRight}>
+          <View style={themed.heroTopRight}>
             {isActive && isWinning && !isSeller && (
-              <View style={s.winningBadge}>
+              <View style={themed.winningBadge}>
                 <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
-                <Text style={s.winningBadgeText}>WINNING</Text>
+                <Text style={themed.winningBadgeText}>WINNING</Text>
               </View>
             )}
             {isActive && !isWinning && currentUser && !isSeller && bidHistory.length > 0 && (
-              <View style={s.outbidBadge}>
+              <View style={themed.outbidBadge}>
                 <Ionicons name="alert-circle" size={11} color={Colors.accent} />
-                <Text style={s.outbidBadgeText}>OUTBID</Text>
+                <Text style={themed.outbidBadgeText}>OUTBID</Text>
               </View>
             )}
             {/* Countdown timer with animated pulse background */}
             {isActive && endTime && (
-              <Animated.View style={[s.timerBox, pulseAnimStyle]}>
-                <Text style={s.timerBoxLabel}>ENDS IN</Text>
+              <Animated.View style={[themed.timerBox, pulseAnimStyle]}>
+                <Text style={themed.timerBoxLabel}>ENDS IN</Text>
                 <Text style={[
                   s.timerBoxValue,
                   { fontFamily: FontFamily.mono },
@@ -1452,19 +1455,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Animated.View>
             )}
             {isScheduled && startTime && (
-              <View style={[s.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
-                <Text style={[s.timerBoxLabel, { color: Colors.infoLight }]}>STARTS IN</Text>
-                <Text style={[s.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
+              <View style={[themed.timerBox, { borderColor: Colors.infoBlueAlpha30 }]}>
+                <Text style={[themed.timerBoxLabel, { color: Colors.infoLight }]}>STARTS IN</Text>
+                <Text style={[themed.timerBoxValue, { color: Colors.infoBlueLight, fontFamily: FontFamily.mono }]}>{fmtCountdown(secondsLeft)}</Text>
               </View>
             )}
           </View>
 
-          <View style={s.heroBottom}>
+          <View style={themed.heroBottom}>
             <View style={{ flex: 1 }}>
-              <Text style={s.heroBidLabel}>
+              <Text style={themed.heroBidLabel}>
                 {isEnded ? (hasRealBids ? 'FINAL BID' : 'NO BIDS') : isScheduled || !hasRealBids ? 'STARTING BID' : 'CURRENT BID'}
               </Text>
-              <Text style={[s.heroBid, { fontFamily: FontFamily.mono }]}>
+              <Text style={[themed.heroBid, { fontFamily: FontFamily.mono }]}>
                 {isEnded && !hasRealBids ? '—' : fmt(displayBidAmount)}
               </Text>
               {isActive && !hasRealBids && minimumAllowedBid > 0 && (
@@ -1481,24 +1484,24 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* Anti-snipe alert */}
         {antiSnipeActive && isActive && (
-          <View style={s.antiSnipeBar}>
+          <View style={themed.antiSnipeBar}>
             <Ionicons name="flash" size={13} color={Colors.warning} />
-            <Text style={s.antiSnipeBarText}>
+            <Text style={themed.antiSnipeBarText}>
               Anti-Snipe Active — any bid in the final 3 minutes extends the auction by 3 minutes
             </Text>
           </View>
         )}
 
         {/* Tabs */}
-        <View style={s.tabs}>
+        <View style={themed.tabs}>
           {(['details', 'bids', 'seller'] as const).map(tab => (
             <TouchableOpacity
               key={tab}
-              style={[s.tab, activeTab === tab && s.tabActive]}
+              style={[themed.tab, activeTab === tab && s.tabActive]}
               onPress={() => setActiveTab(tab)}
               activeOpacity={0.7}
             >
-              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>
+              <Text style={[themed.tabText, activeTab === tab && s.tabTextActive]}>
                 {tab === 'bids' ? `BIDS (${bidHistory.length})` : tab.toUpperCase()}
               </Text>
             </TouchableOpacity>
@@ -1509,16 +1512,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {activeTab === 'details' && (
           <View style={{ gap: 16 }}>
             {/* 4 hero stats */}
-            <View style={s.statsRow}>
+            <View style={themed.statsRow}>
               {[
                 { l: 'YEAR', v: auction?.listing?.year ?? listing.year },
                 { l: 'MILEAGE', v: auction?.listing?.mileage ? `${Number(auction.listing.mileage).toLocaleString()} mi` : `${(listing.mileage ?? 0).toLocaleString()} mi` },
                 { l: 'FUEL', v: (auction?.listing?.fuelType ?? listing.fuelType ?? '—').replace(/_/g, ' ') },
                 { l: 'GEARBOX', v: (auction?.listing?.transmission ?? listing.transmission ?? '—').replace(/_/g, ' ') },
               ].map(stat => (
-                <View key={stat.l} style={s.statBox}>
-                  <Text style={s.statLabel}>{stat.l}</Text>
-                  <Text style={s.statValue}>{String(stat.v ?? '—')}</Text>
+                <View key={stat.l} style={themed.statBox}>
+                  <Text style={themed.statLabel}>{stat.l}</Text>
+                  <Text style={themed.statValue}>{String(stat.v ?? '—')}</Text>
                 </View>
               ))}
             </View>
@@ -1530,17 +1533,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {((auction?.customTags && auction.customTags.length > 0) || auction?.sellerSelfRating != null) && (
               <View style={{ gap: 8 }}>
                 {auction?.customTags && auction.customTags.length > 0 && (
-                  <View style={s.digestTagRow}>
+                  <View style={themed.digestTagRow}>
                     {auction.customTags.map(tag => (
-                      <View key={tag} style={s.digestTagPill}>
-                        <Text style={s.digestTagPillText} numberOfLines={1}>{tag}</Text>
+                      <View key={tag} style={themed.digestTagPill}>
+                        <Text style={themed.digestTagPillText} numberOfLines={1}>{tag}</Text>
                       </View>
                     ))}
                   </View>
                 )}
                 {auction?.sellerSelfRating != null && (
-                  <View style={s.digestRatingRow}>
-                    <Text style={s.digestRatingLabel}>Seller's own rating:</Text>
+                  <View style={themed.digestRatingRow}>
+                    <Text style={themed.digestRatingLabel}>Seller's own rating:</Text>
                     <View style={{ flexDirection: 'row' }}>
                       {[1, 2, 3, 4, 5].map(n => (
                         <Ionicons
@@ -1559,17 +1562,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Description */}
             {(auction?.listing?.description ?? listing.description) ? (
-              <View style={s.card}>
-                <Text style={s.cardSectionTitle}>Description</Text>
-                <Text style={s.descText}>{auction?.listing?.description ?? listing.description}</Text>
+              <View style={themed.card}>
+                <Text style={themed.cardSectionTitle}>Description</Text>
+                <Text style={themed.descText}>{auction?.listing?.description ?? listing.description}</Text>
               </View>
             ) : null}
 
             {/* Import disclosure */}
             {(auction?.listing?.isImported ?? listing.isImported) && (
-              <View style={[s.banner, s.bannerAmber]}>
+              <View style={[themed.banner, s.bannerAmber]}>
                 <Ionicons name="globe-outline" size={14} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
                   <Text style={{ fontFamily: FontFamily.bold }}>Imported vehicle</Text> — This listing is marked as an import so buyers can take that into account before bidding.
                 </Text>
               </View>
@@ -1577,19 +1580,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Write-off warning */}
             {(auction?.listing as any)?.writeOffCategory && (auction?.listing as any).writeOffCategory !== 'NONE' && (
-              <View style={[s.banner, s.bannerAmber]}>
+              <View style={[themed.banner, s.bannerAmber]}>
                 <Ionicons name="warning-outline" size={14} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
                   <Text style={{ fontFamily: FontFamily.bold }}>{(auction?.listing as any).writeOffCategory.replace(/_/g, ' ')} Write-off</Text> — Review condition carefully before bidding.
                 </Text>
               </View>
             )}
 
             {/* Specifications */}
-            <View style={s.card}>
-              <Text style={s.cardSectionTitle}>Specifications</Text>
-              <View style={s.specsSection}>
-                <Text style={s.specGroup}>Overview</Text>
+            <View style={themed.card}>
+              <Text style={themed.cardSectionTitle}>Specifications</Text>
+              <View style={themed.specsSection}>
+                <Text style={themed.specGroup}>Overview</Text>
                 {[
                   ['Make', auction?.listing?.make ?? listing.make],
                   ['Model', auction?.listing?.model ?? listing.model],
@@ -1602,14 +1605,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ['Location', auction?.listing?.location ?? listing.location],
                   ['Vehicle origin', (auction?.listing?.isImported ?? listing.isImported) ? 'Imported vehicle' : null],
                 ].filter(([, v]) => v).map(([k, v]) => (
-                  <View key={k as string} style={s.specRow}>
-                    <Text style={s.specKey}>{k}</Text>
-                    <Text style={s.specVal}>{String(v)}</Text>
+                  <View key={k as string} style={themed.specRow}>
+                    <Text style={themed.specKey}>{k}</Text>
+                    <Text style={themed.specVal}>{String(v)}</Text>
                   </View>
                 ))}
               </View>
-              <View style={[s.specsSection, { marginTop: 16 }]}>
-                <Text style={s.specGroup}>Performance</Text>
+              <View style={[themed.specsSection, { marginTop: 16 }]}>
+                <Text style={themed.specGroup}>Performance</Text>
                 {[
                   ['Fuel Type', (auction?.listing?.fuelType ?? listing.fuelType)?.replace(/_/g, ' ')],
                   ['Transmission', (auction?.listing?.transmission ?? listing.transmission)?.replace(/_/g, ' ')],
@@ -1632,26 +1635,26 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ['Doors', (auction?.listing as any)?.doors],
                   ['Seats', (auction?.listing as any)?.seats],
                 ].filter(([, v]) => v).map(([k, v]) => (
-                  <View key={k as string} style={s.specRow}>
-                    <Text style={s.specKey}>{k}</Text>
-                    <Text style={s.specVal}>{String(v)}</Text>
+                  <View key={k as string} style={themed.specRow}>
+                    <Text style={themed.specKey}>{k}</Text>
+                    <Text style={themed.specVal}>{String(v)}</Text>
                   </View>
                 ))}
               </View>
 
               {/* MOT & Tax */}
               {((auction?.listing as any)?.motStatus || (auction?.listing as any)?.taxStatus) && (
-                <View style={[s.specsSection, { marginTop: 16 }]}>
-                  <Text style={s.specGroup}>MOT & Tax</Text>
+                <View style={[themed.specsSection, { marginTop: 16 }]}>
+                  <Text style={themed.specGroup}>MOT & Tax</Text>
                   {[
                     ['MOT Status', (auction?.listing as any)?.motStatus],
                     ['MOT Expiry', (auction?.listing as any)?.motExpiryDate],
                     ['Tax Status', (auction?.listing as any)?.taxStatus],
                     ['Tax Due', (auction?.listing as any)?.taxDueDate],
                   ].filter(([, v]) => v).map(([k, v]) => (
-                    <View key={k as string} style={s.specRow}>
-                      <Text style={s.specKey}>{k}</Text>
-                      <Text style={[s.specVal, (v === 'Valid' || v === 'Taxed') && { color: Colors.accentGreen }]}>{String(v)}</Text>
+                    <View key={k as string} style={themed.specRow}>
+                      <Text style={themed.specKey}>{k}</Text>
+                      <Text style={[themed.specVal, (v === 'Valid' || v === 'Taxed') && { color: Colors.accentGreen }]}>{String(v)}</Text>
                     </View>
                   ))}
                 </View>
@@ -1694,34 +1697,34 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               const declared = visible(declarations);
               if (!details.length && !history.length && !declared.length) return null;
               const renderRows = (rows: typeof moreDetails) => rows.map(([key, value]) => (
-                <View key={key} style={s.specRow}>
-                  <Text style={s.specKey}>{key}</Text>
-                  <Text style={[s.specVal, { flexShrink: 1, textAlign: 'right' }]}>{String(value)}</Text>
+                <View key={key} style={themed.specRow}>
+                  <Text style={themed.specKey}>{key}</Text>
+                  <Text style={[themed.specVal, { flexShrink: 1, textAlign: 'right' }]}>{String(value)}</Text>
                 </View>
               ));
               return (
-                <View style={s.card}>
-                  <Text style={s.cardSectionTitle}>Additional Vehicle Information</Text>
+                <View style={themed.card}>
+                  <Text style={themed.cardSectionTitle}>Additional Vehicle Information</Text>
                   {details.length > 0 && (
-                    <View style={s.specsSection}>
-                      <Text style={s.specGroup}>Ownership, history & performance</Text>
+                    <View style={themed.specsSection}>
+                      <Text style={themed.specGroup}>Ownership, history & performance</Text>
                       {renderRows(details)}
                     </View>
                   )}
                   {history.length > 0 && (
-                    <View style={[s.specsSection, { marginTop: details.length ? 16 : 0 }]}>
-                      <Text style={s.specGroup}>Recorded vehicle details</Text>
+                    <View style={[themed.specsSection, { marginTop: details.length ? 16 : 0 }]}>
+                      <Text style={themed.specGroup}>Recorded vehicle details</Text>
                       {renderRows(history)}
-                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
+                      <Text style={[themed.muted, { fontSize: 10, marginTop: 8 }]}>
                         Saved when the listing was created or edited; may not reflect subsequent DVLA updates.
                       </Text>
                     </View>
                   )}
                   {declared.length > 0 && (
-                    <View style={[s.specsSection, { marginTop: 16, padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 10 }]}>
-                      <Text style={[s.specGroup, { color: Colors.warning }]}>Seller declarations</Text>
+                    <View style={[themed.specsSection, { marginTop: 16, padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 10 }]}>
+                      <Text style={[themed.specGroup, { color: Colors.warning }]}>Seller declarations</Text>
                       {renderRows(declared)}
-                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
+                      <Text style={[themed.muted, { fontSize: 10, marginTop: 8 }]}>
                         Seller statements, not independent HPI or finance checks. Review any separately provided completed report before bidding.
                       </Text>
                     </View>
@@ -1732,9 +1735,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {Array.isArray((auction?.listing as any)?.motHistory)
               && (auction!.listing as any).motHistory.length > 0 && (
-                <View style={s.card}>
-                  <Text style={s.cardSectionTitle}>Saved MOT History</Text>
-                  <Text style={[s.muted, { fontSize: 10, marginBottom: 12 }]}>
+                <View style={themed.card}>
+                  <Text style={themed.cardSectionTitle}>Saved MOT History</Text>
+                  <Text style={[themed.muted, { fontSize: 10, marginBottom: 12 }]}>
                     Listing-time MOT snapshot, not an independently verified or continuously updated history report.
                   </Text>
                   {((auction!.listing as any).motHistory as Array<{
@@ -1747,17 +1750,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     defects?: unknown[];
                   }>).slice(0, 8).map((test, index) => (
                     <View key={test.motTestNumber || `${test.completedDate || 'test'}-${index}`}
-                      style={[s.specsSection, { marginBottom: 8 }]}>
-                      <View style={s.specRow}>
-                        <Text style={s.specKey}>{test.testResult || 'Result unavailable'}</Text>
-                        <Text style={s.specVal}>{test.completedDate || 'Date unavailable'}</Text>
+                      style={[themed.specsSection, { marginBottom: 8 }]}>
+                      <View style={themed.specRow}>
+                        <Text style={themed.specKey}>{test.testResult || 'Result unavailable'}</Text>
+                        <Text style={themed.specVal}>{test.completedDate || 'Date unavailable'}</Text>
                       </View>
                       {test.odometerValue ? (
-                        <Text style={s.muted}>{Number(test.odometerValue).toLocaleString('en-GB')} {test.odometerUnit || 'mi'}</Text>
+                        <Text style={themed.muted}>{Number(test.odometerValue).toLocaleString('en-GB')} {test.odometerUnit || 'mi'}</Text>
                       ) : null}
-                      {test.expiryDate ? <Text style={s.muted}>Expiry: {test.expiryDate}</Text> : null}
+                      {test.expiryDate ? <Text style={themed.muted}>Expiry: {test.expiryDate}</Text> : null}
                       {Array.isArray(test.defects) && test.defects.length ? (
-                        <Text style={s.muted}>{test.defects.length} recorded defects/advisories</Text>
+                        <Text style={themed.muted}>{test.defects.length} recorded defects/advisories</Text>
                       ) : null}
                     </View>
                   ))}
@@ -1766,13 +1769,13 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Features */}
             {Array.isArray((auction?.listing as any)?.features) && (auction!.listing as any).features.length > 0 && (
-              <View style={s.card}>
-                <Text style={s.cardSectionTitle}>Features & Options</Text>
+              <View style={themed.card}>
+                <Text style={themed.cardSectionTitle}>Features & Options</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {((auction!.listing as any).features as string[]).map((f: string) => (
-                    <View key={f} style={s.featureChip}>
+                    <View key={f} style={themed.featureChip}>
                       <Ionicons name="checkmark-circle" size={10} color={Colors.accentGreen} />
-                      <Text style={s.featureChipText}>{f}</Text>
+                      <Text style={themed.featureChipText}>{f}</Text>
                     </View>
                   ))}
                 </View>
@@ -1781,10 +1784,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Auction details */}
             {auction && (
-              <View style={[s.card, { borderColor: Colors.accentAlpha20, backgroundColor: Colors.accentAlpha04 }]}>
+              <View style={[themed.card, { borderColor: Colors.accentAlpha20, backgroundColor: Colors.accentAlpha04 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                   <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
-                  <Text style={[s.cardSectionTitle, { color: Colors.accent, marginBottom: 0 }]}>Auction Details</Text>
+                  <Text style={[themed.cardSectionTitle, { color: Colors.accent, marginBottom: 0 }]}>Auction Details</Text>
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
                   {/* Reserve Price is deliberately excluded — never shown to
@@ -1798,8 +1801,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     ['Ends', fmtDate(auction.endTime)],
                   ].map(([k, v]) => (
                     <View key={k} style={{ width: '50%', paddingBottom: 10, paddingRight: 8 }}>
-                      <Text style={s.specKey}>{k}</Text>
-                      <Text style={[s.specVal, { fontFamily: FontFamily.mono, color: Colors.white }]}>{v}</Text>
+                      <Text style={themed.specKey}>{k}</Text>
+                      <Text style={[themed.specVal, { fontFamily: FontFamily.mono, color: Colors.white }]}>{v}</Text>
                     </View>
                   ))}
                 </View>
@@ -1809,33 +1812,33 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Condition & Damage — always renders (Prompt 6), parity with
                 VehicleDetailScreen. Grade pill is the only place
                 exteriorGrade appears on this screen. */}
-            <View style={s.card}>
+            <View style={themed.card}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="warning-outline" size={13} color={Colors.warning} />
-                  <Text style={[s.cardSectionTitle, { marginBottom: 0 }]}>Condition & Damage</Text>
+                  <Text style={[themed.cardSectionTitle, { marginBottom: 0 }]}>Condition & Damage</Text>
                 </View>
                 <GradeChip grade={(auction?.listing as any)?.exteriorGrade} variant="pill" />
               </View>
               <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
               {(auction?.listing as any)?.mechanicalIssues ? (
                 <View style={{ marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
-                  <Text style={[s.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>
-                  <Text style={[s.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).mechanicalIssues}</Text>
+                  <Text style={[themed.specKey, { color: Colors.warning, marginBottom: 5 }]}>KNOWN MECHANICAL PROBLEMS</Text>
+                  <Text style={[themed.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).mechanicalIssues}</Text>
                 </View>
               ) : null}
               {(auction?.listing as any)?.electricalIssues ? (
                 <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(59,130,246,0.28)', backgroundColor: 'rgba(59,130,246,0.07)' }}>
-                  <Text style={[s.specKey, { color: Colors.infoBlueLight, marginBottom: 5 }]}>KNOWN ELECTRICAL PROBLEMS</Text>
-                  <Text style={[s.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).electricalIssues}</Text>
+                  <Text style={[themed.specKey, { color: Colors.infoBlueLight, marginBottom: 5 }]}>KNOWN ELECTRICAL PROBLEMS</Text>
+                  <Text style={[themed.specVal, { lineHeight: 19 }]}>{(auction?.listing as any).electricalIssues}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Trust note */}
-            <View style={[s.banner, s.bannerDark]}>
+            <View style={[themed.banner, s.bannerDark]}>
               <Ionicons name="information-circle-outline" size={12} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
-              <Text style={[s.bannerText, { color: Colors.iconMuted, fontSize: FontSize.size10 }]}>
+              <Text style={[themed.bannerText, { color: Colors.iconMuted, fontSize: FontSize.size10 }]}>
                 All transactions are arranged directly between buyer and seller. A chat opens automatically when the auction ends with the winner.
               </Text>
             </View>
@@ -1844,7 +1847,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* ── Tab: BIDS ── */}
         {activeTab === 'bids' && (
-          <View style={s.card}>
+          <View style={themed.card}>
             {/* Bid flash overlay on top row */}
             <View style={{ position: 'relative' }}>
               <Animated.View
@@ -1858,39 +1861,39 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {bidHistory.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40, gap: 8 }}>
                   <Ionicons name="hammer-outline" size={28} color={Colors.borderMuted} />
-                  <Text style={s.muted}>No bids yet — be the first.</Text>
+                  <Text style={themed.muted}>No bids yet — be the first.</Text>
                 </View>
               ) : (
                 <>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 }}>
-                    <Text style={s.specKey}>BIDDER</Text>
-                    <Text style={s.specKey}>AMOUNT</Text>
+                    <Text style={themed.specKey}>BIDDER</Text>
+                    <Text style={themed.specKey}>AMOUNT</Text>
                   </View>
                   {bidHistory.map((bid, i) => (
-                    <View key={bid.id} style={[s.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
-                      <View style={[s.bidAvatar, i === 0 && { backgroundColor: Colors.accentAlpha20, borderColor: Colors.accent }]}>
-                        <Text style={[s.bidAvatarText, i === 0 && { color: Colors.accent }]}>{bid.initials}</Text>
+                    <View key={bid.id} style={[themed.bidRow, i === bidHistory.length - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={[themed.bidAvatar, i === 0 && { backgroundColor: Colors.accentAlpha20, borderColor: Colors.accent }]}>
+                        <Text style={[themed.bidAvatarText, i === 0 && { color: Colors.accent }]}>{bid.initials}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={s.bidInitials} numberOfLines={1}>{bid.initials}</Text>
+                        <Text style={themed.bidInitials} numberOfLines={1}>{bid.initials}</Text>
                         {i === 0 && (
-                          <View style={s.leaderChip}><Text style={s.leaderChipText}>LEADER</Text></View>
+                          <View style={themed.leaderChip}><Text style={themed.leaderChipText}>LEADER</Text></View>
                         )}
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        <Text style={[s.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
-                        <Text style={s.bidTime}>{bid.time}</Text>
+                        <Text style={[themed.bidAmt, { fontFamily: FontFamily.mono }]}>{fmt(bid.amount)}</Text>
+                        <Text style={themed.bidTime}>{bid.time}</Text>
                         {/* Seller-only "Accept" button — ends the auction at this bid */}
                         {canManageSellerAuction && isBiddingOpen && !reserveMet && i === 0 && (
                           <TouchableOpacity
-                            style={[s.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
+                            style={[themed.acceptBidBtn, acceptingBidId === bid.id && { opacity: 0.6 }]}
                             onPress={() => handleAcceptBid(bid)}
                             disabled={!!acceptingBidId}
                             activeOpacity={0.8}
                           >
                             {acceptingBidId === bid.id
                               ? <ActivityIndicator size="small" color={Colors.white} />
-                              : <Text style={s.acceptBidBtnText}>Accept</Text>
+                              : <Text style={themed.acceptBidBtnText}>Accept</Text>
                             }
                           </TouchableOpacity>
                         )}
@@ -1905,18 +1908,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
         {/* ── Tab: SELLER ── */}
         {activeTab === 'seller' && (
-          <View style={s.card}>
+          <View style={themed.card}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-              <View style={s.sellerAvatar}>
-                <Text style={s.sellerAvatarText}>{sellerInitials}</Text>
+              <View style={themed.sellerAvatar}>
+                <Text style={themed.sellerAvatarText}>{sellerInitials}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.sellerName}>{sellerName}</Text>
+                <Text style={themed.sellerName}>{sellerName}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                   <Ionicons name="shield-checkmark" size={11} color={Colors.accentGreen} />
                   <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accentGreen }}>Verified Seller</Text>
                 </View>
-                <Text style={[s.muted, { marginTop: 8, lineHeight: 18 }]}>
+                <Text style={[themed.muted, { marginTop: 8, lineHeight: 18 }]}>
                   Win the auction and a direct chat with this seller opens automatically to arrange the deal.
                 </Text>
               </View>
@@ -1938,7 +1941,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               sellerContact.emailAvailable ||
               sellerContact.businessAddressAvailable ||
               sellerContact.websiteAvailable) && (
-              <View style={s.sellerContactBlock}>
+              <View style={themed.sellerContactBlock}>
                 {sellerContact.phoneAvailable && (
                   <ContactRow
                     icon="call-outline"
@@ -1990,7 +1993,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   />
                 )}
                 {!sellerContact.unlocked && (
-                  <Text style={s.sellerContactLockedNote}>
+                  <Text style={themed.sellerContactLockedNote}>
                     Contact details unlock once you win this auction and pay the buyer fee.
                   </Text>
                 )}
@@ -2003,9 +2006,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {isBiddingOpen && !isSeller && canPlaceBid && !isEnded && !isCancelled && auction?.buyItNowPrice && !reserveMet && (
           binPendingBuyerId ? (
             // BIN is pending — show waiting state
-            <View style={s.binPendingBanner}>
+            <View style={themed.binPendingBanner}>
               <Ionicons name="time-outline" size={14} color={Colors.warning} />
-              <Text style={s.binPendingText}>
+              <Text style={themed.binPendingText}>
                 Buy It Now requested — awaiting seller confirmation
                 {binResponseDeadline
                   ? ` · ${formatBinWindowRemaining(new Date(binResponseDeadline).getTime() - binNowMs)} left`
@@ -2014,16 +2017,16 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           ) : (
             // BIN available — show trigger panel
-            <View style={s.binPanel}>
-              <View style={s.binPanelRow}>
+            <View style={themed.binPanel}>
+              <View style={themed.binPanelRow}>
                 <View>
-                  <Text style={s.binPanelLabel}>BUY IT NOW</Text>
-                  <Text style={[s.binPanelPrice, { fontFamily: FontFamily.mono }]}>{fmt(Number(auction.buyItNowPrice))}</Text>
+                  <Text style={themed.binPanelLabel}>BUY IT NOW</Text>
+                  <Text style={[themed.binPanelPrice, { fontFamily: FontFamily.mono }]}>{fmt(Number(auction.buyItNowPrice))}</Text>
                 </View>
-                <Text style={s.binPanelHint}>Skip the auction{'\n'}seller must confirm</Text>
+                <Text style={themed.binPanelHint}>Skip the auction{'\n'}seller must confirm</Text>
               </View>
               <TouchableOpacity
-                style={[s.binBtn, binLoading && { opacity: 0.6 }]}
+                style={[themed.binBtn, binLoading && { opacity: 0.6 }]}
                 onPress={handleTriggerBin}
                 disabled={binLoading}
                 activeOpacity={0.85}
@@ -2032,7 +2035,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
                       <Ionicons name="pricetag-outline" size={15} color={Colors.white} />
-                      <Text style={s.binBtnText}>Buy Now — {fmt(Number(auction.buyItNowPrice))}</Text>
+                      <Text style={themed.binBtnText}>Buy Now — {fmt(Number(auction.buyItNowPrice))}</Text>
                     </>
                 }
               </TouchableOpacity>
@@ -2045,19 +2048,19 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       </ScrollView>
 
       {/* ── Sticky Bid Console ── */}
-      <View style={[s.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
+      <View style={[themed.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
         {isCancelled ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <Ionicons name="ban-outline" size={20} color={Colors.iconMuted} />
-            <Text style={s.bidStateText}>Auction Cancelled</Text>
+            <Text style={themed.bidStateText}>Auction Cancelled</Text>
           </View>
         ) : isEnded ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <Ionicons name="hammer-outline" size={20} color={Colors.iconMuted} />
-            <Text style={s.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
+            <Text style={themed.bidStateText}>{userWon ? 'You Won!' : 'Auction Ended'}</Text>
             {userWon && auction?.buyerFeePaid && (
               <TouchableOpacity
-                style={[s.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
+                style={[themed.bidBtn, { backgroundColor: Colors.accentGreen, marginTop: 8 }]}
                 disabled={connectingChat}
                 activeOpacity={0.8}
                 onPress={async () => {
@@ -2076,7 +2079,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
                       <Ionicons name="chatbubble-outline" size={15} color={Colors.white} />
-                      <Text style={s.bidBtnText}>Message Seller</Text>
+                      <Text style={themed.bidBtnText}>Message Seller</Text>
                     </>
                 }
               </TouchableOpacity>
@@ -2086,7 +2089,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               && !auction?.sellerBonusReleased
               && !auction?.buyerRefusedAt && (
               <TouchableOpacity
-                style={[s.quickBidBtn, { marginTop: 8, borderWidth: 1, borderColor: Colors.warningAlpha30 }]}
+                style={[themed.quickBidBtn, { marginTop: 8, borderWidth: 1, borderColor: Colors.warningAlpha30 }]}
                 disabled={inspectionLoading}
                 activeOpacity={0.8}
                 onPress={() => void handleArrangeInspection()}
@@ -2094,23 +2097,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 {inspectionLoading
                   ? <ActivityIndicator color={Colors.warning} size="small" />
                   : <Ionicons name="search-outline" size={15} color={Colors.warning} />}
-                <Text style={[s.quickBidBtnText, { color: Colors.warning }]}>
+                <Text style={[themed.quickBidBtnText, { color: Colors.warning }]}>
                   Inspect Before Handover
                 </Text>
               </TouchableOpacity>
             )}
             {userWon && auction?.buyerRefusedAt && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+              <View style={[themed.banner, s.bannerAmber, { marginTop: 8 }]}>
                 <Ionicons name="checkmark-circle-outline" size={13} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
                   This auction purchase was refused after a verified inspection.
                 </Text>
               </View>
             )}
             {userWon && !auction?.buyerFeePaid && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+              <View style={[themed.banner, s.bannerAmber, { marginTop: 8 }]}>
                 <Ionicons name="time-outline" size={13} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
                   £125 fee: {formatBuyerFeeRemaining(auction?.buyerFeeDeadlineAt, nowMs)
                     || 'Due within 72h of recorded win; refresh for exact deadline.'}
                 </Text>
@@ -2119,7 +2122,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {userWon && !auction?.buyerFeePaid && (
               canPayAuctionFee ? (
                 <TouchableOpacity
-                  style={[s.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
+                  style={[themed.bidBtn, { backgroundColor: Colors.accent, marginTop: 8 }]}
                   activeOpacity={0.8}
                   onPress={() =>
                     navigation.navigate('PurchaseFlow' as any, {
@@ -2137,12 +2140,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   }
                 >
                   <Ionicons name="lock-closed-outline" size={15} color={Colors.white} />
-                  <Text style={s.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
+                  <Text style={themed.bidBtnText}>Pay £125 Fee to Unlock Chat</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={[s.banner, s.bannerAmber, { marginTop: 8 }]}>
+                <View style={[themed.banner, s.bannerAmber, { marginTop: 8 }]}>
                   <Ionicons name="lock-closed-outline" size={13} color={Colors.warning} />
-                  <Text style={[s.bannerText, { color: Colors.lightYellow }]}>
+                  <Text style={[themed.bannerText, { color: Colors.lightYellow }]}>
                     The £125 buyer fee must be paid by a dealership Owner, Admin or Finance Manager.
                   </Text>
                 </View>
@@ -2150,34 +2153,34 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             )}
           </View>
         ) : isScheduled ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <Ionicons name="calendar-outline" size={20} color={Colors.infoBlue} />
-            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
-            {startTime && <Text style={s.muted}>{fmtDate(startTime.toISOString())}</Text>}
+            <Text style={[themed.bidStateText, { color: Colors.infoBlueLight }]}>Bidding Opens Soon</Text>
+            {startTime && <Text style={themed.muted}>{fmtDate(startTime.toISOString())}</Text>}
           </View>
         ) : auctionClockExpired ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <Ionicons name="time-outline" size={20} color={Colors.warning} />
-            <Text style={[s.bidStateText, { color: Colors.warning }]}>Auction time ended</Text>
-            <Text style={s.muted}>Bidding is closed while CarMazium finalises the auction result.</Text>
+            <Text style={[themed.bidStateText, { color: Colors.warning }]}>Auction time ended</Text>
+            <Text style={themed.muted}>Bidding is closed while CarMazium finalises the auction result.</Text>
           </View>
         ) : isSeller ? (
           <View style={{ gap: 10 }}>
             {/* Seller context row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="briefcase-outline" size={16} color={Colors.warning} />
-              <Text style={[s.bidStateText, { color: Colors.warning, flex: 1 }]}>You are the seller</Text>
-              <Text style={s.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
+              <Text style={[themed.bidStateText, { color: Colors.warning, flex: 1 }]}>You are the seller</Text>
+              <Text style={themed.muted}>{bidHistory.length} bid{bidHistory.length !== 1 ? 's' : ''}</Text>
             </View>
 
             {/* Reserve status */}
-            <View style={[s.antiSnipeBar, { borderColor: reserveMet ? Colors.accentGreenAlpha30 : Colors.warningAlpha30, backgroundColor: reserveMet ? Colors.accentGreenAlpha08 : Colors.warningAlpha08 }]}>
+            <View style={[themed.antiSnipeBar, { borderColor: reserveMet ? Colors.accentGreenAlpha30 : Colors.warningAlpha30, backgroundColor: reserveMet ? Colors.accentGreenAlpha08 : Colors.warningAlpha08 }]}>
               <Ionicons
                 name={reserveMet ? 'shield-checkmark-outline' : 'shield-outline'}
                 size={13}
                 color={reserveMet ? Colors.accentGreen : Colors.warning}
               />
-              <Text style={[s.antiSnipeBarText, { color: reserveMet ? Colors.accentGreen : Colors.warning }]}>
+              <Text style={[themed.antiSnipeBarText, { color: reserveMet ? Colors.accentGreen : Colors.warning }]}>
                 {reserveMet
                   ? `Reserve met — current bid ${fmt(currentBid)}`
                   : `Reserve not yet met — need ${fmt(reservePrice)}`}
@@ -2198,29 +2201,29 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {canManageSellerAuction ? (
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TouchableOpacity
-                  style={[s.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
+                  style={[themed.quickBidBtn, { flex: 1, backgroundColor: Colors.accentAlpha10, borderColor: Colors.accentAlpha25, borderWidth: 1 }, (closingEarly || reserveMet) && { opacity: 0.6 }]}
                   activeOpacity={0.8}
                   onPress={handleCloseEarly}
                   disabled={closingEarly || reserveMet}
                 >
                   {closingEarly
                     ? <ActivityIndicator size="small" color={Colors.accent} />
-                    : <Text style={[s.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
+                    : <Text style={[themed.quickBidBtnText, { color: Colors.accent }]}>{reserveMet ? 'RUNNING TO END' : 'CLOSE NOW'}</Text>
                   }
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={[s.banner, s.bannerBlue]}>
+              <View style={[themed.banner, s.bannerBlue]}>
                 <Ionicons name="eye-outline" size={13} color={Colors.infoBlueLight} />
-                <Text style={[s.bannerText, { color: Colors.infoLight }]}>
+                <Text style={[themed.bannerText, { color: Colors.infoLight }]}>
                   You can monitor this dealership auction, but your role cannot change or close it.
                 </Text>
               </View>
             )}
           </View>
         ) : !currentUser ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>Sign in to place bids in live auctions.</Text>
+          <View style={themed.bidStateBox}>
+            <Text style={themed.muted}>Sign in to place bids in live auctions.</Text>
             <Button
               label="Sign In to Bid"
               size="sm"
@@ -2229,23 +2232,23 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             />
           </View>
         ) : role !== 'dealer' ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>Only verified dealers can bid in auctions.</Text>
+          <View style={themed.bidStateBox}>
+            <Text style={themed.muted}>Only verified dealers can bid in auctions.</Text>
           </View>
         ) : dealerAccessLoading ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <ActivityIndicator size="small" color={Colors.accent} />
-            <Text style={s.muted}>Checking dealership permissions…</Text>
+            <Text style={themed.muted}>Checking dealership permissions…</Text>
           </View>
         ) : !canPlaceBid ? (
-          <View style={s.bidStateBox}>
+          <View style={themed.bidStateBox}>
             <Ionicons name="eye-outline" size={20} color={Colors.infoBlue} />
-            <Text style={[s.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
-            <Text style={s.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
+            <Text style={[themed.bidStateText, { color: Colors.infoBlueLight }]}>View-only auction access</Text>
+            <Text style={themed.muted}>Your dealership role can follow auctions but cannot place or cancel bids.</Text>
           </View>
         ) : !isDealerVerified ? (
-          <View style={s.bidStateBox}>
-            <Text style={s.muted}>
+          <View style={themed.bidStateBox}>
+            <Text style={themed.muted}>
               {dealerAccess?.isOwner
                 ? 'Verify your dealership to place bids.'
                 : 'The dealership owner must complete verification before staff can bid.'}
@@ -2264,12 +2267,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Current bid / zero-bid first-offer info */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={s.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
-                <Text style={[s.currentBidVal, { fontFamily: FontFamily.mono }]}>
+                <Text style={themed.specKey}>{hasRealBids ? 'CURRENT BID' : 'NO BIDS YET'}</Text>
+                <Text style={[themed.currentBidVal, { fontFamily: FontFamily.mono }]}>
                   {hasRealBids ? fmt(currentBid) : `Starting ${fmt(startingBidAmount)}`}
                 </Text>
               </View>
-              <Text style={[s.minNextBid, !hasRealBids && { color: Colors.warning }]}>
+              <Text style={[themed.minNextBid, !hasRealBids && { color: Colors.warning }]}>
                 {hasRealBids ? 'Min next: ' : 'First offer from: '}
                 <Text style={{ color: hasRealBids ? Colors.white : Colors.warning, fontFamily: FontFamily.mono }}>
                   {fmt(minimumAllowedBid)}
@@ -2279,14 +2282,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Quick amounts only fill the input: a separate Place Bid action
                 mirrors web and prevents accidental one-tap bids. */}
-            <Text style={s.bidHelpText}>Choose an amount or enter your own, then tap Place Bid.</Text>
+            <Text style={themed.bidHelpText}>Choose an amount or enter your own, then tap Place Bid.</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {quickBidAmounts.map((targetAmount, index) => {
                 const delta = hasRealBids ? targetAmount - currentBid : targetAmount - minimumAllowedBid;
                 return (
                   <TouchableOpacity
                     key={targetAmount}
-                    style={[s.quickBidBtn, Number(bidAmount) === targetAmount && s.quickBidSelected]}
+                    style={[themed.quickBidBtn, Number(bidAmount) === targetAmount && s.quickBidSelected]}
                     onPress={() => { setBidAmount(String(targetAmount)); setBidError(null); }}
                     disabled={bidLoading || targetAmount < minimumAllowedBid}
                     activeOpacity={0.7}
@@ -2294,12 +2297,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     accessibilityState={{ selected: Number(bidAmount) === targetAmount }}
                     accessibilityLabel={`Select bid amount ${fmt(targetAmount)}`}
                   >
-                    <Text style={s.quickBidLabel}>
+                    <Text style={themed.quickBidLabel}>
                       {!hasRealBids && index === 0
                         ? 'MIN'
                         : `+${delta >= 1000 ? `£${delta / 1000}k` : `£${delta}`}`}
                     </Text>
-                    <Text style={[s.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(targetAmount)}</Text>
+                    <Text style={[themed.quickBidAmt, { fontFamily: FontFamily.mono }]}>{fmt(targetAmount)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -2307,10 +2310,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Custom + bid button */}
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={s.customBidWrap}>
-                <Text style={s.customBidCurrency}>£</Text>
+              <View style={themed.customBidWrap}>
+                <Text style={themed.customBidCurrency}>£</Text>
                 <TextInput
-                  style={s.customBidInput}
+                  style={themed.customBidInput}
                   value={bidAmount}
                   onChangeText={t => { setBidAmount(t); setBidError(null); }}
                   placeholder="Custom amount"
@@ -2320,7 +2323,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               </View>
               <TouchableOpacity
-                style={[s.bidBtn, bidLoading && { opacity: 0.6 }]}
+                style={[themed.bidBtn, bidLoading && { opacity: 0.6 }]}
                 onPress={() => handleBid(bidAmount)}
                 disabled={bidLoading}
                 activeOpacity={0.8}
@@ -2329,31 +2332,31 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
                       <Ionicons name="hammer-outline" size={15} color={Colors.white} />
-                      <Text style={s.bidBtnText}>Place Bid</Text>
+                      <Text style={themed.bidBtnText}>Place Bid</Text>
                     </>
                 }
               </TouchableOpacity>
             </View>
 
             {bidError && (
-              <View style={[s.banner, s.bannerRed, { marginTop: -4 }]}>
+              <View style={[themed.banner, s.bannerRed, { marginTop: -4 }]}>
                 <Ionicons name="alert-circle-outline" size={12} color={Colors.accent} />
-                <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
+                <Text style={[themed.bannerText, { color: Colors.paleRed_fca5a5 }]} numberOfLines={2} ellipsizeMode="tail">{bidError}</Text>
               </View>
             )}
             {bidJustAccepted != null && !bidError && (
-              <View style={[s.banner, { marginTop: -4, backgroundColor: Colors.accentGreen + '18', borderColor: Colors.accentGreen + '55', borderWidth: 1 }]}>
+              <View style={[themed.banner, { marginTop: -4, backgroundColor: Colors.accentGreen + '18', borderColor: Colors.accentGreen + '55', borderWidth: 1 }]}>
                 <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
-                <Text style={[s.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
+                <Text style={[themed.bannerText, { color: Colors.accentGreen }]} numberOfLines={1}>
                   Bid accepted — {fmt(bidJustAccepted)}
                 </Text>
               </View>
             )}
 
             {!reserveMet && bidHistory.length > 0 && (
-              <View style={[s.banner, s.bannerAmber, { marginTop: -4 }]}>
+              <View style={[themed.banner, s.bannerAmber, { marginTop: -4 }]}>
                 <Ionicons name="information-circle-outline" size={12} color={Colors.warning} />
-                <Text style={[s.bannerText, { color: Colors.lightYellow }]} numberOfLines={3}>
+                <Text style={[themed.bannerText, { color: Colors.lightYellow }]} numberOfLines={3}>
                   The current highest bid is also an offer to the seller. They can accept it now, or keep the auction open while dealers continue bidding.
                 </Text>
               </View>
@@ -2365,9 +2368,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {isBiddingOpen && cancelableBids.map(bid => {
               const remaining = BID_CANCEL_WINDOW_MS - (nowMs - new Date(bid.createdAt).getTime());
               return (
-                <View key={bid.id} style={[s.banner, s.bannerRed, s.cancelBidBanner]}>
+                <View key={bid.id} style={[themed.banner, s.bannerRed, s.cancelBidBanner]}>
                   <Ionicons name="timer-outline" size={12} color={Colors.accent} />
-                  <Text style={[s.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
+                  <Text style={[themed.bannerText, { color: Colors.paleRed_fca5a5, flex: 1 }]} numberOfLines={1}>
                     {`Bid of ${fmt(bid.amount)} — `}
                     <Text style={{ fontFamily: FontFamily.mono }}>
                       {formatCancelWindowRemaining(remaining)}
@@ -2375,14 +2378,14 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     {' left to cancel'}
                   </Text>
                   <TouchableOpacity
-                    style={s.cancelBidBtn}
+                    style={themed.cancelBidBtn}
                     onPress={() => handleCancelBid(bid.id)}
                     disabled={cancelLoadingId === bid.id}
                     activeOpacity={0.8}
                   >
                     {cancelLoadingId === bid.id
                       ? <ActivityIndicator size="small" color={Colors.white} />
-                      : <Text style={s.cancelBidBtnText}>Cancel Bid</Text>
+                      : <Text style={themed.cancelBidBtnText}>Cancel Bid</Text>
                     }
                   </TouchableOpacity>
                 </View>
@@ -2390,12 +2393,12 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             })}
 
             {/* Buyer fee notice */}
-            <View style={s.feeNotice}>
+            <View style={themed.feeNotice}>
               <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={s.feeNoticeLabel}>BUYER FEE</Text>
-                <Text style={s.feeNoticeHint}>Only payable if you win. Pay the vehicle seller directly after inspection and agreement.</Text>
+                <Text style={themed.feeNoticeLabel}>BUYER FEE</Text>
+                <Text style={themed.feeNoticeHint}>Only payable if you win. Pay the vehicle seller directly after inspection and agreement.</Text>
               </View>
-              <Text style={[s.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
+              <Text style={[themed.feeNoticeAmt, { fontFamily: FontFamily.mono }]}>£125</Text>
             </View>
           </View>
         )}
@@ -2784,3 +2787,67 @@ const s = StyleSheet.create({
     color: Colors.white,
   },
 });
+
+function useAuctionDetailStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...s,
+    container: [s.container, { backgroundColor: palette.bgBody }],
+    muted: [s.muted, { color: palette.textMuted }],
+    header: [s.header, { backgroundColor: palette.bgBody }],
+    iconBtn: [s.iconBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    headerTitle: [s.headerTitle, { color: palette.textPrimary }],
+    watcherChip: [s.watcherChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    watcherText: [s.watcherText, { color: palette.textSecondary }],
+    card: [s.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardSectionTitle: [s.cardSectionTitle, { color: palette.textPrimary }],
+    tabs: [s.tabs, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    tab: [s.tab, { backgroundColor: palette.bgInput }],
+    tabText: [s.tabText, { color: palette.textSecondary }],
+    heroBidLabel: [s.heroBidLabel, { color: palette.textSecondary }],
+    statBox: [s.statBox, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    statLabel: [s.statLabel, { color: palette.textMuted }],
+    statValue: [s.statValue, { color: palette.textPrimary }],
+    specsSection: [s.specsSection, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    specGroup: [s.specGroup, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    specRow: [s.specRow, { borderBottomColor: palette.borderDefault }],
+    specKey: [s.specKey, { color: palette.textMuted }],
+    specVal: [s.specVal, { color: palette.textPrimary }],
+    descText: [s.descText, { color: palette.textSecondary }],
+    featureChip: [s.featureChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    featureChipText: [s.featureChipText, { color: palette.textSecondary }],
+    bidRow: [s.bidRow, { borderBottomColor: palette.borderDefault }],
+    bidAmt: [s.bidAmt, { color: palette.textPrimary }],
+    bidTime: [s.bidTime, { color: palette.textMuted }],
+    sellerName: [s.sellerName, { color: palette.textPrimary }],
+    bidConsole: [s.bidConsole, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    bidStateBox: [s.bidStateBox, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    bidStateText: [s.bidStateText, { color: palette.textSecondary }],
+    currentBidVal: [s.currentBidVal, { color: palette.textPrimary }],
+    minNextBid: [s.minNextBid, { color: palette.textSecondary }],
+    quickBidBtn: [s.quickBidBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    quickBidLabel: [s.quickBidLabel, { color: palette.textMuted }],
+    quickBidAmt: [s.quickBidAmt, { color: palette.textPrimary }],
+    quickBidBtnText: [s.quickBidBtnText, { color: palette.textPrimary }],
+    customBidWrap: [s.customBidWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    customBidCurrency: [s.customBidCurrency, { color: palette.textSecondary }],
+    customBidInput: [s.customBidInput, { color: palette.textPrimary }],
+    bidHelpText: [s.bidHelpText, { color: palette.textMuted }],
+    feeNotice: [s.feeNotice, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    feeNoticeLabel: [s.feeNoticeLabel, { color: palette.textMuted }],
+    feeNoticeHint: [s.feeNoticeHint, { color: palette.textSecondary }],
+    feeNoticeAmt: [s.feeNoticeAmt, { color: palette.textPrimary }],
+    sellerContactBlock: [s.sellerContactBlock, { borderTopColor: palette.borderDefault }],
+    contactLabel: [s.contactLabel, { color: palette.textMuted }],
+    contactValue: [s.contactValue, { color: palette.textPrimary }],
+    contactValueLocked: [s.contactValueLocked, { color: palette.textMuted }],
+    sellerContactLockedNote: [s.sellerContactLockedNote, { color: palette.textMuted }],
+    binPanel: [s.binPanel, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    binPanelLabel: [s.binPanelLabel, { color: palette.textSecondary }],
+    binPanelPrice: [s.binPanelPrice, { color: palette.textPrimary }],
+    binPanelHint: [s.binPanelHint, { color: palette.textMuted }],
+    binSellerPanel: [s.binSellerPanel, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    binSellerTitle: [s.binSellerTitle, { color: palette.textPrimary }],
+    binSellerBody: [s.binSellerBody, { color: palette.textSecondary }],
+  }), [palette]);
+}

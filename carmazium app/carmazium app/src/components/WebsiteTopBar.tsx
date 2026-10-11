@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { HamburgerButton } from './HamburgerButton';
@@ -18,6 +19,7 @@ import { Logo } from './Logo';
  */
 export const WebsiteTopBar: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { palette } = useNativeAppearance();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
@@ -30,20 +32,30 @@ export const WebsiteTopBar: React.FC = () => {
     || (role === 'dealer' ? 'D' : 'C')).toUpperCase();
 
   return (
-    <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
+    <View style={[styles.bar, {
+      paddingTop: insets.top + 7,
+      backgroundColor: palette.bgHeader,
+      borderBottomColor: palette.borderDefault,
+    }]}>
       <Logo size="sm" width={logoWidth} />
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.notificationButton}
+          style={[styles.notificationButton, {
+            backgroundColor: palette.bgCard,
+            borderColor: palette.borderDefault,
+          }]}
           onPress={() => navigation.navigate('Notifications')}
           accessibilityRole="button"
           accessibilityLabel="Notifications"
           activeOpacity={0.75}
         >
-          <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
+          <Ionicons name="notifications-outline" size={20} color={palette.textSecondary} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.accountButton}
+          style={[styles.accountButton, {
+            backgroundColor: palette.bgCard,
+            borderColor: palette.borderDefault,
+          }]}
           onPress={() => navigation.navigate('Settings')}
           accessibilityRole="button"
           accessibilityLabel="Account settings"
@@ -51,7 +63,7 @@ export const WebsiteTopBar: React.FC = () => {
           activeOpacity={0.75}
         >
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
-          <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
+          <Ionicons name="chevron-down" size={15} color={palette.textMuted} />
         </TouchableOpacity>
         <HamburgerButton websiteStyle />
       </View>

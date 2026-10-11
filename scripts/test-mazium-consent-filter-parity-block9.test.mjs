@@ -66,7 +66,7 @@ test('Search screen does not clear accepted AI model, price, year and transmissi
 });
 
 test('screen reader navigation and privacy actions retain sensible target size', () => {
-  assert.match(native, /<Text style=\{styles\.chatTitle\} accessibilityRole="header">Mazium AI/);
+  assert.match(native, /<Text style=\{themed\.chatTitle\} accessibilityRole="header">Mazium AI/);
   assert.match(native, /accessibilityState=\{\{ disabled: isThinking \|\| hasAiConsent !== true \}\}/);
   assert.match(native, /keyboardShouldPersistTaps="handled"/);
   assert.match(native, /aiPrivacyFooterAction: \{ minHeight: 44/);

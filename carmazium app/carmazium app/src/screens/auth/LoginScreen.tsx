@@ -22,6 +22,7 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -29,6 +30,8 @@ import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useLoginScreenPalette();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -79,8 +82,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       {/* Background gradient with top red glow */}
       <LinearGradient
@@ -89,35 +92,35 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={themed.flex}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={themed.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Logo in top left */}
-          <Logo size="sm" style={styles.logoAlign} />
+          <Logo size="sm" style={themed.logoAlign} />
 
           {/* Heading Section */}
-          <View style={styles.headerSection}>
-            <Text style={styles.titleText}>
-              Welcome <Text style={styles.titleRed}>back.</Text>
+          <View style={themed.headerSection}>
+            <Text style={themed.titleText}>
+              Welcome <Text style={themed.titleRed}>back.</Text>
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={themed.subtitleText}>
               Sign in to track bids, save listings, and get matched with cars before they go live.
             </Text>
           </View>
 
           {/* Form Fields */}
-          <View style={styles.formContainer}>
+          <View style={themed.formContainer}>
             {formError ? (
               <View style={{ marginBottom: 16 }}>
                 <ErrorBanner message={formError} />
               </View>
             ) : null}
             {/* Email Field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>EMAIL</Text>
+            <View style={themed.fieldGroup}>
+              <Text style={themed.fieldLabel}>EMAIL</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -128,10 +131,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   name="mail-outline"
                   size={20}
                   color={emailFocused ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={themed.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={themed.input}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="your@email.com"
@@ -147,8 +150,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Password Field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>PASSWORD</Text>
+            <View style={themed.fieldGroup}>
+              <Text style={themed.fieldLabel}>PASSWORD</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -159,11 +162,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   name="lock-closed-outline"
                   size={20}
                   color={passwordFocused ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={themed.inputIcon}
                 />
                 <TextInput
                   ref={passwordRef}
-                  style={styles.input}
+                  style={themed.input}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -174,27 +177,27 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={themed.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
             {/* Supabase persists sessions using SecureStore and AsyncStorage. The old
                 Remember me checkbox was visual only, so never imply the
                 user can opt out of persistence by leaving it unticked. */}
-            <View style={styles.optionsRow}>
-              <Text style={styles.sessionNote}>You’ll stay signed in on this device until you sign out.</Text>
+            <View style={themed.optionsRow}>
+              <Text style={themed.sessionNote}>You’ll stay signed in on this device until you sign out.</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('ForgotPassword')}
                 accessibilityRole="button"
                 accessibilityLabel="Reset your password"
               >
-                <Text style={styles.forgotText}>Forgot?</Text>
+                <Text style={themed.forgotText}>Forgot?</Text>
               </TouchableOpacity>
             </View>
 
             {/* Sign In CTA */}
-            <View style={styles.ctaWrapper}>
+            <View style={themed.ctaWrapper}>
               <PrimaryCTA
                 label="SIGN IN"
                 onPress={handleLogin}
@@ -205,16 +208,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Or continue with */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-              <View style={styles.dividerLine} />
+            <View style={themed.dividerRow}>
+              <View style={themed.dividerLine} />
+              <Text style={themed.dividerText}>OR CONTINUE WITH</Text>
+              <View style={themed.dividerLine} />
             </View>
 
             {/* Social Row */}
-            <View style={styles.socialRow}>
+            <View style={themed.socialRow}>
               <TouchableOpacity
-                style={[styles.socialBtn, isGoogleLoading && styles.socialBtnDisabled]}
+                style={[themed.socialBtn, isGoogleLoading && styles.socialBtnDisabled]}
                 activeOpacity={0.8}
                 onPress={() => handleOAuthLogin('google')}
                 disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -224,11 +227,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 ) : (
                   <GoogleIcon size={18} />
                 )}
-                <Text style={styles.socialBtnText}>GOOGLE</Text>
+                <Text style={themed.socialBtnText}>GOOGLE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialBtn, isAppleLoading && styles.socialBtnDisabled]}
+                style={[themed.socialBtn, isAppleLoading && styles.socialBtnDisabled]}
                 activeOpacity={0.8}
                 onPress={() => handleOAuthLogin('apple')}
                 disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -238,20 +241,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 ) : (
                   <AppleIcon size={18} color={Colors.white} />
                 )}
-                <Text style={styles.socialBtnText}>APPLE</Text>
+                <Text style={themed.socialBtnText}>APPLE</Text>
               </TouchableOpacity>
             </View>
 
             {/* Signup Link */}
-            <View style={styles.signupRow}>
-              <Text style={styles.signupText}>New here? </Text>
+            <View style={themed.signupRow}>
+              <Text style={themed.signupText}>New here? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                <Text style={styles.signupLink}>Create an account</Text>
+                <Text style={themed.signupLink}>Create an account</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={themed.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>
@@ -429,3 +432,25 @@ const styles = StyleSheet.create({
     height: 60,
   },
 });
+
+function useLoginScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    headerSection: [styles.headerSection, { backgroundColor: palette.bgBody }],
+    titleText: [styles.titleText, { color: palette.textPrimary }],
+    subtitleText: [styles.subtitleText, { color: palette.textSecondary }],
+    fieldLabel: [styles.fieldLabel, { color: palette.textSecondary }],
+    inputWrapper: [styles.inputWrapper, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    input: [styles.input, { color: palette.textPrimary }],
+    optionsRow: [styles.optionsRow, { borderColor: palette.borderDefault }],
+    sessionNote: [styles.sessionNote, { color: palette.textMuted }],
+    forgotText: [styles.forgotText, { color: palette.accent }],
+    dividerLine: [styles.dividerLine, { backgroundColor: palette.borderDefault }],
+    dividerText: [styles.dividerText, { color: palette.textMuted }],
+    socialBtn: [styles.socialBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    socialBtnText: [styles.socialBtnText, { color: palette.textPrimary }],
+    signupText: [styles.signupText, { color: palette.textSecondary }],
+  }), [palette]);
+}

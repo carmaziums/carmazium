@@ -84,11 +84,11 @@ test('buyer home uses the current website sale-first proposition and brand heade
   assert.ok(webHero.includes('Sell Your Car'));
   assert.ok(webHero.includes('Auction <span className="text-primary">FREE</span>'));
   assert.ok(home.includes('<WebsiteTopBar />'));
-  assert.ok(home.includes('<Text style={s.greetingLine}>Sell your car</Text>'));
-  assert.ok(home.includes('<Text style={s.greetingAccent}>your way.</Text>'));
+  assert.ok(home.includes('<Text style={themed.greetingLine}>Sell your car</Text>'));
+  assert.ok(home.includes('<Text style={themed.greetingAccent}>your way.</Text>'));
   assert.ok(home.includes('Auction FREE · Retail £1'));
   assert.ok(home.includes('approved handover earns a £100 reward.'));
   assert.ok(home.includes("navigation.navigate('Tabs', { screen: 'Search' })"));
   assert.ok(home.includes("navigation.navigate('SellLanding')"));
-  assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
+  assert.ok(!home.includes('<Text style={themed.greetingLine}>Find your next</Text>'));
 });

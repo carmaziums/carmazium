@@ -8,6 +8,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
+import { ThemedTextField } from '../../components/ThemedTextField';
 import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
@@ -32,14 +34,19 @@ const validYear = (raw: string) => {
 const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardType }:{
   label:string; value:string; onChangeText:(text:string)=>void;
   placeholder:string; keyboardType?:'default'|'number-pad';
-}) => <View style={styles.field}>
-  <Text style={styles.fieldLabel}>{label}</Text>
-  <TextInput style={styles.fieldInput} value={value} onChangeText={onChangeText}
-    accessibilityLabel={label} autoCorrect={false} placeholder={placeholder}
-    placeholderTextColor={Colors.textMuted} keyboardType={keyboardType || 'default'}/>
-</View>;
+}) => {
+  const { palette } = useNativeAppearance();
+  return <View style={styles.field}>
+    <Text style={[styles.fieldLabel, { color: palette.textSecondary }]}>{label}</Text>
+    <ThemedTextField style={styles.fieldInput} value={value} onChangeText={onChangeText}
+      accessibilityLabel={label} autoCorrect={false} placeholder={placeholder}
+      keyboardType={keyboardType || 'default'}/>
+  </View>;
+};
 
 export const SellLandingScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useSellLandingStyles();
   const navigation = useNavigation<Nav>();
   const [vrm, setVrm] = useState('');
   const [mileage, setMileage] = useState('');
@@ -149,42 +156,42 @@ export const SellLandingScreen: React.FC = () => {
 
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
+    <View style={themed.screen}>
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody}/>
       <WebsiteTopBar />
       <ScrollView keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        <Text style={styles.eyebrow}>SELL MY CAR ONLINE · UK</Text>
-        <Text style={styles.title}>Sell Your Car Online <Text style={styles.accent}>in the UK</Text></Text>
-        <Text style={styles.description}>
+        contentContainerStyle={themed.page} showsVerticalScrollIndicator={false}>
+        <Text style={themed.eyebrow}>SELL MY CAR ONLINE · UK</Text>
+        <Text style={themed.title}>Sell Your Car Online <Text style={themed.accent}>in the UK</Text></Text>
+        <Text style={themed.description}>
           Get a free car valuation using your registration and mileage, then sell your car
           through a £0 dealer auction or £1 retail listing.
         </Text>
 
-        <View style={styles.valuationCard}>
-          <Text style={styles.sectionTitle}>FREE CAR VALUATION</Text>
-          <Text style={styles.hint}>Enter your registration or provide vehicle details manually.</Text>
-          <View style={styles.vrmRow}>
-            <View style={styles.vrmInputWrap}>
+        <View style={themed.valuationCard}>
+          <Text style={themed.sectionTitle}>FREE CAR VALUATION</Text>
+          <Text style={themed.hint}>Enter your registration or provide vehicle details manually.</Text>
+          <View style={themed.vrmRow}>
+            <View style={themed.vrmInputWrap}>
               <SellValuationField label="Vehicle registration" value={vrm} onChangeText={changeVrm}
                 placeholder="AB12 CDE"/>
             </View>
-            <TouchableOpacity style={styles.lookupBtn} onPress={() => { void findRegistration(); }}
+            <TouchableOpacity style={themed.lookupBtn} onPress={() => { void findRegistration(); }}
               disabled={lookingUp || valuing} accessibilityRole="button" accessibilityLabel="Analyse registration">
               {lookingUp ? <ActivityIndicator color={Colors.white}/> :
-                <Text style={styles.lookupText}>Analyse</Text>}
+                <Text style={themed.lookupText}>Analyse</Text>}
             </TouchableOpacity>
           </View>
           <SellValuationField label="Mileage" value={mileage}
             onChangeText={text => { invalidate(); setMileage(text.replace(/[^\d,]/g,'')); }}
             placeholder="e.g. 45000" keyboardType="number-pad"/>
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldHalf}>
+          <View style={themed.fieldRow}>
+            <View style={themed.fieldHalf}>
               <SellValuationField label="Make" value={make}
                 onChangeText={text => { invalidate(); setMake(text); }}
                 placeholder="e.g. Ford"/>
             </View>
-            <View style={styles.fieldHalf}>
+            <View style={themed.fieldHalf}>
               <SellValuationField label="Model" value={model}
                 onChangeText={text => { invalidate(); setModel(text); }}
                 placeholder="e.g. Focus"/>
@@ -193,59 +200,59 @@ export const SellLandingScreen: React.FC = () => {
           <SellValuationField label="Year" value={year}
             onChangeText={text => { invalidate(); setYear(text.replace(/[^\d]/g,'').slice(0,4)); }}
             placeholder="e.g. 2018" keyboardType="number-pad"/>
-          {!!error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
-          <TouchableOpacity style={styles.valuationButton}
+          {!!error && <Text style={themed.error} accessibilityRole="alert">{error}</Text>}
+          <TouchableOpacity style={themed.valuationButton}
             onPress={() => { void getGuide(); }}
             disabled={lookingUp || valuing} accessibilityRole="button"
             accessibilityLabel="Get My Free Valuation">
             {valuing ? <ActivityIndicator color={Colors.white}/> :
-              <Text style={styles.valuationButtonText}>Get My Free Valuation</Text>}
+              <Text style={themed.valuationButtonText}>Get My Free Valuation</Text>}
             <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
           </TouchableOpacity>
-          <Text style={styles.guideNote}>Free valuation · No obligation · Guide only, not a guaranteed offer.</Text>
-          {!!valuation && <View style={styles.guideResult}>
-            <Text style={styles.resultLabel}>
+          <Text style={themed.guideNote}>Free valuation · No obligation · Guide only, not a guaranteed offer.</Text>
+          {!!valuation && <View style={themed.guideResult}>
+            <Text style={themed.resultLabel}>
               {year} {make.trim()} {model.trim()}
             </Text>
-            <Text style={styles.guideTitle}>Current Market Value</Text>
-            <Text style={styles.guidePrice}>{money(valuation.auction.marketValue)}</Text>
-            <Text style={styles.guideNote}>Based on vehicle details and available CarMazium market evidence.
+            <Text style={themed.guideTitle}>Current Market Value</Text>
+            <Text style={themed.guidePrice}>{money(valuation.auction.marketValue)}</Text>
+            <Text style={themed.guideNote}>Based on vehicle details and available CarMazium market evidence.
               Condition, specification and demand may change the sale price.</Text>
           </View>}
         </View>
 
-        <View style={styles.benefits}>
+        <View style={themed.benefits}>
           {[
             { title:'FREE Valuation',detail:'See what your car is worth',icon:'cash-outline' },
             { title:'FREE Auction',detail:'Verified dealers compete',icon:'hammer-outline' },
             { title:'£1 Retail',detail:'Advertise directly to buyers',icon:'car-outline' },
-          ].map(item=><View key={item.title} style={styles.benefit}>
+          ].map(item=><View key={item.title} style={themed.benefit}>
             <Ionicons name={item.icon as any} size={19} color={Colors.accent}/>
-            <Text style={styles.benefitTitle}>{item.title}</Text>
-            <Text style={styles.benefitDetail}>{item.detail}</Text>
+            <Text style={themed.benefitTitle}>{item.title}</Text>
+            <Text style={themed.benefitDetail}>{item.detail}</Text>
           </View>)}
         </View>
 
-        <Text style={styles.chooseTitle}>Choose how to sell</Text>
-        <TouchableOpacity style={styles.auctionAction} onPress={()=>startListing('AUCTION')}
+        <Text style={themed.chooseTitle}>Choose how to sell</Text>
+        <TouchableOpacity style={themed.auctionAction} onPress={()=>startListing('AUCTION')}
           accessibilityRole="button" accessibilityLabel="FREE Dealer Auction, continue to listing">
           <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
-          <View style={styles.actionCopy}>
-            <Text style={styles.actionTitle}>FREE Dealer Auction</Text>
-            <Text style={styles.actionSub}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
+          <View style={themed.actionCopy}>
+            <Text style={themed.actionTitle}>FREE Dealer Auction</Text>
+            <Text style={[themed.actionSub, { color: palette.accentForeground }]}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.white}/>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.retailAction} onPress={()=>startListing('CLASSIFIED')}
+        <TouchableOpacity style={themed.retailAction} onPress={()=>startListing('CLASSIFIED')}
           accessibilityRole="button" accessibilityLabel="£1 Retail Listing, continue to listing">
           <Ionicons name="pricetag-outline" size={20} color={Colors.accent}/>
-          <View style={styles.actionCopy}>
-            <Text style={styles.retailTitle}>£1 Retail Listing</Text>
-            <Text style={styles.actionSub}>Advertise directly to buyers · No retail buyer fee</Text>
+          <View style={themed.actionCopy}>
+            <Text style={themed.retailTitle}>£1 Retail Listing</Text>
+            <Text style={themed.actionSub}>Advertise directly to buyers · No retail buyer fee</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.textPrimary}/>
+          <Ionicons name="arrow-forward" size={18} color={palette.textPrimary}/>
         </TouchableOpacity>
-        <Text style={styles.footnote}>The £100 CarMazium incentive applies only to eligible completed auction sales after handover approval. Vehicle payment is made directly to the seller.</Text>
+        <Text style={themed.footnote}>The £100 CarMazium incentive applies only to eligible completed auction sales after handover approval. Vehicle payment is made directly to the seller.</Text>
       </ScrollView>
     </View>
   );
@@ -292,3 +299,28 @@ const styles=StyleSheet.create({
   actionSub:{fontFamily:FontFamily.medium,fontSize:11,lineHeight:16,color:Colors.textSecondary},
   footnote:{fontFamily:FontFamily.regular,color:Colors.textMuted,fontSize:11,lineHeight:17,marginTop:4},
 });
+
+function useSellLandingStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    screen: [styles.screen, { backgroundColor: palette.bgBody }],
+    title: [styles.title, { color: palette.textPrimary }],
+    description: [styles.description, { color: palette.textSecondary }],
+    valuationCard: [styles.valuationCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    hint: [styles.hint, { color: palette.textMuted }],
+    guideNote: [styles.guideNote, { color: palette.textMuted }],
+    guideResult: [styles.guideResult, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    guideTitle: [styles.guideTitle, { color: palette.textSecondary }],
+    guidePrice: [styles.guidePrice, { color: palette.textPrimary }],
+    benefit: [styles.benefit, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    benefitTitle: [styles.benefitTitle, { color: palette.textPrimary }],
+    benefitDetail: [styles.benefitDetail, { color: palette.textMuted }],
+    chooseTitle: [styles.chooseTitle, { color: palette.textPrimary }],
+    retailAction: [styles.retailAction, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    retailTitle: [styles.retailTitle, { color: palette.textPrimary }],
+    actionSub: [styles.actionSub, { color: palette.textSecondary }],
+    footnote: [styles.footnote, { color: palette.textMuted }],
+  }), [palette]);
+}

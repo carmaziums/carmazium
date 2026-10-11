@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 
@@ -71,6 +72,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   maxHeightPercent = 92,
   fillHeight = false,
 }) => {
+  const { resolvedAppearance, palette } = useNativeAppearance();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
@@ -114,6 +116,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       <Animated.View
         style={[
           styles.sheet,
+          { backgroundColor: palette.bgDropdown, borderColor: palette.borderDefault },
           fillHeight
             ? { height: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 }
             : { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
@@ -122,11 +125,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       >
         <GestureDetector gesture={dragGesture}>
           <View style={styles.dragArea}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: palette.borderHover }]} />
             {!!title && (
               <View style={styles.headerRow}>
-                <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+                <Text style={[styles.title, { color: palette.textPrimary }]} numberOfLines={1}>{title}</Text>
+                <IconButton style={[styles.closeBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }]} icon={<Ionicons name="close" size={18} color={palette.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
               </View>
             )}
           </View>
@@ -148,7 +151,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         // automatic keyboard-resize handling doesn't reach, so something
         // has to actively shrink content here. iOS's KeyboardAvoidingView
         // already does this reliably.
-        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
+        <KeyboardAvoidingView style={[styles.overlay, { backgroundColor: resolvedAppearance === 'light' ? 'rgba(15, 23, 42, 0.45)' : Colors.blackAlpha75 }]} behavior="padding">
           {sheetContent}
         </KeyboardAvoidingView>
       ) : (
@@ -158,7 +161,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         // — that race is exactly the "covers the field, fixed after you back
         // out and back in" bug. Driving paddingBottom straight off the native
         // keyboard-show event sidesteps the race entirely.
-        <View style={[styles.overlay, avoidKeyboard && { paddingBottom: androidKeyboardHeight }]}>
+        <View style={[styles.overlay, { backgroundColor: resolvedAppearance === 'light' ? 'rgba(15, 23, 42, 0.45)' : Colors.blackAlpha75 }, avoidKeyboard && { paddingBottom: androidKeyboardHeight }]}>
           {sheetContent}
         </View>
       )}

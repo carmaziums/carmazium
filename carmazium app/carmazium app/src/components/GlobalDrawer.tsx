@@ -28,7 +28,7 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
-import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import type { DealerPermission } from '../lib/dealerAccessApi';
@@ -224,6 +224,12 @@ export const GlobalDrawer: React.FC = () => {
       setSupportLoading(false);
     }
   };
+  const { resolvedAppearance, palette } = useNativeAppearance();
+  const lightMode = resolvedAppearance === 'light';
+  const drawerForeground = palette.textPrimary;
+  const drawerSecondary = palette.textSecondary;
+  const drawerMuted = palette.textMuted;
+  const drawerFieldBackground = lightMode ? palette.bgInput : Colors.whiteAlpha07;
   const role         = useAuthStore((s) => s.role);
   const accountRole  = useAuthStore((s) => s.accountRole);
   const setRole      = useAuthStore((s) => s.setRole);
@@ -257,36 +263,26 @@ export const GlobalDrawer: React.FC = () => {
     : ITEMS.slice(0, showMorePages ? ITEMS.length : 4);
   const [switchingDealer, setSwitchingDealer] = React.useState(false);
   const insets = useSafeAreaInsets();
-  const { height: windowHeight, fontScale } = useWindowDimensions();
-  // Website DashboardSidebar opens More above the bottom tabs, across the
-  // screen width. Only dealer workspace uses that presentation; preserve
-  // established consumer drawer navigation and deep-link behaviour.
-  // Web drawer max-height is 68vh and sits just above its fixed bottom tabs.
-  const dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom);
+  const { height: windowHeight } = useWindowDimensions();
+  // Dealer menu uses a full-window native modal; retain 68vh sheet height
+  // without a misleading gap over inaccessible bottom tabs.
   const sheetHeight = Math.min(720, Math.round(windowHeight * 0.68));
   const navigation = useNavigation<NavProp>();
 
   const translateX = useSharedValue(DRAWER_WIDTH);
-  const translateY = useSharedValue(sheetHeight);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
-      if (dealerMode) {
-        translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      } else {
-        translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      }
+      if (!dealerMode) translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
       translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
-      translateY.value = withTiming(sheetHeight, { duration: 200 });
       backdropOpacity.value = withTiming(0, { duration: 180 });
     }
-  }, [isOpen, dealerMode, sheetHeight, translateX, translateY, backdropOpacity]);
+  }, [isOpen, dealerMode, translateX, backdropOpacity]);
 
-  // Dealer overlay is inline so the original bottom tab bar stays visible and
-  // tappable. A Modal would intercept taps on More even with transparent pixels.
+  // Hardware Back always closes the dealer modal, as with consumer navigation.
   useEffect(() => {
     if (!dealerMode || !isOpen) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -298,9 +294,7 @@ export const GlobalDrawer: React.FC = () => {
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const panelStyle = useAnimatedStyle(() => ({
-    transform: dealerMode
-      ? [{ translateY: translateY.value }]
-      : [{ translateX: translateX.value }],
+    transform: [{ translateX: translateX.value }],
   }));
 
   // Determine which tab is active
@@ -403,7 +397,7 @@ export const GlobalDrawer: React.FC = () => {
   const initial   = userName.charAt(0).toUpperCase();
 
   const renderIcon = (item: MenuItem, active: boolean, goldMode?: boolean, blueMode?: boolean) => {
-    const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : Colors.lightGrey;
+    const color = active ? palette.accent : goldMode ? (lightMode ? '#946200' : Colors.warning) : blueMode ? Colors.infoBlue : drawerSecondary;
     return item.iconLib === 'mci'
       ? <MaterialCommunityIcons name={item.icon} size={19} color={color} />
       : <Ionicons name={item.icon} size={19} color={color} />;
@@ -411,32 +405,42 @@ export const GlobalDrawer: React.FC = () => {
 
   const drawerContent = (
     <>
-      {/* Keep the dealer tab bar above the backdrop, like the website. */}
+      {/* Full-height backdrop blocks accidental navigation while menu is open. */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
         <Animated.View
           style={[
             styles.backdrop,
-            dealerMode && { bottom: dealerTabBarHeight },
+            // In modal presentation, the backdrop covers the full window.
+            // Leaving a "tab bar gap" makes an unreachable dead zone.
+            dealerMode && { bottom: 0 },
+            { backgroundColor: lightMode ? Colors.overlay40 : Colors.blackAlpha75 },
             backdropStyle,
           ]}
         />
       </TouchableWithoutFeedback>
 
-      {/* Dealer website uses a full-width bottom More panel; consumer
-          navigation keeps the existing right drawer. Both retain all links. */}
+      {/* Dealer has a full-window bottom navigation modal; consumer keeps its
+          original right-side drawer. Both retain the same actions and links. */}
       <Animated.View
         style={[
           styles.panel,
           dealerMode ? styles.dealerBottomSheet : styles.sidePanel,
-          panelStyle,
+          { backgroundColor: palette.bgDropdown,
+            borderColor: palette.borderDefault },
+          // Dealer uses a real modal with its own native slide entrance. The old
+          // translateY shared value sometimes left the whole drawer below the
+          // viewport, exposing only the handle/X and hiding every menu item.
+          !dealerMode && panelStyle,
           dealerMode
-            ? { height: sheetHeight, bottom: dealerTabBarHeight, paddingTop: 10, paddingBottom: 10 }
+            ? { height: sheetHeight, bottom: Math.max(insets.bottom, 8), paddingTop: 10, paddingBottom: 10 }
             : { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
         ]}
       >
-        {dealerMode && <View style={styles.sheetHandle} accessibilityElementsHidden />}
+        {dealerMode && (
+          <Text style={[styles.dealerMenuHeading, { color: drawerForeground }]} accessibilityRole="header">Navigation menu</Text>
+        )}
         {/* ── Close button ─────────────────────────────── */}
-        <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
+        <IconButton style={[styles.closeBtn, { backgroundColor: drawerFieldBackground, borderColor: palette.borderDefault }]} icon={<Ionicons name="close" size={20} color={drawerForeground} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
         {/* ── User card ────────────────────────────────── */}
         <View style={styles.userCard}>
@@ -444,9 +448,9 @@ export const GlobalDrawer: React.FC = () => {
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
           <View style={styles.userMeta}>
-            <Text style={styles.userName}>{userName}</Text>
+            <Text style={[styles.userName, { color: drawerForeground }]}>{userName}</Text>
             {!!userEmail && (
-              <Text style={styles.userEmail} numberOfLines={1}>{userEmail}</Text>
+              <Text style={[styles.userEmail, { color: drawerSecondary }]} numberOfLines={1}>{userEmail}</Text>
             )}
           </View>
           {(user?.isAddressVerified === true && user?.isVerified === true) && (
@@ -468,8 +472,8 @@ export const GlobalDrawer: React.FC = () => {
             accessibilityHint="Personal details, dealership, verification, notifications, payouts and security in one place"
           >
             <Ionicons name="settings-outline" size={20} color={Colors.accent} />
-            <Text style={styles.accountShortcutText}>Account settings</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+            <Text style={[styles.accountShortcutText, { color: drawerForeground }]}>Account settings</Text>
+            <Ionicons name="chevron-forward" size={16} color={drawerSecondary} />
           </TouchableOpacity>
           {IS_QA_REVIEW_BUILD && (
             <TouchableOpacity
@@ -481,13 +485,13 @@ export const GlobalDrawer: React.FC = () => {
               accessibilityHint="Opens the device share sheet with a build-specific feedback template. No information is sent automatically."
             >
               <Ionicons name="share-social-outline" size={20} color={Colors.accent} />
-              <Text style={styles.accountShortcutText}>Share QA feedback</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+              <Text style={[styles.accountShortcutText, { color: drawerForeground }]}>Share QA feedback</Text>
+              <Ionicons name="chevron-forward" size={16} color={drawerSecondary} />
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: palette.borderDefault }]} />
 
         {/* ── Nav items ────────────────────────────────── */}
         <ScrollView
@@ -496,7 +500,7 @@ export const GlobalDrawer: React.FC = () => {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={styles.groupLabel}>{dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'}</Text>
+          <Text style={[styles.groupLabel, { color: drawerMuted }]}>{dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'}</Text>
 
           {primaryDrawerItems.map((item) => {
             const active = item.tabName === activeTab;
@@ -511,12 +515,12 @@ export const GlobalDrawer: React.FC = () => {
                 <View style={[styles.bar, active && styles.barActive]} />
 
                 {/* Icon */}
-                <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }, active && styles.iconWrapActive]}>
                   {renderIcon(item, active)}
                 </View>
 
                 {/* Label */}
-                <Text style={[styles.rowLabel, active && styles.rowLabelActive]}>
+                <Text style={[styles.rowLabel, active && styles.rowLabelActive, { color: active ? palette.accent : drawerSecondary }]}>
                   {item.label}
                 </Text>
 
@@ -530,14 +534,14 @@ export const GlobalDrawer: React.FC = () => {
             );
           })}
           <TouchableOpacity
-            style={styles.moreToggle}
+            style={[styles.moreToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]}
             onPress={() => setShowMorePages(v => !v)}
             accessibilityRole="button"
             accessibilityState={{ expanded: showMorePages }}
             activeOpacity={0.8}
           >
-            <Text style={styles.moreToggleText}>{showMorePages ? 'Fewer pages' : dealerMode ? 'Marketplace & information' : 'More pages & information'}</Text>
-            <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+            <Text style={[styles.moreToggleText, { color: drawerSecondary }]}>{showMorePages ? 'Fewer pages' : dealerMode ? 'Marketplace & information' : 'More pages & information'}</Text>
+            <Ionicons name={showMorePages ? 'chevron-up' : 'chevron-down'} size={18} color={drawerSecondary} />
           </TouchableOpacity>
 
           {/* Unified Buyer/Seller toolset — web treats BUYER and SELLER as the
@@ -545,8 +549,8 @@ export const GlobalDrawer: React.FC = () => {
               Dealer keeps its own dedicated DEALER CONTROLS group below. */}
           {(role === 'buyer' || role === 'seller') && (
             <>
-              <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelSeller]}>MY DASHBOARD</Text>
+              <View style={[styles.divider, { backgroundColor: palette.borderDefault }]} />
+              <Text style={[styles.groupLabel, styles.groupLabelSeller, lightMode && { color: drawerSecondary }]}>MY DASHBOARD</Text>
               {USER_ITEMS.slice(0, showAllAccountTools ? USER_ITEMS.length : 7).map((item) => (
                 <TouchableOpacity
                   key={item.id}
@@ -555,26 +559,26 @@ export const GlobalDrawer: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.bar} />
-                  <View style={[styles.iconWrap, styles.iconWrapBlue]}>
+                  <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }, styles.iconWrapBlue]}>
                     {renderIcon(item, false, false, true)}
                   </View>
-                  <Text style={styles.rowLabelSeller}>
+                  <Text style={[styles.rowLabelSeller, lightMode && { color: drawerForeground }]}>
                     {item.label}
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={14} color={drawerMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllAccountTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllAccountTools }} activeOpacity={0.8}>
-                <Text style={styles.moreToggleText}>{showAllAccountTools ? 'Fewer account tools' : 'All account tools'}</Text>
-                <Ionicons name={showAllAccountTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+              <TouchableOpacity style={[styles.moreToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]} onPress={() => setShowAllAccountTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllAccountTools }} activeOpacity={0.8}>
+                <Text style={[styles.moreToggleText, { color: drawerSecondary }]}>{showAllAccountTools ? 'Fewer account tools' : 'All account tools'}</Text>
+                <Ionicons name={showAllAccountTools ? 'chevron-up' : 'chevron-down'} size={18} color={drawerSecondary} />
               </TouchableOpacity>
             </>
           )}
 
           {(role === 'dealer' || isActualDealer || isDealerStaff) && (
             <>
-              <View style={styles.divider} />
-              <Text style={[styles.groupLabel, styles.groupLabelDealer]}>DEALER CONTROLS</Text>
+              <View style={[styles.divider, { backgroundColor: palette.borderDefault }]} />
+              <Text style={[styles.groupLabel, styles.groupLabelDealer, lightMode && { color: drawerSecondary }]}>DEALER CONTROLS</Text>
               {visibleDealerItems.slice(0, showAllDealerTools ? visibleDealerItems.length : 6).map((item) => (
                 <TouchableOpacity
                   key={item.id}
@@ -583,19 +587,19 @@ export const GlobalDrawer: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.bar} />
-                  <View style={[styles.iconWrap, styles.iconWrapGold]}>
+                  <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }, styles.iconWrapGold]}>
                     {renderIcon(item, false, true)}
                   </View>
-                  <Text style={styles.rowLabelDealer}>
+                  <Text style={[styles.rowLabelDealer, lightMode && { color: drawerForeground }]}>
                     {item.label}
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={14} color={drawerMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ))}
               {visibleDealerItems.length > 6 && (
-                <TouchableOpacity style={styles.moreToggle} onPress={() => setShowAllDealerTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllDealerTools }} activeOpacity={0.8}>
-                  <Text style={styles.moreToggleText}>{showAllDealerTools ? 'Fewer dealer tools' : 'All dealer tools'}</Text>
-                  <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
+                <TouchableOpacity style={[styles.moreToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]} onPress={() => setShowAllDealerTools(v => !v)} accessibilityRole="button" accessibilityState={{ expanded: showAllDealerTools }} activeOpacity={0.8}>
+                  <Text style={[styles.moreToggleText, { color: drawerSecondary }]}>{showAllDealerTools ? 'Fewer dealer tools' : 'All dealer tools'}</Text>
+                  <Ionicons name={showAllDealerTools ? 'chevron-up' : 'chevron-down'} size={18} color={drawerSecondary} />
                 </TouchableOpacity>
               )}
               {/* Preserve dealer access even in buyer preview. */}
@@ -606,11 +610,11 @@ export const GlobalDrawer: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <View style={styles.bar} />
-                <View style={[styles.iconWrap, styles.iconWrapGold]}>
+                <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }, styles.iconWrapGold]}>
                   <Ionicons name="swap-horizontal-outline" size={19} color={Colors.warning} />
                 </View>
-                <Text style={styles.rowLabelDealer}>Preview buyer dashboard</Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                <Text style={[styles.rowLabelDealer, lightMode && { color: drawerForeground }]}>Preview buyer dashboard</Text>
+                <Ionicons name="chevron-forward" size={14} color={drawerMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
               )}
             </>
@@ -619,7 +623,7 @@ export const GlobalDrawer: React.FC = () => {
           {/* ── Dealer toggle — visible for all non-dealer users ── */}
           {role !== 'dealer' && (accountRole === 'buyer' || accountRole === 'seller' || isActualDealer) && (
             <>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: palette.borderDefault }]} />
               <TouchableOpacity
                 style={styles.dealerToggleCard}
                 activeOpacity={0.8}
@@ -701,25 +705,25 @@ export const GlobalDrawer: React.FC = () => {
             </>
           )}
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: palette.borderDefault }]} />
           {/* Contact Support (DASH-024). Web has had this in its sidebar for
               every role; mobile had no in-app route to support at all. Opens
               the support chat room rather than an email client, matching web
               and keeping the conversation in the product. */}
           <TouchableOpacity style={styles.row} onPress={handleContactSupport} activeOpacity={0.7} disabled={supportLoading}>
             <View style={styles.bar} />
-            <View style={styles.iconWrap}>
+            <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }]}>
               {supportLoading
                 ? <ActivityIndicator size="small" color={Colors.accent} />
                 : <Ionicons name="help-buoy-outline" size={19} color={Colors.accent} />}
             </View>
-            <Text style={styles.rowLabel}>Contact Support</Text>
+            <Text style={[styles.rowLabel, { color: drawerSecondary }]}>Contact Support</Text>
           </TouchableOpacity>
 
           {/* Sign Out row */}
           <TouchableOpacity style={styles.row} onPress={handleSignOut} activeOpacity={0.7}>
             <View style={styles.bar} />
-            <View style={[styles.iconWrap, styles.iconWrapRed]}>
+            <View style={[styles.iconWrap, { backgroundColor: drawerFieldBackground }, styles.iconWrapRed]}>
               <Ionicons name="log-out-outline" size={19} color={Colors.accent} />
             </View>
             <Text style={styles.rowLabelRed}>Sign Out</Text>
@@ -729,19 +733,26 @@ export const GlobalDrawer: React.FC = () => {
         {/* ── Footer brand ─────────────────────────────── */}
         <View style={styles.footer}>
           <Text style={styles.footerBrand}>CARMAZIUM</Text>
-          <Text style={styles.footerTagline}>Auction FREE · Retail £1</Text>
+          <Text style={[styles.footerTagline, { color: drawerMuted }]}>Auction FREE · Retail £1</Text>
         </View>
       </Animated.View>
     </>
   );
 
   return dealerMode ? (
-    <View
-      style={styles.dealerOverlay}
-      pointerEvents={isOpen ? 'box-none' : 'none'}
+    // The root inline overlay was clipped by the NavigationContainer viewport
+    // on actual Samsung devices. A native Modal gives the dealer menu a
+    // guaranteed full-window presentation, without swallowing gestures when
+    // the menu is closed.
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={closeDrawer}
     >
-      {drawerContent}
-    </View>
+      <View style={styles.dealerOverlay}>{drawerContent}</View>
+    </Modal>
   ) : (
     <Modal
       visible={isOpen}
@@ -759,7 +770,7 @@ const styles = StyleSheet.create({
   // Dealer overlay belongs to the same RN view hierarchy as the tabs, so
   // touches on those existing tabs are not swallowed by another window.
   dealerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     zIndex: 100,
   },
 
@@ -797,13 +808,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowOffset: { width: 0, height: -6 },
   },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    backgroundColor: Colors.textMuted,
-    marginBottom: 2,
+  dealerMenuHeading: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 6,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.base,
+    color: Colors.textPrimary,
   },
 
   // Close button

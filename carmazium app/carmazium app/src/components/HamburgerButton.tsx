@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useDrawer } from '../context/DrawerContext';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { Ionicons } from '@/components/BrandIcon';
 
 interface HamburgerButtonProps {
@@ -11,9 +12,11 @@ interface HamburgerButtonProps {
 }
 
 export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
-  color = Colors.white,
+  color,
   websiteStyle = false,
 }) => {
+  const { palette } = useNativeAppearance();
+  const iconColor = color ?? (websiteStyle ? palette.textPrimary : Colors.white);
   const { isOpen, openDrawer, closeDrawer } = useDrawer();
 
   return (
@@ -29,13 +32,13 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
       accessible
     >
       {websiteStyle ? (
-        <Ionicons name={isOpen ? 'close' : 'menu'} size={28} color={color} />
+        <Ionicons name={isOpen ? 'close' : 'menu'} size={28} color={iconColor} />
       ) : (
         <>
           {/* Preserve the existing non-header button for legacy screens. */}
-          <View style={[styles.bar, { backgroundColor: color, width: 18 }]} />
-          <View style={[styles.bar, { backgroundColor: color, width: 13 }]} />
-          <View style={[styles.bar, { backgroundColor: color, width: 9 }]} />
+          <View style={[styles.bar, { backgroundColor: iconColor, width: 18 }]} />
+          <View style={[styles.bar, { backgroundColor: iconColor, width: 13 }]} />
+          <View style={[styles.bar, { backgroundColor: iconColor, width: 9 }]} />
         </>
       )}
     </TouchableOpacity>

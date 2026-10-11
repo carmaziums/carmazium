@@ -16,6 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
@@ -123,6 +124,8 @@ const chipStyles = StyleSheet.create({
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export const PostSignupOnboardingScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = usePostSignupOnboardingScreenPalette();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -409,8 +412,8 @@ export const PostSignupOnboardingScreen: React.FC = () => {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       <LinearGradient
         colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
@@ -418,7 +421,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={themed.flex}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -428,7 +431,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* Logo */}
-          <Logo size="sm" style={styles.logo} />
+          <Logo size="sm" style={themed.logo} />
 
           {/* Progress dots */}
           <StepDots step={step} steps={steps} />
@@ -436,20 +439,20 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 0: Name (only when Google/OAuth sign-up left it blank) ── */}
           {step === 0 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP {stepPosition(0)} OF {steps.length}</Text>
-              <Text style={styles.titleText}>
-                What's your <Text style={styles.titleAccent}>name?</Text>
+              <Text style={themed.stepIndicator}>STEP {stepPosition(0)} OF {steps.length}</Text>
+              <Text style={themed.titleText}>
+                What's your <Text style={themed.titleAccent}>name?</Text>
               </Text>
-              <Text style={styles.subtitleText}>
+              <Text style={themed.subtitleText}>
                 We need this so buyers and sellers know who they're dealing with.
               </Text>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>FIRST NAME</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+              <View style={themed.fieldGroup}>
+                <Text style={themed.fieldLabel}>FIRST NAME</Text>
+                <View style={themed.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={themed.input}
                     value={onbFirstName}
                     onChangeText={(v) => { setOnbFirstName(v); if (nameError) setNameError(''); }}
                     placeholder="First name"
@@ -460,12 +463,12 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                 </View>
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>LAST NAME</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+              <View style={themed.fieldGroup}>
+                <Text style={themed.fieldLabel}>LAST NAME</Text>
+                <View style={themed.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={themed.input}
                     value={onbLastName}
                     onChangeText={(v) => { setOnbLastName(v); if (nameError) setNameError(''); }}
                     placeholder="Last name"
@@ -474,10 +477,10 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     returnKeyType="done"
                   />
                 </View>
-                {nameError !== '' && <Text style={styles.errorText}>{nameError}</Text>}
+                {nameError !== '' && <Text style={themed.errorText}>{nameError}</Text>}
               </View>
 
-              <View style={styles.ctaWrapper}>
+              <View style={themed.ctaWrapper}>
                 <PrimaryCTA
                   label="CONTINUE"
                   onPress={handleNameContinue}
@@ -493,45 +496,45 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 1: Email Verification ─────────────────────────────── */}
           {step === 1 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP {stepPosition(1)} OF {steps.length}</Text>
-              <Text style={styles.titleText}>
-                Verify your <Text style={styles.titleAccent}>email.</Text>
+              <Text style={themed.stepIndicator}>STEP {stepPosition(1)} OF {steps.length}</Text>
+              <Text style={themed.titleText}>
+                Verify your <Text style={themed.titleAccent}>email.</Text>
               </Text>
-              <Text style={styles.subtitleText}>
+              <Text style={themed.subtitleText}>
                 We sent a confirmation email to {user?.email ?? 'your address'}. Check your
                 inbox and click the link.
               </Text>
 
               {/* Email display card */}
-              <View style={styles.emailCard}>
-                <View style={styles.emailCardIcon}>
+              <View style={themed.emailCard}>
+                <View style={themed.emailCardIcon}>
                   <Ionicons name="mail" size={22} color={Colors.accent} />
                 </View>
-                <Text style={styles.emailCardText} numberOfLines={1}>
+                <Text style={themed.emailCardText} numberOfLines={1}>
                   {user?.email ?? '—'}
                 </Text>
               </View>
 
               {/* Resend button */}
               <TouchableOpacity
-                style={[styles.ghostBtn, resendDisabled && styles.ghostBtnDisabled]}
+                style={[themed.ghostBtn, resendDisabled && styles.ghostBtnDisabled]}
                 onPress={handleResend}
                 disabled={resendDisabled}
                 activeOpacity={0.75}
               >
-                <Text style={styles.ghostBtnText}>{resendLabel}</Text>
+                <Text style={themed.ghostBtnText}>{resendLabel}</Text>
               </TouchableOpacity>
 
               {/* Inline warning */}
               {verifyWarning !== '' && (
-                <View style={styles.warningRow}>
+                <View style={themed.warningRow}>
                   <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-                  <Text style={styles.warningText}>{verifyWarning}</Text>
+                  <Text style={themed.warningText}>{verifyWarning}</Text>
                 </View>
               )}
 
               {/* Primary CTA */}
-              <View style={styles.ctaWrapper}>
+              <View style={themed.ctaWrapper}>
                 <PrimaryCTA
                   label="I'VE VERIFIED MY EMAIL"
                   onPress={handleVerifyCheck}
@@ -547,24 +550,24 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 2: Required account details ───────────────────────── */}
           {step === 2 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP {stepPosition(2)} OF {steps.length}</Text>
-              <Text style={styles.titleText}>
-                Complete your <Text style={styles.titleAccent}>account.</Text>
+              <Text style={themed.stepIndicator}>STEP {stepPosition(2)} OF {steps.length}</Text>
+              <Text style={themed.titleText}>
+                Complete your <Text style={themed.titleAccent}>account.</Text>
               </Text>
-              <Text style={styles.subtitleText}>
+              <Text style={themed.subtitleText}>
                 Add the same required contact and location details used on CarMazium web.
               </Text>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>PHONE NUMBER</Text>
+              <View style={themed.fieldGroup}>
+                <Text style={themed.fieldLabel}>PHONE NUMBER</Text>
                 <View style={[
                   styles.inputWrapper,
                   focusedContactField === 'phone' && styles.inputFocused,
                   phoneError !== '' && styles.inputError,
                 ]}>
-                  <Ionicons name="call-outline" size={20} color={phoneError ? Colors.error : focusedContactField === 'phone' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
+                  <Ionicons name="call-outline" size={20} color={phoneError ? Colors.error : focusedContactField === 'phone' ? Colors.accent : Colors.textMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={themed.input}
                     value={phone}
                     onChangeText={(value) => { setPhone(value); if (phoneError) setPhoneError(''); }}
                     placeholder="e.g. 07123 456789"
@@ -579,19 +582,19 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     }}
                   />
                 </View>
-                {phoneError !== '' && <Text style={styles.errorText}>{phoneError}</Text>}
+                {phoneError !== '' && <Text style={themed.errorText}>{phoneError}</Text>}
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>TOWN / CITY</Text>
+              <View style={themed.fieldGroup}>
+                <Text style={themed.fieldLabel}>TOWN / CITY</Text>
                 <View style={[
                   styles.inputWrapper,
                   focusedContactField === 'location' && styles.inputFocused,
                   locationError !== '' && styles.inputError,
                 ]}>
-                  <Ionicons name="location-outline" size={20} color={locationError ? Colors.error : focusedContactField === 'location' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
+                  <Ionicons name="location-outline" size={20} color={locationError ? Colors.error : focusedContactField === 'location' ? Colors.accent : Colors.textMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={themed.input}
                     value={location}
                     onChangeText={(value) => { setLocation(value); if (locationError) setLocationError(''); }}
                     placeholder="e.g. Birmingham"
@@ -605,19 +608,19 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     }}
                   />
                 </View>
-                {locationError !== '' && <Text style={styles.errorText}>{locationError}</Text>}
+                {locationError !== '' && <Text style={themed.errorText}>{locationError}</Text>}
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>UK POSTCODE</Text>
+              <View style={themed.fieldGroup}>
+                <Text style={themed.fieldLabel}>UK POSTCODE</Text>
                 <View style={[
                   styles.inputWrapper,
                   focusedContactField === 'postcode' && styles.inputFocused,
                   postcodeError !== '' && styles.inputError,
                 ]}>
-                  <Ionicons name="navigate-outline" size={20} color={postcodeError ? Colors.error : focusedContactField === 'postcode' ? Colors.accent : Colors.textMuted} style={styles.inputIcon} />
+                  <Ionicons name="navigate-outline" size={20} color={postcodeError ? Colors.error : focusedContactField === 'postcode' ? Colors.accent : Colors.textMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={themed.input}
                     value={postcode}
                     onChangeText={(value) => { setPostcode(value.toUpperCase()); if (postcodeError) setPostcodeError(''); }}
                     placeholder="e.g. B1 1AA"
@@ -633,17 +636,17 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     onSubmitEditing={handleContactContinue}
                   />
                 </View>
-                {postcodeError !== '' && <Text style={styles.errorText}>{postcodeError}</Text>}
+                {postcodeError !== '' && <Text style={themed.errorText}>{postcodeError}</Text>}
               </View>
 
-              <View style={styles.warningRow}>
+              <View style={themed.warningRow}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={Colors.warning} />
-                <Text style={styles.warningText}>
+                <Text style={themed.warningText}>
                   These fields are required on both the app and website before dashboard access.
                 </Text>
               </View>
 
-              <View style={styles.ctaWrapper}>
+              <View style={themed.ctaWrapper}>
                 <PrimaryCTA
                   label="CONTINUE"
                   onPress={handleContactContinue}
@@ -659,30 +662,30 @@ export const PostSignupOnboardingScreen: React.FC = () => {
           {/* ── Step 3: Role-aware getting started ─────────────────────── */}
           {step === 3 && (
             <View>
-              <Text style={styles.stepIndicator}>STEP {stepPosition(3)} OF {steps.length}</Text>
-              <Text style={styles.guideEyebrow}>{roleGuide.label}</Text>
-              <Text style={styles.titleText}>{roleGuide.title}</Text>
-              <Text style={styles.subtitleText}>{roleGuide.subtitle}</Text>
+              <Text style={themed.stepIndicator}>STEP {stepPosition(3)} OF {steps.length}</Text>
+              <Text style={themed.guideEyebrow}>{roleGuide.label}</Text>
+              <Text style={themed.titleText}>{roleGuide.title}</Text>
+              <Text style={themed.subtitleText}>{roleGuide.subtitle}</Text>
 
-              <View style={styles.guideCard}>
+              <View style={themed.guideCard}>
                 {roleGuide.items.map((item) => (
-                  <View key={item} style={styles.guideItem}>
-                    <View style={styles.guideCheck}>
+                  <View key={item} style={themed.guideItem}>
+                    <View style={themed.guideCheck}>
                       <Ionicons name="checkmark" size={12} color={Colors.white} />
                     </View>
-                    <Text style={styles.guideItemText}>{item}</Text>
+                    <Text style={themed.guideItemText}>{item}</Text>
                   </View>
                 ))}
               </View>
 
               {isPersonalAccount && (
                 <>
-                  <Text style={styles.preferencesIntro}>
+                  <Text style={themed.preferencesIntro}>
                     Optional: tell us what you are interested in so we can personalise your browsing.
                   </Text>
 
-                  <Text style={styles.sectionLabel}>BODY TYPES</Text>
-                  <View style={styles.chipRow}>
+                  <Text style={themed.sectionLabel}>BODY TYPES</Text>
+                  <View style={themed.chipRow}>
                     {BODY_TYPES.map((type) => (
                       <Chip
                         key={type}
@@ -693,8 +696,8 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     ))}
                   </View>
 
-                  <Text style={styles.sectionLabel}>FUEL TYPE</Text>
-                  <View style={styles.chipRow}>
+                  <Text style={themed.sectionLabel}>FUEL TYPE</Text>
+                  <View style={themed.chipRow}>
                     {FUEL_TYPES.map((type) => (
                       <Chip
                         key={type}
@@ -705,8 +708,8 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                     ))}
                   </View>
 
-                  <Text style={styles.sectionLabel}>BUDGET</Text>
-                  <View style={styles.chipRow}>
+                  <Text style={themed.sectionLabel}>BUDGET</Text>
+                  <View style={themed.chipRow}>
                     {BUDGET_OPTIONS.map((opt) => (
                       <Chip
                         key={opt.value}
@@ -722,13 +725,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
               )}
 
               {saveToast !== '' && (
-                <View style={styles.saveErrorRow}>
+                <View style={themed.saveErrorRow}>
                   <Ionicons name="alert-circle-outline" size={16} color={Colors.error} />
-                  <Text style={styles.saveErrorText}>{saveToast}</Text>
+                  <Text style={themed.saveErrorText}>{saveToast}</Text>
                 </View>
               )}
 
-              <View style={styles.ctaWrapper}>
+              <View style={themed.ctaWrapper}>
                 <PrimaryCTA
                   label="FINISH & GO"
                   onPress={handleFinish}
@@ -745,7 +748,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
             </View>
           )}
 
-          <View style={styles.bottomSpacer} />
+          <View style={themed.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>
@@ -1015,3 +1018,29 @@ const styles = StyleSheet.create({
     height: 60,
   },
 });
+
+function usePostSignupOnboardingScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    titleText: [styles.titleText, { color: palette.textPrimary }],
+    subtitleText: [styles.subtitleText, { color: palette.textSecondary }],
+    emailCard: [styles.emailCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emailCardText: [styles.emailCardText, { color: palette.textSecondary }],
+    ghostBtn: [styles.ghostBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    ghostBtnText: [styles.ghostBtnText, { color: palette.textPrimary }],
+    warningText: [styles.warningText, { color: palette.textSecondary }],
+    saveErrorText: [styles.saveErrorText, { color: palette.textSecondary }],
+    fieldLabel: [styles.fieldLabel, { color: palette.textSecondary }],
+    inputWrapper: [styles.inputWrapper, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    input: [styles.input, { color: palette.textPrimary }],
+    guideCard: [styles.guideCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    guideItem: [styles.guideItem, { borderBottomColor: palette.borderDefault }],
+    guideItemText: [styles.guideItemText, { color: palette.textSecondary }],
+    preferencesIntro: [styles.preferencesIntro, { color: palette.textSecondary }],
+    sectionLabel: [styles.sectionLabel, { color: palette.textPrimary }],
+    toastRow: [styles.toastRow, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    toastText: [styles.toastText, { color: palette.textPrimary }],
+  }), [palette]);
+}

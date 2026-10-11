@@ -21,12 +21,15 @@ import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 
 import { IconButton } from '../../components/IconButton';
 
 type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
 
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerOnboardingScreenPalette();
   const insets = useSafeAreaInsets();
   const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
@@ -133,17 +136,17 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   if (reactivating) {
     return (
-      <View style={[styles.container, styles.reactivatingWrap]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[themed.container, styles.reactivatingWrap]}>
+        <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
         <ActivityIndicator size="large" color={Colors.accent} />
-        <Text style={styles.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
+        <Text style={themed.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardStickyView style={styles.container} behavior="padding">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <KeyboardStickyView style={themed.container} behavior="padding">
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -151,37 +154,37 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
         end={{ x: 1, y: 0.5 }}
       />
       <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[themed.scrollContent, { paddingTop: insets.top + 14 }]}>
 
           {/* Header */}
-          <View style={styles.header}>
-            <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerSubRed}>DEALER PRO</Text>
-              <Text style={styles.headerTitle}>Set up your dealership</Text>
+          <View style={themed.header}>
+            <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+            <View style={themed.headerCenter}>
+              <Text style={themed.headerSubRed}>DEALER PRO</Text>
+              <Text style={themed.headerTitle}>Set up your dealership</Text>
             </View>
             <View style={{ width: 38 }} />
           </View>
 
           {/* Stepper — Business (this screen) → Verify (DealerKYCScreen next) */}
-          <View style={styles.stepperWrap}>
-            <View style={styles.stepperItem}>
-              <View style={[styles.stepperCircle, styles.stepperCircleActive]}>
-                 <Text style={[styles.stepperNum, styles.stepperNumActive]}>1</Text>
+          <View style={themed.stepperWrap}>
+            <View style={themed.stepperItem}>
+              <View style={[themed.stepperCircle, styles.stepperCircleActive]}>
+                 <Text style={[themed.stepperNum, styles.stepperNumActive]}>1</Text>
               </View>
-              <Text style={[styles.stepperLabel, styles.stepperLabelActive]}>Business</Text>
+              <Text style={[themed.stepperLabel, styles.stepperLabelActive]}>Business</Text>
             </View>
-            <View style={styles.stepperLine} />
+            <View style={themed.stepperLine} />
 
-            <View style={styles.stepperItem}>
-              <View style={styles.stepperCircle}>
-                 <Text style={styles.stepperNum}>2</Text>
+            <View style={themed.stepperItem}>
+              <View style={themed.stepperCircle}>
+                 <Text style={themed.stepperNum}>2</Text>
               </View>
-              <Text style={styles.stepperLabel}>Verify</Text>
+              <Text style={themed.stepperLabel}>Verify</Text>
             </View>
           </View>
 
-          <Text style={styles.sectionLabel}>BUSINESS DETAILS</Text>
+          <Text style={themed.sectionLabel}>BUSINESS DETAILS</Text>
 
           {submitError ? (
             <View style={{ marginBottom: 16 }}>
@@ -191,9 +194,9 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
           {/* Business type comes first so sole traders never get forced into
               Companies House fields that do not apply to them. */}
-          <View style={styles.businessTypeWrap}>
-            <Text style={styles.inputLabel}>BUSINESS TYPE</Text>
-            <View style={styles.businessTypeRow}>
+          <View style={themed.businessTypeWrap}>
+            <Text style={themed.inputLabel}>BUSINESS TYPE</Text>
+            <View style={themed.businessTypeRow}>
               {([
                 { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
                 { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
@@ -202,7 +205,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    style={[themed.businessTypeCard, selected && styles.businessTypeCardSelected]}
                     onPress={() => {
                       setBusinessType(option.value);
                       setFieldErrors({});
@@ -214,96 +217,96 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
                   >
-                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
-                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    <View style={[themed.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
+                      {selected ? <View style={themed.businessTypeRadioDot} /> : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>{option.title}</Text>
-                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                      <Text style={[themed.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>{option.title}</Text>
+                      <Text style={themed.businessTypeHint}>{option.hint}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
             {businessType === 'SOLE_PROPRIETORSHIP' ? (
-              <Text style={styles.businessTypeHelp}>
+              <Text style={themed.businessTypeHelp}>
                 No Companies House or VAT details are required. We will verify you using your identity and proof of address.
               </Text>
             ) : null}
           </View>
 
           {/* Form Inputs */}
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+          <View style={themed.formGroup}>
+             <Text style={themed.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
+             <View style={themed.inputWrap}>
+                <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={themed.inputIcon} />
                 <TextInput
-                  style={styles.textInput}
+                  style={themed.textInput}
                   value={tradingName}
                   onChangeText={v => { setTradingName(v); if (fieldErrors.tradingName) setFieldErrors(prev => ({ ...prev, tradingName: undefined })); }}
                   placeholder="e.g. Knightsbridge Motors Ltd"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={palette.textMuted}
                 />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={themed.inputIconRight} />
              </View>
-             {fieldErrors.tradingName ? <Text style={styles.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
+             {fieldErrors.tradingName ? <Text style={themed.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
           </View>
 
           {businessType === 'PRIVATE_LIMITED' ? (
             <>
-            <View style={styles.formGroup}>
-               <Text style={styles.inputLabel}>COMPANIES HOUSE REG</Text>
-               <View style={styles.inputWrap}>
-                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                  <TextInput style={styles.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+            <View style={themed.formGroup}>
+               <Text style={themed.inputLabel}>COMPANIES HOUSE REG</Text>
+               <View style={themed.inputWrap}>
+                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={themed.inputIcon} />
+                  <TextInput style={themed.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={palette.textMuted} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={themed.inputIconRight} />
                </View>
             </View>
   
-            <View style={styles.formGroup}>
-               <Text style={styles.inputLabel}>VAT NUMBER</Text>
-               <View style={styles.inputWrap}>
-                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+            <View style={themed.formGroup}>
+               <Text style={themed.inputLabel}>VAT NUMBER</Text>
+               <View style={themed.inputWrap}>
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={themed.inputIcon} />
                   <TextInput
-                    style={styles.textInput}
+                    style={themed.textInput}
                     value={vatNumber}
                     onChangeText={v => { setVatNumber(v); if (fieldErrors.vatNumber) setFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                     placeholder="e.g. GB 123 456 789"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={palette.textMuted}
                   />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={themed.inputIconRight} />
                </View>
-               {fieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
+               {fieldErrors.vatNumber ? <Text style={themed.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
             </View>
             </>
           ) : null}
 
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>BUSINESS ADDRESS</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="location-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput style={styles.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+          <View style={themed.formGroup}>
+             <Text style={themed.inputLabel}>BUSINESS ADDRESS</Text>
+             <View style={themed.inputWrap}>
+                <Ionicons name="location-outline" size={18} color={Colors.iconMuted} style={themed.inputIcon} />
+                <TextInput style={themed.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={palette.textMuted} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={themed.inputIconRight} />
              </View>
           </View>
 
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>BUSINESS PHONE</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="call-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput style={styles.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+          <View style={themed.formGroup}>
+             <Text style={themed.inputLabel}>BUSINESS PHONE</Text>
+             <View style={themed.inputWrap}>
+                <Ionicons name="call-outline" size={18} color={Colors.iconMuted} style={themed.inputIcon} />
+                <TextInput style={themed.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={palette.textMuted} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={themed.inputIconRight} />
              </View>
           </View>
 
-          <View style={styles.signInRow}>
-             <Text style={styles.signInText}>Already have a dealer account? <Text style={styles.signInLink}>Sign in</Text></Text>
+          <View style={themed.signInRow}>
+             <Text style={themed.signInText}>Already have a dealer account? <Text style={themed.signInLink}>Sign in</Text></Text>
           </View>
 
         </ScrollView>
 
         {/* Continue CTA */}
-        <View style={[styles.bottomCTA, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[themed.bottomCTA, { paddingBottom: insets.bottom + 12 }]}>
           <Button
             label="CONTINUE"
             onPress={handleContinue}
@@ -484,3 +487,29 @@ const styles = StyleSheet.create({
      backgroundColor: 'rgba(10,10,12,0.95)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
   },
 });
+
+function useDealerOnboardingScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    reactivatingWrap: [styles.reactivatingWrap, { backgroundColor: palette.bgBody }],
+    reactivatingText: [styles.reactivatingText, { color: palette.textSecondary }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    stepperLabel: [styles.stepperLabel, { color: palette.textMuted }],
+    stepperCircle: [styles.stepperCircle, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    stepperLine: [styles.stepperLine, { backgroundColor: palette.borderDefault }],
+    sectionLabel: [styles.sectionLabel, { color: palette.textPrimary }],
+    businessTypeCard: [styles.businessTypeCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    businessTypeTitle: [styles.businessTypeTitle, { color: palette.textPrimary }],
+    businessTypeHint: [styles.businessTypeHint, { color: palette.textMuted }],
+    businessTypeHelp: [styles.businessTypeHelp, { color: palette.textSecondary }],
+    inputLabel: [styles.inputLabel, { color: palette.textSecondary }],
+    inputWrap: [styles.inputWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    textInput: [styles.textInput, { color: palette.textPrimary }],
+    signInText: [styles.signInText, { color: palette.textSecondary }],
+    bottomCTA: [styles.bottomCTA, { backgroundColor: palette.bgBody, borderTopColor: palette.borderDefault }],
+  }), [palette]);
+}

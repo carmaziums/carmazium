@@ -18,8 +18,8 @@ test('Android and iOS bundle the precise website mascot bytes and 128px source i
 test('native trigger and chat header both use the same bundled mascot as the website', () => {
   assert.match(web, /src="\/assets\/images\/mazium-bot-3d\.png"/);
   assert.match(native, /const MAZIUM_MASCOT = require\('\.\.\/\.\.\/assets\/images\/mazium-bot-3d\.png'\)/);
-  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{styles\.chatAvatarImage\} contentFit="contain"/);
-  assert.match(native, /source=\{MAZIUM_MASCOT\}[\s\S]*?style=\{styles\.botImage\}/);
+  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{themed\.chatAvatarImage\} contentFit="contain"/);
+  assert.match(native, /source=\{MAZIUM_MASCOT\}[\s\S]*?style=\{themed\.botImage\}/);
   assert.doesNotMatch(native, /images\.unsplash\.com|mockFace|mockSmileRow|botButtonInactive/);
 });
 

@@ -14,6 +14,7 @@ import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { useAuthStore, AccountRole } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -52,6 +53,8 @@ const ACCOUNT_COPY: Record<
 };
 
 export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useAccountRoleHomeScreenPalette();
   const insets = useSafeAreaInsets();
   const { user, accountRole } = useAuthStore();
 
@@ -65,61 +68,61 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
   const copy = ACCOUNT_COPY[supportedRole];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
+      <View style={themed.header}>
         <Logo size="sm" />
         <HamburgerButton />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[themed.content, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <View style={styles.iconWrap}>
+        <View style={themed.hero}>
+          <View style={themed.iconWrap}>
             <Ionicons name={copy.icon as any} size={30} color={Colors.accent} />
           </View>
-          <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
-          <Text style={styles.title}>{copy.title}</Text>
-          <Text style={styles.name}>
+          <Text style={themed.eyebrow}>{copy.eyebrow}</Text>
+          <Text style={themed.title}>{copy.title}</Text>
+          <Text style={themed.name}>
             {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'CarMazium user'}
           </Text>
-          <Text style={styles.description}>{copy.description}</Text>
+          <Text style={themed.description}>{copy.description}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>One CarMazium account</Text>
-          <Text style={styles.cardBody}>
+        <View style={themed.card}>
+          <Text style={themed.cardTitle}>One CarMazium account</Text>
+          <Text style={themed.cardBody}>
             Your identity, verification state and permissions come from the same CarMazium backend used by the website. Mobile no longer treats this account as a Buyer just because it has a business or platform role.
           </Text>
         </View>
 
-        <View style={styles.actions}>
+        <View style={themed.actions}>
           <TouchableOpacity
-            style={styles.primaryAction}
+            style={themed.primaryAction}
             onPress={() => navigation?.navigate('Settings')}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
             <Ionicons name="settings-outline" size={18} color={Colors.white} />
-            <Text style={styles.primaryActionText}>Account Settings</Text>
+            <Text style={themed.primaryActionText}>Account Settings</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryAction}
+            style={themed.secondaryAction}
             onPress={() => navigation?.navigate('Messages')}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Ionicons name="chatbubbles-outline" size={18} color={Colors.textPrimary} />
-            <Text style={styles.secondaryActionText}>Messages</Text>
+            <Ionicons name="chatbubbles-outline" size={18} color={palette.textPrimary} />
+            <Text style={themed.secondaryActionText}>Messages</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.note}>
+        <Text style={themed.note}>
           Your account, verification and permissions stay the same whether you use CarMazium on the web or in the app.
         </Text>
       </ScrollView>
@@ -238,3 +241,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+function useAccountRoleHomeScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    hero: [styles.hero, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    iconWrap: [styles.iconWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    title: [styles.title, { color: palette.textPrimary }],
+    name: [styles.name, { color: palette.textSecondary }],
+    description: [styles.description, { color: palette.textSecondary }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    cardTitle: [styles.cardTitle, { color: palette.textPrimary }],
+    cardBody: [styles.cardBody, { color: palette.textSecondary }],
+    secondaryAction: [styles.secondaryAction, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    secondaryActionText: [styles.secondaryActionText, { color: palette.textPrimary }],
+    note: [styles.note, { color: palette.textMuted }],
+  }), [palette]);
+}

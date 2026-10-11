@@ -18,6 +18,7 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -104,6 +105,8 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
 export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useUnifiedDashboardScreenPalette();
   const insets = useSafeAreaInsets();
   const { user, role, accountRole, logout } = useAuthStore();
   const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
@@ -160,28 +163,28 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   const navTab = (tab: string) => navigation?.navigate('Tabs', { screen: tab });
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
+        colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, palette.bgBody]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={themed.header}>
         <Logo size="sm" />
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
-            {unreadMessages > 0 && <View style={styles.bellDot} />}
-            <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
+        <View style={themed.headerRight}>
+          <TouchableOpacity style={themed.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
+            {unreadMessages > 0 && <View style={themed.bellDot} />}
+            <Ionicons name="notifications-outline" size={18} color={palette.textPrimary} />
           </TouchableOpacity>
           <HamburgerButton />
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={themed.scroll} contentContainerStyle={[themed.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
 
         {error ? (
           <View style={{ marginBottom: 16 }}>
@@ -190,77 +193,77 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         ) : null}
 
         {/* ── Profile card ── */}
-        <View style={styles.profileCard}>
-          <View style={[styles.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
-            <Text style={styles.avatarText}>{initials}</Text>
+        <View style={themed.profileCard}>
+          <View style={[themed.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
+            <Text style={themed.avatarText}>{initials}</Text>
 
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
+          <View style={themed.profileInfo}>
+            <Text style={themed.profileName} numberOfLines={1}>{fullName}</Text>
+            <Text style={themed.profileEmail} numberOfLines={1}>{email}</Text>
           </View>
-          <View style={[styles.rolePill, isDealer ? styles.rolePillAmber : isSeller ? styles.rolePillBlue : styles.rolePillGreen]}>
-            <Text style={[styles.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
+          <View style={[themed.rolePill, isDealer ? styles.rolePillAmber : isSeller ? styles.rolePillBlue : styles.rolePillGreen]}>
+            <Text style={[themed.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
         </View>
 
         {/* Primary tasks should be visible before the crowded metrics grid. */}
-        <View style={styles.accountQuickActions}>
+        <View style={themed.accountQuickActions}>
           <TouchableOpacity
-            style={styles.accountQuickBuy}
+            style={themed.accountQuickBuy}
             onPress={() => navTab('Search')}
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
             <Ionicons name="car-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>Buy Cars</Text>
+            <Text style={themed.accountQuickText}>Buy Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.accountQuickManage}
+            style={themed.accountQuickManage}
             onPress={() => isDealerAccount ? nav('DealerInventory') : isSellerAccount ? nav('SellerListings') : nav('SellCarFlow')}
             accessibilityRole="button"
             accessibilityLabel={isSellerAccount ? 'Manage your vehicle listings' : 'Start selling a car'}
             activeOpacity={0.8}
           >
             <Ionicons name="pricetag-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
+            <Text style={themed.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Overview stats strip ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>OVERVIEW</Text>
+        <View style={themed.sectionHeader}>
+          <Text style={themed.sectionLabel}>OVERVIEW</Text>
         </View>
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{seller.activeListings}</Text>}
-            <Text style={styles.statName}>Listings</Text>
+        <View style={themed.statsRow}>
+          <View style={themed.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={themed.statValue}>{seller.activeListings}</Text>}
+            <Text style={themed.statName}>Listings</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{buyer.watchlistCount}</Text>}
-            <Text style={styles.statName}>Saved</Text>
+          <View style={themed.statDivider} />
+          <View style={themed.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={themed.statValue}>{buyer.watchlistCount}</Text>}
+            <Text style={themed.statName}>Saved</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={40} h={22} /> : <Text style={styles.statValue}>{seller.totalViews >= 1000 ? `${(seller.totalViews / 1000).toFixed(1)}k` : seller.totalViews}</Text>}
-            <Text style={styles.statName}>Views</Text>
+          <View style={themed.statDivider} />
+          <View style={themed.statCell}>
+            {loading ? <Skeleton w={40} h={22} /> : <Text style={themed.statValue}>{seller.totalViews >= 1000 ? `${(seller.totalViews / 1000).toFixed(1)}k` : seller.totalViews}</Text>}
+            <Text style={themed.statName}>Views</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={[styles.statValue, unreadMessages > 0 && { color: Colors.accent }]}>{unreadMessages}</Text>}
-            <Text style={styles.statName}>Unread</Text>
+          <View style={themed.statDivider} />
+          <View style={themed.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={[themed.statValue, unreadMessages > 0 && { color: Colors.accent }]}>{unreadMessages}</Text>}
+            <Text style={themed.statName}>Unread</Text>
           </View>
         </View>
 
         {/* ── 10-section tile grid ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>MY DASHBOARD</Text>
+        <View style={themed.sectionHeader}>
+          <Text style={themed.sectionLabel}>MY DASHBOARD</Text>
         </View>
-        <View style={styles.tileGrid}>
+        <View style={themed.tileGrid}>
 
           {/* Row 1: Inventory + Auctions */}
           <Tile
@@ -354,11 +357,11 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         </View>
 
         {/* ── Sign out ── */}
-        <TouchableOpacity style={styles.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>
-          <View style={styles.signOutIcon}>
+        <TouchableOpacity style={themed.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>
+          <View style={themed.signOutIcon}>
             <Ionicons name="log-out-outline" size={17} color={Colors.accent} />
           </View>
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={themed.signOutText}>Sign out</Text>
           <Ionicons name="chevron-forward" size={14} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
@@ -430,3 +433,26 @@ const styles = StyleSheet.create({
   signOutIcon: { width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
 });
+
+function useUnifiedDashboardScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    bellBtn: [styles.bellBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    profileCard: [styles.profileCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    profileName: [styles.profileName, { color: palette.textPrimary }],
+    profileEmail: [styles.profileEmail, { color: palette.textSecondary }],
+    sectionLabel: [styles.sectionLabel, { color: palette.textPrimary }],
+    statCell: [styles.statCell, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    statValue: [styles.statValue, { color: palette.textPrimary }],
+    statName: [styles.statName, { color: palette.textMuted }],
+    statDivider: [styles.statDivider, { backgroundColor: palette.borderDefault }],
+    tile: [styles.tile, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    tileLabel: [styles.tileLabel, { color: palette.textPrimary }],
+    tileSublabel: [styles.tileSublabel, { color: palette.textSecondary }],
+    signOutRow: [styles.signOutRow, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    signOutText: [styles.signOutText, { color: palette.textSecondary }],
+  }), [palette]);
+}

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -56,6 +57,8 @@ const timingText = (job: ServiceJob) => {
 };
 
 export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useProviderJobsScreenPalette();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('open');
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -130,13 +133,13 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={themed.card}
         activeOpacity={0.82}
         onPress={() => navigation.navigate('ProviderJobDetail', { jobId: job.id })}
       >
-        <View style={styles.cardTop}>
-          <View style={styles.typeRow}>
-            <View style={styles.iconBox}>
+        <View style={themed.cardTop}>
+          <View style={themed.typeRow}>
+            <View style={themed.iconBox}>
               <Ionicons
                 name={job.serviceType === 'INSPECTION' ? 'search-outline' : 'car-outline'}
                 size={19}
@@ -144,43 +147,43 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.typeText}>
+              <Text style={themed.typeText}>
                 {job.serviceType === 'DELIVERY' && job.isRecovery
                   ? 'Recovery'
                   : SERVICE_LABELS[job.serviceType]}
               </Text>
-              <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+              <Text style={themed.title} numberOfLines={2}>{job.title}</Text>
             </View>
           </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusText}>{statusLabel(job.status)}</Text>
+          <View style={themed.statusPill}>
+            <Text style={themed.statusText}>{statusLabel(job.status)}</Text>
           </View>
         </View>
 
-        <View style={styles.metaRow}>
+        <View style={themed.metaRow}>
           <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>{routeText(job)}</Text>
+          <Text style={themed.metaText}>{routeText(job)}</Text>
         </View>
-        <View style={styles.metaRow}>
+        <View style={themed.metaRow}>
           <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>{timingText(job)}</Text>
+          <Text style={themed.metaText}>{timingText(job)}</Text>
         </View>
-        <View style={styles.metaRow}>
+        <View style={themed.metaRow}>
           <Ionicons name="car-sport-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>
+          <Text style={themed.metaText}>
             {job.vehicles?.length || 0} vehicle{(job.vehicles?.length || 0) === 1 ? '' : 's'}
           </Text>
         </View>
 
-        <View style={styles.cardFooter}>
+        <View style={themed.cardFooter}>
           <Text style={[
             styles.trailing,
             myQuote?.status === 'ACTIVE' && { color: Colors.accentGreen },
           ]}>
             {trailing}
           </Text>
-          <View style={styles.openRow}>
-            <Text style={styles.openText}>OPEN JOB</Text>
+          <View style={themed.openRow}>
+            <Text style={themed.openText}>OPEN JOB</Text>
             <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
           </View>
         </View>
@@ -189,54 +192,54 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[themed.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
-      <View style={styles.header}>
+      <View style={themed.header}>
         <IconButton
-          style={styles.headerButton}
+          style={themed.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Service Jobs</Text>
-          <Text style={styles.headerSub}>Delivery, Recovery & Inspection</Text>
+          <Text style={themed.headerTitle}>Service Jobs</Text>
+          <Text style={themed.headerSub}>Delivery, Recovery & Inspection</Text>
         </View>
         <HamburgerButton />
       </View>
 
-      <View style={styles.tabs}>
+      <View style={themed.tabs}>
         <TouchableOpacity
-          style={[styles.tab, tab === 'open' && styles.tabActive]}
+          style={[themed.tab, tab === 'open' && styles.tabActive]}
           onPress={() => setTab('open')}
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'open' }}
           accessibilityLabel="Available service jobs"
         >
-          <Text style={[styles.tabText, tab === 'open' && styles.tabTextActive]}>AVAILABLE</Text>
+          <Text style={[themed.tabText, tab === 'open' && styles.tabTextActive]}>AVAILABLE</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, tab === 'assigned' && styles.tabActive]}
+          style={[themed.tab, tab === 'assigned' && styles.tabActive]}
           onPress={() => setTab('assigned')}
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'assigned' }}
           accessibilityLabel="My assigned service work"
         >
-          <Text style={[styles.tabText, tab === 'assigned' && styles.tabTextActive]}>MY WORK</Text>
+          <Text style={[themed.tabText, tab === 'assigned' && styles.tabTextActive]}>MY WORK</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filters}>
+      <View style={themed.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
             key={item}
-            style={[styles.filter, filter === item && styles.filterActive]}
+            style={[themed.filter, filter === item && styles.filterActive]}
             onPress={() => setFilter(item)}
             accessibilityRole="button"
             accessibilityState={{ selected: filter === item }}
           >
-            <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+            <Text style={[themed.filterText, filter === item && styles.filterTextActive]}>
               {item === 'ALL' ? 'All' : item === 'DELIVERY' ? 'Delivery' : 'Inspection'}
             </Text>
           </TouchableOpacity>
@@ -244,40 +247,40 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <TouchableOpacity
-        style={styles.manageCoverage}
+        style={themed.manageCoverage}
         onPress={() => navigation.navigate('ProviderCapabilities')}
         accessibilityRole="button"
         accessibilityLabel="Manage approved services and job-matching coverage"
         activeOpacity={0.8}
       >
         <Ionicons name="options-outline" size={17} color={Colors.accent} />
-        <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
+        <Text style={themed.manageCoverageText}>Manage service areas & verification</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
 
       {loading && jobs.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+        <View style={themed.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : notApproved ? (
-        <View style={styles.centerCard}>
+        <View style={themed.centerCard}>
           <Ionicons name="shield-outline" size={34} color={Colors.warning} />
-          <Text style={styles.emptyTitle}>Approved service required</Text>
-          <Text style={styles.emptyText}>
+          <Text style={themed.emptyTitle}>Approved service required</Text>
+          <Text style={themed.emptyText}>
             Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
           </Text>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={themed.primaryButton}
             onPress={() => navigation.navigate('ProviderCapabilities')}
           >
-            <Text style={styles.primaryText}>MANAGE SERVICES</Text>
+            <Text style={themed.primaryText}>MANAGE SERVICES</Text>
           </TouchableOpacity>
         </View>
       ) : error && jobs.length === 0 ? (
-        <View style={styles.centerCard}>
+        <View style={themed.centerCard}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load jobs</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={themed.emptyTitle}>Could not load jobs</Text>
+          <Text style={themed.emptyText}>{error}</Text>
+          <TouchableOpacity style={themed.primaryButton} onPress={() => void load('reset')}>
+            <Text style={themed.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -294,12 +297,12 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.centerCard}>
+            <View style={themed.centerCard}>
               <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>
+              <Text style={themed.emptyTitle}>
                 {tab === 'open' ? 'No matching jobs right now' : 'No assigned work yet'}
               </Text>
-              <Text style={styles.emptyText}>
+              <Text style={themed.emptyText}>
                 {tab === 'open'
                   ? 'New customer jobs appear automatically when they match your approved service areas.'
                   : 'Quote on available jobs. Accepted and paid work stays here for your team.'}
@@ -373,3 +376,34 @@ const styles = StyleSheet.create({
   primaryButton: { marginTop: 5, minHeight: 44, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
   primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.7 },
 });
+
+function useProviderJobsScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    headerButton: [styles.headerButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    headerSub: [styles.headerSub, { color: palette.textMuted }],
+    tabs: [styles.tabs, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    tab: [styles.tab, { backgroundColor: palette.bgInput }],
+    tabText: [styles.tabText, { color: palette.textSecondary }],
+    filters: [styles.filters, { borderColor: palette.borderDefault }],
+    manageCoverage: [styles.manageCoverage, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    manageCoverageText: [styles.manageCoverageText, { color: palette.textPrimary }],
+    filter: [styles.filter, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    filterText: [styles.filterText, { color: palette.textSecondary }],
+    card: [styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    iconBox: [styles.iconBox, { backgroundColor: palette.bgInput }],
+    typeText: [styles.typeText, { color: palette.textMuted }],
+    title: [styles.title, { color: palette.textPrimary }],
+    metaText: [styles.metaText, { color: palette.textSecondary }],
+    cardFooter: [styles.cardFooter, { borderTopColor: palette.borderDefault }],
+    openText: [styles.openText, { color: palette.textPrimary }],
+    center: [styles.center, { backgroundColor: palette.bgBody }],
+    centerCard: [styles.centerCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyTitle: [styles.emptyTitle, { color: palette.textPrimary }],
+    emptyText: [styles.emptyText, { color: palette.textSecondary }],
+  }), [palette]);
+}

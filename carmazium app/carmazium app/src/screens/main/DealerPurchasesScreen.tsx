@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -112,6 +113,8 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerPurchasesScreen: React.FC = () => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerPurchasesScreenPalette();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -165,7 +168,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={themed.emptyState}>
       <EmptyState
         icon="receipt-outline"
         title="No purchases yet"
@@ -175,15 +178,15 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const renderTotalsBar = () => (
-    <View style={styles.totalsCard}>
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>TOTAL SPENT</Text>
-        <Text style={styles.totalValue}>{formatPrice(totalSpent)}</Text>
+    <View style={themed.totalsCard}>
+      <View style={themed.totalCol}>
+        <Text style={themed.totalLabel}>TOTAL SPENT</Text>
+        <Text style={themed.totalValue}>{formatPrice(totalSpent)}</Text>
       </View>
-      <View style={styles.totalDivider} />
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>VEHICLES PURCHASED</Text>
-        <Text style={styles.totalValue}>{purchases.length}</Text>
+      <View style={themed.totalDivider} />
+      <View style={themed.totalCol}>
+        <Text style={themed.totalLabel}>VEHICLES PURCHASED</Text>
+        <Text style={themed.totalValue}>{purchases.length}</Text>
       </View>
     </View>
   );
@@ -196,34 +199,34 @@ export const DealerPurchasesScreen: React.FC = () => {
         activeOpacity={0.8}
         onPress={() => setSummaryItem(item)}
       >
-        <View style={styles.purchaseCard}>
-          <View style={styles.cardTopRow}>
+        <View style={themed.purchaseCard}>
+          <View style={themed.cardTopRow}>
             {/* Thumbnail */}
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={item.vehicleTitle} />
+              <Image source={{ uri: item.imageUrl }} style={themed.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={item.vehicleTitle} />
             ) : (
-              <View style={[styles.thumb, styles.thumbPlaceholder]}>
+              <View style={[themed.thumb, styles.thumbPlaceholder]}>
                 <Ionicons name="car-outline" size={20} color={Colors.textMuted} />
               </View>
             )}
 
             {/* Center text */}
-            <View style={styles.cardCenter}>
-              <Text style={styles.vehicleTitle} numberOfLines={1}>{item.vehicleTitle}</Text>
+            <View style={themed.cardCenter}>
+              <Text style={themed.vehicleTitle} numberOfLines={1}>{item.vehicleTitle}</Text>
               {!!item.vehicleSubtitle && (
-                <Text style={styles.vehicleSubtitle} numberOfLines={1}>{item.vehicleSubtitle}</Text>
+                <Text style={themed.vehicleSubtitle} numberOfLines={1}>{item.vehicleSubtitle}</Text>
               )}
-              <Text style={styles.purchaseDate}>Purchased {formatDate(item.purchaseDate)}</Text>
+              <Text style={themed.purchaseDate}>Purchased {formatDate(item.purchaseDate)}</Text>
             </View>
 
             {/* Price */}
-            <Text style={styles.purchasePrice}>{formatPrice(item.purchasePrice)}</Text>
+            <Text style={themed.purchasePrice}>{formatPrice(item.purchasePrice)}</Text>
           </View>
 
           {/* Status pipeline chip */}
-          <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <View style={[themed.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
             <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-            <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+            <Text style={[themed.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -233,8 +236,8 @@ export const DealerPurchasesScreen: React.FC = () => {
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       <LinearGradient
         colors={['rgba(167,139,250,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -246,15 +249,15 @@ export const DealerPurchasesScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={themed.header}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Purchases</Text>
+        <Text style={themed.headerTitle}>Purchases</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {purchases.length > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>
+            <View style={themed.countBadge}>
+              <Text style={themed.countBadgeText}>
                 {purchases.length > 99 ? '99+' : purchases.length}
               </Text>
             </View>
@@ -269,7 +272,7 @@ export const DealerPurchasesScreen: React.FC = () => {
           <ErrorBanner message="Could not load purchases. Check your connection." onRetry={() => fetchData()} />
         </View>
       ) : loading ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={themed.scroll} contentContainerStyle={themed.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeletons()}
           <View style={{ height: 110 }} />
         </ScrollView>
@@ -277,14 +280,14 @@ export const DealerPurchasesScreen: React.FC = () => {
         // Virtualized — a dealership's purchase history grows over its
         // lifetime, so we only mount rows near the viewport.
         <FlatList
-          style={styles.scroll}
+          style={themed.scroll}
           data={purchases}
           keyExtractor={(item) => item.id}
           renderItem={renderPurchaseCard}
           ListHeaderComponent={purchases.length > 0 ? renderTotalsBar : null}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 110 }} />}
-          contentContainerStyle={[styles.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[themed.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -316,83 +319,83 @@ export const DealerPurchasesScreen: React.FC = () => {
             // gap replicates the old modalSheet wrapper's spacing, which BottomSheet's
             // own sheet style doesn't provide
             <View style={{ gap: 12 }}>
-              <View style={styles.modalTopRow}>
+              <View style={themed.modalTopRow}>
                 {summaryItem.imageUrl ? (
-                  <Image source={{ uri: summaryItem.imageUrl }} style={styles.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
+                  <Image source={{ uri: summaryItem.imageUrl }} style={themed.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
                 ) : (
-                  <View style={[styles.modalThumb, styles.thumbPlaceholder]}>
+                  <View style={[themed.modalThumb, styles.thumbPlaceholder]}>
                     <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalVehicleTitle} numberOfLines={1}>{summaryItem.vehicleTitle}</Text>
+                  <Text style={themed.modalVehicleTitle} numberOfLines={1}>{summaryItem.vehicleTitle}</Text>
                   {!!summaryItem.vehicleSubtitle && (
-                    <Text style={styles.modalVehicleSubtitle} numberOfLines={1}>{summaryItem.vehicleSubtitle}</Text>
+                    <Text style={themed.modalVehicleSubtitle} numberOfLines={1}>{summaryItem.vehicleSubtitle}</Text>
                   )}
                 </View>
               </View>
 
-              <View style={styles.modalDivider} />
+              <View style={themed.modalDivider} />
 
               {/* Price + date */}
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE PRICE</Text>
-                <Text style={styles.modalValue}>{formatPrice(summaryItem.purchasePrice)}</Text>
+              <View style={themed.modalRow}>
+                <Text style={themed.modalLabel}>PURCHASE PRICE</Text>
+                <Text style={themed.modalValue}>{formatPrice(summaryItem.purchasePrice)}</Text>
               </View>
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE DATE</Text>
-                <Text style={styles.modalValueSecondary}>{formatDate(summaryItem.purchaseDate)}</Text>
+              <View style={themed.modalRow}>
+                <Text style={themed.modalLabel}>PURCHASE DATE</Text>
+                <Text style={themed.modalValueSecondary}>{formatDate(summaryItem.purchaseDate)}</Text>
               </View>
 
               {/* Status */}
               {(() => {
                 const cfg = STATUS_CONFIG[summaryItem.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
                 return (
-                  <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
+                  <View style={[themed.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
                     <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-                    <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+                    <Text style={[themed.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                 );
               })()}
 
-              <View style={styles.modalDivider} />
+              <View style={themed.modalDivider} />
 
               {/* Seller details */}
-              <Text style={styles.sellerSectionLabel}>SELLER DETAILS</Text>
-              <View style={styles.sellerRow}>
-                <View style={styles.sellerAvatar}>
-                  <Text style={styles.sellerInitial}>
+              <Text style={themed.sellerSectionLabel}>SELLER DETAILS</Text>
+              <View style={themed.sellerRow}>
+                <View style={themed.sellerAvatar}>
+                  <Text style={themed.sellerInitial}>
                     {summaryItem.sellerName?.charAt(0)?.toUpperCase() ?? 'S'}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sellerName} numberOfLines={1}>
+                  <Text style={themed.sellerName} numberOfLines={1}>
                     {summaryItem.sellerName ?? 'Private Seller'}
                   </Text>
                   {!!summaryItem.sellerEmail && (
-                    <Text style={styles.sellerSub} numberOfLines={1}>{summaryItem.sellerEmail}</Text>
+                    <Text style={themed.sellerSub} numberOfLines={1}>{summaryItem.sellerEmail}</Text>
                   )}
                 </View>
               </View>
 
-              <View style={styles.sellerActionsRow}>
+              <View style={themed.sellerActionsRow}>
                 <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerEmail && styles.sellerActionBtnDisabled]}
+                  style={[themed.sellerActionBtn, !summaryItem.sellerEmail && styles.sellerActionBtnDisabled]}
                   activeOpacity={0.75}
                   disabled={!summaryItem.sellerEmail}
                   onPress={() => handleEmailSeller(summaryItem)}
                 >
                   <Ionicons name="mail-outline" size={15} color={summaryItem.sellerEmail ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
+                  <Text style={[themed.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerPhone && styles.sellerActionBtnDisabled]}
+                  style={[themed.sellerActionBtn, !summaryItem.sellerPhone && styles.sellerActionBtnDisabled]}
                   activeOpacity={0.75}
                   disabled={!summaryItem.sellerPhone}
                   onPress={() => handleCallSeller(summaryItem)}
                 >
                   <Ionicons name="call-outline" size={15} color={summaryItem.sellerPhone ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
+                  <Text style={[themed.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
                 </TouchableOpacity>
               </View>
 
@@ -419,11 +422,11 @@ export const DealerPurchasesScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalCloseBtn}
+                style={themed.modalCloseBtn}
                 activeOpacity={0.75}
                 onPress={() => setSummaryItem(null)}
               >
-                <Text style={styles.modalCloseBtnText}>Close</Text>
+                <Text style={themed.modalCloseBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -743,3 +746,40 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 });
+
+function useDealerPurchasesScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    totalsCard: [styles.totalsCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    totalDivider: [styles.totalDivider, { backgroundColor: palette.borderDefault }],
+    totalLabel: [styles.totalLabel, { color: palette.textMuted }],
+    totalValue: [styles.totalValue, { color: palette.textPrimary }],
+    skeletonCard: [styles.skeletonCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyState: [styles.emptyState, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyTitle: [styles.emptyTitle, { color: palette.textPrimary }],
+    emptySub: [styles.emptySub, { color: palette.textSecondary }],
+    purchaseCard: [styles.purchaseCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    vehicleTitle: [styles.vehicleTitle, { color: palette.textPrimary }],
+    vehicleSubtitle: [styles.vehicleSubtitle, { color: palette.textSecondary }],
+    purchaseDate: [styles.purchaseDate, { color: palette.textMuted }],
+    purchasePrice: [styles.purchasePrice, { color: palette.textPrimary }],
+    modalVehicleTitle: [styles.modalVehicleTitle, { color: palette.textPrimary }],
+    modalVehicleSubtitle: [styles.modalVehicleSubtitle, { color: palette.textSecondary }],
+    modalDivider: [styles.modalDivider, { backgroundColor: palette.borderDefault }],
+    modalLabel: [styles.modalLabel, { color: palette.textMuted }],
+    modalValue: [styles.modalValue, { color: palette.textPrimary }],
+    modalValueSecondary: [styles.modalValueSecondary, { color: palette.textSecondary }],
+    sellerSectionLabel: [styles.sellerSectionLabel, { color: palette.textSecondary }],
+    sellerName: [styles.sellerName, { color: palette.textPrimary }],
+    sellerSub: [styles.sellerSub, { color: palette.textMuted }],
+    sellerActionBtn: [styles.sellerActionBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    sellerActionText: [styles.sellerActionText, { color: palette.textPrimary }],
+    modalCloseBtn: [styles.modalCloseBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    modalCloseBtnText: [styles.modalCloseBtnText, { color: palette.textPrimary }],
+  }), [palette]);
+}

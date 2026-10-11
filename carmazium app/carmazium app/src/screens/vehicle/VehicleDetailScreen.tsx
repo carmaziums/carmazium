@@ -33,6 +33,7 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -160,6 +161,8 @@ const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
 ];
 
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useVehicleDetailStyles();
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const [activeImage, setActiveImage] = useState(0);
@@ -762,12 +765,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
 
       {/* Main Scrollable Content */}
       <ScrollView
-        style={styles.scrollView}
+        style={themed.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 120 },
@@ -775,19 +778,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Gallery Section — spring-snap gesture gallery */}
-        <View style={styles.galleryContainer}>
+        <View style={themed.galleryContainer}>
           <GestureDetector gesture={galleryPanGesture}>
-            <Animated.View style={[styles.galleryStrip, galleryAnimatedStyle]}>
+            <Animated.View style={[themed.galleryStrip, galleryAnimatedStyle]}>
               {images.map((img, idx) => (
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={0.95}
                   onPress={() => openFullscreen(idx)}
-                  style={styles.galleryImageWrap}
+                  style={themed.galleryImageWrap}
                 >
                   <Image
                     source={{ uri: img }}
-                    style={styles.galleryImage}
+                    style={themed.galleryImage}
                     contentFit="cover"
                     transition={200}
                     cachePolicy="memory-disk"
@@ -800,31 +803,31 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Page dot indicator */}
           {totalImages > 1 && (
-            <View style={styles.pageDots}>
+            <View style={themed.pageDots}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
-                  style={[styles.pageDot, activeImage === idx && styles.pageDotActive]}
+                  style={[themed.pageDot, activeImage === idx && styles.pageDotActive]}
                 />
               ))}
             </View>
           )}
 
           {/* Photo counter */}
-          <View style={styles.photoCounter}>
-            <Text style={styles.photoCounterText}>
+          <View style={themed.photoCounter}>
+            <Text style={themed.photoCounterText}>
               {activeImage + 1}/{totalImages}
             </Text>
           </View>
 
           {/* Floating Header Actions */}
-          <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+          <View style={[themed.floatingHeader, { top: insets.top + 8 }]}>
+            <IconButton style={themed.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-            <View style={styles.headerRightActions}>
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+            <View style={themed.headerRightActions}>
+              <IconButton style={themed.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
+              <IconButton style={themed.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={themed.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>
 
@@ -833,38 +836,38 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
 
         {/* Content Details Block */}
-        <View style={styles.detailsBlock}>
+        <View style={themed.detailsBlock}>
           {/* Subtitle / Verification Tag */}
-          <View style={styles.verifiedHeaderRow}>
-            <Text style={styles.colorLabel}>
+          <View style={themed.verifiedHeaderRow}>
+            <Text style={themed.colorLabel}>
               {listing.colour.toUpperCase()}
             </Text>
             {listing.isSellerVerified === true && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>✓ VERIFIED</Text>
+              <View style={themed.verifiedBadge}>
+                <Text style={themed.verifiedText}>✓ VERIFIED</Text>
               </View>
             )}
           </View>
 
           {/* Seller-set banner ribbon (e.g. "Price Drop", "Just Arrived") */}
           {listing.bannerLabel && (
-            <View style={styles.detailBannerChip}>
-              <Text style={styles.detailBannerText}>{listing.bannerLabel}</Text>
+            <View style={themed.detailBannerChip}>
+              <Text style={themed.detailBannerText}>{listing.bannerLabel}</Text>
             </View>
           )}
 
           {/* Car Name & Model */}
-          <Text style={styles.carTitle}>
+          <Text style={themed.carTitle}>
             {listing.year} {listing.make} {listing.model}
           </Text>
-          {!!listing.variant && <Text style={styles.variantLabel}>{listing.variant}</Text>}
+          {!!listing.variant && <Text style={themed.variantLabel}>{listing.variant}</Text>}
 
           {/* Location row — hidden entirely (not a dangling icon) when the
               listing has no location, same pattern as GradeChip's null case */}
           {!!listing.location && (
-            <View style={styles.locationRow}>
+            <View style={themed.locationRow}>
               <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
-              <Text style={styles.locationText}>{listing.location}</Text>
+              <Text style={themed.locationText}>{listing.location}</Text>
             </View>
           )}
 
@@ -883,13 +886,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               isSold ? 'SOLD — this vehicle is no longer available' :
               s;
             return (
-              <View style={[styles.statusBanner, isSold ? styles.statusBannerSold : styles.statusBannerWarning]}>
+              <View style={[themed.statusBanner, isSold ? styles.statusBannerSold : styles.statusBannerWarning]}>
                 <Ionicons
                   name={isSold ? 'close-circle' : 'alert-circle-outline'}
                   size={18}
                   color={isSold ? Colors.error : Colors.warning}
                 />
-                <Text style={[styles.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
+                <Text style={[themed.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
                   {label}
                 </Text>
               </View>
@@ -897,17 +900,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           })()}
 
           {/* Price & Monthly Pricing */}
-          <View style={styles.priceContainerRow}>
-            <Text style={styles.priceText}>
+          <View style={themed.priceContainerRow}>
+            <Text style={themed.priceText}>
               {formatPrice(listing.price)}
             </Text>
-            <Text style={styles.monthlyText}>
+            <Text style={themed.monthlyText}>
               {listing.monthlyPayment
                 ? `Indicative: ${listing.monthlyPayment}`
                 : `Est. £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo*`}
             </Text>
           </View>
-          <Text style={styles.financeDisclaimer}>*Illustrative monthly estimate only, not a finance offer. Terms and eligibility may vary.</Text>
+          <Text style={themed.financeDisclaimer}>*Illustrative monthly estimate only, not a finance offer. Terms and eligibility may vary.</Text>
           {/* Buyer's own offer status chip — copy mirrors web's OfferStatusChip
               (VehicleDetailPageClient.tsx L31-90). Hidden on the buyer's own
               listings and when there's no offer yet. */}
@@ -940,20 +943,20 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             const chipInner = (
               <>
                 <Ionicons name={config.icon} size={13} color={config.color} />
-                <Text style={[styles.offerStatusChipText, { color: config.color }]}>{config.text}</Text>
+                <Text style={[themed.offerStatusChipText, { color: config.color }]}>{config.text}</Text>
                 {isCounter && <Ionicons name="chevron-forward" size={13} color={config.color} />}
               </>
             );
             return isCounter ? (
               <TouchableOpacity
-                style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}
+                style={[themed.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}
                 onPress={() => navigation.navigate('BuyerOffers')}
                 activeOpacity={0.75}
               >
                 {chipInner}
               </TouchableOpacity>
             ) : (
-              <View style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}>
+              <View style={[themed.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}>
                 {chipInner}
               </View>
             );
@@ -961,21 +964,21 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Vehicle-origin import badge — separate from "imported listing from another platform". */}
           {listing.isImported ? (
-            <View style={styles.vehicleImportBadge}>
+            <View style={themed.vehicleImportBadge}>
               <Ionicons name="globe-outline" size={12} color="#111827" />
-              <Text style={styles.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
+              <Text style={themed.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
             </View>
           ) : null}
 
           {/* Imported-from badge — links to the original listing on the external platform */}
           {listing.importedFromUrl ? (
             <TouchableOpacity
-              style={styles.importedBadge}
+              style={themed.importedBadge}
               onPress={() => Linking.openURL(listing.importedFromUrl!)}
               activeOpacity={0.7}
             >
               <Ionicons name="globe-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.importedBadgeText}>
+              <Text style={themed.importedBadgeText}>
                 {`See on ${
                   listing.importedSource === 'AUTOTRADER' ? 'AutoTrader' :
                   listing.importedSource === 'CARGURUS'   ? 'CarGurus'   :
@@ -988,64 +991,64 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Show the complete gearbox value: semi-automatic, CVT and missing
               source data must never be represented as "Manual". */}
-          <View style={styles.specBadgesRow}>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>YEAR</Text>
-              <Text style={styles.specBadgeValue}>{listing.year}</Text>
+          <View style={themed.specBadgesRow}>
+            <View style={themed.specBadgeBox}>
+              <Text style={themed.specBadgeLabel}>YEAR</Text>
+              <Text style={themed.specBadgeValue}>{listing.year}</Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>MILEAGE</Text>
-              <Text style={styles.specBadgeValue}>
+            <View style={themed.specBadgeBox}>
+              <Text style={themed.specBadgeLabel}>MILEAGE</Text>
+              <Text style={themed.specBadgeValue}>
                 {Number(listing.mileage).toLocaleString('en-GB')} mi
               </Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>FUEL</Text>
-              <Text style={styles.specBadgeValue}>{listing.fuelType}</Text>
+            <View style={themed.specBadgeBox}>
+              <Text style={themed.specBadgeLabel}>FUEL</Text>
+              <Text style={themed.specBadgeValue}>{listing.fuelType}</Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>TRANSMISSION</Text>
-              <Text style={styles.specBadgeValue}>{listing.transmission || 'Not specified'}</Text>
+            <View style={themed.specBadgeBox}>
+              <Text style={themed.specBadgeLabel}>TRANSMISSION</Text>
+              <Text style={themed.specBadgeValue}>{listing.transmission || 'Not specified'}</Text>
             </View>
           </View>
 
-          <View style={styles.buyerJourneyNote}>
+          <View style={themed.buyerJourneyNote}>
             <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
-            <Text style={styles.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
+            <Text style={themed.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
           </View>
           {listing.ulezCompliant === false && (
-            <View style={styles.ulezWarning}>
+            <View style={themed.ulezWarning}>
               <Ionicons name="alert-circle-outline" size={17} color={Colors.warning} />
-              <Text style={styles.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
+              <Text style={themed.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
             </View>
           )}
 
           {/* Dual-channel: linked live auction cross-link */}
           {listing.linkedListing?.auction?.status === 'ACTIVE' && (
             <TouchableOpacity
-              style={styles.linkedAuctionBanner}
+              style={themed.linkedAuctionBanner}
               activeOpacity={0.75}
               onPress={handleOpenLinkedAuction}
               disabled={openingLinkedAuction}
             >
               <Ionicons name="hammer-outline" size={14} color={Colors.warning} />
-              <Text style={styles.linkedAuctionText}>
+              <Text style={themed.linkedAuctionText}>
                 {'Also in Live Auction — ends '}
                 {new Date(listing.linkedListing.auction.endTime).toLocaleString('en-GB', {
                   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
                 })}
               </Text>
-              <Text style={styles.linkedAuctionCta}>View →</Text>
+              <Text style={themed.linkedAuctionCta}>View →</Text>
             </TouchableOpacity>
           )}
 
           {/* Section: About This Car */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>ABOUT THIS CAR</Text>
+          <View style={themed.sectionContainer}>
+            <Text style={themed.sectionHeaderTitle}>ABOUT THIS CAR</Text>
             {listing.description ? (
-              <Text style={styles.aboutText}>{listing.description}</Text>
+              <Text style={themed.aboutText}>{listing.description}</Text>
             ) : (
-              <Text style={[styles.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
+              <Text style={[themed.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
                 No description provided
               </Text>
             )}
@@ -1056,15 +1059,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               always shows the full list; mobile collapses it since feature
               lists can run long on a small screen (Prompt M1). */}
           {listing.features && listing.features.length > 0 && (
-            <View style={styles.sectionContainer}>
+            <View style={themed.sectionContainer}>
               <TouchableOpacity
-                style={styles.featuresHeaderRow}
+                style={themed.featuresHeaderRow}
                 activeOpacity={0.7}
                 onPress={toggleFeatures}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: featuresExpanded }}
               >
-                <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>
+                <Text style={[themed.sectionHeaderTitle, { marginBottom: 0 }]}>
                   VEHICLE FEATURES ({listing.features.length})
                 </Text>
                 <Ionicons
@@ -1074,11 +1077,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               </TouchableOpacity>
               {featuresExpanded && (
-                <View style={styles.featuresGrid}>
+                <View style={themed.featuresGrid}>
                   {listing.features.map((feature, idx) => (
-                    <View key={`${feature}-${idx}`} style={styles.featureChip}>
+                    <View key={`${feature}-${idx}`} style={themed.featureChip}>
                       <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
-                      <Text style={styles.featureChipText}>{feature}</Text>
+                      <Text style={themed.featureChipText}>{feature}</Text>
                     </View>
                   ))}
                 </View>
@@ -1089,8 +1092,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Videos — YouTube gets a tappable thumbnail, other
               platforms (Instagram/Facebook/X) get a labelled link chip */}
           {listing.videoUrls != null && listing.videoUrls.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeaderTitle}>VIDEOS</Text>
+            <View style={themed.sectionContainer}>
+              <Text style={themed.sectionHeaderTitle}>VIDEOS</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                 {listing.videoUrls.map((url, i) => {
                   const ytId = extractYouTubeId(url);
@@ -1098,7 +1101,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     return (
                       <TouchableOpacity
                         key={`video-${i}`}
-                        style={styles.videoThumbWrap}
+                        style={themed.videoThumbWrap}
                         activeOpacity={0.85}
                         onPress={() => Linking.openURL(url)}
                         accessibilityLabel="Play video"
@@ -1106,10 +1109,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       >
                         <Image
                           source={{ uri: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` }}
-                          style={styles.videoThumb}
+                          style={themed.videoThumb}
                           contentFit="cover"
                         />
-                        <View style={styles.videoPlayOverlay}>
+                        <View style={themed.videoPlayOverlay}>
                           <Ionicons name="play-circle" size={36} color={Colors.white} />
                         </View>
                       </TouchableOpacity>
@@ -1119,12 +1122,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   return (
                     <TouchableOpacity
                       key={`video-${i}`}
-                      style={styles.videoLinkChip}
+                      style={themed.videoLinkChip}
                       activeOpacity={0.85}
                       onPress={() => Linking.openURL(url)}
                     >
                       <Ionicons name="videocam-outline" size={16} color={Colors.accent} />
-                      <Text style={styles.videoLinkText}>{platform}</Text>
+                      <Text style={themed.videoLinkText}>{platform}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1141,29 +1144,29 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               genuinely decision-relevant fields keep an explicit "Not
               disclosed", where the absence is itself information. */}
           <TouchableOpacity
-            style={styles.extraSpecToggle}
+            style={themed.extraSpecToggle}
             activeOpacity={0.8}
             onPress={() => setExtraSpecsExpanded(v => !v)}
             accessibilityRole="button"
             accessibilityState={{ expanded: extraSpecsExpanded }}
             accessibilityLabel={extraSpecsExpanded ? 'Hide extra vehicle specifications' : 'Show extra vehicle specifications'}
           >
-            <Text style={styles.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
+            <Text style={themed.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
             <Ionicons name={extraSpecsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={Colors.accent} />
           </TouchableOpacity>
           {SPEC_GROUPS.filter(group => extraSpecsExpanded || (group.title !== 'PERFORMANCE' && group.title !== 'RUNNING COSTS')).map((group) => {
             const rows = group.rows(listing).filter((r) => r.value != null && r.value !== '');
             if (rows.length === 0) return null;
             return (
-              <View key={group.title} style={styles.sectionContainer}>
-                <Text style={styles.sectionHeaderTitle}>{group.title}</Text>
-                <View style={styles.specCardContainer}>
+              <View key={group.title} style={themed.sectionContainer}>
+                <Text style={themed.sectionHeaderTitle}>{group.title}</Text>
+                <View style={themed.specCardContainer}>
                   {rows.map((r, i) => (
                     <View
                       key={r.label}
-                      style={[styles.specRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
+                      style={[themed.specRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
                     >
-                      <Text style={styles.specRowLabel}>{r.label}</Text>
+                      <Text style={themed.specRowLabel}>{r.label}</Text>
                       <Text
                         style={[
                           styles.specRowValue,
@@ -1183,11 +1186,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Vehicle History — real DVLA/seller-declared fields only.
               Paid HPI report below (:314-360, 1399-1406) is the actual verified check;
               this grid must never imply that outcome for free. */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>VEHICLE HISTORY</Text>
-            <View style={styles.historyGrid}>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>WRITE-OFF</Text>
+          <View style={themed.sectionContainer}>
+            <Text style={themed.sectionHeaderTitle}>VEHICLE HISTORY</Text>
+            <View style={themed.historyGrid}>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>WRITE-OFF</Text>
                 <Text style={[
                   styles.historyValue,
                   listing.writeOffCategory == null ? undefined
@@ -1198,8 +1201,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     : listing.writeOffCategory === 'NONE' ? 'None' : listing.writeOffCategory}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>FINANCE</Text>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>FINANCE</Text>
                 <Text style={[
                   styles.historyValue,
                   listing.hasOutstandingFinance == null ? undefined
@@ -1210,8 +1213,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     : listing.hasOutstandingFinance ? 'Outstanding' : 'None declared'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>STOLEN</Text>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>STOLEN</Text>
                 <Text style={[
                   styles.historyValue,
                   listing.stolenRecovered == null ? undefined
@@ -1222,14 +1225,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     : listing.stolenRecovered ? 'Marker found' : 'No marker'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>OWNERS</Text>
-                <Text style={styles.historyValue}>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>OWNERS</Text>
+                <Text style={themed.historyValue}>
                   {listing.owners != null ? String(listing.owners) : 'Not disclosed'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>MOT</Text>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>MOT</Text>
                 <Text style={[
                   styles.historyValue,
                   listing.motStatus == null ? undefined
@@ -1238,8 +1241,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   {listing.motStatus ?? 'Not disclosed'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>TAX</Text>
+              <View style={themed.historyBox}>
+                <Text style={themed.historyLabel}>TAX</Text>
                 <Text style={[
                   styles.historyValue,
                   listing.taxStatus == null ? undefined
@@ -1252,7 +1255,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Section: HPI Report CTA */}
-          <View style={styles.sectionContainer}>
+          <View style={themed.sectionContainer}>
             {hpiError ? (
               <ErrorBanner message={hpiError} onRetry={handleHpiCheck} />
             ) : null}
@@ -1263,12 +1266,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                  than a green tick it hasn't earned. */
               isReportReady(hpiData) ? (
                 <TouchableOpacity
-                  style={styles.hpiButton}
+                  style={themed.hpiButton}
                   activeOpacity={0.8}
                   onPress={() => setHpiModalVisible(true)}
                 >
-                  <View style={styles.hpiReportLeft}>
-                    <View style={styles.hpiIconBg}>
+                  <View style={themed.hpiReportLeft}>
+                    <View style={themed.hpiIconBg}>
                       <Ionicons
                         name={hpiData.isClear ? 'shield-checkmark' : 'warning'}
                         size={16}
@@ -1276,8 +1279,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
-                      <Text style={styles.hpiReportSub}>
+                      <Text style={themed.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={themed.hpiReportSub}>
                         {hpiData.isClear ? 'All checks passed · tap to view' : 'Adverse history — tap to review'}
                       </Text>
                     </View>
@@ -1286,17 +1289,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={styles.hpiButton}
+                  style={themed.hpiButton}
                   activeOpacity={0.8}
                   onPress={() => setHpiModalVisible(true)}
                 >
-                  <View style={styles.hpiReportLeft}>
-                    <View style={[styles.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
+                  <View style={themed.hpiReportLeft}>
+                    <View style={[themed.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
                       <Ionicons name="time-outline" size={16} color={Colors.warning} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
-                      <Text style={[styles.hpiReportSub, { color: Colors.warning }]}>
+                      <Text style={themed.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={[themed.hpiReportSub, { color: Colors.warning }]}>
                         Requested — being prepared by our team
                       </Text>
                     </View>
@@ -1306,18 +1309,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )
             ) : (
               <TouchableOpacity
-                style={styles.hpiButton}
+                style={themed.hpiButton}
                 activeOpacity={0.8}
                 onPress={handleHpiCheck}
                 disabled={hpiLoading}
               >
-                <View style={styles.hpiReportLeft}>
-                  <View style={styles.hpiIconBg}>
+                <View style={themed.hpiReportLeft}>
+                  <View style={themed.hpiIconBg}>
                     <Ionicons name="document-text-outline" size={16} color={Colors.infoBlue} />
                   </View>
                   <View>
-                    <Text style={styles.hpiReportTitle}>Check HPI (£9.99)</Text>
-                    <Text style={styles.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
+                    <Text style={themed.hpiReportTitle}>Check HPI (£9.99)</Text>
+                    <Text style={themed.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
                   </View>
                 </View>
                 {hpiLoading
@@ -1331,9 +1334,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Condition & Damage — always renders (Prompt 6). Grade
               pill is the ONLY place exteriorGrade appears on this screen —
               never duplicated in the specs grid above. */}
-          <View style={styles.sectionContainer}>
+          <View style={themed.sectionContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
+              <Text style={[themed.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
               <GradeChip grade={listing.exteriorGrade} variant="pill" />
             </View>
             <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
@@ -1352,11 +1355,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Section: Seller */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>SELLER</Text>
+          <View style={themed.sectionContainer}>
+            <Text style={themed.sectionHeaderTitle}>SELLER</Text>
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.sellerCard}
+              style={themed.sellerCard}
               onPress={() => {
                 if (listing.seller?.id) {
                   navigation.navigate('SellerProfile', { sellerId: listing.seller.id });
@@ -1365,23 +1368,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
               }}
             >
-              <View style={styles.sellerAvatar}>
-                <Text style={styles.sellerAvatarText}>
+              <View style={themed.sellerAvatar}>
+                <Text style={themed.sellerAvatarText}>
                   {getInitials(listing.dealer)}
                 </Text>
               </View>
-              <View style={styles.sellerInfo}>
-                <View style={styles.sellerNameRow}>
-                  <Text style={styles.sellerName} numberOfLines={1}>{listing.dealer}</Text>
+              <View style={themed.sellerInfo}>
+                <View style={themed.sellerNameRow}>
+                  <Text style={themed.sellerName} numberOfLines={1}>{listing.dealer}</Text>
                   {/* This tick used to render unconditionally, so EVERY seller
                       looked verified — the same fake-trust-chrome problem a
                       previous audit removed elsewhere in the app. Now gated on
                       real verification. */}
                   {(listing.seller?.isVerifiedDealer || listing.isSellerVerified) && (
-                    <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={styles.blueCheck} />
+                    <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={themed.blueCheck} />
                   )}
                 </View>
-                <Text style={styles.sellerSubtext} numberOfLines={1}>
+                <Text style={themed.sellerSubtext} numberOfLines={1}>
                   {[
                     listing.location,
                     listing.rating != null ? `${listing.rating} ★` : null,
@@ -1395,7 +1398,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {sellerPhoneAvailable && sellerPhone && (
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  style={[styles.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
+                  style={[themed.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
                   onPress={(e) => {
                     e.stopPropagation();
                     if (currentUser && (listing.seller?.companyName || listing.seller?.isVerifiedDealer)) {
@@ -1415,7 +1418,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.sellerChatBtn}
+                style={themed.sellerChatBtn}
                 onPress={(e) => {
                   e.stopPropagation();
                   if (listing.seller?.id) {
@@ -1436,17 +1439,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 itself and its website never reached a buyer. Only rendered
                 when the dealer actually filled the fields in. */}
             {(listing.seller?.description || listing.seller?.website || listing.seller?.memberSince) && (
-              <View style={styles.dealerDetailCard}>
+              <View style={themed.dealerDetailCard}>
                 {!!listing.seller?.description && (
-                  <Text style={styles.dealerDescription} numberOfLines={5}>
+                  <Text style={themed.dealerDescription} numberOfLines={5}>
                     {listing.seller.description}
                   </Text>
                 )}
-                <View style={styles.dealerMetaRow}>
+                <View style={themed.dealerMetaRow}>
                   {!!listing.seller?.memberSince && (
-                    <View style={styles.dealerMetaItem}>
+                    <View style={themed.dealerMetaItem}>
                       <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.dealerMetaText}>
+                      <Text style={themed.dealerMetaText}>
                         Member since{' '}
                         {new Date(listing.seller.memberSince).toLocaleDateString('en-GB', {
                           month: 'short',
@@ -1456,9 +1459,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     </View>
                   )}
                   {!!listing.seller?.businessAddress && (
-                    <View style={styles.dealerMetaItem}>
+                    <View style={themed.dealerMetaItem}>
                       <Ionicons name="business-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.dealerMetaText} numberOfLines={1}>
+                      <Text style={themed.dealerMetaText} numberOfLines={1}>
                         {listing.seller.businessAddress}
                       </Text>
                     </View>
@@ -1466,7 +1469,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 {!!listing.seller?.website && (
                   <TouchableOpacity
-                    style={styles.dealerWebsiteBtn}
+                    style={themed.dealerWebsiteBtn}
                     activeOpacity={0.75}
                     accessibilityRole="link"
                     onPress={() => {
@@ -1476,7 +1479,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     }}
                   >
                     <Ionicons name="globe-outline" size={13} color={Colors.accent} />
-                    <Text style={styles.dealerWebsiteText} numberOfLines={1}>
+                    <Text style={themed.dealerWebsiteText} numberOfLines={1}>
                       {listing.seller.website.replace(/^https?:\/\//i, '')}
                     </Text>
                     <Ionicons name="open-outline" size={12} color={Colors.accent} />
@@ -1492,31 +1495,31 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 thousand pounds, this is the most useful thing on the screen
                 after the price. */}
             {!!listing.seller?.reviews?.length && (
-              <View style={styles.reviewsBlock}>
-                <View style={styles.reviewsHeader}>
-                  <Text style={styles.reviewsTitle}>
+              <View style={themed.reviewsBlock}>
+                <View style={themed.reviewsHeader}>
+                  <Text style={themed.reviewsTitle}>
                     Reviews ({listing.seller.reviews.length})
                   </Text>
                   {listing.seller.responseRate != null && listing.seller.responseRate > 0 && (
-                    <Text style={styles.reviewsResponse}>
+                    <Text style={themed.reviewsResponse}>
                       Replies to {Math.round(listing.seller.responseRate)}% of enquiries
                     </Text>
                   )}
                 </View>
 
                 {listing.seller.reviews.map((r) => (
-                  <View key={r.id} style={styles.reviewCard}>
-                    <View style={styles.reviewTop}>
-                      <View style={styles.reviewAvatar}>
+                  <View key={r.id} style={themed.reviewCard}>
+                    <View style={themed.reviewTop}>
+                      <View style={themed.reviewAvatar}>
                         {r.reviewerImage ? (
-                          <Image source={{ uri: r.reviewerImage }} style={styles.reviewAvatarImg} contentFit="cover" />
+                          <Image source={{ uri: r.reviewerImage }} style={themed.reviewAvatarImg} contentFit="cover" />
                         ) : (
-                          <Text style={styles.reviewAvatarText}>{getInitials(r.reviewerName)}</Text>
+                          <Text style={themed.reviewAvatarText}>{getInitials(r.reviewerName)}</Text>
                         )}
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.reviewerName} numberOfLines={1}>{r.reviewerName}</Text>
-                        <Text style={styles.reviewDate}>
+                        <Text style={themed.reviewerName} numberOfLines={1}>{r.reviewerName}</Text>
+                        <Text style={themed.reviewDate}>
                           {new Date(r.createdAt).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
@@ -1527,7 +1530,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       {/* These ARE 1-5 star ratings, unlike the seller's
                           reliabilityScore, which is a weighted composite and
                           must not be drawn as stars. */}
-                      <View style={styles.reviewStars}>
+                      <View style={themed.reviewStars}>
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Ionicons
                             key={n}
@@ -1539,7 +1542,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       </View>
                     </View>
                     {!!r.comment && (
-                      <Text style={styles.reviewComment}>{r.comment}</Text>
+                      <Text style={themed.reviewComment}>{r.comment}</Text>
                     )}
                   </View>
                 ))}
@@ -1549,24 +1552,24 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Expandable Finance Calculator — Coming Soon */}
           <TouchableOpacity
-            style={styles.financeCard}
+            style={themed.financeCard}
             activeOpacity={0.85}
             onPress={() => setFinanceExpanded(!financeExpanded)}
           >
-            <View style={styles.financeIconWrapper}>
+            <View style={themed.financeIconWrapper}>
               <Ionicons name="calculator-outline" size={18} color={Colors.accent} />
             </View>
-            <View style={styles.financeTextContent}>
-              <Text style={styles.financeTitle}>
+            <View style={themed.financeTextContent}>
+              <Text style={themed.financeTitle}>
                 Finance Calculator
               </Text>
-              <Text style={styles.financeSubtext}>
+              <Text style={themed.financeSubtext}>
                 19% APR representative · tap to expand
               </Text>
             </View>
             {/* Coming Soon badge */}
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
+            <View style={themed.comingSoonBadge}>
+              <Text style={themed.comingSoonText}>Coming Soon</Text>
             </View>
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
@@ -1577,30 +1580,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
 
           {financeExpanded && (
-            <View style={styles.financeCalcBody}>
+            <View style={themed.financeCalcBody}>
               {/* Coming Soon overlay message */}
-              <View style={styles.financeComingSoonBox}>
+              <View style={themed.financeComingSoonBox}>
                 <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
-                <Text style={styles.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
-                <Text style={styles.financeComingSoonSub}>
+                <Text style={themed.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
+                <Text style={themed.financeComingSoonSub}>
                   Finance options will be available here. Contact the seller directly to discuss finance.
                 </Text>
               </View>
 
               {/* Deposit Row — inert preview */}
-              <View style={[styles.calcRow, { opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>DEPOSIT</Text>
-                <Text style={styles.calcValue}>
+              <View style={[themed.calcRow, { opacity: 0.4 }]}>
+                <Text style={themed.calcLabel}>DEPOSIT</Text>
+                <Text style={themed.calcValue}>
                   {depositPct}% — £{Math.round(listing.price * depositPct / 100).toLocaleString('en-GB')}
                 </Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={[themed.depositStepsRow, { opacity: 0.4 }]}>
                 {[0, 10, 20, 30, 40, 50].map(pct => (
                   <View
                     key={pct}
-                    style={[styles.depositStep, depositPct === pct && styles.depositStepActive]}
+                    style={[themed.depositStep, depositPct === pct && styles.depositStepActive]}
                   >
-                    <Text style={[styles.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
+                    <Text style={[themed.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
                       {pct}%
                     </Text>
                   </View>
@@ -1608,17 +1611,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
 
               {/* Term Row — inert preview */}
-              <View style={[styles.calcRow, { marginTop: 14, opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>TERM</Text>
-                <Text style={styles.calcValue}>{termMonths} months</Text>
+              <View style={[themed.calcRow, { marginTop: 14, opacity: 0.4 }]}>
+                <Text style={themed.calcLabel}>TERM</Text>
+                <Text style={themed.calcValue}>{termMonths} months</Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={[themed.depositStepsRow, { opacity: 0.4 }]}>
                 {[12, 24, 36, 48, 60].map(t => (
                   <View
                     key={t}
-                    style={[styles.depositStep, termMonths === t && styles.depositStepActive]}
+                    style={[themed.depositStep, termMonths === t && styles.depositStepActive]}
                   >
-                    <Text style={[styles.depositStepText, termMonths === t && styles.depositStepTextActive]}>
+                    <Text style={[themed.depositStepText, termMonths === t && styles.depositStepTextActive]}>
                       {t}m
                     </Text>
                   </View>
@@ -1654,51 +1657,51 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* ── Delivery section — only when seller offers delivery ── */}
           {listing.deliveryAvailable && (
-            <View style={styles.deliveryCard}>
+            <View style={themed.deliveryCard}>
               {/* Header row */}
-              <View style={styles.deliveryHeader}>
-                <View style={styles.deliveryIconWrap}>
+              <View style={themed.deliveryHeader}>
+                <View style={themed.deliveryIconWrap}>
                   <Ionicons name="car-outline" size={16} color={Colors.accentGreen} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.deliveryTitle}>Delivery available</Text>
+                  <Text style={themed.deliveryTitle}>Delivery available</Text>
                   {listing.deliveryMaxMiles ? (
-                    <Text style={styles.deliverySubtitle}>
+                    <Text style={themed.deliverySubtitle}>
                       Up to {listing.deliveryMaxMiles} miles from the seller
                     </Text>
                   ) : null}
                 </View>
-                <View style={styles.deliveryFeeWrap}>
+                <View style={themed.deliveryFeeWrap}>
                   {deliveryQuoteLoading ? (
                     <ActivityIndicator size="small" color={Colors.accentGreen} />
                   ) : deliveryFee != null ? (
                     <>
-                      <Text style={styles.deliveryFeeLabel}>ESTIMATE</Text>
-                      <Text style={styles.deliveryFeeValue}>£{deliveryFee}</Text>
+                      <Text style={themed.deliveryFeeLabel}>ESTIMATE</Text>
+                      <Text style={themed.deliveryFeeValue}>£{deliveryFee}</Text>
                     </>
                   ) : listing.deliveryPricePerMile ? (
                     <>
-                      <Text style={styles.deliveryFeeLabel}>FROM</Text>
-                      <Text style={styles.deliveryFeeValue}>£{listing.deliveryPricePerMile}/mi</Text>
+                      <Text style={themed.deliveryFeeLabel}>FROM</Text>
+                      <Text style={themed.deliveryFeeValue}>£{listing.deliveryPricePerMile}/mi</Text>
                     </>
                   ) : (
-                    <Text style={styles.deliveryFeeHint}>Enter postcode for a quote</Text>
+                    <Text style={themed.deliveryFeeHint}>Enter postcode for a quote</Text>
                   )}
                 </View>
               </View>
 
               {/* Distance / postcode summary row */}
               {userPostcode ? (
-                <Text style={styles.deliveryDistanceLine}>
+                <Text style={themed.deliveryDistanceLine}>
                   {deliveryDistanceMiles != null
                     ? `≈ ${deliveryDistanceMiles} mi from ${userPostcode}`
                     : `From ${userPostcode} — seller location coordinates missing, server will validate`}
                 </Text>
               ) : (
-                <View style={styles.postcodeEntryRow}>
+                <View style={themed.postcodeEntryRow}>
                   <Ionicons name="location-outline" size={13} color={Colors.infoBlueLight} />
                   <TextInput
-                    style={styles.postcodeInput}
+                    style={themed.postcodeInput}
                     value={postcodeDraft}
                     onChangeText={setPostcodeDraft}
                     autoCapitalize="characters"
@@ -1736,7 +1739,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     {postcodeSaving ? (
                       <ActivityIndicator size="small" color={Colors.infoBlueLight} />
                     ) : (
-                      <Text style={styles.postcodeSaveText}>Save</Text>
+                      <Text style={themed.postcodeSaveText}>Save</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1744,9 +1747,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
               {/* Outside-radius warning */}
               {outsideRadius && (
-                <View style={styles.deliveryOutsideRadius}>
+                <View style={themed.deliveryOutsideRadius}>
                   <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_f87171} />
-                  <Text style={styles.deliveryOutsideRadiusText}>
+                  <Text style={themed.deliveryOutsideRadiusText}>
                     Outside your delivery radius ({deliveryDistanceMiles} mi &gt; {listing.deliveryMaxMiles} mi)
                   </Text>
                 </View>
@@ -1755,22 +1758,22 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Request Delivery button — only when offer is ACCEPTED and inside radius */}
               {offerStatus === 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
                 <TouchableOpacity
-                  style={styles.deliveryRequestBtn}
+                  style={themed.deliveryRequestBtn}
                   onPress={() => setDeliveryModalVisible(true)}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="car-outline" size={15} color={Colors.white} />
-                  <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
+                  <Text style={themed.deliveryRequestBtnText}>Request Delivery</Text>
                 </TouchableOpacity>
               )}
               {deliverySubmitted && (
-                <View style={styles.deliverySuccessRow}>
+                <View style={themed.deliverySuccessRow}>
                   <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
-                  <Text style={styles.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
+                  <Text style={themed.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
                 </View>
               )}
               {offerStatus !== 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
-                <Text style={styles.deliveryPendingHint}>
+                <Text style={themed.deliveryPendingHint}>
                   Request delivery once your offer is accepted.
                 </Text>
               )}
@@ -1786,51 +1789,51 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         title="Request Delivery"
         avoidKeyboard
       >
-        <Text style={styles.modalSheetSubtitle}>
+        <Text style={themed.modalSheetSubtitle}>
           Enter your delivery address. The seller will confirm and arrange logistics.
         </Text>
 
         {/* Street */}
-        <Text style={styles.deliveryInputLabel}>STREET ADDRESS</Text>
+        <Text style={themed.deliveryInputLabel}>STREET ADDRESS</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={themed.deliveryInput}
           value={deliveryStreet}
           onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
           placeholder="e.g. 42 Park Lane"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={palette.textMuted}
           autoCapitalize="words"
         />
 
         {/* City */}
-        <Text style={styles.deliveryInputLabel}>CITY / TOWN</Text>
+        <Text style={themed.deliveryInputLabel}>CITY / TOWN</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={themed.deliveryInput}
           value={deliveryCity}
           onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
           placeholder="e.g. London"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={palette.textMuted}
           autoCapitalize="words"
         />
 
         {/* Postcode */}
-        <Text style={styles.deliveryInputLabel}>POSTCODE</Text>
+        <Text style={themed.deliveryInputLabel}>POSTCODE</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={themed.deliveryInput}
           value={deliveryPostcode}
           onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
           placeholder="e.g. SW1A 1AA"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={palette.textMuted}
           autoCapitalize="characters"
         />
 
         {/* Notes (optional) */}
-        <Text style={styles.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
+        <Text style={themed.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
         <TextInput
-          style={[styles.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
+          style={[themed.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
           value={deliveryNotes}
           onChangeText={setDeliveryNotes}
           placeholder="e.g. Leave at reception, call on arrival…"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={palette.textMuted}
           multiline
         />
 
@@ -1839,7 +1842,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         <TouchableOpacity
-          style={[styles.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
+          style={[themed.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
           onPress={handleDeliveryRequest}
           disabled={deliverySubmitting}
           activeOpacity={0.85}
@@ -1847,7 +1850,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {deliverySubmitting ? (
             <ActivityIndicator color={Colors.white} size="small" />
           ) : (
-            <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
+            <Text style={themed.deliveryModalSubmitText}>Confirm Delivery Request</Text>
           )}
         </TouchableOpacity>
       </BottomSheet>
@@ -1856,14 +1859,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* The kit fades the content out under the CTA rather than cutting it
           with a hairline and an opaque slab — the bar reads as floating over
           the page instead of bolted to the bottom of it. */}
-      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
+      <View style={[themed.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
         <LinearGradient
           colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
-        <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
+        <IconButton style={themed.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
               setEnquireVisible(true);
             } else {
@@ -1887,7 +1890,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             s;
           return isActive ? (
             <TouchableOpacity
-              style={styles.makeOfferButton}
+              style={themed.makeOfferButton}
               activeOpacity={0.8}
               onPress={() => {
                 if (myOffer?.status === 'COUNTERED') {
@@ -1905,18 +1908,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 setOfferModalVisible(true);
               }}
             >
-              <Text style={styles.makeOfferText}>
+              <Text style={themed.makeOfferText}>
                 {myOffer?.status === 'PENDING'
                   ? 'EDIT MY OFFER'
                   : myOffer?.status === 'COUNTERED'
                     ? 'MANAGE COUNTER'
                     : 'MAKE A PRIVATE OFFER'}
               </Text>
-              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
+              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={themed.offerArrow} />
             </TouchableOpacity>
           ) : (
-            <View style={[styles.makeOfferButton, styles.makeOfferButtonDisabled]}>
-              <Text style={styles.makeOfferText}>{disabledLabel}</Text>
+            <View style={[themed.makeOfferButton, styles.makeOfferButtonDisabled]}>
+              <Text style={themed.makeOfferText}>{disabledLabel}</Text>
             </View>
           );
         })()}
@@ -1930,33 +1933,33 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         avoidKeyboard
       >
         {!offerSubmitted ? (
-          <View style={styles.modalBody}>
-            <Text style={styles.modalSubheading}>
+          <View style={themed.modalBody}>
+            <Text style={themed.modalSubheading}>
               Submit a custom purchase offer to {listing.dealer}.
             </Text>
 
             {/* Offer details */}
-            <View style={styles.offerBoxContainer}>
-              <Text style={styles.offerLabel}>ASKING PRICE</Text>
-              <Text style={styles.askingPriceValue}>{formatPrice(listing.price)}</Text>
+            <View style={themed.offerBoxContainer}>
+              <Text style={themed.offerLabel}>ASKING PRICE</Text>
+              <Text style={themed.askingPriceValue}>{formatPrice(listing.price)}</Text>
             </View>
 
             {/* Adjuster input */}
-            <View style={styles.offerAdjusterContainer}>
-              <Text style={styles.offerLabel}>YOUR OFFER</Text>
-              <View style={styles.adjusterRow}>
+            <View style={themed.offerAdjusterContainer}>
+              <Text style={themed.offerLabel}>YOUR OFFER</Text>
+              <View style={themed.adjusterRow}>
                 <IconButton
-                  style={styles.adjustBtn}
+                  style={themed.adjustBtn}
                   icon={<Ionicons name="remove" size={20} color={Colors.white} />}
                   onPress={() => adjustOffer(-500)}
                   disabled={offerAmount <= OFFER_MIN}
                   accessibilityLabel="Decrease offer by £500"
                 />
 
-                <View style={styles.offerAmountInputWrap}>
-                  <Text style={styles.offerAmountCurrency}>£</Text>
+                <View style={themed.offerAmountInputWrap}>
+                  <Text style={themed.offerAmountCurrency}>£</Text>
                   <TextInput
-                    style={styles.offerAmountInput}
+                    style={themed.offerAmountInput}
                     value={offerAmountDraft}
                     onChangeText={handleOfferAmountChange}
                     onBlur={handleOfferAmountBlur}
@@ -1969,30 +1972,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
 
                 <IconButton
-                  style={styles.adjustBtn}
+                  style={themed.adjustBtn}
                   icon={<Ionicons name="add" size={20} color={Colors.white} />}
                   onPress={() => adjustOffer(500)}
                   disabled={offerAmount >= OFFER_MAX}
                   accessibilityLabel="Increase offer by £500"
                 />
               </View>
-              <Text style={styles.offerRangeHint}>
+              <Text style={themed.offerRangeHint}>
                 Range: {formatPrice(OFFER_MIN)} – {formatPrice(OFFER_MAX)}
               </Text>
               {offerAmount >= OFFER_MAX && (
-                <Text style={styles.offerLimitHint}>You've reached the asking price</Text>
+                <Text style={themed.offerLimitHint}>You've reached the asking price</Text>
               )}
               {offerAmount <= OFFER_MIN && (
-                <Text style={styles.offerLimitHint}>
+                <Text style={themed.offerLimitHint}>
                   Minimum offer is {formatPrice(OFFER_MIN)} — 70% of the asking price
                 </Text>
               )}
             </View>
 
-            <View style={styles.offerBoxContainer}>
-              <Text style={styles.offerLabel}>MESSAGE TO SELLER · OPTIONAL</Text>
+            <View style={themed.offerBoxContainer}>
+              <Text style={themed.offerLabel}>MESSAGE TO SELLER · OPTIONAL</Text>
               <TextInput
-                style={styles.offerMessageInput}
+                style={themed.offerMessageInput}
                 value={offerMessage}
                 onChangeText={setOfferMessage}
                 placeholder="e.g. I can collect this weekend."
@@ -2002,11 +2005,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 textAlignVertical="top"
                 accessibilityLabel="Optional message to seller"
               />
-              <Text style={styles.offerMessageCount}>{offerMessage.length}/500</Text>
+              <Text style={themed.offerMessageCount}>{offerMessage.length}/500</Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
+              style={[themed.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
               activeOpacity={0.8}
               onPress={handleSubmitOffer}
               disabled={isSubmittingOffer}
@@ -2014,25 +2017,25 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {isSubmittingOffer ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Text style={styles.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
+                <Text style={themed.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
               )}
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.successContainer}>
-            <View style={styles.successIconWrapper}>
+          <View style={themed.successContainer}>
+            <View style={themed.successIconWrapper}>
               <Ionicons name="checkmark" size={32} color={Colors.white} />
             </View>
-            <Text style={styles.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
-            <Text style={styles.successSubtitle}>
-              We have forwarded your offer of <Text style={styles.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
+            <Text style={themed.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
+            <Text style={themed.successSubtitle}>
+              We have forwarded your offer of <Text style={themed.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
             </Text>
             <TouchableOpacity
-              style={styles.successCloseBtn}
+              style={themed.successCloseBtn}
               activeOpacity={0.8}
               onPress={closeOfferFlow}
             >
-              <Text style={styles.successCloseText}>Close</Text>
+              <Text style={themed.successCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -2075,9 +2078,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         {/* Custom header (with vrm/make/model subline) kept as content —
             BottomSheet's own title row only supports a single line of text. */}
-        <View style={styles.modalHeader}>
+        <View style={themed.modalHeader}>
           <View>
-            <Text style={styles.modalTitle}>HPI Check Report</Text>
+            <Text style={themed.modalTitle}>HPI Check Report</Text>
             {hpiData && (
               <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
                 {[
@@ -2089,7 +2092,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             )}
           </View>
-          <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={themed.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
         </View>
 
         {hpiData && !isReportReady(hpiData) && (
@@ -2097,10 +2100,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
              listing now that publishing doesn't wait for the report. */
           <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>
             <Ionicons name="time-outline" size={40} color={Colors.warning} />
-            <Text style={[styles.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
+            <Text style={[themed.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
               Report being prepared
             </Text>
-            <Text style={[styles.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
+            <Text style={[themed.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
               Our team is compiling the vehicle history report for this car. It&apos;ll appear
               here as soon as it&apos;s ready.
             </Text>
@@ -2112,9 +2115,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {hpiError ? <ErrorBanner message={hpiError} /> : null}
 
             {/* Overall status */}
-            <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
+            <View style={[themed.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
               <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
-              <Text style={[styles.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
+              <Text style={[themed.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
                 {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
               </Text>
             </View>
@@ -2131,15 +2134,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 mileageAnomaly: 'Mileage Anomaly',
               };
               return (
-                <View key={key} style={styles.hpiCheckRow}>
+                <View key={key} style={themed.hpiCheckRow}>
                   <Ionicons
                     name={check.passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
                     color={check.passed ? Colors.success : Colors.error}
                   />
-                  <View style={styles.hpiCheckText}>
-                    <Text style={styles.hpiCheckLabel}>{labels[key] || key}</Text>
-                    <Text style={styles.hpiCheckDetail}>{check.detail}</Text>
+                  <View style={themed.hpiCheckText}>
+                    <Text style={themed.hpiCheckLabel}>{labels[key] || key}</Text>
+                    <Text style={themed.hpiCheckDetail}>{check.detail}</Text>
                   </View>
                 </View>
               );
@@ -2152,16 +2155,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               const entry = hpiData.report!.checks?.[def.key];
               const passed = entry?.passed !== false;
               return (
-                <View key={def.key} style={styles.hpiCheckRow}>
+                <View key={def.key} style={themed.hpiCheckRow}>
                   <Ionicons
                     name={passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
                     color={passed ? Colors.success : Colors.error}
                   />
-                  <View style={styles.hpiCheckText}>
-                    <Text style={styles.hpiCheckLabel}>{def.label}</Text>
+                  <View style={themed.hpiCheckText}>
+                    <Text style={themed.hpiCheckLabel}>{def.label}</Text>
                     {!passed && entry?.note ? (
-                      <Text style={styles.hpiCheckDetail}>{entry.note}</Text>
+                      <Text style={themed.hpiCheckDetail}>{entry.note}</Text>
                     ) : null}
                   </View>
                 </View>
@@ -2171,7 +2174,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Uploaded PDF with no structured data behind it — the file is
                 the whole report, so there are no rows to show. */}
             {hpiData.format === 'ADMIN' && !hpiData.report && hpiData.hasPdf && (
-              <Text style={[styles.hpiCheckDetail, { marginTop: 4, marginBottom: 4, lineHeight: 18 }]}>
+              <Text style={[themed.hpiCheckDetail, { marginTop: 4, marginBottom: 4, lineHeight: 18 }]}>
                 The full vehicle history check is in the report document below.
               </Text>
             )}
@@ -2180,19 +2183,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 or the branded one rendered from the form data. */}
             {hpiData.format === 'ADMIN' && (
               <TouchableOpacity
-                style={styles.hpiViewFullBtn}
+                style={themed.hpiViewFullBtn}
                 activeOpacity={0.8}
                 onPress={handleOpenHpiPdf}
                 disabled={hpiPdfLoading}
               >
                 {hpiPdfLoading
                   ? <ActivityIndicator size="small" color={Colors.infoBlue} />
-                  : <Text style={styles.hpiViewFullText}>Open full report (PDF)</Text>}
+                  : <Text style={themed.hpiViewFullText}>Open full report (PDF)</Text>}
                 <Ionicons name="download-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             )}
 
-            <Text style={[styles.hpiCheckDetail, { marginTop: 14, lineHeight: 16 }]}>
+            <Text style={[themed.hpiCheckDetail, { marginTop: 14, lineHeight: 16 }]}>
               CarMazium presents vehicle-history information from a supplied third-party check.
               CarMazium did not originate or independently verify the underlying data.
             </Text>
@@ -2210,28 +2213,28 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <>
             {/* Header */}
-            <View style={styles.chatHeader}>
-              <View style={styles.chatHeaderLeft}>
-                <View style={styles.sellerAvatarSmall}>
-                  <Text style={styles.sellerAvatarTextSmall}>
+            <View style={themed.chatHeader}>
+              <View style={themed.chatHeaderLeft}>
+                <View style={themed.sellerAvatarSmall}>
+                  <Text style={themed.sellerAvatarTextSmall}>
                     {getInitials(listing.dealer)}
                   </Text>
                 </View>
                 <View>
-                  <Text style={styles.chatDealerName}>{listing.dealer}</Text>
-                  <Text style={styles.chatOnlineStatus}>Active now</Text>
+                  <Text style={themed.chatDealerName}>{listing.dealer}</Text>
+                  <Text style={themed.chatOnlineStatus}>Active now</Text>
                 </View>
               </View>
-              <View style={styles.chatHeaderRight}>
-                <IconButton style={styles.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
-                <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
+              <View style={themed.chatHeaderRight}>
+                <IconButton style={themed.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
+                <IconButton style={themed.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
               </View>
             </View>
 
             {/* Message History list */}
             <ScrollView
-              style={styles.chatScroll}
-              contentContainerStyle={styles.chatScrollContent}
+              style={themed.chatScroll}
+              contentContainerStyle={themed.chatScrollContent}
               ref={(ref) => ref?.scrollToEnd({ animated: true })}
             >
               {chatMessages.map((msg) => (
@@ -2242,41 +2245,41 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     msg.isUser ? styles.userBubble : styles.dealerBubble,
                   ]}
                 >
-                  <Text style={styles.messageText}>{msg.text}</Text>
+                  <Text style={themed.messageText}>{msg.text}</Text>
                 </View>
               ))}
 
               {isTyping && (
-                <View style={[styles.messageBubble, styles.dealerBubble, styles.typingBubble]}>
-                  <Text style={styles.typingText}>Dealer is typing...</Text>
+                <View style={[themed.messageBubble, styles.dealerBubble, styles.typingBubble]}>
+                  <Text style={themed.typingText}>Dealer is typing...</Text>
                 </View>
               )}
             </ScrollView>
 
             {/* Quick replies footer */}
-            <View style={styles.quickRepliesContainer}>
+            <View style={themed.quickRepliesContainer}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.quickRepliesContent}
+                contentContainerStyle={themed.quickRepliesContent}
               >
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={themed.quickReplyPill}
                   onPress={() => handleQuickReply("Is this vehicle still available?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Is this available?</Text>
+                  <Text style={themed.quickReplyPillText}>Is this available?</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={themed.quickReplyPill}
                   onPress={() => handleQuickReply("Can I book a test drive?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Book a test drive</Text>
+                  <Text style={themed.quickReplyPillText}>Book a test drive</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={themed.quickReplyPill}
                   onPress={() => handleQuickReply("What is the lowest price you would accept?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Lowest price?</Text>
+                  <Text style={themed.quickReplyPillText}>Lowest price?</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
@@ -2290,23 +2293,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         animationType="fade"
         onRequestClose={() => setFullscreenVisible(false)}
       >
-        <View style={styles.fullscreenBackdrop}>
+        <View style={themed.fullscreenBackdrop}>
           {/* Close button */}
-          <IconButton style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={[themed.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
 
           {/* Photo counter */}
-          <View style={[styles.fullscreenCounter, { top: insets.top + 14 }]}>
-            <Text style={styles.fullscreenCounterText}>
+          <View style={[themed.fullscreenCounter, { top: insets.top + 14 }]}>
+            <Text style={themed.fullscreenCounterText}>
               {fullscreenIndex + 1}/{totalImages}
             </Text>
           </View>
 
           {/* Zoomable image */}
           <GestureDetector gesture={combinedFullscreenGesture}>
-            <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
+            <Animated.View style={[themed.fullscreenImageWrap, fullscreenAnimatedStyle]}>
               <Image
                 source={{ uri: images[fullscreenIndex] }}
-                style={styles.fullscreenImage}
+                style={themed.fullscreenImage}
                 contentFit="contain"
                 transition={200}
                 cachePolicy="memory-disk"
@@ -3747,3 +3750,88 @@ const styles = StyleSheet.create({
     height: SCREEN_WIDTH,
   },
 });
+
+function useVehicleDetailStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    detailsBlock: [styles.detailsBlock, { backgroundColor: palette.bgBody }],
+    carTitle: [styles.carTitle, { color: palette.textPrimary }],
+    variantLabel: [styles.variantLabel, { color: palette.textSecondary }],
+    colorLabel: [styles.colorLabel, { color: palette.textMuted }],
+    locationText: [styles.locationText, { color: palette.textMuted }],
+    priceText: [styles.priceText, { color: palette.textPrimary }],
+    monthlyText: [styles.monthlyText, { color: palette.textSecondary }],
+    financeDisclaimer: [styles.financeDisclaimer, { color: palette.textMuted }],
+    buyerJourneyNote: [styles.buyerJourneyNote, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    buyerJourneyText: [styles.buyerJourneyText, { color: palette.textSecondary }],
+    extraSpecToggle: [styles.extraSpecToggle, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    extraSpecToggleText: [styles.extraSpecToggleText, { color: palette.textPrimary }],
+    specBadgeBox: [styles.specBadgeBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    specBadgeLabel: [styles.specBadgeLabel, { color: palette.textMuted }],
+    specBadgeValue: [styles.specBadgeValue, { color: palette.textPrimary }],
+    sectionHeaderTitle: [styles.sectionHeaderTitle, { color: palette.textPrimary }],
+    aboutText: [styles.aboutText, { color: palette.textSecondary }],
+    featureChip: [styles.featureChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    featureChipText: [styles.featureChipText, { color: palette.textSecondary }],
+    specCardContainer: [styles.specCardContainer, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    specRow: [styles.specRow, { borderBottomColor: palette.borderDefault }],
+    specRowLabel: [styles.specRowLabel, { color: palette.textMuted }],
+    specRowValue: [styles.specRowValue, { color: palette.textPrimary }],
+    historyBox: [styles.historyBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    historyLabel: [styles.historyLabel, { color: palette.textMuted }],
+    historyValue: [styles.historyValue, { color: palette.textPrimary }],
+    reviewCard: [styles.reviewCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    reviewerName: [styles.reviewerName, { color: palette.textPrimary }],
+    reviewComment: [styles.reviewComment, { color: palette.textSecondary }],
+    dealerDetailCard: [styles.dealerDetailCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    dealerDescription: [styles.dealerDescription, { color: palette.textSecondary }],
+    sellerCard: [styles.sellerCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    sellerName: [styles.sellerName, { color: palette.textPrimary }],
+    sellerSubtext: [styles.sellerSubtext, { color: palette.textMuted }],
+    financeCard: [styles.financeCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    financeTitle: [styles.financeTitle, { color: palette.textPrimary }],
+    financeSubtext: [styles.financeSubtext, { color: palette.textSecondary }],
+    protectionCard: [styles.protectionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    deliveryCard: [styles.deliveryCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    deliveryTitle: [styles.deliveryTitle, { color: palette.textPrimary }],
+    deliverySubtitle: [styles.deliverySubtitle, { color: palette.textSecondary }],
+    deliveryFeeLabel: [styles.deliveryFeeLabel, { color: palette.textMuted }],
+    deliveryFeeValue: [styles.deliveryFeeValue, { color: palette.textPrimary }],
+    deliveryFeeHint: [styles.deliveryFeeHint, { color: palette.textMuted }],
+    postcodeInput: [styles.postcodeInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    deliveryInput: [styles.deliveryInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    stickyCTAOuter: [styles.stickyCTAOuter, { backgroundColor: palette.bgBody, borderTopColor: palette.borderDefault }],
+    modalHeader: [styles.modalHeader, { borderBottomColor: palette.borderDefault }],
+    modalTitle: [styles.modalTitle, { color: palette.textPrimary }],
+    modalSubheading: [styles.modalSubheading, { color: palette.textSecondary }],
+    offerBoxContainer: [styles.offerBoxContainer, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    offerLabel: [styles.offerLabel, { color: palette.textMuted }],
+    askingPriceValue: [styles.askingPriceValue, { color: palette.textPrimary }],
+    offerAmountText: [styles.offerAmountText, { color: palette.textPrimary }],
+    offerAmountInputWrap: [styles.offerAmountInputWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    offerAmountInput: [styles.offerAmountInput, { color: palette.textPrimary }],
+    offerMessageInput: [styles.offerMessageInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    offerRangeHint: [styles.offerRangeHint, { color: palette.textMuted }],
+    successTitle: [styles.successTitle, { color: palette.textPrimary }],
+    successSubtitle: [styles.successSubtitle, { color: palette.textSecondary }],
+    successCloseBtn: [styles.successCloseBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    successCloseText: [styles.successCloseText, { color: palette.textPrimary }],
+    chatHeader: [styles.chatHeader, { borderBottomColor: palette.borderDefault }],
+    chatDealerName: [styles.chatDealerName, { color: palette.textPrimary }],
+    chatOnlineStatus: [styles.chatOnlineStatus, { color: palette.textMuted }],
+    financeCalcBody: [styles.financeCalcBody, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    calcLabel: [styles.calcLabel, { color: palette.textMuted }],
+    calcValue: [styles.calcValue, { color: palette.textPrimary }],
+    depositStep: [styles.depositStep, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    depositStepText: [styles.depositStepText, { color: palette.textSecondary }],
+    calcResult: [styles.calcResult, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    calcResultLabel: [styles.calcResultLabel, { color: palette.textMuted }],
+    calcResultValue: [styles.calcResultValue, { color: palette.textPrimary }],
+    calcResultSub: [styles.calcResultSub, { color: palette.textSecondary }],
+    hpiCheckRow: [styles.hpiCheckRow, { borderBottomColor: palette.borderDefault }],
+    hpiCheckLabel: [styles.hpiCheckLabel, { color: palette.textPrimary }],
+    hpiCheckDetail: [styles.hpiCheckDetail, { color: palette.textSecondary }],
+  }), [palette]);
+}

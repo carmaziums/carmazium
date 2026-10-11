@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import { ImageCarousel } from './ImageCarousel';
@@ -90,6 +91,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
   onPress,
   onBid,
 }) => {
+  const { palette } = useNativeAppearance();
   const countdown = useCountdown(auction.endsAt);
   const hasRealBids = auction.totalBids > 0;
   const displayBid = hasRealBids ? auction.currentBid : auction.startingBid;
@@ -97,7 +99,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }]}
       onPress={onPress}
       activeOpacity={0.92}
     >
@@ -142,9 +144,9 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
       <View style={styles.content}>
         {/* Car title */}
         <View style={styles.carTitle}>
-          <Text style={styles.makeText}>{auction.make}</Text>
+          <Text style={[styles.makeText, { color: palette.textSecondary }]}>{auction.make}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.modelText}>
+            <Text style={[styles.modelText, { color: palette.textPrimary }]}>
               {auction.model} {auction.variant}
             </Text>
             <GradeChip grade={auction.exteriorGrade} />
@@ -162,13 +164,13 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         />
 
         {/* Bid section */}
-        <View style={styles.bidSection}>
+        <View style={[styles.bidSection, { borderTopColor: palette.borderDefault }]}>
           <View>
-            <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
-            <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
+            <Text style={[styles.bidLabel, { color: palette.textMuted }]}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={[styles.bidAmount, { color: palette.textPrimary }]}>{formatPrice(displayBid)}</Text>
             <View style={styles.bidMeta}>
-              <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
+              <Ionicons name="people-outline" size={11} color={palette.textMuted} />
+              <Text style={[styles.bidCount, { color: palette.textMuted }]}>{auction.totalBids} bids</Text>
               {!hasRealBids && firstOfferFloor > 0 && (
                 <Text style={[styles.bidCount, { color: Colors.warning }]}>
                   First offer {formatPrice(firstOfferFloor)}
@@ -186,7 +188,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
           {/* Countdown */}
           <View style={styles.countdown}>
-            <Text style={styles.endsLabel}>
+            <Text style={[styles.endsLabel, { color: palette.textMuted }]}>
               {auction.isLive ? 'ENDS IN' : 'STARTS IN'}
             </Text>
             <View style={styles.timeRow}>

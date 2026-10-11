@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -121,6 +122,8 @@ const ListingDetail: React.FC<{
   onSold: () => void;
   canManageInventory: boolean;
 }> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerInventoryPalette();
   const insets = useSafeAreaInsets();
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
@@ -205,10 +208,10 @@ const ListingDetail: React.FC<{
   const statusS = STATUS_STYLE[listing.status];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -219,16 +222,16 @@ const ListingDetail: React.FC<{
         contentContainerStyle={{ paddingBottom: 120 }}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
-          <View style={styles.detailHeaderCenter}>
-            <View style={styles.listingLivePill}>
-              <View style={[styles.liveDot, { backgroundColor: statusS.bg }]} />
-              <Text style={styles.listingLiveLabel}>LISTING · {listing.status}</Text>
+        <View style={[themed.detailHeader, { paddingTop: insets.top + 14 }]}>
+          <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
+          <View style={themed.detailHeaderCenter}>
+            <View style={themed.listingLivePill}>
+              <View style={[themed.liveDot, { backgroundColor: statusS.bg }]} />
+              <Text style={themed.listingLiveLabel}>LISTING · {listing.status}</Text>
             </View>
-            <Text style={styles.detailTitle} numberOfLines={1}>{listing.title}</Text>
+            <Text style={themed.detailTitle} numberOfLines={1}>{listing.title}</Text>
           </View>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
+          <IconButton style={themed.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
                 ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
                 { text: 'Cancel', style: 'cancel' },
@@ -237,7 +240,7 @@ const ListingDetail: React.FC<{
         </View>
 
         {/* ── Image thumbnails ─────────────────────────────────────────────── */}
-        <View style={styles.thumbRow}>
+        <View style={themed.thumbRow}>
           {listing.images.map((uri, i) => (
             <TouchableOpacity
               key={i}
@@ -249,10 +252,10 @@ const ListingDetail: React.FC<{
               onPress={() => setSelectedImg(i)}
               activeOpacity={0.85}
             >
-              <Image source={{ uri }} style={[styles.thumbImg, { width: thumbW }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              <Image source={{ uri }} style={[themed.thumbImg, { width: thumbW }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               {i === 0 && (
-                <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>HERO</Text>
+                <View style={themed.heroBadge}>
+                  <Text style={themed.heroBadgeText}>HERO</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -260,86 +263,86 @@ const ListingDetail: React.FC<{
         </View>
 
         {/* ── Stat pills ───────────────────────────────────────────────────── */}
-        <View style={styles.statPillRow}>
-          <View style={styles.statPill}>
+        <View style={themed.statPillRow}>
+          <View style={themed.statPill}>
             <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.statPillVal}>{listing.views}</Text>
-            <Text style={styles.statPillLabel}>VIEWS</Text>
+            <Text style={themed.statPillVal}>{listing.views}</Text>
+            <Text style={themed.statPillLabel}>VIEWS</Text>
           </View>
-          <View style={[styles.statPill, styles.statPillMiddle]}>
+          <View style={[themed.statPill, styles.statPillMiddle]}>
             <Ionicons name="mail-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.statPillVal}>{listing.leads}</Text>
-            <Text style={styles.statPillLabel}>LEADS</Text>
+            <Text style={themed.statPillVal}>{listing.leads}</Text>
+            <Text style={themed.statPillLabel}>LEADS</Text>
           </View>
-          <View style={styles.statPill}>
+          <View style={themed.statPill}>
             <Ionicons name="pricetag-outline" size={18} color={Colors.accent} />
-            <Text style={[styles.statPillVal, { color: Colors.accent }]}>{listing.offers}</Text>
-            <Text style={styles.statPillLabel}>OFFERS</Text>
+            <Text style={[themed.statPillVal, { color: Colors.accent }]}>{listing.offers}</Text>
+            <Text style={themed.statPillLabel}>OFFERS</Text>
           </View>
         </View>
 
         {/* ── Detail rows ─────────────────────────────────────────────────── */}
-        <View style={styles.detailCard}>
+        <View style={themed.detailCard}>
           {/* List price */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>List price</Text>
+          <View style={themed.detailRow}>
+            <Text style={themed.detailRowLabel}>List price</Text>
             <TouchableOpacity
-              style={styles.detailRowRight}
+              style={themed.detailRowRight}
               onPress={handleEditListing}
               activeOpacity={0.7}
               disabled={!canManageInventory}
             >
-              <Text style={styles.detailRowValue}>{listing.price}</Text>
+              <Text style={themed.detailRowValue}>{listing.price}</Text>
               {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={themed.detailDivider} />
 
           {/* Offers */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Offers</Text>
-            <View style={styles.detailRowRight}>
-              <Text style={styles.detailRowValue}>{listing.offersStatus}</Text>
+          <View style={themed.detailRow}>
+            <Text style={themed.detailRowLabel}>Offers</Text>
+            <View style={themed.detailRowRight}>
+              <Text style={themed.detailRowValue}>{listing.offersStatus}</Text>
             </View>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={themed.detailDivider} />
 
           {/* Visibility */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Listing status</Text>
-            <View style={styles.detailRowRight}>
-              <Text style={styles.detailRowValue}>{listing.visibility}</Text>
+          <View style={themed.detailRow}>
+            <Text style={themed.detailRowLabel}>Listing status</Text>
+            <View style={themed.detailRowRight}>
+              <Text style={themed.detailRowValue}>{listing.visibility}</Text>
             </View>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={themed.detailDivider} />
 
           {/* Days listed */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Days listed</Text>
-            <Text style={styles.detailRowValue}>{listing.daysListed} days</Text>
+          <View style={themed.detailRow}>
+            <Text style={themed.detailRowLabel}>Days listed</Text>
+            <Text style={themed.detailRowValue}>{listing.daysListed} days</Text>
           </View>
         </View>
       </ScrollView>
 
       {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[themed.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
         {/* Put on Auction — only ACTIVE listings can be converted; the
             destination screen (SellerAuctionsScreen) re-validates eligibility
             itself, so this is a convenience shortcut, not the only gate. */}
         {canManageInventory && listing.status === 'LIVE' && (
           <TouchableOpacity
-            style={styles.putOnAuctionBtn}
+            style={themed.putOnAuctionBtn}
             activeOpacity={0.85}
             onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
           >
             <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
+            <Text style={themed.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
         {canManageInventory && (
-        <View style={styles.detailFooter}>
+        <View style={themed.detailFooter}>
         <TouchableOpacity
-          style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
+          style={[themed.boostBtn, boosting && { opacity: 0.6 }]}
           activeOpacity={0.85}
           onPress={handleBoost}
           disabled={boosting}
@@ -349,18 +352,18 @@ const ListingDetail: React.FC<{
           ) : (
             <>
               <MaterialCommunityIcons name="rocket-launch-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.boostBtnText}>BOOST</Text>
+              <Text style={themed.boostBtnText}>BOOST</Text>
             </>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
+          style={[themed.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
           activeOpacity={0.85}
           onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
         >
           <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.markSoldBtnText}>
+          <Text style={themed.markSoldBtnText}>
             {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
         </TouchableOpacity>
@@ -377,9 +380,9 @@ const ListingDetail: React.FC<{
         onClose={() => setBoostCheckoutUrl(null)}
       />
       {boostToast && (
-        <View style={styles.boostToast} pointerEvents="none">
+        <View style={themed.boostToast} pointerEvents="none">
           <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
-          <Text style={styles.boostToastText}>{boostToast}</Text>
+          <Text style={themed.boostToastText}>{boostToast}</Text>
         </View>
       )}
 
@@ -390,13 +393,13 @@ const ListingDetail: React.FC<{
         title="Mark as Sold"
         avoidKeyboard
       >
-        <View style={styles.markSoldModalBody}>
-          <Text style={styles.markSoldModalHint}>Confirm the price this vehicle sold for.</Text>
-          <Text style={styles.soldPriceLabel}>SALE PRICE</Text>
-          <View style={styles.soldPriceInputWrap}>
-            <Text style={styles.soldPriceCurrency}>£</Text>
+        <View style={themed.markSoldModalBody}>
+          <Text style={themed.markSoldModalHint}>Confirm the price this vehicle sold for.</Text>
+          <Text style={themed.soldPriceLabel}>SALE PRICE</Text>
+          <View style={themed.soldPriceInputWrap}>
+            <Text style={themed.soldPriceCurrency}>£</Text>
             <TextInput
-              style={styles.soldPriceInput}
+              style={themed.soldPriceInput}
               value={soldPriceInput}
               onChangeText={v => { setSoldPriceInput(v); setMarkSoldError(null); }}
               keyboardType="number-pad"
@@ -407,7 +410,7 @@ const ListingDetail: React.FC<{
           </View>
           {markSoldError && <ErrorBanner message={markSoldError} />}
           <TouchableOpacity
-            style={[styles.markSoldConfirmBtn, markSoldSubmitting && { opacity: 0.6 }]}
+            style={[themed.markSoldConfirmBtn, markSoldSubmitting && { opacity: 0.6 }]}
             activeOpacity={0.85}
             onPress={handleConfirmMarkSold}
             disabled={markSoldSubmitting}
@@ -415,7 +418,7 @@ const ListingDetail: React.FC<{
             {markSoldSubmitting ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.markSoldConfirmBtnText}>Confirm Sold</Text>
+              <Text style={themed.markSoldConfirmBtnText}>Confirm Sold</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -433,64 +436,66 @@ const InventoryRow: React.FC<{
   onOpenLinkedAuction?: (linkedId: string) => void;
   canManageInventory: boolean;
 }> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerInventoryPalette();
   const s = STATUS_STYLE[listing.status];
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
   const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
   return (
     <TouchableOpacity
-      style={styles.websiteStockCard}
+      style={themed.websiteStockCard}
       onPress={() => onPress(listing.id)}
       accessibilityRole="button"
       accessibilityLabel={`Open ${listing.title}, ${listing.registration || 'private registration'}, ${listing.transmission}, ${s.label}`}
       activeOpacity={0.85}
     >
       {/* Website inventory mobile showcase: real photo, title and vehicle facts. */}
-      <View style={styles.stockShowcase}>
-        <View style={styles.stockImageWrap}>
+      <View style={themed.stockShowcase}>
+        <View style={themed.stockImageWrap}>
           {listing.images[0] ? (
-            <Image source={{ uri: listing.images[0] }} style={styles.stockImage}
+            <Image source={{ uri: listing.images[0] }} style={themed.stockImage}
               contentFit="cover" transition={200} cachePolicy="memory-disk"
               accessibilityLabel={listing.title} />
           ) : (
             <Ionicons name="car-outline" size={23} color={Colors.textMuted} />
           )}
         </View>
-        <View style={styles.stockIdentity}>
-          <Text style={styles.stockTitle} numberOfLines={2}>{listing.title}</Text>
-          <View style={styles.stockFacts}>
-            <Text style={styles.stockRegistration}>{listing.registration || 'PRIVATE'}</Text>
-            {!!listing.make && <Text style={styles.stockMake}>{listing.make.toUpperCase()}</Text>}
+        <View style={themed.stockIdentity}>
+          <Text style={themed.stockTitle} numberOfLines={2}>{listing.title}</Text>
+          <View style={themed.stockFacts}>
+            <Text style={themed.stockRegistration}>{listing.registration || 'PRIVATE'}</Text>
+            {!!listing.make && <Text style={themed.stockMake}>{listing.make.toUpperCase()}</Text>}
             {listing.mileage !== null && (
-              <Text style={styles.stockFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+              <Text style={themed.stockFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
             )}
-            <Text style={styles.stockFact}>Transmission: {listing.transmission}</Text>
+            <Text style={themed.stockFact}>Transmission: {listing.transmission}</Text>
           </View>
         </View>
       </View>
 
       {/* Match website's mobile 2-column price/status/engagement/leads grid. */}
-      <View style={styles.stockMetrics}>
-        <View style={styles.stockMetricTile}>
-          <Text style={styles.stockMetricLabel}>MARKET PRICE</Text>
-          <Text style={styles.stockPrice}>{listing.price}</Text>
+      <View style={themed.stockMetrics}>
+        <View style={themed.stockMetricTile}>
+          <Text style={themed.stockMetricLabel}>MARKET PRICE</Text>
+          <Text style={themed.stockPrice}>{listing.price}</Text>
         </View>
-        <View style={styles.stockMetricTile}>
-          <Text style={styles.stockMetricLabel}>STATUS</Text>
-          <View style={[styles.stockOutlinedStatus, { borderColor: s.bg }]}>
-            <Text style={[styles.stockStatusText, { color: s.bg }]}>{s.label}</Text>
+        <View style={themed.stockMetricTile}>
+          <Text style={themed.stockMetricLabel}>STATUS</Text>
+          <View style={[themed.stockOutlinedStatus, { borderColor: s.bg }]}>
+            <Text style={[themed.stockStatusText, { color: s.bg }]}>{s.label}</Text>
           </View>
           {!!listing.rejectionReason && listing.status === 'REJECTED' && (
-            <Text style={styles.stockRejection} numberOfLines={3}>{listing.rejectionReason}</Text>
+            <Text style={themed.stockRejection} numberOfLines={3}>{listing.rejectionReason}</Text>
           )}
         </View>
-        <View style={styles.stockMetricTile}>
-          <Text style={styles.stockMetricLabel}>ENGAGEMENT</Text>
-          <Text style={styles.stockMetricValue}>{listing.views.toLocaleString('en-GB')}</Text>
+        <View style={themed.stockMetricTile}>
+          <Text style={themed.stockMetricLabel}>ENGAGEMENT</Text>
+          <Text style={themed.stockMetricValue}>{listing.views.toLocaleString('en-GB')}</Text>
         </View>
-        <View style={styles.stockMetricTile}>
-          <Text style={styles.stockMetricLabel}>HOT LEADS</Text>
-          <Text style={[styles.stockMetricValue, { color: Colors.accent }]}>
+        <View style={themed.stockMetricTile}>
+          <Text style={themed.stockMetricLabel}>HOT LEADS</Text>
+          <Text style={[themed.stockMetricValue, { color: Colors.accent }]}>
             {listing.leads.toLocaleString('en-GB')}
           </Text>
         </View>
@@ -498,25 +503,25 @@ const InventoryRow: React.FC<{
 
       {/* Existing linked-auction and dealer-only actions stay on the card. */}
       {hasLinkedAuction ? (
-        <TouchableOpacity style={[styles.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
+        <TouchableOpacity style={[themed.rowCrossListChip, linkedAuctionLive && styles.rowCrossListChipLive]}
           onPress={() => listing.linkedListingId && onOpenLinkedAuction?.(listing.linkedListingId)}
           accessibilityRole="button" accessibilityLabel="Open linked auction" activeOpacity={0.8}>
           <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
-          <Text style={styles.rowCrossListChipText}>
+          <Text style={themed.rowCrossListChipText}>
             {linkedAuctionLive ? 'Linked auction — Live' : 'Linked auction' +
               (listing.linkedAuctionStatus ? ` · ${listing.linkedAuctionStatus}` : '')}
           </Text>
         </TouchableOpacity>
       ) : canPutOnAuction && onPutOnAuction ? (
-        <TouchableOpacity style={styles.rowPutOnAuction}
+        <TouchableOpacity style={themed.rowPutOnAuction}
           onPress={() => onPutOnAuction(listing.id)}
           accessibilityRole="button" accessibilityLabel="Also list on auction" activeOpacity={0.8}>
           <Ionicons name="hammer-outline" size={13} color={Colors.accent} />
-          <Text style={styles.rowPutOnAuctionText}>Also list on auction</Text>
+          <Text style={themed.rowPutOnAuctionText}>Also list on auction</Text>
         </TouchableOpacity>
       ) : null}
-      <View style={styles.stockOpenRow}>
-        <Text style={styles.stockOpenText}>View details and actions</Text>
+      <View style={themed.stockOpenRow}>
+        <Text style={themed.stockOpenText}>View details and actions</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
       </View>
     </TouchableOpacity>
@@ -525,40 +530,44 @@ const InventoryRow: React.FC<{
 // ─── Inventory grid card — compact thumbnail-forward alternative to the row
 // view, for dealers scanning many listings at once (mobile-ui-ux-audit.md §C9). ──
 const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerInventoryPalette();
   const s = STATUS_STYLE[listing.status];
   return (
-    <TouchableOpacity style={styles.gridCard} onPress={() => onPress(listing.id)}
+    <TouchableOpacity style={themed.gridCard} onPress={() => onPress(listing.id)}
       accessibilityRole="button"
       accessibilityLabel={`${listing.title}, ${listing.price}, ${listing.transmission}, ${s.label}`}
       activeOpacity={0.85}>
-      <View style={styles.gridThumbWrap}>
+      <View style={themed.gridThumbWrap}>
         {listing.images[0] ? (
-          <Image source={{ uri: listing.images[0] }} style={styles.gridThumb}
+          <Image source={{ uri: listing.images[0] }} style={themed.gridThumb}
             contentFit="cover" transition={200} cachePolicy="memory-disk"
             accessibilityLabel={listing.title} />
         ) : <Ionicons name="car-outline" size={26} color={Colors.textMuted} />}
-        <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-          <Text style={styles.statusBadgeText}>{s.label}</Text>
+        <View style={[themed.statusBadge, { backgroundColor: s.bg }]}>
+          <Text style={themed.statusBadgeText}>{s.label}</Text>
         </View>
       </View>
-      <Text style={styles.gridTitle} numberOfLines={2}>{listing.title}</Text>
-      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.registration || 'PRIVATE'}</Text>
-      <Text style={styles.stockGridFact} numberOfLines={1}>{listing.transmission}</Text>
+      <Text style={themed.gridTitle} numberOfLines={2}>{listing.title}</Text>
+      <Text style={themed.stockGridFact} numberOfLines={1}>{listing.registration || 'PRIVATE'}</Text>
+      <Text style={themed.stockGridFact} numberOfLines={1}>{listing.transmission}</Text>
       {listing.mileage !== null && (
-        <Text style={styles.stockGridFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
+        <Text style={themed.stockGridFact}>{listing.mileage.toLocaleString('en-GB')} mi</Text>
       )}
-      <Text style={styles.gridPrice}>{listing.price}</Text>
-      <View style={styles.listingStats}>
+      <Text style={themed.gridPrice}>{listing.price}</Text>
+      <View style={themed.listingStats}>
         <Ionicons name="eye-outline" size={12} color={Colors.iconMuted} />
-        <Text style={styles.statNum}>{listing.views}</Text>
+        <Text style={themed.statNum}>{listing.views}</Text>
         <Ionicons name="people-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
-        <Text style={styles.statNum}>{listing.leads}</Text>
+        <Text style={themed.statNum}>{listing.leads}</Text>
       </View>
     </TouchableOpacity>
   );});
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useDealerInventoryPalette();
   const insets = useSafeAreaInsets();
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
@@ -690,10 +699,10 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         : 0);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -702,13 +711,13 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <WebsiteTopBar />
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
-      <View style={[styles.listHeader, { paddingTop: 12 }]}>
-        <View style={styles.listHeaderCenter}>
-          <Text style={styles.listHeaderTitle}>Inventory</Text>
-          <Text style={styles.listHeaderSub}>Manage live, draft and sold stock</Text>
+      <View style={[themed.listHeader, { paddingTop: 12 }]}>
+        <View style={themed.listHeaderCenter}>
+          <Text style={themed.listHeaderTitle}>Inventory</Text>
+          <Text style={themed.listHeaderSub}>Manage live, draft and sold stock</Text>
         </View>
         <IconButton
-          style={styles.backBtn}
+          style={themed.backBtn}
           icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
           onPress={toggleViewMode}
           accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
@@ -717,37 +726,37 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       {/* Website places Add Vehicle and imports above filters, not as a
           floating footer that can overlap the dealer bottom navigation. */}
       {canManageInventory && (
-        <View style={styles.stockHeaderActions}>
-          <TouchableOpacity style={styles.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
+        <View style={themed.stockHeaderActions}>
+          <TouchableOpacity style={themed.stockAddAction} onPress={() => navigation?.navigate('SellCarFlow')}
             accessibilityRole="button" accessibilityLabel="Add Vehicle">
             <Ionicons name="add-circle-outline" size={18} color={Colors.white} />
-            <Text style={styles.stockAddActionText}>Add Vehicle</Text>
+            <Text style={themed.stockAddActionText}>Add Vehicle</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowImportModal(true)}
+          <TouchableOpacity style={themed.stockSecondaryAction} onPress={() => setShowImportModal(true)}
             accessibilityRole="button" accessibilityLabel="Import Listing">
             <Ionicons name="link-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.stockSecondaryActionText}>Import Listing</Text>
+            <Text style={themed.stockSecondaryActionText}>Import Listing</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
+          <TouchableOpacity style={themed.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
             accessibilityRole="button" accessibilityLabel="Bulk Import">
             <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
-            <Text style={styles.stockSecondaryActionText}>Bulk Import</Text>
+            <Text style={themed.stockSecondaryActionText}>Bulk Import</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Search inventory without paging through unrelated vehicles. */}
-      <View style={styles.inventorySearchWrap}>
+      <View style={themed.inventorySearchWrap}>
         <Ionicons name="search-outline" size={20} color={Colors.textSecondary} />
         <TextInput
           value={inventoryQuery}
           onChangeText={setInventoryQuery}
           placeholder="Search by make, model, VRM..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={palette.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
           accessibilityLabel="Search dealer inventory"
-          style={styles.inventorySearchInput}
+          style={themed.inventorySearchInput}
         />
         {!!inventoryQuery && (
           <TouchableOpacity onPress={() => setInventoryQuery('')} accessibilityRole="button" accessibilityLabel="Clear inventory search">
@@ -760,8 +769,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterScroll}
-        style={styles.filterBar}
+        contentContainerStyle={themed.filterScroll}
+        style={themed.filterBar}
       >
         {FILTERS.filter((f, index) => index < 6 || showExtraStatuses || activeFilter === f.label).map((f) => (
           <TouchableOpacity
@@ -787,7 +796,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
             </Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.filterTab}
+        <TouchableOpacity style={themed.filterTab}
           onPress={() => {
             if (showExtraStatuses && (activeFilter === 'Sale pending' || activeFilter === 'Other')) setActiveFilter('All');
             setShowExtraStatuses(previous => !previous);
@@ -796,21 +805,21 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           accessibilityLabel={showExtraStatuses ? 'Hide additional statuses' : 'Show additional statuses'}
           accessibilityState={{ expanded: showExtraStatuses }}
         >
-          <Text style={styles.filterTabText}>{showExtraStatuses ? 'Fewer' : 'More'}</Text>
+          <Text style={themed.filterTabText}>{showExtraStatuses ? 'Fewer' : 'More'}</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {/* ── Sort row ─────────────────────────────────────────────────────── */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
+      <View style={themed.sortRow}>
+        <Text style={themed.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
         <TouchableOpacity
-          style={styles.sortAction}
+          style={themed.sortAction}
           accessibilityRole="button"
           accessibilityLabel="Change inventory sorting"
           onPress={() => setSortOrder(prev => prev === 'newest' ? 'price-high' : prev === 'price-high' ? 'price-low' : 'newest')}
         >
           <Ionicons name="swap-vertical-outline" size={17} color={Colors.accent} />
-          <Text style={styles.sortActionText}>{sortOrder === 'newest' ? 'Newest' : sortOrder === 'price-high' ? 'Price: high to low' : 'Price: low to high'}</Text>
+          <Text style={themed.sortActionText}>{sortOrder === 'newest' ? 'Newest' : sortOrder === 'price-high' ? 'Price: high to low' : 'Price: low to high'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -828,7 +837,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       ) : (
       <FlatList
         key={viewMode}
-        style={styles.listScroll}
+        style={themed.listScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
@@ -1710,3 +1719,57 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
 });
+
+function useDealerInventoryPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    websiteStockCard: [styles.websiteStockCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    stockTitle: [styles.stockTitle, { color: palette.textPrimary }],
+    stockRegistration: [styles.stockRegistration, { color: palette.textMuted }],
+    stockFact: [styles.stockFact, { color: palette.textSecondary }],
+    stockMetricTile: [styles.stockMetricTile, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    stockMetricLabel: [styles.stockMetricLabel, { color: palette.textMuted }],
+    stockPrice: [styles.stockPrice, { color: palette.textPrimary }],
+    stockMetricValue: [styles.stockMetricValue, { color: palette.textPrimary }],
+    stockOpenRow: [styles.stockOpenRow, { borderTopColor: palette.borderDefault }],
+    stockOpenText: [styles.stockOpenText, { color: palette.textSecondary }],
+    stockGridFact: [styles.stockGridFact, { color: palette.textMuted }],
+    listHeaderTitle: [styles.listHeaderTitle, { color: palette.textPrimary }],
+    listHeaderSub: [styles.listHeaderSub, { color: palette.textSecondary }],
+    inventorySearchWrap: [styles.inventorySearchWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    inventorySearchInput: [styles.inventorySearchInput, { color: palette.textPrimary }],
+    sortAction: [styles.sortAction, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    sortActionText: [styles.sortActionText, { color: palette.textSecondary }],
+    filterTab: [styles.filterTab, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    filterTabText: [styles.filterTabText, { color: palette.textSecondary }],
+    sortLabel: [styles.sortLabel, { color: palette.textMuted }],
+    listingCard: [styles.listingCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    listingTitle: [styles.listingTitle, { color: palette.textPrimary }],
+    inventoryReg: [styles.inventoryReg, { color: palette.textMuted }],
+    listingPrice: [styles.listingPrice, { color: palette.textPrimary }],
+    listingDays: [styles.listingDays, { color: palette.textMuted }],
+    statNum: [styles.statNum, { color: palette.textSecondary }],
+    gridCard: [styles.gridCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    gridTitle: [styles.gridTitle, { color: palette.textPrimary }],
+    gridPrice: [styles.gridPrice, { color: palette.textPrimary }],
+    bulkSheet: [styles.bulkSheet, { backgroundColor: palette.bgDropdown, borderColor: palette.borderDefault }],
+    bulkTitle: [styles.bulkTitle, { color: palette.textPrimary }],
+    bulkSub: [styles.bulkSub, { color: palette.textSecondary }],
+    bulkInput: [styles.bulkInput, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary }],
+    bulkSupportedLabel: [styles.bulkSupportedLabel, { color: palette.textMuted }],
+    bulkPlatformChip: [styles.bulkPlatformChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    bulkPlatformText: [styles.bulkPlatformText, { color: palette.textSecondary }],
+    bulkCountHint: [styles.bulkCountHint, { color: palette.textMuted }],
+    detailTitle: [styles.detailTitle, { color: palette.textPrimary }],
+    detailCard: [styles.detailCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    detailRow: [styles.detailRow, { borderBottomColor: palette.borderDefault }],
+    detailRowLabel: [styles.detailRowLabel, { color: palette.textMuted }],
+    detailRowValue: [styles.detailRowValue, { color: palette.textPrimary }],
+    detailFooter: [styles.detailFooter, { backgroundColor: palette.bgBody, borderTopColor: palette.borderDefault }],
+    soldPriceInputWrap: [styles.soldPriceInputWrap, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    soldPriceInput: [styles.soldPriceInput, { color: palette.textPrimary }],
+  }), [palette]);
+}

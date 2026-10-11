@@ -18,6 +18,7 @@ import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -48,14 +49,18 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Individual digit flip box component
-const DigitBox: React.FC<{ value: string }> = ({ value }) => (
-  <View style={styles.digitBox}>
-    <Text style={styles.digitText}>{value}</Text>
-  </View>
-);
+const DigitBox: React.FC<{ value: string }> = ({ value }) => {
+  const { palette } = useNativeAppearance();
+  return (
+    <View style={[styles.digitBox, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }]}>
+      <Text style={[styles.digitText, { color: palette.textPrimary }]}>{value}</Text>
+    </View>
+  );
+};
 
 // Timer display as flip-digit boxes
 const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
+  const { palette } = useNativeAppearance();
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
@@ -70,12 +75,12 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
         <DigitBox value={hStr[0]} />
         <DigitBox value={hStr[1]} />
       </View>
-      <Text style={styles.timerColon}>:</Text>
+      <Text style={[styles.timerColon, { color: palette.textPrimary }]}>:</Text>
       <View style={styles.digitGroup}>
         <DigitBox value={mStr[0]} />
         <DigitBox value={mStr[1]} />
       </View>
-      <Text style={styles.timerColon}>:</Text>
+      <Text style={[styles.timerColon, { color: palette.textPrimary }]}>:</Text>
       <View style={styles.digitGroup}>
         <DigitBox value={sStr[0]} />
         <DigitBox value={sStr[1]} />
@@ -85,6 +90,8 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 };
 
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
+  const themed = useLiveDiscoveryStyles();
+  const { resolvedAppearance, palette } = useNativeAppearance();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser, accountRole, role } = useAuthStore();
@@ -258,12 +265,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === "dark" ? "light-content" : "dark-content"} translucent backgroundColor={palette.bgBody} />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
+        contentContainerStyle={[themed.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -275,10 +282,10 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         }
       >
         {/* ─── Header ──────────────────────────────────────────────── */}
-        <View style={styles.header}>
+        <View style={themed.header}>
           <View>
-            <Text style={styles.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
-            <Text style={styles.headerTitle}>Live Auctions</Text>
+            <Text style={themed.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
+            <Text style={themed.headerTitle}>Live Auctions</Text>
           </View>
           {!dealerMode && <HamburgerButton />}
         </View>
@@ -288,12 +295,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         )}
 
         {/* ─── Search ──────────────────────────────────────────────── */}
-        <View style={styles.searchBar}>
+        <View style={themed.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={themed.searchInput}
             placeholder="Search make or model…"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={palette.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
@@ -308,9 +315,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         {/* ─── Filters ─────────────────────────────────────────────────
             Web rebuilt the /auctions filter panel to match Buy Cars
             (commit 5a99b5d0); this screen had only the text query above. */}
-        <View style={styles.filterRow}>
+        <View style={themed.filterRow}>
           <TouchableOpacity
-            style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+            style={[themed.filterBtn, activeFilterCount > 0 && themed.filterBtnActive]}
             onPress={() => setFilterSheetOpen(true)}
             activeOpacity={0.85}
             accessibilityRole="button"
@@ -326,18 +333,18 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
               color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
             />
             <Text
-              style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}
+              style={[themed.filterBtnText, activeFilterCount > 0 && themed.filterBtnTextActive]}
             >
               Filters
             </Text>
             {activeFilterCount > 0 && (
-              <View style={styles.filterCountBadge}>
-                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+              <View style={themed.filterCountBadge}>
+                <Text style={themed.filterCountText}>{activeFilterCount}</Text>
               </View>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.sortLabel} numberOfLines={1}>
+          <Text style={themed.sortLabel} numberOfLines={1}>
             {AUCTION_SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label}
           </Text>
 
@@ -348,7 +355,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
               accessibilityRole="button"
               accessibilityLabel="Clear all filters"
             >
-              <Text style={styles.clearFiltersText}>Clear</Text>
+              <Text style={themed.clearFiltersText}>Clear</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -356,15 +363,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         {/* Dealer staff without MANAGE_INVENTORY must not see a seller CTA. */}
         {canCreateAuction && (
         <TouchableOpacity
-          style={styles.auctionCtaBanner}
+          style={themed.auctionCtaBanner}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('SellCarFlow' as any)}
         >
-          <View style={styles.auctionCtaLeft}>
+          <View style={themed.auctionCtaLeft}>
             <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
             <View>
-              <Text style={styles.auctionCtaTitle}>Auction your car</Text>
-              <Text style={styles.auctionCtaSub}>List it now — bidding starts today</Text>
+              <Text style={themed.auctionCtaTitle}>Auction your car</Text>
+              <Text style={themed.auctionCtaSub}>List it now — bidding starts today</Text>
             </View>
           </View>
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
@@ -372,9 +379,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
-        <View style={styles.alertBanner}>
-          <View style={styles.alertDot} />
-          <Text style={styles.alertText}>
+        <View style={themed.alertBanner}>
+          <View style={themed.alertDot} />
+          <Text style={themed.alertText}>
             {canPlaceDealerBid
               ? 'Bidding is live — place your bid before the gavel drops.'
               : 'Browse live auctions. Bidding requires dealer bidding permission.'}
@@ -382,12 +389,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         </View>
 
         {/* ─── LIVE NOW Section ──────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>LIVE NOW</Text>
+        <Text style={themed.sectionTitle}>LIVE NOW</Text>
 
         {isLoading ? (
           <View style={{ gap: 16, marginBottom: 8 }}>
             {[0, 1].map((i) => (
-              <View key={i} style={[styles.auctionCard, { overflow: 'hidden' }]}>
+              <View key={i} style={[themed.auctionCard, { overflow: 'hidden' }]}>
                 {/* Image block skeleton */}
                 <Skeleton w={SCREEN_WIDTH - 48} h={196} r={0} />
                 {/* Stats row skeleton */}
@@ -426,9 +433,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
           // Rules). Show Buy It Now instead when the seller set one.
 
           return (
-            <View key={auction.id} style={styles.auctionCard}>
+            <View key={auction.id} style={themed.auctionCard}>
               {/* Image Block */}
-              <View style={styles.imageBlock}>
+              <View style={themed.imageBlock}>
                 <ImageCarousel
                   images={auction.images}
                   width={SCREEN_WIDTH - 48}
@@ -439,15 +446,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                   // would collide with that text.
                   showIndicator={false}
                 />
-                <View style={styles.imageGradient} pointerEvents="none" />
+                <View style={themed.imageGradient} pointerEvents="none" />
 
-                <View style={styles.liveBadge} pointerEvents="none">
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                <View style={themed.liveBadge} pointerEvents="none">
+                  <View style={themed.liveDot} />
+                  <Text style={themed.liveBadgeText}>LIVE</Text>
                 </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
+                <View style={themed.viewerBadge} pointerEvents="none">
                   <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
+                  <Text style={themed.viewerCount}>{auction.viewers}</Text>
                 </View>
                 <WishlistHeart listing={auction} />
                 {/* Trust badges sit below the LIVE pill, same left offset */}
@@ -459,14 +466,14 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                   />
                 </View>
 
-                <View style={styles.imageNameContainer} pointerEvents="none">
+                <View style={themed.imageNameContainer} pointerEvents="none">
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.imageCarMake}>
+                    <Text style={themed.imageCarMake}>
                       {auction.make.toUpperCase()}
                     </Text>
                     <GradeChip grade={auction.exteriorGrade} />
                   </View>
-                  <Text style={styles.imageCarModel}>
+                  <Text style={themed.imageCarModel}>
                     {auction.model} {auction.variant}
                   </Text>
                 </View>
@@ -486,29 +493,29 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
               </View>
 
               {/* Stats Row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statsLeft}>
-                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-                  <Text style={styles.statsPrice}>
+              <View style={themed.statsRow}>
+                <View style={themed.statsLeft}>
+                  <Text style={themed.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={themed.statsPrice}>
                     {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
                   </Text>
                   {auction.totalBids === 0 && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
+                    <View style={themed.statsSubRow}>
+                      <Text style={[themed.statsAboveReserve, { color: Colors.warning }]}>
                         First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
                       </Text>
                     </View>
                   )}
                   {!!auction.buyItNowPrice && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                    <View style={themed.statsSubRow}>
+                      <Text style={themed.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
                     </View>
                   )}
                 </View>
-                <View style={styles.statsRight}>
-                  <Text style={styles.statsLabel}>ENDS IN</Text>
+                <View style={themed.statsRight}>
+                  <Text style={themed.statsLabel}>ENDS IN</Text>
                   <FlipTimer seconds={secsLeft} />
-                  <Text style={styles.statsBidderCount}>
+                  <Text style={themed.statsBidderCount}>
                     {auction.totalBids} bidders
                   </Text>
                 </View>
@@ -523,15 +530,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                 const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
                 return (
                   <TouchableOpacity
-                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
+                    style={[themed.bidNowBtn, isOwnAuction && themed.bidNowBtnOwn]}
                     activeOpacity={0.8}
                     onPress={() =>
                       navigation.navigate('LiveAuctionDetailed', { listing: auction })
                     }
                   >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={styles.bidBtnIcon} />
-                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={isOwnAuction ? palette.textPrimary : Colors.white} style={themed.bidBtnIcon} />
+                    <Text style={[themed.bidNowBtnText, isOwnAuction && { color: palette.textPrimary }]}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={isOwnAuction ? palette.textPrimary : Colors.white} style={themed.bidBtnArrow} />
                   </TouchableOpacity>
                 );
               })()}
@@ -540,8 +547,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
         })}
 
         {/* ─── UPCOMING Section ─────────────────────────────────── */}
-        <View style={styles.upcomingHeaderRow}>
-          <Text style={styles.sectionTitle}>UPCOMING</Text>
+        <View style={themed.upcomingHeaderRow}>
+          <Text style={themed.sectionTitle}>UPCOMING</Text>
         </View>
 
         {filteredUpcoming.length > 0 ? (
@@ -601,11 +608,11 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
             return (
               <TouchableOpacity
                 key={auc.id}
-                style={styles.upcomingItem}
+                style={themed.upcomingItem}
                 activeOpacity={0.9}
                 onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
               >
-                <View style={styles.upcomingImage}>
+                <View style={themed.upcomingImage}>
                   <ImageCarousel
                     images={auc.listing.images ?? []}
                     width={58}
@@ -618,28 +625,28 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
                     style={{ top: 2, right: 2, width: 20, height: 20, borderRadius: 6 }}
                   />
                 </View>
-                <View style={styles.upcomingInfo}>
-                  <View style={styles.upcomingTitleRow}>
-                    <Text style={styles.upcomingCarName} numberOfLines={1}>
+                <View style={themed.upcomingInfo}>
+                  <View style={themed.upcomingTitleRow}>
+                    <Text style={themed.upcomingCarName} numberOfLines={1}>
                       {auc.listing.make} {auc.listing.model}
                     </Text>
                     {/* No lot number is supplied by this endpoint; never invent one. */}
                   </View>
-                  <Text style={styles.upcomingSpecs} numberOfLines={1}>
+                  <Text style={themed.upcomingSpecs} numberOfLines={1}>
                     {auc.listing.year} · {auc.listing.colour || 'Verified Spec'}
                   </Text>
-                  <View style={styles.upcomingFooter}>
-                    <Text style={styles.upcomingTime}>{timeText}</Text>
-                    <Text style={styles.upcomingEst}>{estPriceRange}</Text>
+                  <View style={themed.upcomingFooter}>
+                    <Text style={themed.upcomingTime}>{timeText}</Text>
+                    <Text style={themed.upcomingEst}>{estPriceRange}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
             );
           })
         ) : !isLoading ? (
-          <View style={styles.emptyUpcoming}>
+          <View style={themed.emptyUpcoming}>
             <Ionicons name="calendar-clear-outline" size={28} color={Colors.textMuted} />
-            <Text style={styles.emptyUpcomingText}>
+            <Text style={themed.emptyUpcomingText}>
               {q ? 'No upcoming auctions match your search' : 'No upcoming auctions scheduled right now'}
             </Text>
           </View>
@@ -647,13 +654,13 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
         {/* ─── Market Insight ───────────────────────────────────── */}
         {topActiveAuction && (
-          <View style={styles.marketAiBanner}>
-            <View style={styles.marketAiIconWrap}>
+          <View style={themed.marketAiBanner}>
+            <View style={themed.marketAiIconWrap}>
               <Ionicons name="bulb-outline" size={16} color={Colors.accentGlow} />
             </View>
-            <View style={styles.marketAiBody}>
-              <Text style={styles.marketAiTitle}>MARKET INSIGHT</Text>
-              <Text style={styles.marketAiText}>
+            <View style={themed.marketAiBody}>
+              <Text style={themed.marketAiTitle}>MARKET INSIGHT</Text>
+              <Text style={themed.marketAiText}>
                 {/* Reserve status is seller-only info — never surfaced here
                     (Ground Rules: reserve is enforced server-side, display-only). */}
                 {topActiveAuction.totalBids > 0 ? (
@@ -1204,3 +1211,34 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
 });
+
+function useLiveDiscoveryStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    headerMeta: [styles.headerMeta, { color: palette.textMuted }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    sectionTitle: [styles.sectionTitle, { color: palette.textPrimary }],
+    searchBar: [styles.searchBar, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    searchInput: [styles.searchInput, { color: palette.textPrimary }],
+    filterBtn: [styles.filterBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    filterBtnText: [styles.filterBtnText, { color: palette.textSecondary }],
+    sortLabel: [styles.sortLabel, { color: palette.textMuted }],
+    auctionCtaSub: [styles.auctionCtaSub, { color: palette.textSecondary }],
+    emptyUpcoming: [styles.emptyUpcoming, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    emptyUpcomingText: [styles.emptyUpcomingText, { color: palette.textMuted }],
+    auctionCard: [styles.auctionCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    statsRow: [styles.statsRow, { borderBottomColor: palette.borderDefault }],
+    statsLabel: [styles.statsLabel, { color: palette.textMuted }],
+    statsPrice: [styles.statsPrice, { color: palette.textPrimary }],
+    statsBidderCount: [styles.statsBidderCount, { color: palette.textMuted }],
+    upcomingItem: [styles.upcomingItem, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    upcomingCarName: [styles.upcomingCarName, { color: palette.textPrimary }],
+    upcomingLot: [styles.upcomingLot, { color: palette.textMuted }],
+    upcomingSpecs: [styles.upcomingSpecs, { color: palette.textMuted }],
+    upcomingEst: [styles.upcomingEst, { color: palette.textSecondary }],
+    marketAiText: [styles.marketAiText, { color: palette.textSecondary }],
+    bidNowBtnOwn: [styles.bidNowBtnOwn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+  }), [palette]);
+}

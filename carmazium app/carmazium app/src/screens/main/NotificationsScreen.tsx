@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Spacing, Radius } from '../../constants/spacing';
@@ -68,6 +69,8 @@ function groupByDate(
 export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useNotificationsThemeStyles();
   const accountRole = useAuthStore((s) => s.accountRole);
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -139,10 +142,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   const renderSkeleton = () =>
     Array.from({ length: 5 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonRow}>
+      <View key={`sk-${i}`} style={themed.skeletonRow}>
         <Skeleton w={44} h={44} r={13} />
-        <View style={styles.skeletonContent}>
-          <View style={styles.skeletonTitleRow}>
+        <View style={themed.skeletonContent}>
+          <View style={themed.skeletonTitleRow}>
             <Skeleton w={160} h={13} r={6} />
             <Skeleton w={30} h={10} r={5} />
           </View>
@@ -165,44 +168,44 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
     return (
       <TouchableOpacity
         key={n.id}
-        style={[styles.notifRow, !isLast && styles.notifRowBorder]}
+        style={[themed.notifRow, !isLast && themed.notifRowBorder]}
         activeOpacity={0.75}
         onPress={() => handleTap(n)}
       >
         {/* Unread indicator */}
-        {!n.isRead && <View style={styles.unreadDot} />}
+        {!n.isRead && <View style={themed.unreadDot} />}
 
         {/* Notification icon */}
-        <View style={[styles.notifIconWrap, { backgroundColor: bg }]}>
+        <View style={[themed.notifIconWrap, { backgroundColor: bg }]}>
           <Ionicons name={icon as any} size={18} color={color} />
         </View>
 
         {/* Text content */}
-        <View style={styles.notifContent}>
-          <View style={styles.notifTopRow}>
+        <View style={themed.notifContent}>
+          <View style={themed.notifTopRow}>
             <Text
               style={[
-                styles.notifTitle,
+                themed.notifTitle,
                 !n.isRead && styles.notifTitleUnread,
               ]}
               numberOfLines={1}
             >
               {n.title}
             </Text>
-            <Text style={styles.notifTime}>{notifTimeAgo(n.createdAt)}</Text>
+            <Text style={themed.notifTime}>{notifTimeAgo(n.createdAt)}</Text>
           </View>
-          <Text style={styles.notifMessage} numberOfLines={2}>
+          <Text style={themed.notifMessage} numberOfLines={2}>
             {n.message}
           </Text>
         </View>
       </TouchableOpacity>
     );
-  }, [handleTap]);
+  }, [handleTap, themed]);
 
   const renderGroup = useCallback(({ item: group }: { item: (typeof groups)[number] }) => (
-    <View style={styles.group}>
-      <Text style={styles.groupLabel}>{group.label}</Text>
-      <View style={styles.groupCard}>
+    <View style={themed.group}>
+      <Text style={themed.groupLabel}>{group.label}</Text>
+      <View style={themed.groupCard}>
         {group.items.map((n, idx) =>
           renderRow(n, idx === group.items.length - 1),
         )}
@@ -213,12 +216,12 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   // ── main render ──────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       {/* Subtle gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
@@ -228,14 +231,14 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       <WebsiteTopBar />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={themed.header}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={themed.headerCenter}>
+          <Text style={themed.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
+            <View style={themed.unreadBadge}>
+              <Text style={themed.unreadBadgeText}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
             </View>
@@ -244,7 +247,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         <TouchableOpacity
           style={[
-            styles.markAllBtn,
+            themed.markAllBtn,
             (markingAll || unreadCount === 0) && styles.markAllBtnDisabled,
           ]}
           activeOpacity={0.7}
@@ -268,11 +271,11 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Preserve the last known notifications and offer retry after a network error. */}
       {!!loadError && (
-        <View style={styles.retryBanner}>
+        <View style={themed.retryBanner}>
           <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
-          <Text style={styles.retryText}>{loadError}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
-            <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={themed.retryText}>{loadError}</Text>
+          <TouchableOpacity style={themed.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
+            <Text style={themed.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -280,8 +283,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       {/* ── Content ── */}
       {loading || notifications.length === 0 ? (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={themed.scroll}
+          contentContainerStyle={themed.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -302,8 +305,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         // before) so the screen virtualizes instead of mounting every group at
         // once regardless of scroll position (mobile-audit.md P3).
         <FlatList
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={themed.scroll}
+          contentContainerStyle={themed.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -517,3 +520,29 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
+function useNotificationsThemeStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    retryBanner: [styles.retryBanner, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    retryText: [styles.retryText, { color: palette.textSecondary }],
+    retryButton: [styles.retryButton, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    retryButtonText: [styles.retryButtonText, { color: palette.textPrimary }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    markAllBtn: [styles.markAllBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    markAllText: [styles.markAllText, { color: palette.textSecondary }],
+    groupLabel: [styles.groupLabel, { color: palette.textMuted }],
+    groupCard: [styles.groupCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    notifRow: [styles.notifRow, { backgroundColor: palette.bgCard }],
+    notifRowBorder: [styles.notifRowBorder, { borderBottomColor: palette.borderDefault }],
+    notifIconWrap: [styles.notifIconWrap, { backgroundColor: palette.bgInput }],
+    notifTitle: [styles.notifTitle, { color: palette.textPrimary }],
+    notifTime: [styles.notifTime, { color: palette.textMuted }],
+    notifMessage: [styles.notifMessage, { color: palette.textSecondary }],
+    skeletonRow: [styles.skeletonRow, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+  }), [palette]);
+}
