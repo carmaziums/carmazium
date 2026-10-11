@@ -94,8 +94,10 @@ interface DamageEntry {
   description: string;
   /** Preliminary surface point; persisted in a later backend migration. */
   surfacePoint?: DamageSurfacePoint;
-  /** Local, temporary photo preview for THIS damage record — NOT a storage URL. */
+  /** Staged photo for this record; never sent to backend as a device URI. */
   localDamagePhotoUri?: string;
+  /** Permanent HTTPS storage URL tied to this damage record, not the panel. */
+  damagePhotoUrl?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -433,15 +435,16 @@ function SectionBox({ title, children, accent, action }: {
 // ─── Interactive Damage Map ───────────────────────────────────────────────────
 
 function Damage3DMapper({
-  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel, onInteractionChange,
+  records, onAdd, onRemove, onHide, onPhoto, bodyTypeLabel, onInteractionChange, onPendingChange,
 }: {
   records: DamageEntry[];
-  onAdd: (entry: DamageEntry) => void;
+  onAdd: (entry: DamageEntry, onProgress: (percent: number) => void) => Promise<void>;
   onRemove: (id: string) => void;
   onHide: (zoneId: string) => void;
   onPhoto: (zoneId: string, uri: string) => void;
   bodyTypeLabel?: string;
   onInteractionChange?: (active: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [pendingSurfacePoint, setPendingSurfacePoint] = useState<DamageSurfacePoint | null>(null);
@@ -466,9 +469,16 @@ function Damage3DMapper({
   const [dmgDesc, setDmgDesc] = useState('');
   const [pendingDamagePhotoUri, setPendingDamagePhotoUri] = useState<string | null>(null);
   const [pickingDamagePhoto, setPickingDamagePhoto] = useState(false);
+  const [uploadingDamagePhoto, setUploadingDamagePhoto] = useState(false);
+  const [damageUploadPercent, setDamageUploadPercent] = useState(0);
+  const [damageUploadError, setDamageUploadError] = useState<string | null>(null);
   const photoPickerInFlightRef = useRef(false);
   const savingDamageRef = useRef(false);
   useEffect(() => { if (!addingZone) savingDamageRef.current = false; }, [addingZone]);
+  useEffect(() => {
+    onPendingChange?.(Boolean(addingZone) || pickingDamagePhoto || uploadingDamagePhoto);
+    return () => onPendingChange?.(false);
+  }, [addingZone, pickingDamagePhoto, uploadingDamagePhoto, onPendingChange]);
   const [customZoneText, setCustomZoneText] = useState('');
 
   const resetDamageEditor = () => {
@@ -479,10 +489,12 @@ function Damage3DMapper({
     setDmgType('SCRATCH');
     setDmgDesc('');
     setPendingDamagePhotoUri(null);
+    setDamageUploadError(null);
+    setDamageUploadPercent(0);
   };
 
   async function pickDamagePhoto(source: 'camera' | 'gallery') {
-    if (photoPickerInFlightRef.current || !addingZone) return;
+    if (photoPickerInFlightRef.current || uploadingDamagePhoto || !addingZone) return;
     photoPickerInFlightRef.current = true;
     setPickingDamagePhoto(true);
     try {
@@ -500,6 +512,7 @@ function Damage3DMapper({
       // description and type untouched.
       if (!result.canceled && result.assets?.[0]?.uri) {
         setPendingDamagePhotoUri(result.assets[0].uri);
+        setDamageUploadError(null);
       }
     } catch {
       Alert.alert('Photo unavailable', 'Could not open the camera or gallery. Your damage details are still here; please try again.');
@@ -509,20 +522,30 @@ function Damage3DMapper({
     }
   }
 
-  function confirmAdd() {
+  async function confirmAdd() {
     if (!addingZone || pickingDamagePhoto || savingDamageRef.current) return;
     savingDamageRef.current = true;
-    onAdd({
-      id: `${Date.now()}`,
-      zone: addingZone,
-      type: dmgType,
-      description: dmgDesc.trim(),
-      ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
-      ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
-    });
-    // Ready for another direct tap on the same 3D vehicle without revisiting
-    // the manual panel list. Actual photo storage/persistence follows in Block 4.
-    resetDamageEditor();
+    setDamageUploadError(null);
+    setDamageUploadPercent(0);
+    setUploadingDamagePhoto(Boolean(pendingDamagePhotoUri));
+    try {
+      await onAdd({
+        id: createValuationJourneyId(),
+        zone: addingZone,
+        type: dmgType,
+        description: dmgDesc.trim(),
+        ...(pendingSurfacePoint ? { surfacePoint: pendingSurfacePoint } : {}),
+        ...(pendingDamagePhotoUri ? { localDamagePhotoUri: pendingDamagePhotoUri } : {}),
+      }, setDamageUploadPercent);
+      // Dismiss only after durable upload + record commit.
+      resetDamageEditor();
+    } catch (error: any) {
+      // Do not erase the local image, category, panel or description on failure.
+      setDamageUploadError(error?.message || 'Photo upload failed. Check your connection and retry.');
+    } finally {
+      setUploadingDamagePhoto(false);
+      savingDamageRef.current = false;
+    }
   }
 
   const markedLabels = records.map(r => r.zone);
@@ -552,13 +575,13 @@ function Damage3DMapper({
         zones={DAMAGE_ZONES_3D}
         selectedZone={addingZone}
         markedZones={markedLabels}
-        onZoneClick={selectManualZone}
+        onZoneClick={label => { if (!uploadingDamagePhoto) selectManualZone(label); }}
         inlineDamageEditor
         onSurfaceTap={({ zoneId, point }) => {
           const zone = DAMAGE_ZONES_3D.find(z => z.id === zoneId);
           // A surface hit is a panel SUGGESTION from an illustrative car;
           // the seller can change it with the manual selector in Block 2.
-          if (!zone) return;
+          if (!zone || uploadingDamagePhoto) return;
           setPendingSurfacePoint(point);
           setAddingZone(zone.label);
           setPanelChooserOpen(false);
