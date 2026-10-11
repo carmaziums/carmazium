@@ -89,6 +89,8 @@ export interface ThreeDVehicleViewerProps {
    *  are ignored when this is set. Defaults to false (the seller-editing behavior
    *  SellCarFlowScreen relies on). */
   readOnly?: boolean;
+  /** Lock the containing ScrollView only for an active viewer gesture. */
+  onInteractionChange?: (active: boolean) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -103,8 +105,21 @@ export function ThreeDVehicleViewer({
   height = 280,
   bodyTypeLabel,
   readOnly = false,
+  onInteractionChange,
 }: ThreeDVehicleViewerProps) {
   const webViewRef = useRef<WebView>(null);
+  const interactionRef = useRef(false);
+  const [modelReady, setModelReady] = useState(false);
+  const setInteracting = useCallback((active: boolean) => {
+    if (interactionRef.current === active) return;
+    interactionRef.current = active;
+    onInteractionChange?.(active);
+  }, [onInteractionChange]);
+  useEffect(() => () => { onInteractionChange?.(false); }, [onInteractionChange]);
+  const nudgeModel = useCallback((direction: 'left' | 'right' | 'up' | 'down') => {
+    if (!modelReady) return;
+    webViewRef.current?.injectJavaScript('window.nudgeVehicle(' + JSON.stringify(direction) + '); true;');
+  }, [modelReady]);
 
   // viewerHtml drives whether the WebView mounts at all; null = still loading
   const [viewerHtml, setViewerHtml] = useState<string | null>(null);
@@ -141,6 +156,7 @@ export function ThreeDVehicleViewer({
   // ── Once the WebView has loaded the HTML, inject the GLB as a data URL ───────
   const handleWebViewLoad = useCallback(async () => {
     setGlbError(false);
+    setModelReady(false);
     try {
       const base64 = await loadGlbBase64();
 
@@ -154,6 +170,7 @@ export function ThreeDVehicleViewer({
         'window.setZones(' + JSON.stringify(JSON.stringify(zonesForWire)) + '); true;'
       );
     } catch {
+      setModelReady(false);
       // Previously silent — the comment here used to claim "the viewer.html
       // error overlay handles the visible failure state," which is only
       // true if injectJavaScript above actually ran. If asset resolution
@@ -168,17 +185,29 @@ export function ThreeDVehicleViewer({
   const handleWebViewMessage = useCallback((event: { nativeEvent: { data: string } }) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
+      if (msg.type === 'orbitInteraction') {
+        setInteracting(msg.active === true);
+      } else if (msg.type === 'modelReady') {
+        setModelReady(true);
+      } else if (msg.type === 'zonePositions' && Array.isArray(msg.positions)) {
         setZoneScreenPos((prev) => {
+          let changed = false;
           const next = { ...prev };
-          for (const p of msg.positions) next[p.id] = { x: p.x, y: p.y, visible: p.visible };
-          return next;
+          for (const p of msg.positions) {
+            const old = prev[p.id];
+            if (!old || old.visible !== p.visible ||
+                Math.abs(old.x - p.x) > 0.12 || Math.abs(old.y - p.y) > 0.12) {
+              next[p.id] = { x: p.x, y: p.y, visible: p.visible };
+              changed = true;
+            }
+          }
+          return changed ? next : prev;
         });
       }
     } catch {
       // Ignore malformed messages
     }
-  }, []);
+  }, [setInteracting]);
 
   // ── Zone actions: mark / hide / photo ────────────────────────────────────────
 
@@ -214,7 +243,13 @@ export function ThreeDVehicleViewer({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View>
+      <View
+        style={[styles.wrap, { height }]}
+        onTouchStart={() => setInteracting(true)}
+        onTouchEnd={() => setInteracting(false)}
+        onTouchCancel={() => setInteracting(false)}
+      >
 
       {/* 3D viewer — only mounts once the HTML string is ready */}
       {viewerHtml ? (
@@ -224,6 +259,8 @@ export function ThreeDVehicleViewer({
           onLoad={handleWebViewLoad}
           onMessage={handleWebViewMessage}
           scrollEnabled={false}
+          nestedScrollEnabled={false}
+          overScrollMode="never"
           javaScriptEnabled
           originWhitelist={['*']}
           style={StyleSheet.absoluteFillObject}
@@ -368,6 +405,29 @@ export function ThreeDVehicleViewer({
         </Text>
       </View>
 
+      </View>
+      {/* Explicit, accessible controls are reliable when touch drag competes
+          with the native page scroller. They sit OUTSIDE the 3D viewport so
+          they never obstruct damage hotspots or projected coordinates. */}
+      <View style={styles.rotateToolbar} accessibilityLabel="Vehicle model rotation controls">
+        <Text style={styles.rotateLabel}>Rotate car</Text>
+        {([
+          ['left', 'arrow-back'], ['right', 'arrow-forward'],
+          ['up', 'arrow-up'], ['down', 'arrow-down'],
+        ] as const).map(([direction, icon]) => (
+          <TouchableOpacity
+            key={direction}
+            style={[styles.rotateButton, !modelReady && styles.rotateButtonDisabled]}
+            onPress={() => nudgeModel(direction)}
+            disabled={!modelReady}
+            accessibilityRole="button"
+            accessibilityLabel={direction === 'up' || direction === 'down' ? `Tilt car ${direction}` : `Rotate car ${direction}`}
+            activeOpacity={0.7}
+          >
+            <Ionicons name={icon} size={19} color={Colors.white} />
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 }
@@ -382,6 +442,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+
+  rotateToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.deepNearBlack,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  rotateLabel: {
+    color: Colors.textSecondary,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.size12,
+    marginRight: 4,
+  },
+  rotateButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: Colors.whiteAlpha12,
+    backgroundColor: Colors.whiteAlpha08,
+  },
+  rotateButtonDisabled: { opacity: 0.4 },
 
   // Loading / error states
   loading: {
