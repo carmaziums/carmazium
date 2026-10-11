@@ -33,7 +33,8 @@ test('web dealer bottom navigation and native route labels have the same informa
     // consistent ten-item marketplace hierarchy for every account role.
   }
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
-  assert.ok(tabs.includes("openDrawer();"));
+  assert.ok(tabs.includes("const GatedDealerMoreTab = withDealerGate(DealerMoreScreen);"));
+  assert.ok(!tabs.includes("openDrawer();"));
   assert.ok(drawer.includes('EXPLORE CARMAZIUM'));
 });
 
@@ -115,4 +116,37 @@ test('native header exposes one labelled Menu, with distinct avatar Settings and
   assert.match(bar, /<HamburgerButton websiteStyle \/>/);
   // The dealer workspace tab policy from PR #534 is intentionally untouched.
   assert.match(tabs, /if \(!dealerMode\) return !route\.name\.startsWith\('Dealer'\) && route\.name !== 'Live';/);
+});
+
+test('dealer More cannot act as the shared menu or hide the bottom bar', () => {
+  const tools = app('screens/main/DealerMoreScreen.tsx');
+  assert.ok(tabs.includes('<Tab.Screen name="DealerMore" component={GatedDealerMoreTab} />'));
+  assert.ok(tabs.includes("route.name === 'DealerMore' ? 'Opens dealer business tools, not the main Menu'"));
+  assert.ok(!tabs.includes("isDrawerOpen"));
+  assert.ok(!tabs.includes("openDrawer"));
+  assert.ok(!tabs.includes("iconName={isMore"));
+  for (const key of ['MANAGE_OFFERS', 'VIEW_PURCHASES', 'VIEW_ANALYTICS', 'MANAGE_TEAM']) {
+    assert.ok(tools.includes(`permission: '${key}'`), key);
+  }
+  assert.ok(tools.includes('EXTRA_DEALER_TOOLS.filter(tool => hasPermission(tool.permission))'));
+  assert.ok(tools.includes('useDealerAccess(dealerMode)'));
+  assert.ok(tools.includes('if') || tools.includes('!dealerMode'));
+  assert.ok(tools.includes('getBottomTabBarHeight(fontScale, insets.bottom) + 24'));
+  assert.ok(!tools.includes("label: 'Buy Cars'"));
+  assert.ok(!tools.includes("label: 'Sell Cars'"));
+});
+
+test('shared drawer does not leave a dealer sheet mounted on top of closed navigation', () => {
+  assert.ok(drawer.includes('<Modal'));
+  assert.ok(drawer.includes('visible={isOpen}'));
+  assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
+  assert.ok(drawer.includes('onPress={closeDrawer}'));
+  assert.ok(drawer.includes('drawerWidth = Math.min(windowWidth * 0.82, 320)'));
+  assert.ok(!drawer.includes('dealerOverlay'));
+  assert.ok(!drawer.includes('dealerBottomSheet'));
+  assert.ok(!drawer.includes('translateY'));
+  assert.ok(!drawer.includes('sheetHeight'));
+  assert.ok(!drawer.includes('BackHandler'));
+  assert.ok(!drawer.includes('dealerTabBarHeight'));
+  assert.ok(tabs.includes("backgroundColor: '#243047'"));
 });
