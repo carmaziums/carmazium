@@ -467,6 +467,8 @@ function Damage3DMapper({
   const [pendingDamagePhotoUri, setPendingDamagePhotoUri] = useState<string | null>(null);
   const [pickingDamagePhoto, setPickingDamagePhoto] = useState(false);
   const photoPickerInFlightRef = useRef(false);
+  const savingDamageRef = useRef(false);
+  useEffect(() => { if (!addingZone) savingDamageRef.current = false; }, [addingZone]);
   const [customZoneText, setCustomZoneText] = useState('');
 
   const resetDamageEditor = () => {
@@ -508,7 +510,8 @@ function Damage3DMapper({
   }
 
   function confirmAdd() {
-    if (!addingZone) return;
+    if (!addingZone || pickingDamagePhoto || savingDamageRef.current) return;
+    savingDamageRef.current = true;
     onAdd({
       id: `${Date.now()}`,
       zone: addingZone,
