@@ -28,6 +28,19 @@ on:
       - 'scripts/test-mazium-consent-filter-parity-block9.test.mjs'
       - 'scripts/check-customer-app-release-acceptance.mjs'
       - 'scripts/test-customer-app-release-acceptance.test.mjs'
+      - 'scripts/test-native-dealer-menu-visibility.test.mjs'
+      - 'scripts/test-native-theme-website-tokens-block1.test.mjs'
+      - 'scripts/test-native-theme-persistence-block2.test.mjs'
+      - 'scripts/test-native-theme-navigation-block3.test.mjs'
+      - 'scripts/test-native-theme-shared-controls-block4.test.mjs'
+      - 'scripts/test-native-theme-discovery-block5.test.mjs'
+      - 'scripts/test-native-theme-sell-detail-offers-block6.test.mjs'
+      - 'scripts/test-native-theme-dealer-workspace-block7.test.mjs'
+      - 'scripts/test-native-theme-messages-mazium-settings-block8.test.mjs'
+      - 'scripts/test-native-theme-onboarding-kyc-provider-block9.test.mjs'
+      - 'scripts/audit-native-theme-qa-block10.mjs'
+      - 'scripts/test-native-theme-qa-block10.test.mjs'
+      - 'scripts/test-native-theme-messaging-settings-block8.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
       - 'package.json'
@@ -215,6 +228,30 @@ jobs:
         run: node --test scripts/test-native-app-audit-block10.test.mjs
       - name: Audit dealer app and website navigation, header and design parity
         run: node --test scripts/test-native-website-ui-parity.test.mjs
+      - name: Regression-check native dealer menu icon and full-window sheet
+        run: node --test scripts/test-native-dealer-menu-visibility.test.mjs
+      - name: Assert native Light/Dark semantic tokens exactly match website
+        run: node --test scripts/test-native-theme-website-tokens-block1.test.mjs
+      - name: Validate persistent native Light/Dark/System preference and startup gating
+        run: node --test scripts/test-native-theme-persistence-block2.test.mjs
+      - name: Check native navigation chrome light/dark and dealer menu contracts
+        run: node --test scripts/test-native-theme-navigation-block3.test.mjs
+      - name: Verify shared theme-aware buttons, cards, fields, sheets and auction filters
+        run: node --test scripts/test-native-theme-shared-controls-block4.test.mjs
+      - name: Verify discovery, Search filters, vehicle cards and Live Auction light/dark source parity
+        run: node --test scripts/test-native-theme-discovery-block5.test.mjs
+      - name: Check native sell wizard, vehicle details and buyer/seller offer theme contracts
+        run: node --test scripts/test-native-theme-sell-detail-offers-block6.test.mjs
+      - name: Check dealer CRM, inventory, team, analytics and account theme parity
+        run: node --test scripts/test-native-theme-dealer-workspace-block7.test.mjs
+      - name: Verify messaging, MaziuM AI consent and account settings theme parity
+        run: node --test scripts/test-native-theme-messages-mazium-settings-block8.test.mjs
+      - name: Validate native login, KYC, service providers and purchase theme contracts
+        run: node --test scripts/test-native-theme-onboarding-kyc-provider-block9.test.mjs
+      - name: Block 10 — audit private QA, physical evidence gaps and public release NO-GO
+        run: node --test scripts/test-native-theme-qa-block10.test.mjs
+      - name: Verify MaziuM, messaging safety, account and notification theme behaviour
+        run: node --test scripts/test-native-theme-messaging-settings-block8.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
         run: node --test scripts/test-native-visual-parity-block2.test.mjs
       - name: Audit Block 3 dealer Home website KPIs and reporting range

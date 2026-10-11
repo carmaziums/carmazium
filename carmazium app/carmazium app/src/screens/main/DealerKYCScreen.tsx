@@ -20,6 +20,7 @@ import { convertAndCompress } from '../../lib/storageHelper';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -53,29 +54,33 @@ const FormField: React.FC<FormFieldProps> = ({
   keyboardType = 'default',
   multiline = false,
   error,
-}) => (
+}) => {
+  const { palette } = useNativeAppearance();
+  return (
   <View style={formFieldStyles.wrap}>
-    <Text style={formFieldStyles.label}>
+    <Text style={[formFieldStyles.label, { color: palette.textSecondary }]}>
       {label.toUpperCase()}
       {optional ? ' (OPTIONAL)' : ' *'}
     </Text>
     <TextInput
       style={[
         formFieldStyles.input,
+        { backgroundColor: palette.bgInput, borderColor: palette.borderDefault, color: palette.textPrimary },
         multiline ? formFieldStyles.inputMultiline : formFieldStyles.inputSingleLine,
         error ? { borderColor: Colors.error } : null,
       ]}
       value={value}
       onChangeText={onChange}
       placeholder={placeholder}
-      placeholderTextColor={Colors.textMuted}
+      placeholderTextColor={palette.textMuted}
       keyboardType={keyboardType}
       multiline={multiline}
       autoCapitalize="none"
     />
     {error ? <Text style={formFieldStyles.errorText}>{error}</Text> : null}
   </View>
-);
+  );
+};
 
 const formFieldStyles = StyleSheet.create({
   wrap: {
@@ -118,55 +123,64 @@ const formFieldStyles = StyleSheet.create({
 
 // ─── Section eyebrow label ────────────────────────────────────────────────────
 
-const SectionLabel: React.FC<{ title: string }> = ({ title }) => (
-  <Text style={styles.sectionEyebrow}>{title}</Text>
-);
+const SectionLabel: React.FC<{ title: string }> = ({ title }) => {
+  const themed = useKycThemeStyles();
+  return <Text style={themed.sectionEyebrow}>{title}</Text>;
+};
 
 // ─── Pending state view ───────────────────────────────────────────────────────
 
-const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => (
-  <View style={styles.pendingContainer}>
-    <View style={styles.pendingIconCircle}>
+const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => {
+  const themed = useKycThemeStyles();
+  return (
+  <View style={themed.pendingContainer}>
+    <View style={themed.pendingIconCircle}>
       <Ionicons name="shield-outline" size={36} color={Colors.warning} />
     </View>
-    <Text style={styles.pendingHeading}>Verification in progress</Text>
-    <Text style={styles.pendingBody}>
+    <Text style={themed.pendingHeading}>Verification in progress</Text>
+    <Text style={themed.pendingBody}>
       Your documents are under review. We'll notify you once verified.
     </Text>
-    <View style={styles.pendingInfoRow}>
+    <View style={themed.pendingInfoRow}>
       <Ionicons name="time-outline" size={14} color={Colors.warning} />
-      <Text style={styles.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
+      <Text style={themed.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
     </View>
     {onEdit ? (
       <PrimaryCTA label="CHANGE BUSINESS TYPE" onPress={onEdit} style={{ width: '100%', marginTop: 20 }} />
     ) : null}
   </View>
-);
+  );
+};
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
-const KycSkeleton: React.FC = () => (
+const KycSkeleton: React.FC = () => {
+  const { palette } = useNativeAppearance();
+  return (
   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
     {/* status + info card area */}
-    <View style={{ marginBottom: 20, height: 60, borderRadius: 14, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
-    <View style={{ marginBottom: 28, height: 80, borderRadius: 14, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+    <View style={{ marginBottom: 20, height: 60, borderRadius: 14, backgroundColor: palette.bgInput, opacity: 0.5 }} />
+    <View style={{ marginBottom: 28, height: 80, borderRadius: 14, backgroundColor: palette.bgInput, opacity: 0.5 }} />
     {/* section label */}
-    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: Colors.bgTertiary, opacity: 0.5, marginBottom: 16 }} />
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: palette.bgInput, opacity: 0.5, marginBottom: 16 }} />
     {/* fields */}
     {[52, 52, 52, 80].map((h, i) => (
-      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: palette.bgInput, opacity: 0.5 }} />
     ))}
     {/* section label */}
-    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: Colors.bgTertiary, opacity: 0.5, marginBottom: 16 }} />
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: palette.bgInput, opacity: 0.5, marginBottom: 16 }} />
     {[52, 52].map((h, i) => (
-      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: palette.bgInput, opacity: 0.5 }} />
     ))}
   </View>
-);
+  );
+};
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = useKycThemeStyles();
   const insets = useSafeAreaInsets();
   const reverifyRequested = route?.params?.reverify === true;
   const [businessType, setBusinessType] = useState<BusinessType>(
@@ -486,18 +500,18 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   // ── Loading state ───────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={themed.container}>
+        <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
         <LinearGradient
-          colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+          colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', palette.bgBody]}
           style={StyleSheet.absoluteFillObject}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0.5 }}
         />
         <View style={{ height: insets.top }} />
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-          <Text style={styles.headerTitle}>Business Verification</Text>
+        <View style={themed.header}>
+          <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <Text style={themed.headerTitle}>Business Verification</Text>
           <HamburgerButton />
         </View>
         <KycSkeleton />
@@ -555,12 +569,12 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   const bannerConfig = getBannerConfig();
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
 
       {/* Background gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', palette.bgBody]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -570,10 +584,10 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={themed.header}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={20} color={palette.textPrimary} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Business Verification</Text>
+        <Text style={themed.headerTitle}>Business Verification</Text>
 
         <HamburgerButton />
       </View>
@@ -582,14 +596,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       {isPaymentOutstanding ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, justifyContent: 'center' }]}
+          contentContainerStyle={[themed.scrollContent, { flexGrow: 1, justifyContent: 'center' }]}
         >
-          <View style={styles.paymentOutstandingContainer}>
-            <View style={styles.paymentOutstandingIconCircle}>
+          <View style={themed.paymentOutstandingContainer}>
+            <View style={themed.paymentOutstandingIconCircle}>
               <Ionicons name="lock-closed-outline" size={36} color={Colors.accent} />
             </View>
-            <Text style={styles.pendingHeading}>Almost there — payment needed</Text>
-            <Text style={styles.pendingBody}>
+            <Text style={themed.pendingHeading}>Almost there — payment needed</Text>
+            <Text style={themed.pendingBody}>
               Your details are saved — just complete the £1 verification payment. It looks like
               your last attempt didn't go through (card declined, or the checkout page was closed
               before it finished). No need to re-enter anything.
@@ -613,7 +627,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       ) : isPending && !editingExisting ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={themed.scrollContent}
         >
           {/* Status banner */}
           {bannerConfig && (
@@ -629,7 +643,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 color={bannerConfig.text}
                 style={{ marginRight: 10 }}
               />
-              <Text style={[styles.statusBannerText, { color: bannerConfig.text }]}>
+              <Text style={[themed.statusBannerText, { color: bannerConfig.text }]}>
                 {bannerConfig.message}
               </Text>
             </View>
@@ -646,7 +660,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
         <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={themed.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             {/* STATUS BANNER (approved / rejected) */}
@@ -663,21 +677,21 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   color={bannerConfig.text}
                   style={{ marginRight: 10 }}
                 />
-                <Text style={[styles.statusBannerText, { color: bannerConfig.text }]}>
+                <Text style={[themed.statusBannerText, { color: bannerConfig.text }]}>
                   {bannerConfig.message}
                 </Text>
               </View>
             )}
 
             {isApproved && reverifyRequested ? (
-              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoIconWrap}>
+              <View style={[themed.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={themed.infoCardHeader}>
+                  <View style={themed.infoIconWrap}>
                     <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoCardTitle}>Re-verify legal business type</Text>
-                    <Text style={styles.infoCardDesc}>
+                    <Text style={themed.infoCardTitle}>Re-verify legal business type</Text>
+                    <Text style={themed.infoCardDesc}>
                       Your account stays verified until you submit a different legal business type.
                       After submission, verification becomes Pending while CarMazium reviews the new identity.
                       Your existing £1 verification payment is retained.
@@ -688,14 +702,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             ) : null}
 
             {editingExisting && isPending ? (
-              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoIconWrap}>
+              <View style={[themed.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={themed.infoCardHeader}>
+                  <View style={themed.infoIconWrap}>
                     <Ionicons name="create-outline" size={20} color={Colors.warning} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoCardTitle}>Editing application under review</Text>
-                    <Text style={styles.infoCardDesc}>
+                    <Text style={themed.infoCardTitle}>Editing application under review</Text>
+                    <Text style={themed.infoCardDesc}>
                       Submit the corrected legal business type to restart review. Your £1 payment remains valid.
                     </Text>
                   </View>
@@ -704,24 +718,24 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             ) : null}
 
             {/* INFO CARD */}
-            <View style={styles.infoCard}>
+            <View style={themed.infoCard}>
               <LinearGradient
                 colors={[Colors.infoBlueAlpha08, 'rgba(59,130,246,0.02)']}
                 style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
-              <View style={styles.infoCardHeader}>
-                <View style={styles.infoIconWrap}>
+              <View style={themed.infoCardHeader}>
+                <View style={themed.infoIconWrap}>
                   <Ionicons name="shield-outline" size={20} color={Colors.infoBlue} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoCardTitle}>Business KYC Verification</Text>
-                  <Text style={styles.infoCardDesc}>
+                  <Text style={themed.infoCardTitle}>Business KYC Verification</Text>
+                  <Text style={themed.infoCardDesc}>
                     Complete this form to get your dealership verified. Approval unlocks full
                     platform features.
                   </Text>
-                  <Text style={styles.infoCardAmber}>
+                  <Text style={themed.infoCardAmber}>
                     A £1 card payment is required to confirm your application.
                   </Text>
                 </View>
@@ -730,7 +744,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
             {/* ── BUSINESS TYPE ─────────────────────────────────────────── */}
             <SectionLabel title="BUSINESS TYPE" />
-            <View style={styles.businessTypeRow}>
+            <View style={themed.businessTypeRow}>
               {([
                 { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
                 { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
@@ -739,7 +753,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    style={[themed.businessTypeCard, selected && styles.businessTypeCardSelected]}
                     onPress={() => {
                       setBusinessType(option.value);
                       setFieldErrors({});
@@ -756,21 +770,21 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
                   >
-                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
-                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    <View style={[themed.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
+                      {selected ? <View style={themed.businessTypeRadioDot} /> : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>
+                      <Text style={[themed.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>
                         {option.title}
                       </Text>
-                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                      <Text style={themed.businessTypeHint}>{option.hint}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
             {isSoleTrader ? (
-              <Text style={styles.businessTypeHelp}>
+              <Text style={themed.businessTypeHelp}>
                 Sole traders are verified using the owner&apos;s photo ID and proof of address. Companies House details are not required.
               </Text>
             ) : null}
@@ -889,24 +903,24 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   { field: 'directorIdProof', label: 'Director ID / Passport Photo', type: 'image' as const },
                 ]
             ).map(({ field, label, type }) => (
-              <View key={field} style={styles.docField}>
-                <Text style={styles.docFieldLabel}>{label.toUpperCase()}</Text>
+              <View key={field} style={themed.docField}>
+                <Text style={themed.docFieldLabel}>{label.toUpperCase()}</Text>
                 {docUploading[field] ? (
-                  <View style={styles.docUploadingRow}>
+                  <View style={themed.docUploadingRow}>
                     <ActivityIndicator color={Colors.accent} size="small" />
-                    <Text style={styles.docUploadingText}>Uploading…</Text>
+                    <Text style={themed.docUploadingText}>Uploading…</Text>
                   </View>
                 ) : docUrls[field] ? (
-                  <View style={styles.docUploadedRow}>
+                  <View style={themed.docUploadedRow}>
                     <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-                    <Text style={styles.docUploadedText} numberOfLines={1}>Uploaded</Text>
+                    <Text style={themed.docUploadedText} numberOfLines={1}>Uploaded</Text>
                     <TouchableOpacity onPress={() => handleDocumentCapture(field, type)} activeOpacity={0.7}>
-                      <Text style={styles.docReplaceLink}>Replace</Text>
+                      <Text style={themed.docReplaceLink}>Replace</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={styles.docTapArea}
+                    style={themed.docTapArea}
                     onPress={() => handleDocumentCapture(field, type)}
                     activeOpacity={0.7}
                   >
@@ -915,7 +929,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                       size={16}
                       color={Colors.textMuted}
                     />
-                    <Text style={styles.docTapText}>
+                    <Text style={themed.docTapText}>
                       Tap to upload {type === 'pdf' ? 'PDF or image' : 'photo'}
                     </Text>
                   </TouchableOpacity>
@@ -927,14 +941,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             <SectionLabel title="VERIFICATION FEE" />
 
             {alreadyPaid ? (
-              <View style={[styles.paymentInfoBox, styles.paymentInfoBoxPaid]}>
+              <View style={[themed.paymentInfoBox, styles.paymentInfoBoxPaid]}>
                 <Ionicons
                   name="checkmark-circle"
                   size={16}
                   color={Colors.success}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 />
-                <Text style={[styles.paymentInfoText, { color: Colors.success }]}>
+                <Text style={[themed.paymentInfoText, { color: Colors.success }]}>
                   Verification fee paid
                   {paidAt
                     ? ` on ${new Date(paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -943,13 +957,13 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 </Text>
               </View>
             ) : (
-              <View style={styles.paymentInfoBox}>
+              <View style={themed.paymentInfoBox}>
                 <Ionicons name="information-circle-outline"
                   size={16}
                   color={Colors.warning}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 accessibilityElementsHidden importantForAccessibility="no" />
-                <Text style={styles.paymentInfoText}>
+                <Text style={themed.paymentInfoText}>
                   A non-refundable £1.00 card payment is required to confirm your application — charged once per dealer account via secure Stripe checkout after you submit below.
                 </Text>
               </View>
@@ -969,7 +983,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             )}
 
             {/* ── SUBMIT ──────────────────────────────────────────────────── */}
-            <View style={styles.submitWrapper}>
+            <View style={themed.submitWrapper}>
               {isApproved && !reverifyRequested ? (
                 <PrimaryCTA
                   label="APPLICATION APPROVED"
@@ -1357,3 +1371,38 @@ const styles = StyleSheet.create({
     color: Colors.warning,
   },
 });
+
+function useKycThemeStyles() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    statusBanner: [styles.statusBanner, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    statusBannerText: [styles.statusBannerText, { color: palette.textSecondary }],
+    infoCard: [styles.infoCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    infoCardTitle: [styles.infoCardTitle, { color: palette.textPrimary }],
+    infoCardDesc: [styles.infoCardDesc, { color: palette.textSecondary }],
+    sectionEyebrow: [styles.sectionEyebrow, { color: palette.textPrimary }],
+    businessTypeCard: [styles.businessTypeCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    businessTypeTitle: [styles.businessTypeTitle, { color: palette.textPrimary }],
+    businessTypeHint: [styles.businessTypeHint, { color: palette.textMuted }],
+    businessTypeHelp: [styles.businessTypeHelp, { color: palette.textSecondary }],
+    paymentInfoBox: [styles.paymentInfoBox, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    paymentInfoText: [styles.paymentInfoText, { color: palette.textSecondary }],
+    docField: [styles.docField, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    docFieldLabel: [styles.docFieldLabel, { color: palette.textSecondary }],
+    docTapArea: [styles.docTapArea, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    docTapText: [styles.docTapText, { color: palette.textPrimary }],
+    docUploadingText: [styles.docUploadingText, { color: palette.textSecondary }],
+    docUploadedText: [styles.docUploadedText, { color: palette.textPrimary }],
+    pendingContainer: [styles.pendingContainer, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    paymentOutstandingContainer: [styles.paymentOutstandingContainer, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    pendingHeading: [styles.pendingHeading, { color: palette.textPrimary }],
+    pendingBody: [styles.pendingBody, { color: palette.textSecondary }],
+    pendingInfoRow: [styles.pendingInfoRow, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    pendingInfoText: [styles.pendingInfoText, { color: palette.textMuted }],
+  }), [palette]);
+}

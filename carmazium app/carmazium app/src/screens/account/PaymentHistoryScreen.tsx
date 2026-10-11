@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -109,6 +110,8 @@ const FILTERS: { key: 'ALL' | TransactionStatus; label: string }[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
+  const themed = usePaymentHistoryScreenPalette();
   const insets = useSafeAreaInsets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,12 +149,12 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyWrap}>
+    <View style={themed.emptyWrap}>
       <Ionicons name="receipt-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>
+      <Text style={themed.emptyTitle}>
         {filter === 'ALL' ? 'No transactions yet' : `No ${STATUS_STYLE[filter as TransactionStatus]?.label.toLowerCase()} transactions`}
       </Text>
-      <Text style={styles.emptySub}>Your payments, deposits and fees will show up here.</Text>
+      <Text style={themed.emptySub}>Your payments, deposits and fees will show up here.</Text>
     </View>
   );
 
@@ -160,30 +163,30 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const thumbnail = t.listing?.images?.[0];
 
     return (
-      <View style={styles.txCard}>
+      <View style={themed.txCard}>
         {thumbnail ? (
-          <Image source={{ uri: thumbnail }} style={styles.txThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <Image source={{ uri: thumbnail }} style={themed.txThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
-          <View style={[styles.txThumb, styles.txIconWrap]}>
+          <View style={[themed.txThumb, styles.txIconWrap]}>
             <Ionicons name={TYPE_ICONS[t.type]} size={18} color={Colors.textSecondary} />
           </View>
         )}
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.txTitle} numberOfLines={1}>
+          <Text style={themed.txTitle} numberOfLines={1}>
             {t.listing?.title || t.description || TYPE_LABELS[t.type]}
           </Text>
-          <View style={styles.txMetaRow}>
-            <Text style={styles.txMeta}>{TYPE_LABELS[t.type]}</Text>
-            <Text style={styles.txMetaDot}>·</Text>
-            <Text style={styles.txMeta}>{formatDate(t.createdAt)}</Text>
+          <View style={themed.txMetaRow}>
+            <Text style={themed.txMeta}>{TYPE_LABELS[t.type]}</Text>
+            <Text style={themed.txMetaDot}>·</Text>
+            <Text style={themed.txMeta}>{formatDate(t.createdAt)}</Text>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.txAmount, t.type === 'REFUND' && { color: Colors.success }]}>
+          <Text style={[themed.txAmount, t.type === 'REFUND' && { color: Colors.success }]}>
             {t.type === 'REFUND' ? '+' : ''}{formatPrice(t.amount)}
           </Text>
-          <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.statusPillText, { color: statusStyle.color }]}>{statusStyle.label}</Text>
+          <View style={[themed.statusPill, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[themed.statusPillText, { color: statusStyle.color }]}>{statusStyle.label}</Text>
           </View>
         </View>
       </View>
@@ -191,8 +194,8 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
   }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={themed.container}>
+      <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -202,34 +205,34 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Payment History</Text>
+      <View style={themed.header}>
+        <IconButton style={themed.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <Text style={themed.headerTitle}>Payment History</Text>
         <View style={{ width: 36 }} />
       </View>
 
       {!loading && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
-          <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
-          <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
+        <View style={themed.summaryCard}>
+          <Text style={themed.summaryLabel}>TOTAL SPENT</Text>
+          <Text style={themed.summaryValue}>{formatPrice(totalSpent)}</Text>
+          <Text style={themed.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
         </View>
       )}
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
+        contentContainerStyle={themed.filterRow}
         style={{ flexGrow: 0 }}
       >
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
-            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+            style={[themed.filterChip, filter === f.key && styles.filterChipActive]}
             activeOpacity={0.8}
             onPress={() => setFilter(f.key)}
           >
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+            <Text style={[themed.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -423,3 +426,27 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+function usePaymentHistoryScreenPalette() {
+  const { palette } = useNativeAppearance();
+  return React.useMemo(() => ({
+    ...styles,
+    container: [styles.container, { backgroundColor: palette.bgBody }],
+    header: [styles.header, { backgroundColor: palette.bgHeader, borderBottomColor: palette.borderDefault }],
+    backBtn: [styles.backBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    headerTitle: [styles.headerTitle, { color: palette.textPrimary }],
+    summaryCard: [styles.summaryCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    summaryLabel: [styles.summaryLabel, { color: palette.textSecondary }],
+    summaryValue: [styles.summaryValue, { color: palette.textPrimary }],
+    summarySub: [styles.summarySub, { color: palette.textMuted }],
+    filterChip: [styles.filterChip, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
+    filterChipText: [styles.filterChipText, { color: palette.textSecondary }],
+    txCard: [styles.txCard, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
+    txIconWrap: [styles.txIconWrap, { backgroundColor: palette.bgInput }],
+    txTitle: [styles.txTitle, { color: palette.textPrimary }],
+    txMeta: [styles.txMeta, { color: palette.textMuted }],
+    txAmount: [styles.txAmount, { color: palette.textPrimary }],
+    emptyTitle: [styles.emptyTitle, { color: palette.textPrimary }],
+    emptySub: [styles.emptySub, { color: palette.textSecondary }],
+  }), [palette]);
+}

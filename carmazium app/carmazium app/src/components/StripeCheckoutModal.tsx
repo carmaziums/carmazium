@@ -12,6 +12,7 @@ import { WebView, WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import {FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
@@ -41,6 +42,7 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
   onCancel,
   onClose,
 }) => {
+  const { palette, resolvedAppearance } = useNativeAppearance();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
@@ -67,12 +69,12 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[styles.container, { backgroundColor: palette.bgBody }]}>
+        <StatusBar barStyle={resolvedAppearance === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor={palette.bgBody} />
         <View style={{ height: insets.top }} />
-        <View style={styles.header}>
-          <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
-          <Text style={styles.title}>{title}</Text>
+        <View style={[styles.header, { borderBottomColor: palette.borderDefault }]}>
+          <IconButton style={[styles.closeBtn, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }]} icon={<Ionicons name="close" size={20} color={palette.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+          <Text style={[styles.title, { color: palette.textPrimary }]}>{title}</Text>
           <View style={styles.closeBtn} />
         </View>
 
