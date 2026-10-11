@@ -10,6 +10,7 @@ import {
     UseGuards,
     UnauthorizedException,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -21,6 +22,8 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { ABSOLUTE_SESSION_LIFETIME_MS, remainingSessionLifetimeMs, sessionIdFromVerifiedJwt } from './session-lifetime';
 
+// Per-IP limits (global default 100/min is far too generous for credential endpoints).
+@UseGuards(ThrottlerGuard)
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -31,6 +34,7 @@ export class AuthController {
      * Creates the user and auto-logs them in by setting the session.
      */
     @Post('register')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @ApiOperation({ summary: 'Register a new user account' })
     @ApiResponse({ status: 201, description: 'Account created and logged in' })
     @ApiResponse({ status: 409, description: 'Email already in use' })
@@ -61,6 +65,7 @@ export class AuthController {
      * Creates a server-side session and sets a cookie.
      */
     @Post('login')
+    @Throttle({ default: { limit: 10, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Log in with email and password' })
     @ApiResponse({ status: 200, description: 'Logged in successfully' })
@@ -135,6 +140,7 @@ export class AuthController {
      * subsequent requests are authenticated via the session cookie.
      */
     @Post('supabase-session')
+    @Throttle({ default: { limit: 30, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Create backend session from Supabase JWT' })
     @ApiResponse({ status: 200, description: 'Session created' })
@@ -224,6 +230,7 @@ export class AuthController {
      * Supabase's rate-limited built-in one). Safe to call multiple times.
      */
     @Post('send-verification')
+    @Throttle({ default: { limit: 3, ttl: 60_000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Send verification email' })
     @ApiResponse({ status: 200, description: 'Verification email sent' })

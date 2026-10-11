@@ -57,9 +57,16 @@ async function bootstrap() {
     process.exit(1);
   }
 
+  // Refuse to boot with the public dev secret in production: anyone could
+  // forge a valid session cookie signature.
   if (isProduction && !process.env.SESSION_SECRET) {
-    console.warn('SESSION_SECRET is not set in production — session cookies may be insecure');
+    console.error('❌ SESSION_SECRET is not set in production — refusing to start');
+    process.exit(1);
   }
+
+  // Security headers first, so they are present on every response including
+  // ones produced by the session/hydration middleware below.
+  app.use(helmet());
 
   app.use(
     session({
@@ -67,6 +74,7 @@ async function bootstrap() {
         conString: process.env.DATABASE_URL,
         tableName: 'sessions',
         createTableIfMissing: true,
+        pruneSessionInterval: 60 * 60, // purge expired rows hourly (seconds)
       }),
       name: 'sid',
       secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
@@ -119,19 +127,21 @@ async function bootstrap() {
         // REMAINING absolute lifetime on every request, never another 24h.
         req.session.cookie.maxAge = remaining;
       }
-      if (req.session.cachedUser) {
-        // Use the user object cached in the session store — no extra DB query needed
-        req.user = req.session.cachedUser;
-      } else {
-        // Fallback for existing sessions that pre-date this optimisation
-        const user = await authService.validateSession(req.session.userId);
+      try {
+        // Serves the cached user while it is fresh (30 s), otherwise re-reads
+        // the database so bans, role changes and KYC approvals reach live sessions.
+        const user = await authService.resolveSessionUser(req.session);
         if (user) {
           req.user = user;
-          req.session.cachedUser = user;
         } else {
-          // Session references a deleted/invalid user — clear it
+          // Deleted or banned user - end the session; the request continues
+          // anonymous and guarded routes answer 401.
           req.session.destroy(() => { });
         }
+      } catch (err) {
+        // A failed lookup must never leave the request hanging. Continue
+        // anonymous: guards will reject, public routes still work.
+        console.error('Session hydration failed:', (err as Error)?.message);
       }
     }
     next();
@@ -154,8 +164,6 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   // Security: Helmet & Global Exception Filter
   // ---------------------------------------------------------------------------
-  app.use(helmet());
-
   const { httpAdapter } = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(app.get(HttpAdapterHost)));
 

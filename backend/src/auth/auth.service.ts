@@ -14,8 +14,26 @@ import * as bcrypt from 'bcrypt';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { isSelfServiceUserRole } from '../core/account-roles';
 import { getAccountOnboardingGuide } from '../core/account-onboarding';
+import { verifySupabaseJwt } from '../core/supabase-jwt';
 
 const BCRYPT_ROUNDS = 12;
+
+/**
+ * How long a session may serve its cached user before the database is asked
+ * again. Bounds how long a ban, role change or KYC approval can lag behind
+ * reality for a signed-in user.
+ */
+export const SESSION_USER_TTL_MS = 30_000;
+
+/**
+ * Drop fields that must never sit in the session store or an /auth response:
+ * the password hash and the brute-force counters.
+ */
+function stripSecrets<T extends Record<string, any>>(user: T): Omit<T, 'passwordHash' | 'loginAttempts' | 'lockoutUntil'> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash, loginAttempts, lockoutUntil, ...rest } = user;
+    return rest;
+}
 
 
 
@@ -23,6 +41,9 @@ const BCRYPT_ROUNDS = 12;
 export class AuthService {
     private readonly logger = new Logger(AuthService.name);
     private supabase: SupabaseClient;
+    private supabaseUrl: string | undefined;
+    /** token -> resolved user, so Bearer-only clients don't hit the DB on every call. */
+    private tokenUserCache = new Map<string, { user: Record<string, any>; until: number }>();
 
     private async processPendingInvitations(user: any) {
         try {
@@ -77,6 +98,7 @@ export class AuthService {
             this.logger.warn('SUPABASE_URL not set — Supabase token verification will fail. See backend/.env.example.');
         }
 
+        this.supabaseUrl = supabaseUrl ? validatedUrl.replace(/\/+$/, '') : undefined;
         this.supabase = createClient(validatedUrl, supabaseKey || 'placeholder-key');
     }
 
@@ -149,7 +171,7 @@ export class AuthService {
         this.sendNewAccountOnboarding(user);
 
         // Return user without password hash
-        const { passwordHash: _, ...safeUser } = user;
+        const safeUser = stripSecrets(user);
         return safeUser;
     }
 
@@ -175,17 +197,19 @@ export class AuthService {
         const passwordValid = await bcrypt.compare(dto.password, user.passwordHash);
 
         if (!passwordValid) {
-            // Increment failed attempts
-            const attempts = user.loginAttempts + 1;
-            const lockoutUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
-
-            await this.prisma.user.update({
+            // Atomic increment: a read-then-write count lets parallel guesses
+            // all see the same value and slip past the lockout threshold.
+            const { loginAttempts } = await this.prisma.user.update({
                 where: { id: user.id },
-                data: {
-                    loginAttempts: attempts,
-                    lockoutUntil,
-                },
+                data: { loginAttempts: { increment: 1 } },
+                select: { loginAttempts: true },
             });
+            if (loginAttempts >= 5) {
+                await this.prisma.user.update({
+                    where: { id: user.id },
+                    data: { lockoutUntil: new Date(Date.now() + 15 * 60 * 1000) },
+                });
+            }
 
             throw new UnauthorizedException('Invalid email or password');
         }
@@ -200,7 +224,7 @@ export class AuthService {
         });
 
         // Return user without password hash
-        const { passwordHash: _, ...safeUser } = user;
+        const safeUser = stripSecrets(user);
         return safeUser;
     }
 
@@ -261,8 +285,50 @@ export class AuthService {
             return null;
         }
 
-        const { passwordHash: _, ...safeUser } = user;
+        const safeUser = stripSecrets(user);
         return safeUser;
+    }
+
+    /**
+     * Resolve the user a session belongs to, re-reading the database when the
+     * cached copy is older than SESSION_USER_TTL_MS.
+     *
+     * Returns null when the user no longer exists or has been banned - the
+     * caller must then end the session. If the database is unreachable, the
+     * stale cached copy is served rather than failing every request; with no
+     * cache the error propagates.
+     */
+    async resolveSessionUser(session: {
+        userId?: string;
+        userRole?: UserRole;
+        cachedUser?: Record<string, any>;
+        cachedAt?: number;
+    }): Promise<Record<string, any> | null> {
+        if (!session.userId) return null;
+
+        const fresh =
+            session.cachedUser &&
+            session.cachedAt !== undefined &&
+            Date.now() - session.cachedAt < SESSION_USER_TTL_MS;
+        if (fresh) return session.cachedUser!;
+
+        let user: Record<string, any> | null;
+        try {
+            user = await this.validateSession(session.userId);
+        } catch (err: any) {
+            if (session.cachedUser) {
+                this.logger.warn(`Session refresh failed, serving cached user: ${err?.message}`);
+                return session.cachedUser;
+            }
+            throw err;
+        }
+
+        if (!user) return null;
+
+        session.cachedUser = user;
+        session.cachedAt = Date.now();
+        session.userRole = user.role as UserRole;
+        return user;
     }
 
     /**
@@ -290,13 +356,70 @@ export class AuthService {
         }
     }
 
+    /**
+     * Fast path for verifySupabaseToken: check the JWT signature locally and
+     * resolve the user by exact id, with no Supabase round trip.
+     *
+     * Returns the user, 'reject' for a token that is definitely bad, or null
+     * when this path can't decide - the caller then asks Supabase, which also
+     * handles first-login user creation and email-verification sync.
+     * Deliberately id-only: the email-match fallback stays on the remote path.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private async verifyTokenLocally(token: string): Promise<any> {
+        const cached = this.tokenUserCache.get(token);
+        if (cached) {
+            if (cached.until > Date.now()) return cached.user;
+            this.tokenUserCache.delete(token);
+        }
+
+        const result = await verifySupabaseJwt(token, {
+            supabaseUrl: this.supabaseUrl,
+            jwtSecret: process.env.SUPABASE_JWT_SECRET,
+        });
+        if (result.status === 'unverifiable') return null;
+        if (result.status === 'invalid') {
+            // iss/aud can legitimately differ on a custom auth domain; let
+            // Supabase be the judge rather than locking everyone out.
+            if (result.reason === 'bad issuer' || result.reason === 'bad audience') return null;
+            this.logger.warn(`Rejected token locally: ${result.reason}`);
+            return 'reject';
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: result.claims.sub },
+            include: {
+                dealerProfile: true,
+                contractorProfile: true,
+                financePartnerProfile: true,
+                insurancePartnerProfile: true,
+            },
+        });
+        // Unknown, banned or not-yet-verified users take the full remote path.
+        if (!user || user.deletedAt || !user.isEmailVerified) return null;
+
+        const safeUser = stripSecrets(user);
+        if (this.tokenUserCache.size >= 2000) {
+            const oldest = this.tokenUserCache.keys().next().value;
+            if (oldest) this.tokenUserCache.delete(oldest);
+        }
+        this.tokenUserCache.set(token, {
+            user: safeUser,
+            until: Math.min(Date.now() + SESSION_USER_TTL_MS, result.claims.exp * 1000),
+        });
+        return safeUser;
+    }
+
     async verifySupabaseToken(token: string) {
         if (!token?.trim()) {
             this.logger.warn('verifySupabaseToken: empty token');
             return null;
         }
+        const fast = await this.verifyTokenLocally(token);
+        if (fast === 'reject') return null;
+        if (fast) return fast; // eslint-disable-line @typescript-eslint/no-unsafe-return
+
         try {
-            this.logger.log(`Verifying Supabase token...`);
             const { data, error } = await this.supabase.auth.getUser(token);
 
             if (error || !data.user) {
@@ -436,7 +559,7 @@ export class AuthService {
                 return null;
             }
 
-            const { passwordHash: _, ...safeUser } = localUser;
+            const safeUser = stripSecrets(localUser);
             return safeUser;
         } catch (err: any) {
             this.logger.error(`Supabase token verification error: ${err?.message}`, err?.stack);
