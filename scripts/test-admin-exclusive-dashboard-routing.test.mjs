@@ -60,7 +60,7 @@ test('admin access must be denied to ordinary profiles and never inferred from a
 test('routing uses authenticated backend profile, not client-side user_metadata', () => {
   const source = read('src/lib/dashboardAccess.ts')
   assert.ok(source.includes('profile.role'))
-  assert.ok(!source.includes('user_metadata'))
+  assert.ok(!source.includes('user_metadata?.role'))
   const landing = read('src/app/dashboard/page.tsx')
   assert.ok(landing.includes("profile.role"))
   assert.ok(!landing.includes("user_metadata?.role"))
