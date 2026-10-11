@@ -391,6 +391,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [draftListingId, setDraftListingId] = React.useState<string | null>(null)
     const [damageImageCount, setDamageImageCount] = React.useState(0)
     const [damageRecords, setDamageRecords] = React.useState<DamageRecord[]>([])
+    const [damageEntryPending, setDamageEntryPending] = React.useState(false)
+    // One canonical serializer shared across edit, new auction, new retail
+    // and auction→retail conversion. The previous four separate mappings
+    // discarded stable IDs, typed categories and precise 3D hit positions.
+    const buildDamageDetections = () => damageRecords.map(record => ({
+        id: record.id,
+        part: record.zone,
+        type: record.type
+            ? (record.description.trim() ? `${record.type} - ${record.description.trim()}` : record.type)
+            : record.description,
+        size: "MEDIUM",
+        coords: {
+            x: record.x, y: record.y, view: record.view,
+            ...(record.surfacePoint ? { surfacePoint: record.surfacePoint } : {}),
+        },
+        imageUrl: record.photoUrl?.startsWith("https://") ? record.photoUrl : "",
+    }))
     const [hasAttemptedNext, setHasAttemptedNext] = React.useState(false)
     const [auctionSchedule, setAuctionSchedule] = React.useState({ ...EMPTY_SELLER_AUCTION_DRAFT })
 
@@ -553,16 +570,28 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             })
             .then(damageData => {
                 if (!damageData) return
-                const mapped = damageData.map((r: any) => ({
-                    id: crypto.randomUUID(),
-                    zone: r.part,
-                    description: r.type || '',
-                    photoUrl: r.imageUrl || undefined,
-                    bodyType: r.bodyType || '',
-                    view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
-                    x: r.coords?.x ?? 0,
-                    y: r.coords?.y ?? 0,
-                }))
+                const mapped = damageData.map((r: any) => {
+                    const originalType = String(r.type ?? '')
+                    const match = originalType.match(/^(SCRATCH|SCUFF|DENT|CRACK|OTHER)(?: - (.*))?$/i)
+                    const hit = r.coords?.surfacePoint
+                    const validHit = hit && ['fx', 'fy', 'fz'].every(key =>
+                        typeof hit[key] === 'number' && Number.isFinite(hit[key])
+                        && hit[key] >= 0 && hit[key] <= 1)
+                    return {
+                        id: typeof r.id === 'string' && /^[0-9a-f-]{36}$/i.test(r.id)
+                            ? r.id : crypto.randomUUID(),
+                        zone: r.part,
+                        type: match ? match[1].toUpperCase() as DamageRecord['type'] : 'OTHER' as const,
+                        description: match ? match[2] || '' : originalType,
+                        photoUrl: typeof r.imageUrl === 'string' && r.imageUrl.startsWith('https://')
+                            ? r.imageUrl : undefined,
+                        bodyType: r.bodyType || '',
+                        view: (r.coords?.view ?? 'TOP') as 'TOP' | 'FRONT',
+                        x: r.coords?.x ?? 0,
+                        y: r.coords?.y ?? 0,
+                        ...(validHit ? { surfacePoint: { fx: hit.fx, fy: hit.fy, fz: hit.fz } } : {}),
+                    }
+                })
                 setDamageRecords(mapped)
             })
             .catch(err => console.error('Failed to load listing for edit:', err))
@@ -1160,6 +1189,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     : null
             }
             case 2: {
+                if (damageEntryPending) {
+                    return 'Please save or cancel the open damage entry before leaving Photos. Wait for any photo upload to finish.'
+                }
                 const missingPhotos = Math.max(0, 10 - formData.images.length)
                 return missingPhotos > 0
                     ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. HPI is optional.`
@@ -1283,8 +1315,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         })
         setCurrentStep(prev => Math.min(prev + 1, totalSteps))
     }
-    const handleBack = () => setCurrentStep(prev => Math.max(prev - 1, 1))
-    const goToStep = (n: number) => setCurrentStep(n)
+    const confirmDamageNavigation = (): boolean => {
+        if (currentStep !== 2 || !damageEntryPending) return true
+        alert('Please save or cancel the current damage entry before leaving this step. Any photo upload must finish first.')
+        return false
+    }
+    const handleBack = () => {
+        if (confirmDamageNavigation()) setCurrentStep(prev => Math.max(prev - 1, 1))
+    }
+    const goToStep = (n: number) => {
+        if (confirmDamageNavigation()) setCurrentStep(n)
+    }
 
     const handleMethodClick = () => {
         if (!isAuthenticated) { setShowLoginModal(true); return }
@@ -1659,19 +1700,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                 // Save damage records (overwrites previous damage for this listing)
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${editId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 await ensureAuctionScheduled(editId)
@@ -1711,19 +1747,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 const finalSlug = response.data.slug
 
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${finalListingId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),
                     })
                 } catch (e) {
                     console.error('Failed to save damage records:', e)
+                    throw new Error('Damage evidence was not saved. Listing remains a draft; retry before proceeding to publication or payment.')
                 }
 
                 localStorage.removeItem(draftKeys.draft)
@@ -1845,19 +1876,19 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 // Save damage records separately (not part of listing DTO to avoid validation issues)
                 if (damageRecords.length > 0) {
                     try {
-                        const detections = damageRecords.map(r => ({
-                            part: r.zone,
-                            type: r.description,
-                            size: "MEDIUM",
-                            coords: { x: r.x, y: r.y, view: r.view },
-                            imageUrl: r.photoUrl ?? "",
-                        }))
+                        const detections = buildDamageDetections()
                         await apiClient(`/damage/${newListingId}/save`, {
                             method: 'POST',
                             body: JSON.stringify({ detections }),
                         })
                     } catch (e) {
                         console.error('Failed to save damage records:', e)
+                        // A new DRAFT listing already exists. Retain its ID so
+                        // retrying never creates a second record/auction.
+                        setDraftListingId(newListingId)
+                        localStorage.setItem(draftKeys.hpiDraftId, newListingId)
+                        if (isAuctionListing) setExistingAuctionStatus('SCHEDULED')
+                        throw new Error('Damage details were not saved. The listing remains a draft; retry before publishing or paying.')
                     }
                 }
 
@@ -1966,19 +1997,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             // records on the reused listing are left untouched.
             if (damageRecords.length > 0) {
                 try {
-                    const detections = damageRecords.map(r => ({
-                        part: r.zone,
-                        type: r.description,
-                        size: "MEDIUM",
-                        coords: { x: r.x, y: r.y, view: r.view },
-                        imageUrl: r.photoUrl ?? "",
-                    }))
+                    const detections = buildDamageDetections()
                     await apiClient(`/damage/${result.listingId}/save`, {
                         method: 'POST',
                         body: JSON.stringify({ detections }),
                     })
                 } catch (e) {
                     console.error('Failed to save damage records during Retail conversion:', e)
+                    throw new Error('The Retail listing was created but its damage details could not be saved. Open the saved draft and retry; no fee or publication has been started.')
                 }
             }
 
@@ -3132,6 +3158,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     bodyType={formData.bodyType || undefined}
                                     existingRecords={damageRecords}
                                     onComplete={(records) => setDamageRecords(records)}
+                                    onPendingChange={setDamageEntryPending}
                                 />
                             </div>
 

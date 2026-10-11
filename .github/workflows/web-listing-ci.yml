@@ -62,6 +62,9 @@ jobs:
       - name: Qualified seller Google Ads tracking regression suite
         run: node --test scripts/test-google-ads-qualified-seller.test.mjs
 
+      - name: Verify 3D damage upload, buyer evidence and safe navigation
+        run: node --test scripts/test-web-damage-release.test.mjs
+
       - name: Typecheck web listing surfaces
         shell: bash
         run: |
