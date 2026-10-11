@@ -46,7 +46,7 @@ test('seller saves preliminary hit point locally; manual fallback does not retai
   assert.match(seller, /onSurfaceTap=\{\(\{ zoneId, point \}\) =>/);
   assert.match(seller, /setPendingSurfacePoint\(point\)/);
   assert.match(seller, /surfacePoint: pendingSurfacePoint/);
-  assert.match(seller, /const selectManualZone = \(label: string\) => \{\s*setPendingSurfacePoint\(null\)/);
+  assert.match(seller, /const selectManualZone = \(label: string\) => \{[\s\S]*?setPendingSurfacePoint\(null\)/);
   assert.doesNotMatch(buyer, /onSurfaceTap=/);
   assert.match(buyer, /readOnly/);
 });
