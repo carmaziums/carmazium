@@ -1262,6 +1262,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setActiveDamageDraftOwner(null);
     clearDraft();
   };
+  // Abandoned draft evidence is queued for delayed deletion, not immediately
+  // removed from Storage: a previous server-side edit may still need it.
+  const queueDiscardedDamageDraftMedia = (records: ReadonlyArray<{ damagePhotoUrl?: string }>,
+    images: readonly string[]) => {
+    if (!currentUserId || editMode || hpiDraftListingId) return;
+    const urls = new Set<string>();
+    for (const record of records) if (record.damagePhotoUrl) urls.add(record.damagePhotoUrl);
+    for (const value of images) {
+      const source = parseVehicleImageMetadata(value).src;
+      if (source.includes('/damage/')) urls.add(source);
+    }
+    for (const source of urls) {
+      if (backendReferencedPhotoSourcesRef.current.has(source)) continue;
+      void markDamagePhotoAbandoned(currentUserId, source).catch(
+        error => console.warn('Unable to queue abandoned draft damage photo:', error));
+    }
+  };
   useEffect(() => {
     if (editMode || !currentUserId || activeDamageDraftOwner !== currentUserId) return;
     if (damageUploadInFlightRef.current) return;
@@ -1273,6 +1290,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       damageImages,
     });
   }, [activeDamageDraftOwner, currentUserId, editMode, damageRecords, damageImages, updateDraft]);
+
+  useEffect(() => {
+    if (!currentUserId || activeDamageDraftOwner !== currentUserId || editMode
+      || hpiDraftListingId || isPublishing || damageEditorPending || damageUploadInFlightRef.current) return;
+    // Reconcile against BOTH the live editor and current owner-scoped persisted
+    // snapshot, as well as known backend references. A mature orphan is never
+    // deleted if a saved listing/draft still mentions it.
+    const draft = useSellWizardStore.getState();
+    const keep = new Set<string>(backendReferencedPhotoSourcesRef.current);
+    for (const record of [...damageRecords, ...sanitizeDamageDraft(draft.damageRecords)]) {
+      if (record.damagePhotoUrl) keep.add(record.damagePhotoUrl);
+    }
+    for (const url of [...damageImages, ...exteriorImages, ...interiorImages,
+      ...(draft.damageImages ?? []), ...(draft.exteriorImages ?? []), ...(draft.interiorImages ?? [])]) {
+      const source = parseVehicleImageMetadata(url).src;
+      if (source) keep.add(source);
+    }
+    void cleanAbandonedDamagePhotos(currentUserId, keep)
+      .catch(error => console.warn('Damage orphan cleanup deferred:', error));
+  }, [currentUserId, activeDamageDraftOwner, editMode, hpiDraftListingId, isPublishing,
+    damageEditorPending, damageRecords, damageImages, exteriorImages, interiorImages]);
 
   // ── Inline validation (Step 1 user-entered fields, Step 3 pricing) ──
   // Touched tracks whether user has interacted with a field (blur or change after focus)
@@ -1297,6 +1335,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       }
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
         { text: 'Start fresh', onPress: () => {
+            queueDiscardedDamageDraftMedia(sanitizeDamageDraft(store.damageRecords), store.damageImages ?? []);
             clearDraftAndStopDamageAutosave();
             setDamageRecords([]);
             setDamageImages([]);
@@ -2846,6 +2885,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           text: 'Start Fresh',
           style: 'destructive',
           onPress: () => {
+            queueDiscardedDamageDraftMedia(damageRecords, damageImages);
             clearDraftAndStopDamageAutosave();
             haptics.light();
             navigation?.replace('SellCarFlow');
