@@ -37,6 +37,7 @@ on:
       - 'scripts/test-native-theme-sell-detail-offers-block6.test.mjs'
       - 'scripts/test-native-theme-dealer-workspace-block7.test.mjs'
       - 'scripts/test-native-theme-messages-mazium-settings-block8.test.mjs'
+      - 'scripts/test-native-theme-onboarding-kyc-provider-block9.test.mjs'
       - 'scripts/test-native-theme-messaging-settings-block8.test.mjs'
       - 'docs/native/issue477-block10-release-evidence-TEMPLATE.json'
       - 'docs/native/**'
@@ -243,6 +244,8 @@ jobs:
         run: node --test scripts/test-native-theme-dealer-workspace-block7.test.mjs
       - name: Verify messaging, MaziuM AI consent and account settings theme parity
         run: node --test scripts/test-native-theme-messages-mazium-settings-block8.test.mjs
+      - name: Validate native login, KYC, service providers and purchase theme contracts
+        run: node --test scripts/test-native-theme-onboarding-kyc-provider-block9.test.mjs
       - name: Verify MaziuM, messaging safety, account and notification theme behaviour
         run: node --test scripts/test-native-theme-messaging-settings-block8.test.mjs
       - name: Audit Block 2 website-matched native header, tab and More drawer
