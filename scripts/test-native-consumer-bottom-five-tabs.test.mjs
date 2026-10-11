@@ -70,13 +70,15 @@ test('dealer bottom workspace routes and backend-independent staff gates are unc
     ['DealerStock','GatedDealerStockTab','VIEW_INVENTORY'],
     ['DealerCustomers','GatedDealerCustomersTab','MANAGE_CRM'],
     ['DealerBuyBid','GatedDealerBuyBidTab','VIEW_TRADE'],
-    ['DealerMore','ProfileTabScreen',null],
+    ['DealerMore','GatedDealerMoreTab',null],
   ]) {
     assert.ok(tabs.includes(`<Tab.Screen name="${route}" component={${component}} />`), route);
     if (permission) assert.ok(tabs.includes(`hasPermission('${permission}')`), permission);
   }
-  assert.match(tabs, /if \(route\.name === 'DealerMore'\) \{/);
-  assert.match(tabs, /else openDrawer\(\)/);
+  assert.match(tabs, /const GatedDealerMoreTab = withDealerGate\(DealerMoreScreen\);/);
+  assert.doesNotMatch(tabs, /else openDrawer\(\)/);
+  assert.match(tabs, /route\.name === 'DealerMore' \? 'Opens dealer business tools, not the main Menu'/);
+  assert.match(tabs, /name: 'DealerMore'.*icon: 'apps-outline'/);
   assert.match(tabs, /getBottomTabItemHeight\(fontScale\)/);
   assert.match(tabs, /paddingBottom: insets\.bottom/);
 });

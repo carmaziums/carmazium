@@ -6,9 +6,7 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Dimensions,
   useWindowDimensions,
-  BackHandler,
   Alert,
   ScrollView,
   Platform,
@@ -25,14 +23,10 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
-import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
 import { FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
 
 const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
 
@@ -82,50 +76,28 @@ export const GlobalDrawer: React.FC = () => {
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
   const [expandedMenu, setExpandedMenu] = useState<'buy' | 'sell' | null>(null);
   const insets = useSafeAreaInsets();
-  const { height: windowHeight, fontScale } = useWindowDimensions();
-  // Website DashboardSidebar opens More above the bottom tabs, across the
-  // screen width. Only dealer workspace uses that presentation; preserve
-  // established consumer drawer navigation and deep-link behaviour.
-  // Web drawer max-height is 68vh and sits just above its fixed bottom tabs.
-  const dealerTabBarHeight = getBottomTabBarHeight(fontScale, insets.bottom);
-  const sheetHeight = Math.min(720, Math.round(windowHeight * 0.68));
+  // Navigation is always the same ten-item right drawer, regardless of role.
+  // Dealer-specific tools now live on the separate DealerMore tab.
+  // Use live viewport dimensions so orientation changes cannot expose a sheet.
+  const { width: windowWidth } = useWindowDimensions();
+  const drawerWidth = Math.min(windowWidth * 0.82, 320);
   const navigation = useNavigation<NavProp>();
 
-  const translateX = useSharedValue(DRAWER_WIDTH);
-  const translateY = useSharedValue(sheetHeight);
+  const translateX = useSharedValue(drawerWidth);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
-    if (isOpen) {
-      if (dealerMode) {
-        translateY.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      } else {
-        translateX.value = withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 });
-      }
-      backdropOpacity.value = withTiming(1, { duration: 220 });
-    } else {
-      translateX.value = withTiming(DRAWER_WIDTH, { duration: 200 });
-      translateY.value = withTiming(sheetHeight, { duration: 200 });
-      backdropOpacity.value = withTiming(0, { duration: 180 });
-    }
-  }, [isOpen, dealerMode, sheetHeight, translateX, translateY, backdropOpacity]);
+    translateX.value = isOpen
+      ? withSpring(0, { damping: 22, stiffness: 200, mass: 0.7 })
+      : withTiming(drawerWidth, { duration: 200 });
+    backdropOpacity.value = withTiming(isOpen ? 1 : 0, { duration: isOpen ? 220 : 180 });
+  }, [isOpen, drawerWidth, translateX, backdropOpacity]);
 
-  // Dealer overlay is inline so the original bottom tab bar stays visible and
-  // tappable. A Modal would intercept taps on More even with transparent pixels.
-  useEffect(() => {
-    if (!dealerMode || !isOpen) return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      closeDrawer();
-      return true;
-    });
-    return () => subscription.remove();
-  }, [dealerMode, isOpen, closeDrawer]);
-
+  // The Modal is not mounted into the visible native window while closed.
+  // Android Back dismisses it via onRequestClose; outside taps and X also close.
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdropOpacity.value }));
   const panelStyle = useAnimatedStyle(() => ({
-    transform: dealerMode
-      ? [{ translateY: translateY.value }]
-      : [{ translateX: translateX.value }],
+    transform: [{ translateX: translateX.value }],
   }));
 
   // Determine which tab is active
@@ -231,27 +203,19 @@ export const GlobalDrawer: React.FC = () => {
       {/* Keep the dealer tab bar above the backdrop, like the website. */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
         <Animated.View
-          style={[
-            styles.backdrop,
-            dealerMode && { bottom: dealerTabBarHeight },
-            backdropStyle,
-          ]}
+          style={[styles.backdrop, backdropStyle]}
         />
       </TouchableWithoutFeedback>
 
-      {/* Dealer website uses a full-width bottom More panel; consumer
-          navigation keeps the existing right drawer. Both retain all links. */}
+      {/* The header Menu is the only navigation drawer for every account role. */}
       <Animated.View
         style={[
           styles.panel,
-          dealerMode ? styles.dealerBottomSheet : styles.sidePanel,
+          styles.sidePanel,
           panelStyle,
-          dealerMode
-            ? { height: sheetHeight, bottom: dealerTabBarHeight, paddingTop: 10, paddingBottom: 10 }
-            : { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
+          { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
         ]}
       >
-        {dealerMode && <View style={styles.sheetHandle} accessibilityElementsHidden />}
         {/* ── Close button ─────────────────────────────── */}
         <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close" />
 
@@ -354,14 +318,7 @@ export const GlobalDrawer: React.FC = () => {
     </>
   );
 
-  return dealerMode ? (
-    <View
-      style={styles.dealerOverlay}
-      pointerEvents={isOpen ? 'box-none' : 'none'}
-    >
-      {drawerContent}
-    </View>
-  ) : (
+  return (
     <Modal
       visible={isOpen}
       transparent
@@ -375,13 +332,6 @@ export const GlobalDrawer: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  // Dealer overlay belongs to the same RN view hierarchy as the tabs, so
-  // touches on those existing tabs are not swallowed by another window.
-  dealerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-  },
-
   // Backdrop
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -401,30 +351,12 @@ const styles = StyleSheet.create({
   },
   sidePanel: {
     top: 0,
-    width: DRAWER_WIDTH,
+    width: '82%',
+    maxWidth: 320,
     borderLeftWidth: 1,
     borderLeftColor: Colors.whiteAlpha08,
     shadowOffset: { width: -6, height: 0 },
   },
-  dealerBottomSheet: {
-    left: 0,
-    width: '100%',
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderSubtle,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: -6 },
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    backgroundColor: Colors.textMuted,
-    marginBottom: 2,
-  },
-
   // Close button
   closeBtn: {
     alignSelf: 'flex-end',
