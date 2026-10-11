@@ -440,3 +440,80 @@ test('Block 9 MaziuM deferred filter links cannot hijack Menu, Settings or anoth
   assert.match(tabs, /hasPermission\('VIEW_TRADE'\)/);
   assert.match(settings, /style=\{styles\.signOutRow\}/);
 });
+
+
+test('Block 10 Settings Back never strands a direct-link or restored-session user', () => {
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const header = app('components/WebsiteTopBar.tsx');
+  const rootNav = app('navigation/RootNavigator.tsx');
+  assert.match(settings, /accessibilityLabel="Back to previous screen"/);
+  assert.match(settings, /if \(navigation\.canGoBack\(\)\) navigation\.goBack\(\)/);
+  assert.match(settings, /else navigation\.navigate\('Tabs'\)/);
+  assert.match(settings, /onPress=\{handleSignOut\}/);
+  assert.match(settings, /const handleSignOut = \(\) => Alert\.alert\('Sign Out'/);
+  assert.match(header, /accessibilityLabel="Profile settings"/);
+  assert.match(header, /onPress=\{\(\) => navigation\.navigate\('Settings'\)\}/);
+  assert.match(rootNav, /const canRestore = isAuthenticated && hasCompletedOnboarding && !!postLoginRedirect/);
+});
+
+test('Block 10 cumulative small-screen safe-area and 200% font navigation release contract', () => {
+  const geometry = app('lib/nativeLayoutParity.ts');
+  const tabbar = app('navigation/TabNavigator.tsx');
+  const ai = app('components/GlobalAIChatBot.tsx');
+  const globalDrawer = app('components/GlobalDrawer.tsx');
+  const settings = app('screens/main/SettingsScreen.tsx');
+
+  assert.match(geometry, /fontScale >= 1\.6 \? 76 : fontScale >= 1\.3 \? 64 : 48/);
+  assert.match(geometry, /getBottomTabItemHeight\(fontScale\) \+ 16 \+ Math\.max\(0, bottomInset\)/);
+  assert.match(tabbar, /paddingBottom: insets\.bottom/);
+  assert.match(tabbar, /minHeight: getBottomTabItemHeight\(fontScale\)/);
+  assert.match(ai, /const floatingBottom = getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 12/);
+  assert.match(settings, /const settingsBottomClearance = getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 128/);
+  assert.match(settings, /contentContainerStyle=\{\[styles\.scrollContent, \{ paddingBottom: settingsBottomClearance \}\]\}/);
+
+  for (const fontScale of [1, 1.3, 1.6, 2]) {
+    for (const inset of [0, 16, 34]) {
+      const itemHeight = fontScale >= 1.6 ? 76 : fontScale >= 1.3 ? 64 : 48;
+      const tabHeight = itemHeight + 16 + inset;
+      const buttonBottom = tabHeight + 12;
+      const settingsBottom = tabHeight + 128;
+      assert.ok(buttonBottom > tabHeight, 'AI clears tab at '+fontScale+'x and inset '+inset);
+      assert.ok(settingsBottom > tabHeight + 64, 'Sign Out clears bottom at '+fontScale+'x and inset '+inset);
+    }
+  }
+  assert.match(globalDrawer, /visible=\{isOpen && isAuthenticated\}/);
+  assert.match(globalDrawer, /if \(!isAuthenticated\) closeDrawer\(\)/);
+  assert.match(globalDrawer, /<Text style=\{styles\.footerTagline\} maxFontSizeMultiplier=\{2\}>/);
+  assert.match(tabbar, /accessibilityLabel=\{route\.name === 'DealerMore'[\s\S]*?'Dealer tools'/);
+});
+
+test('Block 10 written release checklist holds APK, owner consent, security and reversible merge gates', () => {
+  const checklist = read('docs/qa/issue-537-native-ux-release-checklist.md');
+  const settings = app('screens/main/SettingsScreen.tsx');
+  const authStore = app('store/authStore.ts');
+  const gate = app('components/DealerGate.tsx');
+  const ai = app('components/GlobalAIChatBot.tsx');
+  const menu = app('components/GlobalDrawer.tsx');
+
+  for (const pr of [530,534,538,539,540,541,542,543,544,545,546]) {
+    assert.ok(checklist.includes('PR #'+pr), 'missing stacked source PR #'+pr);
+  }
+  assert.match(checklist, /Issue #521/);
+  assert.match(checklist, /independent security review/);
+  assert.match(checklist, /Android device QA:\*\* pending/);
+  assert.match(checklist, /iOS device QA:\*\* pending/);
+  assert.match(checklist, /Website public APK download remains disabled/);
+  assert.match(checklist, /exact final integration commit/);
+  assert.match(checklist, /Do not merge or deploy/);
+  assert.match(checklist, /revert the integration commit\(s\) in reverse dependency order/);
+  assert.match(checklist, /Owner approval:\*\* pending/);
+
+  // No release gate may be "green" only because the source compiles:
+  // dealer owner/staff permissions, AI consent and logout are separate checks.
+  assert.match(settings, /if \(switchingDealerView \|\| user\?\.isDealerStaff\) return/);
+  assert.match(authStore, /clearDealerAccessCache\(\)/);
+  assert.match(gate, /access\?\.isVerified === true/);
+  assert.match(ai, /MAZIUM_PROTECTED_ROUTES\.has\(activeRoute\)/);
+  assert.match(ai, /hasAiConsent !== true/);
+  assert.match(menu, /const currentAuth = useAuthStore\.getState\(\)/);
+});
