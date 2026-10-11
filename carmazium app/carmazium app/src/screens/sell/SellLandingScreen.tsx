@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator, ScrollView, StatusBar, StyleSheet,
-  Text, TextInput, TouchableOpacity, View,
+  Text, TextInput, TouchableOpacity, View, useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
@@ -41,6 +43,8 @@ const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardT
 
 export const SellLandingScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const [vrm, setVrm] = useState('');
   const [mileage, setMileage] = useState('');
   const [make, setMake] = useState('');
@@ -153,7 +157,7 @@ export const SellLandingScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
       <WebsiteTopBar />
       <ScrollView keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        contentContainerStyle={[styles.page, { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 32 }]} showsVerticalScrollIndicator={false}>
         <Text style={styles.eyebrow}>SELL MY CAR ONLINE · UK</Text>
         <Text style={styles.title}>Sell Your Car Online <Text style={styles.accent}>in the UK</Text></Text>
         <Text style={styles.description}>
@@ -253,7 +257,7 @@ export const SellLandingScreen: React.FC = () => {
 
 const styles=StyleSheet.create({
   screen:{flex:1,backgroundColor:Colors.bgPrimary},
-  page:{paddingTop:16,paddingHorizontal:20,paddingBottom:110,gap:10},
+  page:{paddingTop:16,paddingHorizontal:20,gap:10},
   eyebrow:{fontFamily:FontFamily.bold,fontSize:11,color:Colors.accent,letterSpacing:1.1},
   title:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:28,lineHeight:33},
   accent:{color:Colors.accent},description:{fontFamily:FontFamily.medium,color:Colors.textSecondary,fontSize:14,lineHeight:21,marginBottom:6},

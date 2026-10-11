@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -44,6 +44,8 @@ type ViewMode = 'grid' | 'list';
 
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const route = useRoute();
+  const fromSettings = route.name === 'SavedFromSettings';
   const accountRole = useAuthStore(s => s.accountRole);
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -274,6 +276,20 @@ export const SavedScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
+      {fromSettings && (
+        <TouchableOpacity
+          style={styles.returnToSettings}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Account Settings"
+          onPress={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+            else navigation.navigate('Settings');
+          }}
+        >
+          <Ionicons name="arrow-back" size={19} color={Colors.textPrimary} accessibilityElementsHidden />
+          <Text style={styles.returnToSettingsText} maxFontSizeMultiplier={2}>Back to Account Settings</Text>
+        </TouchableOpacity>
+      )}
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
@@ -375,6 +391,14 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 12,
+  },
+  returnToSettings: {
+    flexDirection: 'row', alignItems: 'center', gap: 9, marginHorizontal: 24,
+    alignSelf: 'flex-start', minHeight: 48, paddingVertical: 8,
+  },
+  returnToSettingsText: {
+    color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 13,
+    flexShrink: 1,
   },
   iconBtn: {
     width: 38,

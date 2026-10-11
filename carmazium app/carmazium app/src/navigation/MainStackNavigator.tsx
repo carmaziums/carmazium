@@ -10,6 +10,7 @@ import { MessagesScreen } from '../screens/main/MessagesScreen';
 import { ChatScreen } from '../screens/main/ChatScreen';
 import { CompareScreen } from '../screens/main/CompareScreen';
 import { SettingsScreen } from '../screens/main/SettingsScreen';
+import { SavedScreen } from '../screens/main/SavedScreen';
 import { DealerAnalyticsScreen } from '../screens/main/DealerAnalyticsScreen';
 import { DealerInventoryScreen } from '../screens/main/DealerInventoryScreen';
 import { DealerLeadsScreen } from '../screens/main/DealerLeadsScreen';
@@ -104,6 +105,7 @@ export type MainStackParamList = {
   Messages: undefined;
   ChatScreen: { threadId: string };
   Compare: { initialListing?: CarListing } | undefined;
+  SavedFromSettings: undefined;
   Settings: { section?: 'personal' | 'business' | 'verification' | 'notifications' | 'security' | 'payouts' } | undefined;
   DealerAnalytics: undefined;
   DealerInventory: undefined;
@@ -234,6 +236,9 @@ export const MainStackNavigator: React.FC = () => {
         component={CompareScreen}
         options={{ animation: 'slide_from_bottom' }}
       />
+      {/* Saved Cars launched from Settings stays in the stack, retaining
+          a real return path; the regular consumer Saved tab is unchanged. */}
+      <Stack.Screen name="SavedFromSettings" component={SavedScreen} />
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}

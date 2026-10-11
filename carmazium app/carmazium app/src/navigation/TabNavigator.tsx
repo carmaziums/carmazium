@@ -246,6 +246,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
               accessibilityRole="tab"
               accessibilityLabel={route.name === 'DealerMore'
                 ? 'Dealer tools'
+                : route.name === 'DealerCustomers' ? 'Customers'
                 : config.label === 'DASHBOARD' ? 'Dashboard' : config.label}
               accessibilityState={{ selected: isFocused }}
               accessibilityHint={route.name === 'DealerMore' ? 'Opens dealer business tools, not the main Menu' : isFocused ? undefined : `Switches to the ${config.label.toLowerCase()} tab`}
@@ -272,7 +273,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 maxFontSizeMultiplier={2}
                 ellipsizeMode="tail"
               >
-                {config.label}
+                {route.name === 'DealerCustomers' ? 'CLIENTS' : config.label}
               </Text>
             </TouchableOpacity>
           );

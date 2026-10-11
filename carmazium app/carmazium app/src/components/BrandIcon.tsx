@@ -5,6 +5,14 @@ import { Colors } from '../constants/colors';
 
 const ICON_MAP: Record<string, string> = {
   // Navigation
+  // These names appear in the shared header, dealer More tab, watchlist sort
+  // and Account Settings. Without mappings they displayed a '?' HelpCircle.
+  'menu': 'Menu',
+  'apps-outline': 'LayoutGrid',
+  'apps': 'LayoutGrid',
+  'swap-vertical-outline': 'ArrowDownUp',
+  'arrow-forward-outline': 'ArrowRight',
+  'color-palette-outline': 'Palette',
   'home-outline': 'Home',
   'home': 'Home',
   'chevron-back': 'ChevronLeft',
@@ -249,8 +257,10 @@ interface IconProps {
 }
 
 export const Ionicons: React.FC<IconProps> = ({ name, size = 24, color = Colors.white, style, onPress, accessibilityElementsHidden, importantForAccessibility }) => {
-  const lucideName = ICON_MAP[name] || 'HelpCircle';
-  const Component = (Lucide as any)[lucideName] || Lucide.HelpCircle;
+  // Unknown glyphs are NOT Help: showing a question mark on navigation
+  // mislabels a real destination. Explicit Help always uses help-circle-outline.
+  const lucideName = ICON_MAP[name] || 'Circle';
+  const Component = (Lucide as any)[lucideName] || Lucide.Circle;
   return (
     <Component
       size={size}

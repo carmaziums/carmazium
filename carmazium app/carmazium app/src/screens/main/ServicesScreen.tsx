@@ -6,9 +6,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@/components/BrandIcon';
@@ -91,6 +92,7 @@ const SERVICES: ServiceItem[] = [
 
 export const ServicesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const navigation = useNavigation<NavProp>();
 
   const continueOnWeb = async (path: string) => {
@@ -126,7 +128,7 @@ export const ServicesScreen: React.FC = () => {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: getBottomTabBarHeight(fontScale, insets.bottom) + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
@@ -221,7 +223,7 @@ export const ServicesScreen: React.FC = () => {
           </Text>
         </View>
 
-        <View style={{ height: 60 }} />
+        {/* Additional gesture-bar clearance is provided by scrollContent. */}
       </ScrollView>
     </View>
   );

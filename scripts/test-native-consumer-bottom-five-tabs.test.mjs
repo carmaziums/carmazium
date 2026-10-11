@@ -50,7 +50,8 @@ test('Sell button opens actual native selling screen with auction and £1 retail
   assert.match(landing, /Get My Free Valuation/);
   assert.match(landing, /£0 listing fee/);
   assert.match(landing, /£1 Retail Listing/);
-  assert.match(landing, /page:\{paddingTop:16,paddingHorizontal:20,paddingBottom:110/);
+  assert.match(landing, /page:\{paddingTop:16,paddingHorizontal:20,gap:10/);
+  assert.match(landing, /paddingBottom: getBottomTabBarHeight\(fontScale, insets\.bottom\) \+ 32/);
   assert.match(main, /<Stack\.Screen\s+name="SellCarFlow"/);
 });
 

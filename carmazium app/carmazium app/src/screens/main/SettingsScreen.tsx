@@ -677,7 +677,7 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.accountToolsGrid}>
             {[
               { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
-                action: () => navigation.navigate('Tabs', { screen: 'Saved' }) },
+                action: () => navigation.navigate('SavedFromSettings') },
               { id: 'messages', label: 'Messages', icon: 'chatbubbles-outline',
                 action: () => navigation.navigate('Messages') },
               { id: 'notifications', label: 'Notifications', icon: 'notifications-outline',
