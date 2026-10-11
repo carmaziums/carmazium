@@ -1354,7 +1354,6 @@ function useDealerProfilePalette() {
     emptyCardText: [styles.emptyCardText, { color: palette.textMuted }],
     listingRow: [styles.listingRow, { backgroundColor: palette.bgCard }],
     listingTitle: [styles.listingTitle, { color: palette.textPrimary }],
-    listingMeta: [styles.listingMeta, { color: palette.textMuted }],
     listingPrice: [styles.listingPrice, { color: palette.textPrimary }],
     listDivider: [styles.listDivider, { backgroundColor: palette.borderDefault }],
     attentionRow: [styles.attentionRow, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
@@ -1373,5 +1372,6 @@ function useDealerProfilePalette() {
     extraInsights: [styles.extraInsights, { backgroundColor: palette.bgCard, borderColor: palette.borderDefault }],
     extraInsightsTitle: [styles.extraInsightsTitle, { color: palette.textPrimary }],
     extraInsightsSub: [styles.extraInsightsSub, { color: palette.textSecondary }],
+    metaText: [styles.metaText, { color: palette.textMuted }],
   }), [palette]);
 }
