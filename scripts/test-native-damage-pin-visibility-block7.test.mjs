@@ -17,7 +17,7 @@ test('every saved damage keeps its own number, type, photo indicator and exact p
   assert.match(viewer, /key=\{pin\.id\}/);
   assert.match(viewer, /onDamagePinPress\?\.\(pin\.id\)/);
   assert.match(viewer, /accessibilityState=\{\{ selected, disabled: !onDamagePinPress \}\}/);
-  assert.match(viewer, /pin\.hasPhoto && <View style=\{styles\.damagePinPhoto\}>/);
+  assert.match(viewer, /pin\.hasPhoto && <View style=\{styles\.damagePinPhoto\} accessible=\{false\} importantForAccessibility="no-hide-descendants">/);
 });
 
 test('seller-specific pins are 44dp tappable and do not block generic mesh surface selection', () => {
