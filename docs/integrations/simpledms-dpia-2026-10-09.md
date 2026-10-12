@@ -104,6 +104,25 @@ CarMazium must not approve production go-live until:
 - production credential is separately issued through a private channel;
 - both parties provide written go-live approval.
 
+## 8A. Evidence status update — 12 October 2026
+
+The following synthetic controls now have external SimpleDMS evidence:
+- A–E historical lifecycle sequence completed without duplicate live/history records;
+- changed observed-bid capture preserves the earlier observations and timestamps without treating bids as sale prices;
+- ended auctions leave the live feed/detail path while permitted historical evidence remains;
+- repeat vehicle appearance under new auction/listing references links to the same protected matched vehicle history;
+- historical records observed in Preview do not retain raw registration, historical photographs or prohibited fields;
+- automatic refresh, failed-refresh handling and the agreed stale-data behaviour have been exercised in isolated Preview;
+- BuySmart test-report save/reopen has been exercised on desktop and mobile-browser layouts.
+
+These results materially reduce several identified risks but do **not** close the DPIA. Still required before production:
+- final legal/data-protection approval of the Terms, Privacy wording, lawful-basis analysis and party-role treatment;
+- redacted evidence/attestation covering the protected matching construction and operational raw-registration deletion path;
+- redacted evidence for 36-month expiry, no access-based retention reset, correction/deletion handling and non-reconstruction from expired reports/backups;
+- representative approved live-photo display testing and exact production photo allowlist/private-path verification;
+- exact production field/config acceptance;
+- signatures, separate production credential and bilateral written go-live approval.
+
 ## 9. Consultation / decision
 External customer consultation is not planned before launch because the design instead uses prospective transparent disclosure and per-listing acknowledgement. This should be confirmed by legal/data-protection review.
 
@@ -111,6 +130,8 @@ SimpleDMS must review the operational controls that sit within its environment. 
 
 ## 10. Decision
 **DPIA remains OPEN. Production launch is HOLD.**
+
+As at 12 October 2026, the technical synthetic evidence is substantially stronger, but the outstanding legal approval, retention/deletion evidence, production photograph validation, exact production configuration and bilateral execution/go-live controls remain material launch conditions.
 
 Residual risks appear capable of being reduced to an acceptable level if all pre-launch controls above are evidenced. Final approval must be recorded before production.
 
