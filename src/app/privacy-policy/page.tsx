@@ -47,6 +47,7 @@ const sections = [
       <>
         <p>We use personal data to operate the marketplace, create and secure accounts, publish listings, run auctions, connect buyers and sellers, administer Partner services, process CarMazium fees and incentives, provide customer support, detect fraud and misuse, verify users and businesses, send service notifications, improve the platform and comply with legal obligations.</p>
         <p>Our legal bases may include performance of a contract, steps taken at your request before entering a contract, compliance with legal obligations, our legitimate interests in operating and protecting the marketplace, and consent where consent is required.</p>
+        <p>Where CarMazium distributes an active vehicle Listing through an approved automotive marketplace, dealer-research or referral partner, we will use only the information reasonably necessary for that purpose. Depending on the feature and applicable law, the legal basis may include performance of the Listing service and/or CarMazium's legitimate interests in distributing active stock to relevant motor-trade channels, subject to data minimisation and a balancing assessment. Where consent or another legal basis is required, that processing will not be enabled until the requirement is met.</p>
       </>
     ),
   },
@@ -58,6 +59,7 @@ const sections = [
         <p>CarMazium uses OpenAI for optional AI features including MaziuM chat, native AI Search, AI-assisted listing descriptions and, where you have consented, live vehicle-specification enrichment. Before an interactive AI prompt or seller vehicle data is sent to OpenAI, the website or native app requires an explicit acknowledgement. Core DVLA/MOT vehicle lookup remains available without AI enrichment. Do not include unnecessary sensitive personal information, passwords, payment credentials or authentication codes in AI prompts.</p>
         <p>If you use the in-app “Report AI response” feature, CarMazium stores the reported AI response, the associated prompt where available, your selected reason and any optional details so an administrator can review the report and improve safety controls. You can stop sending new prompts to OpenAI at any time through the MaziuM AI privacy controls; the assistant will ask for acknowledgement again before another prompt is sent.</p>
         <p>We may also use vehicle-data, verification, email, analytics and communications providers where needed to deliver a feature. Providers receive only the information reasonably necessary for their role and are subject to contractual or platform safeguards as applicable.</p>
+        <p>CarMazium may also provide a restricted, authenticated vehicle feed to approved automotive marketplace, dealer-research and referral partners, such as SimpleDMS / BuySmart where that integration is enabled. Such partners are not given access to CarMazium user sessions, administration systems, payment credentials or private verification documents.</p>
       </>
     ),
   },
@@ -71,10 +73,13 @@ const sections = [
     ),
   },
   {
-    title: "7. Sharing information with other users",
+    title: "7. Sharing information with other users and approved automotive partners",
     body: (
       <>
         <p>Information you intentionally publish in a vehicle listing or public profile may be visible to other users or visitors. Contact details and documents are disclosed only where the relevant product flow permits it.</p>
+        <p>For an approved vehicle-distribution or dealer-research integration, CarMazium may share selected active-Listing information such as the auction/listing reference, vehicle make/model/variant/year, mileage and specification, auction timing/status, starting bid, current valid bid where authorised, registration where required for server-side vehicle matching, broad town/region, approved public vehicle photographs, and a CarMazium source or referral link.</p>
+        <p>These partner feeds must not include seller, buyer or bidder identity/contact information, reserve price, private KYC or handover material, payment information, internal CarMazium valuations, exact seller address, or VIN unless a later feature is separately assessed and disclosed.</p>
+        <p>Live partner inventory must be refreshed and removed when it is no longer live. Where CarMazium has separately approved a limited vehicle-history or matching arrangement, only the fields, purposes and retention period stated in that arrangement may continue after the live Listing ends. Raw registration and Vehicle photographs must not be retained as historical partner records unless CarMazium has separately authorised that use and has the necessary lawful basis and rights.</p>
         <p>Private member-to-member chats are intended for the participants. A specific message and attachment may be shared with CarMazium moderators when a participant reports it, and relevant records may be reviewed when needed for a dispute, safety, fraud or legal issue.</p>
       </>
     ),
