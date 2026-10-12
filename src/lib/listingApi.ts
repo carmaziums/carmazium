@@ -29,6 +29,8 @@ export interface CreateListingRequest {
     vrm: string
     images: string[]
     listingType: 'AUCTION' | 'CLASSIFIED'
+    /** Seller acknowledged live distribution through approved automotive partners under current Terms/Privacy. */
+    partnerDistributionAccepted?: boolean
     // Initial auction schedule. When supplied for a new AUCTION listing the
     // backend creates Listing + Auction atomically in one Prisma transaction.
     auctionStartTime?: string
