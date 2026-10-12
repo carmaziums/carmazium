@@ -15,28 +15,55 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const STAGING_LISTING_ID = '22222222-2222-4222-8222-222222222222';
+
+type SyntheticScenario = 'single' | 'pagination' | 'withdrawn' | 'ended';
+
+function scenario(): SyntheticScenario {
+  const raw = (process.env.STAGING_SYNTHETIC_SCENARIO || 'single').toLowerCase();
+  if (raw === 'pagination' || raw === 'withdrawn' || raw === 'ended') return raw;
+  return 'single';
+}
+
+function syntheticUuid(prefix: '1' | '2', index: number): string {
+  if (index === 1) return prefix === '1' ? STAGING_AUCTION_ID : STAGING_LISTING_ID;
+  return prefix.repeat(8) + '-' + prefix.repeat(4) + '-4' + prefix.repeat(3) +
+    '-8' + prefix.repeat(3) + '-' + String(index).padStart(12, '0');
+}
+
 function fixtures() {
+  const mode = scenario();
+
+  // v1 is a live-only full snapshot. Withdrawn and ended auctions are not
+  // tombstones/status rows: they are absent from the next complete feed.
+  if (mode === 'withdrawn' || mode === 'ended') return [];
+
   const now = new Date();
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
   const image = /^[a-z0-9.-]+\.up\.railway\.app$/.test(publicHost)
     ? ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
     : [];
-  return [{
-    id: STAGING_AUCTION_ID,
-    listingId: STAGING_LISTING_ID,
-    startTime: new Date(now.getTime() - 3600_000),
-    endTime: new Date(now.getTime() + 3600_000),
-    updatedAt: now,
-    startingBid: '5000.00',
-    listing: {
-      title: 'SYNTHETIC TEST: Example 2020 Vehicle',
-      make: 'Example', model: 'Test Vehicle', variant: 'Demonstration',
-      year: 2020, mileage: 40000, vehicleType: 'CAR', fuelType: 'PETROL',
-      transmission: 'AUTOMATIC', bodyType: 'HATCHBACK', color: 'Blue',
-      engineSize: 1500, images: image, vrm: 'STAGING-NOT-A-REAL-VRM',
-      location: 'Birmingham', updatedAt: now,
-    },
-  }];
+  const count = mode === 'pagination' ? 51 : 1;
+
+  return Array.from({ length: count }, (_, offset) => {
+    const index = offset + 1;
+    return {
+      id: syntheticUuid('1', index),
+      listingId: syntheticUuid('2', index),
+      startTime: new Date(now.getTime() - 3600_000),
+      endTime: new Date(now.getTime() + (3600_000 + index * 1_000)),
+      updatedAt: now,
+      startingBid: (5000 + index - 1).toFixed(2),
+      listing: {
+        title: 'SYNTHETIC TEST: Example 2020 Vehicle #' + index,
+        make: 'Example', model: 'Test Vehicle', variant: 'Demonstration',
+        year: 2020, mileage: 40000 + index - 1, vehicleType: 'CAR', fuelType: 'PETROL',
+        transmission: 'AUTOMATIC', bodyType: 'HATCHBACK', color: 'Blue',
+        engineSize: 1500, images: image,
+        vrm: index === 1 ? 'STAGING-NOT-A-REAL-VRM' : 'STAGING-FAKE-' + String(index).padStart(3, '0'),
+        location: 'Birmingham', updatedAt: now,
+      },
+    };
+  });
 }
 
 @Controller('health')
@@ -59,10 +86,16 @@ class SyntheticAssetsController {
 
 const syntheticPrisma = {
   auction: {
-    findMany: async () => fixtures(),
+    // Honour the real service's Prisma pagination contract; otherwise the
+    // synthetic partner demo repeats vehicles on every page.
+    findMany: async (args: { skip?: number; take?: number } = {}) => {
+      const skip = args.skip ?? 0;
+      const take = args.take ?? 25;
+      return fixtures().slice(skip, skip + take);
+    },
     count: async () => fixtures().length,
     findFirst: async (args: any) => {
-      return args?.where?.id === STAGING_AUCTION_ID ? fixtures()[0] : null;
+      return fixtures().find((auction) => auction.id === args?.where?.id) || null;
     },
   },
   bid: { findFirst: async () => ({ amount: '5200.00' }) },

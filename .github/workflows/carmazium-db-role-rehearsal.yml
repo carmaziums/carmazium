@@ -1,0 +1,122 @@
+name: Rehearse restricted CarMazium database roles without production access
+on:
+  push:
+    branches: [security/carmazium-db-role-cutover-preflight]
+    paths:
+      - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/scripts/security/runtime-db-identity.js'
+      - 'backend/src/main.ts'
+      - 'backend/src/core/config/session-table-config*'
+      - '.github/workflows/carmazium-db-role-rehearsal.yml'
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/scripts/security/ci-only-role-rehearsal.sql'
+      - 'backend/scripts/security/runtime-db-identity.js'
+      - 'backend/src/main.ts'
+      - 'backend/src/core/config/session-table-config*'
+      - '.github/workflows/carmazium-db-role-rehearsal.yml'
+permissions:
+  contents: read
+jobs:
+  backward-compatible-backend:
+    name: Full backend checks for opt-in session pre-provisioning
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Syntax-check credentials-safe database identity probe
+        run: node --check scripts/security/runtime-db-identity.js
+      - name: Unit-test the disabled-by-default session DDL switch
+        run: |
+          npm ci
+          npx jest core/config/session-table-config.spec.ts --runInBand
+      - name: Check full type safety, regression suite and build
+        run: |
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+  isolated-postgres-permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cm_roles_ci
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: synthetic_admin_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d cm_roles_ci"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client locally (no production URLs)
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client
+      - name: Rehearse least privilege, PUBLIC CREATE revocation, RLS and session grants
+        env:
+          PGPASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_roles_ci \
+            -v ON_ERROR_STOP=1 -f backend/scripts/security/ci-only-role-rehearsal.sql
+          hardened="$(psql -X -h 127.0.0.1 -U ci_admin -d cm_roles_ci -tAc \
+            "SELECT NOT has_schema_privilege('cm_ci_runtime','public','CREATE')")"
+          test "$hardened" = t
+          echo "Synthetic database PUBLIC CREATE exposure closed; no live DB was accessed."
+      - name: Direct-login restricted runtime exercises DML and synthetic session RLS
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          db='psql -X -h 127.0.0.1 -U cm_ci_runtime -d cm_roles_ci -v ON_ERROR_STOP=1'
+          $db -c "INSERT INTO cm_isolated.listings(title) VALUES ('synthetic listing')" >/dev/null
+          $db -c "UPDATE cm_isolated.listings SET title='synthetic updated' WHERE id=1" >/dev/null
+          test "$($db -tAc "SELECT title FROM cm_isolated.listings WHERE id=1")" = "synthetic updated"
+          $db -c "DELETE FROM cm_isolated.listings WHERE id=1" >/dev/null
+          # Match the observed live session-store schema without importing a
+          # single customer session: varchar SID, JSON payload and expiry.
+          $db -c "INSERT INTO cm_isolated.sessions(sid,sess,expire) VALUES ('synthetic','{}'::json,now() + interval '1 hour')" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND expire > now() AND json_typeof(sess) = 'object'")" = 1
+          $db -c "UPDATE cm_isolated.sessions SET sess=json_build_object('role','test'),expire=now() + interval '2 hours' WHERE sid='synthetic'" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic' AND sess->>'role'='test' AND expire > now() + interval '90 minutes'")" = 1
+          $db -c "DELETE FROM cm_isolated.sessions WHERE sid='synthetic'" >/dev/null
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.sessions WHERE sid='synthetic'")" = 0
+          test "$($db -tAc "SELECT count(*) FROM cm_isolated.rls_guarded")" = 0
+          test "$($db -tAc "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolbypassrls FROM pg_roles WHERE rolname=current_user")" = f
+          echo "Synthetic runtime DML, explicit session RLS policy and default-deny guard verified."
+      - name: Explicitly reject public-schema CREATE and table ALTER by runtime login
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          if psql -X -h 127.0.0.1 -U cm_ci_runtime -d cm_roles_ci -v ON_ERROR_STOP=1 \
+               -c 'CREATE TABLE public.cm_synthetic_forbidden(id int)' >/tmp/create.out 2>&1; then
+            echo 'SECURITY FAILURE: runtime can create schema objects'; exit 1
+          fi
+          if psql -X -h 127.0.0.1 -U cm_ci_runtime -d cm_roles_ci -v ON_ERROR_STOP=1 \
+               -c 'ALTER TABLE cm_isolated.listings ADD COLUMN prohibited text' >/tmp/alter.out 2>&1; then
+            echo 'SECURITY FAILURE: runtime can perform DDL'; exit 1
+          fi
+          echo "Confirmed: runtime cannot CREATE in public or ALTER application-owned tables."
+      - name: Migration account keeps intentional DDL rights only in synthetic owned schema
+        env:
+          PGPASSWORD: synthetic_migrator_ci_only
+        run: |
+          set -eu
+          psql -X -h 127.0.0.1 -U cm_ci_migrator -d cm_roles_ci -v ON_ERROR_STOP=1 \
+            -c 'CREATE TABLE cm_isolated.maintenance_probe(id integer PRIMARY KEY)' >/dev/null
+          psql -X -h 127.0.0.1 -U cm_ci_migrator -d cm_roles_ci -v ON_ERROR_STOP=1 \
+            -c 'DROP TABLE cm_isolated.maintenance_probe' >/dev/null
+          echo "Separate synthetic maintenance role can perform DDL in its own schema."

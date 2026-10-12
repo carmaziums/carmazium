@@ -113,6 +113,11 @@ default:
   `/storage/v1/object/public/listings/` bucket path is accepted. Known photo-editor `#cm-photo=` metadata is stripped from approved public URLs. Set the host allowlist
   `PARTNER_API_PUBLIC_IMAGE_HOSTS` before enabling images.
 
+The optional `currentBidGbp` is a **current valid observed bid**, not a final
+sale price, and the current-run bid query excludes future-dated records. It is
+not licensed for retained historical analytics or a confirmed sale claim
+without a separate signed data schedule.
+
 Reserved/internal prices are never shared. Any request to add reserve price,
 seller location, seller contact, hidden inspection evidence, other lifecycle
 states or bid placement requires a new separately reviewed change.
@@ -162,7 +167,10 @@ Do not promise those conversion metrics are available until that is tested.
 ## First-party partner referral measurement (feature gated)
 
 If enabled in staging, each auction record has an optional `referralUrl` pointing
-at the signed CarMazium backend redirect. SimpleDMS should use `referralUrl`
+at the signed CarMazium backend redirect.
+The field is **omitted** if referrals are disabled or the HTTPS backend host
+or signing secret is invalid. Never treat the ordinary `url` as evidence that
+a visitor can be attributed; use the signed URL only when genuinely present. SimpleDMS should use `referralUrl`
 for outbound clicks (and fall back to `url` only when it is absent). The redirect
 creates a short-lived, auction-scoped signed token and sends the dealer to the
 original CarMazium auction. The raw key remains on the backend. The token stays
@@ -179,7 +187,10 @@ and lawful-basis review is approved. The partner gets **aggregate reports only**
 The admin-only `GET /partners/referrals/simpledms/report?days=90` counts tagged
 redirects, uniquely attributed dealer accounts, genuinely new dealer accounts,
 actual valid bids and handover-approved completed purchases linked to the
-specific advertised auction. It never returns dealer identities. Counts are
+specific advertised auction.
+A completed purchase must also belong to the **actual canonical auction winner**
+and the matching referred dealer/business: a stale or unrelated Sale row for
+another winner must not inflate partner conversions. It never returns dealer identities. Counts are
 best-effort: users declining tracking or leaving before authentication, staff
 role attribution, disabled tracking, or missing partner-side metrics mean some
 conversions cannot be proven. It is NOT a real-time partner-facing endpoint.

@@ -1,0 +1,118 @@
+name: Free synthetic core-auction and real session-adapter RBAC rehearsal
+on:
+  push:
+    branches: [security/carmazium-free-core-schema-rehearsal]
+    paths:
+      - 'backend/scripts/security/ci-only-core-schema.sql'
+      - 'backend/scripts/security/ci-core-session-adapter.cjs'
+      - 'backend/scripts/security/live-selected-schema-metadata.tsv'
+      - '.github/workflows/carmazium-free-core-schema-rehearsal.yml'
+  pull_request:
+    branches: [security/simpledms-dependency-fixes]
+    paths:
+      - 'backend/scripts/security/ci-only-core-schema.sql'
+      - 'backend/scripts/security/ci-core-session-adapter.cjs'
+      - 'backend/scripts/security/live-selected-schema-metadata.tsv'
+      - '.github/workflows/carmazium-free-core-schema-rehearsal.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-live-shaped-subset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cm_core_ci
+          POSTGRES_USER: ci_admin
+          POSTGRES_PASSWORD: synthetic_admin_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ci_admin -d cm_core_ci"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install PostgreSQL command-line client
+        run: sudo apt-get -qq update && sudo apt-get -qq install -y postgresql-client
+      - name: Provision ONLY disposable CI schema and synthetic records
+        env:
+          PGPASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_core_ci \
+            -v ON_ERROR_STOP=1 -f backend/scripts/security/ci-only-core-schema.sql
+      - name: Compare all sampled synthetic columns to read-only live structural snapshot
+        env:
+          PGPASSWORD: synthetic_admin_ci_only
+        run: |
+          set -eu
+          LC_ALL=C sort <(grep -v '^#' backend/scripts/security/live-selected-schema-metadata.tsv | grep -v '^$') > /tmp/expected-core-shape.txt
+          psql -X -h 127.0.0.1 -U ci_admin -d cm_core_ci -At -F '|' \
+            -c "SELECT table_name,column_name,udt_name,is_nullable FROM information_schema.columns WHERE table_schema='cm_core' ORDER BY 1,2" \
+            | LC_ALL=C sort > /tmp/actual-core-shape.txt
+          diff -u /tmp/expected-core-shape.txt /tmp/actual-core-shape.txt
+          echo "Matched the 55 selected production-observed field names, types and nullability (NOT full schema parity)."
+      - name: Restricted account can browse only live auction, never ended auction
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          q() { psql -X -h 127.0.0.1 -U cm_core_runtime -d cm_core_ci -v ON_ERROR_STOP=1 "$@"; }
+          test "$(q -tAc "SELECT count(*) FROM cm_core.listings")" = 1
+          test "$(q -tAc "SELECT count(*) FROM cm_core.auctions")" = 1
+          test "$(q -tAc "SELECT count(*) FROM cm_core.auctions WHERE id='ended-auction'")" = 0
+          test "$(q -tAc "SELECT count(*) FROM cm_core.users")" = 0
+          test "$(q -tAc "SELECT rolbypassrls OR rolsuper OR rolcreatedb OR rolcreaterole FROM pg_roles WHERE rolname=current_user")" = f
+          test "$(q -tAc "SELECT has_schema_privilege(current_user,'public','CREATE')")" = f
+          echo "Synthetic live-auction visibility and privilege restrictions passed."
+      - name: Eligible bid accepted, ended-auction bid denied by synthetic RLS
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          q() { psql -X -h 127.0.0.1 -U cm_core_runtime -d cm_core_ci -v ON_ERROR_STOP=1 "$@"; }
+          q -c 'INSERT INTO cm_core.bids(id,"listingId","bidderId",amount,"timestamp","createdAt","updatedAt") VALUES ('"'"'bid-live'"'"','"'"'live-listing'"'"','"'"'test-dealer'"'"',7200,now(),now(),now())' >/dev/null
+          test "$(q -tAc "SELECT count(*) FROM cm_core.bids WHERE id='bid-live'")" = 1
+          if q -c 'INSERT INTO cm_core.bids(id,"listingId","bidderId",amount,"timestamp","createdAt","updatedAt") VALUES ('"'"'bid-ended'"'"','"'"'ended-listing'"'"','"'"'test-dealer'"'"',5100,now(),now(),now())' >/tmp/denied-ended.out 2>&1; then
+            echo "SECURITY FAILURE: ended auction accepted a synthetic bid"; exit 1
+          fi
+          echo "Synthetic policy accepts eligible bids and denies bids for unavailable stock."
+      - name: Runtime cannot access passwords, transactions, reserve editing or DDL
+        env:
+          PGPASSWORD: synthetic_runtime_ci_only
+        run: |
+          set -eu
+          q() { psql -X -h 127.0.0.1 -U cm_core_runtime -d cm_core_ci -v ON_ERROR_STOP=1 "$@"; }
+          if q -c 'SELECT "passwordHash" FROM cm_core.users' >/tmp/denied-pw.out 2>&1; then echo "Password column exposed"; exit 1; fi
+          if q -c 'SELECT id FROM cm_core.transactions' >/tmp/denied-financial.out 2>&1; then echo "Transaction records exposed"; exit 1; fi
+          if q -c 'UPDATE cm_core.auctions SET "reservePrice"=1' >/tmp/denied-reserve.out 2>&1; then echo "Auction reserve modified"; exit 1; fi
+          if q -c 'ALTER TABLE cm_core.auctions ADD COLUMN forbidden text' >/tmp/denied-alter.out 2>&1; then echo "Schema change allowed"; exit 1; fi
+          if q -c 'CREATE TABLE public.forbidden_by_runtime(id int)' >/tmp/denied-create.out 2>&1; then echo "Unsafe PUBLIC CREATE persisted"; exit 1; fi
+          echo "Selected sensitive operations are denied to the synthetic restricted role."
+      - name: Run actual CarMazium session adapter as synthetic restricted login
+        working-directory: backend
+        env:
+          CI_CORE_SCHEMA_REHEARSAL: 'true'
+          PGHOST: 127.0.0.1
+          PGDATABASE: cm_core_ci
+        run: |
+          npm ci --ignore-scripts --no-fund
+          node scripts/security/ci-core-session-adapter.cjs
+      - name: Migration account retains DDL access only in dedicated synthetic schema
+        env:
+          PGPASSWORD: synthetic_migrator_ci_only
+        run: |
+          set -eu
+          psql -X -h 127.0.0.1 -U cm_core_migrator -d cm_core_ci -v ON_ERROR_STOP=1 \
+            -c 'CREATE TABLE cm_core.synthetic_migration_probe(id int PRIMARY KEY)' >/dev/null
+          psql -X -h 127.0.0.1 -U cm_core_migrator -d cm_core_ci -v ON_ERROR_STOP=1 \
+            -c 'DROP TABLE cm_core.synthetic_migration_probe' >/dev/null
+          echo "Separate migrator retained schema ownership for synthetic, short-lived DDL."

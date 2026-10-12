@@ -1,0 +1,114 @@
+# Free synthetic backup-and-restore rehearsal for restricted DB roles
+
+**No paid Supabase branch, no production credentials and no live data.**
+This tests a realistic limitation of the proposed least-privilege application
+login in a disposable PostgreSQL 17 instance on the repository's existing
+GitHub Actions runners.
+
+## Why the test matters
+
+CarMazium's currently deployed weekly backup service
+(`backend/src/tasks/db-backup.service.ts`) invokes `pg_dump` using the
+application's `DATABASE_URL`, compresses the archive and uploads it to a
+private Supabase Storage bucket. A read-only on-host inspection established
+that the currently deployed Prisma and `pg.Pool` connections authenticate
+as privileged `postgres`. Reducing that account's privileges without
+separating backup execution could break backups or produce incomplete data.
+
+## What the isolated workflow establishes
+
+`.github/workflows/carmazium-free-backup-restore.yml`:
+
+1. Starts a disposable PostgreSQL 17 server, checks the
+   `cm_core_ci` safety guard, provisions synthetic seller/dealer, live and
+   ended auctions, an eligible bid and a non-sensitive session record.
+2. Intentionally tries a full archive using the synthetic restricted
+   application login; **the backup must fail**. It must never be treated as a
+   reliable backup identity.
+3. Runs `pg_dump` as a separately controlled synthetic schema owner
+   (`cm_core_migrator`) and validates that the archive contains important
+   table data.
+4. Restores the archive into an entirely separate, empty PostgreSQL 17
+   **server** after explicitly provisioning only the required synthetic
+   roles. Preserves ACLs and object ownership instead of stripping them.
+   Checks synthetic record counts, session JSON/expiry, table ownership,
+   selected RLS policies, restored runtime read access and denied DDL.
+5. Uses synthetic-only credentials, writes no customer records, makes no
+   connection to Supabase/Fly and does not change the existing backup cron.
+
+Run [37077903691](https://github.com/carmaziums/carmazium/actions/runs/37077903691)
+passed all of these checks on separate disposable source and restore
+PostgreSQL servers. The targeted private backup operation uses the
+synthetic schema owner as its elevated identity only for this rehearsal.
+
+The rehearsal's synthetic schema represents **selected** production-observed
+columns, not the complete production schema. It does not prove a restore of
+63 production tables, required extensions, owner privileges, policies,
+scheduled jobs or an actual Supabase Storage backup object.
+
+## Reviewed backup-service preparation (disabled-by-default separate role)
+
+A metadata-only production check showed live Supabase PostgreSQL **17.6**.
+The previous Node 24 API Dockerfile bundled `postgresql16-client`,
+which cannot perform `pg_dump` against PostgreSQL 17. The reviewed
+security branch now bundles `postgresql17-client` and fails the
+container build unless `pg_dump --version` reports major 17. The
+public-image CI independently checks the packaged client.
+
+The current backup cron has been prepared for a separate,
+operator-configured `BACKUP_DATABASE_URL` without changing any existing
+production variable. When absent, it retains the legacy
+`DATABASE_URL` fallback **until a role cutover is approved**.
+Set `REQUIRE_SEPARATE_BACKUP_ROLE=true` only once the separate backup
+connection, access privileges, actual full restore and alerting are
+validated. If the required separate connection is missing, the cron
+fails closed and sends a sanitised failure alert rather than attempting
+a restricted-role backup. It invokes `pg_dump` without shell interpolation, validates the URI,
+and passes discrete `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`,
+`PGPASSWORD` and approved SSL parameters to libpq in a minimal
+subprocess environment. Real PostgreSQL 17 CI demonstrates that these
+parameters work; an earlier test showed that putting a full URI in
+`PGDATABASE` alone does **not** work with `pg_dump`. Credentials are not
+included in shell commands, argv or raw failure-alert text.
+
+**Security boundary:** Providing `BACKUP_DATABASE_URL` to the *public
+HTTP process* is only transitional compatibility wiring. Even with a
+different URI, a privileged backup credential held in that process
+would remain accessible after a public API compromise and would
+undermine full privilege separation. **Do not place a new privileged
+backup URI in the public Fly application's environment**. Production
+cutover additionally requires an approved, isolated short-lived backup
+runner with its own secret delivery and schedule; the current public
+cron must only be disabled when that independently tested runner is
+operational and alerting. No such runner has been deployed by this PR.
+
+These code changes do **not** establish a separate backup account on
+Supabase, move the cron into a private job, modify running Fly secrets
+or independently validate production recovery. Test them in a genuinely
+equivalent staging environment before any live credential switch.
+
+## Production release boundary
+
+- The schema owner in CI doubles as a privileged backup identity **for
+  rehearsal only**; the actual production design needs a separate,
+  short-lived backup/restore identity and secret-management procedure.
+  Since the live `DbBackupService` still uses the application
+  `DATABASE_URL`, a credential cutover **must not** precede an approved,
+  tested `BACKUP_DATABASE_URL` or independently scheduled backup service. Do not
+  use the proposed restricted application role to run `pg_dump`.
+- Audit current `DbBackupService` failure alerts, secure subprocess
+  execution, storage bucket access and backup retention. An independent
+  private backup task should be exercised in a production-equivalent staging
+  environment before changing any live `DATABASE_URL`. Do not create a
+  permanent elevated role or copy production connection credentials in CI.
+- Full restore validation should use an isolated environment with all
+  required roles, extensions, RLS policies, triggers and schema objects.
+  These tests are not a substitute for a full restore drill.
+- Historical manual database SQL is not fully represented in Prisma migration
+  history. Neither `prisma migrate deploy` nor `prisma db push` is
+  authorised on production by this rehearsal.
+- SimpleDMS partner-key distribution and data/privacy agreement are
+  separately gated. No production deploy or partner credentials are implied.
+
+Review evidence in the workflow run before integrating this test into the
+parent draft security PR #346.
