@@ -7,7 +7,7 @@
 //
 // This file is a byte-for-byte copy of web's content model and SECTIONS array.
 // DO NOT edit the wording here. The source document is CarMazium Ltd (company
-// no. 17053307, "Last Updated: 9 October 2026"), 83 numbered sections, and the
+// no. 17053307, "Last Updated: 12 October 2026"), 83 numbered sections, and the
 // numbering matches the source 1:1 so nothing gets renumbered, merged or
 // reworded out of step with the legal text. If the terms change, re-copy this
 // file from web rather than editing either copy by hand.
