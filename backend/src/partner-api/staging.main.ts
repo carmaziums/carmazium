@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Module } from '@nestjs/common';
+import { Controller, Get, Header, Module, Redirect } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -24,7 +24,8 @@ type SyntheticScenario =
   | 'history-a'
   | 'history-bid'
   | 'history-extended'
-  | 'history-return';
+  | 'history-return'
+  | 'photo-display';
 
 function scenario(): SyntheticScenario {
   const raw = (process.env.STAGING_SYNTHETIC_SCENARIO || 'single').toLowerCase();
@@ -35,7 +36,8 @@ function scenario(): SyntheticScenario {
     raw === 'history-a' ||
     raw === 'history-bid' ||
     raw === 'history-extended' ||
-    raw === 'history-return'
+    raw === 'history-return' ||
+    raw === 'photo-display'
   ) return raw;
   return 'single';
 }
@@ -56,15 +58,21 @@ function fixtures() {
   const now = new Date();
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
   const image = /^[a-z0-9.-]+\.up\.railway\.app$/.test(publicHost)
-    ? ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
+    ? mode === 'photo-display'
+      ? [
+          'https://' + publicHost + '/staging-assets/vehicle-photo-1',
+          'https://' + publicHost + '/staging-assets/vehicle-photo-2',
+          'https://' + publicHost + '/staging-assets/vehicle-photo-3',
+        ]
+      : ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
     : [];
   const count = mode === 'pagination' ? 51 : 1;
-  const returningVehicle = mode === 'history-return';
+  const returningVehicle = mode === 'history-return' || mode === 'photo-display';
 
   return Array.from({ length: count }, (_, offset) => {
     const baseIndex = offset + 1;
     const index = returningVehicle && baseIndex === 1 ? 2 : baseIndex;
-    const isHistoricalFixture = mode.startsWith('history-');
+    const isHistoricalFixture = mode.startsWith('history-') || mode === 'photo-display';
     const endOffsetMs = mode === 'history-extended'
       ? 4 * 3600_000
       : mode === 'history-return'
@@ -103,7 +111,7 @@ function fixtures() {
 function currentSyntheticBid(): string {
   const mode = scenario();
   if (mode === 'history-bid' || mode === 'history-extended') return '5450.00';
-  if (mode === 'history-return') return '5600.00';
+  if (mode === 'history-return' || mode === 'photo-display') return '5600.00';
   return '5200.00';
 }
 
@@ -123,6 +131,25 @@ class SyntheticAssetsController {
   image() {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><rect width="960" height="540" fill="#273447"/><rect x="100" y="100" width="760" height="340" rx="22" fill="#385977"/><text x="480" y="242" font-size="51" fill="white" text-anchor="middle" font-family="sans-serif">SYNTHETIC TEST VEHICLE</text><text x="480" y="312" font-size="24" fill="#deefff" text-anchor="middle" font-family="sans-serif">CarMazium staging only - not for live resale</text></svg>';
   }
+
+  // Controlled CarMazium marketing assets only. These endpoints deliberately
+  // keep the partner-feed URL on the isolated Railway staging host while
+  // redirecting to static, non-customer vehicle imagery already used by
+  // CarMazium. They are for display validation only, never historical storage.
+  @Get('vehicle-photo-1')
+  @Header('X-Robots-Tag', 'noindex')
+  @Redirect('https://www.carmazium.com/assets/images/featured-suv.png', 302)
+  photo1() {}
+
+  @Get('vehicle-photo-2')
+  @Header('X-Robots-Tag', 'noindex')
+  @Redirect('https://www.carmazium.com/assets/images/featured-sports.png', 302)
+  photo2() {}
+
+  @Get('vehicle-photo-3')
+  @Header('X-Robots-Tag', 'noindex')
+  @Redirect('https://www.carmazium.com/assets/images/promo-car.png', 302)
+  photo3() {}
 }
 
 const syntheticPrisma = {
