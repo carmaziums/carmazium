@@ -1,6 +1,8 @@
 # SimpleDMS production launch readiness — 9 October 2026
 
-**Status:** Synthetic staging acceptance COMPLETE. Production partner API remains DISABLED.
+**Status:** Synthetic staging and historical A–E acceptance COMPLETE; synthetic refresh/fail-safe/staleness checks externally confirmed. Production partner API remains DISABLED.
+
+**Evidence update:** 12 October 2026.
 
 This note is the current launch-gate record for the CarMazium × SimpleDMS integration. It does not itself authorise production access, issue a production credential, sign the agreement, or start the 90-day pilot.
 
@@ -24,6 +26,9 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [x] Monthly aggregate metric categories are defined in section 14 of the consolidated agreement.
 - [x] Schedule A expressly defines approved and prohibited live fields.
 - [x] Schedule B defines the 36-month historical evidence model and prohibits historical photos/raw VRM.
+- [x] Historical A–E lifecycle accepted externally by SimpleDMS: baseline, changed bid, closing-time extension, ended removal/404 with history preserved, and repeat appearance under new auction/listing IDs matched to the same protected vehicle history without duplication.
+- [x] SimpleDMS confirmed synthetic Preview report save/reopen on desktop/mobile-browser layouts, automatic refresh, failed-refresh handling and agreed stale-data behaviour.
+- [x] Observed bids remain labelled as observations rather than confirmed sale prices or valuation inputs.
 
 ## Remaining pre-production gates
 
@@ -43,12 +48,14 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [x] SimpleDMS confirmed a complete paginated reconciliation target every 2 minutes, within the agreed approximate 2–5 minute interval and API/service limits.
 - [x] SimpleDMS confirmed an incomplete/failed refresh retains the last successful snapshot and is not treated as a successful empty feed.
 - [x] SimpleDMS confirmed CarMazium inventory will be hidden or clearly marked unavailable after more than 15 minutes without a successful refresh.
-- [ ] SimpleDMS will verify this behaviour in production before providing written go-live approval. Synthetic lifecycle acceptance remains separate from production acceptance.
+- [x] SimpleDMS confirmed the automatic refresh, failed-refresh and stale-data behaviour in isolated synthetic Preview on 12 October 2026.
+- [ ] SimpleDMS will verify this behaviour in production before providing written go-live approval. Synthetic acceptance remains separate from production acceptance.
 
 ### 4. Production photo syndication rights
 - [x] Review identified that the legacy User Content licence is not explicit enough to rely on for third-party partner syndication without qualification.
-- [x] Prospective Terms/Privacy wording has been prepared in draft PR #444 for web/native parity and is NOT live pending review.
+- [x] Prospective Terms/Privacy wording was originally prepared in PR #444. A fresh current-main release PR #561 now carries only the intended web/native disclosure and seller-acknowledgement changes; it remains draft/not live pending current CI and final review.
 - [x] A fail-closed technical design has been prepared: a listing-level partner-distribution acceptance timestamp defaults to NULL, and the SimpleDMS feed excludes any listing without that acknowledgement. Legacy listings therefore remain excluded by default.
+- [x] Backend consent-gate PR #447 passed CI and was merged on 12 October 2026 into the isolated SimpleDMS integration base only (commit `b71a8c821595a9653129fb8a369027afa67b304e`); it has not been deployed to CarMazium production.
 - [ ] Legal/data-protection review approves the final wording and activation approach.
 - [ ] Updated Terms/Privacy are deployed before any production partner feed is enabled.
 - [ ] Only listings carrying the recorded partner-distribution acknowledgement are eligible for the live partner feed.
@@ -60,6 +67,7 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [ ] Ensure any attribution cookie/tracking or equivalent PECR-relevant mechanism is enabled only after the required disclosure/consent assessment.
 - [ ] Complete the historical matching DPIA or documented DPIA-screening decision before production launch.
 - [ ] SimpleDMS confirms its corresponding privacy notice/lawful basis and matching/deletion controls.
+- [ ] Receive and review SimpleDMS's remaining redacted evidence for protected matching/raw-registration deletion, fixed 36-month expiry/no access-based reset, correction/deletion handling, and backup/non-reconstruction controls.
 - Historical capture is now a pre-launch requirement; the 90-day pilot does not start without it.
 
 ### 6. Exact production field/config acceptance
