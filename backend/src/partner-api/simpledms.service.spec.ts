@@ -77,7 +77,12 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(where.deletedAt).toBeNull();
     expect(where.startTime.lte).toBeInstanceOf(Date);
     expect(where.endTime.gt).toBeInstanceOf(Date);
-    expect(where.listing.is).toEqual({ type: 'AUCTION', status: 'ACTIVE', deletedAt: null });
+    expect(where.listing.is).toEqual({
+      type: 'AUCTION',
+      status: 'ACTIVE',
+      deletedAt: null,
+      partnerDistributionAcceptedAt: { not: null },
+    });
   });
 
   it('only includes opted-in registration and genuinely public approved-host images', async () => {

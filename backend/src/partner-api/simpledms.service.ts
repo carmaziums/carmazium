@@ -55,7 +55,12 @@ export class SimpleDmsService {
       startTime: { lte: now },
       endTime: { gt: now },
       listing: {
-        is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null },
+        is: {
+          type: 'AUCTION',
+          status: 'ACTIVE',
+          deletedAt: null,
+          partnerDistributionAcceptedAt: { not: null },
+        },
       },
     };
   }

@@ -214,6 +214,15 @@ export class CreateListingDto {
     @IsEnum(ListingType)
     listingType: ListingType;
 
+    @ApiProperty({
+        description: 'Seller has acknowledged CarMazium may distribute the live listing and approved public vehicle photographs through approved automotive marketplace/dealer-research partners under the current Terms and Privacy Policy.',
+        required: false,
+        default: false,
+    })
+    @IsBoolean()
+    @IsOptional()
+    partnerDistributionAccepted?: boolean;
+
     // Initial AUCTION creation can carry its schedule in the same POST /listings
     // request. When these fields are present, Prisma creates Listing + Auction as
     // one nested write so a scheduling failure cannot leave an orphan listing.

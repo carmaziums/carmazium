@@ -1733,6 +1733,7 @@ export class ListingsService {
                 status: listingStatus,
                 description: createListingDto.description ?? null,
                 slug,
+                partnerDistributionAcceptedAt: createListingDto.partnerDistributionAccepted ? new Date() : null,
                 // Vehicle identity
                 make: createListingDto.make ?? null,
                 model: createListingDto.model ?? null,
@@ -2338,6 +2339,9 @@ export class ListingsService {
         if (updateListingDto.deliveryAvailable !== undefined) updateData.deliveryAvailable = updateListingDto.deliveryAvailable;
         if (updateListingDto.deliveryPricePerMile !== undefined) updateData.deliveryPricePerMile = updateListingDto.deliveryPricePerMile ?? null;
         if (updateListingDto.deliveryMaxMiles !== undefined) updateData.deliveryMaxMiles = updateListingDto.deliveryMaxMiles ?? null;
+        if (updateListingDto.partnerDistributionAccepted !== undefined) {
+            updateData.partnerDistributionAcceptedAt = updateListingDto.partnerDistributionAccepted ? new Date() : null;
+        }
 
         // Update the listing
         const updatedListing = await this.prisma.listing.update({
