@@ -56,8 +56,9 @@ This note is the current launch-gate record for the CarMazium × SimpleDMS integ
 - [x] Prospective Terms/Privacy wording was originally prepared in PR #444. A fresh current-main release PR #561 now carries only the intended web/native disclosure and seller-acknowledgement changes; it remains draft/not live pending current CI and final review.
 - [x] A fail-closed technical design has been prepared: a listing-level partner-distribution acceptance timestamp defaults to NULL, and the SimpleDMS feed excludes any listing without that acknowledgement. Legacy listings therefore remain excluded by default.
 - [x] Backend consent-gate PR #447 passed CI and was merged on 12 October 2026 into the isolated SimpleDMS integration base only (commit `b71a8c821595a9653129fb8a369027afa67b304e`); it has not been deployed to CarMazium production.
+- [x] Minimal acknowledgement storage was separately rebuilt on current `main` in PR #562 and deployed on 12 October 2026 (merge commit `c8d7d5e2bdf649c0e6b8f90f97806977d1ed8865`). The production database contains nullable `partnerDistributionAcceptedAt`; all 642 pre-existing listings remained NULL after migration, so no legacy listing was opted in. This storage release does not add or enable the SimpleDMS production feed.
 - [ ] Legal/data-protection review approves the final wording and activation approach.
-- [ ] Updated Terms/Privacy are deployed before any production partner feed is enabled.
+- [ ] Updated Terms/Privacy and seller acknowledgement are deployed before any production partner feed is enabled. Current-main PR #561 is CI/preview validated but remains draft pending final legal/data-protection approval.
 - [ ] Only listings carrying the recorded partner-distribution acknowledgement are eligible for the live partner feed.
 - Historical photographs remain prohibited under Schedule B.
 
