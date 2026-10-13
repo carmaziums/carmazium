@@ -58,12 +58,14 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 ## 4. Live partner API licence
 
-4.1 During the licence period CarMazium grants SimpleDMS a non-exclusive, non-transferable, revocable licence to access the dedicated partner API solely for:
+4.1 During the licence period CarMazium grants SimpleDMS a non-exclusive, non-transferable licence, **revocable in accordance with the suspension and termination provisions of section 13**, to access the dedicated partner API solely for:
 - live BuySmart auction discovery;
 - vehicle matching and BuySmart analysis;
 - dealer-facing research/reporting;
 - outbound dealer referral to CarMazium;
 - agreed aggregate partnership reporting.
+
+For clarity, "revocable" does not create a separate right to terminate ordinary live access immediately for convenience outside section 13: the **30-day written convenience notice** in section 13.1, proportionate urgent suspension rights in section 13.2 and accrued historical/report rights that survive under sections 13.4–13.6 remain applicable, subject to section 13.5 and applicable law.
 
 4.2 The approved live-feed fields are listed in **Schedule A**. CarMazium may temporarily disable a field for a genuine technical, security, rights or legal reason while working in good faith to restore agreed functionality where appropriate.
 
@@ -231,7 +233,7 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 11.8 Nothing in this section authorises SimpleDMS to upload CarMazium's complete feed, raw historical event store or private customer records to an AI provider.
 
-11.9 **Provider-deletion boundary and continuing obligations.** Optional, expressly permitted model-improvement sharing may be subject to the provider's own retention and model-improvement processes; the parties do not represent that such shared information can always be deleted from previously trained model weights or that it will be automatically erased on a fixed date. This limited provider-side technical boundary **does not waive** applicable data-protection obligations, lawful erasure/correction requests, or SimpleDMS's duties to correct, suppress, expire or delete CarMazium-sourced records and derived evidence under sections 7.5–7.8, 10.6 and Schedule B. SimpleDMS must prevent excluded fields from being submitted in the first place; remove or correct records and derived outputs within its own systems; use reasonably available provider-side deletion and suppression mechanisms where applicable; and apply appropriate documented mitigation where deletion from provider model weights is not technically available. Material changes to sharing or retention require the approval described in sections 11.7 and 12.5.
+11.9 **Provider-deletion boundary and continuing obligations.** Optional, expressly permitted model-improvement sharing may be subject to the provider's own retention and model-improvement processes; the parties do not represent that such shared information can always be deleted from previously trained model weights or that it will be automatically erased on a fixed date. This limited provider-side technical boundary **does not waive** applicable data-protection obligations, lawful erasure/correction requests, or SimpleDMS's duties to correct, suppress, expire or delete CarMazium-sourced records and derived evidence under sections 7.5–7.8, 10.6 and Schedule B. SimpleDMS must prevent excluded fields from being submitted in the first place; remove or correct records and derived outputs within its own systems; use reasonably available provider-side deletion and suppression mechanisms where applicable; and apply appropriate documented mitigation where deletion from provider model weights is not technically available. Changes to sharing or retention require **the contractual notice or prior written agreement, as applicable**, under sections 11.7, 12.5 and 20 **before the changed arrangement is relied on for CarMazium data**. Routine model, security and infrastructure changes within the approved data scope remain permitted under sections 11.7 and 20.2, subject to any required notice.
 
 ## 12. Infrastructure and subprocessors
 
@@ -502,7 +504,7 @@ For the CarMazium integration, application logging will be restricted to necessa
 
 **Licensed-data retention:** Live data, permitted historical evidence and issued reports remain subject to their separate retention periods in the agreement. Provider backup arrangements do not extend the permitted commercial use of expired evidence.
 
-Where a deleted or expired record remains temporarily in a protected backup, it will remain unavailable for ordinary use and expire through the normal backup cycle. If recovery is necessary, applicable deletion and expiry controls will be reapplied before the restored data returns to ordinary use.
+Where a deleted or expired record remains temporarily in a protected backup, it will remain unavailable for ordinary use and expire through the normal backup cycle. If recovery is necessary, applicable correction, deletion, suppression and event/report expiry controls will be reapplied and verified before the restored data returns to ordinary use. **This covers managed database backup copies only to the extent described above; independent recovery and Storage-object copies require the separate verified record in C5 and Schedule D.**
 
 ## C3 — OpenAI
 
@@ -523,7 +525,7 @@ No historical dataset, source document, photograph collection, fine-tuning datas
 
 The analytical calculations and matching methods remain within SimpleDMS; OpenAI receives only the approved information needed to express the explanation.
 
-**Sharing and model improvement:** SimpleDMS states that input/output sharing is enabled for the relevant OpenAI API usage and will remain enabled. Accordingly, the permitted inputs and resulting outputs may be used by OpenAI for service improvement and model training.
+**Sharing and model improvement:** SimpleDMS states that optional input/output sharing is **currently enabled** for the relevant OpenAI API usage. Such sharing is **permitted, but not required** by this agreement, solely for the expressly approved minimised inputs and resulting outputs, which may be used by OpenAI for service improvement and model training when sharing is enabled. SimpleDMS may disable that optional sharing without an amendment; this clause does not oblige SimpleDMS to keep it enabled indefinitely. Any material expansion beyond the agreed permitted scope remains subject to sections 11.7, 12.5 and 20.
 
 CarMazium's permission for that sharing is limited to the expressly approved input scope above. It does not authorise submission of any excluded information or wider disclosure of the feed.
 
@@ -544,6 +546,15 @@ These disclosures are limited to information necessary to assess the agreed proc
 Each provider will receive only the information needed for its approved role. Any material additional recipient or processing purpose will be addressed under the agreement's change-control requirements.
 
 SimpleDMS's operational contact for provider, security and incident coordination is **Stephen Abel — info@simpledms.co.uk**. Any notification concerning an incident affecting licensed data will follow the agreement's notification requirements.
+
+## C5 — Independent backup, Storage copies and unverified provider particulars
+
+**Each party's relevant systems:** Before signature and production authorisation, each party will provide a proportionate, redacted account-specific record of the backup and recovery arrangements for **its own relevant integration systems and CarMazium-licensed data**. Where managed database snapshots, separate object/Storage copies or independent off-site backups are involved, that record will identify, as applicable, the provider/subprocessor and purpose, material hosting/transfer region, access restrictions, creation and deletion/purge treatment, retention period, restore isolation/quarantine and incident contact. This does not grant cross-party access to internal systems, private backup objects, credentials, network diagrams or source code under section 3.4.
+
+**No extension of licensed data rights:** Neither provider-managed nor independent backups or Storage copies extend the live-cache deadline or the original Schedule B event/report expiry clocks. They do not create a right to retain historical vehicle photographs. Any restored copy must remain unavailable to ordinary users, reports, analysis, matching and collectors until applicable source corrections, erasure, suppression and event/report expiry have been reapplied and independently checked. Expired CarMazium evidence may not be reconstructed from a report, backup or cache.
+
+**Verification outstanding:** The actual Vercel/Supabase location and log/drain settings; managed and independent backup/Storage configurations; provider retention/purge and restore controls; OpenAI pathway, `store` and optional sharing settings and processing/transfer terms; and any additional provider proposed to receive licensed data in the live BuySmart workflow still require the relevant party's redacted confirmation under sections 12.3–12.5. The draft descriptions in C1–C3 are **not by themselves certified current account configurations**, nor evidence of production recovery or rights clearance.
+
 ---
 
 # SCHEDULE D — TECHNICAL ACCEPTANCE
@@ -554,19 +565,21 @@ Before production launch:
 - authenticated pagination verified;
 - full-feed reconciliation and removal verified;
 - 2–5 minute sync and 15-minute stale handling verified;
-- approved image URLs load reliably and private images do not leak;
+- approved image URLs load reliably and private images do not leak; production vehicle photographs are limited to images with confirmed public-display and partner-syndication rights under section 6 and Schedule A, with withdrawal/takedown controls;
 - registration, current bid and broad location field controls verified;
 - CarMazium source/deep links verified;
+- from the **Pilot Launch Date**, the agreed SimpleDMS referral marker and attribution flows accepted: SimpleDMS's reasonably available aggregate auction impressions, individual vehicle views, BuySmart reports and outbound clicks; and CarMazium's reasonably and lawfully attributable aggregate dealer registrations, qualified bids and handover-approved completed purchases, strictly under section 14 and its attribution limitations, without unnecessary person-level data exchange;
 - no seller/bidder/reserve/private fields in feed;
 - key rotation/revocation rehearsed;
 - monthly metric definitions agreed;
 - production photographs/rights confirmed;
+- approved web and native Terms, Privacy Policy and seller partner-distribution disclosures **published**; the required, recorded **per-listing seller acknowledgement** (and consent wherever legally required) evidenced before any listing is shared, with server-side **fail-closed exclusion** of every unacknowledged listing, including all legacy listings; no blanket backfill or presumed acknowledgement, and a verified correction/withdrawal/removal path for affected listings;
 - privacy notice/lawful-basis treatment for attribution and historical matching completed;
 - any required DPIA or documented DPIA-screening decision completed;
 - protected matching design and raw-VRM deletion controls verified;
 - historical-field exclusions, 36-month event and distinct report clocks, correction/deletion and expiry controls verified;
-- independent, access-controlled and durable recovery of database and Storage objects demonstrated by a documented successful backup and **isolated, production-equivalent restore**, with integrity checks, alerting and recovery-access controls accepted by both parties;
-- restored data quarantined from ordinary readers, reports, matching, analysis and collectors until all applicable CarMazium source corrections, suppression, erasure and event/report expiry controls are reapplied and verified; test that deleted or expired records cannot be reintroduced by restored backups;
+- independent, access-controlled and durable recovery of the **relevant integration systems and CarMazium-licensed data within each party's own control**, including their applicable databases, independent backup destinations and Storage-object copies, demonstrated by documented successful backups and **isolated, production-equivalent restoration** with integrity checks, alerting, access controls and **redacted acceptance evidence** provided by each party; this obligation does **not** entitle either party to the other's internal systems, private backups, source code or credentials;
+- restored data, including data recovered from managed or independent backups and Storage copies, quarantined from ordinary readers, reports, matching, analysis and collectors until all applicable CarMazium source corrections, suppression, erasure and **original** event/report expiry controls are reapplied and verified; test that deleted or expired records or historical photographs cannot be reintroduced or made available by restored backups;
 - production security acceptance recorded, including restricted role/permission testing, key isolation, approved image/photo rights and documented rollback/failure procedures; synthetic local backup tests alone do not close this gate;
 - Schedule C provider items completed and account-specific statements confirmed;
 - both the approved live integration and licensed Schedule B historical functionality confirmed ready;
@@ -598,4 +611,4 @@ Technical/security contact: Stephen Abel — info@simpledms.co.uk
 
 ---
 
-**Legal-review note:** This is a commercial counter-draft intended to consolidate the parties' negotiated technical and data terms. Both parties should have the final text reviewed by qualified legal/data-protection advisers before signature.
+**Legal-review note — execution-review draft, version 13 October 2026 (unsigned):** This draft consolidates the parties' negotiated technical and data terms. Both parties should have the final text reviewed by qualified legal and data-protection advisers before signature. This version does not authorise production data sharing or begin the 90-day pilot.
