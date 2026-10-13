@@ -55,7 +55,15 @@ export class SimpleDmsService {
       startTime: { lte: now },
       endTime: { gt: now },
       listing: {
-        is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null },
+        is: {
+          type: 'AUCTION',
+          status: 'ACTIVE',
+          deletedAt: null,
+          // Explicit seller acknowledgement is necessary (but not by itself
+          // sufficient) for partner distribution. Null legacy rows are excluded
+          // in both list AND detail queries until legal/rights approval.
+          partnerDistributionAcceptedAt: { not: null },
+        },
       },
     };
   }
