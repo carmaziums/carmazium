@@ -61,7 +61,8 @@ function fixtures() {
   const image = /^[a-z0-9.-]+\.up\.railway\.app$/.test(publicHost)
     ? mode === 'photo-display'
       ? [
-          'https://' + publicHost + '/staging-assets/vehicle-photo-1',
+          // Held removal checkpoint: omit only Photo 1 from the LIVE feed;
+          // the direct staging asset route remains intact for independent checks.
           'https://' + publicHost + '/staging-assets/vehicle-photo-2',
           'https://' + publicHost + '/staging-assets/vehicle-photo-3',
         ]
