@@ -1,8 +1,9 @@
-import { Controller, Get, Header, Module } from '@nestjs/common';
+import { Controller, Get, Header, Module, StreamableFile } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import helmet from 'helmet';
+import { readFileSync } from 'node:fs';
 import { SimpleDmsGuard } from './simpledms.guard';
 import { SimpleDmsController } from './simpledms.controller';
 import { SimpleDmsService } from './simpledms.service';
@@ -16,11 +17,29 @@ import { PrismaService } from '../prisma/prisma.service';
 const STAGING_AUCTION_ID = '11111111-1111-4111-8111-111111111111';
 const STAGING_LISTING_ID = '22222222-2222-4222-8222-222222222222';
 
-type SyntheticScenario = 'single' | 'pagination' | 'withdrawn' | 'ended';
+type SyntheticScenario =
+  | 'single'
+  | 'pagination'
+  | 'withdrawn'
+  | 'ended'
+  | 'history-a'
+  | 'history-bid'
+  | 'history-extended'
+  | 'history-return'
+  | 'photo-display';
 
 function scenario(): SyntheticScenario {
   const raw = (process.env.STAGING_SYNTHETIC_SCENARIO || 'single').toLowerCase();
-  if (raw === 'pagination' || raw === 'withdrawn' || raw === 'ended') return raw;
+  if (
+    raw === 'pagination' ||
+    raw === 'withdrawn' ||
+    raw === 'ended' ||
+    raw === 'history-a' ||
+    raw === 'history-bid' ||
+    raw === 'history-extended' ||
+    raw === 'history-return' ||
+    raw === 'photo-display'
+  ) return raw;
   return 'single';
 }
 
@@ -33,37 +52,67 @@ function syntheticUuid(prefix: '1' | '2', index: number): string {
 function fixtures() {
   const mode = scenario();
 
-  // v1 is a live-only full snapshot. Withdrawn and ended auctions are not
-  // tombstones/status rows: they are absent from the next complete feed.
-  if (mode === 'withdrawn' || mode === 'ended') return [];
+  // v1 is a live-only full snapshot. At this held SimpleDMS checkpoint,
+  // photo-display is WITHDRAWN: omit the fictional auction from the complete
+  // feed and live detail without changing retained history or image assets.
+  if (['withdrawn', 'ended', 'photo-display'].includes(mode)) return [];
 
   const now = new Date();
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
   const image = /^[a-z0-9.-]+\.up\.railway\.app$/.test(publicHost)
-    ? ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
+    ? mode === 'photo-display'
+      // Held all-photo removal checkpoint: keep the fictional ACTIVE listing,
+      // but expose no images in its live feed until SimpleDMS confirms.
+      ? []
+      : ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
     : [];
   const count = mode === 'pagination' ? 51 : 1;
+  const returningVehicle = mode === 'history-return' || mode === 'photo-display';
 
   return Array.from({ length: count }, (_, offset) => {
-    const index = offset + 1;
+    const baseIndex = offset + 1;
+    const index = returningVehicle && baseIndex === 1 ? 2 : baseIndex;
+    const isHistoricalFixture = mode.startsWith('history-') || mode === 'photo-display';
+    const endOffsetMs = mode === 'history-extended'
+      ? 4 * 3600_000
+      : mode === 'history-return'
+        ? 2 * 3600_000
+        : 3600_000;
+    const mileage = returningVehicle && baseIndex === 1 ? 40125 : 40000 + baseIndex - 1;
     return {
       id: syntheticUuid('1', index),
       listingId: syntheticUuid('2', index),
-      startTime: new Date(now.getTime() - 3600_000),
-      endTime: new Date(now.getTime() + (3600_000 + index * 1_000)),
+      startTime: new Date(now.getTime() - (returningVehicle ? 1800_000 : 3600_000)),
+      endTime: new Date(now.getTime() + endOffsetMs + baseIndex * 1_000),
       updatedAt: now,
-      startingBid: (5000 + index - 1).toFixed(2),
+      startingBid: (5000 + baseIndex - 1).toFixed(2),
       listing: {
-        title: 'SYNTHETIC TEST: Example 2020 Vehicle #' + index,
+        title: isHistoricalFixture
+          ? 'SYNTHETIC HISTORY TEST: Example 2020 Vehicle'
+          : 'SYNTHETIC TEST: Example 2020 Vehicle #' + baseIndex,
         make: 'Example', model: 'Test Vehicle', variant: 'Demonstration',
-        year: 2020, mileage: 40000 + index - 1, vehicleType: 'CAR', fuelType: 'PETROL',
+        year: 2020, mileage, vehicleType: 'CAR', fuelType: 'PETROL',
         transmission: 'AUTOMATIC', bodyType: 'HATCHBACK', color: 'Blue',
         engineSize: 1500, images: image,
-        vrm: index === 1 ? 'STAGING-NOT-A-REAL-VRM' : 'STAGING-FAKE-' + String(index).padStart(3, '0'),
+        // history-return deliberately presents the same fictional registration
+        // under a new auction/listing ID so SimpleDMS can prove repeat matching
+        // without any real customer or vehicle data.
+        vrm: isHistoricalFixture
+          ? 'STAGING-NOT-A-REAL-VRM'
+          : baseIndex === 1
+            ? 'STAGING-NOT-A-REAL-VRM'
+            : 'STAGING-FAKE-' + String(baseIndex).padStart(3, '0'),
         location: 'Birmingham', updatedAt: now,
       },
     };
   });
+}
+
+function currentSyntheticBid(): string {
+  const mode = scenario();
+  if (mode === 'history-bid' || mode === 'history-extended') return '5450.00';
+  if (mode === 'history-return' || mode === 'photo-display') return '5600.00';
+  return '5200.00';
 }
 
 @Controller('health')
@@ -82,6 +131,42 @@ class SyntheticAssetsController {
   image() {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><rect width="960" height="540" fill="#273447"/><rect x="100" y="100" width="760" height="340" rx="22" fill="#385977"/><text x="480" y="242" font-size="51" fill="white" text-anchor="middle" font-family="sans-serif">SYNTHETIC TEST VEHICLE</text><text x="480" y="312" font-size="24" fill="#deefff" text-anchor="middle" font-family="sans-serif">CarMazium staging only - not for live resale</text></svg>';
   }
+
+  // Controlled CarMazium-owned marketing assets copied into the isolated
+  // staging build. These routes return the image bytes directly from this
+  // Railway host: no redirects, no customer media and no private listing paths.
+  private photo(name: string) {
+    const bytes = readFileSync(`assets/simpledms/${name}`);
+    if (bytes.length < 3 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+      throw new Error(`Synthetic staging photo is not JPEG: ${name}`);
+    }
+    return new StreamableFile(bytes, {
+      type: 'image/jpeg',
+      disposition: 'inline',
+      length: bytes.length,
+    });
+  }
+
+  @Get('vehicle-photo-1')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('X-Robots-Tag', 'noindex')
+  photo1() {
+    return this.photo('vehicle-photo-1.png');
+  }
+
+  @Get('vehicle-photo-2')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('X-Robots-Tag', 'noindex')
+  photo2() {
+    return this.photo('vehicle-photo-2.png');
+  }
+
+  @Get('vehicle-photo-3')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
+  @Header('X-Robots-Tag', 'noindex')
+  photo3() {
+    return this.photo('vehicle-photo-3.png');
+  }
 }
 
 const syntheticPrisma = {
@@ -98,7 +183,7 @@ const syntheticPrisma = {
       return fixtures().find((auction) => auction.id === args?.where?.id) || null;
     },
   },
-  bid: { findFirst: async () => ({ amount: '5200.00' }) },
+  bid: { findFirst: async () => ({ amount: currentSyntheticBid() }) },
 };
 
 @Controller('staging-auctions')
