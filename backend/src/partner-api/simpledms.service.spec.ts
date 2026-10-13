@@ -77,7 +77,12 @@ describe('SimpleDmsService partner data boundary', () => {
     expect(where.deletedAt).toBeNull();
     expect(where.startTime.lte).toBeInstanceOf(Date);
     expect(where.endTime.gt).toBeInstanceOf(Date);
-    expect(where.listing.is).toEqual({ type: 'AUCTION', status: 'ACTIVE', deletedAt: null });
+    expect(where.listing.is).toEqual({
+      type: 'AUCTION',
+      status: 'ACTIVE',
+      deletedAt: null,
+      partnerDistributionAcceptedAt: { not: null },
+    });
   });
 
   it('only includes opted-in registration and genuinely public approved-host images', async () => {
@@ -153,6 +158,24 @@ describe('SimpleDmsService partner data boundary', () => {
     const { service, prisma } = harness();
     prisma.auction.findFirst.mockResolvedValue(null);
     await expect(service.detail('auction-1')).rejects.toThrow(NotFoundException);
-    expect(prisma.auction.findFirst.mock.calls[0][0].where.listing.is.status).toBe('ACTIVE');
+    const detailWhere = prisma.auction.findFirst.mock.calls[0][0].where;
+    expect(detailWhere.listing.is.status).toBe('ACTIVE');
+    expect(detailWhere.listing.is.partnerDistributionAcceptedAt).toEqual({ not: null });
+  });
+
+  it('applies the same fail-closed seller acknowledgement gate to all pages and detail', async () => {
+    const { service, prisma } = harness();
+    await service.list(1, 25);
+    await service.list(2, 25);
+    await service.detail('auction-1');
+    for (const [params] of prisma.auction.findMany.mock.calls) {
+      expect(params.where.listing.is.partnerDistributionAcceptedAt).toEqual({ not: null });
+    }
+    for (const [params] of prisma.auction.count.mock.calls) {
+      expect(params.where.listing.is.partnerDistributionAcceptedAt).toEqual({ not: null });
+    }
+    for (const [params] of prisma.auction.findFirst.mock.calls) {
+      expect(params.where.listing.is.partnerDistributionAcceptedAt).toEqual({ not: null });
+    }
   });
 });
