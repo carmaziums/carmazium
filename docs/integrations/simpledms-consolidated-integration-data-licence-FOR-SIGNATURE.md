@@ -1,5 +1,5 @@
 # CARMAZIUM × SIMPLEDMS — CONSOLIDATED EARLY-LAUNCH INTEGRATION, LIVE-FEED AND HISTORICAL-EVIDENCE LICENCE
-**Consolidated counter-draft for signature — revised 9 October 2026. Not effective until signed by both parties.**
+**Consolidated execution-review draft — version 13 October 2026. Unsigned and not effective until both parties sign. Subject to final legal, data-protection and account-specific provider verification.**
 
 This document is intended to replace, on signature, the earlier pilot-data-licence and historical-data proposal drafts. Until signature, the existing production API remains disabled and no production credential or live-data permission is granted. Synthetic staging may continue under separate test-only controls.
 
@@ -231,6 +231,8 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 11.8 Nothing in this section authorises SimpleDMS to upload CarMazium's complete feed, raw historical event store or private customer records to an AI provider.
 
+11.9 **Provider-deletion boundary and continuing obligations.** Optional, expressly permitted model-improvement sharing may be subject to the provider's own retention and model-improvement processes; the parties do not represent that such shared information can always be deleted from previously trained model weights or that it will be automatically erased on a fixed date. This limited provider-side technical boundary **does not waive** applicable data-protection obligations, lawful erasure/correction requests, or SimpleDMS's duties to correct, suppress, expire or delete CarMazium-sourced records and derived evidence under sections 7.5–7.8, 10.6 and Schedule B. SimpleDMS must prevent excluded fields from being submitted in the first place; remove or correct records and derived outputs within its own systems; use reasonably available provider-side deletion and suppression mechanisms where applicable; and apply appropriate documented mitigation where deletion from provider model weights is not technically available. Material changes to sharing or retention require the approval described in sections 11.7 and 12.5.
+
 ## 12. Infrastructure and subprocessors
 
 12.1 SimpleDMS has stated that its production application runtime is configured in **London with Vercel** and its production Supabase project is also hosted in **London**.
@@ -248,7 +250,7 @@ Technical/security contact for SimpleDMS: **Stephen Abel — info@simpledms.co.u
 
 12.4 The provider schedule may be redacted to protect security and confidential information and need not include credentials, private infrastructure identifiers, internal endpoints, source code, network diagrams or proprietary configuration details.
 
-12.5 Any account-specific item genuinely unavailable at draft stage may be marked **"to be confirmed before signature"**, but the material field must be completed before production permission.
+12.5 The Schedule C provider record must accurately describe the account-specific arrangements and be completed and confirmed by the relevant party **before signature** and, in all events, before production use. Any genuinely unavailable item may be marked **"to be confirmed before signature"** only during draft review. If a material provider, configuration, subprocessor, region, retention, transfer or data-sharing arrangement changes, the party relying on it must update the provider record and give the required contractual notice or obtain prior written agreement under section 11.7 and the applicable change-control provisions **before relying on the changed arrangement for CarMazium data**. No unverified draft statement is a production approval.
 
 ## 13. Termination and survival
 
@@ -525,11 +527,11 @@ The analytical calculations and matching methods remain within SimpleDMS; OpenAI
 
 CarMazium's permission for that sharing is limited to the expressly approved input scope above. It does not authorise submission of any excluded information or wider disclosure of the feed.
 
-**Retention and deletion:** The service is not operated on a zero-data-retention basis. SimpleDMS states that OpenAI's published standard Responses API application-state retention is 30 days under the standard stored-response configuration, and abuse-monitoring logs may be retained for up to 30 days subject to the provider's stated legal and security exceptions. Reference: https://developers.openai.com/api/docs/guides/your-data
+**Retention and deletion:** The service is not operated on a zero-data-retention basis. OpenAI's published standard Responses API application-state policy says that when responses are stored by default or with `store=true`, response data is retained for **at least 30 days**, subject to documented exceptions and account settings; **30 days is not a guaranteed deletion date or maximum retention period**. The published standard abuse-monitoring retention is generally up to 30 days, subject to the provider's stated legal, safety and security exceptions. The particular SimpleDMS account settings, use of `store` and applicable provider terms must be confirmed and recorded before signature and production use. Reference: https://developers.openai.com/api/docs/guides/your-data
 
 Those operational retention periods are separate from the expressly permitted model-improvement use. No fixed deletion deadline is represented for information incorporated into that process, and no guarantee is given that information can be removed from trained model weights.
 
-SimpleDMS will comply with the agreement's deletion and expiry obligations for records within its control and use reasonably available provider deletion mechanisms where applicable, consistently with the provider-deletion boundary in section 11.
+SimpleDMS will comply with the agreement's deletion and expiry obligations for records within its control and use reasonably available provider-side deletion or suppression mechanisms where applicable. The limited technical boundary in **section 11.9**, read together with **section 7.8**, does not authorise retention, reuse or reconstruction of expired CarMazium source evidence or the submission of excluded inputs.
 
 **Processing terms and transfers:** OpenAI's applicable service terms, data-sharing terms and DPA govern the relevant processing. The DPA includes contractual safeguards for restricted transfers, including the UK Addendum to the Standard Contractual Clauses. Processing may occur outside the UK; no UK-only or European-only processing commitment is made. Reference: https://openai.com/policies/data-processing-addendum/
 
@@ -562,8 +564,11 @@ Before production launch:
 - privacy notice/lawful-basis treatment for attribution and historical matching completed;
 - any required DPIA or documented DPIA-screening decision completed;
 - protected matching design and raw-VRM deletion controls verified;
-- historical-field exclusions, 36-month event clock and deletion/expiry controls verified;
-- Schedule C provider items completed;
+- historical-field exclusions, 36-month event and distinct report clocks, correction/deletion and expiry controls verified;
+- independent, access-controlled and durable recovery of database and Storage objects demonstrated by a documented successful backup and **isolated, production-equivalent restore**, with integrity checks, alerting and recovery-access controls accepted by both parties;
+- restored data quarantined from ordinary readers, reports, matching, analysis and collectors until all applicable CarMazium source corrections, suppression, erasure and event/report expiry controls are reapplied and verified; test that deleted or expired records cannot be reintroduced by restored backups;
+- production security acceptance recorded, including restricted role/permission testing, key isolation, approved image/photo rights and documented rollback/failure procedures; synthetic local backup tests alone do not close this gate;
+- Schedule C provider items completed and account-specific statements confirmed;
 - both the approved live integration and licensed Schedule B historical functionality confirmed ready;
 - both parties provide written production go-live approval.
 
