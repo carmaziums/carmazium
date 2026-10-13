@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Module, Redirect } from '@nestjs/common';
+import { Controller, Get, Header, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -132,24 +132,73 @@ class SyntheticAssetsController {
     return '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540"><rect width="960" height="540" fill="#273447"/><rect x="100" y="100" width="760" height="340" rx="22" fill="#385977"/><text x="480" y="242" font-size="51" fill="white" text-anchor="middle" font-family="sans-serif">SYNTHETIC TEST VEHICLE</text><text x="480" y="312" font-size="24" fill="#deefff" text-anchor="middle" font-family="sans-serif">CarMazium staging only - not for live resale</text></svg>';
   }
 
-  // Controlled CarMazium marketing assets only. These endpoints deliberately
-  // keep the partner-feed URL on the isolated Railway staging host while
-  // redirecting to static, non-customer vehicle imagery already used by
-  // CarMazium. They are for display validation only, never historical storage.
+  // Controlled, staging-only representative vehicle artwork. Serve the bytes
+  // directly from the isolated Railway host: no redirects, customer media,
+  // registration marks, people or private listing assets.
+  private vehicleArtwork(label: string, body: string, accent: string) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="${label}">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#0f172a"/>
+          <stop offset="1" stop-color="#334155"/>
+        </linearGradient>
+        <linearGradient id="car" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="${accent}"/>
+          <stop offset="1" stop-color="#e2e8f0"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="675" fill="url(#bg)"/>
+      <rect x="70" y="70" width="1060" height="535" rx="36" fill="#111827" stroke="#64748b" stroke-width="2"/>
+      <ellipse cx="600" cy="505" rx="390" ry="42" fill="#020617" opacity=".72"/>
+      <path d="${body}" fill="url(#car)" stroke="#f8fafc" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M430 320 L505 230 H710 L790 320" fill="#94a3b8" opacity=".9"/>
+      <path d="M520 245 H695 L752 315 H462 Z" fill="#dbeafe" opacity=".82"/>
+      <circle cx="395" cy="455" r="58" fill="#111827" stroke="#cbd5e1" stroke-width="14"/>
+      <circle cx="805" cy="455" r="58" fill="#111827" stroke="#cbd5e1" stroke-width="14"/>
+      <circle cx="395" cy="455" r="22" fill="#94a3b8"/>
+      <circle cx="805" cy="455" r="22" fill="#94a3b8"/>
+      <rect x="95" y="95" width="320" height="54" rx="27" fill="#ffffff" opacity=".94"/>
+      <text x="255" y="131" text-anchor="middle" font-size="25" font-family="Arial, sans-serif" font-weight="700" fill="#0f172a">CarMazium staging only</text>
+      <text x="600" y="585" text-anchor="middle" font-size="30" font-family="Arial, sans-serif" font-weight="700" fill="#f8fafc">${label}</text>
+      <text x="600" y="620" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#cbd5e1">Representative synthetic vehicle artwork — not a customer vehicle</text>
+    </svg>`;
+  }
+
   @Get('vehicle-photo-1')
+  @Header('Content-Type', 'image/svg+xml')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
-  @Redirect('https://www.carmazium.com/assets/images/featured-suv.png', 302)
-  photo1() {}
+  photo1() {
+    return this.vehicleArtwork(
+      'Representative SUV',
+      'M250 400 L315 325 L430 305 L505 230 H710 L790 320 L930 350 L980 420 L945 465 H255 Z',
+      '#38bdf8',
+    );
+  }
 
   @Get('vehicle-photo-2')
+  @Header('Content-Type', 'image/svg+xml')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
-  @Redirect('https://www.carmazium.com/assets/images/featured-sports.png', 302)
-  photo2() {}
+  photo2() {
+    return this.vehicleArtwork(
+      'Representative Sports Car',
+      'M220 420 L300 355 L455 325 L535 250 H720 L820 340 L955 370 L995 425 L955 465 H240 Z',
+      '#f97316',
+    );
+  }
 
   @Get('vehicle-photo-3')
+  @Header('Content-Type', 'image/svg+xml')
+  @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
-  @Redirect('https://www.carmazium.com/assets/images/promo-car.png', 302)
-  photo3() {}
+  photo3() {
+    return this.vehicleArtwork(
+      'Representative Hatchback',
+      'M245 410 L315 345 L445 320 L515 245 H680 L785 330 L915 355 L970 415 L945 465 H255 Z',
+      '#22c55e',
+    );
+  }
 }
 
 const syntheticPrisma = {
