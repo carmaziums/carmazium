@@ -55,7 +55,7 @@ function fixtures() {
   // v1 is a live-only full snapshot. At this held SimpleDMS checkpoint,
   // photo-display is WITHDRAWN: omit the fictional auction from the complete
   // feed and live detail without changing retained history or image assets.
-  if (mode === 'withdrawn' || mode === 'ended' || mode === 'photo-display') return [];
+  if (['withdrawn', 'ended', 'photo-display'].includes(mode)) return [];
 
   const now = new Date();
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
