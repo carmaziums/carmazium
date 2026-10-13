@@ -1,3 +1,5 @@
+> **CURRENT NEGOTIATION BASIS — 5 October 2026:** use [the consolidated integration/data-licence counter-draft](simpledms-consolidated-integration-data-licence-FOR-SIGNATURE.md). The earlier pilot-only/90-day historical wording is superseded for negotiation. Synthetic staging and staging-key fingerprint provisioning may progress independently of CarMazium's internal backup/recovery programme; production access still requires the completed agreement, agreed security/privacy checks and joint written go-live approval.
+
 # SimpleDMS × CarMazium — proposed data schedule and staging acceptance checklist
 
 **Draft for mutual written approval, not an executed contract or permission to access production.**
@@ -101,16 +103,12 @@ training restrictions remain in force until a field-specific Schedule B is signe
       periodic full-feed reconciliation.
 - [ ] Independently verify both companies' registered details/signing authority
       and execute the final initial free pilot terms.
-- [ ] Explicitly negotiate Schedule B: distinguish live vs historical fields,
-      repeated-vehicle matching requirements, historical data purposes/duration,
-      already-delivered reports, derived-output licensing and deletion proof.
-- [ ] Verify Vercel/Supabase hosting regions, processors/DPAs and transfers;
-      approve a minimal optional OpenAI input schedule only after account-level
-      retention/training and lawful-basis checks. No raw VRM to OpenAI by default.
+- [x] Historical Option A incorporated into consolidated Schedule B: 36-month event clock, separate 36-month issued-report clock, surviving ordinary-termination use, exact observed mileage, changed timestamped valid-bid observations, protected SimpleDMS matching token and no historical photographs/raw VRM.
+- [ ] Complete consolidated Schedule C: Vercel and Supabase primary London-region statements, redacted provider/transfer/retention details, and the expressly limited OpenAI input scope. Raw VRM, stable matching identifiers, private records, photos, reserves and raw feeds remain prohibited from AI input.
 - [ ] Agree final signed data schedule, launch date, contact points, deletion
       SLA, photo rights and account/referral privacy disclosures.
 - [x] Account owner reports seeing a Supabase-managed database backup dated **2 October 2026 at 11:59 pm** in the dashboard (confirmed in conversation on 3 October 2026). Dashboard time zone, backup success/restoreability and separate PITR entitlement have **not** been independently verified. Record this as *owner-confirmed available backup*, not demonstrated recoverability.
-- [ ] Prove actual managed database-backup recovery via a safe non-production restore/recovery exercise (do not restore over the live database); independently protect and test restoration of Storage object bytes, including private KYC and handover files, under issue #364. CI-only synthetic Storage restoration does not prove live object coverage.
+- [ ] Internal CarMazium recovery issue #364 remains open as an operational-security workstream. It is **not a prerequisite for synthetic staging or staging-key fingerprint provisioning**. Any production risk acceptance remains CarMazium's responsibility and is separate from SimpleDMS's contractual live-data approval.
 - [ ] Issue a dedicated **staging-only** credential through a secure channel,
       not email body, code, logs or documentation.
 - [ ] After joint written sign-off, separately approve the production deploy,
