@@ -60,12 +60,9 @@ function fixtures() {
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
   const image = /^[a-z0-9.-]+\.up\.railway\.app$/.test(publicHost)
     ? mode === 'photo-display'
-      ? [
-          // Held removal checkpoint: omit only Photo 1 from the LIVE feed;
-          // the direct staging asset route remains intact for independent checks.
-          'https://' + publicHost + '/staging-assets/vehicle-photo-2',
-          'https://' + publicHost + '/staging-assets/vehicle-photo-3',
-        ]
+      // Held all-photo removal checkpoint: keep the fictional ACTIVE listing,
+      // but expose no images in its live feed until SimpleDMS confirms.
+      ? []
       : ['https://' + publicHost + '/staging-assets/demo-vehicle.svg']
     : [];
   const count = mode === 'pagination' ? 51 : 1;
