@@ -1,5 +1,13 @@
 name: SimpleDMS public-runtime and maintenance dependency security
 on:
+  # Explicitly verify draft-release changes even when the PR synchronize
+  # event is not emitted by connector-originated pushes. No production deploy.
+  push:
+    branches: ['release/simpledms-contract-recovery-gates-20261003']
+    paths:
+      - 'backend/src/partner-api/**'
+      - 'backend/prisma/schema.prisma'
+      - '.github/workflows/simpledms-partner-security.yml'
   pull_request:
     paths:
       - 'backend/Dockerfile'
