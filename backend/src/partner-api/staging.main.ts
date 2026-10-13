@@ -52,9 +52,10 @@ function syntheticUuid(prefix: '1' | '2', index: number): string {
 function fixtures() {
   const mode = scenario();
 
-  // v1 is a live-only full snapshot. Withdrawn and ended auctions are not
-  // tombstones/status rows: they are absent from the next complete feed.
-  if (mode === 'withdrawn' || mode === 'ended') return [];
+  // v1 is a live-only full snapshot. At this held SimpleDMS checkpoint,
+  // photo-display is WITHDRAWN: omit the fictional auction from the complete
+  // feed and live detail without changing retained history or image assets.
+  if (mode === 'withdrawn' || mode === 'ended' || mode === 'photo-display') return [];
 
   const now = new Date();
   const publicHost = (process.env.STAGING_PUBLIC_HOST || '').toLowerCase();
