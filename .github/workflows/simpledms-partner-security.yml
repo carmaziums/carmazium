@@ -7,6 +7,8 @@ on:
     paths:
       - 'backend/src/partner-api/**'
       - 'backend/prisma/schema.prisma'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
       - '.github/workflows/simpledms-partner-security.yml'
   pull_request:
     paths:
