@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Module } from '@nestjs/common';
+import { Controller, Get, Header, Module, StreamableFile } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -137,11 +137,18 @@ class SyntheticAssetsController {
   // staging build. These routes return the image bytes directly from this
   // Railway host: no redirects, no customer media and no private listing paths.
   private photo(name: string) {
-    return readFileSync(`assets/simpledms/${name}`);
+    const bytes = readFileSync(`assets/simpledms/${name}`);
+    if (bytes.length < 3 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+      throw new Error(`Synthetic staging photo is not JPEG: ${name}`);
+    }
+    return new StreamableFile(bytes, {
+      type: 'image/jpeg',
+      disposition: 'inline',
+      length: bytes.length,
+    });
   }
 
   @Get('vehicle-photo-1')
-  @Header('Content-Type', 'image/png')
   @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
   photo1() {
@@ -149,7 +156,6 @@ class SyntheticAssetsController {
   }
 
   @Get('vehicle-photo-2')
-  @Header('Content-Type', 'image/png')
   @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
   photo2() {
@@ -157,7 +163,6 @@ class SyntheticAssetsController {
   }
 
   @Get('vehicle-photo-3')
-  @Header('Content-Type', 'image/png')
   @Header('Cache-Control', 'private, no-store, max-age=0')
   @Header('X-Robots-Tag', 'noindex')
   photo3() {
