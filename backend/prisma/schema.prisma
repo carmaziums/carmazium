@@ -843,6 +843,11 @@ model Listing {
   // Attention attribute — buyer-facing label shown as a ribbon on the vehicle card
   bannerLabel              String?
 
+  // Seller acknowledged external partner distribution. Keep historical and
+  // legacy listings NULL so the restricted partner feed fails closed.
+  // This matches the nullable field already introduced on main by PR #562.
+  partnerDistributionAcceptedAt DateTime?
+
   // Admin review — set when status transitions to/from PENDING_REVIEW
   rejectionReason String?
   reviewedAt      DateTime?
