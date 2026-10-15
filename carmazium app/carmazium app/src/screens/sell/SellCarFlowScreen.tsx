@@ -1351,6 +1351,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setTaxStatus('');
         setTaxDue('');
         setFirstRegistered('');
+        setFirstUsedDate('');
         setLastV5C('');
         setWheelplan('');
         setTypeApproval('');
