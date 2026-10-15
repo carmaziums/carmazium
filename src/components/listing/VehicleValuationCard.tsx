@@ -57,7 +57,15 @@ export function VehicleValuationCard({
                 ? "text-amber-600 border-amber-500/30 bg-amber-500/10 dark:text-amber-300"
                 : "text-orange-600 border-orange-500/30 bg-orange-500/10 dark:text-orange-300"
 
-    const primaryValue = valuation.auction.marketValue
+    // Valuation provides separate dealer-auction and retail guides. Do not
+    // flatten them into a single price when the selling channel changes.
+    const isAuction = mode === "auction"
+    const primaryValue = isAuction
+        ? valuation.auction.marketValue
+        : valuation.retail.suggestedAsking
+    const alternativeValue = isAuction
+        ? valuation.retail.suggestedAsking
+        : valuation.auction.marketValue
 
     return (
         <div className="relative overflow-hidden rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-500/10 via-[var(--bg-card)] to-[var(--bg-card)] p-5 md:p-6">
@@ -70,10 +78,12 @@ export function VehicleValuationCard({
                         </div>
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">
-                                Vehicle Valuation
+                                {isAuction ? "Dealer Auction Valuation" : "Retail Valuation"}
                             </p>
                             <p className="mt-1 text-xs text-[var(--text-muted)]">
-                                Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
+                                {isAuction
+                                    ? "A dealer-oriented auction guide, based on available market evidence and your vehicle details."
+                                    : "A suggested retail asking price, based on available market evidence and your vehicle details."}
                             </p>
                         </div>
                     </div>
@@ -84,17 +94,20 @@ export function VehicleValuationCard({
 
                 <div className="mt-5 rounded-2xl border border-blue-500/20 bg-[var(--bg-input)] p-5 md:p-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                        Current Market Value
+                        {isAuction ? "Estimated dealer auction value" : "Suggested retail asking price"}
                     </p>
                     <p className="mt-2 text-3xl font-black tabular-nums text-[var(--text-primary)] md:text-4xl">
                         {formatPrice(primaryValue)}
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
-                        Base market value from the vehicle model, year and mileage, adjusted by the condition and specification you provide.
+                        {isAuction
+                            ? "Dealer-focused guide, not a guaranteed winning bid or sale price. Your opening bid and reserve are set separately."
+                            : "Suggested advertised asking price, not a guaranteed sale price. You can choose your own price."}
+                    </p>
+                    <p className="mt-3 text-xs font-semibold text-[var(--text-secondary)]">
+                        {isAuction ? "Retail asking guide" : "Dealer auction guide"}: {formatPrice(alternativeValue)}
                     </p>
                 </div>
-
-
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] leading-relaxed text-[var(--text-muted)]">
@@ -102,7 +115,7 @@ export function VehicleValuationCard({
                     </p>
                     <Button type="button" onClick={onApply} className="h-10 shrink-0 gap-2 px-4">
                         <CheckCircle size={15} />
-                        Use this value
+                        {isAuction ? "Use auction guide" : "Use retail price"}
                     </Button>
                 </div>
             </div>
