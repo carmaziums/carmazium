@@ -676,10 +676,8 @@ export class ListingsService {
     }
 
     /**
-     * Same physical vehicle + same mileage gets one market base for 24 hours.
-     * The hash is stored in AnalyticsEvent.sessionId only for snapshot rows;
-     * valuation analytics queries are type-scoped, so this never counts as a
-     * customer browsing session.
+     * Legacy snapshot identity for diagnostics. Customer-facing price
+     * locking is handled by valuationPriceLockId, not this session key.
      */
     private valuationIdentityKey(dto: VehicleValuationDto): string {
         const identity = this.valuationIdentity(dto);
@@ -746,9 +744,8 @@ export class ListingsService {
             createdAt: true,
         } as const;
 
-        // A quote may be refreshed after its 24h window. Do not resurrect a
-        // stale market base simply because the same open browser retains an
-        // old journey ID. Generate a new internal snapshot ID after expiry.
+        // Do not resurrect an expired journey's base simply because an open
+        // browser retained its ID; regenerate its internal snapshot ID.
         const exactJourney = await this.prisma.analyticsEvent.findUnique({
             where: { id: dto.valuationId },
             select,
@@ -766,69 +763,11 @@ export class ListingsService {
             if (exact) return exact;
         }
 
-        // A new journey for the same unchanged vehicle should not get a wildly
-        // different answer five minutes later merely because a live search
-        // returned a different advert set. Reuse the latest vehicle base for
-        // 24 hours, after which market evidence is allowed to refresh.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select,
-        });
-
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (!recent) return null;
-
-        // A fallback price is still a real customer quote and must not be
-        // recalculated just because a fresh market attempt might succeed.
-        // Give this new journey its own immutable copy. The cross-journey
-        // vehicle cache may expire after 24h, but the journey itself must never
-        // change value once the customer has received its base.
-        if (recentVehicleBase?.id !== dto.valuationId) {
-            const serializableBase = JSON.parse(
-                JSON.stringify(recent),
-            ) as VehicleValuationResult;
-
-            try {
-                await this.prisma.analyticsEvent.create({
-                    data: {
-                        id: dto.valuationId,
-                        type: 'valuation_base_snapshot',
-                        sessionId: this.valuationIdentityKey(dto),
-                        payload: {
-                            valuation_id: dto.valuationId,
-                            identity: this.valuationIdentity(dto),
-                            baseValuation: serializableBase,
-                            lockedAt: new Date().toISOString(),
-                            reusedFromSnapshotId: recentVehicleBase?.id ?? null,
-                        } as any,
-                    },
-                });
-            } catch (error: any) {
-                if (error?.code === 'P2002') {
-                    const winner = await this.prisma.analyticsEvent.findUnique({
-                        where: { id: dto.valuationId },
-                        select,
-                    });
-                    const frozenWinner = this.parseFrozenValuationBase(winner, dto);
-                    if (frozenWinner) return frozenWinner;
-                } else {
-                    // The already-frozen identity base is still safe to return;
-                    // persistence of the alias must not make valuation unavailable.
-                    this.logger.warn(
-                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
-                    );
-                }
-            }
-        }
-
-        return recent;
+        // Cross-journey consistency now comes exclusively from the canonical
+        // valuation_price_lock record, which has an absolute 24-hour expiry.
+        // Do not chain old per-journey snapshots: each alias would otherwise
+        // extend the previous market base's life indefinitely.
+        return null;
     }
 
     private async freezeValuationBase(
@@ -837,27 +776,9 @@ export class ListingsService {
     ): Promise<VehicleValuationResult> {
         if (!dto.valuationId) return calculatedBase;
 
-        // A different journey for this same unchanged vehicle may have
-        // completed while our live search was running. Prefer that already-
-        // frozen 24-hour identity base rather than publishing a second value.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                type: true,
-                payload: true,
-            },
-        });
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (recent) return recent;
-
+        // This snapshot is only for idempotency within one valuation journey.
+        // All cross-journey lookup and TTL enforcement is done by the
+        // authoritative 24-hour valuation_price_lock record.
         // Prisma JSON fields must contain plain JSON values; strip optional
         // undefined properties before persisting the immutable base snapshot.
         const serializableBase = JSON.parse(
