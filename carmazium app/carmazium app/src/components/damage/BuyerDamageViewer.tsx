@@ -100,7 +100,7 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
           <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
           <View style={styles.emptyTextBlock}>
             <Text style={styles.emptyTitle}>No damage reported by the seller</Text>
-            <Text style={styles.emptySubtitle}>Vehicle checked clean</Text>
+            <Text style={styles.emptySubtitle}>No damage details were provided; this is not an independent inspection.</Text>
           </View>
         </View>
       ) : (
