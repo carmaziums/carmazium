@@ -342,8 +342,8 @@ export const SearchScreen: React.FC = () => {
       // any nav-param seed (route.params?.fuelType) both use.
       fuelTypes: selectedFuels.length ? selectedFuels.map(f => FUEL_MAP[f] ?? f) : undefined,
       fuelType: selectedFuels.length ? undefined : qf?.params.fuelType,
-      minYear: minYear !== 'Any' && /^\\d{4}$/.test(minYear) ? parseInt(minYear) : qf?.params.minYear,
-      maxYear: maxYear !== 'Any' && /^\\d{4}$/.test(maxYear) ? parseInt(maxYear) : undefined,
+      minYear: minYear !== 'Any' && /^\d{4}$/.test(minYear) ? parseInt(minYear) : qf?.params.minYear,
+      maxYear: maxYear !== 'Any' && /^\d{4}$/.test(maxYear) ? parseInt(maxYear) : undefined,
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
