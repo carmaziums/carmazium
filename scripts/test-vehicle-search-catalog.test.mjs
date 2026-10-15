@@ -13,7 +13,7 @@ test('web and native share an identical A–Z make/model catalogue', () => {
   assert.ok(web.includes(start) && native.includes(start));
   assert.equal(web.slice(web.indexOf(start)), native.slice(native.indexOf(start)));
   const makes = [...web.split('export const CAR_MAKES: string[] = [')[1].split(']')[0].matchAll(/'([^']+)'/g)].map(x => x[1]);
-  assert.equal(makes.length, 126);
+  assert.equal(makes.length, 158);
   assert.equal(new Set(makes).size, makes.length);
   assert.match(web, /CAR_MAKES\.sort/);
   assert.match(web, /EXTRA_MODELS_BY_MAKE/);
