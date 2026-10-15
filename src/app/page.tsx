@@ -29,6 +29,7 @@ export const metadata: Metadata = {
         "Sell your car online in the UK with a free dealer auction or £1 retail listing, or browse used cars from verified sellers on CarMazium.",
     alternates: {
         canonical: "/",
+        types: { "application/rss+xml": "https://www.carmazium.com/blog/rss.xml" },
     },
     openGraph: {
         title: "CarMazium | Sell Your Car or Buy Used Cars in the UK",
