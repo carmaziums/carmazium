@@ -903,7 +903,7 @@ export const SearchScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
                   accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
                   style={{ paddingVertical: 12 }}>
-                  <Text style={[s.filterChipText, { color: Colors.primary }]}>
+                  <Text style={[s.filterChipText, { color: Colors.accent }]}>
                     {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
                   </Text>
                 </TouchableOpacity>
