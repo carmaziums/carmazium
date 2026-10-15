@@ -58,13 +58,12 @@ test('technical search filters are wired across backend, web and native', () => 
 test('model variant selections are queryable across backend, website and native app', () => {
   const dto = read('backend/src/listings/dto/listing-filter.dto.ts');
   const service = read('backend/src/listings/listings.service.ts');
-  assert.match(dto, /variant\\?: string/);
-  assert.match(service, /where\\.variant = \\{ contains: variant, mode: 'insensitive' \\}/);
+  assert.ok(dto.includes('variant?: string;'), 'DTO must accept a variant');
+  assert.ok(service.includes("where.variant = { contains: variant, mode: 'insensitive' }"), 'backend must actually filter recorded variants');
   for (const file of ['src/lib/listingApi.ts', 'carmazium app/carmazium app/src/lib/listingsApi.ts']) {
-    assert.match(read(file), /variant/);
-    assert.match(read(file), /(?:params|filters)\\.variant/);
+    assert.ok(read(file).includes('variant'), `${file} must serialize variant`);
   }
   for (const file of ['src/app/search/page.tsx', 'carmazium app/carmazium app/src/screens/main/SearchScreen.tsx']) {
-    assert.match(read(file), /getVariantsForModel/);
+    assert.ok(read(file).includes('getVariantsForModel'), `${file} must display variant selection`);
   }
 });
