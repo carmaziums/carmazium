@@ -403,6 +403,9 @@ export async function searchListings(params: {
   minEngine?: number;
   maxEngine?: number;
   maxCo2?: number;
+  minCombinedMpg?: number;
+  maxZeroTo60Mph?: number;
+  driveType?: string;
   deliveryAvailable?: boolean;
   sellerType?: string;
   listingType?: string;
@@ -443,6 +446,9 @@ export async function searchListings(params: {
     if (params.minEngine != null) query.set('minEngine', String(params.minEngine));
     if (params.maxEngine != null) query.set('maxEngine', String(params.maxEngine));
     if (params.maxCo2 != null) query.set('maxCo2', String(params.maxCo2));
+    if (params.minCombinedMpg != null) query.set('minCombinedMpg', String(params.minCombinedMpg));
+    if (params.maxZeroTo60Mph != null) query.set('maxZeroTo60Mph', String(params.maxZeroTo60Mph));
+    if (params.driveType) query.set('driveType', params.driveType);
     if (params.deliveryAvailable) query.set('deliveryAvailable', 'true');
     if (params.sellerType) query.set('sellerType', params.sellerType);
     if (params.listingType) query.set('listingType', params.listingType);
