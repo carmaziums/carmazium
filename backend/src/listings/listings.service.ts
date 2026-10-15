@@ -1,3 +1,4 @@
+import { buildFeatureConditions } from './feature-search';
 import {
     Injectable,
     Logger,
@@ -1931,9 +1932,13 @@ export class ListingsService {
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
 
-        // ─── Features (JSON array contains) ─────────────────────────────────
-        // Filter listings where the JSON features array contains ALL requested features
-        if (features?.length) where.features = { array_contains: features };
+        // ─── Features (legacy-aware, all selected options required) ──────────
+        // Imported listings and older seller forms use equivalent labels (e.g.
+        // "Sat Nav" vs "Navigation"). Preserve AND across selected requirements,
+        // and OR only within genuine equivalent labels for each requirement.
+        if (features?.length) {
+            where.AND = [...(where.AND || []), ...buildFeatureConditions(features)];
+        }
 
         // ─── Colour (case-insensitive) ──────────────────────────────────────
         if (color) where.color = { contains: color, mode: 'insensitive' };
