@@ -1,0 +1,120 @@
+name: CarMazium iOS production release candidate (internal review only)
+
+# Produces a signed App Store candidate via the owner's preconfigured EAS
+# credentials. Does not submit to App Store Connect, TestFlight or customers.
+# Manual-only to avoid surprise EAS/Apple charges or signing side effects.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed 40-character main commit SHA to build
+        type: string
+        required: true
+      approval:
+        description: Build for internal review only; not store submission
+        type: choice
+        required: true
+        options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-ios-release-review
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: '1'
+      APP_ENV: production
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      REVIEW_SOURCE_SHA: ${{ inputs.source_sha }}
+      REVIEW_APPROVAL: ${{ inputs.approval }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Validate exact main commit, owner choice and production build settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] || [[ "$REVIEW_SOURCE_SHA" != "$GITHUB_SHA" ]] || [[ "$REVIEW_APPROVAL" != 'INTERNAL_REVIEW_ONLY' ]]; then
+            echo '::error::Internal candidate requires the exact checked-out main SHA and INTERNAL_REVIEW_ONLY approval.'
+            exit 1
+          fi
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const eas = require('./eas.json');
+          if (app.ios?.bundleIdentifier !== 'uk.carmazium.app' ||
+              eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.distribution === 'internal' ||
+              eas.build?.production?.android?.buildType !== 'app-bundle' ||
+              eas.cli?.appVersionSource !== 'remote' ||
+              !app.extra?.eas?.projectId ||
+              app.updates?.requestHeaders?.['expo-channel-name']) {
+            throw new Error('App ID, release channel, signing project or production profile mismatch');
+          }
+          if (eas.build.production.env.APP_ENV !== 'production' ||
+              !String(eas.build.production.env.EXPO_PUBLIC_API_URL || '').startsWith('https://')) {
+            throw new Error('Production API endpoint is not configured');
+          }
+          console.log('Reviewed source, EAS project and production iOS build profile verified');
+          NODE
+      - name: Require previously connected Expo signing account
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo '::error::Connect the Expo EAS token as EXPO_TOKEN or EAS_TOKEN before requesting a signed build.'
+            exit 1
+          fi
+      - name: Install exact native dependencies
+        run: npm ci
+      - name: Check native types
+        run: npm run typescript
+      - name: Confirm EAS account
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Build signed iOS App Store candidate without uploading or submitting
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build --platform ios --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-ios-candidate.json"
+          node - "$RUNNER_TEMP/carmazium-ios-candidate.json" <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const build = Array.isArray(raw) ? raw[0] : raw;
+          const id = build?.id;
+          const status = String(build?.status || '').toUpperCase();
+          const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
+          if (status !== 'FINISHED' || !id || !url?.startsWith('https://')) {
+            throw new Error('EAS did not return a signed, completed iOS candidate with an artifact URL');
+          }
+          const summary = [
+            '### CarMazium iOS signed release candidate — INTERNAL REVIEW ONLY',
+            '- Reviewed main source SHA: ' + process.env.GITHUB_SHA,
+            '- EAS build ID: ' + id,
+            '- EAS build status: ' + status,
+            '- iOS bundle ID: uk.carmazium.app',
+            '- Channel: production',
+            '- [Review signed iOS candidate](' + url + ')',
+            '',
+            'This action did **not** submit to App Store Connect, enable TestFlight, or publish to customers.',
+            'Manual Apple account, store metadata, real-device QA and owner release approval are still required.',
+            'The candidate uses the live backend. Do not perform synthetic transactions on production.',
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
+          console.log('Signed iOS release candidate created for internal review; EAS ID: ' + id);
+          NODE
