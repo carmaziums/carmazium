@@ -120,7 +120,9 @@ export function ThreeDVehicleViewer({
   // Only zones with a `box` (exterior) fraction get an entry here; interior
   // zones have no exterior 3D position and are never rendered as hotspots.
   const [zoneScreenPos, setZoneScreenPos] = useState<Record<string, { x: number; y: number; visible: boolean }>>({});
-  const hotspotZones = zones.filter((z) => z.box);
+  // Seller: interactive predefined zones. Buyer: only seller-marked zones,
+  // never the blanket "+" hotspots the public website previously showed.
+  const hotspotZones = zones.filter((z) => z.box && (!readOnly || markedZones.includes(z.label)));
   const hotspotZonesRef = useRef(hotspotZones);
   hotspotZonesRef.current = hotspotZones;
 
