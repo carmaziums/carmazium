@@ -67,6 +67,7 @@ describe('ListingsService', () => {
                 findUnique: jest.fn().mockResolvedValue(null),
                 findFirst: jest.fn().mockResolvedValue(null),
                 create: jest.fn().mockResolvedValue({}),
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
             },
             transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
@@ -1266,7 +1267,7 @@ describe('ListingsService', () => {
             expect(result.auction.marketValue).toBeLessThan(4200);
         });
 
-        it('rejects reusing a valuation journey after registration or mileage changes', async () => {
+        it('rejects reusing a valuation journey for a different registration', async () => {
             prisma.analyticsEvent.findUnique.mockResolvedValue({
                 id: valuationId,
                 type: 'valuation_base_snapshot',
@@ -1313,7 +1314,7 @@ describe('ListingsService', () => {
                 model: 'Golf',
                 year: 2010,
                 mileage: 140000,
-                registration: 'BF10XYP',
+                registration: 'AB12CDE',
                 valuationId,
             } as any)).rejects.toThrow(/registration or mileage changed/i);
         });
@@ -1468,6 +1469,103 @@ describe('ListingsService', () => {
             expect(result.retail.suggestedAsking).toBe(2650);
             expect(result.auction.marketValue).toBe(2120);
             expect(result.source).toBe('BLENDED_MARKET');
+        });
+    });
+
+
+
+    describe('24-hour customer-facing price lock', () => {
+        function mockPersistentQuotes() {
+            const events = new Map<string, any>();
+            prisma.analyticsEvent.findUnique.mockImplementation(async ({ where }: any) => events.get(where.id) ?? null);
+            prisma.analyticsEvent.findFirst.mockResolvedValue(null);
+            prisma.analyticsEvent.create.mockImplementation(async ({ data }: any) => {
+                if (events.has(data.id)) throw { code: 'P2002' };
+                const event = { ...data, createdAt: data.createdAt ?? new Date() };
+                events.set(event.id, event);
+                return event;
+            });
+            prisma.analyticsEvent.updateMany.mockImplementation(async ({ where, data }: any) => {
+                const event = events.get(where.id);
+                if (!event || event.type !== where.type || event.createdAt > where.createdAt.lte) {
+                    return { count: 0 };
+                }
+                events.set(where.id, { ...event, ...data });
+                return { count: 1 };
+            });
+            return events;
+        }
+
+        const car = {
+            make: 'VOLKSWAGEN',
+            model: 'Golf',
+            year: 2013,
+            mileage: 90000,
+            registration: 'AB12 CDE',
+        };
+
+        it('reuses a fallback quote for the same VRM across browsers and corrected vehicle details', async () => {
+            const events = mockPersistentQuotes();
+            const first = await service.estimateVehicleValue({ ...car } as any);
+            expect(first.source).toBe('CARMAZIUM_MODEL');
+
+            const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            liveSearch.mockClear();
+            const repeat = await service.estimateVehicleValue({
+                ...car,
+                make: 'Volkswagen',
+                model: 'Golf Estate',
+                year: 2014,
+                mileage: 91000,
+                registration: 'AB12CDE',
+                condition: 'POOR',
+                valuationId: '22222222-2222-4222-8222-222222222222',
+            } as any);
+
+            expect(repeat).toEqual(first);
+            expect(liveSearch).not.toHaveBeenCalled();
+            const lockRows = [...events.values()].filter((e: any) => e.type === 'valuation_price_lock');
+            expect(lockRows).toHaveLength(1);
+            expect(lockRows[0].payload.expiresAt).toBeTruthy();
+            expect(first.auction.marketValue).toBe(Math.round(first.retail.suggestedAsking * 0.8));
+        });
+
+        it('refreshes the locked quote only after the original 24-hour window ends', async () => {
+            const events = mockPersistentQuotes();
+            const first = await service.estimateVehicleValue({ ...car } as any);
+            const lock: any = [...events.values()].find((e: any) => e.type === 'valuation_price_lock');
+            expect(lock).toBeDefined();
+
+            const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
+            lock.createdAt = old;
+            lock.payload.lockedAt = old.toISOString();
+
+            const second = await service.estimateVehicleValue({
+                ...car,
+                year: 2017,
+                mileage: 20000,
+            } as any);
+
+            expect(second.retail.suggestedAsking).not.toBe(first.retail.suggestedAsking);
+            expect(prisma.analyticsEvent.updateMany).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: expect.objectContaining({
+                        id: lock.id,
+                        type: 'valuation_price_lock',
+                    }),
+                }),
+            );
+            expect(events.get(lock.id).payload.lockedAt).not.toBe(old.toISOString());
+        });
+
+        it('makes simultaneous valuations return one price for the same VRM', async () => {
+            const events = mockPersistentQuotes();
+            const [first, second] = await Promise.all([
+                service.estimateVehicleValue({ ...car, model: 'Golf' } as any),
+                service.estimateVehicleValue({ ...car, model: 'Passat', year: 2015 } as any),
+            ]);
+            expect(first).toEqual(second);
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
         });
     });
 
