@@ -67,3 +67,38 @@ test('model variant selections are queryable across backend, website and native 
     assert.ok(read(file).includes('getVariantsForModel'), `${file} must display variant selection`);
   }
 });
+
+test('automatic 1–5 exterior grades match between seller uploads and web/native search', () => {
+  const web = read('src/lib/exteriorGrade.ts');
+  const native = read('carmazium app/carmazium app/src/lib/exteriorGrade.ts');
+  const re = /export const EXTERIOR_GRADE_OPTIONS = \[[\s\S]+?\] as const/;
+  const webOptions = web.match(re)?.[0];
+  const nativeOptions = native.match(re)?.[0];
+  assert.ok(webOptions && nativeOptions, 'both platforms must expose the five automatic grades');
+  assert.equal(webOptions, nativeOptions, 'seller and buyer grade labels must be identical');
+  for (let g = 1; g <= 5; g++) {
+    assert.match(webOptions, new RegExp(`value: ${g}, label:`));
+  }
+  for (const file of [
+    'src/app/search/page.tsx',
+    'carmazium app/carmazium app/src/screens/main/SearchScreen.tsx',
+  ]) {
+    const content = read(file);
+    assert.match(content, /EXTERIOR_GRADE_OPTIONS/);
+    assert.match(content, /exteriorGrades/);
+    assert.match(content, /writeOffCategories/);
+  }
+  assert.match(read('carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx'), /EXTERIOR_GRADE_OPTIONS/);
+  for (const file of [
+    'backend/src/listings/dto/listing-filter.dto.ts',
+    'backend/src/listings/listings.service.ts',
+    'src/lib/listingApi.ts',
+    'carmazium app/carmazium app/src/lib/listingsApi.ts',
+  ]) {
+    assert.match(read(file), /exteriorGrades/);
+    assert.match(read(file), /writeOffCategories/);
+  }
+  const service = read('backend/src/listings/listings.service.ts');
+  assert.match(service, /where\.exteriorGrade = gradeSearch\.exteriorGrade/);
+  assert.match(read('backend/src/damage/damage.service.ts'), /data: \{ exteriorGrade: computeExteriorGrade\(detections\) \}/);
+});
