@@ -37,6 +37,11 @@ export class ListingFilterDto {
     @IsOptional()
     model?: string;
 
+    @ApiPropertyOptional({ description: 'Optional model variant or trim text', example: 'M Sport' })
+    @IsString()
+    @IsOptional()
+    variant?: string;
+
     // ─── Year ─────────────────────────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Minimum manufacture year', example: 2015 })
     @Type(() => Number)
