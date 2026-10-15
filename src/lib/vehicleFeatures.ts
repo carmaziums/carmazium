@@ -22,7 +22,10 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "Electric Windows",
     "Heated Windscreen",
     "Keyless Entry",
-    "Keyless Start"
+    "Keyless Start",
+    "Electric Lumbar Support",
+    "Rear Sun Blinds",
+    "Soft-Close Doors"
   ],
   "Media & connectivity": [
     "Navigation",
@@ -38,7 +41,10 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "USB Ports",
     "Wi-Fi Hotspot",
     "Premium Sound System",
-    "Rear Entertainment"
+    "Rear Entertainment",
+    "Wireless Apple CarPlay",
+    "Wireless Android Auto",
+    "USB-C Ports"
   ],
   "Parking & driver assistance": [
     "Parking Sensors",
@@ -58,7 +64,11 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "Forward Collision Warning",
     "Rear Cross Traffic Alert",
     "Hill Start Assist",
-    "Hill Descent Control"
+    "Hill Descent Control",
+    "Lane Centring Assist",
+    "Traffic Jam Assist",
+    "Driver Drowsiness Warning",
+    "Pedestrian Detection"
   ],
   "Safety & lighting": [
     "ISOFIX",
@@ -74,7 +84,10 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "Xenon Headlights",
     "Automatic Headlights",
     "Rain-Sensing Wipers",
-    "Front Fog Lights"
+    "Front Fog Lights",
+    "Automatic High Beam",
+    "Cornering Lights",
+    "Rear Side Airbags"
   ],
   "Exterior & practicality": [
     "Alloy Wheels",
@@ -88,7 +101,10 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "Third-Row Seats",
     "7 Seats",
     "Spare Wheel",
-    "Run-Flat Tyres"
+    "Run-Flat Tyres",
+    "Electric Tow Bar",
+    "Sliding Rear Doors",
+    "Electric Sliding Doors"
   ],
   "Performance & EV": [
     "Paddle Shifters",
@@ -102,7 +118,9 @@ export const VEHICLE_FEATURE_GROUPS: Record<string, string[]> = {
     "Type 2 Charging Cable",
     "Home Charging Cable",
     "Vehicle-to-Load (V2L)",
-    "Regenerative Braking"
+    "Regenerative Braking",
+    "Battery Thermal Management",
+    "One-Pedal Driving"
   ]
 }
 
