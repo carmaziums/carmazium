@@ -12,6 +12,8 @@ interface Props {
     alt: string
     href?: string
     maxImages?: number
+    /** Use only for a verified above-the-fold LCP image. All other car-card photos load lazily. */
+    eagerFirstImage?: boolean
     sizes?: string
     className?: string
     /** Overlay content — badges positioned inside the image area. */
@@ -36,14 +38,17 @@ interface Props {
  * - Arrow buttons (desktop only — hover-revealed, which never applies on
  *   touch) call scrollTo() on the same track so mouse and touch users land
  *   on identical state.
- * - Only the current image loads eagerly; the rest use native lazy-loading,
- *   so a grid of many cards doesn't fetch every image per card up front.
+ * - All car-card photos load lazily by default, including each card's cover.
+ *   Large result grids must not eagerly request a cover for every card.
+ * - A caller can explicitly opt in with eagerFirstImage for one measured
+ *   above-the-fold LCP candidate; offscreen gallery images stay lazy.
  */
 export function CardImageCarousel({
     images,
     alt,
     href,
     maxImages = 100,
+    eagerFirstImage = false,
     sizes = "(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px",
     className = "",
     children,
@@ -117,7 +122,7 @@ export function CardImageCarousel({
                             sizes={sizes}
                             className={imageClassName}
                             style={{ objectFit: photo.fit, objectPosition: `${photo.x}% ${photo.y}%`, transform: `scale(${photo.zoom})`, transformOrigin: `${photo.x}% ${photo.y}%` }}
-                            loading={i === 0 ? "eager" : "lazy"}
+                            loading={i === 0 && eagerFirstImage ? "eager" : "lazy"}
                             draggable={false}
                         />
                         {lightboxOnTap ? (
