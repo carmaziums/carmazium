@@ -24,7 +24,7 @@ test('iOS customer-store candidate is a manual build, never an automatic distrib
   assert.match(flow, /did \*\*not\*\* submit to App Store Connect/);
 });
 
-test('iOS candidate uses production app identity, locked dependencies and the owner's EAS credentials', () => {
+test("iOS candidate uses production app identity, locked dependencies and the owner's EAS credentials", () => {
   assert.equal(app.ios.bundleIdentifier, 'uk.carmazium.app');
   assert.equal(eas.build.production.channel, 'production');
   assert.equal(eas.build.production.env.APP_ENV, 'production');
