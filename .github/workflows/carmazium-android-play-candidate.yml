@@ -84,6 +84,8 @@ jobs:
         run: npm ci
       - name: Verify native types
         run: npm run typescript
+      - name: Block known critical production dependency advisories before paid build
+        run: npm audit --omit=dev --audit-level=critical
       - name: Confirm authorised Expo project
         run: npx --yes eas-cli@16.18.0 whoami --non-interactive
       - name: Build signed Google Play AAB candidate without store distribution
