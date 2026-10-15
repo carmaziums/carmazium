@@ -91,6 +91,8 @@ describe('DvlaService AI specification enrichment', () => {
         expect(result.motHistory?.[0].motTestNumber).toBe('12345678901');
         const calls = (global as any).fetch.mock.calls as any[][];
         const motCall = calls.find(([url]) => String(url).includes('history.mot.api.gov.uk'));
+        expect(motCall).toBeDefined();
+        if (!motCall) throw new Error('Expected DVSA MOT request');
         expect(motCall[0]).toContain('/v1/trade/vehicles/registration/XGZ5459');
         expect(motCall[1].headers).toEqual(expect.objectContaining({
             'Authorization': 'Bearer test-oauth-token',
