@@ -13,6 +13,38 @@ export const CAR_MAKES: string[] = [
   'Rolls-Royce', 'Rover', 'Saab', 'SEAT', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki',
   'Tesla', 'Toyota', 'TVR', 'Vauxhall', 'VinFast', 'Volkswagen', 'Volvo', 'Xpeng', 'Zeekr',
   'AC', 'AION', 'Aixam', 'AK', 'Allard', 'Ariel', 'BAC', 'Beauford', 'Bristol', 'Cadillac', 'Carbodies', 'Changan', 'Chery', 'Coleman Milne', 'Corvette', 'Daewoo', 'Daimler', 'Datsun', 'Dax', 'Deepal', 'Fisker', 'Gardner Douglas', 'Geely', 'GMC', 'Great Wall', 'GWM', 'Hongqi', 'Hummer', 'JBA', 'Jensen', 'KGM', 'Koenigsegg', 'Lada', 'Lancia', 'London Taxis International', 'Lucid', 'Marlin', 'Maxus', 'Nio', 'Noble', 'Oldsmobile', 'Perodua', 'Pilgrim', 'Plymouth', 'Pontiac', 'Proton', 'Ram', 'Rivian', 'Scion', 'Seres', 'Shelby', 'Skywell', 'VRS', 'Westfield', 'Wiesmann',
+  'Asia',
+  'Austin',
+  'Austin-Healey',
+  'DAF',
+  'FSO',
+  'Ginetta',
+  'Hillman',
+  'Holden',
+  'Invicta',
+  'Iveco',
+  'KTM',
+  'Lagonda',
+  'LDV',
+  'Ligier',
+  'Microcar',
+  'Morris',
+  'Mitsuoka',
+  'Pagani',
+  'Quantum',
+  'Reliant',
+  'Reva',
+  'Rimac',
+  'RUF',
+  'Sunbeam',
+  'Talbot',
+  'Tata',
+  'Trabant',
+  'Triumph',
+  'Vanden Plas',
+  'Wolseley',
+  'Yugo',
+  'Zastava',
 ]
 // Keep the selector alphabetic even when adding specialist makes.
 CAR_MAKES.sort((a, b) => a.localeCompare(b, 'en-GB'))
@@ -757,6 +789,197 @@ const EXTRA_MODELS_BY_MAKE: Record<string, string[]> = {
     "ES90",
     "V50",
     "S80"
+  ],
+  "Asia": [
+    "Rocsta"
+  ],
+  "Austin": [
+    "A30",
+    "A35",
+    "A40",
+    "Allegro",
+    "Ambassador",
+    "Maestro",
+    "Maxi",
+    "Metro",
+    "Mini",
+    "Montego",
+    "Princess",
+    "Seven"
+  ],
+  "Austin-Healey": [
+    "100",
+    "100-6",
+    "3000",
+    "Sprite"
+  ],
+  "DAF": [
+    "33",
+    "44",
+    "55",
+    "66"
+  ],
+  "FSO": [
+    "125p",
+    "Polonez"
+  ],
+  "Ginetta": [
+    "G4",
+    "G12",
+    "G40",
+    "G55",
+    "G56"
+  ],
+  "Hillman": [
+    "Avenger",
+    "Hunter",
+    "Imp",
+    "Minx",
+    "Super Minx"
+  ],
+  "Holden": [
+    "Astra",
+    "Barina",
+    "Commodore",
+    "Monaro",
+    "Ute",
+    "Vectra"
+  ],
+  "Invicta": [
+    "S1",
+    "S Type"
+  ],
+  "Iveco": [
+    "Daily",
+    "Eurocargo",
+    "S-Way"
+  ],
+  "KTM": [
+    "X-Bow",
+    "X-Bow GT-XR"
+  ],
+  "Lagonda": [
+    "Rapide",
+    "Taraf"
+  ],
+  "LDV": [
+    "Convoy",
+    "Cub",
+    "Maxus",
+    "Pilot"
+  ],
+  "Ligier": [
+    "JS50",
+    "Myli",
+    "X-Too"
+  ],
+  "Microcar": [
+    "Dué",
+    "M.Go",
+    "Virgo"
+  ],
+  "Morris": [
+    "1300",
+    "Marina",
+    "Minor",
+    "Mini",
+    "Oxford",
+    "Ital",
+    "Traveller"
+  ],
+  "Mitsuoka": [
+    "Himiko",
+    "Orochi",
+    "Viewt"
+  ],
+  "Pagani": [
+    "Huayra",
+    "Utopia",
+    "Zonda"
+  ],
+  "Quantum": [
+    "2+2",
+    "H4",
+    "Xtreme"
+  ],
+  "Reliant": [
+    "Kitten",
+    "Rebel",
+    "Rialto",
+    "Robin",
+    "Scimitar"
+  ],
+  "Reva": [
+    "G-Wiz",
+    "i"
+  ],
+  "Rimac": [
+    "Concept One",
+    "Nevera"
+  ],
+  "RUF": [
+    "CTR",
+    "RGT",
+    "SCR"
+  ],
+  "Sunbeam": [
+    "Alpine",
+    "Rapier",
+    "Stiletto",
+    "Tiger"
+  ],
+  "Talbot": [
+    "Alpine",
+    "Express",
+    "Horizon",
+    "Samba",
+    "Solara",
+    "Sunbeam"
+  ],
+  "Tata": [
+    "Indica",
+    "Nano",
+    "Safari",
+    "Vista"
+  ],
+  "Trabant": [
+    "1.1",
+    "601"
+  ],
+  "Triumph": [
+    "2000",
+    "Dolomite",
+    "Herald",
+    "Spitfire",
+    "Stag",
+    "TR3",
+    "TR4",
+    "TR6",
+    "TR7",
+    "Vitesse"
+  ],
+  "Vanden Plas": [
+    "1100",
+    "1300",
+    "1500",
+    "Princess"
+  ],
+  "Wolseley": [
+    "1500",
+    "16/60",
+    "18/85",
+    "6/110",
+    "Hornet"
+  ],
+  "Yugo": [
+    "45",
+    "55",
+    "Sana"
+  ],
+  "Zastava": [
+    "101",
+    "750",
+    "Yugo"
   ]
 }
 for (const [make, models] of Object.entries(EXTRA_MODELS_BY_MAKE)) {
