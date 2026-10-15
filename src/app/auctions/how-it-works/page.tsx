@@ -1,6 +1,22 @@
 import Link from "next/link"
+import type { Metadata } from "next"
 import { ArrowLeft, ArrowRight, Gavel } from "lucide-react"
 import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
+
+export const metadata: Metadata = {
+    title: "Car Auctions UK | How Dealer Auctions Work",
+    description:
+        "Learn how CarMazium's UK vehicle auctions work. Sellers list for free, verified motor traders bid in 24-hour auctions, and buyers pay sellers directly.",
+    alternates: { canonical: "https://www.carmazium.com/auctions/how-it-works" },
+    openGraph: {
+        title: "How UK Car Auctions Work | CarMazium",
+        description:
+            "A practical guide to free seller listings, verified dealer bidding and direct payment on CarMazium.",
+        url: "https://www.carmazium.com/auctions/how-it-works",
+        type: "website",
+        locale: "en_GB",
+    },
+}
 
 export default function AuctionHowItWorksPage() {
     return (
