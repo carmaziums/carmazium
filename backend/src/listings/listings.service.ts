@@ -2220,7 +2220,7 @@ export class ListingsService {
             || listing?.type !== 'CLASSIFIED' || listing?.status !== 'ACTIVE'
             || !listing?.id || !listing?.vrm
             || (Array.isArray(listing.motHistory) && listing.motHistory.length > 0)
-            || !/^[A-Z0-9]{2,7}$/.test(String(listing.vrm).replace(/\\s+/g, '').toUpperCase())) return;
+            || !/^[A-Z0-9]{2,7}$/.test(String(listing.vrm).replace(/\s+/g, '').toUpperCase())) return;
 
         const now = Date.now();
         const last = this.motBackfillAttempts.get(listing.id) || 0;
@@ -2240,7 +2240,7 @@ export class ListingsService {
                 if (!update) return;
                 // Exact original empty-value guard prevents overwriting history
                 // supplied concurrently by a seller or updated by another call.
-                await this.prisma.listing.updateMany({
+                const saved = await this.prisma.listing.updateMany({
                     where: {
                         id: listing.id, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null,
                         OR: [
@@ -2248,11 +2248,15 @@ export class ListingsService {
                             { motHistory: { equals: [] } },
                         ],
                     },
-                    data: {
-                        motHistory: update.motHistory as Prisma.InputJsonValue,
-                        ...(update.model ? { model: update.model } : {}),
-                    },
+                    data: { motHistory: update.motHistory as Prisma.InputJsonValue },
                 });
+                // Protect a model edited concurrently by the seller.
+                if (saved.count > 0 && update.model) {
+                    await this.prisma.listing.updateMany({
+                        where: { id: listing.id, model: null, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null },
+                        data: { model: update.model },
+                    });
+                }
             } catch (error) {
                 this.logger.warn('Official MOT history backfill was unavailable for a retail listing');
             } finally {
