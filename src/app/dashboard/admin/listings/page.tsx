@@ -48,6 +48,21 @@ function StatusPill({ status }: { status: string }) {
     )
 }
 
+/** Display gaps as review tasks; never invent missing vehicle specifications. */
+function retailCompletenessGaps(listing: any): string[] {
+    if (!listing || listing.type !== 'CLASSIFIED' || listing.status !== 'ACTIVE' || listing.deletedAt) return []
+    const missing: string[] = []
+    if (!String(listing.model ?? '').trim()) missing.push('Model')
+    if (!listing.transmission) missing.push('Gearbox')
+    if (!String(listing.location ?? '').trim()) missing.push('Collection location')
+    if (listing.latitude == null || listing.longitude == null) missing.push('Postcode / map coordinates')
+    if (!Array.isArray(listing.features) || listing.features.length === 0) missing.push('Equipment')
+    if (!Array.isArray(listing.motHistory) || listing.motHistory.length === 0) missing.push('Stored MOT history')
+    if (listing.bhp == null) missing.push('BHP')
+    if (listing.combinedMpg == null) missing.push('MPG')
+    return missing
+}
+
 function matchesAdminListingSearch(listing: any, query: string) {
     const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
     if (terms.length === 0) return true
@@ -690,6 +705,15 @@ export default function AdminListingsPage() {
                                                 <p className="text-xs text-[var(--text-muted)] truncate hover:text-primary transition-colors cursor-pointer" onClick={() => l.seller?.id && setSelectedUserId(l.seller.id)}>{l.seller?.firstName} {l.seller?.lastName} · {l.vrm || 'No VRM'}</p>
                                                 <p className="text-sm font-bold ml-2 shrink-0">{formatPrice(l.price)}</p>
                                             </div>
+                                            {retailCompletenessGaps(l).length > 0 && (
+                                                <button type="button" onClick={() => setEditListingId(l.id)}
+                                                    title={retailCompletenessGaps(l).join(', ')}
+                                                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-amber-500/35 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+                                                    <AlertTriangle size={12} />
+                                                    {retailCompletenessGaps(l).length} fields need review
+                                                </button>
+                                            )}
+
                                             {l.status === 'DRAFT' && !l.deletedAt && (
                                                 <button
                                                     type="button"
@@ -769,6 +793,13 @@ export default function AdminListingsPage() {
                                                             {l.vrm || 'No VRM'} 
                                                             {l.deletedAt && <AlertTriangle size={12} className="text-red-400 ml-1" />}
                                                         </p>
+                                                        {retailCompletenessGaps(l).length > 0 && (
+                                                            <button type="button" onClick={() => setEditListingId(l.id)}
+                                                                title={retailCompletenessGaps(l).join(', ')}
+                                                                className="mt-1 inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+                                                                <AlertTriangle size={12} /> {retailCompletenessGaps(l).length} fields need review
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
