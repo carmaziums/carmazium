@@ -431,7 +431,7 @@ function SearchPageContent() {
         } finally {
             setLoading(false)
         }
-    }, [buildApiFilters, userLocation?.lat, userLocation?.lng]
+    }, [buildApiFilters, userLocation?.lat, userLocation?.lng])
 
     React.useEffect(() => {
         if (!didInitialHydrate.current) {
