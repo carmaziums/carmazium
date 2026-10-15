@@ -1,5 +1,6 @@
-import { VEHICLE_FEATURES } from "@/lib/vehicleFeatures"
 "use client"
+
+import { VEHICLE_FEATURES } from "@/lib/vehicleFeatures"
 
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
