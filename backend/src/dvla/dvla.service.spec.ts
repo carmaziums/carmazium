@@ -4,10 +4,10 @@ describe('DvlaService AI specification enrichment', () => {
     const config = {
         get: jest.fn((key: string) => {
             if (key === 'DVLA_API_KEY') return 'dvla-test-key';
-            if (key === 'MOT_API_KEY') return 'mot-test-key';
-            if (key === 'MOT_CLIENT_ID') return 'test-client-id';
-            if (key === 'MOT_CLIENT_SECRET') return 'test-client-secret';
-            if (key === 'MOT_TOKEN_URL') return 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token';
+            if (key === 'MOT_HISTORY_API_KEY') return 'mot-test-key';
+            if (key === 'MOT_HISTORY_CLIENT_ID') return 'test-client-id';
+            if (key === 'MOT_HISTORY_CLIENT_SECRET') return 'test-client-secret';
+            if (key === 'MOT_HISTORY_TOKEN_URL') return 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token';
             return undefined;
         }),
     };
@@ -308,10 +308,10 @@ describe('DvlaService — retail seller timeout and optional upstream isolation'
     const config = {
         get: (key: string) => ({
             DVLA_API_KEY: 'dvla-test-key',
-            MOT_API_KEY: 'mot-test-key',
-            MOT_CLIENT_ID: 'test-client-id',
-            MOT_CLIENT_SECRET: 'test-client-secret',
-            MOT_TOKEN_URL: 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token',
+            MOT_HISTORY_API_KEY: 'mot-test-key',
+            MOT_HISTORY_CLIENT_ID: 'test-client-id',
+            MOT_HISTORY_CLIENT_SECRET: 'test-client-secret',
+            MOT_HISTORY_TOKEN_URL: 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token',
             DVLA_CORE_TIMEOUT_MS: '40',
             DVLA_MOT_TIMEOUT_MS: '30',
             DVLA_SYNC_AI_TIMEOUT_MS: '35',
