@@ -23,7 +23,7 @@ const STATIC_ROUTES = [
     "/about",
     "/download-app",
     "/contact",
-    "/finance",
+    "/services/finance",
     "/services",
     "/how-it-works",
     "/reviews",
