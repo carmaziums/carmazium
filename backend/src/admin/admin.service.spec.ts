@@ -24,6 +24,7 @@ describe('AdminService listing approval readiness', () => {
             transaction: { findFirst: jest.fn() },
             analyticsEvent: { create: jest.fn().mockResolvedValue({ id: 'analytics-1' }) },
         };
+        prisma.$queryRaw = jest.fn().mockResolvedValue([]);
         prisma.$transaction = jest.fn(async (arg: any) =>
             Array.isArray(arg) ? Promise.all(arg) : arg(prisma),
         );
