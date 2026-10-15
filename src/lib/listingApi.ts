@@ -334,6 +334,10 @@ export interface ListingsResponse {
 }
 
 export interface ListingFilters {
+    makes?: string[]
+    maxDistanceMi?: number
+    originLatitude?: number
+    originLongitude?: number
     minPrice?: number
     maxPrice?: number
     make?: string
@@ -390,7 +394,8 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
     if (filters) {
         if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString())
         if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString())
-        if (filters.make) params.append('make', filters.make)
+        if (filters.makes?.length) params.append('makes', filters.makes.join(','))
+        else if (filters.make) params.append('make', filters.make)
         if (filters.model) params.append('model', filters.model)
         if (filters.variant) params.append('variant', filters.variant)
         if (filters.minYear !== undefined) params.append('minYear', filters.minYear.toString())
@@ -420,6 +425,11 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.maxBhp !== undefined) params.append('maxBhp', filters.maxBhp.toString())
         if (filters.minCombinedMpg !== undefined) params.append('minCombinedMpg', String(filters.minCombinedMpg))
         if (filters.maxZeroTo60Mph !== undefined) params.append('maxZeroTo60Mph', String(filters.maxZeroTo60Mph))
+        if (filters.maxDistanceMi !== undefined && filters.originLatitude !== undefined && filters.originLongitude !== undefined) {
+            params.append('maxDistanceMi', String(filters.maxDistanceMi))
+            params.append('originLatitude', String(filters.originLatitude))
+            params.append('originLongitude', String(filters.originLongitude))
+        }
         if (filters.driveType) params.append('driveType', filters.driveType)
         if (filters.sellerType) params.append('sellerType', filters.sellerType)
         if (filters.location) params.append('location', filters.location)

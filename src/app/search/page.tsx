@@ -15,7 +15,6 @@ import { getListings, getFeaturedListings, formatPrice, type Listing, type Listi
 import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
-import { haversineDistanceMiles } from "@/lib/distance"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
 import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
@@ -407,22 +406,22 @@ function SearchPageContent() {
             setLoading(true)
             setError(null)
             const apiFilters = buildApiFilters(filterState)
+            if (filterState.maxDistanceMi != null) {
+                if (userLocation?.lat == null || userLocation?.lng == null) {
+                    setListings([])
+                    setTotalCount(0)
+                    setTotalPages(1)
+                    setError('Enter your postcode to use the distance filter.')
+                    return
+                }
+                apiFilters.maxDistanceMi = filterState.maxDistanceMi
+                apiFilters.originLatitude = userLocation.lat
+                apiFilters.originLongitude = userLocation.lng
+            }
             apiFilters.page = page
             const response = await getListings(apiFilters)
 
-            let filtered = response.data
-            if (filterState.maxDistanceMi && userLocation?.lat && userLocation?.lng) {
-                filtered = filtered.filter(l =>
-                    l.latitude != null && l.longitude != null &&
-                    haversineDistanceMiles(userLocation.lat!, userLocation.lng!, l.latitude, l.longitude) <= filterState.maxDistanceMi!
-                )
-                filtered.sort((a, b) => {
-                    const dA = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, a.latitude!, a.longitude!)
-                    const dB = haversineDistanceMiles(userLocation.lat!, userLocation.lng!, b.latitude!, b.longitude!)
-                    return dA - dB
-                })
-            }
-            setListings(filtered)
+            setListings(response.data)
             setTotalCount(response.pagination.total)
             setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
@@ -432,7 +431,7 @@ function SearchPageContent() {
         } finally {
             setLoading(false)
         }
-    }, [buildApiFilters])
+    }, [buildApiFilters, userLocation?.lat, userLocation?.lng]
 
     React.useEffect(() => {
         if (!didInitialHydrate.current) {
@@ -477,6 +476,17 @@ function SearchPageContent() {
         }
     }, [currentQs, hydrateFromUrl, fetchListings, trackEvent])
 
+    // A postcode may resolve or change after URL hydration; run radius searches
+    // again when the origin moves, otherwise an old location silently persists.
+    const lastRadiusOrigin = React.useRef<string>('')
+    React.useEffect(() => {
+        if (!didInitialHydrate.current || appliedFilters.maxDistanceMi == null) return
+        const origin = `${userLocation?.lat ?? 'missing'}:${userLocation?.lng ?? 'missing'}`
+        if (lastRadiusOrigin.current === origin) return
+        lastRadiusOrigin.current = origin
+        if (userLocation?.lat != null && userLocation?.lng != null) fetchListings(appliedFilters)
+    }, [userLocation?.lat, userLocation?.lng, appliedFilters, fetchListings])
+
     // (Initial mount fetch relies on didInitialHydrate inside the main effect above)
 
     // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -520,6 +530,7 @@ function SearchPageContent() {
         setFilters(prev => ({ ...prev, sortBy: value }))
         setAppliedFilters(updated)
         fetchListings(updated)
+        pushFiltersToUrl(updated)
     }
     const handlePageChange = (page: number) => {
         if (page < 1 || page > totalPages || page === currentPage) return
@@ -540,7 +551,7 @@ function SearchPageContent() {
     // Quick-remove helper for applied filter tags
     const clearFilter = (patch: Partial<FilterState>) => {
         const u = { ...appliedFilters, ...patch }
-        setFilters(u); setAppliedFilters(u); fetchListings(u)
+        setFilters(u); setAppliedFilters(u); fetchListings(u); pushFiltersToUrl(u)
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────
@@ -1165,9 +1176,7 @@ function SearchPageContent() {
                     {/* Sort Bar */}
                     <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
                         <p className="text-[var(--text-muted)] text-sm">
-                            {loading ? <span>Loading...</span> : appliedFilters.maxDistanceMi ? (
-                                <span className="text-xs text-[var(--text-muted)]">Filtered results ({listings.length} within {appliedFilters.maxDistanceMi} mi)</span>
-                            ) : totalCount === 0 ? (
+                            {loading ? <span>Loading...</span> : totalCount === 0 ? (
                                 <>Showing <span className="font-bold">0</span> vehicles</>
                             ) : (
                                 <>Showing <span className="font-bold">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of <span className="font-bold">{totalCount}</span> vehicles</>
