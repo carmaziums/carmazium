@@ -15,7 +15,7 @@ import { getListings, getFeaturedListings, formatPrice, type Listing, type Listi
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
-import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
 import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
 
@@ -88,6 +88,7 @@ interface FilterState {
     search: string
     make: string
     model: string
+    variant: string
     minPrice: string
     maxPrice: string
     minYear: string
@@ -122,7 +123,7 @@ interface FilterState {
 }
 
 const INITIAL_FILTERS: FilterState = {
-    search: '', make: '', model: '',
+    search: '', make: '', model: '', variant: '',
     minPrice: '', maxPrice: '',
     minYear: '', maxYear: '',
     minMileage: '', maxMileage: '',
@@ -222,7 +223,7 @@ function SearchPageContent() {
     const hydrateFromUrl = React.useCallback((): FilterState => {
         const p = (k: string) => searchParams.get(k) || ''
         return {
-            search: p('search'), make: p('make'), model: p('model'),
+            search: p('search'), make: p('make'), model: p('model'), variant: p('variant'),
             minPrice: p('minPrice'), maxPrice: p('maxPrice'),
             minYear: p('minYear'), maxYear: p('maxYear'),
             minMileage: p('minMileage'), maxMileage: p('maxMileage'),
@@ -312,6 +313,7 @@ function SearchPageContent() {
         let count = 0
         if (appliedFilters.make) count++
         if (appliedFilters.model) count++
+        if (appliedFilters.variant) count++
         if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
         if (appliedFilters.minYear || appliedFilters.maxYear) count++
         if (appliedFilters.minMileage || appliedFilters.maxMileage) count++
@@ -343,6 +345,7 @@ function SearchPageContent() {
         if (state.search) f.search = state.search
         if (state.make) f.make = state.make
         if (state.model) f.model = state.model
+        if (state.variant) f.variant = state.variant
         if (state.minPrice) f.minPrice = parseFloat(state.minPrice)
         if (state.maxPrice) f.maxPrice = parseFloat(state.maxPrice)
         if (state.minYear) f.minYear = parseInt(state.minYear)
@@ -649,6 +652,7 @@ function SearchPageContent() {
                                             setMakeManualEntry(value === '__other__')
                                             set('make', value === '__other__' ? '' : value)
                                             set('model', '')
+                                            set('variant', '')
                                             setModelManualEntry(false)
                                         }}
                                         className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
@@ -659,7 +663,7 @@ function SearchPageContent() {
                                     </select>
                                     {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
                                         <Input placeholder="Enter unlisted make" value={filters.make}
-                                            onChange={e => { set('make', e.target.value); set('model', '') }}
+                                            onChange={e => { set('make', e.target.value); set('model', ''); set('variant', '') }}
                                             className="h-9 text-sm" />
                                     )}
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
@@ -671,13 +675,13 @@ function SearchPageContent() {
                                                     <Input
                                                         placeholder="Model (e.g. M4)"
                                                         value={filters.model}
-                                                        onChange={(e) => set('model', e.target.value)}
+                                                        onChange={(e) => { set('model', e.target.value); set('variant', '') }}
                                                         className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
                                                     />
                                                     {models.length > 0 && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => { setModelManualEntry(false); set('model', '') }}
+                                                            onClick={() => { setModelManualEntry(false); set('model', ''); set('variant', '') }}
                                                             className="text-xs font-semibold text-primary hover:underline"
                                                         >
                                                             ← Back to model list
@@ -690,7 +694,7 @@ function SearchPageContent() {
                                             <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => set('model', '')}
+                                                    onClick={() => { set('model', ''); set('variant', '') }}
                                                     className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                 >
                                                     All {filters.make} models
@@ -699,7 +703,7 @@ function SearchPageContent() {
                                                     <button
                                                         key={m}
                                                         type="button"
-                                                        onClick={() => set('model', m)}
+                                                        onClick={() => { set('model', m); set('variant', '') }}
                                                         className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                     >
                                                         {m}
@@ -707,7 +711,7 @@ function SearchPageContent() {
                                                 ))}
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setModelManualEntry(true); set('model', '') }}
+                                                    onClick={() => { setModelManualEntry(true); set('model', ''); set('variant', '') }}
                                                     className="w-full text-left px-3 py-2 rounded text-sm font-semibold text-primary hover:bg-[var(--bg-card)] transition-all"
                                                 >
                                                     Other (type manually)
@@ -715,6 +719,20 @@ function SearchPageContent() {
                                             </div>
                                         )
                                     })()}
+                                    {/* Variant/trim filters the real saved listing.variant field. */}
+                                    {filters.model && (
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="vehicle-variant-filter" className="text-xs font-bold text-[var(--text-muted)]">Model variant / trim</label>
+                                            <input id="vehicle-variant-filter" list="variant-options" type="text" value={filters.variant}
+                                                placeholder="Any variant, or type M Sport, GT Line…"
+                                                onChange={e => set('variant', e.target.value)}
+                                                className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm focus:border-primary focus:outline-none"
+                                            />
+                                            <datalist id="variant-options">
+                                                {getVariantsForModel(filters.make, filters.model).map(variant => <option key={variant} value={variant} />)}
+                                            </datalist>
+                                        </div>
+                                    )}
                                 </div>
                             </FilterSection>
 
@@ -1117,7 +1135,8 @@ function SearchPageContent() {
                                 <FilterTag label={BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />
                             )}
                             {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '' })} />}
-                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '' })} />}
+                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '', variant: '' })} />}
+                            {appliedFilters.variant && <FilterTag label={`Variant: ${appliedFilters.variant}`} onRemove={() => clearFilter({ variant: '' })} />}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
                                 <FilterTag label={`£${appliedFilters.minPrice || '0'} – £${appliedFilters.maxPrice || '∞'}`} onRemove={() => clearFilter({ minPrice: '', maxPrice: '' })} />
                             )}
