@@ -33,6 +33,8 @@ test('marketplace cards never substitute a different car for missing seller phot
   assert.match(home, /image=\{listing\.images\?\.\[0\] \|\| ""\}/);
   assert.match(card, /gallery\.length > 0 \? \(/);
   assert.match(card, /Vehicle photos not supplied/);
+  assert.match(card, /Marketplace listing/);
+  assert.doesNotMatch(card, /ShieldCheck[^\\n]+Verified/);
   assert.match(card, /<CardImageCarousel/);
 });
 
