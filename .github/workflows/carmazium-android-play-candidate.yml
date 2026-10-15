@@ -1,0 +1,119 @@
+name: CarMazium Google Play production AAB candidate (internal review only)
+
+# Manual Google Play candidate build. No automatic Play submission, store
+# rollout, OTA update or public APK distribution. Paid EAS use is opt-in.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed 40-character main commit SHA to build
+        type: string
+        required: true
+      approval:
+        description: Internal review AAB only; never public release
+        type: choice
+        required: true
+        options: [NOT_APPROVED, INTERNAL_REVIEW_ONLY]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmazium-android-play-review
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    defaults:
+      run:
+        working-directory: 'carmazium app/carmazium app'
+    env:
+      CI: '1'
+      APP_ENV: production
+      EXPO_NO_TELEMETRY: '1'
+      SENTRY_DISABLE_AUTO_UPLOAD: 'true'
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN || secrets.EAS_TOKEN }}
+      REVIEW_SOURCE_SHA: ${{ inputs.source_sha }}
+      REVIEW_APPROVAL: ${{ inputs.approval }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: 'carmazium app/carmazium app/package-lock.json'
+      - name: Verify exact main revision, approval, app ID and production AAB profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$REVIEW_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]] || [[ "$REVIEW_SOURCE_SHA" != "$GITHUB_SHA" ]] || [[ "$REVIEW_APPROVAL" != 'INTERNAL_REVIEW_ONLY' ]]; then
+            echo '::error::Google Play candidate requires the exact checked-out main revision and INTERNAL_REVIEW_ONLY approval.'
+            exit 1
+          fi
+          node - <<'NODE'
+          const app = require('./app.json').expo;
+          const eas = require('./eas.json');
+          if (app.android?.package !== 'uk.carmazium.app' ||
+              eas.build?.production?.channel !== 'production' ||
+              eas.build?.production?.android?.buildType !== 'app-bundle' ||
+              eas.build?.production?.distribution === 'internal' ||
+              eas.cli?.appVersionSource !== 'remote' ||
+              !app.extra?.eas?.projectId ||
+              app.updates?.requestHeaders?.['expo-channel-name']) {
+            throw new Error('Unexpected Android release identity, build format or channel');
+          }
+          if (eas.build.production.env.APP_ENV !== 'production' ||
+              !String(eas.build.production.env.EXPO_PUBLIC_API_URL || '').startsWith('https://')) {
+            throw new Error('Missing production API endpoint');
+          }
+          console.log('Google Play candidate package, EAS project and production profile verified');
+          NODE
+      - name: Require owner-connected EAS credential
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo '::error::EXPO_TOKEN or EAS_TOKEN repository secret required for signed Google Play AAB.'
+            exit 1
+          fi
+      - name: Install locked native packages
+        run: npm ci
+      - name: Verify native types
+        run: npm run typescript
+      - name: Confirm authorised Expo project
+        run: npx --yes eas-cli@16.18.0 whoami --non-interactive
+      - name: Build signed Google Play AAB candidate without store distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes eas-cli@16.18.0 build --platform android --profile production --non-interactive --wait --json > "$RUNNER_TEMP/carmazium-play-candidate.json"
+          node - "$RUNNER_TEMP/carmazium-play-candidate.json" <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const build = Array.isArray(raw) ? raw[0] : raw;
+          const id = build?.id;
+          const status = String(build?.status || '').toUpperCase();
+          const url = build?.artifacts?.buildUrl || build?.artifacts?.applicationArchiveUrl || build?.buildUrl;
+          if (status !== 'FINISHED' || !id || !url?.startsWith('https://')) {
+            throw new Error('No completed, downloadable Google Play AAB candidate was returned');
+          }
+          const summary = [
+            '### CarMazium Android Google Play AAB — INTERNAL REVIEW ONLY',
+            '- Reviewed main source SHA: ' + process.env.GITHUB_SHA,
+            '- EAS build ID: ' + id,
+            '- Status: ' + status,
+            '- Application ID: uk.carmazium.app',
+            '- Output profile: production app-bundle (AAB)',
+            '- [Review Google Play candidate](' + url + ')',
+            '',
+            'This workflow does **not** submit to Google Play or publish an update.',
+            'Before upload: verify the actual artifact format, upload certificate/Play App Signing identity and incrementing versionCode in the Play Console.',
+            'The candidate uses the live backend. Do not perform synthetic bids or payments against real accounts.',
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary.join('\n') + '\n');
+          console.log('Google Play AAB candidate built for internal review; EAS ID: ' + id);
+          NODE
