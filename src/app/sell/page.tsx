@@ -84,6 +84,7 @@ type LandingVehiclePrefill = {
     euroStandard: string
     co2Emissions: string
     dateOfLastV5CIssued: string
+    firstUsedDate?: string
     motStatus: string
     taxStatus: string
     motExpiryDate: string
