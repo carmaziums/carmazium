@@ -353,6 +353,7 @@ function QuickValuationForm() {
                     euroStandard: vehicle.euroStandard || "",
                     co2Emissions: vehicle.co2Emissions ? String(vehicle.co2Emissions) : "",
                     dateOfLastV5CIssued: vehicle.dateOfLastV5CIssued || "",
+                    firstUsedDate: vehicle.firstUsedDate || "",
                     motStatus: vehicle.motStatus || "",
                     taxStatus: vehicle.taxStatus || "",
                     motExpiryDate: vehicle.motExpiryDate || "",
