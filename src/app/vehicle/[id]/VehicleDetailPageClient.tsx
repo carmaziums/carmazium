@@ -1214,6 +1214,23 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                         {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
                         {(() => {
                             const damageRecords = Array.isArray((listing as any).damageRecords) ? (listing as any).damageRecords as any[] : []
+                            // Only seller-saved surface coordinates can become numbered
+                            // public markers. Older records without a precise 3D point
+                            // remain accessible in the damage cards below (no fake pins).
+                            const positionedDamage = damageRecords.flatMap((record: any, index: number) => {
+                                const point = record.coords?.surfacePoint
+                                if (!point || !['fx', 'fy', 'fz'].every(key =>
+                                    typeof point[key] === 'number' && Number.isFinite(point[key])
+                                    && point[key] >= 0 && point[key] <= 1)) return []
+                                return [{
+                                    id: String(record.id ?? `record-${index}`),
+                                    number: index + 1,
+                                    zone: String(record.part ?? ''),
+                                    point: { fx: point.fx, fy: point.fy, fz: point.fz },
+                                    type: String(record.type ?? '').split(' - ')[0].toUpperCase(),
+                                    hasPhoto: Boolean(record.imageUrl),
+                                }]
+                            })
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones — not seller-chosen. Same value
                             // drives the "Grade N" chip on the card and the Buy Cars detail page.
@@ -1234,7 +1251,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                 </div>
                                 <p className="text-xs text-[var(--text-muted)] mb-4 pl-5">
                                     {damageRecords.length > 0
-                                        ? `${damageRecords.length} zone${damageRecords.length !== 1 ? 's' : ''} marked by seller — click a zone to see details`
+                                        ? `${damageRecords.length} damage ${damageRecords.length === 1 ? 'report' : 'reports'} from seller · ${positionedDamage.length} positioned on 3D — select a number or the detail card below`
                                         : 'No damage reported by the seller'}
                                 </p>
 
@@ -1249,9 +1266,12 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                 >
                                     <ThreeDVehicleViewer
                                         bodyType={listing.bodyType ?? undefined}
-                                        markedZones={damageRecords.map((r: any) => r.part)}
-                                        selectedZone={selectedDamageZone}
-                                        onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                        damagePins={positionedDamage}
+                                        selectedDamageId={positionedDamage.find(pin => pin.zone === selectedDamageZone)?.id ?? null}
+                                        onDamagePinPress={id => {
+                                            const zone = positionedDamage.find(pin => pin.id === id)?.zone
+                                            if (zone) setSelectedDamageZone(prev => prev === zone ? null : zone)
+                                        }}
                                     />
                                 </ThreeDErrorBoundary>
 
