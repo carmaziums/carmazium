@@ -1319,37 +1319,11 @@ describe('ListingsService', () => {
             } as any)).rejects.toThrow(/registration or mileage changed/i);
         });
 
-        it('reuses the same vehicle base across a new journey for 24 hours', async () => {
-            const previousJourneyBase = {
-                low: 2650,
-                mid: 3100,
-                high: 3300,
-                confidence: 'LOW',
-                confidenceScore: 0.42,
-                comparables: 6,
-                evidence: {
-                    completedSales: 0,
-                    acceptedOffers: 0,
-                    auctionResults: 0,
-                    activeAsks: 6,
-                },
-                source: 'BLENDED_MARKET',
-                explanation: 'Frozen same-vehicle base',
-                retail: {
-                    suggestedAsking: 3300,
-                    suggestedMinimum: 3100,
-                },
-                auction: {
-                    marketValue: 2650,
-                    openingBid: 1855,
-                    reserveLow: 2385,
-                    reserveHigh: 2650,
-                    suggestedReserve: 2500,
-                },
-            };
-
-            prisma.analyticsEvent.findUnique.mockResolvedValueOnce(null);
-            prisma.analyticsEvent.findFirst.mockResolvedValueOnce({
+        it('does not reuse a legacy alias snapshot after the new quote lock expires', async () => {
+            // Previously recent journey aliases could indefinitely extend a
+            // market base. Only the canonical 24-hour lock can serve repeats.
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.analyticsEvent.findFirst.mockResolvedValue({
                 id: '22222222-2222-4222-8222-222222222222',
                 type: 'valuation_base_snapshot',
                 payload: {
@@ -1360,47 +1334,26 @@ describe('ListingsService', () => {
                         year: 2010,
                         mileage: 138734,
                     },
-                    baseValuation: previousJourneyBase,
+                    baseValuation: { auction: { marketValue: 12345 } },
                 },
             });
-
-            const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
 
             const result = await service.estimateVehicleValue({
-                make: 'Volkswagen',
+                make: 'VOLKSWAGEN',
                 model: 'Golf',
                 year: 2010,
                 mileage: 138734,
-                registration: 'BF10 XYP',
+                registration: 'BF10XYP',
                 valuationId: '33333333-3333-4333-8333-333333333333',
             } as any);
 
-            // Old frozen auction guide (£2,650) is now the retail anchor;
-            // the dealer auction estimate is exactly 80% of that anchor.
-            expect(result.retail.suggestedAsking).toBe(2650);
-            expect(result.auction.marketValue).toBe(2120);
-            expect(liveSearch).not.toHaveBeenCalled();
-            expect(prisma.listing.findMany).not.toHaveBeenCalled();
-            expect(prisma.analyticsEvent.findFirst).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    where: expect.objectContaining({
-                        type: 'valuation_base_snapshot',
-                        sessionId: expect.stringMatching(/^valuation-base:[a-f0-9]{64}$/),
-                    }),
-                }),
-            );
+            expect(prisma.analyticsEvent.findFirst).not.toHaveBeenCalled();
+            expect(result.retail.suggestedAsking).toBeGreaterThan(0);
+            expect(result.retail.suggestedAsking).not.toBe(12345);
             expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
                 data: expect.objectContaining({
-                    id: '33333333-3333-4333-8333-333333333333',
-                    type: 'valuation_base_snapshot',
-                    sessionId: expect.stringMatching(/^valuation-base:[a-f0-9]{64}$/),
-                    payload: expect.objectContaining({
-                        valuation_id: '33333333-3333-4333-8333-333333333333',
-                        reusedFromSnapshotId: '22222222-2222-4222-8222-222222222222',
-                        baseValuation: expect.objectContaining({
-                            auction: expect.objectContaining({ marketValue: 2650 }),
-                        }),
-                    }),
+                    type: 'valuation_price_lock',
                 }),
             });
         });
