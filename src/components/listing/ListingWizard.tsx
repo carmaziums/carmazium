@@ -1038,13 +1038,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     function applyValuation() {
         if (!valuation) return
 
-        // The customer-facing valuation is one neutral Current Market Value.
-        // Keep the richer retail/auction guidance in the valuation payload for
-        // internal platform logic, but never switch the visible applied figure
-        // based on listing method.
-        set("priceAsking", String(valuation.auction.marketValue))
-
+        // The dealer auction field controls the bidding reference and opening
+        // bid. Retail is a public asking price. Apply the corresponding price
+        // from the same frozen market base; never reuse auction as retail.
         if (isAuction) {
+            set("priceAsking", String(valuation.auction.marketValue))
             setAuctionSchedule(prev => ({
                 ...prev,
                 reservePrice: String(valuation.auction.suggestedReserve),
@@ -1052,8 +1050,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             return
         }
 
-        // A retail offer floor is optional. Do not silently introduce a second
-        // auto-valued customer price after they chose "Use this value".
+        set("priceAsking", String(valuation.retail.suggestedAsking))
+        // A retail offer floor is optional; sellers choose it themselves.
         set("priceMin", "")
     }
 
