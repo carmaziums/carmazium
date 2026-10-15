@@ -168,7 +168,7 @@ export class ListingsController {
     @Get()
     @ApiOperation({
         summary: 'Get all listings',
-        description: 'Retrieves all active listings with optional filtering and pagination',
+        description: 'Returns ACTIVE retail listings only, excluding sold and offer-accepted vehicles from buyer search',
     })
     @ApiQuery({ name: 'minPrice', required: false, type: Number })
     @ApiQuery({ name: 'maxPrice', required: false, type: Number })
