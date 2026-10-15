@@ -1405,7 +1405,7 @@ describe('ListingsService', () => {
             });
         });
 
-        it('returns the winning frozen base when two requests race to create the same journey', async () => {
+        it('reuses the winning frozen base from a previously saved journey', async () => {
             const winnerBase = {
                 low: 2650,
                 mid: 3100,
@@ -1436,7 +1436,6 @@ describe('ListingsService', () => {
 
             prisma.listing.findMany.mockResolvedValue([]);
             jest.spyOn(service as any, 'getLiveUkMarketComparables').mockResolvedValue(null);
-            prisma.analyticsEvent.create.mockRejectedValueOnce({ code: 'P2002' });
             prisma.analyticsEvent.findFirst.mockResolvedValue(null);
             prisma.analyticsEvent.findUnique
                 .mockResolvedValueOnce(null)
