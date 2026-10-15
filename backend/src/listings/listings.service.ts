@@ -1,4 +1,5 @@
 import { buildFeatureConditions } from './feature-search';
+import { buildGradeSearchWhere } from './grade-search';
 import {
     Injectable,
     Logger,
@@ -1900,7 +1901,7 @@ export class ListingsService {
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
             minCombinedMpg, maxZeroTo60Mph, driveType,
-            conditions, ulezCompliant, euroStandard,
+            conditions, exteriorGrades, writeOffCategories, ulezCompliant, euroStandard,
             isImported, markedForExport,
             vehicleType,
             minBhp, maxBhp,
@@ -1945,6 +1946,10 @@ export class ListingsService {
         else if (transmission) where.transmission = transmission;
         if (bodyType) where.bodyType = bodyType;
         if (conditions?.length) where.condition = { in: conditions };
+        // Search the saved automatic Grade 1–5, not seller-declared condition.
+        const gradeSearch = buildGradeSearchWhere(exteriorGrades, writeOffCategories);
+        if (gradeSearch.exteriorGrade) where.exteriorGrade = gradeSearch.exteriorGrade;
+        if (gradeSearch.writeOffMatch) where.AND = [...(where.AND || []), gradeSearch.writeOffMatch];
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
 
