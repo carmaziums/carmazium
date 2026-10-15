@@ -22,6 +22,7 @@ on:
       - 'scripts/test-home-retail-inventory-truth.test.mjs'
       - 'scripts/test-seo-indexing-contract.test.mjs'
       - 'scripts/test-seo-trust-reviews.test.mjs'
+      - 'scripts/test-public-contact-parity.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -202,6 +203,8 @@ jobs:
         run: node --test scripts/test-seo-indexing-contract.test.mjs
       - name: Ensure customer reviews are genuine and accessible
         run: node --test scripts/test-seo-trust-reviews.test.mjs
+      - name: Verify public contact enquiries and native contact detail parity
+        run: node --test scripts/test-public-contact-parity.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
