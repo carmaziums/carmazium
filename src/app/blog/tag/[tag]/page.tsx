@@ -22,13 +22,26 @@ async function getPostsByTag(tag: string, page: number): Promise<{ data: BlogPos
     }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ tag: string }> }): Promise<Metadata> {
-    const { tag } = await params
+function requestedPage(value?: string): number {
+    const parsed = Number(value)
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1
+}
+
+export async function generateMetadata({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ tag: string }>
+    searchParams: Promise<{ page?: string }>
+}): Promise<Metadata> {
+    const [{ tag }, { page: pageParam }] = await Promise.all([params, searchParams])
     const decoded = decodeURIComponent(tag)
+    const page = requestedPage(pageParam)
+    const base = `${SITE_URL}/blog/tag/${tag}`
     return {
-        title: `"${decoded}" — Blog`,
+        title: page === 1 ? `"${decoded}" — Blog` : `"${decoded}" — Blog Page ${page}`,
         description: `Articles tagged "${decoded}" on the CarMazium blog.`,
-        alternates: { canonical: `${SITE_URL}/blog/tag/${tag}` },
+        alternates: { canonical: page === 1 ? base : `${base}?page=${page}` },
     }
 }
 
@@ -41,7 +54,7 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pr
     const { tag } = await params
     const { page: pageParam } = await searchParams
     const decoded = decodeURIComponent(tag)
-    const page = Math.max(1, Number(pageParam) || 1)
+    const page = requestedPage(pageParam)
     const { data: posts, totalPages } = await getPostsByTag(decoded, page)
 
     if (posts.length === 0 && page === 1) notFound()

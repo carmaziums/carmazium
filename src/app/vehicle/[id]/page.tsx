@@ -4,7 +4,8 @@ import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"
+// Legacy vehicle links must point to the same www canonical as /buy-cars and the sitemap.
+const SITE_URL = "https://www.carmazium.com"
 
 async function getListingBySlug(slug: string) {
     try {

@@ -21,26 +21,45 @@ async function getPosts(page: number): Promise<{ data: BlogPost[]; total: number
     }
 }
 
-export const metadata: Metadata = {
-    title: "Automotive Insights, Selling Guides & Market Updates",
-    description: "Independent-style car selling guides, UK market comparisons, auction advice and automotive insights from CarMazium.",
-    alternates: {
-        canonical: `${SITE_URL}/blog`,
-        types: { "application/rss+xml": `${SITE_URL}/blog/rss.xml` },
-    },
-    openGraph: {
-        title: "CarMazium Automotive Insights",
-        description: "Car selling guides, UK market comparisons, auction advice and automotive insights.",
-        url: `${SITE_URL}/blog`,
-        type: "website",
-        siteName: "CarMazium",
-        locale: "en_GB",
-    },
-    twitter: {
-        card: "summary_large_image",
-        title: "CarMazium Automotive Insights",
-        description: "Car selling guides, UK market comparisons, auction advice and automotive insights.",
-    },
+function requestedPage(value?: string): number {
+    const parsed = Number(value)
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1
+}
+
+// Google treats each paginated index as a distinct URL. Page 2+ must not
+// canonicalise to page 1 or discovery of older articles becomes less reliable.
+export async function generateMetadata({
+    searchParams,
+}: {
+    searchParams: Promise<{ page?: string }>
+}): Promise<Metadata> {
+    const { page: value } = await searchParams
+    const page = requestedPage(value)
+    const canonical = page === 1 ? `${SITE_URL}/blog` : `${SITE_URL}/blog?page=${page}`
+
+    return {
+        title: page === 1
+            ? "Automotive Insights, Selling Guides & Market Updates"
+            : `Automotive Insights — Page ${page}`,
+        description: "Independent-style car selling guides, UK market comparisons, auction advice and automotive insights from CarMazium.",
+        alternates: {
+            canonical,
+            types: { "application/rss+xml": `${SITE_URL}/blog/rss.xml` },
+        },
+        openGraph: {
+            title: page === 1 ? "CarMazium Automotive Insights" : `CarMazium Automotive Insights — Page ${page}`,
+            description: "Car selling guides, UK market comparisons, auction advice and automotive insights.",
+            url: canonical,
+            type: "website",
+            siteName: "CarMazium",
+            locale: "en_GB",
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: "CarMazium Automotive Insights",
+            description: "Car selling guides, UK market comparisons, auction advice and automotive insights.",
+        },
+    }
 }
 
 function formatDate(d: string | null) {
@@ -84,7 +103,7 @@ function ArticleCard({ post }: { post: BlogPost }) {
 
 export default async function BlogIndexPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     const { page: pageParam } = await searchParams
-    const page = Math.max(1, Number(pageParam) || 1)
+    const page = requestedPage(pageParam)
     const { data: posts, total, totalPages } = await getPosts(page)
     const featured = page === 1 ? posts[0] : undefined
     const gridPosts = featured ? posts.slice(1) : posts
