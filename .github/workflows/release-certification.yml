@@ -15,6 +15,8 @@ on:
       - 'scripts/test-login-session-rebridge.test.mjs'
       - 'scripts/test-native-app-audit-block7.test.mjs'
       - 'scripts/test-native-app-audit-block9.test.mjs'
+      - 'scripts/test-native-app-audit-block4.test.mjs'
+      - 'scripts/test-native-app-integration-block6.test.mjs'
       - 'scripts/test-native-web-vehicle-parity-20261015.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
