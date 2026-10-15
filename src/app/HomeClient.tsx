@@ -389,9 +389,11 @@ export default function HomeClient({ initialListings, latestRetailListings, late
               Browse All Used Cars <ArrowRight size={17} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <p className="sm:hidden mb-3 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Swipe sideways to explore more cars</p>
+          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4 sm:gap-5" aria-label="More active retail cars">
             {moreRetailCars.map((listing) => (
-              <CarCard
+              <div key={listing.id} className="snap-start shrink-0 w-[min(83vw,320px)] sm:w-auto">
+                <CarCard
                 key={listing.id}
                 title={listing.title}
                 make={listing.make}
@@ -414,7 +416,8 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 exteriorGrade={listing.exteriorGrade}
                 writeOffCategory={listing.writeOffCategory}
                 isImported={listing.isImported ?? false}
-              />
+                />
+              </div>
             ))}
           </div>
         </section>
