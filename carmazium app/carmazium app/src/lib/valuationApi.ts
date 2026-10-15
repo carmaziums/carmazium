@@ -234,7 +234,8 @@ export function applyVehicleValuationAdjustments(
   const low = roundMoney(base.low * factor);
   const mid = roundMoney(base.mid * factor);
   const high = roundMoney(base.high * factor);
-  const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
+  const retailSuggestedAsking = roundMoney(base.retail.suggestedAsking * factor);
+  const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80);
 
   return {
     ...base,
@@ -243,15 +244,15 @@ export function applyVehicleValuationAdjustments(
     high,
     explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
     retail: {
-      suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-      suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
+      suggestedAsking: retailSuggestedAsking,
+      suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
     },
     auction: {
       marketValue: auctionMarketValue,
       openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
       reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
       reserveHigh: auctionMarketValue,
-      suggestedReserve: roundMoney(auctionMarketValue * 0.95),
+      suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
     },
   };
 }
