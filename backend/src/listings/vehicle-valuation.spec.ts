@@ -258,7 +258,8 @@ describe('calculateVehicleValuation', () => {
 
         expect(result.low).toBeGreaterThanOrEqual(result.mid * 0.84);
         expect(result.high).toBeLessThanOrEqual(result.mid * 1.16);
-        expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.mid * 0.89);
+        expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.retail.suggestedAsking * 0.89);
+        expect(result.retail.suggestedMinimum).toBeLessThanOrEqual(result.retail.suggestedAsking);
     });
 
     it('prices automatic and manual cars differently when gearbox evidence differs', () => {
@@ -331,6 +332,7 @@ describe('calculateVehicleValuation', () => {
         const legacyBase = {
             ...currentBase,
             retail: { suggestedAsking: currentBase.high, suggestedMinimum: currentBase.mid },
+            auction: { ...currentBase.auction, marketValue: currentBase.low },
         };
         const specification = { ...vehicle, condition: 'FAIR', numberOfKeys: 1 };
         const oldJourneyResult = applyVehicleSpecificationAdjustments(legacyBase, specification);
