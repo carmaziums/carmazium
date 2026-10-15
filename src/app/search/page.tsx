@@ -16,18 +16,10 @@ import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
 import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
+import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const POPULAR_FEATURES = [
-    'Air Conditioning', 'Climate Control', 'Alloy Wheels',
-    'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
-    'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
-    'Heated Seats', 'Cruise Control', 'Panoramic Roof',
-    'Apple CarPlay', 'Android Auto', 'Keyless Entry',
-    'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
-] as const
 
 const FUEL_TYPES = [
     'Bi Fuel', 'Diesel', 'Diesel Hybrid', 'Diesel Plug-in Hybrid', 'Electric',
@@ -205,6 +197,8 @@ function SearchPageContent() {
     const { trackEvent } = useAnalytics()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [modelManualEntry, setModelManualEntry] = React.useState(false)
+    const [makeManualEntry, setMakeManualEntry] = React.useState(false)
+    const [featureQuery, setFeatureQuery] = React.useState("")
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -637,23 +631,28 @@ function SearchPageContent() {
                             {/* Make & Model */}
                             <FilterSection title="Make / Model" defaultOpen={true}>
                                 <div className="space-y-2">
-                                    {/* Make — text input with datalist autocomplete */}
-                                    <div className="relative">
-                                        <input
-                                            list="make-options"
-                                            placeholder="Make (e.g. BMW)"
-                                            value={filters.make}
-                                            onChange={(e) => {
-                                                set('make', e.target.value)
-                                                set('model', '') // reset model when make changes
-                                                setModelManualEntry(false)
-                                            }}
-                                            className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
-                                        />
-                                        <datalist id="make-options">
-                                            {CAR_MAKES.map(m => <option key={m} value={m} />)}
-                                        </datalist>
-                                    </div>
+                                    {/* Native select works reliably on Android/iOS and exposes the full A–Z catalogue. */}
+                                    <select
+                                        aria-label="Vehicle make"
+                                        value={makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make)) ? '__other__' : filters.make}
+                                        onChange={(e) => {
+                                            const value = e.target.value
+                                            setMakeManualEntry(value === '__other__')
+                                            set('make', value === '__other__' ? '' : value)
+                                            set('model', '')
+                                            setModelManualEntry(false)
+                                        }}
+                                        className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
+                                    >
+                                        <option value="">All makes</option>
+                                        {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
+                                        <option value="__other__">Other make (type manually)</option>
+                                    </select>
+                                    {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
+                                        <Input placeholder="Enter unlisted make" value={filters.make}
+                                            onChange={e => { set('make', e.target.value); set('model', '') }}
+                                            className="h-9 text-sm" />
+                                    )}
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
                                     {(() => {
                                         const models = getModelsForMake(filters.make)
@@ -878,25 +877,31 @@ function SearchPageContent() {
                                     minPlaceholder="Min BHP" maxPlaceholder="Max BHP" />
                             </FilterSection>
 
-                            {/* Features / Options */}
+                            {/* Feature groups share the exact seller-declared labels. */}
                             <FilterSection title="Features / Options">
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                                    {POPULAR_FEATURES.map(feat => (
-                                        <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                checked={filters.features.includes(feat)}
-                                                onChange={() => setFilters(prev => ({
-                                                    ...prev,
-                                                    features: prev.features.includes(feat)
-                                                        ? prev.features.filter(f => f !== feat)
-                                                        : [...prev.features, feat]
-                                                }))}
-                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]"
-                                            />
-                                            {feat}
-                                        </label>
-                                    ))}
+                                <div className="space-y-3">
+                                    <Input
+                                        placeholder="Search equipment (e.g. parking, heated, CarPlay)"
+                                        aria-label="Search vehicle features"
+                                        value={featureQuery}
+                                        onChange={e => setFeatureQuery(e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                    <div className="max-h-72 overflow-y-auto space-y-4 pr-1">
+                                        {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
+                                            const visible = options.filter(feat => feat.toLowerCase().includes(featureQuery.trim().toLowerCase()))
+                                            if (visible.length === 0) return null
+                                            return <div key={group} className="space-y-1.5">
+                                                <p className="text-xs font-bold text-[var(--text-muted)]">{group}</p>
+                                                {visible.map(feat => <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
+                                                    <input type="checkbox" checked={filters.features.includes(feat)}
+                                                        onChange={() => setFilters(prev => ({ ...prev, features: prev.features.includes(feat) ? prev.features.filter(f => f !== feat) : [...prev.features, feat] }))}
+                                                        className="accent-primary rounded w-4 h-4" />
+                                                    {feat}
+                                                </label>)}
+                                            </div>
+                                        })}
+                                    </div>
                                 </div>
                             </FilterSection>
 
