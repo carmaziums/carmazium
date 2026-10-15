@@ -25,6 +25,8 @@ on:
       - '.github/workflows/carmazium-android-release-candidate.yml'
       - 'scripts/check-android-release-candidate.mjs'
       - 'scripts/test-android-release-candidate.test.mjs'
+      - 'scripts/test-ios-release-candidate.test.mjs'
+      - '.github/workflows/carmazium-ios-release-candidate.yml'
       - 'scripts/verify-android-release-keystore.mjs'
       - 'scripts/test-verify-android-release-keystore.test.mjs'
       - 'scripts/android-apk-release-evidence.mjs'
@@ -258,6 +260,8 @@ jobs:
         run: node --test scripts/test-customer-app-release-acceptance.test.mjs
       - name: Ensure pre-store signed Android candidate cannot release debug or unsigned APKs
         run: node --test scripts/test-android-release-candidate.test.mjs
+      - name: Validate signed iOS candidate production identity and manual-only approval gate
+        run: node --test scripts/test-ios-release-candidate.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
