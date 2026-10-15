@@ -392,6 +392,10 @@ export async function getFeaturedListings(): Promise<CarListing[]> {
 export async function searchListings(params: {
   search?: string;
   make?: string;
+  makes?: string[];
+  maxDistanceMi?: number;
+  originLatitude?: number;
+  originLongitude?: number;
   model?: string;
   variant?: string;
   vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE';
@@ -439,9 +443,15 @@ export async function searchListings(params: {
     const query = new URLSearchParams();
 
     if (params.search)    query.set('search',    params.search);
-    if (params.make)      query.set('make',      params.make);
+    if (params.makes?.length) query.set('makes', params.makes.join(','));
+    else if (params.make) query.set('make', params.make);
     if (params.model)     query.set('model',     params.model);
     if (params.variant)   query.set('variant',   params.variant);
+    if (params.maxDistanceMi != null && params.originLatitude != null && params.originLongitude != null) {
+      query.set('maxDistanceMi', String(params.maxDistanceMi));
+      query.set('originLatitude', String(params.originLatitude));
+      query.set('originLongitude', String(params.originLongitude));
+    }
     if (params.vehicleType) query.set('vehicleType', params.vehicleType);
     if (params.location) query.set('location', params.location);
     if (params.minPrice != null) query.set('minPrice', String(params.minPrice));

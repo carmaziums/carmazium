@@ -2107,4 +2107,44 @@ describe('ListingsService', () => {
             });
         });
     });
+
+    describe('marketplace filter correctness', () => {
+        it('applies radius to the complete filtered inventory before skip/take and counting', async () => {
+            prisma.listing.findMany
+                .mockResolvedValueOnce([
+                    { id: 'near', latitude: 52.49, longitude: -1.89 },
+                    { id: 'far', latitude: 51.5074, longitude: -0.1278 },
+                    { id: 'unknown', latitude: null, longitude: null },
+                ])
+                .mockResolvedValueOnce([]);
+            prisma.listing.count.mockResolvedValue(1);
+            await service.findAll({
+                maxDistanceMi: 25, originLatitude: 52.4862, originLongitude: -1.8904,
+                page: 3, limit: 10, makes: ['Toyota', 'Honda'], search: 'hybrid',
+            } as any);
+            expect(prisma.listing.findMany).toHaveBeenCalledTimes(2);
+            const candidateQuery = prisma.listing.findMany.mock.calls[0][0];
+            const pageQuery = prisma.listing.findMany.mock.calls[1][0];
+            expect(candidateQuery.select).toEqual({ id: true, latitude: true, longitude: true });
+            expect(candidateQuery.where.latitude).toEqual(expect.objectContaining({ gte: expect.any(Number), lte: expect.any(Number) }));
+            expect(candidateQuery.where.AND).toEqual(expect.arrayContaining([
+                expect.objectContaining({ OR: expect.arrayContaining([
+                    { make: { equals: 'Toyota', mode: 'insensitive' } },
+                    { make: { equals: 'Honda', mode: 'insensitive' } },
+                ]) }),
+            ]));
+            expect(candidateQuery.where.OR).toEqual(expect.arrayContaining([
+                { title: { contains: 'hybrid', mode: 'insensitive' } },
+            ]));
+            expect(pageQuery.where.id).toEqual({ in: ['near'] });
+            expect(pageQuery.skip).toBe(20);
+            expect(pageQuery.take).toBe(10);
+            expect(prisma.listing.count.mock.calls[0][0].where.id).toEqual({ in: ['near'] });
+        });
+        it('rejects radius-only searches instead of silently ignoring missing location', async () => {
+            await expect(service.findAll({ maxDistanceMi: 25 } as any))
+                .rejects.toThrow(/postcode or location coordinates/i);
+            expect(prisma.listing.findMany).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -32,6 +32,13 @@ export class ListingFilterDto {
     @IsOptional()
     make?: string;
 
+    @ApiPropertyOptional({ description: 'Comma-separated makes, case-insensitive', example: 'Toyota,Honda' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()).filter(Boolean) : value)
+    @IsArray()
+    @IsString({ each: true })
+    @IsOptional()
+    makes?: string[];
+
     @ApiPropertyOptional({ description: 'Filter by vehicle model', example: 'Q7' })
     @IsString()
     @IsOptional()
@@ -86,6 +93,7 @@ export class ListingFilterDto {
     @ApiPropertyOptional({ description: 'Filter by multiple fuel types (comma-separated)', example: 'PETROL,ELECTRIC' })
     @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()) : value)
     @IsArray()
+    @IsEnum(FuelType, { each: true })
     @IsOptional()
     fuelTypes?: FuelType[];
 
@@ -97,6 +105,7 @@ export class ListingFilterDto {
     @ApiPropertyOptional({ description: 'Filter by multiple transmission types (comma-separated)', example: 'MANUAL,AUTOMATIC' })
     @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()) : value)
     @IsArray()
+    @IsEnum(TransmissionType, { each: true })
     @IsOptional()
     transmissions?: TransmissionType[];
 
@@ -179,6 +188,30 @@ export class ListingFilterDto {
     @IsEnum(VehicleCondition, { each: true })
     @IsOptional()
     conditions?: VehicleCondition[];
+
+    @ApiPropertyOptional({ description: 'Radius in miles, requiring both origin coordinates', example: 25 })
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(500)
+    @IsOptional()
+    maxDistanceMi?: number;
+
+    @ApiPropertyOptional({ description: 'Search radius origin latitude', example: 52.4862 })
+    @Type(() => Number)
+    @IsNumber()
+    @Min(-90)
+    @Max(90)
+    @IsOptional()
+    originLatitude?: number;
+
+    @ApiPropertyOptional({ description: 'Search radius origin longitude', example: -1.8904 })
+    @Type(() => Number)
+    @IsNumber()
+    @Min(-180)
+    @Max(180)
+    @IsOptional()
+    originLongitude?: number;
 
     @ApiPropertyOptional({ description: 'Calculated exterior grades, 1 best to 5 worst', example: '1,2' })
     @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => Number(v.trim())) : value)

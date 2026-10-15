@@ -1,5 +1,6 @@
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
+import { geoBounds, haversineMiles } from './search-geo';
 import {
     Injectable,
     Logger,
@@ -1894,7 +1895,7 @@ export class ListingsService {
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const {
             minPrice, maxPrice,
-            make, model, variant,
+            make, makes, model, variant,
             minYear, maxYear, year,  // year is deprecated alias for minYear
             minMileage, maxMileage,
             fuelType, fuelTypes, transmission, transmissions, bodyType,
@@ -1902,6 +1903,7 @@ export class ListingsService {
             minEngine, maxEngine, maxCo2,
             minCombinedMpg, maxZeroTo60Mph, driveType,
             conditions, exteriorGrades, writeOffCategories, ulezCompliant, euroStandard,
+            maxDistanceMi, originLatitude, originLongitude,
             isImported, markedForExport,
             vehicleType,
             minBhp, maxBhp,
@@ -1919,7 +1921,10 @@ export class ListingsService {
         }
 
         // ─── Make / Model ───────────────────────────────────────────────────
-        if (make) where.make = { contains: make, mode: 'insensitive' };
+        if (makes?.length) {
+            // An AND-nested OR means text searching cannot overwrite the selected makes.
+            where.AND = [...(where.AND || []), { OR: makes.map(m => ({ make: { equals: m, mode: 'insensitive' } })) }];
+        } else if (make) where.make = { contains: make, mode: 'insensitive' };
         if (model) where.model = { contains: model, mode: 'insensitive' };
         if (variant) where.variant = { contains: variant, mode: 'insensitive' };
 
@@ -2041,6 +2046,27 @@ export class ListingsService {
         else if (sortBy === 'mileage_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { mileage: 'desc' }];
         else if (sortBy === 'year_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'desc' }];
         else if (sortBy === 'year_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'asc' }];
+
+        // Filter the COMPLETE matching inventory before pagination and counting.
+        // Client-side per-page filtering loses nearby cars on later pages.
+        if (maxDistanceMi !== undefined) {
+            if (originLatitude === undefined || originLongitude === undefined) {
+                throw new BadRequestException('Distance filter requires a postcode or location coordinates.');
+            }
+            const bounds = geoBounds(originLatitude, originLongitude, maxDistanceMi);
+            const candidateWhere: any = { ...where, latitude: bounds.latitude };
+            if (bounds.longitudeConstraint) {
+                candidateWhere.AND = [...(candidateWhere.AND || []), bounds.longitudeConstraint];
+            }
+            const candidates = await this.prisma.listing.findMany({
+                where: candidateWhere,
+                select: { id: true, latitude: true, longitude: true },
+            });
+            where.id = { in: candidates
+                .filter(item => item.latitude != null && item.longitude != null
+                    && haversineMiles(originLatitude, originLongitude, item.latitude, item.longitude) <= maxDistanceMi)
+                .map(item => item.id) };
+        }
 
         const skip = (page - 1) * limit;
 
