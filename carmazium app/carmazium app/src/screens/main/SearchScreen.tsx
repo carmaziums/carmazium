@@ -211,6 +211,9 @@ export const SearchScreen: React.FC = () => {
   const [minEngine, setMinEngine] = useState('');
   const [maxEngine, setMaxEngine] = useState('');
   const [maxCo2, setMaxCo2] = useState('');
+  const [minCombinedMpg, setMinCombinedMpg] = useState('');
+  const [maxZeroTo60Mph, setMaxZeroTo60Mph] = useState('');
+  const [driveTypeFilter, setDriveTypeFilter] = useState('');
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   // Public marketplace defaults to Cars on both web and mobile.
@@ -346,6 +349,9 @@ export const SearchScreen: React.FC = () => {
       minEngine: minEngine ? parseInt(minEngine) : undefined,
       maxEngine: maxEngine ? parseInt(maxEngine) : undefined,
       maxCo2: maxCo2 ? parseInt(maxCo2) : undefined,
+      minCombinedMpg: minCombinedMpg ? parseFloat(minCombinedMpg) : undefined,
+      maxZeroTo60Mph: maxZeroTo60Mph ? parseFloat(maxZeroTo60Mph) : undefined,
+      driveType: driveTypeFilter || undefined,
       deliveryAvailable: deliveryAvailable ? true : undefined,
       sellerType: sellerType || undefined,
       color: colorFilter.trim() || undefined,
@@ -397,7 +403,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -415,7 +421,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -435,6 +441,7 @@ export const SearchScreen: React.FC = () => {
     !!minBhp || !!maxBhp,
     !!minEngine || !!maxEngine,
     !!maxCo2,
+    !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
     deliveryAvailable,
     !!sellerType,
     vehicleType !== 'CAR',
@@ -451,7 +458,8 @@ export const SearchScreen: React.FC = () => {
 
   const advancedFilterCount = [
     conditions.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
-    !!maxCo2, vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
+    !!maxCo2, !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
+    vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
     !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
     maxDistanceMi != null, !!sellerType, !!ulezCompliant,
     deliveryAvailable, !!isImported,
@@ -475,6 +483,9 @@ export const SearchScreen: React.FC = () => {
     setMinEngine('');
     setMaxEngine('');
     setMaxCo2('');
+    setMinCombinedMpg('');
+    setMaxZeroTo60Mph('');
+    setDriveTypeFilter('');
     setDeliveryAvailable(false);
     setSellerType('');
     setVehicleType('CAR');
@@ -1202,6 +1213,33 @@ export const SearchScreen: React.FC = () => {
                 ))}
               </View>
 
+              <View style={s.divider} />
+
+              {/* Existing stored vehicle fields; never guess MPG or performance. */}
+              <Text style={s.filterLabel}>FUEL ECONOMY (COMBINED MPG)</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MINIMUM MPG (REPORTED)</Text>
+                <TextInput style={s.inputBoxValue} value={minCombinedMpg}
+                  onChangeText={setMinCombinedMpg} placeholder="Any"
+                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={s.divider} />
+              <Text style={s.filterLabel}>ACCELERATION (0–60 MPH)</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MAXIMUM SECONDS</Text>
+                <TextInput style={s.inputBoxValue} value={maxZeroTo60Mph}
+                  onChangeText={setMaxZeroTo60Mph} placeholder="Any"
+                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={s.divider} />
+              <Text style={s.filterLabel}>DRIVETRAIN</Text>
+              <View style={s.chipGrid}>
+                {['FWD', 'RWD', 'AWD', '4WD'].map(drive => <TouchableOpacity key={drive}
+                  style={[s.filterChip, driveTypeFilter === drive && s.filterChipActive]}
+                  onPress={() => setDriveTypeFilter(prev => prev === drive ? '' : drive)}>
+                  <Text style={[s.filterChipText, driveTypeFilter === drive && s.filterChipTextActive]}>{drive}</Text>
+                </TouchableOpacity>)}
+              </View>
               <View style={s.divider} />
 
               {/* Vehicle Type */}
