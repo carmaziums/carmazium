@@ -489,3 +489,14 @@ test("post-valuation result presents two visible price cards with a choice for e
     assert.match(start, /window\.dispatchEvent\(new CustomEvent\("carmazium:start-seller-listing"/)
     assert.ok(start.indexOf("saveSellerHandoff(") < start.indexOf("window.dispatchEvent("))
 })
+
+
+test("website listing wizard preserves the backend 24-hour quote", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const valuationApi = readFileSync(new URL("../src/lib/valuationApi.ts", import.meta.url), "utf8")
+    assert.match(wizard, /setValuation\(baseValuation\)/)
+    assert.doesNotMatch(wizard, /setValuation\(applyVehicleValuationAdjustments\(/)
+    assert.doesNotMatch(valuationApi, /getBrowserFallbackValuation\(/)
+    assert.doesNotMatch(valuationApi, /getDeterministicFallbackValuation\(/)
+    assert.match(valuationApi, /throw new Error\('VALUATION_UNAVAILABLE'\)/)
+})
