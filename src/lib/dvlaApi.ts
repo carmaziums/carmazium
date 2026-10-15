@@ -39,6 +39,8 @@ export interface DvlaLookupResult {
     wheelplan?: string;
     typeApproval?: string;
     motHistory?: MotTestResult[];
+    /** Historical MOT reading only; seller must enter current mileage. */
+    lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
 }
 
 export interface MotTestResult {
