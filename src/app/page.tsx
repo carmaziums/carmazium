@@ -116,9 +116,33 @@ async function getFeaturedListings(): Promise<Listing[]> {
     }
 }
 
+/** Fetch a wider, genuine retail inventory sample rather than making the
+ * three or fewer paid-featured cars look like the entire marketplace.
+ * Public /listings excludes trade-only auction inventory. Its results also
+ * include sold cars, so only currently ACTIVE retail cars appear here. */
+async function getRecentRetailListings(): Promise<Listing[]> {
+    try {
+        const res = await fetchWithRetry(
+            `${API_URL}/listings?page=1&limit=20&sortBy=newest`,
+            { next: { revalidate: 300 } },
+            { timeoutMs: 7000, retries: 2, retryDelayMs: 300 },
+        )
+        if (!res.ok) return []
+        const body = await res.json()
+        if (!Array.isArray(body?.data)) return []
+        return (body.data as Listing[]).filter(
+            listing => listing && typeof listing.id === "string" && listing.status === "ACTIVE",
+        )
+    } catch (err) {
+        console.error("Recent retail listings fetch failed:", err)
+        return []
+    }
+}
+
 export default async function Home() {
-    const [featuredListings, latestBlogPosts] = await Promise.all([
+    const [featuredListings, latestRetailListings, latestBlogPosts] = await Promise.all([
         getFeaturedListings(),
+        getRecentRetailListings(),
         getLatestBlogPosts(),
     ])
 
@@ -165,7 +189,7 @@ export default async function Home() {
                 }
             `}</style>
 
-            <HomeClient initialListings={featuredListings} latestBlogPosts={latestBlogPosts} />
+            <HomeClient initialListings={featuredListings} latestRetailListings={latestRetailListings} latestBlogPosts={latestBlogPosts} />
 
             {/* Search-engine-readable marketplace context, structured for human scanning. */}
             <section
