@@ -53,7 +53,10 @@ test('seller VRM resets, listing submit mutex, and UK-local auction dates coexis
   assert.ok(sell.includes('setMotHistory([])'));
   assert.ok(sell.includes("setModel('')"));
   assert.ok(sell.includes('valuationRequestId.current += 1'));
-  assert.ok(sell.includes('LOW-CONFIDENCE PRICE GUIDE'));
+  assert.ok(sell.includes("valuation.confidence === 'LOW'"));
+  assert.ok(sell.includes('Limited market evidence. This is a rough guide'));
+  assert.ok(sell.includes('ESTIMATED DEALER AUCTION VALUE'));
+  assert.ok(sell.includes('SUGGESTED RETAIL ASKING PRICE'));
   assert.ok(sell.includes('if (publishingInFlightRef.current) return'));
   assert.ok(sell.includes('publishingInFlightRef.current = false'));
   assert.ok(sell.includes('auctionPayload.startTime = parsedStart.toISOString()'));

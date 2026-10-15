@@ -258,7 +258,8 @@ describe('calculateVehicleValuation', () => {
 
         expect(result.low).toBeGreaterThanOrEqual(result.mid * 0.84);
         expect(result.high).toBeLessThanOrEqual(result.mid * 1.16);
-        expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.mid * 0.89);
+        expect(result.retail.suggestedMinimum).toBeGreaterThanOrEqual(result.retail.suggestedAsking * 0.89);
+        expect(result.retail.suggestedMinimum).toBeLessThanOrEqual(result.retail.suggestedAsking);
     });
 
     it('prices automatic and manual cars differently when gearbox evidence differs', () => {
@@ -297,7 +298,7 @@ describe('calculateVehicleValuation', () => {
     });
 
 
-    it('uses the upper market guide for retail and lower market guide for dealer auctions', () => {
+    it('uses the previous dealer guide for retail and prices auction 20 percent lower', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 9000, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK' },
             { price: 9500, year: 2019, mileage: 58000, kind: 'ACTIVE_ASK' },
@@ -306,11 +307,44 @@ describe('calculateVehicleValuation', () => {
             { price: 11000, year: 2021, mileage: 50000, kind: 'ACTIVE_ASK' },
         ]);
 
-        expect(result.retail.suggestedAsking).toBe(result.high);
-        expect(result.retail.suggestedMinimum).toBe(result.mid);
-        expect(result.auction.marketValue).toBe(result.low);
+        expect(result.retail.suggestedAsking).toBe(result.low);
+        expect(result.retail.suggestedMinimum).toBeLessThanOrEqual(result.retail.suggestedAsking);
+        expect(result.auction.marketValue).toBe(Math.round(result.retail.suggestedAsking * 0.8));
         expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking);
         expect(result.auction.suggestedReserve).toBeLessThanOrEqual(result.auction.marketValue);
+    });
+
+    it('retains the 20 percent auction discount after specification adjustments', () => {
+        const base = calculateVehicleValuation(vehicle, []);
+        const adjusted = applyVehicleSpecificationAdjustments(base, {
+            ...vehicle,
+            condition: 'EXCELLENT',
+            serviceHistory: 'Full',
+            numberOfKeys: 2,
+        });
+        expect(adjusted.auction.marketValue).toBe(Math.round(adjusted.retail.suggestedAsking * 0.8));
+        expect(adjusted.retail.suggestedMinimum).toBeLessThanOrEqual(adjusted.retail.suggestedAsking);
+        expect(adjusted.auction.suggestedReserve).toBeLessThanOrEqual(adjusted.auction.marketValue);
+    });
+
+    it('recalculates frozen valuations created under the previous high-retail rule', () => {
+        const currentBase = calculateVehicleValuation(vehicle, []);
+        const legacyBase = {
+            ...currentBase,
+            retail: { suggestedAsking: currentBase.high, suggestedMinimum: currentBase.mid },
+            auction: { ...currentBase.auction, marketValue: currentBase.low },
+        };
+        const specification = { ...vehicle, condition: 'FAIR', numberOfKeys: 1 };
+        const oldJourneyResult = applyVehicleSpecificationAdjustments(legacyBase, specification);
+        const freshJourneyResult = applyVehicleSpecificationAdjustments(currentBase, specification);
+        expect(oldJourneyResult.retail.suggestedAsking).toBe(freshJourneyResult.retail.suggestedAsking);
+        expect(oldJourneyResult.auction.marketValue).toBe(freshJourneyResult.auction.marketValue);
+        // An unmodified saved journey must be rebased too (factor = 1).
+        const withoutAdjustments = { make: vehicle.make, model: vehicle.model, year: vehicle.year, mileage: vehicle.mileage };
+        const oldUnchanged = applyVehicleSpecificationAdjustments(legacyBase, withoutAdjustments);
+        const freshUnchanged = applyVehicleSpecificationAdjustments(currentBase, withoutAdjustments);
+        expect(oldUnchanged.retail.suggestedAsking).toBe(freshUnchanged.retail.suggestedAsking);
+        expect(oldUnchanged.auction.marketValue).toBe(freshUnchanged.auction.marketValue);
     });
 
     it('does not let an extreme active asking price dominate completed outcomes', () => {

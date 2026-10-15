@@ -37,7 +37,8 @@ import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
-import { getListingById } from '../../lib/listingsApi';
+import { getListingById, getRawListingById, type ApiListing } from '../../lib/listingsApi';
+import { BuyerVehicleFacts } from '../../components/BuyerVehicleFacts';
 import {
   getHpiSummary, openHpiPdf, isReportReady, HPI_CHECK_DEFINITIONS,
   type HpiSummaryResponse,
@@ -165,6 +166,28 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
   const { refreshRooms } = useChat();
+
+  // Search cards carry a reduced projection. Fetch the full public listing
+  // once so saved DVSA/MOT fields are available even when browsing from Home.
+  const [fullVehicleFacts, setFullVehicleFacts] = useState<ApiListing | null>(null);
+  const [vehicleFactsState, setVehicleFactsState] = useState<'loading' | 'loaded' | 'failed'>('loading');
+  const [vehicleFactsAttempt, setVehicleFactsAttempt] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    setFullVehicleFacts(null);
+    setVehicleFactsState('loading');
+    // getRawListingById returns null on network/HTTP failure. It does not
+    // throw, so a catch-only handler used to disguise missing MOT/DVLA facts
+    // as if the seller had never supplied them.
+    getRawListingById(listing.id).then(record => {
+      if (cancelled) return;
+      setFullVehicleFacts(record);
+      setVehicleFactsState(record ? 'loaded' : 'failed');
+    }).catch(() => {
+      if (!cancelled) setVehicleFactsState('failed');
+    });
+    return () => { cancelled = true; };
+  }, [listing.id, vehicleFactsAttempt]);
 
   const images = listing.images ?? [];
 
@@ -1179,6 +1202,28 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             );
           })}
+
+          {/* The search card is incomplete by design. A failed full fetch
+              must not quietly masquerade as "no MOT data exists". */}
+          {vehicleFactsState === 'loading' && (
+            <Text style={{ color: Colors.textSecondary, marginVertical: 10, fontSize: 12 }}>
+              Loading saved vehicle specifications and MOT history…
+            </Text>
+          )}
+          {vehicleFactsState === 'failed' && (
+            <View style={{ marginVertical: 12, padding: 13, borderWidth: 1, borderColor: Colors.warning, borderRadius: 11, gap: 9 }}>
+              <Text style={{ color: Colors.textPrimary, fontSize: 12 }}>
+                Could not retrieve the complete vehicle information. The basic listing is shown below; MOT and DVLA records may be missing.
+              </Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retry loading full vehicle information"
+                style={{ paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: Colors.bgElevated }}
+                onPress={() => setVehicleFactsAttempt(previous => previous + 1)}>
+                <Text style={{ fontSize: 13, color: Colors.infoBlue, fontFamily: FontFamily.bold }}>Retry full vehicle details</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {/* Same comprehensive DVLA/MOT panel as the auction detail page. */}
+          <BuyerVehicleFacts record={fullVehicleFacts ?? listing} />
 
           {/* Section: Vehicle History — real DVLA/seller-declared fields only.
               Paid HPI report below (:314-360, 1399-1406) is the actual verified check;

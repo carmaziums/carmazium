@@ -31,10 +31,18 @@ const TestimonialsSection = dynamic(() => import("@/components/features/Testimon
 
 interface HomeClientProps {
   initialListings: Listing[]
+  latestRetailListings: Listing[]
   latestBlogPosts?: BlogPostSummary[]
 }
 
-export default function HomeClient({ initialListings, latestBlogPosts = [] }: HomeClientProps) {
+export default function HomeClient({ initialListings, latestRetailListings, latestBlogPosts = [] }: HomeClientProps) {
+  // Avoid repeating paid-featured cars in the latest retail strip. This is a
+  // preview only: the public search page contains the complete live inventory.
+  const featuredIds = new Set(initialListings.map(listing => listing.id))
+  const moreRetailCars = latestRetailListings
+    .filter(listing => listing.status === "ACTIVE" && !featuredIds.has(listing.id))
+    .slice(0, 8)
+
   const ref = useRef(null)
   const router = useRouter()
   const { resolvedTheme } = useTheme()
@@ -295,10 +303,10 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
 
           {/* Bottom Row: Trust Indicators */}
           <div className="flex flex-wrap justify-center gap-8 mt-8 font-medium" style={{ color: 'var(--text-muted)' }}>
-            <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">RLS-secured</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Protected accounts</span></div>
             <div className="flex items-center gap-2 group cursor-default"><UserCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Verified sellers</span></div>
             <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">HPI-ready</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Buyer protection</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Independent checks advised</span></div>
           </div>
         </motion.div>
       </section>
@@ -320,7 +328,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
                 <Sparkles className="text-amber-400" size={32} strokeWidth={1.25} />
                 <span style={{ background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Featured Listings</span>
               </h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Handpicked, seller-boosted cars — verified &amp; ready to go</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Featured retail cars — see more active cars below</p>
             </div>
             <Link href="/search" className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 font-medium">
               View All <ArrowRight size={14} />
@@ -341,7 +349,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
                   make={listing.make}
                   model={listing.model}
                   price={formatPrice(listing.price)}
-                  image={listing.images?.[0] || "/assets/images/featured-sports.png"}
+                  image={listing.images?.[0] || ""}
                   images={listing.images ?? []}
                   href={`/vehicle/${listing.slug}`}
                   year={listing.year ?? undefined}
@@ -364,6 +372,71 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
           </div>
         </section>
       )}
+
+      {/* A dedicated retail sample prevents the limited number of featured
+          packages from being mistaken for the full vehicle inventory. */}
+      {moreRetailCars.length > 0 && (
+        <section className="container mx-auto px-5 mb-12 md:mb-16" aria-labelledby="latest-retail-cars-title">
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-7">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-primary mb-2">More to discover</p>
+              <h2 id="latest-retail-cars-title" className="text-2xl md:text-3xl font-extrabold font-heading">More Cars to Explore</h2>
+              <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+                More active retail cars from across the marketplace — not just paid featured listings.
+              </p>
+            </div>
+            <Link href="/search" className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-5 py-3 text-sm font-extrabold text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              Browse All Used Cars <ArrowRight size={17} />
+            </Link>
+          </div>
+          <p className="sm:hidden mb-3 text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Swipe sideways to explore more cars</p>
+          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4 sm:gap-5" aria-label="More active retail cars">
+            {moreRetailCars.map((listing) => (
+              <div key={listing.id} className="snap-start shrink-0 w-[min(83vw,320px)] sm:w-auto">
+                <CarCard
+                key={listing.id}
+                title={listing.title}
+                make={listing.make}
+                model={listing.model}
+                price={formatPrice(listing.price)}
+                image={listing.images?.[0] || ""}
+                images={listing.images ?? []}
+                href={`/vehicle/${listing.slug}`}
+                year={listing.year ?? undefined}
+                mileage={listing.mileage ?? undefined}
+                fuelType={listing.fuelType ?? undefined}
+                bodyType={listing.bodyType ?? undefined}
+                isFeatured={false}
+                badgeTier={listing.badgeTier}
+                status={listing.status}
+                bannerLabel={listing.bannerLabel}
+                hasLinkedAuction={!!listing.linkedListingId}
+                isDepartedSale={listing.isDepartedSale ?? false}
+                deliveryAvailable={listing.deliveryAvailable ?? false}
+                exteriorGrade={listing.exteriorGrade}
+                writeOffCategory={listing.writeOffCategory}
+                isImported={listing.isImported ?? false}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Always give visitors an obvious route to the complete real inventory.
+          No fictitious listing count when server data is temporarily missing. */}
+      <div className="container mx-auto px-5 mb-12 md:mb-16">
+        <Link href="/search"
+          className="group flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/15 via-amber-500/10 to-primary/10 px-6 py-6 md:px-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <div className="text-center sm:text-left">
+            <p className="font-heading text-xl md:text-2xl font-extrabold">Explore the Full Car Marketplace</p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Search and filter all publicly listed vehicles by make, price, mileage and more.</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-primary px-5 py-3 font-extrabold text-white group-hover:brightness-110">
+            Browse All Cars <ArrowRight size={17} />
+          </span>
+        </Link>
+      </div>
 
       {/* Live Auctions Section */}
       {liveAuctions.length > 0 && (
@@ -450,7 +523,7 @@ export default function HomeClient({ initialListings, latestBlogPosts = [] }: Ho
             {[
               { icon: Search, title: "Browse or List a Car", desc: "Explore verified listings or create your own car listing in minutes." },
               { icon: Handshake, title: "Connect or Bid", desc: "Buy directly, negotiate with sellers, or place bids in live auctions." },
-              { icon: Shield, title: "Secure Transaction", desc: "Complete payments safely through trusted and transparent methods." },
+              { icon: Shield, title: "Pay the Seller Directly", desc: "Agree a secure payment method with the seller after completing your vehicle checks." },
               { icon: FileText, title: "Ownership Transfer", desc: "Finalize documentation and drive away with confidence." }
             ].map((step, idx) => (
               <motion.div

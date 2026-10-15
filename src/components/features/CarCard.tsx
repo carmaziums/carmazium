@@ -132,9 +132,9 @@ export function CarCard({
                         <WriteOffCategoryBadge category={writeOffCategory} />
                         {(badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') && (
                             <>
-                                <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-emerald-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-emerald-500/30">
-                                    <ShieldCheck size={12} className="text-emerald-500" /> Verified
-                                </div>
+                                {/* A paid display tier is not proof of an independently
+                                    verified vehicle or seller. Show only the
+                                    actual package inclusion here. */}
                                 <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-blue-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-blue-500/30">
                                     <BadgeCheck size={12} className="text-blue-500" /> HPI Included
                                 </div>
@@ -150,13 +150,20 @@ export function CarCard({
                     {/* Tap the image → full-screen gallery preview. The card's
                         "View Details" button below is the way to reach the
                         detail page, so image taps are freed up for previewing. */}
-                    <CardImageCarousel
-                        images={gallery.length > 0 ? gallery : [image]}
-                        alt={title}
-                        lightboxOnTap
-                        imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
-                        sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                    />
+                    {gallery.length > 0 ? (
+                        <CardImageCarousel
+                            images={gallery}
+                            alt={title}
+                            lightboxOnTap
+                            imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
+                            sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+                        />
+                    ) : (
+                        <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-slate-400" role="img" aria-label={`No vehicle photos supplied for ${title}`}>
+                            <Car size={54} strokeWidth={1.2} aria-hidden="true" />
+                            <span className="text-xs font-semibold uppercase tracking-wide">Vehicle photos not supplied</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Banner Label Ribbon */}
@@ -210,7 +217,7 @@ export function CarCard({
                         <SellerBadge score={sellerScore} sellerUserId={sellerId} size="sm" showLabel />
                     ) : (
                         <div className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded uppercase tracking items-center flex shrink-0 transition-transform duration-200 hover:scale-110">
-                            Verified
+                            Marketplace listing
                         </div>
                     )}
                 </div>
