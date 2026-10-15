@@ -622,7 +622,7 @@ function QuickValuationForm() {
                                 <span className="rounded-lg bg-orange-500/15 px-2 py-1 text-xs font-extrabold text-orange-700 dark:text-orange-300">FREE</span>
                             </div>
                             <p className="mt-4 text-[11px] font-black uppercase tracking-[0.12em] text-orange-700 dark:text-orange-300">
-                                Estimated auction value
+                                Dealer auction value
                             </p>
                             {hasGuide ? (
                                 <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
