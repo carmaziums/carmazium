@@ -1,5 +1,7 @@
 "use client"
 
+import { VEHICLE_FEATURES, VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
+
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
@@ -126,12 +128,7 @@ interface FormData {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PRESET_FEATURES = [
-    "Navigation", "Leather Seats", "Heated Seats", "Sunroof",
-    "Bluetooth", "Parking Sensors", "Reverse Camera", "Cruise Control",
-    "Climate Control", "Apple CarPlay", "Android Auto", "DAB Radio",
-    "LED Headlights", "Alloy Wheels", "Tow Bar",
-]
+const PRESET_FEATURES = VEHICLE_FEATURES
 
 const STEPS = [
     { id: 1, icon: Car, title: "Details" },
@@ -354,6 +351,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const [manualMakeEntry, setManualMakeEntry] = React.useState(false)
     const [manualModelEntry, setManualModelEntry] = React.useState(false)
     const [manualVariantEntry, setManualVariantEntry] = React.useState(false)
+    const [featureSearch, setFeatureSearch] = React.useState("")
     const [sellingMethod, setSellingMethod] = React.useState<"list" | null>(null)
     const [showLoginModal, setShowLoginModal] = React.useState(false)
     const [pendingReview, setPendingReview] = React.useState<{ title: string; onContinue: () => void } | null>(null)
@@ -3392,21 +3390,31 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {/* Features */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Features</label>
+                                <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle features</label>
+                                <Input aria-label="Search vehicle features" placeholder="Search equipment, e.g. heated seats, CarPlay…"
+                                    value={featureSearch} onChange={e => setFeatureSearch(e.target.value)} className={inputCls} />
+                                <div className="max-h-96 overflow-y-auto rounded-lg border border-[var(--border-default)] p-3 space-y-5">
+                                    {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, choices]) => {
+                                        const visible = choices.filter(feature => feature.toLowerCase().includes(featureSearch.trim().toLowerCase()))
+                                        if (!visible.length) return null
+                                        return <section key={group} aria-label={group} className="space-y-2">
+                                            <h4 className="text-xs font-bold uppercase text-[var(--text-muted)]">{group}</h4>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                {visible.map(feature => {
+                                                    const selected = formData.features.includes(feature)
+                                                    return <button key={feature} type="button"
+                                                        aria-pressed={selected}
+                                                        onClick={() => set("features", selected ? formData.features.filter(f => f !== feature) : [...formData.features, feature])}
+                                                        className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${selected ? "bg-primary/20 border-primary text-primary" : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30"}`}>
+                                                        <span className="text-sm font-medium">{feature}</span>
+                                                        {selected && <CheckCircle size={14} />}
+                                                    </button>
+                                                })}
+                                            </div>
+                                        </section>
+                                    })}
+                                </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                                    {PRESET_FEATURES.map((f) => (
-                                        <div key={f}
-                                            onClick={() => set("features",
-                                                formData.features.includes(f)
-                                                    ? formData.features.filter(x => x !== f)
-                                                    : [...formData.features, f]
-                                            )}
-                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${formData.features.includes(f) ? "bg-primary/20 border-primary text-primary" : "bg-[var(--bg-input)] border-[var(--border-default)] text-[var(--text-muted)] hover:border-primary/30"}`}
-                                        >
-                                            <span className="text-sm font-medium">{f}</span>
-                                            {formData.features.includes(f) && <CheckCircle size={14} />}
-                                        </div>
-                                    ))}
                                     {/* Custom Features */}
                                     {formData.features.filter(f => !PRESET_FEATURES.includes(f)).map((f, i) => (
                                         <div key={`custom-${i}`}

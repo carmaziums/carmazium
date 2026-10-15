@@ -10,7 +10,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
-import { CAR_MAKES } from '../../data/carData';
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
+import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
@@ -66,7 +67,7 @@ const QUICK_FILTERS: QuickFilter[] = [
 // simply never used: any make outside these ten was unfilterable (BUY-007).
 // Web solves the same problem with a text input over a datalist; this is the
 // native equivalent.
-const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
+const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes-Benz', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Land Rover', 'Tesla'];
 // Display labels only — the backend's FuelType enum uses different casing/wording
 // for several of these ('Plug-in Hybrid' -> 'PLUGIN_HYBRID', 'Hydrogen' ->
 // 'HYDROGEN_CELL', etc.), so FUEL_MAP below must run before any of these reach the
@@ -114,8 +115,11 @@ const SORT_OPTIONS = [
   { id: 'year_asc', label: 'Year: oldest first' },
   { id: 'year_desc', label: 'Year: newest first' },
 ];
-const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'];
-const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTS = ['Any', '1990', '2000', '2010', '2015', '2018', ...Array.from(
+  { length: CURRENT_YEAR - 2019 + 1 }, (_, i) => String(2019 + i),
+)];
+const YEAR_OPTS_MAX = YEAR_OPTS;
 const MILES_OPTS = ['Any', '10k', '20k', '30k', '40k', '60k', '80k', '100k'];
 const MILES_OPTS_MIN = ['Any', '5k', '10k', '20k', '30k', '40k', '60k', '80k'];
 // All eight values web offers (`src/app/search/page.tsx:59-68`). CAT_C and CAT_D
@@ -154,14 +158,6 @@ const EURO_OPTIONS = [
   { value: 'EURO_6', label: 'Euro 6' },
   { value: 'EURO_6D', label: 'Euro 6d' },
 ];
-const POPULAR_FEATURES = [
-  'Air Conditioning', 'Climate Control', 'Alloy Wheels',
-  'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
-  'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
-  'Heated Seats', 'Cruise Control', 'Panoramic Roof',
-  'Apple CarPlay', 'Android Auto', 'Keyless Entry',
-  'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
-];
 // "Near Me" — the backend has no lat/lng/radius filter param at all (confirmed
 // against listing-filter.dto.ts), so web itself just filters/sorts the already-
 // fetched page client-side by haversine distance (src/app/search/page.tsx).
@@ -189,16 +185,13 @@ export const SearchScreen: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
-  // Make filter query. Empty shows the popular ten; typing filters all 71 so a
-  // make outside the popular set is reachable (BUY-007). A selected make is
-  // always kept in the list, so it never disappears from view while active.
   const [makeQuery, setMakeQuery] = useState('');
+  const [showAllMakes, setShowAllMakes] = useState(false);
+  const [featureQuery, setFeatureQuery] = useState('');
   const makeQueryTrimmed = makeQuery.trim().toLowerCase();
   const visibleMakes = makeQueryTrimmed
     ? CAR_MAKES.filter(m => m.toLowerCase().includes(makeQueryTrimmed))
-    // Union, not concat: a selected make outside the popular ten must stay
-    // visible, or the active filter looks unset.
-    : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
+    : showAllMakes ? CAR_MAKES : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(route.params?.maxPrice ? Number(route.params.maxPrice) : 150000);
   const [selectedBody, setSelectedBody] = useState<string>(route.params?.bodyType ?? '');
@@ -221,12 +214,16 @@ export const SearchScreen: React.FC = () => {
   const [minEngine, setMinEngine] = useState('');
   const [maxEngine, setMaxEngine] = useState('');
   const [maxCo2, setMaxCo2] = useState('');
+  const [minCombinedMpg, setMinCombinedMpg] = useState('');
+  const [maxZeroTo60Mph, setMaxZeroTo60Mph] = useState('');
+  const [driveTypeFilter, setDriveTypeFilter] = useState('');
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [sellerType, setSellerType] = useState<'' | 'DEALER' | 'PRIVATE'>('');
   // Public marketplace defaults to Cars on both web and mobile.
   const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [locationFilter, setLocationFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
+  const [variantFilter, setVariantFilter] = useState('');
   const [colorFilter, setColorFilter] = useState('');
   const [minDoors, setMinDoors] = useState('');
   const [minSeats, setMinSeats] = useState('');
@@ -293,7 +290,7 @@ export const SearchScreen: React.FC = () => {
       if (f.minYear) { setMinYear(f.minYear); hasNew = true; }
       if (f.maxYear) { setMaxYear(f.maxYear); hasNew = true; }
       if (f.transmission) { setTransmissions([f.transmission]); hasNew = true; }
-      if (f.model) { setModelFilter(f.model); hasNew = true; }
+      if (f.model) { setModelFilter(f.model); setVariantFilter(''); hasNew = true; }
       if (f.color) { setColorFilter(f.color); hasNew = true; }
       if (f.minDoors) { setMinDoors(f.minDoors); hasNew = true; }
       if (f.minSeats) { setMinSeats(f.minSeats); hasNew = true; }
@@ -303,7 +300,7 @@ export const SearchScreen: React.FC = () => {
     if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
     if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
     if (p.sortBy !== undefined) { setSortId(p.sortBy); hasNew = true; }
-    if (p.make !== undefined) { setSelectedMakes([p.make]); hasNew = true; }
+    if (p.make !== undefined) { setSelectedMakes([p.make]); setModelFilter(''); setVariantFilter(''); hasNew = true; }
     if (hasNew) {
       setQuickFilter('custom');
       setQuery('');
@@ -331,6 +328,7 @@ export const SearchScreen: React.FC = () => {
       search: query.trim() || undefined,
       make: selectedMakes[0] ?? (qf?.params.bodyType ? undefined : undefined),
       model: modelFilter.trim() || undefined,
+      variant: variantFilter.trim() || undefined,
       vehicleType: vehicleType || undefined,
       location: locationFilter.trim() || undefined,
       maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
@@ -344,8 +342,8 @@ export const SearchScreen: React.FC = () => {
       // any nav-param seed (route.params?.fuelType) both use.
       fuelTypes: selectedFuels.length ? selectedFuels.map(f => FUEL_MAP[f] ?? f) : undefined,
       fuelType: selectedFuels.length ? undefined : qf?.params.fuelType,
-      minYear: minYear !== 'Any' ? parseInt(minYear) : qf?.params.minYear,
-      maxYear: maxYear !== 'Any' ? parseInt(maxYear) : undefined,
+      minYear: minYear !== 'Any' && /^\d{4}$/.test(minYear) ? parseInt(minYear) : qf?.params.minYear,
+      maxYear: maxYear !== 'Any' && /^\d{4}$/.test(maxYear) ? parseInt(maxYear) : undefined,
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
@@ -356,6 +354,9 @@ export const SearchScreen: React.FC = () => {
       minEngine: minEngine ? parseInt(minEngine) : undefined,
       maxEngine: maxEngine ? parseInt(maxEngine) : undefined,
       maxCo2: maxCo2 ? parseInt(maxCo2) : undefined,
+      minCombinedMpg: minCombinedMpg ? parseFloat(minCombinedMpg) : undefined,
+      maxZeroTo60Mph: maxZeroTo60Mph ? parseFloat(maxZeroTo60Mph) : undefined,
+      driveType: driveTypeFilter || undefined,
       deliveryAvailable: deliveryAvailable ? true : undefined,
       sellerType: sellerType || undefined,
       color: colorFilter.trim() || undefined,
@@ -407,7 +408,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -425,7 +426,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -445,11 +446,13 @@ export const SearchScreen: React.FC = () => {
     !!minBhp || !!maxBhp,
     !!minEngine || !!maxEngine,
     !!maxCo2,
+    !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
     deliveryAvailable,
     !!sellerType,
     vehicleType !== 'CAR',
     !!locationFilter,
     !!modelFilter,
+    !!variantFilter,
     !!colorFilter,
     !!minDoors,
     !!minSeats,
@@ -461,7 +464,8 @@ export const SearchScreen: React.FC = () => {
 
   const advancedFilterCount = [
     conditions.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
-    !!maxCo2, vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
+    !!maxCo2, !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
+    vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
     !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
     maxDistanceMi != null, !!sellerType, !!ulezCompliant,
     deliveryAvailable, !!isImported,
@@ -485,11 +489,15 @@ export const SearchScreen: React.FC = () => {
     setMinEngine('');
     setMaxEngine('');
     setMaxCo2('');
+    setMinCombinedMpg('');
+    setMaxZeroTo60Mph('');
+    setDriveTypeFilter('');
     setDeliveryAvailable(false);
     setSellerType('');
     setVehicleType('CAR');
     setLocationFilter('');
     setModelFilter('');
+    setVariantFilter('');
     setColorFilter('');
     setMinDoors('');
     setMinSeats('');
@@ -887,7 +895,7 @@ export const SearchScreen: React.FC = () => {
                     <TouchableOpacity
                       key={m}
                       style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
+                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? [] : [m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
                       activeOpacity={0.7}
                     >
                       <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
@@ -898,23 +906,73 @@ export const SearchScreen: React.FC = () => {
                 </View>
               )}
 
+              {!makeQuery.trim() && (
+                <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
+                  accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
+                  style={{ paddingVertical: 12 }}>
+                  <Text style={[s.filterChipText, { color: Colors.accent }]}>
+                    {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <View style={s.divider} />
 
-              {/* Model + Location */}
+              {/* Model selection uses the same full catalogue as the website. */}
               <Text style={s.filterLabel}>MODEL</Text>
               <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
-                <TextInput
-                  style={s.inputBoxValue}
-                  value={modelFilter}
-                  onChangeText={setModelFilter}
-                  placeholder="e.g. Q7, 3 Series"
-                  placeholderTextColor={Colors.borderMuted}
-                  autoCapitalize="words"
-                />
+                <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
+                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
+                  placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
+                  placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
               </View>
+              {selectedMakes.length === 1 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
+                  <View style={s.chipGrid}>
+                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => { setModelFilter(''); setVariantFilter(''); }}>
+                      <Text style={[s.filterChipText, !modelFilter && s.filterChipTextActive]}>All models</Text>
+                    </TouchableOpacity>
+                    {getModelsForMake(selectedMakes[0])
+                      .filter(m => !modelFilter || m.toLowerCase().includes(modelFilter.toLowerCase()))
+                      .slice(0, 35)
+                      .map(m => <TouchableOpacity key={m}
+                        style={[s.filterChip, modelFilter === m && s.filterChipActive]}
+                        onPress={() => { setModelFilter(m); setVariantFilter(''); }}>
+                        <Text style={[s.filterChipText, modelFilter === m && s.filterChipTextActive]}>{m}</Text>
+                      </TouchableOpacity>)}
+                  </View>
+                  {getModelsForMake(selectedMakes[0]).length > 35 && !modelFilter &&
+                    <Text style={s.makeEmptyText}>Type a model name to search the full list.</Text>}
+                </View>
+              )}
 
               <View style={s.divider} />
+
+              {/* Exact trim is stored on listing.variant. Permit free text for imports. */}
+              {!!modelFilter && (
+                <View style={{ marginTop: 10 }}>
+                  <Text style={s.filterLabel}>MODEL VARIANT / TRIM</Text>
+                  <View style={s.inputBox}>
+                    <TextInput style={s.inputBoxValue} value={variantFilter}
+                      onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
+                      placeholderTextColor={Colors.borderMuted} autoCapitalize="words" />
+                  </View>
+                  {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
+                    <View style={s.chipGrid}>
+                      <TouchableOpacity style={[s.filterChip, !variantFilter && s.filterChipActive]}
+                        onPress={() => setVariantFilter('')}>
+                        <Text style={[s.filterChipText, !variantFilter && s.filterChipTextActive]}>Any variant</Text>
+                      </TouchableOpacity>
+                      {getVariantsForModel(selectedMakes[0], modelFilter).map(v => <TouchableOpacity key={v}
+                        style={[s.filterChip, variantFilter === v && s.filterChipActive]}
+                        onPress={() => setVariantFilter(v)}>
+                        <Text style={[s.filterChipText, variantFilter === v && s.filterChipTextActive]}>{v}</Text>
+                      </TouchableOpacity>)}
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Price */}
               <Text style={s.filterLabel}>PRICE RANGE</Text>
@@ -982,35 +1040,42 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Year Range */}
+              {/* Year range: custom entry supports classic cars; quick choices include this year. */}
               <Text style={s.filterLabel}>YEAR RANGE</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>FROM YEAR</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {YEAR_OPTS.map(y => (
-                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              <View style={{ marginTop: 10 }}>
-                <View style={s.inputBox}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>FROM YEAR</Text>
+                  <TextInput style={s.inputBoxValue} value={minYear === 'Any' ? '' : minYear}
+                    onChangeText={v => setMinYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
+                    placeholder="Any" placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad" maxLength={4} />
+                </View>
+                <View style={[s.inputBox, { flex: 1 }]}>
                   <Text style={s.inputBoxLabel}>TO YEAR</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {YEAR_OPTS_MAX.map(y => (
-                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <TextInput style={s.inputBoxValue} value={maxYear === 'Any' ? '' : maxYear}
+                    onChangeText={v => setMaxYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
+                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad" maxLength={4} />
                 </View>
               </View>
-
+              <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (FROM)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {YEAR_OPTS.map(y => <TouchableOpacity key={y}
+                    style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
+                    <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
+                  </TouchableOpacity>)}
+                </View>
+              </ScrollView>
+              <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (TO)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {YEAR_OPTS_MAX.map(y => <TouchableOpacity key={y}
+                    style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
+                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
+                  </TouchableOpacity>)}
+                </View>
+              </ScrollView>
               <View style={s.divider} />
 
               {/* Mileage Range */}
@@ -1189,6 +1254,33 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
+              {/* Existing stored vehicle fields; never guess MPG or performance. */}
+              <Text style={s.filterLabel}>FUEL ECONOMY (COMBINED MPG)</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MINIMUM MPG (REPORTED)</Text>
+                <TextInput style={s.inputBoxValue} value={minCombinedMpg}
+                  onChangeText={setMinCombinedMpg} placeholder="Any"
+                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={s.divider} />
+              <Text style={s.filterLabel}>ACCELERATION (0–60 MPH)</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputBoxLabel}>MAXIMUM SECONDS</Text>
+                <TextInput style={s.inputBoxValue} value={maxZeroTo60Mph}
+                  onChangeText={setMaxZeroTo60Mph} placeholder="Any"
+                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+              </View>
+              <View style={s.divider} />
+              <Text style={s.filterLabel}>DRIVETRAIN</Text>
+              <View style={s.chipGrid}>
+                {['FWD', 'RWD', 'AWD', '4WD'].map(drive => <TouchableOpacity key={drive}
+                  style={[s.filterChip, driveTypeFilter === drive && s.filterChipActive]}
+                  onPress={() => setDriveTypeFilter(prev => prev === drive ? '' : drive)}>
+                  <Text style={[s.filterChipText, driveTypeFilter === drive && s.filterChipTextActive]}>{drive}</Text>
+                </TouchableOpacity>)}
+              </View>
+              <View style={s.divider} />
+
               {/* Vehicle Type */}
               <Text style={s.filterLabel}>VEHICLE TYPE</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1283,27 +1375,29 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Features / Options — 18-item checklist, matches web's POPULAR_FEATURES */}
+              {/* Equipment from shared web/native catalogue. */}
               <Text style={s.filterLabel}>FEATURES / OPTIONS</Text>
-              <View style={s.chipGrid}>
-                {POPULAR_FEATURES.map(feat => {
-                  const selected = selectedFeatures.includes(feat);
-                  return (
-                    <TouchableOpacity
-                      key={feat}
-                      style={[s.filterChip, selected && s.filterChipActive]}
-                      onPress={() =>
-                        setSelectedFeatures(prev =>
-                          prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat],
-                        )
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <TextInput style={s.makeSearchInput} placeholder="Search vehicle equipment"
+                placeholderTextColor={Colors.iconMuted} value={featureQuery}
+                onChangeText={setFeatureQuery} autoCorrect={false} />
+              {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
+                const visible = options.filter(feat => feat.toLowerCase().includes(featureQuery.trim().toLowerCase()));
+                if (!visible.length) return null;
+                return <View key={group} style={{ marginTop: 12 }}>
+                  <Text style={s.inputBoxLabel}>{group.toUpperCase()}</Text>
+                  <View style={s.chipGrid}>
+                    {visible.map(feat => {
+                      const selected = selectedFeatures.includes(feat);
+                      return <TouchableOpacity key={feat}
+                        style={[s.filterChip, selected && s.filterChipActive]}
+                        onPress={() => setSelectedFeatures(prev => prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat])}
+                        activeOpacity={0.7}>
+                        <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
+                      </TouchableOpacity>;
+                    })}
+                  </View>
+                </View>;
+              })}
 
               <View style={s.divider} />
 

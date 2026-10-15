@@ -15,19 +15,11 @@ import { getListings, getFeaturedListings, formatPrice, type Listing, type Listi
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
-import { CAR_MAKES, getModelsForMake } from "@/lib/carData"
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
+import { VEHICLE_FEATURE_GROUPS } from "@/lib/vehicleFeatures"
 import { useAnalytics } from "@/hooks/useAnalytics"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const POPULAR_FEATURES = [
-    'Air Conditioning', 'Climate Control', 'Alloy Wheels',
-    'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
-    'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
-    'Heated Seats', 'Cruise Control', 'Panoramic Roof',
-    'Apple CarPlay', 'Android Auto', 'Keyless Entry',
-    'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
-] as const
 
 const FUEL_TYPES = [
     'Bi Fuel', 'Diesel', 'Diesel Hybrid', 'Diesel Plug-in Hybrid', 'Electric',
@@ -96,6 +88,7 @@ interface FilterState {
     search: string
     make: string
     model: string
+    variant: string
     minPrice: string
     maxPrice: string
     minYear: string
@@ -111,6 +104,9 @@ interface FilterState {
     minEngine: string
     maxEngine: string
     maxCo2: string
+    minCombinedMpg: string
+    maxZeroTo60Mph: string
+    driveType: string
     conditions: VehicleConditionValue[]
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
@@ -127,7 +123,7 @@ interface FilterState {
 }
 
 const INITIAL_FILTERS: FilterState = {
-    search: '', make: '', model: '',
+    search: '', make: '', model: '', variant: '',
     minPrice: '', maxPrice: '',
     minYear: '', maxYear: '',
     minMileage: '', maxMileage: '',
@@ -135,6 +131,7 @@ const INITIAL_FILTERS: FilterState = {
     bodyType: '', color: '',
     minDoors: '', minSeats: '',
     minEngine: '', maxEngine: '', maxCo2: '',
+    minCombinedMpg: '', maxZeroTo60Mph: '', driveType: '',
     conditions: [], ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
     minBhp: '', maxBhp: '',
@@ -205,6 +202,10 @@ function SearchPageContent() {
     const { trackEvent } = useAnalytics()
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [modelManualEntry, setModelManualEntry] = React.useState(false)
+    const [makeManualEntry, setMakeManualEntry] = React.useState(false)
+    const [makeQuery, setMakeQuery] = React.useState("")
+    const [modelQuery, setModelQuery] = React.useState("")
+    const [featureQuery, setFeatureQuery] = React.useState("")
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
     const [loading, setLoading] = React.useState(true)
@@ -224,7 +225,7 @@ function SearchPageContent() {
     const hydrateFromUrl = React.useCallback((): FilterState => {
         const p = (k: string) => searchParams.get(k) || ''
         return {
-            search: p('search'), make: p('make'), model: p('model'),
+            search: p('search'), make: p('make'), model: p('model'), variant: p('variant'),
             minPrice: p('minPrice'), maxPrice: p('maxPrice'),
             minYear: p('minYear'), maxYear: p('maxYear'),
             minMileage: p('minMileage'), maxMileage: p('maxMileage'),
@@ -235,6 +236,7 @@ function SearchPageContent() {
             bodyType: p('bodyType'), color: p('color'),
             minDoors: p('minDoors'), minSeats: p('minSeats'),
             minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
+            minCombinedMpg: p('minCombinedMpg'), maxZeroTo60Mph: p('maxZeroTo60Mph'), driveType: p('driveType'),
             conditions: (searchParams.get('conditions')?.split(',').filter(Boolean) as VehicleConditionValue[])
                 || (p('condition') ? [p('condition') as VehicleConditionValue] : []),
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
@@ -313,6 +315,7 @@ function SearchPageContent() {
         let count = 0
         if (appliedFilters.make) count++
         if (appliedFilters.model) count++
+        if (appliedFilters.variant) count++
         if (appliedFilters.minPrice || appliedFilters.maxPrice) count++
         if (appliedFilters.minYear || appliedFilters.maxYear) count++
         if (appliedFilters.minMileage || appliedFilters.maxMileage) count++
@@ -324,6 +327,7 @@ function SearchPageContent() {
         if (appliedFilters.minSeats) count++
         if (appliedFilters.minEngine || appliedFilters.maxEngine) count++
         if (appliedFilters.maxCo2) count++
+        if (appliedFilters.minCombinedMpg || appliedFilters.maxZeroTo60Mph || appliedFilters.driveType) count++
         if (appliedFilters.conditions.length) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
@@ -343,6 +347,7 @@ function SearchPageContent() {
         if (state.search) f.search = state.search
         if (state.make) f.make = state.make
         if (state.model) f.model = state.model
+        if (state.variant) f.variant = state.variant
         if (state.minPrice) f.minPrice = parseFloat(state.minPrice)
         if (state.maxPrice) f.maxPrice = parseFloat(state.maxPrice)
         if (state.minYear) f.minYear = parseInt(state.minYear)
@@ -360,6 +365,9 @@ function SearchPageContent() {
         if (state.minEngine) f.minEngine = parseInt(state.minEngine)
         if (state.maxEngine) f.maxEngine = parseInt(state.maxEngine)
         if (state.maxCo2) f.maxCo2 = parseInt(state.maxCo2)
+        if (state.minCombinedMpg) f.minCombinedMpg = parseFloat(state.minCombinedMpg)
+        if (state.maxZeroTo60Mph) f.maxZeroTo60Mph = parseFloat(state.maxZeroTo60Mph)
+        if (state.driveType) f.driveType = state.driveType
         if (state.conditions.length) f.conditions = state.conditions
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
@@ -637,23 +645,35 @@ function SearchPageContent() {
                             {/* Make & Model */}
                             <FilterSection title="Make / Model" defaultOpen={true}>
                                 <div className="space-y-2">
-                                    {/* Make — text input with datalist autocomplete */}
-                                    <div className="relative">
-                                        <input
-                                            list="make-options"
-                                            placeholder="Make (e.g. BMW)"
-                                            value={filters.make}
-                                            onChange={(e) => {
-                                                set('make', e.target.value)
-                                                set('model', '') // reset model when make changes
-                                                setModelManualEntry(false)
-                                            }}
-                                            className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm placeholder:text-[var(--text-muted)] focus:border-primary focus:outline-none"
-                                        />
-                                        <datalist id="make-options">
-                                            {CAR_MAKES.map(m => <option key={m} value={m} />)}
-                                        </datalist>
-                                    </div>
+                                    <Input type="search" aria-label="Find vehicle make" placeholder="Find a make (BMW, Toyota, MG…)"
+                                        value={makeQuery} onChange={e => setMakeQuery(e.target.value)}
+                                        className="h-10 text-sm" />
+                                    <p className="text-xs text-[var(--text-muted)]">Browse all {CAR_MAKES.length} manufacturers — type to narrow the list.</p>
+                                    {/* Native select works reliably on Android/iOS and exposes the full A–Z catalogue. */}
+                                    <select
+                                        aria-label="Vehicle make"
+                                        value={makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make)) ? '__other__' : filters.make}
+                                        onChange={(e) => {
+                                            const value = e.target.value
+                                            setMakeManualEntry(value === '__other__')
+                                            set('make', value === '__other__' ? '' : value)
+                                            set('model', '')
+                                            set('variant', '')
+                                            setModelQuery('')
+                                            setMakeQuery('')
+                                            setModelManualEntry(false)
+                                        }}
+                                        className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
+                                    >
+                                        <option value="">All makes</option>
+                                        {CAR_MAKES.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => <option key={m} value={m}>{m}</option>)}
+                                        <option value="__other__">Other make (type manually)</option>
+                                    </select>
+                                    {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
+                                        <Input placeholder="Enter unlisted make" value={filters.make}
+                                            onChange={e => { set('make', e.target.value); set('model', ''); set('variant', ''); setModelQuery('') }}
+                                            className="h-9 text-sm" />
+                                    )}
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
                                     {(() => {
                                         const models = getModelsForMake(filters.make)
@@ -663,13 +683,13 @@ function SearchPageContent() {
                                                     <Input
                                                         placeholder="Model (e.g. M4)"
                                                         value={filters.model}
-                                                        onChange={(e) => set('model', e.target.value)}
+                                                        onChange={(e) => { set('model', e.target.value); set('variant', '') }}
                                                         className="h-9 text-sm bg-[var(--bg-input)] border-[var(--border-default)] placeholder:text-[var(--text-muted)]"
                                                     />
                                                     {models.length > 0 && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => { setModelManualEntry(false); set('model', '') }}
+                                                            onClick={() => { setModelManualEntry(false); set('model', ''); set('variant', '') }}
                                                             className="text-xs font-semibold text-primary hover:underline"
                                                         >
                                                             ← Back to model list
@@ -679,19 +699,22 @@ function SearchPageContent() {
                                             )
                                         }
                                         return (
+                                            <>
+                                            <Input type="search" value={modelQuery} onChange={e => setModelQuery(e.target.value)}
+                                                aria-label="Find vehicle model" placeholder="Find a model" className="h-9 text-sm" />
                                             <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
                                                 <button
                                                     type="button"
-                                                    onClick={() => set('model', '')}
+                                                    onClick={() => { set('model', ''); set('variant', '') }}
                                                     className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${!filters.model ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                 >
                                                     All {filters.make} models
                                                 </button>
-                                                {models.map(m => (
+                                                {models.filter(m => !modelQuery.trim() || m.toLowerCase().includes(modelQuery.trim().toLowerCase()) || m === filters.model).map(m => (
                                                     <button
                                                         key={m}
                                                         type="button"
-                                                        onClick={() => set('model', m)}
+                                                        onClick={() => { set('model', m); set('variant', ''); setModelQuery('') }}
                                                         className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                     >
                                                         {m}
@@ -699,14 +722,29 @@ function SearchPageContent() {
                                                 ))}
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setModelManualEntry(true); set('model', '') }}
+                                                    onClick={() => { setModelManualEntry(true); set('model', ''); set('variant', '') }}
                                                     className="w-full text-left px-3 py-2 rounded text-sm font-semibold text-primary hover:bg-[var(--bg-card)] transition-all"
                                                 >
                                                     Other (type manually)
                                                 </button>
                                             </div>
+                                            </>
                                         )
                                     })()}
+                                    {/* Variant/trim filters the real saved listing.variant field. */}
+                                    {filters.model && (
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="vehicle-variant-filter" className="text-xs font-bold text-[var(--text-muted)]">Model variant / trim</label>
+                                            <input id="vehicle-variant-filter" list="variant-options" type="text" value={filters.variant}
+                                                placeholder="Any variant, or type M Sport, GT Line…"
+                                                onChange={e => set('variant', e.target.value)}
+                                                className="h-9 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm focus:border-primary focus:outline-none"
+                                            />
+                                            <datalist id="variant-options">
+                                                {getVariantsForModel(filters.make, filters.model).map(variant => <option key={variant} value={variant} />)}
+                                            </datalist>
+                                        </div>
+                                    )}
                                 </div>
                             </FilterSection>
 
@@ -878,25 +916,54 @@ function SearchPageContent() {
                                     minPlaceholder="Min BHP" maxPlaceholder="Max BHP" />
                             </FilterSection>
 
-                            {/* Features / Options */}
+                            {/* Additional fields are present on actual listing records — no inferred specs. */}
+                            <FilterSection title="Fuel Consumption (MPG)">
+                                <Input type="number" step="0.1" min="0"
+                                    placeholder="Minimum combined MPG" value={filters.minCombinedMpg}
+                                    onChange={e => set('minCombinedMpg', e.target.value)} className="h-9 text-sm" />
+                                <p className="mt-1 text-xs text-[var(--text-muted)]">Only vehicles with reported MPG</p>
+                            </FilterSection>
+                            <FilterSection title="Acceleration (0–60 mph)">
+                                <Input type="number" step="0.1" min="0"
+                                    placeholder="Maximum time in seconds" value={filters.maxZeroTo60Mph}
+                                    onChange={e => set('maxZeroTo60Mph', e.target.value)} className="h-9 text-sm" />
+                            </FilterSection>
+                            <FilterSection title="Drivetrain">
+                                <select value={filters.driveType} onChange={e => set('driveType', e.target.value)}
+                                    aria-label="Drivetrain" className="w-full h-9 rounded-md bg-[var(--bg-input)] border border-[var(--border-default)] px-3 text-sm">
+                                    <option value="">All drivetrains</option>
+                                    <option value="FWD">Front-wheel drive (FWD)</option>
+                                    <option value="RWD">Rear-wheel drive (RWD)</option>
+                                    <option value="AWD">All-wheel drive (AWD)</option>
+                                    <option value="4WD">Four-wheel drive (4WD)</option>
+                                </select>
+                            </FilterSection>
+
+                            {/* Feature groups share the exact seller-declared labels. */}
                             <FilterSection title="Features / Options">
-                                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                                    {POPULAR_FEATURES.map(feat => (
-                                        <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                checked={filters.features.includes(feat)}
-                                                onChange={() => setFilters(prev => ({
-                                                    ...prev,
-                                                    features: prev.features.includes(feat)
-                                                        ? prev.features.filter(f => f !== feat)
-                                                        : [...prev.features, feat]
-                                                }))}
-                                                className="accent-primary rounded w-4 h-4 bg-[var(--bg-input)] border-[var(--border-default)]"
-                                            />
-                                            {feat}
-                                        </label>
-                                    ))}
+                                <div className="space-y-3">
+                                    <Input
+                                        placeholder="Search equipment (e.g. parking, heated, CarPlay)"
+                                        aria-label="Search vehicle features"
+                                        value={featureQuery}
+                                        onChange={e => setFeatureQuery(e.target.value)}
+                                        className="h-9 text-sm"
+                                    />
+                                    <div className="max-h-72 overflow-y-auto space-y-4 pr-1">
+                                        {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
+                                            const visible = options.filter(feat => feat.toLowerCase().includes(featureQuery.trim().toLowerCase()))
+                                            if (visible.length === 0) return null
+                                            return <div key={group} className="space-y-1.5">
+                                                <p className="text-xs font-bold text-[var(--text-muted)]">{group}</p>
+                                                {visible.map(feat => <label key={feat} className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer hover:text-primary transition-colors">
+                                                    <input type="checkbox" checked={filters.features.includes(feat)}
+                                                        onChange={() => setFilters(prev => ({ ...prev, features: prev.features.includes(feat) ? prev.features.filter(f => f !== feat) : [...prev.features, feat] }))}
+                                                        className="accent-primary rounded w-4 h-4" />
+                                                    {feat}
+                                                </label>)}
+                                            </div>
+                                        })}
+                                    </div>
                                 </div>
                             </FilterSection>
 
@@ -1080,7 +1147,8 @@ function SearchPageContent() {
                                 <FilterTag label={BODY_TYPE_LABELS[appliedFilters.bodyType]} onRemove={() => clearFilter({ bodyType: '' })} />
                             )}
                             {appliedFilters.make && <FilterTag label={`Make: ${appliedFilters.make}`} onRemove={() => clearFilter({ make: '' })} />}
-                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '' })} />}
+                            {appliedFilters.model && <FilterTag label={`Model: ${appliedFilters.model}`} onRemove={() => clearFilter({ model: '', variant: '' })} />}
+                            {appliedFilters.variant && <FilterTag label={`Variant: ${appliedFilters.variant}`} onRemove={() => clearFilter({ variant: '' })} />}
                             {(appliedFilters.minPrice || appliedFilters.maxPrice) && (
                                 <FilterTag label={`£${appliedFilters.minPrice || '0'} – £${appliedFilters.maxPrice || '∞'}`} onRemove={() => clearFilter({ minPrice: '', maxPrice: '' })} />
                             )}

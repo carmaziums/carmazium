@@ -1,3 +1,4 @@
+import { buildFeatureConditions } from './feature-search';
 import {
     Injectable,
     Logger,
@@ -1878,12 +1879,13 @@ export class ListingsService {
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const {
             minPrice, maxPrice,
-            make, model,
+            make, model, variant,
             minYear, maxYear, year,  // year is deprecated alias for minYear
             minMileage, maxMileage,
             fuelType, fuelTypes, transmission, transmissions, bodyType,
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
+            minCombinedMpg, maxZeroTo60Mph, driveType,
             conditions, ulezCompliant, euroStandard,
             isImported, markedForExport,
             vehicleType,
@@ -1904,6 +1906,7 @@ export class ListingsService {
         // ─── Make / Model ───────────────────────────────────────────────────
         if (make) where.make = { contains: make, mode: 'insensitive' };
         if (model) where.model = { contains: model, mode: 'insensitive' };
+        if (variant) where.variant = { contains: variant, mode: 'insensitive' };
 
         // ─── Year range ─────────────────────────────────────────────────────
         const effectiveMinYear = minYear ?? year; // backwards-compat alias
@@ -1931,9 +1934,13 @@ export class ListingsService {
         if (euroStandard) where.euroStandard = euroStandard;
         if (vehicleType) where.vehicleType = vehicleType;
 
-        // ─── Features (JSON array contains) ─────────────────────────────────
-        // Filter listings where the JSON features array contains ALL requested features
-        if (features?.length) where.features = { array_contains: features };
+        // ─── Features (legacy-aware, all selected options required) ──────────
+        // Imported listings and older seller forms use equivalent labels (e.g.
+        // "Sat Nav" vs "Navigation"). Preserve AND across selected requirements,
+        // and OR only within genuine equivalent labels for each requirement.
+        if (features?.length) {
+            where.AND = [...(where.AND || []), ...buildFeatureConditions(features)];
+        }
 
         // ─── Colour (case-insensitive) ──────────────────────────────────────
         if (color) where.color = { contains: color, mode: 'insensitive' };
@@ -1944,13 +1951,18 @@ export class ListingsService {
 
         // ─── Engine capacity (cc) ────────────────────────────────────────────
         if (minEngine !== undefined || maxEngine !== undefined) {
-            where.engineCapacity = {};
-            if (minEngine !== undefined) where.engineCapacity.gte = minEngine;
-            if (maxEngine !== undefined) where.engineCapacity.lte = maxEngine;
+            where.engineSize = {};
+            if (minEngine !== undefined) where.engineSize.gte = minEngine;
+            if (maxEngine !== undefined) where.engineSize.lte = maxEngine;
         }
 
         // ─── CO₂ ceiling ─────────────────────────────────────────────────────
         if (maxCo2 !== undefined) where.co2Emissions = { lte: maxCo2 };
+
+        // ─── Recorded performance / economy ────────────────────────────────
+        if (minCombinedMpg !== undefined) where.combinedMpg = { gte: minCombinedMpg };
+        if (maxZeroTo60Mph !== undefined) where.zeroTo60Mph = { lte: maxZeroTo60Mph };
+        if (driveType) where.driveType = { equals: driveType, mode: 'insensitive' };
 
         // ─── Boolean compliance filter ───────────────────────────────────────
         if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
