@@ -125,6 +125,19 @@ export function ThreeDVehicleViewer({
   const hotspotZones = zones.filter((z) => z.box && (!readOnly || markedZones.includes(z.label)));
   const hotspotZonesRef = useRef(hotspotZones);
   hotspotZonesRef.current = hotspotZones;
+  const projectedZoneKey = hotspotZones.map((zone) => zone.id).join('|');
+
+  // Buyer damage records can arrive after the WebView has finished loading.
+  // Refresh its projected zones when those records change; otherwise the
+  // newly marked dots have no projected coordinates and never appear.
+  // Seller mode retains every editable zone and the existing upgraded GLB.
+  useEffect(() => {
+    if (!viewerHtml || !webViewRef.current) return;
+    const wireZones = hotspotZonesRef.current.map((zone) => ({ id: zone.id, ...zone.box }));
+    webViewRef.current.injectJavaScript(
+      'window.setZones(' + JSON.stringify(JSON.stringify(wireZones)) + '); true;'
+    );
+  }, [viewerHtml, projectedZoneKey]);
 
   // GLB injection can fail after the WebView has already mounted (unlike
   // loadError below, which blocks the WebView from mounting at all) — needs
