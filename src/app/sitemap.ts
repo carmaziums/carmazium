@@ -64,8 +64,8 @@ function safeLastModified(value: string | null | undefined): Date | undefined {
 
 /**
  * Fetch canonical public URLs from every available page, not just page 1.
- * The listing feed is retail-only and includes ACTIVE, OFFER_ACCEPTED, SOLD;
- * this matches the existing indexability policy in /buy-cars/[slug].
+ * The public retail feed now returns ACTIVE listings only. Direct links to
+ * SOLD/OFFER_ACCEPTED vehicles remain valid but are not indexable.
  * The blog feed returns only currently published articles.
  *
  * Never query the authenticated trade auction feed or mutate customer records.
@@ -107,7 +107,7 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
                 if (!validSlug(row) || seen.has(row.slug)) continue
                 if (kind === "listings") {
                     if (isLikelyTestListingSlug(row.slug)) continue
-                    if (row.type !== "CLASSIFIED" || !["ACTIVE", "OFFER_ACCEPTED", "SOLD"].includes(row.status ?? "")) continue
+                    if (row.type !== "CLASSIFIED" || row.status !== "ACTIVE") continue
                 } else if (row.status !== "PUBLISHED") {
                     continue
                 }
