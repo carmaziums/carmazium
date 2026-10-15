@@ -1,106 +1,101 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
-import { motion, useScroll, useTransform } from "framer-motion"
-import { TestimonialCard } from "@/components/ui/TestimonialCard"
-import { ArrowLeft, ArrowRight } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import Link from "next/link"
+import { ArrowUpRight, Gavel, Gift, Handshake, Tag } from "lucide-react"
 
-const TESTIMONIALS = [
+/**
+ * The existing homepage lazy-import name is retained for compatibility.
+ * Real customer reviews must not be hard-coded: the previous static names,
+ * stock portraits, "verified" badges and "Trusted by Thousands" heading had
+ * no linked source of approval or genuine review evidence in the application.
+ *
+ * Show accurate marketplace benefits until genuine, consented testimonials
+ * can be fetched from a verified review source.
+ */
+const BENEFITS = [
     {
-        name: "James Peterson",
-        role: "Sold BMW M4",
-        content: "I was skeptical about selling online, but CarMazium's auction system got me 15% more than the dealer trade-in offer. The process was completely transparent.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026024d",
-        verified: true
+        icon: Gavel,
+        eyebrow: "AUCTION FREE",
+        title: "Let verified dealers bid",
+        description: "List your vehicle in the dealer auction without a seller listing fee. Verified motor traders can compete to buy it.",
+        href: "/sell",
+        linkLabel: "Sell by auction",
+        theme: "from-rose-500/15 via-red-500/5 to-transparent border-rose-500/25",
+        iconTheme: "bg-rose-600 text-white",
     },
     {
-        name: "Elena Rodriguez",
-        role: "Bought Porsche 911",
-        content: "The verification report gave me total peace of mind. The car arrived exactly as described. Finally, a luxury marketplace that feels premium.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026704d",
-        verified: true
+        icon: Tag,
+        eyebrow: "RETAIL £1",
+        title: "Advertise to UK buyers",
+        description: "Prefer a direct retail sale? Create a listing for a one-time £1 fee until sold, and advertise your vehicle to buyers.",
+        href: "/sell",
+        linkLabel: "Create a retail listing",
+        theme: "from-sky-500/15 via-blue-500/5 to-transparent border-sky-500/25",
+        iconTheme: "bg-sky-600 text-white",
     },
     {
-        name: "Michael Chang",
-        role: "Collector",
-        content: "I've used every platform out there. CarMazium's interface is miles ahead. The live auction room feels like a video game in the best way possible.",
-        image: "https://i.pravatar.cc/150?u=a04258114e29026302d",
-        verified: true
+        icon: Gift,
+        eyebrow: "£100 SELLER REWARD",
+        title: "A reward for auction sellers",
+        description: "Qualifying completed auction sales can earn a £100 seller reward once the handover photograph has been approved.",
+        href: "/how-it-works",
+        linkLabel: "See how it works",
+        theme: "from-amber-500/15 via-orange-500/5 to-transparent border-amber-500/25",
+        iconTheme: "bg-amber-500 text-slate-950",
     },
     {
-        name: "Sarah Connors",
-        role: "Sold Range Rover",
-        content: "Sold my car in 48 hours. The team handled all the paperwork. Exceptional service from start to finish.",
-        image: "https://i.pravatar.cc/150?u=a042581f4e29026024d1",
-        verified: true
-    }
-]
-
+        icon: Handshake,
+        eyebrow: "DIRECT TRANSACTIONS",
+        title: "Your vehicle payment stays direct",
+        description: "Vehicle purchase funds pass directly between buyer and seller. CarMazium collects its own platform fees, not the vehicle price.",
+        href: "/pricing",
+        linkLabel: "Understand the fees",
+        theme: "from-emerald-500/15 via-teal-500/5 to-transparent border-emerald-500/25",
+        iconTheme: "bg-emerald-600 text-white",
+    },
+] as const
 
 export function TestimonialsSection() {
-    const containerRef = useRef<HTMLDivElement>(null)
-    const [width, setWidth] = useState(0)
-
-    useEffect(() => {
-        if (containerRef.current) {
-            setWidth(containerRef.current.scrollWidth - containerRef.current.offsetWidth)
-        }
-    }, [])
-
     return (
-        <section className="py-24 relative overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute inset-0 dark:bg-slate-900/50 pointer-events-none" />
-            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[var(--border-default)] to-transparent pointer-events-none" />
-
-            <div className="container mx-auto px-5 relative z-10">
-                <div className="flex flex-col md:flex-row items-end justify-between mb-16 gap-6">
-                    <div>
-                        <motion.h2
-                            initial={{ opacity: 0, x: -20 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            className="text-3xl md:text-5xl font-bold font-heading mb-4"
-                        >
-                            Trusted by <span className="text-primary">Thousands</span>
-                        </motion.h2>
-                        <p className="text-[var(--text-muted)] max-w-xl text-lg">
-                            Don't just take our word for it. Join the community of enthusiasts who are changing the way cars are bought and sold.
-                        </p>
-                    </div>
-
-                    {/* Navigation Buttons (Visual only, drag is primary) */}
-                    <div className="hidden md:flex gap-4">
-                        <div className="flex gap-2">
-                            <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest self-center mr-4">Drag to explore</span>
-                        </div>
-                    </div>
+        <section className="relative overflow-hidden border-y border-[var(--border-default)] py-16 md:py-24" aria-labelledby="why-carmazium">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-sky-500/5" />
+            <div className="container relative z-10 mx-auto px-5">
+                <div className="mx-auto mb-10 max-w-3xl text-center md:mb-14">
+                    <p className="mb-3 text-xs font-black uppercase tracking-[0.19em] text-primary">
+                        A different way to buy and sell cars
+                    </p>
+                    <h2 id="why-carmazium" className="text-3xl font-black tracking-tight text-[var(--text-primary)] md:text-5xl">
+                        More choice. <span className="text-primary">Clearer fees.</span>
+                    </h2>
+                    <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[var(--text-muted)] md:text-lg">
+                        Choose a free dealer auction or a £1 retail listing, with transparent
+                        terms and straightforward next steps.
+                    </p>
                 </div>
-
-                {/* Draggable Carousel */}
-                <motion.div ref={containerRef} className="cursor-grab active:cursor-grabbing overflow-hidden">
-                    <motion.div
-                        drag="x"
-                        dragConstraints={{ right: 0, left: -width }}
-                        whileTap={{ cursor: "grabbing" }}
-                        className="flex gap-8"
-                    >
-                        {TESTIMONIALS.map((testimonial, i) => (
-                            <div key={i} className="min-w-[350px] md:min-w-[450px] h-full">
-                                <TestimonialCard {...testimonial} delay={i * 0.1} />
-                            </div>
-                        ))}
-                        {/* Call to Action Card in Carousel */}
-                        <div className="min-w-[350px] md:min-w-[450px] h-full flex items-center justify-center p-8">
-                            <div className="text-center">
-                                <h3 className="text-2xl font-bold mb-4">Have a story to tell?</h3>
-                                <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">Share Your Experience</Button>
-                            </div>
-                        </div>
-                    </motion.div>
-                </motion.div>
-
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                    {BENEFITS.map((benefit) => {
+                        const Icon = benefit.icon
+                        return (
+                            <article
+                                key={benefit.eyebrow}
+                                className={"group flex h-full flex-col rounded-3xl border bg-gradient-to-br p-6 shadow-lg shadow-black/5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-xl " + benefit.theme}
+                            >
+                                <div className={"mb-6 flex h-12 w-12 items-center justify-center rounded-2xl shadow-md " + benefit.iconTheme}>
+                                    <Icon size={24} aria-hidden="true" />
+                                </div>
+                                <p className="text-xs font-black uppercase tracking-[0.13em] text-primary">{benefit.eyebrow}</p>
+                                <h3 className="mt-3 text-xl font-black leading-snug text-[var(--text-primary)]">{benefit.title}</h3>
+                                <p className="mt-3 flex-grow text-sm leading-7 text-[var(--text-secondary)]">{benefit.description}</p>
+                                <Link
+                                    href={benefit.href}
+                                    className="mt-7 inline-flex min-h-11 items-center gap-2 self-start rounded-lg text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                >
+                                    {benefit.linkLabel} <ArrowUpRight size={17} aria-hidden="true" />
+                                </Link>
+                            </article>
+                        )
+                    })}
+                </div>
             </div>
         </section>
     )

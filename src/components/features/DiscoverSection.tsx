@@ -51,7 +51,7 @@ export function DiscoverSection() {
                         transition={{ duration: 0.7, delay: 0.15 }}
                         className="text-[var(--text-secondary)] text-center text-lg md:text-xl max-w-2xl mx-auto mb-12"
                     >
-                        Explore thousands of verified vehicles from trusted sellers
+                        Explore used cars across the UK from verified sellers
                     </motion.p>
 
                     {/* CTA */}
@@ -91,7 +91,7 @@ export function DiscoverSection() {
                             fill
                             sizes="100vw"
                             className="object-cover object-center"
-                            priority
+                            loading="lazy"
                         />
                     </div>
                 </motion.div>
