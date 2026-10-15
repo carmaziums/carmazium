@@ -43,6 +43,26 @@ test('all listing modes serialize 3D damage reports and fail closed on damage-sa
   assert.match(wizard, /Damage evidence was not saved/);
   assert.match(wizard, /Damage details were not saved/);
 });
+test('public viewers show only seller-saved numbered damage, never blanket plus markers', () => {
+  const auction = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
+  // Root cause: the old !onSurfaceTap branch rendered every predefined
+  // zone as a black "+" button on public listings.
+  assert.doesNotMatch(viewer, /!onSurfaceTap && ALL_ZONES\\.map/);
+  assert.doesNotMatch(viewer, /function Hotspot\\(/);
+  assert.match(viewer, /modelBounds && damagePins\\.map\\(pin =>/);
+  assert.match(viewer, /\\{pin\\.number\\}/);
+  assert.match(viewer, /onClick=\\{onSurfaceTap \\? handleMeshTap : undefined\\}/);
+  // Retail and auction both render only real, bounded persisted coordinates.
+  assert.match(buyer, /damagePins=\\{buyerDamagePins\\}/);
+  assert.match(auction, /const positionedDamage = damageRecords\\.flatMap/);
+  assert.match(auction, /record\\.coords\\?\\.surfacePoint/);
+  assert.match(auction, /point\\[key\\] >= 0 && point\\[key\\] <= 1/);
+  assert.match(auction, /damagePins=\\{positionedDamage\\}/);
+  assert.match(auction, /onDamagePinPress=\\{id =>/);
+  assert.match(auction, /select a number or the detail card below/);
+  assert.match(mapper, /onSurfaceTap=\\{handleSurfaceTap\\}/);
+});
+
 test('buyer can inspect individual seller-reported damage without editing it', () => {
   assert.match(buyer,/const \[selectedDamageId, setSelectedDamageId\]/);
   assert.match(buyer,/damagePins=\{buyerDamagePins\}/);
