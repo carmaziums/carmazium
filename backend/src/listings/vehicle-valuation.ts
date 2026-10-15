@@ -406,11 +406,12 @@ export function applyVehicleSpecificationAdjustments(
     const low = roundMoney(base.low * factor);
     const mid = roundMoney(base.mid * factor);
     const high = roundMoney(base.high * factor);
-    const auctionMarketValue = roundMoney(base.auction.marketValue * factor);
+    const retailSuggestedAsking = roundMoney(base.retail.suggestedAsking * factor);
+    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80);
     const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
     const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
     const reserveHigh = auctionMarketValue;
-    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
+    const suggestedReserve = Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95));
 
     return {
         ...base,
@@ -419,8 +420,8 @@ export function applyVehicleSpecificationAdjustments(
         high,
         explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
-            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
+            suggestedAsking: retailSuggestedAsking,
+            suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
         },
         auction: {
             marketValue: auctionMarketValue,
@@ -649,21 +650,16 @@ export function calculateVehicleValuation(
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
-    // Retail should show the stronger end of the observed asking market.
-    // Sellers can still choose their own figure, but the platform does not
-    // encourage them to under-list a clean retail vehicle.
-    const suggestedAsking = high;
-    const suggestedMinimum = mid;
-
-    // Dealer auctions need a visibly lower guide than retail so traders can
-    // buy with realistic preparation, warranty and resale margin. Use the
-    // lower end of the market range as the dealer-buy guide, then calculate
-    // the opening/reserve guidance from that lower anchor.
-    const auctionMarketValue = low;
+    // The former conservative dealer guide becomes the retail price guide.
+    // Auction is then priced exactly 20% below retail, not from the high
+    // end of the market-evidence range. Sellers still control their prices.
+    const suggestedAsking = low;
+    const suggestedMinimum = Math.min(suggestedAsking, roundMoney(suggestedAsking * 0.95));
+    const auctionMarketValue = Math.round(suggestedAsking * 0.80);
     const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
     const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
     const reserveHigh = Math.round(auctionMarketValue * 1.00 * 100) / 100;
-    const suggestedReserve = roundMoney(auctionMarketValue * 0.95);
+    const suggestedReserve = Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95));
 
     return {
         low,
