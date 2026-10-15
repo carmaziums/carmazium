@@ -22,28 +22,27 @@ import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
-// Matches web's src/app/contact/page.tsx contact-info panel exactly. Web's
-// "Send us a message" form has no onSubmit/API call at all — it's decorative
-// — so rather than port a fake form, these rows do something real: call,
-// email, or open Maps.
+// Keep the app's public contact information aligned with the website and
+// app-support pages. Each row performs an action rather than implying an
+// enquiry has been submitted to a non-existent public messaging endpoint.
 const CONTACT_ROWS = [
   {
     icon: 'location-outline' as const,
     title: 'Visit Us',
-    lines: ['123 Luxury Lane', 'Mayfair, London', 'W1J 7NW, UK'],
-    action: () => Linking.openURL('https://maps.google.com/?q=123+Luxury+Lane,+Mayfair,+London,+W1J+7NW,+UK'),
+    lines: ['181–187 Hunters Road', 'Lozells, Birmingham', 'B19 1ES, United Kingdom'],
+    action: () => Linking.openURL('https://www.google.com/maps/search/?api=1&query=181-187%20Hunters%20Road%2C%20Birmingham%20B19%201ES%2C%20UK'),
   },
   {
     icon: 'call-outline' as const,
     title: 'Call Us',
-    lines: ['+44 (0) 20 1234 5678', 'Mon - Fri: 9am - 6pm'],
-    action: () => Linking.openURL('tel:+442012345678'),
+    lines: ['0121 838 5040', 'Mon – Fri: 9am – 6pm (UK time)'],
+    action: () => Linking.openURL('tel:+441218385040'),
   },
   {
     icon: 'mail-outline' as const,
     title: 'Email Us',
-    lines: ['support@carmazium.com'],
-    action: () => Linking.openURL('mailto:support@carmazium.com'),
+    lines: ['info@carmazium.com'],
+    action: () => Linking.openURL('mailto:info@carmazium.com'),
   },
 ];
 
@@ -81,7 +80,7 @@ export const ContactScreen: React.FC = () => {
         </Text>
 
         {CONTACT_ROWS.map((row) => (
-          <TouchableOpacity key={row.title} style={styles.card} activeOpacity={0.8} onPress={row.action}>
+          <TouchableOpacity key={row.title} style={styles.card} activeOpacity={0.8} onPress={row.action} accessibilityRole="button" accessibilityLabel={row.title + ": " + row.lines.join(", ")}>
             <View style={styles.cardIconWrap}>
               <Ionicons name={row.icon} size={20} color={Colors.accent} />
             </View>
