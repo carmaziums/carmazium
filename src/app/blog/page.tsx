@@ -5,6 +5,7 @@ import { ArrowRight, BookOpen, Calendar, Clock, Newspaper } from "lucide-react"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import type { BlogPost } from "@/lib/blogApi"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
+import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -122,6 +123,12 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                         </div>
                     </div>
                 </section>
+
+                {page === 1 && (
+                    <div className="mb-10 md:mb-12">
+                        <GooglePreferredSourceButton />
+                    </div>
+                )}
 
                 {posts.length === 0 ? (
                     <div className="glass-card p-12 text-center max-w-md mx-auto">
