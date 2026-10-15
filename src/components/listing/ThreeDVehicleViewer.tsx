@@ -190,43 +190,11 @@ function LoadingScreen() {
   )
 }
 
-// ─── Hotspot button ───────────────────────────────────────────────────────────
-
-interface HotspotProps {
-  zone: Zone
-  isMarked: boolean
-  isSelected: boolean
-  onClick: (id: string) => void
-}
-
-function Hotspot({ zone, isMarked, isSelected, onClick }: HotspotProps) {
-  return (
-    <Html
-      position={zone.position}
-      distanceFactor={6}
-      zIndexRange={[100, 0]}
-      style={{ pointerEvents: "auto" }}
-    >
-      <button
-        onClick={() => onClick(zone.id)}
-        title={zone.label}
-        style={{ transform: "translate(-50%, -50%)" }}
-        className={[
-          "w-7 h-7 rounded-full flex items-center justify-center",
-          "text-xs font-black border-2 backdrop-blur-sm transition-all duration-150 cursor-pointer select-none",
-          "shadow-lg hover:scale-110 active:scale-95",
-          isSelected
-            ? "bg-primary border-primary text-white ring-2 ring-primary/50 scale-110"
-            : isMarked
-              ? "bg-amber-500 border-amber-400 text-black"
-              : "bg-black/60 border-white/40 text-white hover:bg-primary/80 hover:border-primary",
-        ].join(" ")}
-      >
-        {isMarked ? "!" : "+"}
-      </button>
-    </Html>
-  )
-}
+// Public viewers render only the seller's actual saved damage locations.
+// The old Hotspot component displayed a plus button for EVERY predefined
+// body panel whenever onSurfaceTap was absent (the public-view state).
+// Editor mode already marks damage by tapping the mesh, so neither view
+// should render those obsolete controls.
 
 function CameraGlyph() {
   return <Camera size={11} aria-hidden className="absolute -right-1 -top-1 rounded-full bg-slate-950 p-0.5" />
@@ -236,10 +204,12 @@ function CameraGlyph() {
 
 export interface ThreeDVehicleViewerProps {
   bodyType?: string
-  selectedZone: string | null
-  markedZones: string[]
-  onZoneClick: (zoneId: string) => void
-  /** Opt-in seller-only mesh click; buyer/default legacy zones still work. */
+  /** Deprecated legacy zone selectors, retained for caller compatibility.
+   *  No editable zone hotspots are rendered for public viewers. */
+  selectedZone?: string | null
+  markedZones?: string[]
+  onZoneClick?: (zoneId: string) => void
+  /** Opt-in seller-only mesh click; does not expose editing to public viewers. */
   onSurfaceTap?: (tap: { zoneId: string; point: SurfacePoint }) => void
   damagePins?: SurfaceDamagePin[]
   onDamagePinPress?: (damageId: string) => void
@@ -256,9 +226,6 @@ export interface ThreeDVehicleViewerProps {
  */
 export function ThreeDVehicleViewer({
   bodyType,
-  selectedZone,
-  markedZones,
-  onZoneClick,
   onSurfaceTap,
   damagePins = [],
   onDamagePinPress,
@@ -302,7 +269,6 @@ export function ThreeDVehicleViewer({
   }, [inView])
 
   const url = (bodyType && MODEL_URL[bodyType]) ?? DEFAULT_MODEL
-  const markedSet = new Set(markedZones)
 
   return (
     <div
@@ -311,7 +277,7 @@ export function ThreeDVehicleViewer({
       role="group"
       aria-label={onSurfaceTap
         ? "Interactive 3D vehicle marking area. Tap the surface or use the manual area selector. Use the saved damage list for keyboard navigation."
-        : "Interactive 3D vehicle damage view. Numbered buttons open individual seller damage reports; the damage list is also available."}
+        : "Read-only 3D vehicle damage view. Only the seller's positioned damage markers are displayed. Recorded damage details are listed below."}
       style={{ height: 400 }}
     >
       {!inView ? (
@@ -338,15 +304,9 @@ export function ThreeDVehicleViewer({
         <React.Suspense fallback={<LoadingScreen />}>
           <VehicleModel url={url} onSurfaceTap={onSurfaceTap ? chooseSurface : undefined} onBounds={handleBounds} />
 
-          {!onSurfaceTap && ALL_ZONES.map(zone => (
-            <Hotspot
-              key={zone.id}
-              zone={zone}
-              isMarked={markedSet.has(zone.id)}
-              isSelected={selectedZone === zone.id}
-              onClick={onZoneClick}
-            />
-          ))}
+          {/* Never render a plus control for every predefined body zone.
+              Read-only pages show only persisted numbered damage pins;
+              the seller editor continues to add damage via direct mesh taps. */}
           {modelBounds && damagePins.map(pin => {
             const { min, size } = modelBounds
             const position: [number, number, number] = [
