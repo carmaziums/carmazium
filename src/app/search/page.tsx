@@ -353,6 +353,7 @@ function SearchPageContent() {
         if (appliedFilters.maxDistanceMi) count++
         if (appliedFilters.deliveryAvailable) count++
         if (appliedFilters.isImported) count++
+        if (appliedFilters.features.length) count++
         return count
     }, [appliedFilters])
 
@@ -1281,7 +1282,7 @@ function SearchPageContent() {
                     {/* Promotional cars must not bypass search filters or appear
                         on later result pages. The backend still honours paid
                         feature placement for the unfiltered default feed. */}
-                    {!loading && !error && activeFilterCount === 0 && !appliedFilters.search.trim() && currentPage === 1 && featuredListings.length > 0 && (
+                    {!loading && !error && activeFilterCount === 0 && !appliedFilters.search.trim() && appliedFilters.sortBy === 'newest' && currentPage === 1 && featuredListings.length > 0 && (
                         <div className="mb-8">
                             <div className="flex items-center gap-2 mb-4">
                                 <Star size={15} className="text-amber-400 fill-amber-400" />
@@ -1329,7 +1330,7 @@ function SearchPageContent() {
                     {/* Grid */}
                     {!loading && !error && listings.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {listings.map((listing) => (
+                            {listings.filter(listing => !(activeFilterCount === 0 && !appliedFilters.search.trim() && appliedFilters.sortBy === 'newest' && currentPage === 1 && featuredListings.some(featured => featured.id === listing.id))).map((listing) => (
                                 <CarCard
                                     key={listing.id}
                                     listingId={listing.id}
