@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "carmazium app/carmazium app/src/screens/sell/SellCarFlowScreen.tsx"
+      - "scripts/test-native-web-vehicle-parity-20261015.test.mjs"
       - "carmazium app/carmazium app/src/screens/seller/SellerAuctionsScreen.tsx"
       - "carmazium app/carmazium app/src/screens/seller/SellerListingsScreen.tsx"
       - "carmazium app/carmazium app/src/screens/main/PricingScreen.tsx"
@@ -52,6 +53,9 @@ jobs:
 
       - name: Native seller gearbox and body-type regression suite
         run: npm run test:seller-specs
+
+      - name: Native DVLA, 3D and dual-price parity regressions
+        run: node ../../scripts/test-native-web-vehicle-parity-20261015.test.mjs
 
       - name: Typecheck mobile listing surfaces
         shell: bash

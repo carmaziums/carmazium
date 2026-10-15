@@ -100,13 +100,13 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
           <Ionicons name="shield-checkmark-outline" size={22} color={Colors.success} />
           <View style={styles.emptyTextBlock}>
             <Text style={styles.emptyTitle}>No damage reported by the seller</Text>
-            <Text style={styles.emptySubtitle}>Vehicle checked clean</Text>
+            <Text style={styles.emptySubtitle}>No damage details were provided; this is not an independent inspection.</Text>
           </View>
         </View>
       ) : (
         <>
           <Text style={styles.listHeading}>
-            {records.length} zone{records.length !== 1 ? 's' : ''} marked by seller — tap a zone to see details
+            {records.length} damage report{records.length !== 1 ? 's' : ''} from seller — tap a marked point or its report to see details
           </Text>
           <View style={styles.list}>
             {records.map(record => {

@@ -45,13 +45,15 @@ test('actual market vehicle cards expose photo, truthfully unknown gearbox, mile
 
 test('Sell starts with web-equivalent valuation then free dealer auction or £1 retail',()=>{
   for(const text of ['Sell Your Car Online','FREE Valuation','FREE Auction','£1 Retail',
-    'FREE Dealer Auction','£1 Retail Listing','Current Market Value']){
+    'FREE Dealer Auction','£1 Retail Listing', 'Dealer Auction · FREE', 'Retail Listing · £1',
+    'Estimated dealer auction value','Suggested retail asking price',
+    'Choose Free Auction','Choose £1 Retail']){
     assert.ok(landing.includes(text),'native '+text);
   }
   assert.ok(webSell.includes('QuickValuationForm'));
   assert.ok(webSell.includes('Get My Free Valuation'));
   // Web valuation now offers both routes as explicit price-and-action cards.
-  // Native retains its previous copy until the next native app parity build.
+  // Native now presents the same distinct choices and prices as the web.
   assert.ok(webSell.includes('Dealer auction value'));
   assert.ok(webSell.includes('Suggested retail asking price'));
   assert.ok(webSell.includes('Choose Free Auction'));

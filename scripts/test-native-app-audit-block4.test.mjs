@@ -21,7 +21,12 @@ test('mobile valuations only use authoritative backend values, never fabricated 
   const form = readMobile('src/screens/sell/SellCarFlowScreen.tsx');
   assert.match(form, /setBaseValuation\(null\)/);
   assert.match(form, /Valuation is temporarily unavailable\. You can still enter your own price/);
-  assert.match(form, /valuation\.confidence === 'LOW' \? 'LOW-CONFIDENCE PRICE GUIDE'/);
+  // Keep low-confidence warnings while permitting the approved distinct
+  // auction and retail labels instead of the old one-price heading.
+  assert.match(form, /valuation\.confidence === 'LOW'/);
+  assert.match(form, /Limited market evidence\. This is a rough guide/);
+  assert.match(form, /ESTIMATED DEALER AUCTION VALUE/);
+  assert.match(form, /SUGGESTED RETAIL ASKING PRICE/);
 });
 
 test('switching registration invalidates old DVLA model MOT specs and price', () => {

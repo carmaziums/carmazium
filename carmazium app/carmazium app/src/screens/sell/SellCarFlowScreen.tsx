@@ -65,7 +65,7 @@ interface DvlaData {
   euroStandard?: string; co2Emissions?: number; motStatus?: string;
   taxStatus?: string; motExpiryDate?: string; taxDueDate?: string;
   markedForExport?: boolean; monthOfFirstRegistration?: string;
-  wheelplan?: string; typeApproval?: string; dateOfLastV5CIssued?: string;
+  wheelplan?: string; typeApproval?: string; dateOfLastV5CIssued?: string; firstUsedDate?: string;
   motHistory?: Array<{
     completedDate: string;
     testResult: 'PASSED' | 'FAILED';
@@ -636,26 +636,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [make, setMake] = useState(() => landingPrefill?.make || '');
   const [model, setModel] = useState(() => landingPrefill?.model || '');
   const [year, setYear] = useState(() => landingPrefill?.year ? String(landingPrefill.year) : '');
-  const [motStatus, setMotStatus] = useState('');
-  const [motExpiry, setMotExpiry] = useState('');
-  const [taxStatus, setTaxStatus] = useState('');
-  const [taxDue, setTaxDue] = useState('');
-  const [firstRegistered, setFirstRegistered] = useState('');
-  const [lastV5C, setLastV5C] = useState('');
-  const [wheelplan, setWheelplan] = useState('');
-  const [typeApproval, setTypeApproval] = useState('');
-  // Read-only buyer-trust signal, mirrors web's "MOT History" list — display
-  // only, never sent in any payload (backend has no field for it on Listing).
-  const [motHistory, setMotHistory] = useState<Array<{
-    completedDate: string;
-    testResult: 'PASSED' | 'FAILED';
-    odometerValue?: string;
-    odometerUnit?: string;
-    defects?: Array<{ text: string; type: string }>;
-  }>>([]);
+  const [motStatus, setMotStatus] = useState(() => landingPrefill?.motStatus || '');
+  const [motExpiry, setMotExpiry] = useState(() => landingPrefill?.motExpiryDate || '');
+  const [taxStatus, setTaxStatus] = useState(() => landingPrefill?.taxStatus || '');
+  const [taxDue, setTaxDue] = useState(() => landingPrefill?.taxDueDate || '');
+  const [firstRegistered, setFirstRegistered] = useState(() => landingPrefill?.monthOfFirstRegistration || '');
+  const [firstUsedDate, setFirstUsedDate] = useState(() => landingPrefill?.firstUsedDate || '');
+  const [lastV5C, setLastV5C] = useState(() => landingPrefill?.dateOfLastV5CIssued || '');
+  const [wheelplan, setWheelplan] = useState(() => landingPrefill?.wheelplan || '');
+  const [typeApproval, setTypeApproval] = useState(() => landingPrefill?.typeApproval || '');
+  // DVSA MOT history is saved to the listing for buyer viewing. Historical
+  // MOT mileage must never replace seller-entered current mileage.
+  const [motHistory, setMotHistory] = useState<import('../../data/listings').NativeMotTest[]>(
+    () => landingPrefill?.motHistory ?? [],
+  );
   // Model Details
-  const [variant, setVariant] = useState('');
-  const [driveType, setDriveType] = useState('');
+  const [variant, setVariant] = useState(() => landingPrefill?.variant || '');
+  const [driveType, setDriveType] = useState(() => landingPrefill?.driveType || '');
   const [serviceHistory, setServiceHistory] = useState('');
   const [mechanicalIssues, setMechanicalIssues] = useState('');
   const [electricalIssues, setElectricalIssues] = useState('');
@@ -667,31 +664,35 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [combinedMpg, setCombinedMpg] = useState('');
   const [extraUrbanMpg, setExtraUrbanMpg] = useState('');
   // Body & Location
-  const [bodyType, setBodyType] = useState('');
+  const [bodyType, setBodyType] = useState(
+    () => normalizeNativeBodyType(landingPrefill?.bodyType, 'CAR') || '',
+  );
   const [location, setLocation] = useState('');
   const [locatingMe, setLocatingMe] = useState(false);
   // Technical Specs
   const [mileage, setMileage] = useState(() => landingPrefill?.mileage != null ? String(landingPrefill.mileage) : '');
-  const [fuelType, setFuelType] = useState('');
+  const [fuelType, setFuelType] = useState(() => landingPrefill?.fuelType || '');
   const [transmission, setTransmission] = useState(() => normalizeNativeTransmission(landingPrefill?.transmission) || '');
-  const [colour, setColour] = useState('');
-  const [engineSize, setEngineSize] = useState('');
-  const [bhp, setBhp] = useState('');
-  const [doors, setDoors] = useState('');
-  const [seats, setSeats] = useState('');
+  const [colour, setColour] = useState(() => landingPrefill?.color || '');
+  const [engineSize, setEngineSize] = useState(() => landingPrefill?.engineSize != null ? String(landingPrefill.engineSize) : '');
+  const [bhp, setBhp] = useState(() => landingPrefill?.bhp != null ? String(landingPrefill.bhp) : '');
+  const [doors, setDoors] = useState(() => landingPrefill?.doors != null ? String(landingPrefill.doors) : '');
+  const [seats, setSeats] = useState(() => landingPrefill?.seats != null ? String(landingPrefill.seats) : '');
   // UK Compliance
   const [ulezCompliant, setUlezCompliant] = useState<boolean | null>(null);
-  const [euroStandard, setEuroStandard] = useState('');
-  const [co2Emissions, setCo2Emissions] = useState('');
+  const [euroStandard, setEuroStandard] = useState(() => landingPrefill?.euroStandard || '');
+  const [co2Emissions, setCo2Emissions] = useState(() => landingPrefill?.co2Emissions != null ? String(landingPrefill.co2Emissions) : '');
   // Features & Description
   const [features, setFeatures] = useState<string[]>([]);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(() => landingPrefill?.make && landingPrefill?.model
+    ? [landingPrefill.year, landingPrefill.make, landingPrefill.model, landingPrefill.variant].filter(Boolean).join(' ')
+    : '');
   const [description, setDescription] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
   // Ownership
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
-  const [markedForExport, setMarkedForExport] = useState(false);
+  const [markedForExport, setMarkedForExport] = useState(() => landingPrefill?.markedForExport === true);
   const [condition, setCondition] = useState('');
   const [isDepartedSale, setIsDepartedSale] = useState(false);
   const [departedRelSelect, setDepartedRelSelect] = useState('');
@@ -916,7 +917,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function applyValuationGuide() {
     if (!valuation) return;
 
-    setPriceAsking(String(valuation.auction.marketValue));
+    setPriceAsking(String(listingType === 'AUCTION'
+      ? valuation.auction.marketValue : valuation.retail.suggestedAsking));
     if (listingType === 'AUCTION') {
       setReservePrice(String(valuation.auction.suggestedReserve));
       setStartingBid(String(valuation.auction.openingBid));
@@ -959,7 +961,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     let cancelled = false;
     void (async () => {
       const loaded = await loadSellWizardDraftForUser(currentUserId);
-      if (!loaded || cancelled || editMode) return;
+      if (!loaded || cancelled || editMode || landingPrefill?.vrm) return;
       const store = useSellWizardStore.getState();
       if (!store.make && !store.model && store.lastStep <= 1) return;
       Alert.alert('Resume draft?', 'You have an unsaved listing. Continue where you left off?', [
@@ -1067,6 +1069,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (l.taxStatus) setTaxStatus(String(l.taxStatus));
         if (l.taxDueDate) setTaxDue(String(l.taxDueDate));
         if (l.monthOfFirstRegistration) setFirstRegistered(String(l.monthOfFirstRegistration));
+        if (l.firstUsedDate) setFirstUsedDate(String(l.firstUsedDate));
+        if (Array.isArray(l.motHistory)) setMotHistory(l.motHistory);
         if (l.wheelplan) setWheelplan(String(l.wheelplan));
         if (l.typeApproval) setTypeApproval(String(l.typeApproval));
         setVariant(l.variant ?? '');
@@ -1347,6 +1351,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setTaxStatus('');
         setTaxDue('');
         setFirstRegistered('');
+        setFirstUsedDate('');
         setLastV5C('');
         setWheelplan('');
         setTypeApproval('');
@@ -1437,6 +1442,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.wheelplan) setWheelplan(String(data.wheelplan));
       if (data.typeApproval) setTypeApproval(String(data.typeApproval));
       if (data.dateOfLastV5CIssued) setLastV5C(String(data.dateOfLastV5CIssued));
+      if (data.firstUsedDate) setFirstUsedDate(String(data.firstUsedDate));
       if (Array.isArray(data.motHistory)) setMotHistory(data.motHistory);
       setDvlaFetched(true);
     } catch (err: any) {
@@ -2005,7 +2011,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         listingType,
         // DVLA fields
         motStatus, taxStatus, motExpiryDate: motExpiry, taxDueDate: taxDue,
-        monthOfFirstRegistration: firstRegistered, wheelplan, typeApproval,
+        monthOfFirstRegistration: firstRegistered, firstUsedDate,
+        dateOfLastV5CIssued: lastV5C, wheelplan, typeApproval,
+        motHistory: motHistory.length ? motHistory : undefined,
       };
       // Remove undefined values
       Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
@@ -3341,14 +3349,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onPress={applyValuationGuide}
                 activeOpacity={0.8}
               >
-                <Text style={s.valuationCardLabel}>{valuation.confidence === 'LOW' ? 'LOW-CONFIDENCE PRICE GUIDE' : 'CURRENT MARKET VALUE'}</Text>
-                <Text style={s.valuationAuctionPrice}>£{valuation.auction.marketValue.toLocaleString('en-GB')}</Text>
+                <Text style={s.valuationCardLabel}>{listingType === 'AUCTION' ? 'ESTIMATED DEALER AUCTION VALUE' : 'SUGGESTED RETAIL ASKING PRICE'}</Text>
+                <Text style={s.valuationAuctionPrice}>£{(listingType === 'AUCTION' ? valuation.auction.marketValue : valuation.retail.suggestedAsking).toLocaleString('en-GB')}</Text>
                 <Text style={s.valuationCardHint}>
                   {valuation.confidence === 'LOW'
                     ? 'Limited market evidence. This is a rough guide, not a verified sale price. You can set your own price.'
                     : 'Market guide from available evidence, adjusted by the condition and specification you provide.'}
                 </Text>
-                <Text style={s.valuationApplyText}>Use this value</Text>
+                <Text style={s.valuationApplyText}>{listingType === 'AUCTION' ? 'Use auction guide' : 'Use retail price'}</Text>
               </TouchableOpacity>
               <Text style={s.valuationEvidenceText}>
                 Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.

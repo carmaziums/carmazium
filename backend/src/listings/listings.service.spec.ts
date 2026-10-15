@@ -1374,7 +1374,10 @@ describe('ListingsService', () => {
                 valuationId: '33333333-3333-4333-8333-333333333333',
             } as any);
 
-            expect(result.auction.marketValue).toBe(2650);
+            // Old frozen auction guide (£2,650) is now the retail anchor;
+            // the dealer auction estimate is exactly 80% of that anchor.
+            expect(result.retail.suggestedAsking).toBe(2650);
+            expect(result.auction.marketValue).toBe(2120);
             expect(liveSearch).not.toHaveBeenCalled();
             expect(prisma.listing.findMany).not.toHaveBeenCalled();
             expect(prisma.analyticsEvent.findFirst).toHaveBeenCalledWith(
@@ -1460,7 +1463,10 @@ describe('ListingsService', () => {
                 valuationId,
             } as any);
 
-            expect(result.auction.marketValue).toBe(2650);
+            // Old frozen auction guide (£2,650) is now the retail anchor;
+            // the dealer auction estimate is exactly 80% of that anchor.
+            expect(result.retail.suggestedAsking).toBe(2650);
+            expect(result.auction.marketValue).toBe(2120);
             expect(result.source).toBe('BLENDED_MARKET');
         });
     });

@@ -12,6 +12,16 @@ export type Transmission = 'Automatic' | 'Manual' | 'Semi-Automatic' | 'CVT' | '
 export type Category = 'Sports' | 'SUV' | 'Saloon' | 'Convertible' | 'Supercar' | 'Estate';
 export type Condition = 'New' | 'Used' | 'Certified Pre-Owned';
 
+export interface NativeMotTest {
+  completedDate: string;
+  testResult: 'PASSED' | 'FAILED' | string;
+  expiryDate?: string;
+  odometerValue?: string;
+  odometerUnit?: string;
+  motTestNumber?: string;
+  defects?: Array<{ text: string; type: string; dangerous?: boolean }>;
+}
+
 export interface CarListing {
   id: string;
   make: string;
@@ -130,6 +140,12 @@ export interface CarListing {
   badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM' | null;
   // Real DVLA / seller-declared history fields (see mobile-audit.md W1) — null/undefined means
   // "not disclosed", never assume a positive value as a fallback.
+  motHistory?: NativeMotTest[] | null;
+  firstUsedDate?: string | null;
+  dateOfLastV5CIssued?: string | null;
+  markedForExport?: boolean | null;
+  numberOfKeys?: number | null;
+  driveType?: string | null;
   motStatus?: string | null;
   motExpiry?: string | null;
   taxStatus?: string | null;

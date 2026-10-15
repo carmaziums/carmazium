@@ -165,7 +165,13 @@ export type MainStackParamList = {
   } | undefined;
   SellLanding: undefined;
   SellCarFlow: { listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
-    vrm?: string; make?: string; model?: string; year?: number; mileage?: number; transmission?: string;
+    vrm?: string; make?: string; model?: string; year?: number; mileage?: number;
+    transmission?: string; fuelType?: string; variant?: string; bodyType?: string; driveType?: string;
+    doors?: number; seats?: number; bhp?: number; color?: string; engineSize?: number;
+    euroStandard?: string; co2Emissions?: number; motStatus?: string; motExpiryDate?: string;
+    taxStatus?: string; taxDueDate?: string; markedForExport?: boolean;
+    monthOfFirstRegistration?: string; firstUsedDate?: string; dateOfLastV5CIssued?: string;
+    wheelplan?: string; typeApproval?: string; motHistory?: import('../data/listings').NativeMotTest[];
   } } | undefined;
   SellerListings: undefined;
   SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean } | undefined;
