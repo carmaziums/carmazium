@@ -53,6 +53,9 @@ test('both retail and auction buyer pages expose complete saved government MOT f
   const facts = source('components/BuyerVehicleFacts.tsx');
   const listings = source('lib/listingsApi.ts');
   assert.match(retail, /getRawListingById\(listing\.id\)/);
+  assert.match(retail, /setVehicleFactsState\(record \? 'loaded' : 'failed'\)/);
+  assert.match(retail, /Retry full vehicle details/);
+  assert.match(retail, /setVehicleFactsAttempt\(previous => previous \+ 1\)/);
   assert.match(retail, /<BuyerVehicleFacts record=\{fullVehicleFacts \?\? listing\}/);
   assert.match(auction, /<BuyerVehicleFacts record=\{auction\?\.listing \?\? listing\}/);
   for (const field of ['motHistory', 'firstUsedDate', 'dateOfLastV5CIssued', 'markedForExport', 'numberOfKeys', 'driveType']) {
