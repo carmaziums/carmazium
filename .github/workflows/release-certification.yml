@@ -20,6 +20,7 @@ on:
       - 'scripts/test-native-visual-parity-block7.test.mjs'
       - 'scripts/test-native-web-vehicle-parity-20261015.test.mjs'
       - 'scripts/test-home-retail-inventory-truth.test.mjs'
+      - 'scripts/test-seo-indexing-contract.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -196,6 +197,8 @@ jobs:
         run: node --test scripts/test-native-web-vehicle-parity-20261015.test.mjs
       - name: Check genuine homepage inventory and truthful retail cards
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
+      - name: Ensure SEO sitemap respects published article noindex and retail status
+        run: node --test scripts/test-seo-indexing-contract.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
