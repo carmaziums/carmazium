@@ -18,6 +18,14 @@ type Nav = NativeStackNavigationProp<MainStackParamList>;
 type DvlaPreview = {
   make?: string | null; model?: string | null; year?: number | string | null;
   fuelType?: string | null; transmission?: string | null;
+  variant?: string | null; bodyType?: string | null; driveType?: string | null;
+  doors?: number; seats?: number; bhp?: number; colour?: string;
+  primaryColour?: string; engineSize?: number; euroStandard?: string;
+  co2Emissions?: number; motStatus?: string; motExpiryDate?: string;
+  taxStatus?: string; taxDueDate?: string; markedForExport?: boolean;
+  monthOfFirstRegistration?: string; firstUsedDate?: string;
+  dateOfLastV5CIssued?: string; wheelplan?: string; typeApproval?: string;
+  motHistory?: import('../../data/listings').NativeMotTest[];
 };
 type RouteSellingMode = 'AUCTION' | 'CLASSIFIED';
 
@@ -47,6 +55,7 @@ export const SellLandingScreen: React.FC = () => {
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
   const [transmission, setTransmission] = useState('');
+  const [dvlaDetails, setDvlaDetails] = useState<DvlaPreview | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [valuing, setValuing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +74,7 @@ export const SellLandingScreen: React.FC = () => {
     invalidate();
     setVrm(normalizeNativeRegistration(value));
     // A different registration must not retain the previous car's identity.
-    setMake(''); setModel(''); setYear(''); setTransmission('');
+    setMake(''); setModel(''); setYear(''); setTransmission(''); setDvlaDetails(null);
   };
 
   const findRegistration = async () => {
@@ -92,6 +101,7 @@ export const SellLandingScreen: React.FC = () => {
       setYear(String(details.year));
       setModel(String(details.model || ''));
       setTransmission(String(details.transmission || ''));
+      setDvlaDetails(details);
       if (!details.model) {
         setError('Vehicle found. Enter its actual model to complete your valuation.');
       }
@@ -118,6 +128,11 @@ export const SellLandingScreen: React.FC = () => {
         make: make.trim(), model: model.trim(), year: Number(year),
         mileage: cleanMileage, registration: vrm || undefined,
         transmission: transmission || undefined,
+        fuelType: dvlaDetails?.fuelType || undefined,
+        variant: dvlaDetails?.variant || undefined,
+        euroStandard: dvlaDetails?.euroStandard || undefined,
+        doors: dvlaDetails?.doors,
+        seats: dvlaDetails?.seats,
       });
       if (id !== requestId.current) return;
       if (!answer?.auction || !Number.isFinite(answer.auction.marketValue)
@@ -143,6 +158,21 @@ export const SellLandingScreen: React.FC = () => {
         mileage: /^\d+(?:,\d{3})*$/.test(mileage.trim())
           ? Number(mileage.replace(/,/g, '')) : undefined,
         transmission: transmission || undefined,
+        fuelType: dvlaDetails?.fuelType || undefined,
+        variant: dvlaDetails?.variant || undefined,
+        bodyType: dvlaDetails?.bodyType || undefined,
+        driveType: dvlaDetails?.driveType || undefined,
+        doors: dvlaDetails?.doors, seats: dvlaDetails?.seats, bhp: dvlaDetails?.bhp,
+        color: dvlaDetails?.primaryColour || dvlaDetails?.colour || undefined,
+        engineSize: dvlaDetails?.engineSize, euroStandard: dvlaDetails?.euroStandard,
+        co2Emissions: dvlaDetails?.co2Emissions, motStatus: dvlaDetails?.motStatus,
+        motExpiryDate: dvlaDetails?.motExpiryDate, taxStatus: dvlaDetails?.taxStatus,
+        taxDueDate: dvlaDetails?.taxDueDate, markedForExport: dvlaDetails?.markedForExport,
+        monthOfFirstRegistration: dvlaDetails?.monthOfFirstRegistration,
+        firstUsedDate: dvlaDetails?.firstUsedDate,
+        dateOfLastV5CIssued: dvlaDetails?.dateOfLastV5CIssued,
+        wheelplan: dvlaDetails?.wheelplan, typeApproval: dvlaDetails?.typeApproval,
+        motHistory: dvlaDetails?.motHistory,
       },
     });
   };
@@ -204,13 +234,40 @@ export const SellLandingScreen: React.FC = () => {
           </TouchableOpacity>
           <Text style={styles.guideNote}>Free valuation · No obligation · Guide only, not a guaranteed offer.</Text>
           {!!valuation && <View style={styles.guideResult}>
-            <Text style={styles.resultLabel}>
-              {year} {make.trim()} {model.trim()}
-            </Text>
-            <Text style={styles.guideTitle}>Current Market Value</Text>
-            <Text style={styles.guidePrice}>{money(valuation.auction.marketValue)}</Text>
-            <Text style={styles.guideNote}>Based on vehicle details and available CarMazium market evidence.
-              Condition, specification and demand may change the sale price.</Text>
+            <Text style={styles.resultLabel}>{year} {make.trim()} {model.trim()}</Text>
+            <Text style={styles.chooseTitle}>How would you like to sell?</Text>
+            <Text style={styles.guideNote}>Two selling options for the same vehicle. Choose either route below — all verified registration and MOT details will follow into your listing.</Text>
+            <View style={styles.priceChoices}>
+              <View style={[styles.priceChoice, styles.auctionPriceChoice]}>
+                <View style={styles.priceChoiceHeader}>
+                  <Ionicons name="hammer-outline" size={20} color={Colors.accent}/>
+                  <Text style={styles.priceChoiceName}>Dealer Auction · FREE</Text>
+                </View>
+                <Text style={styles.guideTitle}>Estimated dealer auction value</Text>
+                <Text style={styles.guidePrice}>{money(valuation.auction.marketValue)}</Text>
+                <Text style={styles.guideNote}>Verified dealers bid. You choose your reserve. Free seller listing.</Text>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose Free Auction"
+                  style={styles.auctionPriceButton} onPress={() => startListing('AUCTION')}>
+                  <Text style={styles.auctionPriceButtonText}>Choose Free Auction</Text>
+                  <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.priceChoice, styles.retailPriceChoice]}>
+                <View style={styles.priceChoiceHeader}>
+                  <Ionicons name="pricetag-outline" size={20} color={Colors.infoBlue}/>
+                  <Text style={styles.priceChoiceName}>Retail Listing · £1</Text>
+                </View>
+                <Text style={styles.guideTitle}>Suggested retail asking price</Text>
+                <Text style={styles.guidePrice}>{money(valuation.retail.suggestedAsking)}</Text>
+                <Text style={styles.guideNote}>Advertise directly to retail buyers. One-time £1 listing fee.</Text>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose £1 Retail"
+                  style={styles.retailPriceButton} onPress={() => startListing('CLASSIFIED')}>
+                  <Text style={styles.auctionPriceButtonText}>Choose £1 Retail</Text>
+                  <Ionicons name="arrow-forward" size={17} color={Colors.white}/>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <Text style={styles.guideNote}>Prices are estimates, not guaranteed sale prices. Condition, specification and demand affect the final sale. You may edit your price in the listing form.</Text>
           </View>}
         </View>
 
@@ -226,7 +283,7 @@ export const SellLandingScreen: React.FC = () => {
           </View>)}
         </View>
 
-        <Text style={styles.chooseTitle}>Choose how to sell</Text>
+        {!valuation && <><Text style={styles.chooseTitle}>Choose how to sell</Text>}
         <TouchableOpacity style={styles.auctionAction} onPress={()=>startListing('AUCTION')}
           accessibilityRole="button" accessibilityLabel="FREE Dealer Auction, continue to listing">
           <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
@@ -245,6 +302,7 @@ export const SellLandingScreen: React.FC = () => {
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.textPrimary}/>
         </TouchableOpacity>
+        </>}
         <Text style={styles.footnote}>The £100 CarMazium incentive applies only to eligible completed auction sales after handover approval. Vehicle payment is made directly to the seller.</Text>
       </ScrollView>
     </View>
@@ -278,6 +336,17 @@ const styles=StyleSheet.create({
   resultLabel:{fontFamily:FontFamily.bold,fontSize:11,color:Colors.accent,textTransform:'uppercase'},
   guideTitle:{fontFamily:FontFamily.bold,color:Colors.textSecondary,fontSize:11},
   guidePrice:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:26},
+  priceChoices:{gap:12,marginTop:6},
+  priceChoice:{borderWidth:1,borderRadius:13,padding:14,gap:9},
+  auctionPriceChoice:{borderColor:Colors.accent,backgroundColor:Colors.bgCard},
+  retailPriceChoice:{borderColor:Colors.infoBlue,backgroundColor:Colors.bgCard},
+  priceChoiceHeader:{flexDirection:'row',alignItems:'center',gap:8},
+  priceChoiceName:{fontFamily:FontFamily.extraBold,fontSize:15,color:Colors.textPrimary},
+  auctionPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.accent,
+    flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
+  retailPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.infoBlue,
+    flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
+  auctionPriceButtonText:{fontFamily:FontFamily.extraBold,fontSize:13,color:Colors.white},
   benefits:{flexDirection:'row',gap:7},benefit:{flex:1,minWidth:0,borderRadius:12,
     backgroundColor:Colors.bgCard,borderColor:Colors.borderSubtle,borderWidth:1,padding:9,gap:6},
   benefitTitle:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:11},
