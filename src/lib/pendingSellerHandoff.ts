@@ -11,7 +11,7 @@ export const SELLER_HANDOFF_MAX_AGE_MS = 20 * 60 * 1000
 export interface PendingSellerHandoff {
     createdAt: number
     listingType: "AUCTION" | "CLASSIFIED"
-    vehicle: Record<string, string | number | boolean>
+    vehicle: Record<string, unknown>
     valuationId?: string
     dvlaVerified: boolean
 }
@@ -20,6 +20,9 @@ const VEHICLE_FIELDS = [
     "vrm", "make", "model", "year", "mileage", "vehicleType", "fuelType",
     "transmission", "bodyType", "variant", "driveType", "doors", "seats",
     "bhp", "color", "primaryColour", "engineSize", "euroStandard",
+    "co2Emissions", "motStatus", "taxStatus", "motExpiryDate",
+    "taxDueDate", "markedForExport", "monthOfFirstRegistration",
+    "wheelplan", "typeApproval", "firstUsedDate", "dateOfLastV5CIssued",
 ] as const
 
 export function createSellerHandoff(
@@ -42,6 +45,37 @@ export function createSellerHandoff(
         else if (typeof value === "number" && Number.isFinite(value)) selected[field] = value
         else if (typeof value === "boolean") selected[field] = value
     }
+    // A bounded, sanitised history travels with the verified vehicle facts
+    // when the wizard loads after the initial click. Never store the entire
+    // upstream response, tokens, VIN or unrelated seller/account information.
+    if (Array.isArray(vehicle.motHistory)) {
+        selected.motHistory = vehicle.motHistory.slice(0, 20).flatMap((entry: unknown) => {
+            if (!entry || typeof entry !== "object") return []
+            const test = entry as Record<string, unknown>
+            if (test.testResult !== "PASSED" && test.testResult !== "FAILED") return []
+            const safeText = (value: unknown, length = 160) =>
+                typeof value === "string" ? value.slice(0, length) : ""
+            const defects = Array.isArray(test.defects) ? test.defects.slice(0, 8).flatMap((item: unknown) => {
+                if (!item || typeof item !== "object") return []
+                const defect = item as Record<string, unknown>
+                if (!["ADVISORY", "MINOR", "MAJOR", "DANGEROUS"].includes(String(defect.type))) return []
+                return [{
+                    text: safeText(defect.text, 240),
+                    type: String(defect.type),
+                    dangerous: defect.dangerous === true,
+                }]
+            }) : []
+            return [{
+                completedDate: safeText(test.completedDate, 40),
+                testResult: test.testResult,
+                expiryDate: safeText(test.expiryDate, 40),
+                odometerValue: safeText(test.odometerValue, 20),
+                odometerUnit: safeText(test.odometerUnit, 12),
+                motTestNumber: safeText(test.motTestNumber, 40),
+                defects,
+            }]
+        })
+    }
     selected.vrm = vrm
     return {
         createdAt: now,
@@ -54,7 +88,7 @@ export function createSellerHandoff(
 }
 
 export function parseSellerHandoff(raw: string | null, now = Date.now()): PendingSellerHandoff | null {
-    if (!raw || raw.length > 6000) return null
+    if (!raw || raw.length > 75000) return null
     try {
         const candidate = JSON.parse(raw)
         if (typeof candidate?.createdAt !== "number" ||

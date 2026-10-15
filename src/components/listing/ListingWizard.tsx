@@ -1390,6 +1390,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
 
             const listingType = detail.listingType
+            // Explicit vehicle selection wins over a stale browser draft.
+            draftRestoreAttemptedRef.current = true
+            clearSellerHandoff(sessionStorage)
             setFormData(prev => {
                 const sameVehicle = !!normalizeVehicleRegistration(prev.vrm)
                     && normalizeVehicleRegistration(prev.vrm) === normalizeVehicleRegistration(detail.vehicle?.vrm)
@@ -1402,6 +1405,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 return {
                     ...(sameVehicle ? prev : INITIAL_FORM),
                     ...detail.vehicle,
+                    title: sameVehicle && prev.title ? prev.title : [
+                        detail.vehicle?.year,
+                        detail.vehicle?.make,
+                        detail.vehicle?.model,
+                        detail.vehicle?.variant,
+                    ].filter(Boolean).join(' ').trim(),
                     vehicleType: nextVehicleType,
                     ...specs,
                     listingType,
@@ -1425,6 +1434,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setDvlaError(verifiedByDvla ? null : "DVLA could not verify this registration. Review the manually entered vehicle details before continuing.")
             setSellingMethod("list")
             setCurrentStep(1)
+            setHasAttemptedNext(false)
 
             trackEvent(SELLER_FUNNEL.LISTING_STARTED, {
                 listing_type: listingType === "AUCTION" ? "auction" : "retail",
@@ -1450,10 +1460,20 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // Resume only the intentionally selected vehicle in this tab after a successful
     // sign-in/signup redirect. No market prices or user records were stored.
     React.useEffect(() => {
-        if (isDashboard || editId || !isAuthenticated || !isEmailVerified) return
-        if (profile?.role === "DEALER" && !isVerifiedDealer) return
+        if (isDashboard || editId || authLoading) return
         const pending = readSellerHandoff(sessionStorage)
         if (!pending) return
+        // If the valuation clicked before this wizard finished mounting,
+        // open the existing sign-in flow rather than dropping its payload.
+        if (!isAuthenticated) {
+            setShowLoginModal(true)
+            return
+        }
+        if (!isEmailVerified) {
+            router.push("/auth/onboarding")
+            return
+        }
+        if (profile?.role === "DEALER" && !isVerifiedDealer) return
 
         const vehicle = pending.vehicle as Partial<FormData>
         draftRestoreAttemptedRef.current = true
@@ -1470,6 +1490,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ...(sameVehicle ? prev : INITIAL_FORM),
                 ...vehicle,
                 ...specs,
+                title: sameVehicle && prev.title ? prev.title : [
+                    vehicle.year, vehicle.make, vehicle.model, vehicle.variant,
+                ].filter(Boolean).join(' ').trim(),
                 vehicleType: nextVehicleType,
                 listingType: pending.listingType,
                 badgeTier: pending.listingType === "AUCTION" ? "FREE" : "BASIC",
@@ -1492,7 +1515,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             entry_point: "post_auth_seller_resume",
             valuation_id: pending.valuationId,
         })
-    }, [isDashboard, editId, isAuthenticated, isEmailVerified, isVerifiedDealer, profile?.role, trackEvent])
+    }, [isDashboard, editId, authLoading, isAuthenticated, isEmailVerified, isVerifiedDealer, profile?.role, router, trackEvent])
 
     // ─── Submit ──────────────────────────────────────────────────────────────────
 

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import type { VehicleValuation } from "@/lib/valuationApi"
+import { saveSellerHandoff } from "@/lib/pendingSellerHandoff"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
@@ -418,6 +419,25 @@ function QuickValuationForm() {
 
     const startListing = (listingType: "AUCTION" | "CLASSIFIED") => {
         if (!result) return
+        // The listing wizard is dynamically mounted below this hero and may not
+        // be listening when the seller clicks. Persist a small, validated
+        // same-tab handoff BEFORE dispatching, even for signed-in sellers.
+        // This also survives the sign-in/onboarding redirect.
+        let saved = false
+        try {
+            saved = saveSellerHandoff(
+                window.sessionStorage,
+                listingType,
+                result.vehicle as Record<string, unknown>,
+                result.valuationId,
+                result.dvlaVerified,
+            )
+        } catch { /* sessionStorage may be disabled */ }
+        if (!saved) {
+            setError("We couldn't keep your vehicle details for the auction form. Please allow session storage and try again.")
+            return
+        }
+        setError(null)
         window.dispatchEvent(new CustomEvent("carmazium:start-seller-listing", {
             detail: {
                 listingType,
