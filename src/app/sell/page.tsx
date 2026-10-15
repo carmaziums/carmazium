@@ -434,7 +434,7 @@ function QuickValuationForm() {
             )
         } catch { /* sessionStorage may be disabled */ }
         if (!saved) {
-            setError("We couldn't keep your vehicle details for the auction form. Please allow session storage and try again.")
+            setError("We couldn't keep your vehicle details for the listing form. Please allow session storage and try again.")
             return
         }
         setError(null)
@@ -597,56 +597,89 @@ function QuickValuationForm() {
             </form>
 
             {result && (
-                <div className="mt-4 border-t border-[var(--border-default)] pt-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-                                {result.vehicle.year} {result.vehicle.make} {result.vehicle.model}
-                            </p>
-                            {hasGuide && (
-                                <>
-                                    <div className="mt-3 grid max-w-xl gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.06] p-4">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-orange-600 dark:text-orange-400">
-                                                Dealer auction value
-                                            </p>
-                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
-                                                {formatGuidePrice(result.valuation.auction.marketValue)}
-                                            </p>
-                                            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                                                Lower dealer-oriented guide for auction bidding.
-                                            </p>
-                                        </div>
-                                        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-4">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
-                                                Suggested retail asking
-                                            </p>
-                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
-                                                {formatGuidePrice(result.valuation.retail.suggestedAsking)}
-                                            </p>
-                                            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                                                Advertised asking price guide for retail buyers.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--text-muted)]">
-                                        These are different selling routes, not guaranteed offers. Vehicle condition, specification and market demand can affect the final price.
-                                    </p>
-                                </>
-                            )}
-                        </div>
-                        <div className="grid shrink-0 grid-cols-1 gap-2 sm:min-w-[250px]">
-                            <Button type="button" onClick={() => startListing("AUCTION")} className="bg-orange-600 hover:bg-orange-500">
-                                FREE Dealer Auction
-                                <Gavel size={16} />
-                            </Button>
-                            <Button type="button" variant="outline" onClick={() => startListing("CLASSIFIED")}>
-                                £1 Retail Listing
-                                <ArrowRight size={16} />
-                            </Button>
-                        </div>
+                <section aria-labelledby="sell-route-choice-title" className="mt-5 border-t border-[var(--border-default)] pt-5">
+                    <div className="mb-4">
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
+                            {result.vehicle.year} {result.vehicle.make} {result.vehicle.model}
+                        </p>
+                        <h3 id="sell-route-choice-title" className="mt-2 text-xl font-extrabold text-[var(--text-primary)] sm:text-2xl">
+                            How would you like to sell your car?
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
+                            Compare your two selling options, then choose the one that suits you. Your vehicle details will follow you to the listing form.
+                        </p>
                     </div>
-                </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                        <article className="flex flex-col rounded-2xl border-2 border-orange-500/35 bg-gradient-to-br from-orange-500/[0.10] to-[var(--bg-card)] p-4 shadow-sm sm:p-5">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400">
+                                        <Gavel size={19} />
+                                    </span>
+                                    <h4 className="text-base font-extrabold text-[var(--text-primary)]">Dealer Auction</h4>
+                                </div>
+                                <span className="rounded-lg bg-orange-500/15 px-2 py-1 text-xs font-extrabold text-orange-700 dark:text-orange-300">FREE</span>
+                            </div>
+                            <p className="mt-4 text-[11px] font-black uppercase tracking-[0.12em] text-orange-700 dark:text-orange-300">
+                                Dealer auction value
+                            </p>
+                            {hasGuide ? (
+                                <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
+                                    {formatGuidePrice(result.valuation.auction.marketValue)}
+                                </p>
+                            ) : (
+                                <p className="mt-1 text-base font-bold text-[var(--text-primary)]">Set your own value</p>
+                            )}
+                            <p className="mt-2 flex-1 text-sm leading-5 text-[var(--text-secondary)]">
+                                Let verified motor traders bid. Auction listing is free for sellers; you choose your reserve price.
+                            </p>
+                            <Button
+                                type="button"
+                                onClick={() => startListing("AUCTION")}
+                                className="mt-5 w-full justify-center bg-orange-600 text-white hover:bg-orange-500"
+                            >
+                                Choose Free Auction <ArrowRight size={17} />
+                            </Button>
+                        </article>
+
+                        <article className="flex flex-col rounded-2xl border-2 border-blue-500/35 bg-gradient-to-br from-blue-500/[0.10] to-[var(--bg-card)] p-4 shadow-sm sm:p-5">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                        <Banknote size={19} />
+                                    </span>
+                                    <h4 className="text-base font-extrabold text-[var(--text-primary)]">Retail Listing</h4>
+                                </div>
+                                <span className="rounded-lg bg-blue-500/15 px-2 py-1 text-xs font-extrabold text-blue-700 dark:text-blue-300">£1</span>
+                            </div>
+                            <p className="mt-4 text-[11px] font-black uppercase tracking-[0.12em] text-blue-700 dark:text-blue-300">
+                                Suggested retail asking price
+                            </p>
+                            {hasGuide && Number.isFinite(result.valuation.retail.suggestedAsking) && result.valuation.retail.suggestedAsking > 0 ? (
+                                <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
+                                    {formatGuidePrice(result.valuation.retail.suggestedAsking)}
+                                </p>
+                            ) : (
+                                <p className="mt-1 text-base font-bold text-[var(--text-primary)]">Set your own price</p>
+                            )}
+                            <p className="mt-2 flex-1 text-sm leading-5 text-[var(--text-secondary)]">
+                                Advertise directly to retail buyers for a one-time £1 listing fee. You choose your asking price.
+                            </p>
+                            <Button
+                                type="button"
+                                onClick={() => startListing("CLASSIFIED")}
+                                className="mt-5 w-full justify-center bg-blue-600 text-white hover:bg-blue-500"
+                            >
+                                Choose £1 Retail <ArrowRight size={17} />
+                            </Button>
+                        </article>
+                    </div>
+
+                    <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+                        These are estimates, not guaranteed sale prices. Condition, specification and market demand affect the final amount. You can edit your price when creating the listing.
+                    </p>
+                </section>
             )}
         </div>
     )
