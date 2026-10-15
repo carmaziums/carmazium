@@ -163,7 +163,7 @@ export function CarCard({
                             <Car size={54} strokeWidth={1.2} aria-hidden="true" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Vehicle photos not supplied</span>
                         </div>
-                    )
+                    )}
                 </div>
 
                 {/* Banner Label Ribbon */}
