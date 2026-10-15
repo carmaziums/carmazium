@@ -282,7 +282,12 @@ export function applyVehicleValuationAdjustments(
     const low = roundMoney(base.low * factor)
     const mid = roundMoney(base.mid * factor)
     const high = roundMoney(base.high * factor)
-    const retailSuggestedAsking = roundMoney(base.retail.suggestedAsking * factor)
+    // Old valuation snapshots use retail=high and auction=low. Rebase them
+    // on their original dealer guide when adjusting a saved journey.
+    const retailBase = base.retail.suggestedAsking > base.low
+        ? base.auction.marketValue
+        : base.retail.suggestedAsking
+    const retailSuggestedAsking = roundMoney(retailBase * factor)
     const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80)
 
     return {
