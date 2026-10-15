@@ -112,7 +112,9 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
                 }
 
                 seen.add(row.slug)
-                records.push(row)
+                // Retain only sitemap fields: full listing rows contain large
+                // photo arrays and seller data that must not accumulate in memory.
+                records.push({ slug: row.slug, updatedAt: row.updatedAt })
                 if (records.length >= maxRecords) break
             }
 
@@ -123,6 +125,9 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
             const totalPages = payload.pagination?.totalPages
             if (typeof totalPages === "number" && Number.isFinite(totalPages) && page >= totalPages) break
             if (rows.length < PAGE_SIZE) break
+            if (page === pageCap) {
+                console.warn("[sitemap] page budget exhausted; add sitemap sharding", kind, pageCap)
+            }
         } catch {
             console.warn("[sitemap] upstream unavailable; will retry at revalidation", kind, page)
             break
