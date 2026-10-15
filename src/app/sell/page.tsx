@@ -434,7 +434,7 @@ function QuickValuationForm() {
             )
         } catch { /* sessionStorage may be disabled */ }
         if (!saved) {
-            setError("We couldn't keep your vehicle details for the auction form. Please allow session storage and try again.")
+            setError("We couldn't keep your vehicle details for the listing form. Please allow session storage and try again.")
             return
         }
         setError(null)
