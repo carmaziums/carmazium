@@ -102,3 +102,24 @@ test('automatic 1–5 exterior grades match between seller uploads and web/nativ
   assert.match(service, /where\.exteriorGrade = gradeSearch\.exteriorGrade/);
   assert.match(read('backend/src/damage/damage.service.ts'), /data: \{ exteriorGrade: computeExteriorGrade\(detections\) \}/);
 });
+
+test('radius and multi-make filters survive every layer without per-page slicing', () => {
+  const dto = read('backend/src/listings/dto/listing-filter.dto.ts');
+  const service = read('backend/src/listings/listings.service.ts');
+  for (const key of ['maxDistanceMi','originLatitude','originLongitude','makes']) {
+    assert.ok(dto.includes(`${key}?`));
+    assert.ok(service.includes(key));
+    assert.ok(read('carmazium app/carmazium app/src/lib/listingsApi.ts').includes(key));
+  }
+  assert.ok(service.indexOf('const candidates = await') < service.indexOf('const skip = (page - 1) * limit'));
+  assert.match(service, /haversineMiles\(/);
+  const native = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+  assert.match(native, /makes: selectedMakes\.length > 1 \? selectedMakes : undefined/);
+  assert.doesNotMatch(native, /rawItems\.filter\(/);
+  const web = read('src/app/search/page.tsx');
+  assert.doesNotMatch(web, /filtered = filtered\.filter\(/);
+  assert.match(web, /pushFiltersToUrl\(u\)/);
+  for (const key of ['maxDistanceMi', 'originLatitude', 'originLongitude']) {
+    assert.ok(read('src/lib/listingApi.ts').includes(key));
+  }
+});
