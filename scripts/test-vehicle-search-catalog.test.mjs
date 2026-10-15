@@ -146,3 +146,18 @@ test('rapid changes in retail search cannot display stale requests', () => {
   assert.match(native, /const activeSearchRequest = useRef\(0\)/);
   assert.match(native, /if \(requestId !== activeSearchRequest\.current\) return/);
 });
+
+test('retail condition must not pretend independent pre-owned certification and unknown data stays unknown', () => {
+  const adapter = read('carmazium app/carmazium app/src/lib/listingsApi.ts');
+  const types = read('carmazium app/carmazium app/src/data/listings.ts');
+  assert.doesNotMatch(adapter, /case 'GOOD':\s*return 'Certified Pre-Owned'/);
+  assert.match(adapter, /case 'HATCHBACK':\s*return 'Hatchback'/);
+  assert.match(adapter, /'Not specified'/);
+  assert.match(types, /'Hatchback'/);
+  assert.match(types, /'Not specified'/);
+  const web = read('src/app/search/page.tsx');
+  assert.match(web, /appliedFilters\.features\.length\) count\+\+/);
+  assert.match(web, /appliedFilters\.sortBy === 'newest' && currentPage === 1/);
+  const native = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+  assert.match(native, /const queryEffectMounted = useRef\(false\)/);
+});
