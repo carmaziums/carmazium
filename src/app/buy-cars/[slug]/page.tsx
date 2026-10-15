@@ -38,22 +38,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         .join(' · ')
     const description = listing.description
         ? `${listing.description.slice(0, 155).trim()}${listing.description.length > 155 ? '…' : ''}`
-        : `${listing.title} — ${specs}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Verified listing on CarMazium.`
+        : `${listing.title} — ${specs}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Vehicle listing on CarMazium.`
 
     // The root layout's title template ("%s | CarMazium") applies automatically
     // to the <title> tag, but NOT to openGraph/twitter titles — those need the
     // brand suffix added explicitly.
     const title = `${listing.title} — ${formatPrice(listing.price)}`
     const socialTitle = `${title} | CarMazium`
-    const url = `${SITE_URL}/buy-cars/${slug}`
+    // Canonicalise direct UUID/legacy detail links to the published listing slug.
+    const url = `${SITE_URL}/buy-cars/${listing.slug || slug}`
     const image = listing.images?.find((img: string) => !img.includes('example.com'))
 
-    // Only ACTIVE (and post-sale OFFER_ACCEPTED/SOLD, which keep the URL alive for
-    // record-keeping) listings should be indexed. Obvious seeded/test slugs remain
-    // accessible in the app but are deliberately excluded from search engines.
+    // Only ACTIVE publicly offered retail vehicles belong in organic search.
+    // SOLD and OFFER_ACCEPTED pages remain reachable by direct links for deal
+    // history, but must not be advertised as cars for sale in Google. Auction
+    // and private/draft listings also must not enter the retail index.
     const indexable =
-        ['ACTIVE', 'OFFER_ACCEPTED', 'SOLD'].includes(listing.status) &&
-        !isLikelyTestListingSlug(slug)
+        listing.type === 'CLASSIFIED' &&
+        listing.status === 'ACTIVE' &&
+        !isLikelyTestListingSlug(listing.slug || slug)
 
     return {
         title,
