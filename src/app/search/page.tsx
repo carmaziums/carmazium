@@ -103,6 +103,9 @@ interface FilterState {
     minEngine: string
     maxEngine: string
     maxCo2: string
+    minCombinedMpg: string
+    maxZeroTo60Mph: string
+    driveType: string
     conditions: VehicleConditionValue[]
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
@@ -127,6 +130,7 @@ const INITIAL_FILTERS: FilterState = {
     bodyType: '', color: '',
     minDoors: '', minSeats: '',
     minEngine: '', maxEngine: '', maxCo2: '',
+    minCombinedMpg: '', maxZeroTo60Mph: '', driveType: '',
     conditions: [], ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
     minBhp: '', maxBhp: '',
@@ -229,6 +233,7 @@ function SearchPageContent() {
             bodyType: p('bodyType'), color: p('color'),
             minDoors: p('minDoors'), minSeats: p('minSeats'),
             minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
+            minCombinedMpg: p('minCombinedMpg'), maxZeroTo60Mph: p('maxZeroTo60Mph'), driveType: p('driveType'),
             conditions: (searchParams.get('conditions')?.split(',').filter(Boolean) as VehicleConditionValue[])
                 || (p('condition') ? [p('condition') as VehicleConditionValue] : []),
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
@@ -318,6 +323,7 @@ function SearchPageContent() {
         if (appliedFilters.minSeats) count++
         if (appliedFilters.minEngine || appliedFilters.maxEngine) count++
         if (appliedFilters.maxCo2) count++
+        if (appliedFilters.minCombinedMpg || appliedFilters.maxZeroTo60Mph || appliedFilters.driveType) count++
         if (appliedFilters.conditions.length) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
@@ -354,6 +360,9 @@ function SearchPageContent() {
         if (state.minEngine) f.minEngine = parseInt(state.minEngine)
         if (state.maxEngine) f.maxEngine = parseInt(state.maxEngine)
         if (state.maxCo2) f.maxCo2 = parseInt(state.maxCo2)
+        if (state.minCombinedMpg) f.minCombinedMpg = parseFloat(state.minCombinedMpg)
+        if (state.maxZeroTo60Mph) f.maxZeroTo60Mph = parseFloat(state.maxZeroTo60Mph)
+        if (state.driveType) f.driveType = state.driveType
         if (state.conditions.length) f.conditions = state.conditions
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
@@ -875,6 +884,29 @@ function SearchPageContent() {
                                 <RangeInputs minVal={filters.minBhp} maxVal={filters.maxBhp}
                                     onMinChange={(v) => set('minBhp', v)} onMaxChange={(v) => set('maxBhp', v)}
                                     minPlaceholder="Min BHP" maxPlaceholder="Max BHP" />
+                            </FilterSection>
+
+                            {/* Additional fields are present on actual listing records — no inferred specs. */}
+                            <FilterSection title="Fuel Consumption (MPG)">
+                                <Input type="number" step="0.1" min="0"
+                                    placeholder="Minimum combined MPG" value={filters.minCombinedMpg}
+                                    onChange={e => set('minCombinedMpg', e.target.value)} className="h-9 text-sm" />
+                                <p className="mt-1 text-xs text-[var(--text-muted)]">Only vehicles with reported MPG</p>
+                            </FilterSection>
+                            <FilterSection title="Acceleration (0–60 mph)">
+                                <Input type="number" step="0.1" min="0"
+                                    placeholder="Maximum time in seconds" value={filters.maxZeroTo60Mph}
+                                    onChange={e => set('maxZeroTo60Mph', e.target.value)} className="h-9 text-sm" />
+                            </FilterSection>
+                            <FilterSection title="Drivetrain">
+                                <select value={filters.driveType} onChange={e => set('driveType', e.target.value)}
+                                    aria-label="Drivetrain" className="w-full h-9 rounded-md bg-[var(--bg-input)] border border-[var(--border-default)] px-3 text-sm">
+                                    <option value="">All drivetrains</option>
+                                    <option value="FWD">Front-wheel drive (FWD)</option>
+                                    <option value="RWD">Rear-wheel drive (RWD)</option>
+                                    <option value="AWD">All-wheel drive (AWD)</option>
+                                    <option value="4WD">Four-wheel drive (4WD)</option>
+                                </select>
                             </FilterSection>
 
                             {/* Feature groups share the exact seller-declared labels. */}
