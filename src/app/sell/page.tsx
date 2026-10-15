@@ -317,6 +317,12 @@ function QuickValuationForm() {
                 model: resolvedModel,
                 year: vehicle.year,
                 mileage: mileageNumber,
+                fuelType: vehicle.fuelType,
+                transmission: vehicle.transmission,
+                variant: vehicle.variant,
+                euroStandard: vehicle.euroStandard,
+                doors: vehicle.doors,
+                seats: vehicle.seats,
                 valuationId,
                 registration: cleanVrm,
             })
