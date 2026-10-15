@@ -1885,6 +1885,7 @@ export class ListingsService {
             fuelType, fuelTypes, transmission, transmissions, bodyType,
             color, minDoors, minSeats,
             minEngine, maxEngine, maxCo2,
+            minCombinedMpg, maxZeroTo60Mph, driveType,
             conditions, ulezCompliant, euroStandard,
             isImported, markedForExport,
             vehicleType,
@@ -1949,13 +1950,18 @@ export class ListingsService {
 
         // ─── Engine capacity (cc) ────────────────────────────────────────────
         if (minEngine !== undefined || maxEngine !== undefined) {
-            where.engineCapacity = {};
-            if (minEngine !== undefined) where.engineCapacity.gte = minEngine;
-            if (maxEngine !== undefined) where.engineCapacity.lte = maxEngine;
+            where.engineSize = {};
+            if (minEngine !== undefined) where.engineSize.gte = minEngine;
+            if (maxEngine !== undefined) where.engineSize.lte = maxEngine;
         }
 
         // ─── CO₂ ceiling ─────────────────────────────────────────────────────
         if (maxCo2 !== undefined) where.co2Emissions = { lte: maxCo2 };
+
+        // ─── Recorded performance / economy ────────────────────────────────
+        if (minCombinedMpg !== undefined) where.combinedMpg = { gte: minCombinedMpg };
+        if (maxZeroTo60Mph !== undefined) where.zeroTo60Mph = { lte: maxZeroTo60Mph };
+        if (driveType) where.driveType = { equals: driveType, mode: 'insensitive' };
 
         // ─── Boolean compliance filter ───────────────────────────────────────
         if (ulezCompliant !== undefined) where.ulezCompliant = ulezCompliant;
