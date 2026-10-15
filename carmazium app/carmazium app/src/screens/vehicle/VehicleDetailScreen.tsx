@@ -37,7 +37,8 @@ import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
 import { apiClient } from '../../lib/apiClient';
-import { getListingById } from '../../lib/listingsApi';
+import { getListingById, getRawListingById, type ApiListing } from '../../lib/listingsApi';
+import { BuyerVehicleFacts } from '../../components/BuyerVehicleFacts';
 import {
   getHpiSummary, openHpiPdf, isReportReady, HPI_CHECK_DEFINITIONS,
   type HpiSummaryResponse,
@@ -165,6 +166,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
   const { refreshRooms } = useChat();
+
+  // Search cards carry a reduced projection. Fetch the full public listing
+  // once so saved DVSA/MOT fields are available even when browsing from Home.
+  const [fullVehicleFacts, setFullVehicleFacts] = useState<ApiListing | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setFullVehicleFacts(null);
+    getRawListingById(listing.id).then(record => {
+      if (!cancelled) setFullVehicleFacts(record);
+    }).catch(() => { /* keep the original card details on network failure */ });
+    return () => { cancelled = true; };
+  }, [listing.id]);
 
   const images = listing.images ?? [];
 
@@ -1179,6 +1192,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             );
           })}
+
+          {/* Same comprehensive DVLA/MOT panel as the auction detail page. */}
+          <BuyerVehicleFacts record={fullVehicleFacts ?? listing} />
 
           {/* Section: Vehicle History — real DVLA/seller-declared fields only.
               Paid HPI report below (:314-360, 1399-1406) is the actual verified check;
