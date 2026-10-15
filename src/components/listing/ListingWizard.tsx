@@ -1,3 +1,4 @@
+import { VEHICLE_FEATURES } from "@/lib/vehicleFeatures"
 "use client"
 
 import * as React from "react"
@@ -126,12 +127,7 @@ interface FormData {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PRESET_FEATURES = [
-    "Navigation", "Leather Seats", "Heated Seats", "Sunroof",
-    "Bluetooth", "Parking Sensors", "Reverse Camera", "Cruise Control",
-    "Climate Control", "Apple CarPlay", "Android Auto", "DAB Radio",
-    "LED Headlights", "Alloy Wheels", "Tow Bar",
-]
+const PRESET_FEATURES = VEHICLE_FEATURES
 
 const STEPS = [
     { id: 1, icon: Car, title: "Details" },
