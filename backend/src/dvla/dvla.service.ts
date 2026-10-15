@@ -69,6 +69,8 @@ export interface DvlaLookupResult {
     };
     dataSource: 'DVLA';
     motHistory?: MotTestResult[];
+    /** MOT reading is historical, NOT a verified current odometer figure. */
+    lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
 }
 
 // ─── MOT History API Response ──────────────────────────────────────────────────
@@ -155,6 +157,8 @@ export class DvlaService {
     private readonly motTimeoutMs: number;
     private readonly aiSyncTimeoutMs: number;
     private readonly aiOptionalTimeoutMs: number;
+    private motAccessToken: { token: string; expiresAt: number } | null = null;
+    private motTokenInFlight: Promise<string | null> | null = null;
     // Short-lived same-process cache is only for the separate optional AI call.
     private readonly coreCache = new Map<string, { value: DvlaLookupResult; expiresAt: number }>();
 
@@ -192,7 +196,7 @@ export class DvlaService {
                 ? Math.min(configured, ceiling) : fallback;
         };
         this.dvlaTimeoutMs = budget('DVLA_CORE_TIMEOUT_MS', 8_000, 15_000);
-        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 2_500, 6_000);
+        this.motTimeoutMs = budget('DVLA_MOT_TIMEOUT_MS', 4_500, 6_000);
         this.aiSyncTimeoutMs = budget('DVLA_SYNC_AI_TIMEOUT_MS', 3_000, 6_000);
         this.aiOptionalTimeoutMs = budget('DVLA_OPTIONAL_AI_TIMEOUT_MS', 18_000, 22_000);
 
@@ -236,8 +240,15 @@ export class DvlaService {
         }
 
         const combined = dvlaResult.value;
-        if (motResult.status === 'fulfilled' && motResult.value) {
+        if (motResult.status === 'fulfilled' && motResult.value
+            && (!motResult.value.registration || motResult.value.registration === normalised)
+            && (!motResult.value.make || !combined.make
+                || motResult.value.make.toUpperCase() === combined.make.toUpperCase())) {
             combined.motHistory = motResult.value.motTests;
+            if (!combined.engineSize && motResult.value.engineSize) combined.engineSize = motResult.value.engineSize;
+            if (!combined.fuelType && motResult.value.fuelType) combined.fuelType = motResult.value.fuelType;
+            if (!combined.year && motResult.value.year) combined.year = motResult.value.year;
+            if (motResult.value.lastMotMileage) combined.lastMotMileage = motResult.value.lastMotMileage;
             if (isPlausibleVehicleModel(
                 motResult.value.model,
                 combined.make,
@@ -257,7 +268,7 @@ export class DvlaService {
         if (this.coreCache.size >= 200) this.coreCache.clear();
         this.coreCache.set(normalised, {
             value: { ...combined, motHistory: combined.motHistory?.slice() },
-            expiresAt: Date.now() + 2 * 60_000,
+            expiresAt: Date.now() + (combined.model ? 2 * 60_000 : 20_000),
         });
         return allowAiEnrichment
             ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
@@ -410,46 +421,172 @@ export class DvlaService {
         });
     }
 
-    // ─── MOT History API REST request ─────────────────────────────────────────
+    // ─── DVSA MOT History API v1 (the deprecated v6 endpoint is NOT used) ───
 
-    private async motApiRequest(normalised: string): Promise<{ motTests: MotTestResult[], model?: string, primaryColour?: string, firstUsedDate?: string } | null> {
-        const motApiKey = this.configService.get<string>('MOT_API_KEY');
-        if (!motApiKey) {
-            this.logger.warn('MOT_API_KEY is not set — MOT History lookup will be skipped');
+    /**
+     * The v1 API requires BOTH an x-api-key and a Microsoft Entra bearer token.
+     * Token credentials remain on the server. Concurrent lookups reuse one token
+     * request and refresh it shortly before expiry.
+     */
+    private async motBearerToken(signal: AbortSignal): Promise<string | null> {
+        if (this.motAccessToken && this.motAccessToken.expiresAt > Date.now() + 60_000) {
+            return this.motAccessToken.token;
+        }
+        if (this.motTokenInFlight) return this.motTokenInFlight;
+
+        const clientId = this.configService.get<string>('MOT_HISTORY_CLIENT_ID');
+        const clientSecret = this.configService.get<string>('MOT_HISTORY_CLIENT_SECRET');
+        const tokenUrl = this.configService.get<string>('MOT_HISTORY_TOKEN_URL');
+        if (!clientId || !clientSecret || !tokenUrl) return null;
+
+        // Restrict the configured token host so a misconfiguration cannot send
+        // client secrets to an arbitrary third-party URL.
+        let parsedUrl: URL;
+        try {
+            parsedUrl = new URL(tokenUrl);
+        } catch {
+            this.logger.warn('MOT_TOKEN_URL is invalid');
             return null;
         }
-        const url = `https://beta.check-mot.service.gov.uk/trade/vehicles/mot-tests?registration=${normalised}`;
+        if (parsedUrl.protocol !== 'https:'
+            || parsedUrl.hostname !== 'login.microsoftonline.com'
+            || !/^\/[^/]+\/oauth2\/v2\.0\/token$/.test(parsedUrl.pathname)
+            || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
+            this.logger.warn('MOT_HISTORY_TOKEN_URL must be the DVSA-issued Microsoft Entra token URL');
+            return null;
+        }
+
+        const pending = (async (): Promise<string | null> => {
+            const response = await fetch(parsedUrl.toString(), {
+                method: 'POST',
+                signal,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'client_credentials',
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    scope: this.configService.get<string>('MOT_HISTORY_SCOPE') || 'https://tapi.dvsa.gov.uk/.default',
+                }).toString(),
+            });
+            if (!response.ok) {
+                this.logger.warn('DVSA MOT token request failed with HTTP ' + response.status);
+                return null;
+            }
+            const body = await response.json() as { access_token?: unknown; expires_in?: unknown };
+            if (typeof body.access_token !== 'string' || !body.access_token) return null;
+            const expiresIn = Number(body.expires_in);
+            this.motAccessToken = {
+                token: body.access_token,
+                expiresAt: Date.now() + (
+                    Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 1200
+                ) * 1000,
+            };
+            return body.access_token;
+        })();
+        this.motTokenInFlight = pending;
         try {
-            // Both the HTTP request and its response body share one deadline.
-            // A stalled optional MOT service must not hold back core DVLA data.
-            return await this.withDeadline('MOT history', this.motTimeoutMs, async signal => {
+            return await pending;
+        } finally {
+            if (this.motTokenInFlight === pending) this.motTokenInFlight = null;
+        }
+    }
+
+    private async motApiRequest(normalised: string): Promise<{
+        motTests: MotTestResult[];
+        registration?: string;
+        make?: string;
+        model?: string;
+        primaryColour?: string;
+        firstUsedDate?: string;
+        engineSize?: number;
+        fuelType?: string;
+        year?: number;
+        lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
+    } | null> {
+        const apiKey = this.configService.get<string>('MOT_HISTORY_API_KEY');
+        if (!apiKey) return null;
+
+        const url = 'https://history.mot.api.gov.uk/v1/trade/vehicles/registration/'
+            + encodeURIComponent(normalised);
+        try {
+            // The auth exchange AND vehicle request share the optional MOT
+            // deadline. Any failure must leave the core DVLA lookup intact.
+            return await this.withDeadline('DVSA MOT history', this.motTimeoutMs, async signal => {
+                const token = await this.motBearerToken(signal);
+                if (!token) return null;
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
-                        'x-api-key': motApiKey,
-                        'Accept': 'application/json+v6',
+                        'Authorization': 'Bearer ' + token,
+                        'X-API-Key': apiKey,
+                        'Accept': 'application/json',
                     },
                     signal,
                 });
+                if (response.status === 404) return { motTests: [] };
                 if (!response.ok) {
-                    if (response.status === 404) return { motTests: [] };
-                    this.logger.warn('MOT lookup returned HTTP ' + response.status);
+                    // An expired/revoked token is replaced on the next lookup.
+                    if (response.status === 401 || response.status === 403) this.motAccessToken = null;
+                    this.logger.warn('DVSA MOT lookup returned HTTP ' + response.status);
                     return null;
                 }
-                const data = await response.json();
-                if (Array.isArray(data) && data.length > 0) {
-                    const vehicle = data[0];
-                    return {
-                        motTests: vehicle.motTests || [],
-                        model: vehicle.model,
-                        primaryColour: vehicle.primaryColour,
-                        firstUsedDate: vehicle.firstUsedDate,
-                    };
-                }
-                return { motTests: [] };
+
+                // v1 returns ONE vehicle object, unlike the old v6 array.
+                const vehicle = await response.json() as Record<string, any>;
+                if (!vehicle || typeof vehicle !== 'object' || Array.isArray(vehicle)) return null;
+
+                const motTests: MotTestResult[] = (Array.isArray(vehicle.motTests) ? vehicle.motTests : [])
+                    .filter((test: any) => test && (test.testResult === 'PASSED' || test.testResult === 'FAILED'))
+                    .map((test: any) => ({
+                        completedDate: String(test.completedDate || ''),
+                        testResult: test.testResult as 'PASSED' | 'FAILED',
+                        expiryDate: typeof test.expiryDate === 'string' ? test.expiryDate : undefined,
+                        odometerValue: test.odometerValue == null ? undefined : String(test.odometerValue),
+                        odometerUnit: typeof test.odometerUnit === 'string' ? test.odometerUnit : undefined,
+                        motTestNumber: String(test.motTestNumber || ''),
+                        defects: (Array.isArray(test.defects) ? test.defects : [])
+                            .filter((d: any) => d && typeof d.text === 'string'
+                                && ['ADVISORY', 'MINOR', 'MAJOR', 'DANGEROUS'].includes(d.type))
+                            .map((d: any) => ({
+                                text: d.text,
+                                type: d.type as MotTestDefect['type'],
+                                dangerous: d.dangerous === true,
+                            })),
+                    }))
+                    .sort((a, b) => b.completedDate.localeCompare(a.completedDate));
+
+                // Mileage is evidence recorded at an MOT, never "current" mileage.
+                const latestMileage = motTests.find((test) =>
+                    test.completedDate && /^\d+$/.test(test.odometerValue || '')
+                    && ['MI', 'KM'].includes((test.odometerUnit || '').toUpperCase()));
+                const mileageUnit = latestMileage?.odometerUnit?.toUpperCase() as 'MI' | 'KM' | undefined;
+                const engineSize = Number(vehicle.engineSize);
+                const manufacturerYear = typeof vehicle.manufactureDate === 'string'
+                    ? Number(vehicle.manufactureDate.slice(0, 4)) : undefined;
+                const motFuel = typeof vehicle.fuelType === 'string'
+                    ? DVLA_FUEL_MAP[vehicle.fuelType.trim().toUpperCase()] : undefined;
+                return {
+                    motTests,
+                    registration: typeof vehicle.registration === 'string'
+                        ? vehicle.registration.replace(/\s+/g, '').toUpperCase() : undefined,
+                    make: typeof vehicle.make === 'string' ? vehicle.make.trim() : undefined,
+                    model: typeof vehicle.model === 'string' ? vehicle.model.trim() : undefined,
+                    primaryColour: typeof vehicle.primaryColour === 'string' ? vehicle.primaryColour : undefined,
+                    firstUsedDate: typeof vehicle.firstUsedDate === 'string' ? vehicle.firstUsedDate : undefined,
+                    engineSize: Number.isFinite(engineSize) && engineSize > 0 ? engineSize : undefined,
+                    fuelType: motFuel,
+                    year: manufacturerYear && manufacturerYear >= 1900 && manufacturerYear <= 2035
+                        ? manufacturerYear : undefined,
+                    lastMotMileage: latestMileage && mileageUnit ? {
+                        value: Number(latestMileage.odometerValue),
+                        unit: mileageUnit,
+                        recordedAt: latestMileage.completedDate,
+                    } : undefined,
+                };
             });
         } catch (error) {
-            this.logger.warn('Optional MOT lookup unavailable: ' + (error instanceof Error ? error.message : 'unknown'));
+            this.logger.warn('Optional DVSA MOT lookup unavailable: '
+                + (error instanceof Error ? error.message : 'unknown'));
             return null;
         }
     }
