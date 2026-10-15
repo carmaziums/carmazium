@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
@@ -1076,101 +1077,8 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             </div>
                         )}
 
-                        {/* Detailed Specifications */}
-                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
-                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Specifications</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                                
-                                {/* Overview */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Overview</h4>
-                                    <div className="space-y-2">
-                                        {listing.make && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Make:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.make}</span></div>}
-                                        {listing.model && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Model:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.model}</span></div>}
-                                        {listing.year && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Year:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.year}</span></div>}
-                                        {listing.bodyType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Body type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bodyType}</span></div>}
-                                        {listing.color && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Exterior colour:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.color}</span></div>}
-                                        {listing.mileage !== null && listing.mileage !== undefined && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Mileage:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.mileage.toLocaleString('en-GB')} mi</span></div>}
-                                        {listing.condition && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Condition:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.condition.replace('_', ' ')}</span></div>}
-                                        {listing.vrm && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Registration:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.vrm}</span></div>}
-                                        {listing.monthOfFirstRegistration && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Reg. date:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.monthOfFirstRegistration}</span></div>}
-                                    </div>
-                                </div>
-
-                                {/* Fuel Economy */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Fuel Economy</h4>
-                                    <div className="space-y-2">
-                                        {listing.fuelType && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Fuel type:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.fuelType}</span></div>}
-                                        {listing.co2Emissions && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">CO2 emissions:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.co2Emissions} g/km</span></div>}
-                                        {listing.ulezCompliant !== null && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">ULEZ compliant:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.ulezCompliant ? "Yes" : "No"}</span></div>}
-                                        {listing.euroStandard && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Euro standard:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.euroStandard.replace('_', ' ')}</span></div>}
-                                    </div>
-                                </div>
-
-                                {/* Performance */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Performance</h4>
-                                    <div className="space-y-2">
-                                        {listing.transmission && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Gearbox:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.transmission}</span></div>}
-                                        {listing.engineSize && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Engine size:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.engineSize} cc</span></div>}
-                                        {listing.bhp && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Horsepower:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.bhp} bhp</span></div>}
-                                    </div>
-                                </div>
-
-                                {/* Measurements */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">Measurements</h4>
-                                    <div className="space-y-2">
-                                        {listing.doors && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Doors:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.doors}</span></div>}
-                                        {listing.seats && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Maximum seating:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.seats}</span></div>}
-                                        {listing.wheelplan && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Wheelplan:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.wheelplan}</span></div>}
-                                    </div>
-                                </div>
-
-                                {/* DVLA History */}
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-4 border-b border-[var(--border-default)] pb-2">History &amp; Status</h4>
-                                    <div className="space-y-2">
-                                        {listing.motStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Status:</span><span className={`font-semibold text-sm ${listing.motStatus === 'Valid' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.motStatus}</span></div>}
-                                        {listing.motExpiryDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">MOT Expiry:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.motExpiryDate}</span></div>}
-                                        {listing.taxStatus && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Status:</span><span className={`font-semibold text-sm ${listing.taxStatus === 'Taxed' ? 'text-emerald-400' : 'text-amber-400'}`}>{listing.taxStatus}</span></div>}
-                                        {listing.taxDueDate && <div className="flex justify-between"><span className="text-[var(--text-muted)] text-sm">Tax Due:</span><span className="text-[var(--text-primary)] font-semibold text-sm">{listing.taxDueDate}</span></div>}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Key Information */}
-                        <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
-                            <h3 className="text-xl font-bold mb-6 border-l-4 border-primary pl-4">Key Information</h3>
-                            <div className="grid grid-cols-2 gap-6">
-                                {[
-                                    { label: "Year", value: listing.year },
-                                    { label: "Mileage", value: listing.mileage ? `${listing.mileage.toLocaleString()} mi` : null },
-                                    { label: "Engine", value: listing.engineSize ? `${listing.engineSize}cc` : null },
-                                    { label: "Power", value: listing.bhp ? `${listing.bhp} bhp` : null },
-                                    { label: "Transmission", value: listing.transmission },
-                                    { label: "Colour", value: listing.color },
-                                    { label: "Doors", value: listing.doors },
-                                    { label: "Seats", value: listing.seats },
-                                    { label: "Fuel Type", value: listing.fuelType },
-                                    { label: "Body Type", value: listing.bodyType },
-                                    { label: "Condition", value: listing.condition },
-                                    { label: "VRM", value: listing.vrm },
-                                    { label: "MOT Status", value: listing.motStatus ? `${listing.motStatus}${listing.motExpiryDate ? ` (exp. ${listing.motExpiryDate})` : ''}` : null },
-                                    { label: "Tax Status", value: listing.taxStatus ? `${listing.taxStatus}${listing.taxDueDate ? ` (due ${listing.taxDueDate})` : ''}` : null },
-                                    { label: "First Registered", value: listing.monthOfFirstRegistration },
-                                    { label: "Type Approval", value: listing.typeApproval },
-                                    { label: "Wheelplan", value: listing.wheelplan },
-                                ].filter(i => i.value != null).map((item, i) => (
-                                    <div key={i} className="flex justify-between border-b border-[var(--border-default)] pb-2">
-                                        <span className="text-[var(--text-muted)] text-sm">{item.label}</span>
-                                        <span className="text-[var(--text-primary)] font-semibold text-sm">{String(item.value)}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Shared full buyer vehicle details: DVLA facts, seller specs and the saved MOT timeline. */}
+                        <BuyerVehicleInformation listing={listing} />
 
                         {/* Features */}
                         {listing.features && Array.isArray(listing.features) && listing.features.length > 0 && (
