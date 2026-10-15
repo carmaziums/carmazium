@@ -137,3 +137,12 @@ test('retail searches hide unrelated featured vehicles, use honest placeholders 
   assert.match(native, /Unable to load vehicles/);
   assert.match(native, /Connection error/);
 });
+
+test('rapid changes in retail search cannot display stale requests', () => {
+  const web = read('src/app/search/page.tsx');
+  assert.match(web, /const latestSearchRequest = React\.useRef\(0\)/);
+  assert.match(web, /if \(requestId !== latestSearchRequest\.current\) return/);
+  const native = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+  assert.match(native, /const activeSearchRequest = useRef\(0\)/);
+  assert.match(native, /if \(requestId !== activeSearchRequest\.current\) return/);
+});

@@ -401,8 +401,11 @@ function SearchPageContent() {
         return f
     }, [])
 
-    // Fetch listings
+    // Reject stale results: fast filter/sort changes can cause overlapping
+    // requests. Only the newest query is allowed to replace the visible stock.
+    const latestSearchRequest = React.useRef(0)
     const fetchListings = React.useCallback(async (filterState: FilterState, page = 1) => {
+        const requestId = ++latestSearchRequest.current
         try {
             setLoading(true)
             setError(null)
@@ -421,16 +424,18 @@ function SearchPageContent() {
             }
             apiFilters.page = page
             const response = await getListings(apiFilters)
+            if (requestId !== latestSearchRequest.current) return
 
             setListings(response.data)
             setTotalCount(response.pagination.total)
             setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
         } catch (err) {
+            if (requestId !== latestSearchRequest.current) return
             console.error('Failed to fetch listings:', err)
             setError(err instanceof Error ? err.message : 'Failed to load listings')
         } finally {
-            setLoading(false)
+            if (requestId === latestSearchRequest.current) setLoading(false)
         }
     }, [buildApiFilters, userLocation?.lat, userLocation?.lng])
 
