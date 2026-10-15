@@ -37,6 +37,11 @@ export function BrowseByBodyType() {
                 >
                     Browse by body type
                 </motion.h2>
+                <div className="mb-4 text-center">
+                    <Link href="/used-car-types" className="inline-flex min-h-11 items-center rounded-lg text-sm font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        Not sure which body type suits you? Read the buying guide
+                    </Link>
+                </div>
 
                 {/* Infinite Carousel Container */}
                 <div className="relative mt-8 sm:mt-12 overflow-hidden py-4">

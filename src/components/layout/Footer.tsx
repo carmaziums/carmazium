@@ -41,6 +41,7 @@ export function Footer() {
                         <ul className="mt-4 grid gap-2.5">
                             <li><Link href="/" className={footerLinkClass}>Home</Link></li>
                             <li><Link href="/search" className={footerLinkClass}>Buy Cars</Link></li>
+                            <li><Link href="/used-car-types" className={footerLinkClass}>Used Car Body Types</Link></li>
                             <li><Link href="/sell" className={footerLinkClass}>Sell Cars</Link></li>
                             <li><Link href="/auctions" className={footerLinkClass}>TradeXchange</Link></li>
                             <li><Link href="/services" className={footerLinkClass}>Services Hub</Link></li>
