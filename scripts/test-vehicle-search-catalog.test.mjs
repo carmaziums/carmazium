@@ -54,3 +54,17 @@ test('technical search filters are wired across backend, web and native', () => 
   }
   assert.match(backend, /buildFeatureConditions\(features\)/);
 });
+
+test('model variant selections are queryable across backend, website and native app', () => {
+  const dto = read('backend/src/listings/dto/listing-filter.dto.ts');
+  const service = read('backend/src/listings/listings.service.ts');
+  assert.match(dto, /variant\\?: string/);
+  assert.match(service, /where\\.variant = \\{ contains: variant, mode: 'insensitive' \\}/);
+  for (const file of ['src/lib/listingApi.ts', 'carmazium app/carmazium app/src/lib/listingsApi.ts']) {
+    assert.match(read(file), /variant/);
+    assert.match(read(file), /(?:params|filters)\\.variant/);
+  }
+  for (const file of ['src/app/search/page.tsx', 'carmazium app/carmazium app/src/screens/main/SearchScreen.tsx']) {
+    assert.match(read(file), /getVariantsForModel/);
+  }
+});
