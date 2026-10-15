@@ -13,6 +13,7 @@ import { AuctionsService } from '../auctions/auctions.service';
 import { HandoverDocumentsService } from '../auctions/handover-documents.service';
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
+import { hasOtherActiveRetailRegistration } from '../listings/retail-uniqueness';
 import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
 import { classifyHistoricalAuction } from './auction-history-reconciliation';
 import {
@@ -1001,6 +1002,13 @@ export class AdminService {
         }
         if (listing.status !== 'PENDING_REVIEW') {
             throw new BadRequestException('Only listings awaiting review can be approved');
+        }
+
+        if (listing.type === 'CLASSIFIED'
+            && await hasOtherActiveRetailRegistration(this.prisma, listing)) {
+            throw new ConflictException(
+                'Another active retail advert has this registration. Verify seller authority and withdraw the outdated advert before approval.',
+            );
         }
 
         const readiness = getListingSubmissionReadiness(listing, {

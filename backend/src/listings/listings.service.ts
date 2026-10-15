@@ -1,5 +1,6 @@
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
+import { hasOtherActiveRetailRegistration } from './retail-uniqueness';
 import { geoBounds, haversineMiles } from './search-geo';
 import {
     Injectable,
@@ -2631,6 +2632,13 @@ export class ListingsService {
         if (status === 'ACTIVE' && !['ACTIVE', 'WITHDRAWN'].includes(listing.status)) {
             throw new BadRequestException(
                 'This listing has not been approved yet. Submit it for review from the listing editor instead.',
+            );
+        }
+        if (status === 'ACTIVE' && listing.status === 'WITHDRAWN'
+            && listing.type === 'CLASSIFIED'
+            && await hasOtherActiveRetailRegistration(this.prisma, listing)) {
+            throw new BadRequestException(
+                'Another active retail advert has this registration. Ask CarMazium support to verify and resolve the duplicate before relisting.',
             );
         }
 
