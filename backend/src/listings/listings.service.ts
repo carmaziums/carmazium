@@ -7,6 +7,7 @@ import {
     NotFoundException,
     ForbiddenException,
     BadRequestException,
+    Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
@@ -39,6 +40,8 @@ import { SellersService } from '../sellers/sellers.service';
 import { ScraperService } from '../scraper/scraper.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { DealersService } from '../dealers/dealers.service';
+import { DvlaService } from '../dvla/dvla.service';
+import { motEnrichmentUpdate } from './mot-backfill';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import {
@@ -139,6 +142,11 @@ const mapBodyType = (body?: DtoBodyType): BodyType | null => {
 @Injectable()
 export class ListingsService {
     private readonly logger = new Logger(ListingsService.name);
+    // An in-process, bounded throttle: no production schema change or background
+    // fleet-wide calls; only live retail detail views request official history.
+    private readonly motBackfillAttempts = new Map<string, number>();
+    private motBackfillActive = 0;
+    private motBackfillNextAt = 0;
 
     constructor(
         private readonly prisma: PrismaService,
@@ -147,6 +155,7 @@ export class ListingsService {
         private readonly scraper: ScraperService,
         private readonly notificationsService: NotificationsService,
         private readonly dealersService: DealersService,
+        @Optional() private readonly dvlaService?: DvlaService,
     ) { }
 
     /**
@@ -2193,6 +2202,65 @@ export class ListingsService {
         });
     }
 
+
+    /**
+     * Repair historical ACTIVE retail records progressively when viewed.
+     * Only the official DVLA + DVSA lookup is used: no AI inference, no estimated
+     * transmission/MPG/performance. First page view stays fast; a later refresh
+     * can display recovered MOT tests.
+     *
+     * Bounded to 2 concurrent requests and 1 start per 5 seconds, with a
+     * 24-hour negative retry budget per vehicle (even if DVSA is unavailable).
+     * All writes are guarded by current status and an unchanged empty history.
+     */
+    private backfillRetailMotOnView(listing: any): void {
+        if (!this.dvlaService
+            || !this.config.get<string>('DVLA_API_KEY')
+            || !this.config.get<string>('MOT_HISTORY_API_KEY')
+            || listing?.type !== 'CLASSIFIED' || listing?.status !== 'ACTIVE'
+            || !listing?.id || !listing?.vrm
+            || (Array.isArray(listing.motHistory) && listing.motHistory.length > 0)
+            || !/^[A-Z0-9]{2,7}$/.test(String(listing.vrm).replace(/\\s+/g, '').toUpperCase())) return;
+
+        const now = Date.now();
+        const last = this.motBackfillAttempts.get(listing.id) || 0;
+        if (now - last < 24 * 60 * 60 * 1000
+            || this.motBackfillActive >= 2
+            || now < this.motBackfillNextAt) return;
+
+        if (this.motBackfillAttempts.size >= 2000) this.motBackfillAttempts.clear();
+        this.motBackfillAttempts.set(listing.id, now);
+        this.motBackfillNextAt = now + 5000;
+        this.motBackfillActive++;
+
+        void (async () => {
+            try {
+                const official = await this.dvlaService!.lookupVrm(listing.vrm, false);
+                const update = motEnrichmentUpdate(listing, official);
+                if (!update) return;
+                // Exact original empty-value guard prevents overwriting history
+                // supplied concurrently by a seller or updated by another call.
+                await this.prisma.listing.updateMany({
+                    where: {
+                        id: listing.id, type: 'CLASSIFIED', status: 'ACTIVE', deletedAt: null,
+                        OR: [
+                            { motHistory: { equals: Prisma.DbNull } },
+                            { motHistory: { equals: [] } },
+                        ],
+                    },
+                    data: {
+                        motHistory: update.motHistory as Prisma.InputJsonValue,
+                        ...(update.model ? { model: update.model } : {}),
+                    },
+                });
+            } catch (error) {
+                this.logger.warn('Official MOT history backfill was unavailable for a retail listing');
+            } finally {
+                this.motBackfillActive--;
+            }
+        })();
+    }
+
     /**
      * Find a single listing by slug (SEO-friendly) or ID.
      * `viewerId` is only present when the caller is authenticated (via
@@ -2291,6 +2359,9 @@ export class ListingsService {
         if (!listing) {
             throw new NotFoundException(`Listing with slug/id "${slugOrId}" not found`);
         }
+
+        // Non-blocking official-record repair for older retail inventory.
+        this.backfillRetailMotOnView(listing);
 
         // Fire-and-forget strictly incrementing the viewCount logic
         this.prisma.listing.update({
