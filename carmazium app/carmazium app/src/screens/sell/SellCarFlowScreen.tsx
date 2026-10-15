@@ -14,6 +14,8 @@ import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
+import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
+
 import { normalizeNativeTransmission, normalizeNativeBodyType, normalizeNativeRegistration, type NativeVehicleType } from '../../lib/sellerVehicleSpecs';
 import { IconButton } from '../../components/IconButton';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
@@ -177,11 +179,6 @@ const WRITE_OFF_CATS = [
   { v: 'NONE', l: 'None' }, { v: 'CAT_S', l: 'Cat S' },
   { v: 'CAT_N', l: 'Cat N' }, { v: 'CAT_B', l: 'Cat B' },
   { v: 'CAT_A', l: 'Cat A' },
-];
-const PRESET_FEATURES = [
-  'Navigation', 'Leather Seats', 'Heated Seats', 'Sunroof', 'Bluetooth',
-  'Parking Sensors', 'Reverse Camera', 'Cruise Control', 'Climate Control',
-  'Apple CarPlay', 'Android Auto', 'DAB Radio', 'LED Headlights', 'Alloy Wheels', 'Tow Bar',
 ];
 // Source of truth for body-type icons app-wide — see src/constants/bodyTypes.ts
 const BODY_TYPES = BODY_TYPE_ICONS.map(b => ({ v: b.value, l: b.label, icon: b.icon }));
@@ -685,6 +682,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [co2Emissions, setCo2Emissions] = useState('');
   // Features & Description
   const [features, setFeatures] = useState<string[]>([]);
+  const [featureSearch, setFeatureSearch] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -2847,21 +2845,34 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Features */}
         <SectionBox title="Features">
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {PRESET_FEATURES.map(f => {
-              const on = features.includes(f);
-              return (
-                <TouchableOpacity
-                  key={f}
-                  style={[s.pill, on && s.pillActive]}
-                  onPress={() => setFeatures(p => on ? p.filter(x => x !== f) : [...p, f])}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[s.pillText, on && s.pillTextActive]}>{f}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <TextInput
+            style={[s.input, { marginBottom: 12 }]}
+            placeholder="Search vehicle equipment"
+            placeholderTextColor={Colors.borderMuted}
+            value={featureSearch}
+            onChangeText={setFeatureSearch}
+            autoCorrect={false}
+          />
+          {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
+            const visible = options.filter(f => f.toLowerCase().includes(featureSearch.trim().toLowerCase()));
+            if (!visible.length) return null;
+            return (
+              <View key={group} style={{ marginBottom: 16 }}>
+                <Text style={[s.pillText, { marginBottom: 8, color: Colors.textSecondary }]}>{group}</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {visible.map(f => {
+                    const on = features.includes(f);
+                    return <TouchableOpacity key={f}
+                      style={[s.pill, on && s.pillActive]}
+                      onPress={() => setFeatures(p => on ? p.filter(x => x !== f) : [...p, f])}
+                      activeOpacity={0.7}>
+                      <Text style={[s.pillText, on && s.pillTextActive]}>{f}</Text>
+                    </TouchableOpacity>;
+                  })}
+                </View>
+              </View>
+            );
+          })}
           <TextInput
             style={[s.input, { marginTop: 12 }]}
             placeholder="Additional features (comma separated)"
