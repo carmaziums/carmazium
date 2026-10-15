@@ -326,7 +326,20 @@ describe('calculateVehicleValuation', () => {
         expect(adjusted.auction.suggestedReserve).toBeLessThanOrEqual(adjusted.auction.marketValue);
     });
 
-    it('does not let an extreme active asking price dominate completed outcomes', () => {
+    it('recalculates frozen valuations created under the previous high-retail rule', () => {
+        const currentBase = calculateVehicleValuation(vehicle, []);
+        const legacyBase = {
+            ...currentBase,
+            retail: { suggestedAsking: currentBase.high, suggestedMinimum: currentBase.mid },
+        };
+        const specification = { ...vehicle, condition: 'FAIR', numberOfKeys: 1 };
+        const oldJourneyResult = applyVehicleSpecificationAdjustments(legacyBase, specification);
+        const freshJourneyResult = applyVehicleSpecificationAdjustments(currentBase, specification);
+        expect(oldJourneyResult.retail.suggestedAsking).toBe(freshJourneyResult.retail.suggestedAsking);
+        expect(oldJourneyResult.auction.marketValue).toBe(freshJourneyResult.auction.marketValue);
+    });
+
+    it('does not let an extreme active asking price dominate completed outcomes',
         const result = calculateVehicleValuation(vehicle, [
             { price: 7000, year: 2019, mileage: 60000, kind: 'SALE' },
             { price: 7100, year: 2019, mileage: 60000, kind: 'SALE' },
