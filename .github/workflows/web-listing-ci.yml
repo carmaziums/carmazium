@@ -25,6 +25,7 @@ on:
       - "src/lib/sellerAuctionDraft.ts"
       - "scripts/test-seller-vehicle-specs.test.mjs"
       - "scripts/test-mazium-description.test.mjs"
+      - "scripts/test-buyer-mot-display.test.mjs"
       - "src/lib/pricingConfig.ts"
       - "src/lib/auctionApi.ts"
       - "src/lib/auctionPricing.ts"
@@ -64,6 +65,9 @@ jobs:
 
       - name: Verify 3D damage upload, buyer evidence and safe navigation
         run: node --test scripts/test-web-damage-release.test.mjs
+
+      - name: Verify buyer DVLA and MOT information for both auction and retail
+        run: node --test scripts/test-buyer-mot-display.test.mjs
 
       - name: Typecheck web listing surfaces
         shell: bash

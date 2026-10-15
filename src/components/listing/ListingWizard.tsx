@@ -2534,10 +2534,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.primaryColour) set("primaryColour", r.primaryColour)
                                                 
                                                 if (r.motHistory && r.motHistory.length > 0) {
+                                                    // Historical MOT mileage is evidence, not the
+                                                    // seller's current odometer. Preserve the
+                                                    // mileage they entered for the public advert.
                                                     set("motHistory", r.motHistory)
-                                                    // Autofill mileage from the latest valid MOT (which is usually the first one since it's sorted descending by completedDate)
-                                                    const latestOdometer = r.motHistory.find((m: any) => m.odometerValue)?.odometerValue
-                                                    if (latestOdometer) set("mileage", latestOdometer)
                                                 }
                                                 
                                                 if (r.colour) set("color", r.colour)
