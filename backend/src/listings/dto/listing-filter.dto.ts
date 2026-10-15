@@ -147,6 +147,26 @@ export class ListingFilterDto {
     @Min(0)
     maxCo2?: number;
 
+    // ─── Performance and running costs (only stored, verifiable values) ────
+    @ApiPropertyOptional({ description: 'Minimum combined fuel economy (MPG)', example: 45 })
+    @Type(() => Number)
+    @IsNumber()
+    @IsOptional()
+    @Min(0)
+    minCombinedMpg?: number;
+
+    @ApiPropertyOptional({ description: 'Maximum 0–60 mph acceleration time in seconds', example: 7.5 })
+    @Type(() => Number)
+    @IsNumber()
+    @IsOptional()
+    @Min(0)
+    maxZeroTo60Mph?: number;
+
+    @ApiPropertyOptional({ description: 'Drivetrain: FWD, RWD, AWD or 4WD', example: 'AWD' })
+    @IsString()
+    @IsOptional()
+    driveType?: string;
+
     // ─── Condition & Compliance ───────────────────────────────────────────────
     @ApiPropertyOptional({ description: 'Filter by one or more vehicle conditions', enum: VehicleCondition, isArray: true })
     @Transform(({ value }) => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : undefined))
