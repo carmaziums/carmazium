@@ -2248,7 +2248,7 @@ export class ListingsService {
                             { motHistory: { equals: [] } },
                         ],
                     },
-                    data: { motHistory: update.motHistory as Prisma.InputJsonValue },
+                    data: { motHistory: update.motHistory as unknown as Prisma.InputJsonValue },
                 });
                 // Protect a model edited concurrently by the seller.
                 if (saved.count > 0 && update.model) {
