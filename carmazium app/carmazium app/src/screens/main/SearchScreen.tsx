@@ -10,7 +10,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
-import { CAR_MAKES } from '../../data/carData';
+import { CAR_MAKES, getModelsForMake } from '../../data/carData';
+import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
@@ -66,7 +67,7 @@ const QUICK_FILTERS: QuickFilter[] = [
 // simply never used: any make outside these ten was unfilterable (BUY-007).
 // Web solves the same problem with a text input over a datalist; this is the
 // native equivalent.
-const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Range Rover', 'Tesla'];
+const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes-Benz', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Land Rover', 'Tesla'];
 // Display labels only — the backend's FuelType enum uses different casing/wording
 // for several of these ('Plug-in Hybrid' -> 'PLUGIN_HYBRID', 'Hydrogen' ->
 // 'HYDROGEN_CELL', etc.), so FUEL_MAP below must run before any of these reach the
@@ -154,14 +155,6 @@ const EURO_OPTIONS = [
   { value: 'EURO_6', label: 'Euro 6' },
   { value: 'EURO_6D', label: 'Euro 6d' },
 ];
-const POPULAR_FEATURES = [
-  'Air Conditioning', 'Climate Control', 'Alloy Wheels',
-  'Parking Sensors (Front)', 'Parking Sensors (Rear)', 'Reverse Camera',
-  'Sat Nav', 'Bluetooth / Hands Free', 'DAB Radio',
-  'Heated Seats', 'Cruise Control', 'Panoramic Roof',
-  'Apple CarPlay', 'Android Auto', 'Keyless Entry',
-  'Lane Assist', 'Blind Spot Monitoring', 'Adaptive Cruise Control',
-];
 // "Near Me" — the backend has no lat/lng/radius filter param at all (confirmed
 // against listing-filter.dto.ts), so web itself just filters/sorts the already-
 // fetched page client-side by haversine distance (src/app/search/page.tsx).
@@ -189,16 +182,13 @@ export const SearchScreen: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
-  // Make filter query. Empty shows the popular ten; typing filters all 71 so a
-  // make outside the popular set is reachable (BUY-007). A selected make is
-  // always kept in the list, so it never disappears from view while active.
   const [makeQuery, setMakeQuery] = useState('');
+  const [showAllMakes, setShowAllMakes] = useState(false);
+  const [featureQuery, setFeatureQuery] = useState('');
   const makeQueryTrimmed = makeQuery.trim().toLowerCase();
   const visibleMakes = makeQueryTrimmed
     ? CAR_MAKES.filter(m => m.toLowerCase().includes(makeQueryTrimmed))
-    // Union, not concat: a selected make outside the popular ten must stay
-    // visible, or the active filter looks unset.
-    : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
+    : showAllMakes ? CAR_MAKES : Array.from(new Set([...POPULAR_MAKES, ...selectedMakes]));
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(route.params?.maxPrice ? Number(route.params.maxPrice) : 150000);
   const [selectedBody, setSelectedBody] = useState<string>(route.params?.bodyType ?? '');
@@ -887,7 +877,7 @@ export const SearchScreen: React.FC = () => {
                     <TouchableOpacity
                       key={m}
                       style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => setSelectedMakes(prev => prev.includes(m) ? [] : [m])}
+                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? [] : [m]); setModelFilter(''); setMakeQuery(''); }}
                       activeOpacity={0.7}
                     >
                       <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
@@ -898,21 +888,46 @@ export const SearchScreen: React.FC = () => {
                 </View>
               )}
 
+              {!makeQuery.trim() && (
+                <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
+                  accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
+                  style={{ paddingVertical: 12 }}>
+                  <Text style={[s.filterChipText, { color: Colors.primary }]}>
+                    {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <View style={s.divider} />
 
-              {/* Model + Location */}
+              {/* Model selection uses the same full catalogue as the website. */}
               <Text style={s.filterLabel}>MODEL</Text>
               <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>MODEL NAME</Text>
-                <TextInput
-                  style={s.inputBoxValue}
-                  value={modelFilter}
-                  onChangeText={setModelFilter}
-                  placeholder="e.g. Q7, 3 Series"
-                  placeholderTextColor={Colors.borderMuted}
-                  autoCapitalize="words"
-                />
+                <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
+                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={setModelFilter}
+                  placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
+                  placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
               </View>
+              {selectedMakes.length === 1 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
+                  <View style={s.chipGrid}>
+                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => setModelFilter('')}>
+                      <Text style={[s.filterChipText, !modelFilter && s.filterChipTextActive]}>All models</Text>
+                    </TouchableOpacity>
+                    {getModelsForMake(selectedMakes[0])
+                      .filter(m => !modelFilter || m.toLowerCase().includes(modelFilter.toLowerCase()))
+                      .slice(0, 35)
+                      .map(m => <TouchableOpacity key={m}
+                        style={[s.filterChip, modelFilter === m && s.filterChipActive]}
+                        onPress={() => setModelFilter(m)}>
+                        <Text style={[s.filterChipText, modelFilter === m && s.filterChipTextActive]}>{m}</Text>
+                      </TouchableOpacity>)}
+                  </View>
+                  {getModelsForMake(selectedMakes[0]).length > 35 && !modelFilter &&
+                    <Text style={s.makeEmptyText}>Type a model name to search the full list.</Text>}
+                </View>
+              )}
 
               <View style={s.divider} />
 
@@ -1283,27 +1298,29 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Features / Options — 18-item checklist, matches web's POPULAR_FEATURES */}
+              {/* Equipment from shared web/native catalogue. */}
               <Text style={s.filterLabel}>FEATURES / OPTIONS</Text>
-              <View style={s.chipGrid}>
-                {POPULAR_FEATURES.map(feat => {
-                  const selected = selectedFeatures.includes(feat);
-                  return (
-                    <TouchableOpacity
-                      key={feat}
-                      style={[s.filterChip, selected && s.filterChipActive]}
-                      onPress={() =>
-                        setSelectedFeatures(prev =>
-                          prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat],
-                        )
-                      }
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <TextInput style={s.makeSearchInput} placeholder="Search vehicle equipment"
+                placeholderTextColor={Colors.iconMuted} value={featureQuery}
+                onChangeText={setFeatureQuery} autoCorrect={false} />
+              {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
+                const visible = options.filter(feat => feat.toLowerCase().includes(featureQuery.trim().toLowerCase()));
+                if (!visible.length) return null;
+                return <View key={group} style={{ marginTop: 12 }}>
+                  <Text style={s.inputBoxLabel}>{group.toUpperCase()}</Text>
+                  <View style={s.chipGrid}>
+                    {visible.map(feat => {
+                      const selected = selectedFeatures.includes(feat);
+                      return <TouchableOpacity key={feat}
+                        style={[s.filterChip, selected && s.filterChipActive]}
+                        onPress={() => setSelectedFeatures(prev => prev.includes(feat) ? prev.filter(x => x !== feat) : [...prev, feat])}
+                        activeOpacity={0.7}>
+                        <Text style={[s.filterChipText, selected && s.filterChipTextActive]}>{feat}</Text>
+                      </TouchableOpacity>;
+                    })}
+                  </View>
+                </View>;
+              })}
 
               <View style={s.divider} />
 
