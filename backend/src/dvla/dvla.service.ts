@@ -268,7 +268,7 @@ export class DvlaService {
         if (this.coreCache.size >= 200) this.coreCache.clear();
         this.coreCache.set(normalised, {
             value: { ...combined, motHistory: combined.motHistory?.slice() },
-            expiresAt: Date.now() + 2 * 60_000,
+            expiresAt: Date.now() + (combined.model ? 2 * 60_000 : 20_000),
         });
         return allowAiEnrichment
             ? this.enrichCore(normalised, { ...combined }, this.aiSyncTimeoutMs)
@@ -434,9 +434,9 @@ export class DvlaService {
         }
         if (this.motTokenInFlight) return this.motTokenInFlight;
 
-        const clientId = this.configService.get<string>('MOT_CLIENT_ID');
-        const clientSecret = this.configService.get<string>('MOT_CLIENT_SECRET');
-        const tokenUrl = this.configService.get<string>('MOT_TOKEN_URL');
+        const clientId = this.configService.get<string>('MOT_HISTORY_CLIENT_ID');
+        const clientSecret = this.configService.get<string>('MOT_HISTORY_CLIENT_SECRET');
+        const tokenUrl = this.configService.get<string>('MOT_HISTORY_TOKEN_URL');
         if (!clientId || !clientSecret || !tokenUrl) return null;
 
         // Restrict the configured token host so a misconfiguration cannot send
@@ -452,7 +452,7 @@ export class DvlaService {
             || parsedUrl.hostname !== 'login.microsoftonline.com'
             || !/^\/[^/]+\/oauth2\/v2\.0\/token$/.test(parsedUrl.pathname)
             || parsedUrl.username || parsedUrl.password || parsedUrl.search || parsedUrl.hash) {
-            this.logger.warn('MOT_TOKEN_URL must be the DVSA-issued Microsoft Entra token URL');
+            this.logger.warn('MOT_HISTORY_TOKEN_URL must be the DVSA-issued Microsoft Entra token URL');
             return null;
         }
 
@@ -465,7 +465,7 @@ export class DvlaService {
                     grant_type: 'client_credentials',
                     client_id: clientId,
                     client_secret: clientSecret,
-                    scope: this.configService.get<string>('MOT_SCOPE') || 'https://tapi.dvsa.gov.uk/.default',
+                    scope: this.configService.get<string>('MOT_HISTORY_SCOPE') || 'https://tapi.dvsa.gov.uk/.default',
                 }).toString(),
             });
             if (!response.ok) {
@@ -503,7 +503,7 @@ export class DvlaService {
         year?: number;
         lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
     } | null> {
-        const apiKey = this.configService.get<string>('MOT_API_KEY');
+        const apiKey = this.configService.get<string>('MOT_HISTORY_API_KEY');
         if (!apiKey) return null;
 
         const url = 'https://history.mot.api.gov.uk/v1/trade/vehicles/registration/'
