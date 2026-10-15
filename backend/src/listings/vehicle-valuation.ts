@@ -401,7 +401,7 @@ export function applyVehicleSpecificationAdjustments(
     input: VehicleValuationInput,
 ): VehicleValuationResult {
     const factor = vehicleSpecificationAdjustmentFactor(input);
-    if (Math.abs(factor - 1) < 0.0001) return { ...base };
+    if (Math.abs(factor - 1) < 0.0001 && base.retail.suggestedAsking <= base.low) return { ...base };
 
     const low = roundMoney(base.low * factor);
     const mid = roundMoney(base.mid * factor);
@@ -424,7 +424,9 @@ export function applyVehicleSpecificationAdjustments(
         low,
         mid,
         high,
-        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
+        explanation: Math.abs(factor - 1) < 0.0001
+            ? base.explanation
+            : `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
             suggestedAsking: retailSuggestedAsking,
             suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
