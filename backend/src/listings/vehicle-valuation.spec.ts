@@ -339,7 +339,7 @@ describe('calculateVehicleValuation', () => {
         expect(oldJourneyResult.auction.marketValue).toBe(freshJourneyResult.auction.marketValue);
     });
 
-    it('does not let an extreme active asking price dominate completed outcomes',
+    it('does not let an extreme active asking price dominate completed outcomes', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 7000, year: 2019, mileage: 60000, kind: 'SALE' },
             { price: 7100, year: 2019, mileage: 60000, kind: 'SALE' },
