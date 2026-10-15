@@ -1,5 +1,7 @@
 import Link from "next/link"
 import type { Metadata } from "next"
+import { ArrowLeft, ArrowRight, Gavel } from "lucide-react"
+import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
 
 export const metadata: Metadata = {
     title: "Car Auctions UK | How Dealer Auctions Work",
@@ -15,9 +17,6 @@ export const metadata: Metadata = {
         locale: "en_GB",
     },
 }
-
-import { ArrowLeft, ArrowRight, Gavel } from "lucide-react"
-import { HowAuctionsWork } from "@/components/auctions/HowAuctionsWork"
 
 export default function AuctionHowItWorksPage() {
     return (
