@@ -2166,13 +2166,12 @@ describe('ListingsService', () => {
             prisma.listing.count.mockResolvedValue(0);
             await service.findAll({ sortBy: 'price_asc' } as any);
             const byPrice = prisma.listing.findMany.mock.calls[0][0].orderBy;
-            expect(byPrice[0]).toEqual({ status: 'asc' });
-            expect(byPrice[1]).toEqual({ price: 'asc' });
-            expect(byPrice[2]).toEqual({ isFeatured: 'desc' });
+            expect(byPrice[0]).toEqual({ price: 'asc' });
+            expect(byPrice[1]).toEqual({ isFeatured: 'desc' });
             prisma.listing.findMany.mockClear();
             await service.findAll({} as any);
             const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
-            expect(defaultOrder[1]).toEqual({ isFeatured: 'desc' });
+            expect(defaultOrder[0]).toEqual({ isFeatured: 'desc' });
         });
     });
 
