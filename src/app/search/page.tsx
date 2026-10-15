@@ -1216,6 +1216,7 @@ function SearchPageContent() {
                                 <FilterTag label={`${appliedFilters.minMileage || '0'}–${appliedFilters.maxMileage || '∞'} mi`} onRemove={() => clearFilter({ minMileage: '', maxMileage: '' })} />
                             )}
                             {appliedFilters.fuelTypes.map(f => <FilterTag key={f} label={f} onRemove={() => clearFilter({ fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) })} />)}
+                            {appliedFilters.features.map(feature => <FilterTag key={feature} label={`Feature: ${feature}`} onRemove={() => clearFilter({ features: appliedFilters.features.filter(x => x !== feature) })} />)}
                             {appliedFilters.transmissions.map(t => <FilterTag key={t} label={t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
                             {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
                             {appliedFilters.exteriorGrades.map(g => <FilterTag key={g} label={`Exterior Grade ${g}`} onRemove={() => clearFilter({ exteriorGrades: appliedFilters.exteriorGrades.filter(x => x !== g) })} />)}
