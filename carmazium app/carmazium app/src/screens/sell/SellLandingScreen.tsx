@@ -136,7 +136,9 @@ export const SellLandingScreen: React.FC = () => {
       });
       if (id !== requestId.current) return;
       if (!answer?.auction || !Number.isFinite(answer.auction.marketValue)
-        || answer.auction.marketValue <= 0) {
+        || answer.auction.marketValue <= 0 || !answer.retail
+        || !Number.isFinite(answer.retail.suggestedAsking)
+        || answer.retail.suggestedAsking <= 0) {
         setError('No reliable price figures were returned. You can still create your listing and set your own price.');
         return;
       }
