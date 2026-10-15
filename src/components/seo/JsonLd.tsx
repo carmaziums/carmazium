@@ -43,6 +43,23 @@ export function MarketplaceJsonLd({
                     height: 192,
                 },
                 image: logoUrl,
+                email: "info@carmazium.com",
+                telephone: "+441218385040",
+                address: {
+                    "@type": "PostalAddress",
+                    streetAddress: "181-187 Hunters Road",
+                    addressLocality: "Birmingham",
+                    postalCode: "B19 1ES",
+                    addressCountry: "GB",
+                },
+                contactPoint: [{
+                    "@type": "ContactPoint",
+                    contactType: "customer support",
+                    telephone: "+441218385040",
+                    email: "info@carmazium.com",
+                    areaServed: "GB",
+                    availableLanguage: ["en"],
+                }],
                 description:
                     "CarMazium is a UK online car marketplace for buying, selling and auctioning vehicles.",
                 areaServed: {

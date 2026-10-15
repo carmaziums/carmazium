@@ -28,7 +28,7 @@ export function Footer() {
                                 width={400}
                                 height={100}
                                 className="h-9 w-auto"
-                                priority
+                                loading="lazy"
                             />
                         </Link>
                         <p className="mt-4 max-w-sm text-sm leading-6 text-slate-300">
