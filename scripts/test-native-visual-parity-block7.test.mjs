@@ -50,8 +50,14 @@ test('Sell starts with web-equivalent valuation then free dealer auction or £1 
   }
   assert.ok(webSell.includes('QuickValuationForm'));
   assert.ok(webSell.includes('Get My Free Valuation'));
-  assert.ok(webSell.includes('FREE Dealer Auction'));
-  assert.ok(webSell.includes('£1 Retail Listing'));
+  // Web valuation now offers both routes as explicit price-and-action cards.
+  // Native retains its previous copy until the next native app parity build.
+  assert.ok(webSell.includes('Dealer auction value'));
+  assert.ok(webSell.includes('Suggested retail asking price'));
+  assert.ok(webSell.includes('Choose Free Auction'));
+  assert.ok(webSell.includes('Choose £1 Retail'));
+  assert.ok(webSell.includes('startListing("AUCTION")'));
+  assert.ok(webSell.includes('startListing("CLASSIFIED")'));
   assert.ok(landing.includes('getVehicleValuation('));
   assert.ok(landing.includes('Number.isFinite(answer.auction.marketValue)'));
   assert.ok(landing.includes('answer.auction.marketValue <= 0'));
