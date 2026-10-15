@@ -2147,4 +2147,52 @@ describe('ListingsService', () => {
             expect(prisma.listing.findMany).not.toHaveBeenCalled();
         });
     });
+
+    describe('retail listing display integrity', () => {
+        it('includes dealership verification and display name without leaking seller contact', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ listingType: 'CLASSIFIED' } as any);
+            const query = prisma.listing.findMany.mock.calls[0][0];
+            expect(query.where.type).toBe('CLASSIFIED');
+            expect(query.include.seller.select.dealerProfile.select).toEqual(expect.objectContaining({
+                companyName: true, isVerified: true, logo: true,
+            }));
+            expect(query.include.seller.select.dealerProfile.select.phone).toBeUndefined();
+            expect(query.include.seller.select.sellerProfile.select.totalSales).toBe(true);
+        });
+        it('honours price sorting before featured promotion but preserves featured priority for default ordering', async () => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ sortBy: 'price_asc' } as any);
+            const byPrice = prisma.listing.findMany.mock.calls[0][0].orderBy;
+            expect(byPrice[0]).toEqual({ status: 'asc' });
+            expect(byPrice[1]).toEqual({ price: 'asc' });
+            expect(byPrice[2]).toEqual({ isFeatured: 'desc' });
+            prisma.listing.findMany.mockClear();
+            await service.findAll({} as any);
+            const defaultOrder = prisma.listing.findMany.mock.calls[0][0].orderBy;
+            expect(defaultOrder[1]).toEqual({ isFeatured: 'desc' });
+        });
+    });
+
+    describe('featured retail listing privacy', () => {
+        it('brands admin-created featured cars as CarMazium and strips private seller price boundaries', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'featured-admin', type: 'CLASSIFIED', price: 9500,
+                priceMin: 5000, priceMax: 11000,
+                seller: { id: 'staff-1', role: 'ADMIN', firstName: 'Private', lastName: 'Staff' },
+            }]);
+            const results = await service.getFeaturedListings();
+            const listed = results[0] as any;
+            expect(listed.seller.firstName).toBe('CarMazium');
+            expect(listed.seller.lastName).toBe('');
+            expect(listed.priceMin).toBeUndefined();
+            expect(listed.priceMax).toBeUndefined();
+            const query = prisma.listing.findMany.mock.calls[0][0];
+            expect(query.where.type).toBe('CLASSIFIED');
+            expect(query.include.seller.select.dealerProfile.select.companyName).toBe(true);
+            expect(query.include.seller.select.dealerProfile.select.phone).toBeUndefined();
+        });
+    });
 });

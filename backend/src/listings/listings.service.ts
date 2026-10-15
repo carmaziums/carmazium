@@ -2037,15 +2037,27 @@ export class ListingsService {
         }
 
         // ─── Sort ────────────────────────────────────────────────────────────
-        // Active listings always appear before SOLD ones (status: 'asc' puts ACTIVE before SOLD).
-        // Featured listings appear first, then the selected sort.
-        let orderBy: any[] = [{ status: 'asc' }, { isFeatured: 'desc' }, { createdAt: 'desc' }];
-        if (sortBy === 'price_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { price: 'asc' }];
-        else if (sortBy === 'price_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { price: 'desc' }];
-        else if (sortBy === 'mileage_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { mileage: 'asc' }];
-        else if (sortBy === 'mileage_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { mileage: 'desc' }];
-        else if (sortBy === 'year_desc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'desc' }];
-        else if (sortBy === 'year_asc') orderBy = [{ status: 'asc' }, { isFeatured: 'desc' }, { year: 'asc' }];
+        // Preserve ACTIVE before SOLD and default featured priority, but honour
+        // explicit buyer sort selection first. A £30k featured car must not
+        // precede a £5k ordinary car in price-low-to-high results.
+        // Stable tie-breakers keep pagination deterministic.
+        let orderBy: any[] = [{ status: 'asc' }, { isFeatured: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
+        const sortFields: Record<string, { field: string; direction: 'asc' | 'desc' }> = {
+            price_asc: { field: 'price', direction: 'asc' },
+            price_desc: { field: 'price', direction: 'desc' },
+            mileage_asc: { field: 'mileage', direction: 'asc' },
+            mileage_desc: { field: 'mileage', direction: 'desc' },
+            year_asc: { field: 'year', direction: 'asc' },
+            year_desc: { field: 'year', direction: 'desc' },
+        };
+        const chosenSort = sortBy ? sortFields[sortBy] : undefined;
+        if (chosenSort) orderBy = [
+            { status: 'asc' },
+            { [chosenSort.field]: chosenSort.direction },
+            { isFeatured: 'desc' },
+            { createdAt: 'desc' },
+            { id: 'asc' },
+        ];
 
         // Filter the COMPLETE matching inventory before pagination and counting.
         // Client-side per-page filtering loses nearby cars on later pages.
@@ -2084,10 +2096,27 @@ export class ListingsService {
                             role: true,
                             firstName: true,
                             lastName: true,
+                            profileImage: true,
+                            createdAt: true,
+                            // These are public display fields. Never return dealer
+                            // contact phone or private KYC details from search.
+                            dealerProfile: {
+                                select: {
+                                    id: true,
+                                    companyName: true,
+                                    logo: true,
+                                    isVerified: true,
+                                    description: true,
+                                    website: true,
+                                    businessAddress: true,
+                                },
+                            },
                             sellerProfile: {
                                 select: {
-                                    reliabilityScore: true
-                                }
+                                    reliabilityScore: true,
+                                    responseRate: true,
+                                    totalSales: true,
+                                },
                             }
                         }
                     },
@@ -2139,6 +2168,10 @@ export class ListingsService {
                         role: true,
                         firstName: true,
                         lastName: true,
+                        profileImage: true,
+                        dealerProfile: {
+                            select: { id: true, companyName: true, logo: true, isVerified: true },
+                        },
                         sellerProfile: {
                             select: { reliabilityScore: true },
                         },
@@ -2151,7 +2184,9 @@ export class ListingsService {
         });
         return listings.map((row: any) => {
             const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
-            return safe as Listing;
+            // Featured retail results use the same admin->CarMazium branding
+            // as general search. Never expose a staff member's real name.
+            return brandListingSeller(safe) as Listing;
         });
     }
 

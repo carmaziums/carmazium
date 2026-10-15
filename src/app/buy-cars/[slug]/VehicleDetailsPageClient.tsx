@@ -475,7 +475,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
         title: listing.title,
         subtitle: `${listing.engineSize ? `${listing.engineSize}cc` : ''} ${listing.bhp ? `${listing.bhp} BHP` : ''} | ${listing.transmission || ''} | ${listing.fuelType || ''}`,
         price: formatPrice(listing.price),
-        images: validImages.length > 0 ? validImages : ["/assets/images/placeholder-car.png"],
+        images: validImages.length > 0 ? validImages : ["/assets/images/placeholder-car.svg"],
         specs: {
             year: listing.year?.toString() || "-",
             mileage: listing.mileage ? `${listing.mileage.toLocaleString()} miles` : "-",

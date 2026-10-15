@@ -253,6 +253,9 @@ export const SearchScreen: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  // Ignore responses from earlier filter selections to prevent stale vehicle cards.
+  const activeSearchRequest = useRef(0);
 
   // Stable id-keyed press handler so HorizontalVehicleCard's React.memo isn't busted by a
   // fresh closure every render (mobile-audit.md P4) — looked up via ref so its identity
@@ -381,15 +384,18 @@ export const SearchScreen: React.FC = () => {
   }
 
   const fetch = useCallback(async (reset = true) => {
+    const requestId = reset ? ++activeSearchRequest.current : activeSearchRequest.current;
     if (reset) setLoading(true);
     else setLoadingMore(true);
     const p = reset ? 1 : page;
     try {
+      if (reset) setSearchError(null);
       if (maxDistanceMi != null && (userLat == null || userLng == null)) {
         if (reset) { setListings([]); setTotal(0); setHasMore(false); }
         return;
       }
-      const { listings: items, total: t } = await searchListings(buildParams(p));
+      const { listings: items, total: t } = await searchListings({ ...buildParams(p), strictErrors: true });
+      if (requestId !== activeSearchRequest.current) return;
       if (reset) {
         setListings(items);
         setPage(2);
@@ -401,11 +407,16 @@ export const SearchScreen: React.FC = () => {
       }
       setHasMore(items.length === 20 && p * 20 < t);
     } catch {
-      // keep existing
+      if (requestId !== activeSearchRequest.current) return;
+      // A network/API error must never masquerade as zero matching cars.
+      setSearchError('Could not load retail listings. Check your connection and try again.');
+      if (reset) { setListings([]); setTotal(0); setHasMore(false); }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (requestId === activeSearchRequest.current) {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
@@ -751,6 +762,15 @@ export const SearchScreen: React.FC = () => {
             </View>
           ))}
         </View>
+      ) : searchError && listings.length === 0 ? (
+        <EmptyState
+          icon="alert-circle-outline"
+          eyebrow="Connection error"
+          title="Unable to load vehicles"
+          subtitle={searchError}
+          ctaLabel="Try again"
+          onCtaPress={() => fetch(true)}
+        />
       ) : listings.length === 0 ? (
         // No-results is the most-hit dead end in the app and had no way out —
         // the user had to work out for themselves that a filter was the cause.
@@ -778,7 +798,11 @@ export const SearchScreen: React.FC = () => {
           onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
-            loadingMore ? (
+            searchError ? (
+              <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
+                <Text style={s.endText}>Loading failed — tap to retry</Text>
+              </TouchableOpacity>
+            ) : loadingMore ? (
               <View style={s.loadMoreWrap}>
                 <ActivityIndicator size="small" color={Colors.accent} />
               </View>

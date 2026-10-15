@@ -245,7 +245,9 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     model:        l.model        ?? 'Unknown',
     variant:      l.variant      ?? '',
     year:         l.year         ?? new Date().getFullYear(),
-    price:        l.price,
+    // Prisma Decimal serialises to a JSON string; normalise before passing
+    // into native pricing/finance cards expecting a finite numeric price.
+    price:        Number(l.price),
     mileage:      l.mileage      ?? 0,
     fuelType:     mapFuelType(l.fuelType),
     transmission: mapTransmission(l.transmission),
@@ -438,6 +440,8 @@ export async function searchListings(params: {
   sortBy?: string;
   page?: number;
   limit?: number;
+  /** Opt-in for interactive search to report errors instead of false empty inventory. */
+  strictErrors?: boolean;
 }): Promise<{ listings: CarListing[]; total: number }> {
   try {
     const query = new URLSearchParams();
@@ -516,7 +520,8 @@ export async function searchListings(params: {
       listings: items.map(mapApiListingToCarListing),
       total: res?.pagination?.total ?? 0,
     };
-  } catch {
+  } catch (err) {
+    if (params.strictErrors) throw err;
     return { listings: [], total: 0 };
   }
 }

@@ -401,8 +401,11 @@ function SearchPageContent() {
         return f
     }, [])
 
-    // Fetch listings
+    // Reject stale results: fast filter/sort changes can cause overlapping
+    // requests. Only the newest query is allowed to replace the visible stock.
+    const latestSearchRequest = React.useRef(0)
     const fetchListings = React.useCallback(async (filterState: FilterState, page = 1) => {
+        const requestId = ++latestSearchRequest.current
         try {
             setLoading(true)
             setError(null)
@@ -421,16 +424,18 @@ function SearchPageContent() {
             }
             apiFilters.page = page
             const response = await getListings(apiFilters)
+            if (requestId !== latestSearchRequest.current) return
 
             setListings(response.data)
             setTotalCount(response.pagination.total)
             setTotalPages(response.pagination.totalPages)
             setCurrentPage(page)
         } catch (err) {
+            if (requestId !== latestSearchRequest.current) return
             console.error('Failed to fetch listings:', err)
             setError(err instanceof Error ? err.message : 'Failed to load listings')
         } finally {
-            setLoading(false)
+            if (requestId === latestSearchRequest.current) setLoading(false)
         }
     }, [buildApiFilters, userLocation?.lat, userLocation?.lng])
 
@@ -546,7 +551,7 @@ function SearchPageContent() {
             const valid = listing.images.find(img => !img.includes('example.com'))
             if (valid) return valid
         }
-        return "/assets/images/featured-sports.png"
+        return "/assets/images/placeholder-car.svg"
     }
 
     // Quick-remove helper for applied filter tags
@@ -1273,7 +1278,10 @@ function SearchPageContent() {
                     )}
 
                     {/* ── Featured Pinned Row ────────────────────────────────── */}
-                    {!loading && featuredListings.length > 0 && (
+                    {/* Promotional cars must not bypass search filters or appear
+                        on later result pages. The backend still honours paid
+                        feature placement for the unfiltered default feed. */}
+                    {!loading && !error && activeFilterCount === 0 && !appliedFilters.search.trim() && currentPage === 1 && featuredListings.length > 0 && (
                         <div className="mb-8">
                             <div className="flex items-center gap-2 mb-4">
                                 <Star size={15} className="text-amber-400 fill-amber-400" />
