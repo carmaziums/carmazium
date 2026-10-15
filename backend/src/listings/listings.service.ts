@@ -1879,7 +1879,7 @@ export class ListingsService {
     async findAll(filterDto: ListingFilterDto): Promise<{ data: Listing[]; total: number }> {
         const {
             minPrice, maxPrice,
-            make, model,
+            make, model, variant,
             minYear, maxYear, year,  // year is deprecated alias for minYear
             minMileage, maxMileage,
             fuelType, fuelTypes, transmission, transmissions, bodyType,
@@ -1906,6 +1906,7 @@ export class ListingsService {
         // ─── Make / Model ───────────────────────────────────────────────────
         if (make) where.make = { contains: make, mode: 'insensitive' };
         if (model) where.model = { contains: model, mode: 'insensitive' };
+        if (variant) where.variant = { contains: variant, mode: 'insensitive' };
 
         // ─── Year range ─────────────────────────────────────────────────────
         const effectiveMinYear = minYear ?? year; // backwards-compat alias
