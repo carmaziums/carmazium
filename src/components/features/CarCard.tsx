@@ -150,13 +150,20 @@ export function CarCard({
                     {/* Tap the image → full-screen gallery preview. The card's
                         "View Details" button below is the way to reach the
                         detail page, so image taps are freed up for previewing. */}
-                    <CardImageCarousel
-                        images={gallery.length > 0 ? gallery : [image]}
-                        alt={title}
-                        lightboxOnTap
-                        imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
-                        sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
-                    />
+                    {gallery.length > 0 ? (
+                        <CardImageCarousel
+                            images={gallery}
+                            alt={title}
+                            lightboxOnTap
+                            imageClassName={`object-contain drop-shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:-rotate-1 ${status === 'SOLD' ? 'opacity-30 grayscale' : ''}`}
+                            sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+                        />
+                    ) : (
+                        <div className="h-full w-full flex flex-col items-center justify-center gap-3 text-slate-400" role="img" aria-label={`No vehicle photos supplied for ${title}`}>
+                            <Car size={54} strokeWidth={1.2} aria-hidden="true" />
+                            <span className="text-xs font-semibold uppercase tracking-wide">Vehicle photos not supplied</span>
+                        </div>
+                    )
                 </div>
 
                 {/* Banner Label Ribbon */}
