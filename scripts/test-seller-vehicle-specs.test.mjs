@@ -150,6 +150,57 @@ test("guest FREE Auction and £1 Retail handoffs retain selected vehicle, normal
     }
 })
 
+test("DVSA-backed auction selection keeps known vehicle specs, MOT facts and nothing confidential", () => {
+    const vehicle = {
+        vrm: "AB18 XYZ", make: "HONDA", model: "JAZZ", variant: "EX",
+        year: "2018", mileage: "45000", vehicleType: "CAR",
+        fuelType: "PETROL", transmission: "CVT", bodyType: "HATCHBACK",
+        color: "BLUE", primaryColour: "BLUE", engineSize: "1318",
+        bhp: "101", doors: "5", seats: "5",
+        euroStandard: "EURO_6", co2Emissions: "106",
+        motStatus: "Valid", taxStatus: "Taxed", motExpiryDate: "2027-01-15",
+        dateOfLastV5CIssued: "2022-02-10", firstUsedDate: "2018-01-22",
+        motHistory: [{
+            completedDate: "2026-01-10 11:00:00",
+            testResult: "PASSED",
+            odometerValue: "38000",
+            odometerUnit: "MI",
+            motTestNumber: "12345678901",
+            defects: [{ type: "ADVISORY", text: "Tyre approaching legal limit", dangerous: false }],
+        }],
+        vin: "must-not-be-saved", secretKey: "must-not-be-saved", images: ["must-not-be-saved"],
+    }
+    const now = Date.now()
+    const saved = createSellerHandoff("AUCTION", vehicle, "journey-123", true, now)
+    const restored = parseSellerHandoff(JSON.stringify(saved), now + 20)
+    assert.equal(restored.listingType, "AUCTION")
+    for (const field of ["make", "model", "variant", "year", "mileage", "fuelType", "transmission", "bodyType", "engineSize", "co2Emissions", "motStatus", "motExpiryDate", "firstUsedDate"]) {
+        assert.equal(restored.vehicle[field], vehicle[field], field)
+    }
+    assert.equal(restored.vehicle.vrm, "AB18XYZ")
+    assert.equal(restored.vehicle.motHistory[0].odometerValue, "38000")
+    assert.equal(restored.vehicle.motHistory[0].defects[0].type, "ADVISORY")
+    assert.equal(restored.vehicle.vin, undefined)
+    assert.equal(restored.vehicle.secretKey, undefined)
+    assert.equal(restored.vehicle.images, undefined)
+    assert.equal(restored.valuationId, "journey-123")
+})
+
+test("seller landing persists its handoff before event dispatch, and wizard consumes it without stale draft overwrite", () => {
+    const page = readFileSync(new URL("../src/app/sell/page.tsx", import.meta.url), "utf8")
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const start = page.indexOf('const startListing = (listingType:')
+    const save = page.indexOf('saved = saveSellerHandoff(', start)
+    const dispatch = page.indexOf('window.dispatchEvent(new CustomEvent("carmazium:start-seller-listing"', start)
+    assert.ok(start >= 0 && save > start && dispatch > save)
+    assert.match(page, /if \(!saved\) \{\s*setError\(/)
+    assert.match(wizard, /draftRestoreAttemptedRef\.current = true\s*clearSellerHandoff\(sessionStorage\)/)
+    assert.match(wizard, /const pending = readSellerHandoff\(sessionStorage\)/)
+    assert.match(wizard, /if \(!isAuthenticated\) \{\s*setShowLoginModal\(true\)/)
+    assert.match(wizard, /title: sameVehicle && prev\.title \? prev\.title : \[/)
+    assert.match(wizard, /listingType: pending\.listingType/)
+})
+
 test("handoff is tab-scoped, consumable and expires after twenty minutes", () => {
     const memory = new Map()
     const storage = {
