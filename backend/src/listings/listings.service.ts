@@ -2168,6 +2168,10 @@ export class ListingsService {
                         role: true,
                         firstName: true,
                         lastName: true,
+                        profileImage: true,
+                        dealerProfile: {
+                            select: { id: true, companyName: true, logo: true, isVerified: true },
+                        },
                         sellerProfile: {
                             select: { reliabilityScore: true },
                         },
@@ -2180,7 +2184,9 @@ export class ListingsService {
         });
         return listings.map((row: any) => {
             const { priceMin: _priceMin, priceMax: _priceMax, ...safe } = row;
-            return safe as Listing;
+            // Featured retail results use the same admin->CarMazium branding
+            // as general search. Never expose a staff member's real name.
+            return brandListingSeller(safe) as Listing;
         });
     }
 

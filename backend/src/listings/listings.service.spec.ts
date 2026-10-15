@@ -2175,4 +2175,24 @@ describe('ListingsService', () => {
             expect(defaultOrder[1]).toEqual({ isFeatured: 'desc' });
         });
     });
+
+    describe('featured retail listing privacy', () => {
+        it('brands admin-created featured cars as CarMazium and strips private seller price boundaries', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'featured-admin', type: 'CLASSIFIED', price: 9500,
+                priceMin: 5000, priceMax: 11000,
+                seller: { id: 'staff-1', role: 'ADMIN', firstName: 'Private', lastName: 'Staff' },
+            }]);
+            const results = await service.getFeaturedListings();
+            const listed = results[0] as any;
+            expect(listed.seller.firstName).toBe('CarMazium');
+            expect(listed.seller.lastName).toBe('');
+            expect(listed.priceMin).toBeUndefined();
+            expect(listed.priceMax).toBeUndefined();
+            const query = prisma.listing.findMany.mock.calls[0][0];
+            expect(query.where.type).toBe('CLASSIFIED');
+            expect(query.include.seller.select.dealerProfile.select.companyName).toBe(true);
+            expect(query.include.seller.select.dealerProfile.select.phone).toBeUndefined();
+        });
+    });
 });
