@@ -13,6 +13,7 @@ import { CarListing } from '../../data/listings';
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { searchListings } from '../../lib/listingsApi';
+import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -122,18 +123,22 @@ const YEAR_OPTS = ['Any', '1990', '2000', '2010', '2015', '2018', ...Array.from(
 const YEAR_OPTS_MAX = YEAR_OPTS;
 const MILES_OPTS = ['Any', '10k', '20k', '30k', '40k', '60k', '80k', '100k'];
 const MILES_OPTS_MIN = ['Any', '5k', '10k', '20k', '30k', '40k', '60k', '80k'];
-// All eight values web offers (`src/app/search/page.tsx:59-68`). CAT_C and CAT_D
-// were missing, so those write-off categories could not be filtered on mobile
-// at all (BUY-008).
+// Seller-reported condition is independent of automatically calculated exterior grade.
 const CONDITIONS = [
   { id: 'EXCELLENT', label: 'Excellent' },
   { id: 'GOOD',      label: 'Good' },
   { id: 'FAIR',      label: 'Fair' },
   { id: 'POOR',      label: 'Poor' },
-  { id: 'CAT_S',     label: 'Cat S' },
-  { id: 'CAT_N',     label: 'Cat N' },
-  { id: 'CAT_C',     label: 'Cat C' },
-  { id: 'CAT_D',     label: 'Cat D' },
+];
+
+const WRITE_OFF_OPTIONS = [
+  { id: 'NONE', label: 'No write-off declared' },
+  { id: 'CAT_S', label: 'Cat S — structural' },
+  { id: 'CAT_N', label: 'Cat N — non-structural' },
+  { id: 'CAT_C', label: 'Cat C — historical' },
+  { id: 'CAT_D', label: 'Cat D — historical' },
+  { id: 'CAT_A', label: 'Cat A — auction salvage' },
+  { id: 'CAT_B', label: 'Cat B — auction salvage' },
 ];
 
 // Values are `TransmissionType` members (`backend/prisma/schema.prisma:49-56`);
@@ -207,6 +212,8 @@ export const SearchScreen: React.FC = () => {
   const [transmissions, setTransmissions] = useState<string[]>([]);
   // New filter dimensions
   const [conditions, setConditions] = useState<string[]>([]);
+  const [exteriorGrades, setExteriorGrades] = useState<number[]>([]);
+  const [writeOffCategories, setWriteOffCategories] = useState<string[]>([]);
   // Match web's three-state ULEZ filter: Any / compliant / not compliant.
   const [ulezCompliant, setUlezCompliant] = useState<'' | 'yes' | 'no'>('');
   const [minBhp, setMinBhp] = useState('');
@@ -347,6 +354,8 @@ export const SearchScreen: React.FC = () => {
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
+      exteriorGrades: exteriorGrades.length ? exteriorGrades : undefined,
+      writeOffCategories: writeOffCategories.length ? writeOffCategories : undefined,
       transmissions: transmissions.length ? transmissions : undefined,
       ulezCompliant: ulezCompliant === 'yes' ? true : ulezCompliant === 'no' ? false : undefined,
       minBhp: minBhp ? parseInt(minBhp) : undefined,
@@ -408,7 +417,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -426,7 +435,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -442,6 +451,8 @@ export const SearchScreen: React.FC = () => {
     maxMiles !== 'Any',
     transmissions.length > 0,
     conditions.length > 0,
+    exteriorGrades.length > 0,
+    writeOffCategories.length > 0,
     !!ulezCompliant,
     !!minBhp || !!maxBhp,
     !!minEngine || !!maxEngine,
@@ -463,7 +474,7 @@ export const SearchScreen: React.FC = () => {
   ].filter(Boolean).length;
 
   const advancedFilterCount = [
-    conditions.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
+    conditions.length > 0, exteriorGrades.length > 0, writeOffCategories.length > 0, !!minBhp || !!maxBhp, !!minEngine || !!maxEngine,
     !!maxCo2, !!minCombinedMpg || !!maxZeroTo60Mph || !!driveTypeFilter,
     vehicleType !== 'CAR', !!colorFilter, !!minDoors, !!minSeats,
     !!euroStandard, selectedFeatures.length > 0, !!locationFilter,
@@ -483,6 +494,8 @@ export const SearchScreen: React.FC = () => {
     setMaxMiles('Any');
     setTransmissions([]);
     setConditions([]);
+    setExteriorGrades([]);
+    setWriteOffCategories([]);
     setUlezCompliant('');
     setMinBhp('');
     setMaxBhp('');
@@ -1145,14 +1158,27 @@ export const SearchScreen: React.FC = () => {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={s.moreFiltersTitle}>More filters {advancedFilterCount > 0 ? `(${advancedFilterCount} active)` : ''}</Text>
-                  <Text style={s.moreFiltersSubtitle}>Condition, location, features and technical details</Text>
+                  <Text style={s.moreFiltersSubtitle}>Exterior grade, condition, insurance history and specs</Text>
                 </View>
                 <Ionicons name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.textSecondary} />
               </TouchableOpacity>
               {showAdvancedFilters && (
                 <>
-              {/* Condition */}
-              <Text style={s.filterLabel}>CONDITION</Text>
+              {/* Search the same Grade 1–5 computed from seller's damage map. */}
+              <Text style={s.filterLabel}>EXTERIOR GRADE (1–5)</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
+              <View style={s.chipGrid}>
+                {EXTERIOR_GRADE_OPTIONS.map(g => (
+                  <TouchableOpacity key={g.value} style={[s.filterChip, exteriorGrades.includes(g.value) && s.filterChipActive]}
+                    onPress={() => setExteriorGrades(prev => prev.includes(g.value) ? prev.filter(x => x !== g.value) : [...prev, g.value])}
+                    activeOpacity={0.7} accessibilityRole="button" accessibilityState={{ selected: exteriorGrades.includes(g.value) }}>
+                    <Text style={[s.filterChipText, exteriorGrades.includes(g.value) && s.filterChipTextActive]}>Grade {g.value} — {g.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.divider} />
+
+              <Text style={s.filterLabel}>SELLER-REPORTED CONDITION</Text>
               <View style={s.chipGrid}>
                 {CONDITIONS.map(c => (
                   <TouchableOpacity
@@ -1166,6 +1192,19 @@ export const SearchScreen: React.FC = () => {
                 ))}
               </View>
 
+              <View style={s.divider} />
+
+              <Text style={s.filterLabel}>INSURANCE WRITE-OFF STATUS</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently HPI-verified.</Text>
+              <View style={s.chipGrid}>
+                {WRITE_OFF_OPTIONS.map(c => (
+                  <TouchableOpacity key={c.id} style={[s.filterChip, writeOffCategories.includes(c.id) && s.filterChipActive]}
+                    onPress={() => setWriteOffCategories(prev => prev.includes(c.id) ? prev.filter(x => x !== c.id) : [...prev, c.id])}
+                    activeOpacity={0.7} accessibilityRole="button" accessibilityState={{ selected: writeOffCategories.includes(c.id) }}>
+                    <Text style={[s.filterChipText, writeOffCategories.includes(c.id) && s.filterChipTextActive]}>{c.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <View style={s.divider} />
 
               {/* BHP Range */}

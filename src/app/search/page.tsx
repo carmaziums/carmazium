@@ -11,7 +11,8 @@ import {
     Search, Filter, X, Gavel, AlertTriangle, Loader2,
     RotateCcw, ChevronDown, ShieldCheck, Star, ArrowRight, MapPin, Truck, EyeOff,
 } from "lucide-react"
-import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type EuroStandardValue } from "@/lib/listingApi"
+import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
+import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
 import { haversineDistanceMiles } from "@/lib/distance"
@@ -53,10 +54,16 @@ const CONDITION_OPTIONS: { value: VehicleConditionValue; label: string }[] = [
     { value: 'GOOD', label: 'Good' },
     { value: 'FAIR', label: 'Fair' },
     { value: 'POOR', label: 'Poor' },
-    { value: 'CAT_S', label: 'CAT S (write-off)' },
-    { value: 'CAT_N', label: 'CAT N (write-off)' },
-    { value: 'CAT_C', label: 'CAT C (write-off)' },
-    { value: 'CAT_D', label: 'CAT D (write-off)' },
+]
+
+const WRITE_OFF_OPTIONS: { value: WriteOffSearchValue; label: string }[] = [
+    { value: 'NONE', label: 'No write-off declared' },
+    { value: 'CAT_S', label: 'Cat S — structural' },
+    { value: 'CAT_N', label: 'Cat N — non-structural' },
+    { value: 'CAT_C', label: 'Cat C — historical' },
+    { value: 'CAT_D', label: 'Cat D — historical' },
+    { value: 'CAT_A', label: 'Cat A — auction salvage' },
+    { value: 'CAT_B', label: 'Cat B — auction salvage' },
 ]
 
 const EURO_OPTIONS: { value: EuroStandardValue; label: string }[] = [
@@ -108,6 +115,8 @@ interface FilterState {
     maxZeroTo60Mph: string
     driveType: string
     conditions: VehicleConditionValue[]
+    exteriorGrades: number[]
+    writeOffCategories: WriteOffSearchValue[]
     ulezCompliant: 'yes' | 'no' | ''
     euroStandard: EuroStandardValue | ''
     vehicleType: string
@@ -132,7 +141,7 @@ const INITIAL_FILTERS: FilterState = {
     minDoors: '', minSeats: '',
     minEngine: '', maxEngine: '', maxCo2: '',
     minCombinedMpg: '', maxZeroTo60Mph: '', driveType: '',
-    conditions: [], ulezCompliant: '', euroStandard: '',
+    conditions: [], exteriorGrades: [], writeOffCategories: [], ulezCompliant: '', euroStandard: '',
     vehicleType: 'CAR',
     minBhp: '', maxBhp: '',
     sellerType: '', location: '',
@@ -224,6 +233,8 @@ function SearchPageContent() {
     // Hydrate initial filters from URL query params
     const hydrateFromUrl = React.useCallback((): FilterState => {
         const p = (k: string) => searchParams.get(k) || ''
+        const oldConditions = searchParams.get('conditions')?.split(',').filter(Boolean) || (p('condition') ? [p('condition')] : [])
+        const oldWriteOffs = oldConditions.filter(c => WRITE_OFF_OPTIONS.some(opt => opt.value === c))
         return {
             search: p('search'), make: p('make'), model: p('model'), variant: p('variant'),
             minPrice: p('minPrice'), maxPrice: p('maxPrice'),
@@ -237,8 +248,10 @@ function SearchPageContent() {
             minDoors: p('minDoors'), minSeats: p('minSeats'),
             minEngine: p('minEngine'), maxEngine: p('maxEngine'), maxCo2: p('maxCo2'),
             minCombinedMpg: p('minCombinedMpg'), maxZeroTo60Mph: p('maxZeroTo60Mph'), driveType: p('driveType'),
-            conditions: (searchParams.get('conditions')?.split(',').filter(Boolean) as VehicleConditionValue[])
-                || (p('condition') ? [p('condition') as VehicleConditionValue] : []),
+            conditions: oldConditions.filter(c => CONDITION_OPTIONS.some(opt => opt.value === c)) as VehicleConditionValue[],
+            exteriorGrades: (searchParams.get('exteriorGrades')?.split(',') || []).map(Number).filter(g => Number.isInteger(g) && g >= 1 && g <= 5),
+            writeOffCategories: Array.from(new Set([...(searchParams.get('writeOffCategories')?.split(',') || []), ...oldWriteOffs]
+                .filter(c => WRITE_OFF_OPTIONS.some(opt => opt.value === c)))) as WriteOffSearchValue[],
             ulezCompliant: (p('ulezCompliant') as 'yes' | 'no') || '',
             euroStandard: (p('euroStandard') as EuroStandardValue) || '',
             vehicleType: p('vehicleType') || 'CAR',
@@ -329,6 +342,8 @@ function SearchPageContent() {
         if (appliedFilters.maxCo2) count++
         if (appliedFilters.minCombinedMpg || appliedFilters.maxZeroTo60Mph || appliedFilters.driveType) count++
         if (appliedFilters.conditions.length) count++
+        if (appliedFilters.exteriorGrades.length) count++
+        if (appliedFilters.writeOffCategories.length) count++
         if (appliedFilters.ulezCompliant) count++
         if (appliedFilters.euroStandard) count++
         if (appliedFilters.vehicleType && appliedFilters.vehicleType !== 'CAR') count++
@@ -369,6 +384,8 @@ function SearchPageContent() {
         if (state.maxZeroTo60Mph) f.maxZeroTo60Mph = parseFloat(state.maxZeroTo60Mph)
         if (state.driveType) f.driveType = state.driveType
         if (state.conditions.length) f.conditions = state.conditions
+        if (state.exteriorGrades.length) f.exteriorGrades = state.exteriorGrades
+        if (state.writeOffCategories.length) f.writeOffCategories = state.writeOffCategories
         if (state.ulezCompliant) f.ulezCompliant = state.ulezCompliant === 'yes'
         if (state.euroStandard) f.euroStandard = state.euroStandard
         if (state.vehicleType) f.vehicleType = state.vehicleType
@@ -850,19 +867,30 @@ function SearchPageContent() {
                                 </div>
                             </FilterSection>
 
-                            {/* Condition */}
-                            <FilterSection title="Condition">
+                            <FilterSection title="Exterior Grade (1–5)">
+                                <p className="text-xs text-[var(--text-muted)] mb-2">Calculated from seller-reported defects. Grade 1 is best.</p>
+                                <div className="space-y-1">
+                                    {EXTERIOR_GRADE_OPTIONS.map(g => {
+                                        const active = filters.exteriorGrades.includes(g.value)
+                                        return <button key={g.value} type="button" aria-pressed={active}
+                                            onClick={() => set('exteriorGrades', active ? filters.exteriorGrades.filter(x => x !== g.value) : [...filters.exteriorGrades, g.value])}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 border ${active ? 'bg-primary/15 text-primary border-primary/30' : 'text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-card)]'}`}
+                                        ><span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${active ? 'bg-primary border-primary' : 'border-[var(--border-default)]'}`}>{active ? '✓' : ''}</span>Grade {g.value} — {g.label}</button>
+                                    })}
+                                </div>
+                            </FilterSection>
+
+                            <FilterSection title="Seller-Reported Condition">
                                 <div className="space-y-1">
                                     {CONDITION_OPTIONS.map(opt => {
                                         const isActive = filters.conditions.includes(opt.value)
-                                        const isCat = opt.value.startsWith('CAT')
                                         return (
                                             <button key={opt.value} type="button"
                                                 onClick={() => set('conditions', isActive
                                                     ? filters.conditions.filter(c => c !== opt.value)
                                                     : [...filters.conditions, opt.value]
                                                 )}
-                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : isCat ? 'text-amber-500/70 hover:bg-amber-500/10 border border-transparent' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
+                                                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer flex items-center gap-2 ${isActive ? 'bg-primary/15 text-primary border border-primary/30' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white border border-transparent'}`}
                                             >
                                                 <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${isActive ? 'bg-primary border-primary' : 'border-white/20'}`}>
                                                     {isActive && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -870,6 +898,19 @@ function SearchPageContent() {
                                                 {opt.label}
                                             </button>
                                         )
+                                    })}
+                                </div>
+                            </FilterSection>
+
+                            <FilterSection title="Insurance Write-off Status">
+                                <p className="text-xs text-[var(--text-muted)] mb-2">Declared history may not be independently HPI-verified.</p>
+                                <div className="space-y-1">
+                                    {WRITE_OFF_OPTIONS.map(w => {
+                                        const active = filters.writeOffCategories.includes(w.value)
+                                        return <button key={w.value} type="button" aria-pressed={active}
+                                            onClick={() => set('writeOffCategories', active ? filters.writeOffCategories.filter(x => x !== w.value) : [...filters.writeOffCategories, w.value])}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 border ${active ? 'bg-amber-500/15 text-amber-600 border-amber-500/40' : 'text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-card)]'}`}
+                                        ><span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${active ? 'bg-amber-500 border-amber-500' : 'border-[var(--border-default)]'}`}>{active ? '✓' : ''}</span>{w.label}</button>
                                     })}
                                 </div>
                             </FilterSection>
@@ -1161,6 +1202,11 @@ function SearchPageContent() {
                             {appliedFilters.fuelTypes.map(f => <FilterTag key={f} label={f} onRemove={() => clearFilter({ fuelTypes: appliedFilters.fuelTypes.filter(x => x !== f) })} />)}
                             {appliedFilters.transmissions.map(t => <FilterTag key={t} label={t} onRemove={() => clearFilter({ transmissions: appliedFilters.transmissions.filter(x => x !== t) })} />)}
                             {appliedFilters.color && <FilterTag label={`Colour: ${appliedFilters.color}`} onRemove={() => clearFilter({ color: '' })} />}
+                            {appliedFilters.exteriorGrades.map(g => <FilterTag key={g} label={`Exterior Grade ${g}`} onRemove={() => clearFilter({ exteriorGrades: appliedFilters.exteriorGrades.filter(x => x !== g) })} />)}
+                            {appliedFilters.writeOffCategories.map(c => {
+                                const label = WRITE_OFF_OPTIONS.find(o => o.value === c)?.label ?? c
+                                return <FilterTag key={c} label={`Write-off: ${label}`} onRemove={() => clearFilter({ writeOffCategories: appliedFilters.writeOffCategories.filter(x => x !== c) })} />
+                            })}
                             {appliedFilters.conditions.map(c => {
                                 const label = CONDITION_OPTIONS.find(o => o.value === c)?.label ?? c
                                 return <FilterTag key={c} label={`Condition: ${label}`} onRemove={() => clearFilter({ conditions: appliedFilters.conditions.filter(x => x !== c) })} />

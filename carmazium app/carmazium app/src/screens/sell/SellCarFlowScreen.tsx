@@ -40,7 +40,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
-import { computeExteriorGradeFromDefectCount } from '../../lib/exteriorGrade';
+import { computeExteriorGradeFromDefectCount, EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   encodeVehicleImageCategory,
@@ -454,20 +454,14 @@ function Damage3DMapper({
 
   const markedLabels = records.map(r => r.zone);
   const grade = computeExteriorGradeFromDefectCount(records.length);
-  const gradeLabels: Record<number, string> = {
-    1: 'Excellent',
-    2: 'Great',
-    3: 'Good',
-    4: 'Average',
-    5: 'Below Average',
-  };
+  const gradeLabel = EXTERIOR_GRADE_OPTIONS.find(item => item.value === grade)?.label ?? 'Unknown';
 
   return (
     <View>
       <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderMuted, backgroundColor: Colors.darkBlue_2a2a35 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
-            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabels[grade]}</Text>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabel}</Text>
             <Text style={[s.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
           </View>
           <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.lg }}>{grade}</Text>
@@ -2864,6 +2858,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             required
             error={fieldError('condition') ?? undefined}
           />
+          <Text style={s.fieldHint}>General condition is declared by the seller; Exterior Grade 1–5 is calculated separately from the damage map and is searchable.</Text>
           <PillRow
             label="NUMBER OF OWNERS"
             options={OWNERS_OPTIONS}

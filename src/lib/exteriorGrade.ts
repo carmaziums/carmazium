@@ -1,3 +1,11 @@
+export const EXTERIOR_GRADE_OPTIONS = [
+    { value: 1, label: 'Excellent', defects: '0–1 reported defects' },
+    { value: 2, label: 'Great', defects: '2–3 reported defects' },
+    { value: 3, label: 'Good', defects: '4–5 reported defects' },
+    { value: 4, label: 'Average', defects: '6–7 reported defects' },
+    { value: 5, label: 'Below Average', defects: '8+ reported defects' },
+] as const
+
 /**
  * Automatic exterior grade derived only from the number of seller-reported
  * damage/defect records.

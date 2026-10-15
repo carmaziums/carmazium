@@ -407,6 +407,8 @@ export async function searchListings(params: {
   fuelTypes?: string[];
   bodyType?: string;
   conditions?: string[];
+  exteriorGrades?: number[];
+  writeOffCategories?: string[];
   ulezCompliant?: boolean;
   minBhp?: number;
   maxBhp?: number;
@@ -449,6 +451,8 @@ export async function searchListings(params: {
     if (params.minMileage != null) query.set('minMileage', String(params.minMileage));
     if (params.maxMileage != null) query.set('maxMileage', String(params.maxMileage));
     if (params.conditions?.length) query.set('conditions', params.conditions.join(','));
+    if (params.exteriorGrades?.length) query.set('exteriorGrades', params.exteriorGrades.join(','));
+    if (params.writeOffCategories?.length) query.set('writeOffCategories', params.writeOffCategories.join(','));
     if (params.transmissions?.length) query.set('transmissions', params.transmissions.join(','));
     if (params.ulezCompliant === true) query.set('ulezCompliant', 'true');
     else if (params.ulezCompliant === false) query.set('ulezCompliant', 'false');

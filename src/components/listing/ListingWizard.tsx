@@ -2882,7 +2882,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     {/* Vehicle Condition */}
                                     <div id="vehicle-condition-field" className={`space-y-2 md:col-span-2 rounded-xl p-3 border ${hasAttemptedNext && !formData.condition ? 'border-red-500/70 bg-red-500/5' : 'border-transparent'}`}>
                                         <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Vehicle Condition *</label>
-                                        <p className="text-xs text-[var(--text-secondary)]">Choose the condition that best describes the vehicle today. This helps make the valuation more accurate.</p>
+                                        <p className="text-xs text-[var(--text-secondary)]">Describe the general condition. Exterior Grade 1–5 is calculated separately from the damage map and can be searched by buyers.</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                             {([
                                                 { value: "EXCELLENT", label: "Excellent", help: "Very clean, minimal wear" },

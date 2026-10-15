@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum, IsBoolean, IsArray, IsIn } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min, IsEnum, IsBoolean, IsArray, IsIn, Max } from 'class-validator';
 import {
     FuelType,
     Transmission as TransmissionType,
@@ -179,6 +179,22 @@ export class ListingFilterDto {
     @IsEnum(VehicleCondition, { each: true })
     @IsOptional()
     conditions?: VehicleCondition[];
+
+    @ApiPropertyOptional({ description: 'Calculated exterior grades, 1 best to 5 worst', example: '1,2' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => Number(v.trim())) : value)
+    @IsArray()
+    @IsInt({ each: true })
+    @Min(1, { each: true })
+    @Max(5, { each: true })
+    @IsOptional()
+    exteriorGrades?: number[];
+
+    @ApiPropertyOptional({ description: 'Separate insurance write-off categories', example: 'CAT_S,CAT_N' })
+    @Transform(({ value }) => typeof value === 'string' ? value.split(',').map((v: string) => v.trim()) : value)
+    @IsArray()
+    @IsIn(['NONE', 'CAT_S', 'CAT_N', 'CAT_A', 'CAT_B', 'CAT_C', 'CAT_D'], { each: true })
+    @IsOptional()
+    writeOffCategories?: string[];
 
     @ApiPropertyOptional({ description: 'Filter by ULEZ / CAZ compliance', example: true })
     @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)

@@ -4,6 +4,7 @@
 
 export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN' | 'HGV_TRACTOR_UNIT' | 'HGV_BOX' | 'HGV_CURTAIN_SIDER' | 'HGV_FLATBED' | 'HGV_TIPPER' | 'HGV_DROPSIDE' | 'HGV_TANKER' | 'HGV_REFRIGERATED' | 'HGV_CAR_TRANSPORTER'
 export type VehicleConditionValue = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CAT_S' | 'CAT_N' | 'CAT_C' | 'CAT_D'
+export type WriteOffSearchValue = 'NONE' | 'CAT_S' | 'CAT_N' | 'CAT_A' | 'CAT_B' | 'CAT_C' | 'CAT_D'
 export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D'
 export type VehicleTypeValue = 'CAR' | 'HGV' | 'MOTORCYCLE'
 
@@ -361,6 +362,8 @@ export interface ListingFilters {
     driveType?: string
     condition?: VehicleConditionValue
     conditions?: VehicleConditionValue[]
+    exteriorGrades?: number[]
+    writeOffCategories?: WriteOffSearchValue[]
     ulezCompliant?: boolean
     euroStandard?: EuroStandardValue
     isImported?: boolean
@@ -404,6 +407,8 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.color) params.append('color', filters.color)
         if (filters.minDoors !== undefined) params.append('minDoors', filters.minDoors.toString())
         if (filters.minSeats !== undefined) params.append('minSeats', filters.minSeats.toString())
+        if (filters.exteriorGrades?.length) params.append('exteriorGrades', filters.exteriorGrades.join(','))
+        if (filters.writeOffCategories?.length) params.append('writeOffCategories', filters.writeOffCategories.join(','))
         if (filters.conditions?.length) params.append('conditions', filters.conditions.join(','))
         else if (filters.condition) params.append('condition', filters.condition)
         if (filters.ulezCompliant !== undefined) params.append('ulezCompliant', filters.ulezCompliant.toString())
