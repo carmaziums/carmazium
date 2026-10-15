@@ -1558,6 +1558,26 @@ describe('ListingsService', () => {
             expect(events.get(lock.id).payload.lockedAt).not.toBe(old.toISOString());
         });
 
+        it('refreshes an expired quote even when an open browser keeps the old journey ID', async () => {
+            const events = mockPersistentQuotes();
+            const sameJourneyId = '11111111-1111-4111-8111-111111111111';
+            const first = await service.estimateVehicleValue({
+                ...car, valuationId: sameJourneyId,
+            } as any);
+            const expiry = new Date(Date.now() - 25 * 60 * 60 * 1000);
+            for (const row of events.values()) {
+                row.createdAt = expiry;
+                if (row.type === 'valuation_price_lock') row.payload.lockedAt = expiry.toISOString();
+            }
+
+            const second = await service.estimateVehicleValue({
+                ...car, year: 2017, mileage: 20000, valuationId: sameJourneyId,
+            } as any);
+            expect(second.retail.suggestedAsking).not.toBe(first.retail.suggestedAsking);
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_base_snapshot')).toHaveLength(2);
+        });
+
         it('makes simultaneous valuations return one price for the same VRM', async () => {
             const events = mockPersistentQuotes();
             const [first, second] = await Promise.all([
