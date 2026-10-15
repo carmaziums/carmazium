@@ -26,6 +26,8 @@ on:
       - 'scripts/check-android-release-candidate.mjs'
       - 'scripts/test-android-release-candidate.test.mjs'
       - 'scripts/test-ios-release-candidate.test.mjs'
+      - 'scripts/test-google-play-candidate.test.mjs'
+      - '.github/workflows/carmazium-android-play-candidate.yml'
       - '.github/workflows/carmazium-ios-release-candidate.yml'
       - 'scripts/verify-android-release-keystore.mjs'
       - 'scripts/test-verify-android-release-keystore.test.mjs'
@@ -262,6 +264,8 @@ jobs:
         run: node --test scripts/test-android-release-candidate.test.mjs
       - name: Validate signed iOS candidate production identity and manual-only approval gate
         run: node --test scripts/test-ios-release-candidate.test.mjs
+      - name: Validate Google Play AAB candidate and approval safety
+        run: node --test scripts/test-google-play-candidate.test.mjs
       - name: Self-test signed-evidence validator
         env:
           CARMAZIUM_RELEASE_SHA: ${{ github.sha }}
