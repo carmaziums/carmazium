@@ -203,6 +203,8 @@ function SearchPageContent() {
     const [isFilterOpen, setIsFilterOpen] = React.useState(false)
     const [modelManualEntry, setModelManualEntry] = React.useState(false)
     const [makeManualEntry, setMakeManualEntry] = React.useState(false)
+    const [makeQuery, setMakeQuery] = React.useState("")
+    const [modelQuery, setModelQuery] = React.useState("")
     const [featureQuery, setFeatureQuery] = React.useState("")
     const [detectingLocation, setDetectingLocation] = React.useState(false)
     const [listings, setListings] = React.useState<Listing[]>([])
@@ -643,6 +645,10 @@ function SearchPageContent() {
                             {/* Make & Model */}
                             <FilterSection title="Make / Model" defaultOpen={true}>
                                 <div className="space-y-2">
+                                    <Input type="search" aria-label="Find vehicle make" placeholder="Find a make (BMW, Toyota, MG…)"
+                                        value={makeQuery} onChange={e => setMakeQuery(e.target.value)}
+                                        className="h-10 text-sm" />
+                                    <p className="text-xs text-[var(--text-muted)]">Browse all {CAR_MAKES.length} manufacturers — type to narrow the list.</p>
                                     {/* Native select works reliably on Android/iOS and exposes the full A–Z catalogue. */}
                                     <select
                                         aria-label="Vehicle make"
@@ -653,17 +659,19 @@ function SearchPageContent() {
                                             set('make', value === '__other__' ? '' : value)
                                             set('model', '')
                                             set('variant', '')
+                                            setModelQuery('')
+                                            setMakeQuery('')
                                             setModelManualEntry(false)
                                         }}
                                         className="h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] px-3 text-sm text-[var(--text-primary)] focus:border-primary focus:outline-none"
                                     >
                                         <option value="">All makes</option>
-                                        {CAR_MAKES.map(m => <option key={m} value={m}>{m}</option>)}
+                                        {CAR_MAKES.filter(m => !makeQuery.trim() || m.toLowerCase().includes(makeQuery.trim().toLowerCase()) || m === filters.make).map(m => <option key={m} value={m}>{m}</option>)}
                                         <option value="__other__">Other make (type manually)</option>
                                     </select>
                                     {(makeManualEntry || (filters.make && !CAR_MAKES.includes(filters.make))) && (
                                         <Input placeholder="Enter unlisted make" value={filters.make}
-                                            onChange={e => { set('make', e.target.value); set('model', ''); set('variant', '') }}
+                                            onChange={e => { set('make', e.target.value); set('model', ''); set('variant', ''); setModelQuery('') }}
                                             className="h-9 text-sm" />
                                     )}
                                     {/* Model — inline scrollable list when make is known, text input otherwise */}
@@ -691,6 +699,9 @@ function SearchPageContent() {
                                             )
                                         }
                                         return (
+                                            <>
+                                            <Input type="search" value={modelQuery} onChange={e => setModelQuery(e.target.value)}
+                                                aria-label="Find vehicle model" placeholder="Find a model" className="h-9 text-sm" />
                                             <div className="max-h-44 overflow-y-auto rounded-md border border-[var(--border-default)] bg-[var(--bg-input)] space-y-0.5 p-1">
                                                 <button
                                                     type="button"
@@ -699,11 +710,11 @@ function SearchPageContent() {
                                                 >
                                                     All {filters.make} models
                                                 </button>
-                                                {models.map(m => (
+                                                {models.filter(m => !modelQuery.trim() || m.toLowerCase().includes(modelQuery.trim().toLowerCase()) || m === filters.model).map(m => (
                                                     <button
                                                         key={m}
                                                         type="button"
-                                                        onClick={() => { set('model', m); set('variant', '') }}
+                                                        onClick={() => { set('model', m); set('variant', ''); setModelQuery('') }}
                                                         className={`w-full text-left px-3 py-2 rounded text-sm transition-all ${filters.model === m ? 'bg-primary/15 text-primary font-semibold' : 'text-[var(--text-muted)] hover:bg-[var(--bg-card)] hover:text-[var(--text-secondary)] dark:hover:text-white'}`}
                                                     >
                                                         {m}
@@ -717,6 +728,7 @@ function SearchPageContent() {
                                                     Other (type manually)
                                                 </button>
                                             </div>
+                                            </>
                                         )
                                     })()}
                                     {/* Variant/trim filters the real saved listing.variant field. */}
