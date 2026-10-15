@@ -10,7 +10,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CarListing } from '../../data/listings';
-import { CAR_MAKES, getModelsForMake } from '../../data/carData';
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { searchListings } from '../../lib/listingsApi';
 import { naturalLanguageSearch } from '../../lib/aiApi';
@@ -220,6 +220,7 @@ export const SearchScreen: React.FC = () => {
   const [vehicleType, setVehicleType] = useState<'' | 'CAR' | 'HGV' | 'MOTORCYCLE'>('CAR');
   const [locationFilter, setLocationFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('');
+  const [variantFilter, setVariantFilter] = useState('');
   const [colorFilter, setColorFilter] = useState('');
   const [minDoors, setMinDoors] = useState('');
   const [minSeats, setMinSeats] = useState('');
@@ -286,7 +287,7 @@ export const SearchScreen: React.FC = () => {
       if (f.minYear) { setMinYear(f.minYear); hasNew = true; }
       if (f.maxYear) { setMaxYear(f.maxYear); hasNew = true; }
       if (f.transmission) { setTransmissions([f.transmission]); hasNew = true; }
-      if (f.model) { setModelFilter(f.model); hasNew = true; }
+      if (f.model) { setModelFilter(f.model); setVariantFilter(''); hasNew = true; }
       if (f.color) { setColorFilter(f.color); hasNew = true; }
       if (f.minDoors) { setMinDoors(f.minDoors); hasNew = true; }
       if (f.minSeats) { setMinSeats(f.minSeats); hasNew = true; }
@@ -296,7 +297,7 @@ export const SearchScreen: React.FC = () => {
     if (p.bodyType !== undefined) { setSelectedBody(p.bodyType); hasNew = true; }
     if (p.maxPrice != null) { setMaxPrice(Number(p.maxPrice)); hasNew = true; }
     if (p.sortBy !== undefined) { setSortId(p.sortBy); hasNew = true; }
-    if (p.make !== undefined) { setSelectedMakes([p.make]); hasNew = true; }
+    if (p.make !== undefined) { setSelectedMakes([p.make]); setModelFilter(''); setVariantFilter(''); hasNew = true; }
     if (hasNew) {
       setQuickFilter('custom');
       setQuery('');
@@ -324,6 +325,7 @@ export const SearchScreen: React.FC = () => {
       search: query.trim() || undefined,
       make: selectedMakes[0] ?? (qf?.params.bodyType ? undefined : undefined),
       model: modelFilter.trim() || undefined,
+      variant: variantFilter.trim() || undefined,
       vehicleType: vehicleType || undefined,
       location: locationFilter.trim() || undefined,
       maxPrice: maxPrice < 150000 ? maxPrice : qf?.params.maxPrice,
@@ -403,7 +405,7 @@ export const SearchScreen: React.FC = () => {
       setLoadingMore(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
+  }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
   // Initial load
   useEffect(() => { fetch(true); }, []);
@@ -421,7 +423,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -447,6 +449,7 @@ export const SearchScreen: React.FC = () => {
     vehicleType !== 'CAR',
     !!locationFilter,
     !!modelFilter,
+    !!variantFilter,
     !!colorFilter,
     !!minDoors,
     !!minSeats,
@@ -491,6 +494,7 @@ export const SearchScreen: React.FC = () => {
     setVehicleType('CAR');
     setLocationFilter('');
     setModelFilter('');
+    setVariantFilter('');
     setColorFilter('');
     setMinDoors('');
     setMinSeats('');
@@ -888,7 +892,7 @@ export const SearchScreen: React.FC = () => {
                     <TouchableOpacity
                       key={m}
                       style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? [] : [m]); setModelFilter(''); setMakeQuery(''); }}
+                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? [] : [m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
                       activeOpacity={0.7}
                     >
                       <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
@@ -915,7 +919,7 @@ export const SearchScreen: React.FC = () => {
               <Text style={s.filterLabel}>MODEL</Text>
               <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
-                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={setModelFilter}
+                <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
                   placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
                   placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
               </View>
@@ -923,7 +927,7 @@ export const SearchScreen: React.FC = () => {
                 <View style={{ marginTop: 8 }}>
                   <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
                   <View style={s.chipGrid}>
-                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => setModelFilter('')}>
+                    <TouchableOpacity style={[s.filterChip, !modelFilter && s.filterChipActive]} onPress={() => { setModelFilter(''); setVariantFilter(''); }}>
                       <Text style={[s.filterChipText, !modelFilter && s.filterChipTextActive]}>All models</Text>
                     </TouchableOpacity>
                     {getModelsForMake(selectedMakes[0])
@@ -931,7 +935,7 @@ export const SearchScreen: React.FC = () => {
                       .slice(0, 35)
                       .map(m => <TouchableOpacity key={m}
                         style={[s.filterChip, modelFilter === m && s.filterChipActive]}
-                        onPress={() => setModelFilter(m)}>
+                        onPress={() => { setModelFilter(m); setVariantFilter(''); }}>
                         <Text style={[s.filterChipText, modelFilter === m && s.filterChipTextActive]}>{m}</Text>
                       </TouchableOpacity>)}
                   </View>
@@ -941,6 +945,31 @@ export const SearchScreen: React.FC = () => {
               )}
 
               <View style={s.divider} />
+
+              {/* Exact trim is stored on listing.variant. Permit free text for imports. */}
+              {!!modelFilter && (
+                <View style={{ marginTop: 10 }}>
+                  <Text style={s.filterLabel}>MODEL VARIANT / TRIM</Text>
+                  <View style={s.inputBox}>
+                    <TextInput style={s.inputBoxValue} value={variantFilter}
+                      onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
+                      placeholderTextColor={Colors.borderMuted} autoCapitalize="words" />
+                  </View>
+                  {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
+                    <View style={s.chipGrid}>
+                      <TouchableOpacity style={[s.filterChip, !variantFilter && s.filterChipActive]}
+                        onPress={() => setVariantFilter('')}>
+                        <Text style={[s.filterChipText, !variantFilter && s.filterChipTextActive]}>Any variant</Text>
+                      </TouchableOpacity>
+                      {getVariantsForModel(selectedMakes[0], modelFilter).map(v => <TouchableOpacity key={v}
+                        style={[s.filterChip, variantFilter === v && s.filterChipActive]}
+                        onPress={() => setVariantFilter(v)}>
+                        <Text style={[s.filterChipText, variantFilter === v && s.filterChipTextActive]}>{v}</Text>
+                      </TouchableOpacity>)}
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Price */}
               <Text style={s.filterLabel}>PRICE RANGE</Text>
