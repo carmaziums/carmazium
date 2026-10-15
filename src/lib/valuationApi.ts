@@ -282,7 +282,8 @@ export function applyVehicleValuationAdjustments(
     const low = roundMoney(base.low * factor)
     const mid = roundMoney(base.mid * factor)
     const high = roundMoney(base.high * factor)
-    const auctionMarketValue = roundMoney(base.auction.marketValue * factor)
+    const retailSuggestedAsking = roundMoney(base.retail.suggestedAsking * factor)
+    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80)
 
     return {
         ...base,
@@ -291,15 +292,15 @@ export function applyVehicleValuationAdjustments(
         high,
         explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
-            suggestedAsking: roundMoney(base.retail.suggestedAsking * factor),
-            suggestedMinimum: roundMoney(base.retail.suggestedMinimum * factor),
+            suggestedAsking: retailSuggestedAsking,
+            suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
         },
         auction: {
             marketValue: auctionMarketValue,
             openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
             reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
             reserveHigh: auctionMarketValue,
-            suggestedReserve: roundMoney(auctionMarketValue * 0.95),
+            suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
         },
     }
 }
@@ -362,6 +363,9 @@ function finishEstimate(
             ? 'CARMAZIUM_MODEL_PROFILE'
             : 'CARMAZIUM_MODEL'
 
+    const retailSuggestedAsking = low
+    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80)
+
     return {
         low,
         mid,
@@ -382,18 +386,17 @@ function finishEstimate(
                 ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age and mileage.'
                 : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age and mileage and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
         retail: {
-            // Retail uses the upper market guide.
-            suggestedAsking: high,
-            suggestedMinimum: mid,
+            // Use the previous dealer guide for the retail suggestion.
+            suggestedAsking: retailSuggestedAsking,
+            suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
         },
         auction: {
-            // Auction uses the lower dealer-buy guide so traders retain
-            // realistic preparation, warranty and resale margin.
-            marketValue: low,
-            openingBid: Math.round(low * 0.70 * 100) / 100,
-            reserveLow: Math.round(low * 0.90 * 100) / 100,
-            reserveHigh: Math.round(low * 1.00 * 100) / 100,
-            suggestedReserve: roundMoney(low * 0.95),
+            // Auction is exactly 20% below the retail suggestion.
+            marketValue: auctionMarketValue,
+            openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
+            reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
+            reserveHigh: auctionMarketValue,
+            suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
         },
     }
 }
