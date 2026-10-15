@@ -337,6 +337,7 @@ export interface ListingFilters {
     maxPrice?: number
     make?: string
     model?: string
+    variant?: string
     /** @deprecated use minYear */
     year?: number
     minYear?: number
@@ -388,6 +389,7 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString())
         if (filters.make) params.append('make', filters.make)
         if (filters.model) params.append('model', filters.model)
+        if (filters.variant) params.append('variant', filters.variant)
         if (filters.minYear !== undefined) params.append('minYear', filters.minYear.toString())
         if (filters.maxYear !== undefined) params.append('maxYear', filters.maxYear.toString())
         if (filters.year !== undefined) params.append('year', filters.year.toString())
