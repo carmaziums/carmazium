@@ -349,7 +349,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                   make={listing.make}
                   model={listing.model}
                   price={formatPrice(listing.price)}
-                  image={listing.images?.[0] || "/assets/images/featured-sports.png"}
+                  image={listing.images?.[0] || ""}
                   images={listing.images ?? []}
                   href={`/vehicle/${listing.slug}`}
                   year={listing.year ?? undefined}
@@ -397,7 +397,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 make={listing.make}
                 model={listing.model}
                 price={formatPrice(listing.price)}
-                image={listing.images?.[0] || "/assets/images/featured-sports.png"}
+                image={listing.images?.[0] || ""}
                 images={listing.images ?? []}
                 href={`/vehicle/${listing.slug}`}
                 year={listing.year ?? undefined}
