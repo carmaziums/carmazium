@@ -551,7 +551,7 @@ function SearchPageContent() {
             const valid = listing.images.find(img => !img.includes('example.com'))
             if (valid) return valid
         }
-        return "/assets/images/placeholder-car.png"
+        return "/assets/images/placeholder-car.svg"
     }
 
     // Quick-remove helper for applied filter tags

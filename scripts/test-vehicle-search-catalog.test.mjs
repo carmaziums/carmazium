@@ -127,7 +127,7 @@ test('radius and multi-make filters survive every layer without per-page slicing
 test('retail searches hide unrelated featured vehicles, use honest placeholders and surface native fetch failures', () => {
   const web = read('src/app/search/page.tsx');
   assert.match(web, /activeFilterCount === 0 && !appliedFilters\.search\.trim\(\)/);
-  assert.match(web, /return "\/assets\/images\/placeholder-car\.png"/);
+  assert.match(web, /return "\/assets\/images\/placeholder-car\.svg"/);
   assert.doesNotMatch(web, /return "\/assets\/images\/featured-sports\.png"/);
   const api = read('carmazium app/carmazium app/src/lib/listingsApi.ts');
   assert.match(api, /price:\s+Number\(l\.price\)/);

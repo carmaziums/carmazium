@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" role="img" aria-labelledby="title desc">
+<title id="title">Vehicle image unavailable</title>
+<desc id="desc">Neutral vehicle silhouette rather than an unrelated stock photograph</desc>
+<rect width="960" height="600" fill="#f1f5f9"/>
+<rect x="30" y="30" width="900" height="540" rx="30" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="3"/>
+<g fill="#94a3b8">
+<path d="M221 335h60l55-100c18-35 48-54 90-54h128c38 0 67 16 89 50l63 104h43c32 0 54 23 54 57v43H179v-42c0-35 16-58 42-58zm158-96-49 96h323l-57-96c-12-19-27-28-49-28H426c-22 0-36 8-47 28z"/>
+<circle cx="309" cy="438" r="51"/><circle cx="658" cy="438" r="51"/>
+</g>
+<g fill="#f1f5f9"><circle cx="309" cy="438" r="27"/><circle cx="658" cy="438" r="27"/></g>
+<text x="480" y="533" fill="#475569" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="600">Vehicle photo unavailable</text>
+</svg>
