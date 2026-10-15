@@ -25,17 +25,17 @@ type LedgerStep = {
 }
 
 const SELLER_STEPS: LedgerStep[] = [
-  { icon: Calculator, title: "Get your valuation", desc: "Enter your reg and details for a free, instant estimate.", tag: "Est. £8,450" },
+  { icon: Calculator, title: "Get your valuation", desc: "Enter your reg and details for a free, instant estimate.", tag: "Sample valuation" },
   { icon: Gavel, title: "Go live in auction", desc: "Your car goes live for verified dealers to view and bid on.", tag: "LIVE · 24h" },
-  { icon: Users, title: "Dealers compete", desc: "Verified trade buyers bid against each other, not against you.", tag: "3 bids" },
+  { icon: Users, title: "Dealers compete", desc: "Verified trade buyers bid against each other, not against you.", tag: "Dealer bids" },
   { icon: Phone, title: "Dealer contacts you", desc: "The winning dealer arranges collection and inspection directly.", tag: "Direct chat" },
-  { icon: Banknote, title: "Dealer pays you directly", desc: "The money moves dealer → you. CarMazium is never in that chain.", tag: "£8,450" },
-  { icon: Gift, title: "Get your £100 reward", desc: "Submit handover proof and we release your reward.", tag: "+£100" },
+  { icon: Banknote, title: "Dealer pays you directly", desc: "The money moves dealer → you. CarMazium is never in that chain.", tag: "Seller paid" },
+  { icon: Gift, title: "Get your £100 reward", desc: "After you confirm payment and your handover photo is approved, qualifying auction sales earn a £100 reward.", tag: "+£100" },
 ]
 
-const BUYER_STEPS: LedgerStep[] = [
-  { icon: Search, title: "Search & find", desc: "Filter by make, model, grade and location to shortlist cars.", tag: "142 found" },
-  { icon: Gavel, title: "Join the auction", desc: "Bid live against other verified dealers in real time.", tag: "LIVE · 24h" },
+const DEALER_STEPS: LedgerStep[] = [
+  { icon: Search, title: "Search & find", desc: "Filter by make, model, grade and location to shortlist cars.", tag: "Browse stock" },
+  { icon: Gavel, title: "Join the auction", desc: "Only verified motor traders with bidding access can bid live in the dealer auction.", tag: "LIVE · 24h" },
   { icon: Trophy, title: "Win the auction", desc: "Highest bid when the clock runs out takes the car.", tag: "Won" },
   { icon: ClipboardCheck, title: "Complete checkout", desc: "Pay the one-off buyer fee that unlocks the seller's contact details.", tag: "£125 fee" },
   { icon: Truck, title: "Arrange collection", desc: "Coordinate inspection and collection directly with the seller.", tag: "Direct chat" },
@@ -44,16 +44,16 @@ const BUYER_STEPS: LedgerStep[] = [
 
 const RECEIPTS = {
   seller: {
-    label: "Your sale, itemised",
+    label: "Illustrative seller auction example",
     rows: [
       { k: "Vehicle sale price", v: "£8,450", note: "paid to you, by the dealer" },
       { k: "CarMazium listing fee", v: "£0", note: "free, always" },
-      { k: "CarMazium seller reward", v: "+£100", note: "paid to you, after handover" },
+      { k: "CarMazium seller reward", v: "+£100", note: "qualifying sales, after approval" },
     ],
     total: { k: "You receive", v: "£8,550" },
   },
   buyer: {
-    label: "Your purchase, itemised",
+    label: "Illustrative dealer auction example",
     rows: [
       { k: "Winning bid", v: "£8,450", note: "paid to the seller, directly" },
       { k: "CarMazium buyer fee", v: "£125", note: "unlocks the seller's contact details" },
@@ -131,6 +131,9 @@ function ReceiptCard({ receipt }: { receipt: typeof RECEIPTS.seller }) {
         <span className="font-bold text-sm">{receipt.total.k}</span>
         <span className="font-mono font-black text-xl text-primary tabular-nums">{receipt.total.v}</span>
       </div>
+      <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
+        Example figures only: not live bids, a confirmed valuation, or a guarantee of sale proceeds.
+      </p>
     </div>
   )
 }
@@ -198,10 +201,10 @@ function FlowSection({
 }
 
 const TRUST_STRIP = [
-  { icon: Banknote, label: "Free to list" },
+  { icon: Banknote, label: "Free auction listing" },
   { icon: ShieldCheck, label: "Verified dealers only" },
   { icon: Handshake, label: "Paid direct, no middleman" },
-  { icon: Gift, label: "£100 seller reward" },
+  { icon: Gift, label: "£100 reward for qualifying sales" },
 ]
 
 // A worked example of anti-snipe actually resetting the clock — more honest
@@ -244,7 +247,7 @@ export default function HowItWorksPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-200">Car Trading is Here</span>
             </h1>
             <p className="text-xl text-gray-200 max-w-2xl mx-auto leading-relaxed font-medium drop-shadow-lg">
-              List your car for free, let dealers compete, and get paid directly — or find your next car and win it in a live auction.
+              Sellers can list in a free dealer auction or advertise to retail buyers for £1. Everyone can browse retail cars; only verified motor traders can bid in dealer auctions.
             </p>
           </motion.div>
         </div>
@@ -268,7 +271,7 @@ export default function HowItWorksPage() {
         eyebrow="For Sellers"
         title="How it works for"
         highlight="sellers"
-        subtitle="List your car for free, let dealers compete, get paid directly and receive £100 from CarMazium after a successful handover."
+        subtitle="List in the dealer auction without a seller fee, let verified traders compete, and receive £100 for qualifying sales after an approved handover."
         steps={SELLER_STEPS}
         receipt={RECEIPTS.seller}
         ctaLabel="Start Selling For Free"
@@ -280,18 +283,30 @@ export default function HowItWorksPage() {
 
       {/* Buyer flow */}
       <FlowSection
-        eyebrow="For Buyers"
-        title="How it works for"
-        highlight="buyers"
-        subtitle="Find the right car, win with confidence, and enjoy a smooth, secure buying experience."
-        steps={BUYER_STEPS}
+        eyebrow="For Verified Motor Traders"
+        title="How auctions work for"
+        highlight="dealers"
+        subtitle="Only verified dealer accounts can place bids. Retail customers can browse and buy cars through the separate retail marketplace."
+        steps={DEALER_STEPS}
         receipt={RECEIPTS.buyer}
-        ctaLabel="Browse Live Auctions"
-        ctaHref="/auctions"
+        ctaLabel="Learn About Dealer Auctions"
+        ctaHref="/auctions/how-it-works"
         photo={{ src: "/assets/images/featured-suv.png", alt: "Vehicle ready for collection", quote: "One fee. Nothing else moves through CarMazium.", align: "right" }}
       />
 
-      {/* Feature Highlight: Auctions */}
+      <section aria-label="Retail buyers" className="container mx-auto px-5 pb-4">
+        <div className="rounded-2xl border border-sky-500/25 bg-sky-500/10 p-6 md:p-8">
+          <h2 className="text-xl font-bold">Buying as a private customer?</h2>
+          <p className="mt-2 text-sm leading-7 text-[var(--text-secondary)]">
+            You do not need to bid in a trade auction. Browse available retail listings and contact the seller through the retail purchase process.
+          </p>
+          <Link href="/search" className="mt-4 inline-flex min-h-11 items-center gap-2 font-bold text-primary underline-offset-4 hover:underline">
+            Browse retail cars <ArrowRight size={17} aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
+      {/* Feature Highlight: Auctions */
       <section className="py-32 container mx-auto px-5">
         <div className="relative rounded-[3rem] overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] backdrop-blur-md">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
@@ -316,7 +331,7 @@ export default function HowItWorksPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg">Community Driven</h4>
-                    <p className="text-sm text-[var(--text-muted)]">Real bidders, verified identities, no bots.</p>
+                    <p className="text-sm text-[var(--text-muted)]">Bidding requires dealer verification, with marketplace controls to help detect suspicious activity.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -325,7 +340,7 @@ export default function HowItWorksPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg">True Market Value</h4>
-                    <p className="text-sm text-[var(--text-muted)]">Competitive bidding ensures fair prices for all.</p>
+                    <p className="text-sm text-[var(--text-muted)]">Dealer competition helps test trade-market demand, but a final price is not guaranteed.</p>
                   </div>
                 </div>
               </div>
@@ -334,12 +349,12 @@ export default function HowItWorksPage() {
             <div className="order-1 lg:order-2">
               <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-default)] p-6 sm:p-8 shadow-2xl overflow-hidden">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-6 border-b border-[var(--border-default)] pb-4">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                  <span className="text-red-400 font-mono font-bold tracking-wider text-sm">LIVE NOW</span>
-                  <span className="text-[var(--text-muted)] font-mono text-sm ml-auto">ID: #83921</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-amber-500 font-mono font-bold tracking-wider text-sm">EXAMPLE · NOT LIVE</span>
+                  <span className="text-[var(--text-muted)] font-mono text-sm ml-auto">Demo auction</span>
                 </div>
 
-                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Time left</p>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-1">Example time remaining</p>
                 <p className="text-4xl sm:text-5xl font-mono text-primary font-bold tabular-nums mb-1">00:01:58</p>
                 <p className="text-xs text-[var(--text-muted)] mb-6">Resets to 3:00 on every bid in the final 3 minutes</p>
 
@@ -356,6 +371,9 @@ export default function HowItWorksPage() {
                     </div>
                   ))}
                 </div>
+                <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">
+                  Demonstration amounts, bid times and countdown only. No live auction activity is shown here.
+                </p>
               </div>
             </div>
           </div>
@@ -374,7 +392,7 @@ export default function HowItWorksPage() {
             { icon: Truck, title: "Delivery", desc: "Via trusted 3rd party" },
             { icon: Umbrella, title: "Warranty", desc: "Via 3rd-party providers" },
             { icon: Handshake, title: "Direct Deals", desc: "Buyer & seller connect" },
-            { icon: ShieldCheck, title: "Support", desc: "24/7 Expert help" }
+            { icon: ShieldCheck, title: "Support", desc: "Mon–Fri, 9am–6pm UK time" }
           ].map((item) => (
             <div key={item.title} className="border-r border-[var(--border-default)] px-6 py-8 text-center hover:bg-[var(--bg-card)] transition-colors">
               <item.icon className="mx-auto mb-3 text-primary" size={22} />
