@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { getListings, getFeaturedListings, formatPrice, type Listing, type ListingFilters, type VehicleConditionValue, type WriteOffSearchValue, type EuroStandardValue } from "@/lib/listingApi"
 import { EXTERIOR_GRADE_OPTIONS } from "@/lib/exteriorGrade"
+import { haversineDistanceMiles } from "@/lib/distance"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { useLocation } from "@/context/LocationContext"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
