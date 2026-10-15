@@ -605,19 +605,32 @@ function QuickValuationForm() {
                             </p>
                             {hasGuide && (
                                 <>
-                                    <div className="mt-3 max-w-xl rounded-xl border border-blue-500/20 bg-blue-500/[0.06] p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
-                                            Current Market Value
-                                        </p>
-                                        <p className="mt-1 text-3xl font-black tabular-nums text-[var(--text-primary)]">
-                                            {formatGuidePrice(result.valuation.auction.marketValue)}
-                                        </p>
-                                        <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                                            Based on the age and mileage of your vehicle.
-                                        </p>
+                                    <div className="mt-3 grid max-w-xl gap-3 sm:grid-cols-2">
+                                        <div className="rounded-xl border border-orange-500/25 bg-orange-500/[0.06] p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-orange-600 dark:text-orange-400">
+                                                Dealer auction value
+                                            </p>
+                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
+                                                {formatGuidePrice(result.valuation.auction.marketValue)}
+                                            </p>
+                                            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                                Lower dealer-oriented guide for auction bidding.
+                                            </p>
+                                        </div>
+                                        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-4">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-600 dark:text-blue-400">
+                                                Suggested retail asking
+                                            </p>
+                                            <p className="mt-1 text-2xl font-black tabular-nums text-[var(--text-primary)]">
+                                                {formatGuidePrice(result.valuation.retail.suggestedAsking)}
+                                            </p>
+                                            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                                                Advertised asking price guide for retail buyers.
+                                            </p>
+                                        </div>
                                     </div>
                                     <p className="mt-2 max-w-xl text-xs leading-5 text-[var(--text-muted)]">
-                                        Guide only. Vehicle condition, specification and current market demand can affect the final selling price.
+                                        These are different selling routes, not guaranteed offers. Vehicle condition, specification and market demand can affect the final price.
                                     </p>
                                 </>
                             )}
