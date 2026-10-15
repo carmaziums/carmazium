@@ -546,7 +546,7 @@ function SearchPageContent() {
             const valid = listing.images.find(img => !img.includes('example.com'))
             if (valid) return valid
         }
-        return "/assets/images/featured-sports.png"
+        return "/assets/images/placeholder-car.png"
     }
 
     // Quick-remove helper for applied filter tags
@@ -1273,7 +1273,10 @@ function SearchPageContent() {
                     )}
 
                     {/* ── Featured Pinned Row ────────────────────────────────── */}
-                    {!loading && featuredListings.length > 0 && (
+                    {/* Promotional cars must not bypass search filters or appear
+                        on later result pages. The backend still honours paid
+                        feature placement for the unfiltered default feed. */}
+                    {!loading && !error && activeFilterCount === 0 && !appliedFilters.search.trim() && currentPage === 1 && featuredListings.length > 0 && (
                         <div className="mb-8">
                             <div className="flex items-center gap-2 mb-4">
                                 <Star size={15} className="text-amber-400 fill-amber-400" />
