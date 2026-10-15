@@ -18,7 +18,6 @@ import { naturalLanguageSearch } from '../../lib/aiApi';
 import { HorizontalVehicleCard } from '../../components/HorizontalVehicleCard';
 import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
-import { haversineDistanceMiles } from '../../lib/distance';
 import { Colors } from '../../constants/colors';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
@@ -163,11 +162,8 @@ const EURO_OPTIONS = [
   { value: 'EURO_6', label: 'Euro 6' },
   { value: 'EURO_6D', label: 'Euro 6d' },
 ];
-// "Near Me" — the backend has no lat/lng/radius filter param at all (confirmed
-// against listing-filter.dto.ts), so web itself just filters/sorts the already-
-// fetched page client-side by haversine distance (src/app/search/page.tsx).
-// Mirrors that same (imperfect — doesn't reach across pages) behavior here
-// rather than inventing server-side geo support that doesn't exist.
+// Radius is now applied by the backend across the full inventory before
+// pagination, matching web and giving accurate counts.
 const DISTANCE_CHIPS = [10, 25, 50, 100, 200];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -333,7 +329,8 @@ export const SearchScreen: React.FC = () => {
     };
     return {
       search: query.trim() || undefined,
-      make: selectedMakes[0] ?? (qf?.params.bodyType ? undefined : undefined),
+      make: selectedMakes.length === 1 ? selectedMakes[0] : undefined,
+      makes: selectedMakes.length > 1 ? selectedMakes : undefined,
       model: modelFilter.trim() || undefined,
       variant: variantFilter.trim() || undefined,
       vehicleType: vehicleType || undefined,
@@ -354,6 +351,9 @@ export const SearchScreen: React.FC = () => {
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
+      maxDistanceMi: maxDistanceMi != null && userLat != null && userLng != null ? maxDistanceMi : undefined,
+      originLatitude: maxDistanceMi != null && userLat != null && userLng != null ? userLat : undefined,
+      originLongitude: maxDistanceMi != null && userLat != null && userLng != null ? userLng : undefined,
       exteriorGrades: exteriorGrades.length ? exteriorGrades : undefined,
       writeOffCategories: writeOffCategories.length ? writeOffCategories : undefined,
       transmissions: transmissions.length ? transmissions : undefined,
@@ -385,20 +385,11 @@ export const SearchScreen: React.FC = () => {
     else setLoadingMore(true);
     const p = reset ? 1 : page;
     try {
-      const { listings: rawItems, total: t } = await searchListings(buildParams(p));
-      // Backend has no lat/lng/radius filter param — same client-side
-      // haversine filter+sort web's search page does on the already-fetched
-      // page (doesn't reach across pagination, matching web's actual, if
-      // imperfect, behavior).
-      let items = rawItems;
-      if (maxDistanceMi != null && userLat != null && userLng != null) {
-        items = rawItems
-          .filter(l => l.latitude != null && l.longitude != null &&
-            haversineDistanceMiles(userLat, userLng, l.latitude, l.longitude) <= maxDistanceMi)
-          .sort((a, b) =>
-            haversineDistanceMiles(userLat, userLng, a.latitude!, a.longitude!) -
-            haversineDistanceMiles(userLat, userLng, b.latitude!, b.longitude!));
+      if (maxDistanceMi != null && (userLat == null || userLng == null)) {
+        if (reset) { setListings([]); setTotal(0); setHasMore(false); }
+        return;
       }
+      const { listings: items, total: t } = await searchListings(buildParams(p));
       if (reset) {
         setListings(items);
         setPage(2);
@@ -408,7 +399,7 @@ export const SearchScreen: React.FC = () => {
         setPage(prev => prev + 1);
         setTotal(t);
       }
-      setHasMore(rawItems.length === 20);
+      setHasMore(items.length === 20 && p * 20 < t);
     } catch {
       // keep existing
     } finally {
@@ -435,7 +426,7 @@ export const SearchScreen: React.FC = () => {
   useEffect(() => {
     fetch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi]);
+  }, [quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng]);
 
   const onRefresh = () => { setRefreshing(true); fetch(true); };
 
@@ -877,10 +868,7 @@ export const SearchScreen: React.FC = () => {
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={s.modalBody}>
           <Text style={s.filterIntro}>Choose the details that matter. More options are available below.</Text>
 
-              {/* Make — type to filter the full 71-make list, otherwise the ten
-                  popular ones. Selection stays single-value: the backend has no
-                  `makes[]` param, buildParams() only ever sent selectedMakes[0],
-                  so a second chip silently did nothing. */}
+              {/* Select several makes: all selections are now submitted to the backend. */}
               <Text style={s.filterLabel}>MAKE</Text>
               <View style={s.makeSearchBox}>
                 <Ionicons name="search" size={14} color={Colors.iconMuted} />
@@ -908,7 +896,7 @@ export const SearchScreen: React.FC = () => {
                     <TouchableOpacity
                       key={m}
                       style={[s.filterChip, selectedMakes.includes(m) && s.filterChipActive]}
-                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? [] : [m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
+                      onPress={() => { setSelectedMakes(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]); setModelFilter(''); setVariantFilter(''); setMakeQuery(''); }}
                       activeOpacity={0.7}
                     >
                       <Text style={[s.filterChipText, selectedMakes.includes(m) && s.filterChipTextActive]}>
@@ -931,14 +919,15 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Model selection uses the same full catalogue as the website. */}
-              <Text style={s.filterLabel}>MODEL</Text>
-              <View style={s.inputBox}>
+              {/* Model/variant are single-make refinements only. */}
+              {selectedMakes.length > 1 && <Text style={s.makeEmptyText}>To search by model, select just one make.</Text>}
+              {selectedMakes.length <= 1 && <Text style={s.filterLabel}>MODEL</Text>}
+              {selectedMakes.length <= 1 && <View style={s.inputBox}>
                 <Text style={s.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
                 <TextInput style={s.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
                   placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
                   placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
-              </View>
+              </View>}
               {selectedMakes.length === 1 && (
                 <View style={{ marginTop: 8 }}>
                   <Text style={s.inputBoxLabel}>{selectedMakes[0]} MODELS</Text>
@@ -963,7 +952,7 @@ export const SearchScreen: React.FC = () => {
               <View style={s.divider} />
 
               {/* Exact trim is stored on listing.variant. Permit free text for imports. */}
-              {!!modelFilter && (
+              {selectedMakes.length <= 1 && !!modelFilter && (
                 <View style={{ marginTop: 10 }}>
                   <Text style={s.filterLabel}>MODEL VARIANT / TRIM</Text>
                   <View style={s.inputBox}>
