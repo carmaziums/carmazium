@@ -285,7 +285,7 @@ export const SellLandingScreen: React.FC = () => {
           </View>)}
         </View>
 
-        {!valuation && <><Text style={styles.chooseTitle}>Choose how to sell</Text>}
+        {!valuation && <><Text style={styles.chooseTitle}>Choose how to sell</Text>
         <TouchableOpacity style={styles.auctionAction} onPress={()=>startListing('AUCTION')}
           accessibilityRole="button" accessibilityLabel="FREE Dealer Auction, continue to listing">
           <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
