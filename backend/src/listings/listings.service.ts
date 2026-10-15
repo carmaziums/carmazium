@@ -667,7 +667,7 @@ export class ListingsService {
 
     private valuationIdentity(dto: VehicleValuationDto) {
         return {
-            registration: (dto.registration ?? '').replace(/\s+/g, '').trim().toUpperCase(),
+            registration: (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
             make: dto.make.trim().toUpperCase(),
             model: dto.model.trim().toUpperCase(),
             year: dto.year,
@@ -743,17 +743,28 @@ export class ListingsService {
             id: true,
             type: true,
             payload: true,
+            createdAt: true,
         } as const;
 
-        // Exact journey lookup is authoritative and has no TTL: once a journey
-        // receives a base it remains stable for its lifetime.
+        // A quote may be refreshed after its 24h window. Do not resurrect a
+        // stale market base simply because the same open browser retains an
+        // old journey ID. Generate a new internal snapshot ID after expiry.
         const exactJourney = await this.prisma.analyticsEvent.findUnique({
             where: { id: dto.valuationId },
             select,
         });
 
-        const exact = this.parseFrozenValuationBase(exactJourney, dto);
-        if (exact) return exact;
+        const journeyCreatedAt = exactJourney?.createdAt
+            ? new Date(exactJourney.createdAt).getTime()
+            : NaN;
+        if (Number.isFinite(journeyCreatedAt)
+            && journeyCreatedAt <= Date.now() - 24 * 60 * 60 * 1000
+        ) {
+            dto.valuationId = randomUUID();
+        } else {
+            const exact = this.parseFrozenValuationBase(exactJourney, dto);
+            if (exact) return exact;
+        }
 
         // A new journey for the same unchanged vehicle should not get a wildly
         // different answer five minutes later merely because a live search
