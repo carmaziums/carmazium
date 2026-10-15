@@ -17,6 +17,7 @@ export const revalidate = 3600
 const STATIC_ROUTES = [
     "",
     "/search",
+    "/used-car-types",
     "/sell",
     "/pricing",
     "/about",
