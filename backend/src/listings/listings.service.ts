@@ -190,15 +190,17 @@ export class ListingsService {
             isImported: dto.isImported,
         };
 
-        // The browser/app supplies one valuationId for a registration+mileage
-        // journey. If the first market lookup for that journey has already been
-        // frozen, never run the live market again: only deterministic
-        // condition/specification adjustments may change the customer figure.
+        // One authoritative customer-facing quote is shared by all website/app
+        // journeys for the same registration for 24 hours. Look this up before
+        // searching the market or applying customer-specific adjustments.
+        const lockedQuote = await this.findLockedVehicleQuote(dto);
+        if (lockedQuote) return lockedQuote;
+
+        // Preserve existing journeys that began before the quote-lock rollout.
         const frozenBase = await this.findFrozenValuationBase(dto);
         if (frozenBase) {
-            return applyVehicleSpecificationAdjustments(
-                frozenBase,
-                specificationInput,
+            return this.freezeCustomerQuote(dto,
+                applyVehicleSpecificationAdjustments(frozenBase, specificationInput),
             );
         }
 
@@ -559,15 +561,114 @@ export class ListingsService {
         // base wins. Losers read the winning snapshot and return that same base.
         const stableBase = await this.freezeValuationBase(dto, calculatedBase);
 
-        return applyVehicleSpecificationAdjustments(
-            stableBase,
-            specificationInput,
+        return this.freezeCustomerQuote(dto,
+            applyVehicleSpecificationAdjustments(stableBase, specificationInput),
         );
+    }
+
+    /**
+     * A normalized UK registration is the primary vehicle identity.
+     * Model, year, mileage and formatting can be corrected without defeating
+     * the 24-hour quote lock. Vehicles without a VRM use a specification key.
+     */
+    private valuationPriceLockId(dto: VehicleValuationDto): string {
+        const vrm = (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        const identity = vrm
+            ? `VRM|${vrm}`
+            : [
+                dto.make.trim().toUpperCase(),
+                dto.model.trim().toUpperCase(),
+                dto.year,
+                dto.mileage,
+            ].join('|');
+        return `valuation-price-lock:${createHash('sha256').update(identity).digest('hex')}`;
+    }
+
+    private parseActivePriceLock(
+        event: { type: string; payload: unknown; createdAt: Date } | null,
+        now = new Date(),
+    ): VehicleValuationResult | null {
+        if (!event || event.type !== 'valuation_price_lock') return null;
+        const payload = (event.payload ?? {}) as any;
+        const lockedAt = new Date(payload.lockedAt ?? event.createdAt).getTime();
+        if (!Number.isFinite(lockedAt)
+            || lockedAt > now.getTime()
+            || lockedAt + 24 * 60 * 60 * 1000 <= now.getTime()
+        ) return null;
+
+        const quote = payload.valuation as VehicleValuationResult | undefined;
+        if (!quote
+            || !Number.isFinite(Number(quote.retail?.suggestedAsking))
+            || Number(quote.retail.suggestedAsking) <= 0
+            || !Number.isFinite(Number(quote.auction?.marketValue))
+            || Number(quote.auction.marketValue) <= 0
+        ) return null;
+        return quote;
+    }
+
+    private async findLockedVehicleQuote(dto: VehicleValuationDto): Promise<VehicleValuationResult | null> {
+        const event = await this.prisma.analyticsEvent.findUnique({
+            where: { id: this.valuationPriceLockId(dto) },
+            select: { type: true, payload: true, createdAt: true },
+        });
+        return this.parseActivePriceLock(event);
+    }
+
+    /**
+     * Persist the complete retail + auction quote, including fallback results.
+     * The unique AnalyticsEvent ID is a per-vehicle concurrency gate. Only an
+     * expired lock can be replaced; a parallel caller receives the winner.
+     */
+    private async freezeCustomerQuote(
+        dto: VehicleValuationDto,
+        quote: VehicleValuationResult,
+    ): Promise<VehicleValuationResult> {
+        const existing = await this.findLockedVehicleQuote(dto);
+        if (existing) return existing;
+
+        const now = new Date();
+        const key = this.valuationPriceLockId(dto);
+        const payload = {
+            identity: this.valuationIdentity(dto),
+            valuation: JSON.parse(JSON.stringify(quote)),
+            lockedAt: now.toISOString(),
+            expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        };
+
+        // Atomic compare-and-replace for a quote whose 24h window ended.
+        const expired = await this.prisma.analyticsEvent.updateMany({
+            where: {
+                id: key,
+                type: 'valuation_price_lock',
+                createdAt: { lte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+            },
+            data: { payload: payload as any, createdAt: now },
+        });
+        if (expired.count === 1) return quote;
+
+        try {
+            await this.prisma.analyticsEvent.create({
+                data: {
+                    id: key,
+                    type: 'valuation_price_lock',
+                    sessionId: key,
+                    payload: payload as any,
+                    createdAt: now,
+                },
+            });
+            return quote;
+        } catch (error: any) {
+            if (error?.code !== 'P2002') throw error;
+            // A competing request already inserted/refreshed this lock.
+            const winner = await this.findLockedVehicleQuote(dto);
+            if (winner) return winner;
+            throw new BadRequestException('The saved vehicle valuation could not be read. Please retry.');
+        }
     }
 
     private valuationIdentity(dto: VehicleValuationDto) {
         return {
-            registration: (dto.registration ?? '').replace(/\s+/g, '').trim().toUpperCase(),
+            registration: (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
             make: dto.make.trim().toUpperCase(),
             model: dto.model.trim().toUpperCase(),
             year: dto.year,
@@ -576,20 +677,14 @@ export class ListingsService {
     }
 
     /**
-     * Same physical vehicle + same mileage gets one market base for 24 hours.
-     * The hash is stored in AnalyticsEvent.sessionId only for snapshot rows;
-     * valuation analytics queries are type-scoped, so this never counts as a
-     * customer browsing session.
+     * Legacy snapshot identity for diagnostics. Customer-facing price
+     * locking is handled by valuationPriceLockId, not this session key.
      */
     private valuationIdentityKey(dto: VehicleValuationDto): string {
         const identity = this.valuationIdentity(dto);
-        const raw = [
-            identity.registration,
-            identity.make,
-            identity.model,
-            identity.year,
-            identity.mileage,
-        ].join('|');
+        const raw = identity.registration
+            ? ['VRM', identity.registration].join('|')
+            : [identity.make, identity.model, identity.year, identity.mileage].join('|');
 
         return `valuation-base:${createHash('sha256').update(raw).digest('hex')}`;
     }
@@ -610,12 +705,13 @@ export class ListingsService {
         const identity = payload.identity ?? {};
         const expected = this.valuationIdentity(dto);
 
-        const sameIdentity =
-            String(identity.registration ?? '') === expected.registration
-            && String(identity.make ?? '') === expected.make
-            && String(identity.model ?? '') === expected.model
-            && Number(identity.year) === expected.year
-            && Number(identity.mileage) === expected.mileage;
+        const sameIdentity = expected.registration
+            ? String(identity.registration ?? '') === expected.registration
+            : !identity.registration
+                && String(identity.make ?? '') === expected.make
+                && String(identity.model ?? '') === expected.model
+                && Number(identity.year) === expected.year
+                && Number(identity.mileage) === expected.mileage;
 
         if (!sameIdentity) {
             throw new BadRequestException(
@@ -646,87 +742,33 @@ export class ListingsService {
             id: true,
             type: true,
             payload: true,
+            createdAt: true,
         } as const;
 
-        // Exact journey lookup is authoritative and has no TTL: once a journey
-        // receives a base it remains stable for its lifetime.
+        // Do not resurrect an expired journey's base simply because an open
+        // browser retained its ID; regenerate its internal snapshot ID.
         const exactJourney = await this.prisma.analyticsEvent.findUnique({
             where: { id: dto.valuationId },
             select,
         });
 
-        const exact = this.parseFrozenValuationBase(exactJourney, dto);
-        if (exact) return exact;
-
-        // A new journey for the same unchanged vehicle should not get a wildly
-        // different answer five minutes later merely because a live search
-        // returned a different advert set. Reuse the latest vehicle base for
-        // 24 hours, after which market evidence is allowed to refresh.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select,
-        });
-
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (!recent) return null;
-
-        if (
-            recent.marketEvidence?.valuationStrategy === 'FALLBACK'
-            || recent.source === 'CARMAZIUM_MODEL'
-            || recent.source === 'CARMAZIUM_MODEL_PROFILE'
+        const journeyCreatedAt = exactJourney?.createdAt
+            ? new Date(exactJourney.createdAt).getTime()
+            : NaN;
+        if (Number.isFinite(journeyCreatedAt)
+            && journeyCreatedAt <= Date.now() - 24 * 60 * 60 * 1000
         ) {
-            return null;
+            dto.valuationId = randomUUID();
+        } else {
+            const exact = this.parseFrozenValuationBase(exactJourney, dto);
+            if (exact) return exact;
         }
 
-        // Give this new journey its own immutable copy. The cross-journey
-        // vehicle cache may expire after 24h, but the journey itself must never
-        // change value once the customer has received its base.
-        if (recentVehicleBase?.id !== dto.valuationId) {
-            const serializableBase = JSON.parse(
-                JSON.stringify(recent),
-            ) as VehicleValuationResult;
-
-            try {
-                await this.prisma.analyticsEvent.create({
-                    data: {
-                        id: dto.valuationId,
-                        type: 'valuation_base_snapshot',
-                        sessionId: this.valuationIdentityKey(dto),
-                        payload: {
-                            valuation_id: dto.valuationId,
-                            identity: this.valuationIdentity(dto),
-                            baseValuation: serializableBase,
-                            lockedAt: new Date().toISOString(),
-                            reusedFromSnapshotId: recentVehicleBase?.id ?? null,
-                        } as any,
-                    },
-                });
-            } catch (error: any) {
-                if (error?.code === 'P2002') {
-                    const winner = await this.prisma.analyticsEvent.findUnique({
-                        where: { id: dto.valuationId },
-                        select,
-                    });
-                    const frozenWinner = this.parseFrozenValuationBase(winner, dto);
-                    if (frozenWinner) return frozenWinner;
-                } else {
-                    // The already-frozen identity base is still safe to return;
-                    // persistence of the alias must not make valuation unavailable.
-                    this.logger.warn(
-                        `Could not persist valuation journey alias ${dto.valuationId}: ${error?.message || error}`,
-                    );
-                }
-            }
-        }
-
-        return recent;
+        // Cross-journey consistency now comes exclusively from the canonical
+        // valuation_price_lock record, which has an absolute 24-hour expiry.
+        // Do not chain old per-journey snapshots: each alias would otherwise
+        // extend the previous market base's life indefinitely.
+        return null;
     }
 
     private async freezeValuationBase(
@@ -735,37 +777,9 @@ export class ListingsService {
     ): Promise<VehicleValuationResult> {
         if (!dto.valuationId) return calculatedBase;
 
-        // A different journey for this same unchanged vehicle may have
-        // completed while our live search was running. Prefer that already-
-        // frozen 24-hour identity base rather than publishing a second value.
-        const recentVehicleBase = await this.prisma.analyticsEvent.findFirst({
-            where: {
-                type: 'valuation_base_snapshot',
-                sessionId: this.valuationIdentityKey(dto),
-                createdAt: {
-                    gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-            select: {
-                id: true,
-                type: true,
-                payload: true,
-            },
-        });
-        const recent = this.parseFrozenValuationBase(recentVehicleBase, dto);
-        if (
-            recent
-            && recent.marketEvidence?.valuationStrategy !== 'FALLBACK'
-            && recent.source !== 'CARMAZIUM_MODEL'
-            && recent.source !== 'CARMAZIUM_MODEL_PROFILE'
-        ) {
-            return recent;
-        }
-
-        // A fallback from a different journey is provisional. Do not let that
-        // cached model result win over a fresh live-market search that has just
-        // succeeded for this request.
+        // This snapshot is only for idempotency within one valuation journey.
+        // All cross-journey lookup and TTL enforcement is done by the
+        // authoritative 24-hour valuation_price_lock record.
         // Prisma JSON fields must contain plain JSON values; strip optional
         // undefined properties before persisting the immutable base snapshot.
         const serializableBase = JSON.parse(

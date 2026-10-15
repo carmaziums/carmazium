@@ -36,7 +36,7 @@ import { VehicleDamageMapper, type DamageRecord } from "./VehicleDamageMapper"
 import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient } from "@/lib/apiClient"
 import { getAuctionOpeningBid, getAuctionReserveGuide } from "@/lib/auctionPricing"
-import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
+import { getVehicleValuation, type VehicleValuation } from "@/lib/valuationApi"
 import { computeExteriorGradeFromDefectCount } from "@/lib/exteriorGrade"
 import { VehicleValuationCard } from "./VehicleValuationCard"
 import { normalizeSellerTransmission, normalizeSellerBodyType, normalizeVehicleRegistration, resolveSellerVehicleSpecs, hasCompleteSellerVehicleSpecs } from "@/lib/sellerVehicleSpecs"
@@ -862,10 +862,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const bodyTypeKeys = getBodyTypeKeysForVehicleType(formData.vehicleType)
     const automaticExteriorGrade = computeExteriorGradeFromDefectCount(damageRecords.length)
 
-    // The market lookup is intentionally based only on stable vehicle identity.
-    // Seller answers below (fuel, gearbox, condition, keys, service history,
-    // compliance, damage grade and equipment) adjust that base locally; they do
-    // not trigger another market search.
+    // The backend returns one unchanged retail+auction quote per vehicle for
+    // 24 hours. Seller inputs remain listing details, not a new quote.
     const valuationReady =
         formData.vehicleType === 'CAR' &&
         !!formData.make &&
@@ -986,52 +984,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         baseValuation,
     ])
 
+    // The backend now freezes the complete customer quote for 24 hours.
+    // Recalculating it from seller answers would silently break that promise.
+    // Seller-entered asking prices and reserves remain fully editable.
     React.useEffect(() => {
-        if (!baseValuation) return
-
-        setValuation(applyVehicleValuationAdjustments(baseValuation, {
-            make: formData.make,
-            model: formData.model,
-            year: Number(formData.year),
-            mileage: Number(formData.mileage),
-            variant: formData.variant || undefined,
-            fuelType: formData.fuelType || undefined,
-            transmission: formData.transmission || undefined,
-            condition: formData.condition || undefined,
-            exteriorGrade: automaticExteriorGrade,
-            serviceHistory: formData.serviceHistory || undefined,
-            owners: formData.owners || undefined,
-            numberOfKeys: formData.numberOfKeys ? Number(formData.numberOfKeys) : undefined,
-            ulezCompliant: formData.ulezCompliant ?? undefined,
-            euroStandard: formData.euroStandard || undefined,
-            doors: formData.doors ? Number(formData.doors) : undefined,
-            seats: formData.seats ? Number(formData.seats) : undefined,
-            features: formData.features.length ? formData.features : undefined,
-            writeOffCategory: formData.writeOffCategory || undefined,
-            isImported: formData.isImported,
-        }))
-    }, [
-        baseValuation,
-        formData.make,
-        formData.model,
-        formData.year,
-        formData.mileage,
-        formData.variant,
-        formData.fuelType,
-        formData.transmission,
-        formData.condition,
-        automaticExteriorGrade,
-        formData.serviceHistory,
-        formData.owners,
-        formData.numberOfKeys,
-        formData.ulezCompliant,
-        formData.euroStandard,
-        formData.doors,
-        formData.seats,
-        formData.features,
-        formData.writeOffCategory,
-        formData.isImported,
-    ])
+        setValuation(baseValuation)
+    }, [baseValuation])
 
     function applyValuation() {
         if (!valuation) return

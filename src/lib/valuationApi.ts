@@ -1,5 +1,3 @@
-import { apiClient } from './apiClient'
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
 
 export interface VehicleValuationRequest {
@@ -70,61 +68,6 @@ export interface VehicleValuation {
     }
 }
 
-interface PublicComparable {
-    id: string
-    make: string | null
-    model: string | null
-    year: number | null
-    mileage: number | null
-    price: number | string
-    variant?: string | null
-    fuelType?: string | null
-    transmission?: string | null
-    writeOffCategory?: string | null
-}
-
-interface PublicListingsResponse {
-    data: PublicComparable[]
-}
-
-const BASE_NEW_VALUES: Record<string, number> = {
-    AUDI: 47000,
-    BMW: 48000,
-    CITROEN: 28000,
-    'CITROËN': 28000,
-    DACIA: 22000,
-    FIAT: 25000,
-    FORD: 33000,
-    HONDA: 35000,
-    HYUNDAI: 34000,
-    JAGUAR: 50000,
-    JEEP: 43000,
-    KIA: 34000,
-    'LAND ROVER': 57000,
-    LEXUS: 50000,
-    MAZDA: 33000,
-    MERCEDES: 50000,
-    'MERCEDES-BENZ': 50000,
-    MG: 27000,
-    MINI: 33000,
-    NISSAN: 32000,
-    PEUGEOT: 29000,
-    PORSCHE: 82000,
-    RENAULT: 29000,
-    SEAT: 30000,
-    SKODA: 34000,
-    SUZUKI: 26000,
-    TESLA: 46000,
-    TOYOTA: 36000,
-    VAUXHALL: 29000,
-    VOLKSWAGEN: 37000,
-    VOLVO: 48000,
-}
-
-const MODEL_FALLBACK_PROFILES: Record<string, { baseNewValue: number; retainedValueAdjustment: number }> = {
-    'JAGUAR|XE': { baseNewValue: 35000, retainedValueAdjustment: 0.825 },
-}
-
 const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value))
 
@@ -143,13 +86,6 @@ function roundMoney(value: number): number {
     const safe = Math.max(500, value)
     const step = safe < 10000 ? 50 : 100
     return Math.round(safe / step) * step
-}
-
-function quantile(values: number[], q: number): number {
-    if (!values.length) return 0
-    const sorted = [...values].sort((a, b) => a - b)
-    const index = Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * q))
-    return sorted[index]
 }
 
 function featureValueFactor(features?: string[]): number {
@@ -312,194 +248,6 @@ export function applyVehicleValuationAdjustments(
     }
 }
 
-function getModelFallbackProfile(request: VehicleValuationRequest) {
-    const key = `${(request.make ?? '').trim().toUpperCase()}|${(request.model ?? '').trim().toUpperCase()}`
-    return MODEL_FALLBACK_PROFILES[key] ?? null
-}
-
-function modelFallbackMid(request: VehicleValuationRequest): { value: number; calibratedModelProfile: boolean } {
-    const age = Math.max(0, new Date().getFullYear() - request.year)
-    const modelProfile = getModelFallbackProfile(request)
-    let value = modelProfile?.baseNewValue ?? BASE_NEW_VALUES[(request.make ?? '').trim().toUpperCase()] ?? 32000
-
-    for (let year = 1; year <= age; year += 1) {
-        value *= year === 1 ? 0.78 : year <= 3 ? 0.85 : year <= 7 ? 0.89 : 0.92
-    }
-
-    const expectedMileage = Math.max(6000, age * 8500)
-    const mileageDeltaThousands = (request.mileage - expectedMileage) / 1000
-    value *= clamp(1 - mileageDeltaThousands * 0.0035, 0.72, 1.15)
-    value *= profileFactor(request)
-
-    const transmission = transmissionFamily(request.transmission)
-    if (transmission === 'AUTO') value *= 1.04
-    if (transmission === 'MANUAL') value *= 0.96
-
-    if (modelProfile) value *= modelProfile.retainedValueAdjustment
-
-    return {
-        value: Math.max(500, value),
-        calibratedModelProfile: !!modelProfile,
-    }
-}
-
-function finishEstimate(
-    request: VehicleValuationRequest,
-    values: number[],
-): VehicleValuation {
-    const fallbackResult = modelFallbackMid(request)
-    const fallback = fallbackResult.value
-    let marketMid = values.length ? quantile(values, 0.5) : fallback
-
-    if (values.length === 1) marketMid = marketMid * 0.45 + fallback * 0.55
-    if (values.length === 2) marketMid = marketMid * 0.65 + fallback * 0.35
-
-    const mid = roundMoney(marketMid)
-    const lowBase = values.length >= 4 ? quantile(values, 0.25) : mid * (values.length ? 0.88 : 0.82)
-    const highBase = values.length >= 4 ? quantile(values, 0.75) : mid * (values.length ? 1.12 : 1.18)
-    const rangeFloor = mid * 0.85
-    const rangeCeiling = mid * 1.15
-    const low = roundMoney(Math.min(Math.max(lowBase, rangeFloor), mid * 0.93))
-    const high = roundMoney(Math.max(Math.min(highBase, rangeCeiling), mid * 1.07))
-
-    const confidenceScore = values.length >= 8 ? 0.48 : values.length >= 3 ? 0.38 : values.length ? 0.28 : 0.18
-    const confidence: VehicleValuation['confidence'] = confidenceScore >= 0.45 ? 'MEDIUM' : 'LOW'
-    const source: VehicleValuation['source'] = values.length
-        ? 'CARMAZIUM_MARKET'
-        : fallbackResult.calibratedModelProfile
-            ? 'CARMAZIUM_MODEL_PROFILE'
-            : 'CARMAZIUM_MODEL'
-
-    const retailSuggestedAsking = low
-    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80)
-
-    return {
-        low,
-        mid,
-        high,
-        confidence,
-        confidenceScore,
-        comparables: values.length,
-        evidence: {
-            completedSales: 0,
-            acceptedOffers: 0,
-            auctionResults: 0,
-            activeAsks: values.length,
-        },
-        source,
-        explanation: values.length
-            ? `Based on ${values.length} similar live CarMazium asking price${values.length === 1 ? '' : 's'}. Completed transaction evidence will be added when available.`
-            : fallbackResult.calibratedModelProfile
-                ? 'CarMazium has limited live marketplace evidence for this exact vehicle, so this uses a calibrated model-specific depreciation profile with age and mileage.'
-                : 'Exact-model market evidence is limited, so this LOW-confidence guide uses the vehicle age and mileage and a conservative make-level depreciation model. Use it as a starting point rather than a guaranteed sale price.',
-        retail: {
-            // Use the previous dealer guide for the retail suggestion.
-            suggestedAsking: retailSuggestedAsking,
-            suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
-        },
-        auction: {
-            // Auction is exactly 20% below the retail suggestion.
-            marketValue: auctionMarketValue,
-            openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
-            reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
-            reserveHigh: auctionMarketValue,
-            suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
-        },
-    }
-}
-
-async function getBrowserFallbackValuation(
-    request: VehicleValuationRequest,
-): Promise<VehicleValuation> {
-    const params = new URLSearchParams({
-        make: request.make,
-        model: request.model,
-        minYear: String(Math.max(1950, request.year - 3)),
-        maxYear: String(request.year + 3),
-        maxMileage: String(request.mileage + 50000),
-        vehicleType: 'CAR',
-        listingType: 'CLASSIFIED',
-        limit: '50',
-    })
-
-    const response = await apiClient<PublicListingsResponse>(`/listings?${params.toString()}`, {
-        method: 'GET',
-        cache: 'no-store',
-    })
-
-    const targetModel = normalise(request.model)
-    const targetFuel = normalise(request.fuelType)
-    const targetTransmission = normalise(request.transmission)
-
-    const values = (response.data ?? [])
-        .filter((row) =>
-            row.id !== request.excludeListingId &&
-            normalise(row.make) === normalise(request.make) &&
-            normalise(row.model) === targetModel,
-        )
-        .map((row) => {
-            const price = Number(row.price)
-            if (!Number.isFinite(price) || price < 250) return null
-
-            const compYear = row.year ?? request.year
-            const compMileage = row.mileage ?? request.mileage
-            let value = price * Math.pow(0.92, compYear - request.year)
-            value *= clamp(1 - ((request.mileage - compMileage) / 1000) * 0.004, 0.78, 1.22)
-
-            // Do not exclude a useful comparable for a different powertrain;
-            // reduce its influence instead by nudging it toward the conservative
-            // side before it enters the median pool.
-            if (targetFuel && normalise(row.fuelType) && normalise(row.fuelType) !== targetFuel) value *= 0.96
-
-            const rowTransmission = normalise(row.transmission)
-            if (targetTransmission && rowTransmission && rowTransmission !== targetTransmission) {
-                const targetFamily = transmissionFamily(request.transmission)
-                const compFamily = transmissionFamily(row.transmission)
-                if (targetFamily && compFamily && targetFamily !== compFamily) {
-                    value *= targetFamily === 'AUTO' ? 1.07 : 0.93
-                }
-            }
-
-            // Public fallback data is live asking-price evidence, not an
-            // achieved transaction price, so keep the estimate conservative.
-            value *= 0.96
-            value *= profileFactor(request)
-            return value
-        })
-        .filter((value): value is number => value !== null)
-        .sort((a, b) => a - b)
-
-    // Trim obvious asking-price outliers when enough listings exist.
-    const cleaned = values.length >= 5
-        ? values.filter((value) => {
-            const median = quantile(values, 0.5)
-            return value >= median * 0.55 && value <= median * 1.75
-        })
-        : values
-
-    const valuation = finishEstimate(request, cleaned)
-    valuation.marketEvidence = {
-        carmaziumComparables: cleaned.length,
-        liveUkComparables: 0,
-        liveUkSearchStatus: 'UNAVAILABLE',
-        rawLiveUkComparables: 0,
-    }
-    return valuation
-}
-
-function getDeterministicFallbackValuation(
-    request: VehicleValuationRequest,
-): VehicleValuation {
-    const valuation = finishEstimate(request, [])
-    valuation.marketEvidence = {
-        carmaziumComparables: 0,
-        liveUkComparables: 0,
-        liveUkSearchStatus: 'UNAVAILABLE',
-        rawLiveUkComparables: 0,
-    }
-    return valuation
-}
-
 export async function getVehicleValuation(
     request: VehicleValuationRequest,
 ): Promise<VehicleValuation> {
@@ -548,22 +296,26 @@ export async function getVehicleValuation(
                 const body = await response.text().catch(() => '')
                 throw new Error(body || `Valuation request failed (${response.status})`)
             }
-            const body = await response.json() as { data?: VehicleValuation }
-            if (!body?.data) throw new Error('Valuation response was empty')
-            return body.data
+            const body = await response.json() as { success?: boolean; data?: VehicleValuation }
+            // Only the shared backend may issue prices: its database quote is
+            // authoritative across the website, iOS and Android for 24 hours.
+            if (body.success === false
+                || !Number.isFinite(Number(body.data?.retail?.suggestedAsking))
+                || Number(body.data?.retail?.suggestedAsking) <= 0
+                || !Number.isFinite(Number(body.data?.auction?.marketValue))
+                || Number(body.data?.auction?.marketValue) <= 0
+            ) throw new Error('VALUATION_UNAVAILABLE')
+            return body.data!
         } finally {
             clearTimeout(timeoutId)
         }
-    } catch {
-        // Never strand a seller because an enrichment dependency, deployment,
-        // rate-limit or network request failed. Try current CarMazium adverts
-        // first; if even that public-listings request is unavailable, the local
-        // deterministic age/mileage/transmission model still returns a numeric
-        // LOW-confidence guide.
-        try {
-            return await getBrowserFallbackValuation(request)
-        } catch {
-            return getDeterministicFallbackValuation(request)
+    } catch (error) {
+        // A browser-generated fallback could display a different price from
+        // the previously issued 24-hour quote. Fail closed instead and allow
+        // the customer to retry retrieving the existing server-side quote.
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error('VALUATION_TIMEOUT')
         }
+        throw new Error('VALUATION_UNAVAILABLE')
     }
 }
