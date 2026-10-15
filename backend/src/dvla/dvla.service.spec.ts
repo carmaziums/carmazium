@@ -5,6 +5,9 @@ describe('DvlaService AI specification enrichment', () => {
         get: jest.fn((key: string) => {
             if (key === 'DVLA_API_KEY') return 'dvla-test-key';
             if (key === 'MOT_API_KEY') return 'mot-test-key';
+            if (key === 'MOT_CLIENT_ID') return 'test-client-id';
+            if (key === 'MOT_CLIENT_SECRET') return 'test-client-secret';
+            if (key === 'MOT_TOKEN_URL') return 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token';
             return undefined;
         }),
     };
@@ -24,12 +27,23 @@ describe('DvlaService AI specification enrichment', () => {
         monthOfFirstRegistration: '2022-03',
     };
 
-    const motPayload = [{
+    const motPayload = {
+        registration: 'XGZ5459',
+        make: 'TOYOTA',
         model: 'LAND CRUISER',
         primaryColour: 'BLACK',
         firstUsedDate: '2022-03-01',
-        motTests: [],
-    }];
+        engineSize: '2755',
+        fuelType: 'Diesel',
+        motTests: [{
+            completedDate: '2025-06-01 09:00:00',
+            testResult: 'PASSED',
+            odometerValue: '35600',
+            odometerUnit: 'mi',
+            motTestNumber: 12345678901,
+            defects: [],
+        }],
+    };
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -43,7 +57,15 @@ describe('DvlaService AI specification enrichment', () => {
                 };
             }
 
-            if (String(url).includes('check-mot.service.gov.uk')) {
+            if (String(url).includes('login.microsoftonline.com')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ access_token: 'test-oauth-token', expires_in: 3600 }),
+                };
+            }
+
+            if (String(url).includes('history.mot.api.gov.uk')) {
                 return {
                     ok: true,
                     status: 200,
@@ -54,6 +76,49 @@ describe('DvlaService AI specification enrichment', () => {
 
             throw new Error(`Unexpected URL: ${url}`);
         });
+    });
+
+
+    it('uses the official v1 OAuth endpoint and returns historical MOT mileage as dated evidence', async () => {
+        const aiService = { enrichVehicleSpecification: jest.fn() };
+        const service = new DvlaService(config as any, aiService as any);
+        const result = await service.lookupVrm('XGZ5459');
+        expect(result.lastMotMileage).toEqual({
+            value: 35600,
+            unit: 'MI',
+            recordedAt: '2025-06-01 09:00:00',
+        });
+        expect(result.motHistory?.[0].motTestNumber).toBe('12345678901');
+        const calls = (global as any).fetch.mock.calls as any[][];
+        const motCall = calls.find(([url]) => String(url).includes('history.mot.api.gov.uk'));
+        expect(motCall[0]).toContain('/v1/trade/vehicles/registration/XGZ5459');
+        expect(motCall[1].headers).toEqual(expect.objectContaining({
+            'Authorization': 'Bearer test-oauth-token',
+            'X-API-Key': 'mot-test-key',
+        }));
+        expect(aiService.enrichVehicleSpecification).not.toHaveBeenCalled();
+    });
+
+    it('caches the Entra token across distinct vehicle lookups', async () => {
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        await service.lookupVrm('XGZ5459');
+        await service.lookupVrm('XGZ5458');
+        const calls = (global as any).fetch.mock.calls as any[][];
+        expect(calls.filter(([url]) => String(url).includes('login.microsoftonline.com'))).toHaveLength(1);
+    });
+
+    it('does not apply MOT vehicle details to a mismatched registration or make', async () => {
+        (global as any).fetch = jest.fn(async (url: string) => {
+            if (url.includes('login.microsoftonline.com'))
+                return { ok: true, json: async () => ({ access_token: 'test-token', expires_in: 3600 }) };
+            if (url.includes('history.mot.api.gov.uk'))
+                return { ok: true, json: async () => ({ registration: 'ZZ99ZZZ', make: 'FORD', model: 'FIESTA', motTests: [] }) };
+            return { ok: true, json: async () => dvlaPayload };
+        });
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        const result = await service.lookupVrm('XGZ5459');
+        expect(result.model).toBeUndefined();
+        expect(result.motHistory).toBeUndefined();
     });
 
     it('does not send registration data to AI enrichment without explicit consent', async () => {
@@ -193,16 +258,26 @@ describe('DvlaService AI specification enrichment', () => {
                 };
             }
 
-            if (String(url).includes('check-mot.service.gov.uk')) {
+            if (String(url).includes('login.microsoftonline.com')) {
                 return {
                     ok: true,
                     status: 200,
-                    json: async () => [{
+                    json: async () => ({ access_token: 'test-oauth-token', expires_in: 3600 }),
+                };
+            }
+
+            if (String(url).includes('history.mot.api.gov.uk')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        registration: 'AB14XYZ',
+                        make: 'VAUXHALL',
                         model: '2014',
                         primaryColour: 'BLACK',
                         firstUsedDate: '2014-03-01',
                         motTests: [],
-                    }],
+                    }),
                     text: async () => '',
                 };
             }
@@ -234,6 +309,9 @@ describe('DvlaService — retail seller timeout and optional upstream isolation'
         get: (key: string) => ({
             DVLA_API_KEY: 'dvla-test-key',
             MOT_API_KEY: 'mot-test-key',
+            MOT_CLIENT_ID: 'test-client-id',
+            MOT_CLIENT_SECRET: 'test-client-secret',
+            MOT_TOKEN_URL: 'https://login.microsoftonline.com/test-tenant/oauth2/v2.0/token',
             DVLA_CORE_TIMEOUT_MS: '40',
             DVLA_MOT_TIMEOUT_MS: '30',
             DVLA_SYNC_AI_TIMEOUT_MS: '35',
@@ -251,7 +329,10 @@ describe('DvlaService — retail seller timeout and optional upstream isolation'
             if (url.includes('driver-vehicle-licensing')) {
                 return { ok: true, status: 200, json: async () => corePayload };
             }
-            return { ok: true, status: 200, json: async () => [] };
+            if (url.includes('login.microsoftonline.com')) {
+                return { ok: true, status: 200, json: async () => ({ access_token: 'test-token', expires_in: 3600 }) };
+            }
+            return { ok: true, status: 200, json: async () => ({ motTests: [] }) };
         });
         (global as any).fetch = fetchMock;
     });
