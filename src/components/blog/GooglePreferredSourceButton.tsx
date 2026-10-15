@@ -1,6 +1,6 @@
 import Script from "next/script"
 
-const SOURCE_PREFERENCES_URL = "https://www.google.com/preferences/source?q=www.carmazium.com"
+const SOURCE_PREFERENCES_URL = "https://www.google.com/preferences/source?q=carmazium.com"
 
 /**
  * Google's official Preferred Sources control. Intended for editorial/blog
