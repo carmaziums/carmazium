@@ -406,7 +406,13 @@ export function applyVehicleSpecificationAdjustments(
     const low = roundMoney(base.low * factor);
     const mid = roundMoney(base.mid * factor);
     const high = roundMoney(base.high * factor);
-    const retailSuggestedAsking = roundMoney(base.retail.suggestedAsking * factor);
+    // Previously frozen valuation journeys contain the old retail=high,
+    // auction=low relationship. Rebase them on the former auction price so
+    // a page refresh cannot restore the inflated retail guide.
+    const retailBase = base.retail.suggestedAsking > base.low
+        ? base.auction.marketValue
+        : base.retail.suggestedAsking;
+    const retailSuggestedAsking = roundMoney(retailBase * factor);
     const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80);
     const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
     const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
