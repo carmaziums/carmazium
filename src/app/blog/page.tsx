@@ -130,6 +130,30 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
                     </div>
                 )}
 
+                {page === 1 && (
+                    <section aria-labelledby="explore-automotive-guides" className="mb-12">
+                        <div className="mb-5">
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">Explore by goal</p>
+                            <h2 id="explore-automotive-guides" className="mt-1 text-xl font-black font-heading text-[var(--text-primary)] md:text-2xl">Find the right CarMazium guide</h2>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {[
+                                { href: "/search", title: "Find used cars for sale", description: "Search available retail cars from CarMazium sellers." },
+                                { href: "/auctions/how-it-works", title: "Understand dealer car auctions", description: "Learn how sellers list for free and verified traders bid." },
+                                { href: "/used-car-types", title: "Compare used-car body types", description: "Choose between hatchbacks, SUVs, estates and more." },
+                            ].map((guide) => (
+                                <Link key={guide.href} href={guide.href} className="group flex items-start justify-between gap-3 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                                    <span>
+                                        <span className="block font-black text-[var(--text-primary)] group-hover:text-primary">{guide.title}</span>
+                                        <span className="mt-2 block text-xs leading-5 text-[var(--text-secondary)]">{guide.description}</span>
+                                    </span>
+                                    <ArrowRight aria-hidden="true" size={17} className="mt-1 shrink-0 text-primary" />
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {posts.length === 0 ? (
                     <div className="glass-card p-12 text-center max-w-md mx-auto">
                         <Newspaper className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-4" />
