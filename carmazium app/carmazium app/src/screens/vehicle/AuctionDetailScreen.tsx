@@ -40,6 +40,7 @@ import { getAccessToken } from '../../lib/supabase';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { haptics } from '../../lib/haptics';
 import { BuyerDamageViewer } from '../../components/damage/BuyerDamageViewer';
+import { BuyerVehicleFacts } from '../../components/BuyerVehicleFacts';
 import { GradeChip } from '../../components/GradeChip';
 import { Button } from '../../components/Button';
 import { getMinimumAuctionBid } from '../../lib/auctionPricing';
@@ -1730,39 +1731,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               );
             })()}
 
-            {Array.isArray((auction?.listing as any)?.motHistory)
-              && (auction!.listing as any).motHistory.length > 0 && (
-                <View style={s.card}>
-                  <Text style={s.cardSectionTitle}>Saved MOT History</Text>
-                  <Text style={[s.muted, { fontSize: 10, marginBottom: 12 }]}>
-                    Listing-time MOT snapshot, not an independently verified or continuously updated history report.
-                  </Text>
-                  {((auction!.listing as any).motHistory as Array<{
-                    motTestNumber?: string;
-                    completedDate?: string;
-                    testResult?: string;
-                    odometerValue?: string;
-                    odometerUnit?: string;
-                    expiryDate?: string;
-                    defects?: unknown[];
-                  }>).slice(0, 8).map((test, index) => (
-                    <View key={test.motTestNumber || `${test.completedDate || 'test'}-${index}`}
-                      style={[s.specsSection, { marginBottom: 8 }]}>
-                      <View style={s.specRow}>
-                        <Text style={s.specKey}>{test.testResult || 'Result unavailable'}</Text>
-                        <Text style={s.specVal}>{test.completedDate || 'Date unavailable'}</Text>
-                      </View>
-                      {test.odometerValue ? (
-                        <Text style={s.muted}>{Number(test.odometerValue).toLocaleString('en-GB')} {test.odometerUnit || 'mi'}</Text>
-                      ) : null}
-                      {test.expiryDate ? <Text style={s.muted}>Expiry: {test.expiryDate}</Text> : null}
-                      {Array.isArray(test.defects) && test.defects.length ? (
-                        <Text style={s.muted}>{test.defects.length} recorded defects/advisories</Text>
-                      ) : null}
-                    </View>
-                  ))}
-                </View>
-              )}
+            {/* Same full DVLA/MOT and seller-facts panel as the Retail buyer page. */}
+            <BuyerVehicleFacts record={auction?.listing ?? listing} />
 
             {/* Features */}
             {Array.isArray((auction?.listing as any)?.features) && (auction!.listing as any).features.length > 0 && (
