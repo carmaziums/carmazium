@@ -306,7 +306,7 @@ export default function HowItWorksPage() {
         </div>
       </section>
 
-      {/* Feature Highlight: Auctions */
+      {/* Feature Highlight: Auctions */}
       <section className="py-32 container mx-auto px-5">
         <div className="relative rounded-[3rem] overflow-hidden border border-[var(--border-default)] bg-[var(--bg-card)] backdrop-blur-md">
           <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
