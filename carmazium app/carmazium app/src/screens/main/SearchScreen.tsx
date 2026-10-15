@@ -115,8 +115,11 @@ const SORT_OPTIONS = [
   { id: 'year_asc', label: 'Year: oldest first' },
   { id: 'year_desc', label: 'Year: newest first' },
 ];
-const YEAR_OPTS = ['Any', '2015', '2017', '2019', '2020', '2021', '2022', '2023'];
-const YEAR_OPTS_MAX = ['Any', '2016', '2018', '2020', '2021', '2022', '2023', '2024'];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTS = ['Any', '1990', '2000', '2010', '2015', '2018', ...Array.from(
+  { length: CURRENT_YEAR - 2019 + 1 }, (_, i) => String(2019 + i),
+)];
+const YEAR_OPTS_MAX = YEAR_OPTS;
 const MILES_OPTS = ['Any', '10k', '20k', '30k', '40k', '60k', '80k', '100k'];
 const MILES_OPTS_MIN = ['Any', '5k', '10k', '20k', '30k', '40k', '60k', '80k'];
 // All eight values web offers (`src/app/search/page.tsx:59-68`). CAT_C and CAT_D
@@ -339,8 +342,8 @@ export const SearchScreen: React.FC = () => {
       // any nav-param seed (route.params?.fuelType) both use.
       fuelTypes: selectedFuels.length ? selectedFuels.map(f => FUEL_MAP[f] ?? f) : undefined,
       fuelType: selectedFuels.length ? undefined : qf?.params.fuelType,
-      minYear: minYear !== 'Any' ? parseInt(minYear) : qf?.params.minYear,
-      maxYear: maxYear !== 'Any' ? parseInt(maxYear) : undefined,
+      minYear: minYear !== 'Any' && /^\\d{4}$/.test(minYear) ? parseInt(minYear) : qf?.params.minYear,
+      maxYear: maxYear !== 'Any' && /^\\d{4}$/.test(maxYear) ? parseInt(maxYear) : undefined,
       minMileage: parseMi(minMiles),
       maxMileage: parseMi(maxMiles),
       conditions: conditions.length ? conditions : undefined,
@@ -1037,35 +1040,42 @@ export const SearchScreen: React.FC = () => {
 
               <View style={s.divider} />
 
-              {/* Year Range */}
+              {/* Year range: custom entry supports classic cars; quick choices include this year. */}
               <Text style={s.filterLabel}>YEAR RANGE</Text>
-              <View style={s.inputBox}>
-                <Text style={s.inputBoxLabel}>FROM YEAR</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {YEAR_OPTS.map(y => (
-                      <TouchableOpacity key={y} style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)} activeOpacity={0.7}>
-                        <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              <View style={{ marginTop: 10 }}>
-                <View style={s.inputBox}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[s.inputBox, { flex: 1 }]}>
+                  <Text style={s.inputBoxLabel}>FROM YEAR</Text>
+                  <TextInput style={s.inputBoxValue} value={minYear === 'Any' ? '' : minYear}
+                    onChangeText={v => setMinYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
+                    placeholder="Any" placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad" maxLength={4} />
+                </View>
+                <View style={[s.inputBox, { flex: 1 }]}>
                   <Text style={s.inputBoxLabel}>TO YEAR</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {YEAR_OPTS_MAX.map(y => (
-                        <TouchableOpacity key={y} style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)} activeOpacity={0.7}>
-                          <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <TextInput style={s.inputBoxValue} value={maxYear === 'Any' ? '' : maxYear}
+                    onChangeText={v => setMaxYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
+                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.borderMuted}
+                    keyboardType="number-pad" maxLength={4} />
                 </View>
               </View>
-
+              <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (FROM)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {YEAR_OPTS.map(y => <TouchableOpacity key={y}
+                    style={[s.miniChip, minYear === y && s.filterChipActive]} onPress={() => setMinYear(y)}>
+                    <Text style={[s.miniChipText, minYear === y && { color: Colors.white }]}>{y}</Text>
+                  </TouchableOpacity>)}
+                </View>
+              </ScrollView>
+              <Text style={[s.inputBoxLabel, { marginTop: 12 }]}>QUICK YEAR CHOICES (TO)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {YEAR_OPTS_MAX.map(y => <TouchableOpacity key={y}
+                    style={[s.miniChip, maxYear === y && s.filterChipActive]} onPress={() => setMaxYear(y)}>
+                    <Text style={[s.miniChipText, maxYear === y && { color: Colors.white }]}>{y}</Text>
+                  </TouchableOpacity>)}
+                </View>
+              </ScrollView>
               <View style={s.divider} />
 
               {/* Mileage Range */}
