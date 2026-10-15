@@ -1166,7 +1166,7 @@ export const SearchScreen: React.FC = () => {
                 <>
               {/* Search the same Grade 1–5 computed from seller's damage map. */}
               <Text style={s.filterLabel}>EXTERIOR GRADE (1–5)</Text>
-              <Text style={s.fieldHint}>Calculated from reported defects. Grade 1 is best.</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
               <View style={s.chipGrid}>
                 {EXTERIOR_GRADE_OPTIONS.map(g => (
                   <TouchableOpacity key={g.value} style={[s.filterChip, exteriorGrades.includes(g.value) && s.filterChipActive]}
@@ -1195,7 +1195,7 @@ export const SearchScreen: React.FC = () => {
               <View style={s.divider} />
 
               <Text style={s.filterLabel}>INSURANCE WRITE-OFF STATUS</Text>
-              <Text style={s.fieldHint}>Declared history may not be independently HPI-verified.</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently HPI-verified.</Text>
               <View style={s.chipGrid}>
                 {WRITE_OFF_OPTIONS.map(c => (
                   <TouchableOpacity key={c.id} style={[s.filterChip, writeOffCategories.includes(c.id) && s.filterChipActive]}
