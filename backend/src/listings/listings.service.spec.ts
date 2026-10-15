@@ -2195,4 +2195,33 @@ describe('ListingsService', () => {
             expect(query.include.seller.select.dealerProfile.select.phone).toBeUndefined();
         });
     });
+
+    describe('retail buyer search only shows available stock', () => {
+        it.each([
+            ['default', {}],
+            ['explicit classified', { listingType: 'CLASSIFIED' }],
+            ['spoofed includeSold', { includeSold: true }],
+            ['status query attempt', { status: 'SOLD' }],
+            ['search with sort', { search: 'Ford', sortBy: 'price_asc' }],
+            ['price filter', { minPrice: 1000, maxPrice: 20000 }],
+        ])('filters SOLD/OFFER_ACCEPTED for %s query', async (_, params) => {
+            prisma.listing.findMany.mockResolvedValue([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll(params as any);
+            const listQuery = prisma.listing.findMany.mock.calls[0][0];
+            const countQuery = prisma.listing.count.mock.calls[0][0];
+            expect(listQuery.where.status).toBe('ACTIVE');
+            expect(countQuery.where.status).toBe('ACTIVE');
+            expect(listQuery.where.type).toBe('CLASSIFIED');
+        });
+
+        it('excludes closed retail cars before geospatial candidate search and pagination', async () => {
+            prisma.listing.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+            prisma.listing.count.mockResolvedValue(0);
+            await service.findAll({ maxDistanceMi: 25, originLatitude: 52.48, originLongitude: -1.89 } as any);
+            expect(prisma.listing.findMany.mock.calls[0][0].where.status).toBe('ACTIVE');
+            expect(prisma.listing.findMany.mock.calls[1][0].where.status).toBe('ACTIVE');
+            expect(prisma.listing.count.mock.calls[0][0].where.status).toBe('ACTIVE');
+        });
+    });
 });

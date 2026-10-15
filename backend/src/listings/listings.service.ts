@@ -1911,7 +1911,11 @@ export class ListingsService {
             sortBy, search, features,
             page = 1, limit = 20,
         } = filterDto;
-        const where: any = { deletedAt: null, status: { in: ['ACTIVE', 'SOLD', 'OFFER_ACCEPTED'] } };
+        // Public retail catalogue contains only vehicles still for sale.
+        // Never broaden this with client-supplied status/includeSold flags:
+        // completed and accepted offers stay available in owner dashboards,
+        // deal history and direct detail links, but not buyer search.
+        const where: any = { deletedAt: null, status: 'ACTIVE' };
 
         // ─── Price range ────────────────────────────────────────────────────
         if (minPrice !== undefined || maxPrice !== undefined) {
@@ -2037,11 +2041,11 @@ export class ListingsService {
         }
 
         // ─── Sort ────────────────────────────────────────────────────────────
-        // Preserve ACTIVE before SOLD and default featured priority, but honour
-        // explicit buyer sort selection first. A £30k featured car must not
+        // Default featured priority applies only to ACTIVE retail cars; honour
+        // explicitly selected sort orders first. A £30k featured car must not
         // precede a £5k ordinary car in price-low-to-high results.
         // Stable tie-breakers keep pagination deterministic.
-        let orderBy: any[] = [{ status: 'asc' }, { isFeatured: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
+        let orderBy: any[] = [{ isFeatured: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
         const sortFields: Record<string, { field: string; direction: 'asc' | 'desc' }> = {
             price_asc: { field: 'price', direction: 'asc' },
             price_desc: { field: 'price', direction: 'desc' },
@@ -2052,7 +2056,6 @@ export class ListingsService {
         };
         const chosenSort = sortBy ? sortFields[sortBy] : undefined;
         if (chosenSort) orderBy = [
-            { status: 'asc' },
             { [chosenSort.field]: chosenSort.direction },
             { isFeatured: 'desc' },
             { createdAt: 'desc' },
