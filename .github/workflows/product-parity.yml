@@ -94,3 +94,5 @@ jobs:
         run: npm test -- --runInBand src/core/account-roles.spec.ts
       - name: Test dealer-only saved auction shortlist
         run: npm test -- --runInBand src/watchlist/watchlist.service.spec.ts
+      - name: Test retail and dealer auction valuation price policy
+        run: npm test -- --runInBand src/listings/vehicle-valuation.spec.ts
