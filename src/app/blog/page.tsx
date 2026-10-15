@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import Image from "next/image"
+import { notFound } from "next/navigation"
 import { ArrowRight, BookOpen, Calendar, Clock, Newspaper } from "lucide-react"
 import { buttonVariants } from "@/components/ui/buttonVariants"
 import type { BlogPost } from "@/lib/blogApi"
@@ -11,14 +12,19 @@ import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSo
 const SITE_URL = "https://www.carmazium.com"
 const PAGE_SIZE = 12
 
-async function getPosts(page: number): Promise<{ data: BlogPost[]; total: number; totalPages: number }> {
+async function getPosts(page: number): Promise<{ data: BlogPost[]; total: number; totalPages: number; loaded: boolean }> {
     try {
         const res = await serverBackendFetch(`/blog?page=${page}&limit=${PAGE_SIZE}`, { next: { revalidate: 300 } })
-        if (!res.ok) return { data: [], total: 0, totalPages: 1 }
+        if (!res.ok) return { data: [], total: 0, totalPages: 1, loaded: false }
         const json = await res.json()
-        return { data: json.data ?? [], total: json.pagination?.total ?? 0, totalPages: json.pagination?.totalPages ?? 1 }
+        // A malformed or partial upstream response must not turn existing
+        // archives into 404 pages. Only valid pagination is authoritative.
+        if (!Array.isArray(json.data) || !Number.isSafeInteger(json.pagination?.totalPages) || json.pagination.totalPages < 0) {
+            return { data: [], total: 0, totalPages: 1, loaded: false }
+        }
+        return { data: json.data as BlogPost[], total: json.pagination?.total ?? 0, totalPages: json.pagination.totalPages, loaded: true }
     } catch {
-        return { data: [], total: 0, totalPages: 1 }
+        return { data: [], total: 0, totalPages: 1, loaded: false }
     }
 }
 
@@ -105,7 +111,10 @@ function ArticleCard({ post }: { post: BlogPost }) {
 export default async function BlogIndexPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
     const { page: pageParam } = await searchParams
     const page = requestedPage(pageParam)
-    const { data: posts, total, totalPages } = await getPosts(page)
+    const { data: posts, total, totalPages, loaded } = await getPosts(page)
+    // Avoid creating indexable, infinite thin pages for non-existent page
+    // numbers. An upstream outage is not evidence that articles are gone.
+    if (loaded && page > 1 && (page > totalPages || posts.length === 0)) notFound()
     const featured = page === 1 ? posts[0] : undefined
     const gridPosts = featured ? posts.slice(1) : posts
 

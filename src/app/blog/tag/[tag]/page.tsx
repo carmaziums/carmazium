@@ -10,15 +10,20 @@ import { serverBackendFetch } from "@/lib/serverBackendFetch"
 const SITE_URL = "https://www.carmazium.com"
 const PAGE_SIZE = 12
 
-async function getPostsByTag(tag: string, page: number): Promise<{ data: BlogPost[]; total: number; totalPages: number }> {
+async function getPostsByTag(tag: string, page: number): Promise<{ data: BlogPost[]; total: number; totalPages: number; loaded: boolean }> {
     try {
         const qs = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), tag })
         const res = await serverBackendFetch(`/blog?${qs.toString()}`, { next: { revalidate: 300 } })
-        if (!res.ok) return { data: [], total: 0, totalPages: 1 }
+        if (!res.ok) return { data: [], total: 0, totalPages: 1, loaded: false }
         const json = await res.json()
-        return { data: json.data ?? [], total: json.pagination?.total ?? 0, totalPages: json.pagination?.totalPages ?? 1 }
+        // A malformed or partial upstream response must not turn existing
+        // archives into 404 pages. Only valid pagination is authoritative.
+        if (!Array.isArray(json.data) || !Number.isSafeInteger(json.pagination?.totalPages) || json.pagination.totalPages < 0) {
+            return { data: [], total: 0, totalPages: 1, loaded: false }
+        }
+        return { data: json.data as BlogPost[], total: json.pagination?.total ?? 0, totalPages: json.pagination.totalPages, loaded: true }
     } catch {
-        return { data: [], total: 0, totalPages: 1 }
+        return { data: [], total: 0, totalPages: 1, loaded: false }
     }
 }
 
@@ -55,9 +60,12 @@ export default async function BlogTagPage({ params, searchParams }: { params: Pr
     const { page: pageParam } = await searchParams
     const decoded = decodeURIComponent(tag)
     const page = requestedPage(pageParam)
-    const { data: posts, totalPages } = await getPostsByTag(decoded, page)
+    const { data: posts, totalPages, loaded } = await getPostsByTag(decoded, page)
 
-    if (posts.length === 0 && page === 1) notFound()
+    // Tag archives should not manufacture empty, self-canonical page numbers.
+    // Only return 404 when the successful public API response confirms no
+    // matching content; an API outage is not proof that a page was removed.
+    if (loaded && (posts.length === 0 || page > totalPages)) notFound()
 
     return (
         <div className="min-h-screen pt-28 pb-24">
