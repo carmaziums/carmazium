@@ -31,6 +31,7 @@ test("iOS candidate uses production app identity, locked dependencies and the ow
   assert.equal(eas.build.production.android.buildType, 'app-bundle');
   assert.equal(eas.cli.appVersionSource, 'remote');
   assert.match(flow, /npm ci/);
+  assert.match(flow, /npm audit --omit=dev --audit-level=critical/);
   assert.match(flow, /npm run typescript/);
   assert.match(flow, /secrets\.EXPO_TOKEN \|\| secrets\.EAS_TOKEN/);
   assert.match(flow, /eas-cli@16\.18\.0 build --platform ios --profile production --non-interactive --wait --json/);
