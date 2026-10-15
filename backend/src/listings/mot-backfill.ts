@@ -17,15 +17,15 @@ export function motEnrichmentUpdate(
     const tests = official.motHistory;
     if (!Array.isArray(tests) || tests.length === 0) return null;
     if (!tests.every(test =>
-        test && /^\\d{4}-\\d{2}-\\d{2}/.test(test.completedDate || '')
+        test && /^\d{4}-\d{2}-\d{2}/.test(test.completedDate || '')
         && ['PASSED', 'FAILED'].includes(test.testResult)
         && typeof test.motTestNumber === 'string' && test.motTestNumber.length > 0)) return null;
 
     const model = String(official.model ?? '').trim();
     const currentModel = String(listing.model ?? '').trim();
     const canFillModel = !currentModel && model.length >= 2
-        && !/^undefined$|^unknown$|^n\\/?a$/i.test(model)
+        && !/^undefined$|^unknown$|^n\/?a$/i.test(model)
         && norm(model) !== norm(listing.make)
-        && !/^\\d{4}$/.test(model);
+        && !/^\d{4}$/.test(model);
     return { motHistory: tests, ...(canFillModel ? { model } : {}) };
 }
