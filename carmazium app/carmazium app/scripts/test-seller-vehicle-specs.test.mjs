@@ -162,3 +162,13 @@ test('native user-scoped draft saves auction settings and publishes only a valid
   assert.match(screen, /parseNativeAuctionLocalStart\(auctionStartDate\)!\.toISOString\(\)/);
   assert.match(screen, /validateStep\(4\)/);
 });
+
+
+test('native listing wizard preserves the same backend-locked quote as web', () => {
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../src/lib/valuationApi.ts', import.meta.url), 'utf8');
+  assert.match(screen, /setValuation\(baseValuation\)/);
+  assert.doesNotMatch(screen, /setValuation\(applyVehicleValuationAdjustments\(/);
+  assert.match(api, /fetch\(\x60\$\{API_URL\}\/listings\/valuation\?/);
+  assert.doesNotMatch(api, /getDeterministicFallbackValuation\(/);
+});
