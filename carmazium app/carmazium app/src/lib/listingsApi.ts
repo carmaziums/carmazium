@@ -393,6 +393,7 @@ export async function searchListings(params: {
   search?: string;
   make?: string;
   model?: string;
+  variant?: string;
   vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE';
   location?: string;
   minPrice?: number;
@@ -438,6 +439,7 @@ export async function searchListings(params: {
     if (params.search)    query.set('search',    params.search);
     if (params.make)      query.set('make',      params.make);
     if (params.model)     query.set('model',     params.model);
+    if (params.variant)   query.set('variant',   params.variant);
     if (params.vehicleType) query.set('vehicleType', params.vehicleType);
     if (params.location) query.set('location', params.location);
     if (params.minPrice != null) query.set('minPrice', String(params.minPrice));
