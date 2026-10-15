@@ -16,7 +16,12 @@ async function getPostsByTag(tag: string, page: number): Promise<{ data: BlogPos
         const res = await serverBackendFetch(`/blog?${qs.toString()}`, { next: { revalidate: 300 } })
         if (!res.ok) return { data: [], total: 0, totalPages: 1, loaded: false }
         const json = await res.json()
-        return { data: json.data ?? [], total: json.pagination?.total ?? 0, totalPages: json.pagination?.totalPages ?? 1, loaded: true }
+        // A malformed or partial upstream response must not turn existing
+        // archives into 404 pages. Only valid pagination is authoritative.
+        if (!Array.isArray(json.data) || !Number.isSafeInteger(json.pagination?.totalPages) || json.pagination.totalPages < 0) {
+            return { data: [], total: 0, totalPages: 1, loaded: false }
+        }
+        return { data: json.data as BlogPost[], total: json.pagination?.total ?? 0, totalPages: json.pagination.totalPages, loaded: true }
     } catch {
         return { data: [], total: 0, totalPages: 1, loaded: false }
     }
