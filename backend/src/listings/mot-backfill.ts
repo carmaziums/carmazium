@@ -8,7 +8,8 @@ export function motEnrichmentUpdate(
     official: DvlaLookupResult,
 ): { motHistory: NonNullable<DvlaLookupResult['motHistory']>; model?: string } | null {
     const norm = (x: string) => x.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!listing.vrm || !listing.make || !official.make
+    if (!listing.vrm || !listing.make || !official.make || !official.vrm
+        || norm(official.vrm) !== norm(listing.vrm)
         || norm(official.make) !== norm(listing.make)
         || (official.year && listing.year && Math.abs(official.year - listing.year) > 2)) return null;
 
