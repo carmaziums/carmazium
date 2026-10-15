@@ -355,6 +355,9 @@ export interface ListingFilters {
     minEngine?: number
     maxEngine?: number
     maxCo2?: number
+    minCombinedMpg?: number
+    maxZeroTo60Mph?: number
+    driveType?: string
     condition?: VehicleConditionValue
     conditions?: VehicleConditionValue[]
     ulezCompliant?: boolean
@@ -408,6 +411,9 @@ export async function getListings(filters?: ListingFilters): Promise<ListingsRes
         if (filters.vehicleType) params.append('vehicleType', filters.vehicleType)
         if (filters.minBhp !== undefined) params.append('minBhp', filters.minBhp.toString())
         if (filters.maxBhp !== undefined) params.append('maxBhp', filters.maxBhp.toString())
+        if (filters.minCombinedMpg !== undefined) params.append('minCombinedMpg', String(filters.minCombinedMpg))
+        if (filters.maxZeroTo60Mph !== undefined) params.append('maxZeroTo60Mph', String(filters.maxZeroTo60Mph))
+        if (filters.driveType) params.append('driveType', filters.driveType)
         if (filters.sellerType) params.append('sellerType', filters.sellerType)
         if (filters.location) params.append('location', filters.location)
         if (filters.listingType) params.append('listingType', filters.listingType)
