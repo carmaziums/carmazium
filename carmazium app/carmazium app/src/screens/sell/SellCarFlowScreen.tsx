@@ -38,7 +38,7 @@ import { CAR_MAKES, getModelsForMake } from '../../data/carData';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
-import { applyVehicleValuationAdjustments, getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
+import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
 import { computeExteriorGradeFromDefectCount } from '../../lib/exteriorGrade';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -867,52 +867,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     baseValuation,
   ]);
 
+  // Always show the server's 24-hour locked quote. Local specification
+  // adjustments would make a different price appear in the listing wizard.
+  // Sellers can still edit their own asking price and auction reserve.
   useEffect(() => {
-    if (!baseValuation) return;
-
-    setValuation(applyVehicleValuationAdjustments(baseValuation, {
-      make: make.trim(),
-      model: model.trim(),
-      year: Number(year),
-      mileage: Number(String(mileage).replace(/[^0-9]/g, '')),
-      variant: variant || undefined,
-      fuelType: fuelType || undefined,
-      transmission: transmission || undefined,
-      condition: condition || undefined,
-      exteriorGrade: automaticExteriorGrade,
-      serviceHistory: serviceHistory || undefined,
-      owners: owners || undefined,
-      numberOfKeys: numberOfKeys ? Number(numberOfKeys) : undefined,
-      ulezCompliant: ulezCompliant ?? undefined,
-      euroStandard: euroStandard || undefined,
-      doors: doors ? Number(doors) : undefined,
-      seats: seats ? Number(seats) : undefined,
-      features: features.length ? features : undefined,
-      writeOffCategory: writeOffCat || undefined,
-      isImported,
-    }));
-  }, [
-    baseValuation,
-    make,
-    model,
-    year,
-    mileage,
-    variant,
-    fuelType,
-    transmission,
-    condition,
-    automaticExteriorGrade,
-    serviceHistory,
-    owners,
-    numberOfKeys,
-    ulezCompliant,
-    euroStandard,
-    doors,
-    seats,
-    features,
-    writeOffCat,
-    isImported,
-  ]);
+    setValuation(baseValuation);
+  }, [baseValuation]);
 
   function applyValuationGuide() {
     if (!valuation) return;
