@@ -1,7 +1,7 @@
 import { motEnrichmentUpdate } from './mot-backfill';
 const listed = { vrm: 'AB21XYZ', make: 'FORD', year: 2021, model: null, motHistory: null };
 const official = {
-  dataSource: 'DVLA' as const, make: 'Ford', year: 2021, model: 'Focus',
+  dataSource: 'DVLA' as const, vrm: 'AB21XYZ', make: 'Ford', year: 2021, model: 'Focus',
   motHistory: [{ completedDate: '2025-06-01', testResult: 'PASSED' as const, motTestNumber: '1234567890' }],
 };
 describe('official retail MOT history recovery', () => {
@@ -14,6 +14,7 @@ describe('official retail MOT history recovery', () => {
   });
   it('rejects mismatched make and implausible model names', () => {
     expect(motEnrichmentUpdate(listed, { ...official, make: 'Toyota' })).toBeNull();
+    expect(motEnrichmentUpdate(listed, { ...official, vrm: 'XX21XYZ' })).toBeNull();
     expect(motEnrichmentUpdate(listed, { ...official, year: 2015 })).toBeNull();
     expect(motEnrichmentUpdate(listed, { ...official, model: 'undefined' })).toEqual({ motHistory: official.motHistory });
   });
