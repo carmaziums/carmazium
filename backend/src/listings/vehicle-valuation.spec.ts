@@ -337,6 +337,12 @@ describe('calculateVehicleValuation', () => {
         const freshJourneyResult = applyVehicleSpecificationAdjustments(currentBase, specification);
         expect(oldJourneyResult.retail.suggestedAsking).toBe(freshJourneyResult.retail.suggestedAsking);
         expect(oldJourneyResult.auction.marketValue).toBe(freshJourneyResult.auction.marketValue);
+        // An unmodified saved journey must be rebased too (factor = 1).
+        const withoutAdjustments = { make: vehicle.make, model: vehicle.model, year: vehicle.year, mileage: vehicle.mileage };
+        const oldUnchanged = applyVehicleSpecificationAdjustments(legacyBase, withoutAdjustments);
+        const freshUnchanged = applyVehicleSpecificationAdjustments(currentBase, withoutAdjustments);
+        expect(oldUnchanged.retail.suggestedAsking).toBe(freshUnchanged.retail.suggestedAsking);
+        expect(oldUnchanged.auction.marketValue).toBe(freshUnchanged.auction.marketValue);
     });
 
     it('does not let an extreme active asking price dominate completed outcomes', () => {
