@@ -36,6 +36,7 @@ interface SitemapRecord {
     updatedAt?: string | null
     status?: string | null
     type?: string | null
+    noIndex?: boolean | null
 }
 
 interface PagedResponse {
@@ -66,7 +67,8 @@ function safeLastModified(value: string | null | undefined): Date | undefined {
  * Fetch canonical public URLs from every available page, not just page 1.
  * The public retail feed now returns ACTIVE listings only. Direct links to
  * SOLD/OFFER_ACCEPTED vehicles remain valid but are not indexable.
- * The blog feed returns only currently published articles.
+ * The blog feed returns published articles, including records intentionally
+ * flagged noIndex. Respect the editorial noIndex decision in this sitemap.
  *
  * Never query the authenticated trade auction feed or mutate customer records.
  * On a transient upstream error, keep the static routes and pages successfully
@@ -108,7 +110,9 @@ async function fetchSitemapRecords(kind: "listings" | "blog", maxRecords: number
                 if (kind === "listings") {
                     if (isLikelyTestListingSlug(row.slug)) continue
                     if (row.type !== "CLASSIFIED" || row.status !== "ACTIVE") continue
-                } else if (row.status !== "PUBLISHED") {
+                } else if (row.status !== "PUBLISHED" || row.noIndex === true) {
+                    // Match the individual blog page's robots metadata: a
+                    // published-but-noindex article must not be in sitemap.xml.
                     continue
                 }
 
