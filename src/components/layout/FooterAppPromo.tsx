@@ -127,7 +127,7 @@ export function FooterAppPromo() {
                   <span className="rounded bg-slate-100 px-1 py-1">Valuation</span>
                 </div>
                 <div className="overflow-hidden rounded-xl bg-sky-50">
-                  <Image src="/assets/images/featured-suv.png" alt="" width={420} height={240} className="h-[85px] w-full object-contain sm:h-[125px]" />
+                  <Image src="/assets/images/featured-suv.png" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full object-contain sm:h-[125px]" />
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[7px] font-bold text-slate-700 sm:text-[9px]">
                   <span className="rounded-lg border bg-white p-1.5">Buy</span>
@@ -146,7 +146,7 @@ export function FooterAppPromo() {
                 <p className="text-[8px] font-black sm:text-[11px]">Car<span className="text-rose-500">Mazium</span></p>
                 <p className="mt-3 text-sm font-black leading-tight sm:text-lg">Find. Buy. Sell.<br />All in one.</p>
               </div>
-              <Image src="/assets/images/featured-sports.png" alt="" width={420} height={240} className="h-[85px] w-full bg-white object-contain sm:h-[105px]" />
+              <Image src="/assets/images/featured-sports.png" alt="" width={420} height={240} loading="lazy" className="h-[85px] w-full bg-white object-contain sm:h-[105px]" />
               <div className="grid gap-2 px-2 pt-3 text-[8px] font-bold text-slate-700 sm:text-[10px]">
                 <span className="rounded-lg bg-white px-2 py-2 shadow-sm">Buy Cars →</span>
                 <span className="rounded-lg bg-white px-2 py-2 shadow-sm">Sell Cars →</span>
