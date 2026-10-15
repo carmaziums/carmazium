@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
+import Link from "next/link"
 import type { VehicleValuation } from "@/lib/valuationApi"
 import { saveSellerHandoff } from "@/lib/pendingSellerHandoff"
 import { useAuth } from "@/context/AuthContext"
@@ -803,6 +804,17 @@ function SellerEducation() {
                     <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-primary">Simple seller journey</p>
                     <h2 className="mb-3 text-3xl font-black text-[var(--text-primary)] md:text-4xl">How selling on CarMazium works</h2>
                     <p className="text-[var(--text-muted)]">Value your car first, choose the selling route that suits you, create an accurate listing, then deal directly with the successful buyer.</p>
+                    <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
+                        Want to compare your options? Read{" "}
+                        <Link href="/auctions/how-it-works" className="font-bold text-primary underline underline-offset-2 hover:opacity-80">
+                            how our UK dealer car auctions work
+                        </Link>{" "}
+                        or{" "}
+                        <Link href="/pricing" className="font-bold text-primary underline underline-offset-2 hover:opacity-80">
+                            check CarMazium listing fees
+                        </Link>{" "}
+                        before creating your advert.
+                    </p>
                 </div>
 
                 <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
