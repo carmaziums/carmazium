@@ -106,7 +106,7 @@ export const BuyerDamageViewer: React.FC<Props> = ({ records, isLoading, bodyTyp
       ) : (
         <>
           <Text style={styles.listHeading}>
-            {records.length} zone{records.length !== 1 ? 's' : ''} marked by seller — tap a zone to see details
+            {records.length} damage report{records.length !== 1 ? 's' : ''} from seller — tap a marked point or its report to see details
           </Text>
           <View style={styles.list}>
             {records.map(record => {
