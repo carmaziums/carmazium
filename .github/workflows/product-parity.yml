@@ -26,6 +26,8 @@ jobs:
           node-version: 20
       - name: Check web/mobile/backend business-rule parity
         run: node scripts/check-product-parity.mjs
+      - name: Verify vehicle catalogue and filter parity across web, backend and native
+        run: node --test scripts/test-vehicle-search-catalog.test.mjs
       - name: Verify authoritative auction buyer-fee deadline parity
         run: node scripts/check-auction-fee-deadline.mjs
       - name: Assert exact native and web MaziuM visual parity
