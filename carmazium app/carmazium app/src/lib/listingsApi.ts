@@ -202,7 +202,7 @@ function mapFuelType(raw?: string | null): CarListing['fuelType'] {
     case 'ELECTRIC':      return 'Electric';
     case 'HYBRID':        return 'Hybrid';
     case 'PLUGIN_HYBRID': return 'Plug-in Hybrid';
-    default:              return (raw as CarListing['fuelType']) ?? 'Petrol';
+    default:              return raw?.trim() ? raw as CarListing['fuelType'] : 'Not specified';
   }
 }
 
@@ -213,20 +213,25 @@ export function mapTransmission(raw?: string | null): CarListing['transmission']
 function mapCategory(raw?: string | null): CarListing['category'] {
   switch (raw) {
     case 'SUV':         return 'SUV';
-    case 'HATCHBACK':   return 'Hatchback' as any;
+    case 'HATCHBACK':   return 'Hatchback';
     case 'SEDAN':       return 'Saloon';
     case 'ESTATE':      return 'Estate';
     case 'COUPE':
     case 'SPORTS_CAR':  return 'Sports';
     case 'CONVERTIBLE': return 'Convertible';
-    default:            return 'Saloon';
+    case 'CROSSOVER':   return 'Crossover';
+    case 'MPV':
+    case 'MINIVAN':     return 'MPV';
+    case 'PICKUP_TRUCK': return 'Pickup';
+    case 'VAN':         return 'Van';
+    default:            return raw?.startsWith('HGV_') ? 'HGV' : 'Not specified';
   }
 }
 
 function mapCondition(raw?: string | null): CarListing['condition'] {
   switch (raw) {
     case 'EXCELLENT':
-    case 'GOOD':  return 'Certified Pre-Owned';
+    case 'GOOD':
     case 'FAIR':
     case 'POOR':  return 'Used';
     default:      return 'Used';

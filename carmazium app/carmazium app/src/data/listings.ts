@@ -7,9 +7,9 @@
 // removed during the pre-launch dummy-data audit. Only the shared types and
 // formatting helpers (still used across the app) remain here.
 
-export type FuelType = 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'Plug-in Hybrid';
+export type FuelType = 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'Plug-in Hybrid' | 'Not specified';
 export type Transmission = 'Automatic' | 'Manual' | 'Semi-Automatic' | 'CVT' | 'Not specified';
-export type Category = 'Sports' | 'SUV' | 'Saloon' | 'Convertible' | 'Supercar' | 'Estate';
+export type Category = 'Sports' | 'SUV' | 'Saloon' | 'Convertible' | 'Supercar' | 'Estate' | 'Hatchback' | 'Crossover' | 'MPV' | 'Van' | 'Pickup' | 'Motorcycle' | 'HGV' | 'Not specified';
 export type Condition = 'New' | 'Used' | 'Certified Pre-Owned';
 
 export interface NativeMotTest {

@@ -421,12 +421,15 @@ export const SearchScreen: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, quickFilter, sortId, selectedMakes, minPrice, maxPrice, selectedBody, selectedFuels, minYear, maxYear, minMiles, maxMiles, transmissions, conditions, exteriorGrades, writeOffCategories, ulezCompliant, minBhp, maxBhp, minEngine, maxEngine, maxCo2, minCombinedMpg, maxZeroTo60Mph, driveTypeFilter, deliveryAvailable, sellerType, vehicleType, locationFilter, modelFilter, variantFilter, colorFilter, minDoors, minSeats, euroStandard, selectedFeatures, isImported, maxDistanceMi, userLat, userLng, page]);
 
-  // Initial load
-  useEffect(() => { fetch(true); }, []);
-
+  // The instant filter effect already loads the initial catalogue once.
   // Text query: debounce to avoid hitting the API on every keystroke.
   // All other filter/sort changes are instant (fired by the non-text useEffect below).
+  const queryEffectMounted = useRef(false);
   useEffect(() => {
+    if (!queryEffectMounted.current) {
+      queryEffectMounted.current = true;
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetch(true), 350);
     return () => clearTimeout(debounceRef.current);
