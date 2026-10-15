@@ -425,3 +425,43 @@ test("final web auction validation refuses nonnumeric prices rather than trustin
     assert.match(wizard, /!Number\.isFinite\(Number\(auctionSchedule\.startingBid\)\)/)
     assert.match(wizard, /!Number\.isFinite\(pMin\)/)
 })
+
+test("retail and auction valuations remain distinct for the same car", () => {
+    const source = readFileSync(new URL("../backend/src/listings/vehicle-valuation.ts", import.meta.url), "utf8")
+    const js = ts.transpileModule(source, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    })
+    const engine = {}
+    runInNewContext(js.outputText, { exports: engine })
+    const input = { make: "FORD", model: "FOCUS", year: 2019, mileage: 48000 }
+    const base = engine.calculateVehicleValuation(input, [])
+    assert.ok(Number.isFinite(base.auction.marketValue) && base.auction.marketValue > 0)
+    assert.ok(base.retail.suggestedAsking > base.auction.marketValue,
+        "retail asking should exceed dealer auction guide for the same vehicle")
+    const adjusted = engine.applyVehicleSpecificationAdjustments(base, { ...input, condition: "GOOD", fuelType: "PETROL" })
+    assert.ok(adjusted.retail.suggestedAsking > adjusted.auction.marketValue,
+        "seller condition adjustment must preserve retail versus auction distinction")
+})
+
+test("the sell landing shows both channel-specific guides rather than one neutral auction price", () => {
+    const page = readFileSync(new URL("../src/app/sell/page.tsx", import.meta.url), "utf8")
+    assert.match(page, /Dealer auction value/)
+    assert.match(page, /Suggested retail asking/)
+    assert.match(page, /formatGuidePrice\(result\.valuation\.auction\.marketValue\)/)
+    assert.match(page, /formatGuidePrice\(result\.valuation\.retail\.suggestedAsking\)/)
+    assert.doesNotMatch(page, /Current Market Value[\s\S]{0,220}formatGuidePrice\(result\.valuation\.auction\.marketValue\)/)
+})
+
+test("the valuation card and apply button use the seller's selected channel", () => {
+    const card = readFileSync(new URL("../src/components/listing/VehicleValuationCard.tsx", import.meta.url), "utf8")
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(card, /mode === "auction"/)
+    assert.match(card, /valuation\.retail\.suggestedAsking/)
+    assert.match(card, /valuation\.auction\.marketValue/)
+    assert.match(card, /isAuction \? "Use auction guide" : "Use retail price"/)
+    const apply = wizard.slice(wizard.indexOf("function applyValuation()"), wizard.indexOf("const auctionMarketValue ="))
+    assert.match(apply, /if \(isAuction\) \{/)
+    assert.match(apply, /set\("priceAsking", String\(valuation\.auction\.marketValue\)\)/)
+    assert.match(apply, /set\("priceAsking", String\(valuation\.retail\.suggestedAsking\)\)/)
+    assert.match(apply, /reservePrice: String\(valuation\.auction\.suggestedReserve\)/)
+})
