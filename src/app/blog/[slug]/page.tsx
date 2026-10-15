@@ -8,6 +8,7 @@ import type { Listing } from "@/lib/listingApi"
 import { formatPrice } from "@/lib/listingApi"
 import { BlogContent, blogHeadingId } from "@/components/blog/BlogContent"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
+import { GooglePreferredSourceButton } from "@/components/blog/GooglePreferredSourceButton"
 
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
@@ -305,6 +306,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                         )}
 
                         <BlogContent content={post.content} />
+
+                        <div className="mt-10">
+                            <GooglePreferredSourceButton />
+                        </div>
 
                         <section className="mt-14 relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/15 via-[var(--bg-card)] to-[var(--bg-card)] p-6 md:p-8">
                             <div className="relative z-10 max-w-2xl">
