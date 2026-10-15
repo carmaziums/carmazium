@@ -17,7 +17,10 @@ export const CAR_MAKES: string[] = [
   'Mitsubishi', 'Morgan', 'Nissan', 'Omoda', 'Peugeot', 'Polestar', 'Porsche', 'Renault',
   'Rolls-Royce', 'Rover', 'Saab', 'SEAT', 'Skoda', 'Smart', 'SsangYong', 'Subaru', 'Suzuki',
   'Tesla', 'Toyota', 'TVR', 'Vauxhall', 'VinFast', 'Volkswagen', 'Volvo', 'Xpeng', 'Zeekr',
+  'AC', 'AION', 'Aixam', 'AK', 'Allard', 'Ariel', 'BAC', 'Beauford', 'Bristol', 'Cadillac', 'Carbodies', 'Changan', 'Chery', 'Coleman Milne', 'Corvette', 'Daewoo', 'Daimler', 'Datsun', 'Dax', 'Deepal', 'Fisker', 'Gardner Douglas', 'Geely', 'GMC', 'Great Wall', 'GWM', 'Hongqi', 'Hummer', 'JBA', 'Jensen', 'KGM', 'Koenigsegg', 'Lada', 'Lancia', 'London Taxis International', 'Lucid', 'Marlin', 'Maxus', 'Nio', 'Noble', 'Oldsmobile', 'Perodua', 'Pilgrim', 'Plymouth', 'Pontiac', 'Proton', 'Ram', 'Rivian', 'Scion', 'Seres', 'Shelby', 'Skywell', 'VRS', 'Westfield', 'Wiesmann',
 ]
+// Keep the selector alphabetic even when adding specialist makes.
+CAR_MAKES.sort((a, b) => a.localeCompare(b, 'en-GB'))
 
 export const MODELS_BY_MAKE: Record<string, string[]> = {
   'Alfa Romeo': ['Giulia', 'Giulietta', 'Stelvio', 'Tonale', '4C', 'MiTo', 'Brera', '159', '156', '147', '166', 'Spider', 'GTV', 'Junior'],
@@ -235,6 +238,534 @@ export const MODELS_BY_MAKE: Record<string, string[]> = {
   'VinFast': ['VF 8', 'VF 9', 'VF e34'],
   'Xpeng': ['P7', 'G9', 'G6'],
   'Zeekr': ['001', 'X', '009'],
+}
+
+
+// Additional new, historic, specialist and imported makes/models from the UK market.
+// They are catalogue choices only: never synthetic listings or claimed stock counts.
+const EXTRA_MODELS_BY_MAKE: Record<string, string[]> = {
+  "AC": [
+    "Ace",
+    "Cobra",
+    "Cobra GT Roadster"
+  ],
+  "AION": [
+    "V",
+    "Y Plus",
+    "UT"
+  ],
+  "Aixam": [
+    "City",
+    "Coupe",
+    "Crossover",
+    "Minauto"
+  ],
+  "AK": [
+    "427"
+  ],
+  "Allard": [
+    "J2",
+    "J2X",
+    "K3"
+  ],
+  "Ariel": [
+    "Atom",
+    "Nomad",
+    "Hipercar"
+  ],
+  "BAC": [
+    "Mono",
+    "Mono R"
+  ],
+  "Beauford": [
+    "Tourer"
+  ],
+  "Bristol": [
+    "401",
+    "403",
+    "411",
+    "Blenheim",
+    "Fighter"
+  ],
+  "Cadillac": [
+    "ATS",
+    "BLS",
+    "CT5",
+    "CTS",
+    "Escalade",
+    "SRX",
+    "XT4",
+    "XT5"
+  ],
+  "Carbodies": [
+    "FX4"
+  ],
+  "Changan": [
+    "Deepal S07"
+  ],
+  "Chery": [
+    "Tiggo 7",
+    "Tiggo 8",
+    "Omoda 5"
+  ],
+  "Coleman Milne": [
+    "Dorchester",
+    "Grosvenor"
+  ],
+  "Corvette": [
+    "C5",
+    "C6",
+    "C7",
+    "C8",
+    "Stingray",
+    "Z06"
+  ],
+  "Daewoo": [
+    "Matiz",
+    "Lanos",
+    "Nubira",
+    "Lacetti",
+    "Kalos",
+    "Tacuma"
+  ],
+  "Daimler": [
+    "Sovereign",
+    "Double Six",
+    "Super Eight",
+    "V8",
+    "XJ6"
+  ],
+  "Datsun": [
+    "120Y",
+    "240Z",
+    "260Z",
+    "280Z",
+    "280ZX",
+    "Bluebird",
+    "Cherry"
+  ],
+  "Dax": [
+    "Rush",
+    "427"
+  ],
+  "Deepal": [
+    "S07"
+  ],
+  "Fisker": [
+    "Ocean",
+    "Karma"
+  ],
+  "Gardner Douglas": [
+    "GD427",
+    "GD T70"
+  ],
+  "Geely": [
+    "EX5",
+    "Starray"
+  ],
+  "GMC": [
+    "Sierra",
+    "Yukon",
+    "Canyon",
+    "Hummer EV"
+  ],
+  "Great Wall": [
+    "Steed",
+    "Poer"
+  ],
+  "GWM": [
+    "ORA 03",
+    "Haval H6",
+    "Wey 03",
+    "Wey 05"
+  ],
+  "Hongqi": [
+    "E-HS9"
+  ],
+  "Hummer": [
+    "H2",
+    "H3",
+    "EV"
+  ],
+  "JBA": [
+    "Falcon"
+  ],
+  "Jensen": [
+    "Interceptor",
+    "Healey",
+    "CV8"
+  ],
+  "KGM": [
+    "Korando",
+    "Rexton",
+    "Musso",
+    "Tivoli",
+    "Torres",
+    "Actyon"
+  ],
+  "Koenigsegg": [
+    "Agera",
+    "Regera",
+    "Jesko",
+    "Gemera",
+    "CCX"
+  ],
+  "Lada": [
+    "Niva",
+    "Riva",
+    "Samara"
+  ],
+  "Lancia": [
+    "Delta",
+    "Ypsilon",
+    "Thema",
+    "Fulvia"
+  ],
+  "London Taxis International": [
+    "TX1",
+    "TX2",
+    "TX4",
+    "TX"
+  ],
+  "Lucid": [
+    "Air",
+    "Gravity"
+  ],
+  "Marlin": [
+    "Roadster",
+    "Sportster",
+    "Berlinetta"
+  ],
+  "Maxus": [
+    "T90 EV",
+    "eDeliver 3",
+    "eDeliver 9",
+    "MIFA 9"
+  ],
+  "Nio": [
+    "ET5",
+    "ET7",
+    "EL6",
+    "EL8"
+  ],
+  "Noble": [
+    "M12",
+    "M400",
+    "M600"
+  ],
+  "Oldsmobile": [
+    "Cutlass",
+    "Toronado"
+  ],
+  "Perodua": [
+    "Nippa",
+    "Kelisa",
+    "Myvi"
+  ],
+  "Pilgrim": [
+    "Sumo",
+    "Bulldog"
+  ],
+  "Plymouth": [
+    "Prowler",
+    "Barracuda",
+    "Fury"
+  ],
+  "Pontiac": [
+    "Firebird",
+    "Trans Am",
+    "GTO"
+  ],
+  "Proton": [
+    "Savvy",
+    "Gen-2",
+    "Satria",
+    "Persona",
+    "Wira"
+  ],
+  "Ram": [
+    "1500",
+    "2500"
+  ],
+  "Rivian": [
+    "R1T",
+    "R1S"
+  ],
+  "Scion": [
+    "tC",
+    "xB",
+    "FR-S"
+  ],
+  "Seres": [
+    "3",
+    "5"
+  ],
+  "Shelby": [
+    "Cobra",
+    "GT350",
+    "GT500"
+  ],
+  "Skywell": [
+    "BE11"
+  ],
+  "VRS": [
+    "Roadster"
+  ],
+  "Westfield": [
+    "SEiW",
+    "Sport 250",
+    "XI",
+    "FW"
+  ],
+  "Wiesmann": [
+    "MF3",
+    "MF4",
+    "MF5"
+  ],
+  "BYD": [
+    "Dolphin Surf",
+    "Atto 2",
+    "Sealion 7",
+    "Seal U DM-i",
+    "Han",
+    "Tang"
+  ],
+  "Jaecoo": [
+    "7",
+    "7 SHS",
+    "8"
+  ],
+  "Omoda": [
+    "9",
+    "9 SHS"
+  ],
+  "DS": [
+    "DS 3",
+    "DS 4",
+    "DS 7",
+    "DS 9",
+    "DS N°8"
+  ],
+  "GWM ORA": [
+    "ORA 03",
+    "Funky Cat"
+  ],
+  "SsangYong": [
+    "Actyon",
+    "Torres",
+    "Rodius",
+    "Stavic"
+  ],
+  "Rover": [
+    "100",
+    "CityRover",
+    "Streetwise",
+    "Mini",
+    "SD1"
+  ],
+  "MG": [
+    "MG5 EV",
+    "MG S5 EV",
+    "MGS5 EV",
+    "IM5",
+    "IM6",
+    "ZS Hybrid+"
+  ],
+  "Toyota": [
+    "iQ",
+    "MR2",
+    "Celica",
+    "Starlet",
+    "Verso-S",
+    "Yaris Verso",
+    "Hiace",
+    "Prius+",
+    "Avensis Tourer"
+  ],
+  "Honda": [
+    "CR-Z",
+    "Insight",
+    "S2000",
+    "Integra",
+    "ZR-V",
+    "Crosstour",
+    "Jazz Crosstar",
+    "Accord Tourer"
+  ],
+  "Nissan": [
+    "Cube",
+    "Pixo",
+    "Primera",
+    "Serena",
+    "Elgrand",
+    "Townstar",
+    "NV200",
+    "Skyline",
+    "Patrol",
+    "200SX",
+    "300ZX"
+  ],
+  "Volkswagen": [
+    "ID. Buzz",
+    "ID. Buzz Cargo",
+    "Scirocco",
+    "Eos",
+    "Fox",
+    "Lupo",
+    "CC",
+    "California",
+    "Bora"
+  ],
+  "BMW": [
+    "Z3",
+    "Z4",
+    "i3",
+    "i4",
+    "i5",
+    "i7",
+    "i8",
+    "iX",
+    "iX1",
+    "iX2",
+    "iX3",
+    "X7",
+    "XM"
+  ],
+  "Ford": [
+    "Capri Electric",
+    "Explorer Electric",
+    "Puma Gen-E",
+    "Tourneo Connect",
+    "Tourneo Custom",
+    "Transit Connect",
+    "Transit Custom",
+    "Mondeo"
+  ],
+  "Mercedes-Benz": [
+    "Citan",
+    "EQV",
+    "Viano",
+    "G 500",
+    "CLE",
+    "CLE Cabriolet"
+  ],
+  "Skoda": [
+    "Yeti",
+    "Roomster",
+    "Felicia",
+    "Favorit"
+  ],
+  "Hyundai": [
+    "Inster",
+    "Ioniq 9",
+    "i40",
+    "ix20",
+    "i800"
+  ],
+  "Kia": [
+    "EV3",
+    "EV4",
+    "EV5",
+    "EV9",
+    "Stinger",
+    "ProCeed",
+    "Carens"
+  ],
+  "Vauxhall": [
+    "Frontera",
+    "Frontera Electric",
+    "Combo Life",
+    "Ampera",
+    "Signum"
+  ],
+  "Peugeot": [
+    "1007",
+    "4007",
+    "807",
+    "Bipper",
+    "Traveller"
+  ],
+  "Renault": [
+    "5 E-Tech",
+    "4 E-Tech",
+    "Symbioz",
+    "Wind",
+    "Modus"
+  ],
+  "Citroën": [
+    "C-Zero",
+    "C-Crosser",
+    "C8",
+    "Nemo",
+    "Berlingo",
+    "Ami",
+    "C3 Aircross"
+  ],
+  "Land Rover": [
+    "Discovery 3",
+    "Discovery 4",
+    "Defender",
+    "Freelander",
+    "Range Rover Classic"
+  ],
+  "Polestar": [
+    "Polestar 1",
+    "Polestar 5"
+  ],
+  "Smart": [
+    "#5",
+    "Roadster"
+  ],
+  "Tesla": [
+    "Roadster"
+  ],
+  "Suzuki": [
+    "Splash",
+    "SX4",
+    "Kizashi"
+  ],
+  "Subaru": [
+    "Tribeca",
+    "Levorg",
+    "Justy"
+  ],
+  "Mazda": [
+    "CX-7",
+    "CX-9",
+    "RX-7",
+    "5",
+    "Bongo"
+  ],
+  "Fiat": [
+    "Panda 4x4",
+    "Grande Panda",
+    "500L",
+    "500X",
+    "Multipla"
+  ],
+  "Chevrolet": [
+    "Aveo",
+    "Captiva",
+    "Cruze",
+    "Spark",
+    "Volt",
+    "Camaro",
+    "Corvette"
+  ],
+  "Jeep": [
+    "Avenger",
+    "Renegade 4xe",
+    "Grand Cherokee 4xe"
+  ],
+  "Volvo": [
+    "EX30 Cross Country",
+    "ES90",
+    "V50",
+    "S80"
+  ]
+}
+for (const [make, models] of Object.entries(EXTRA_MODELS_BY_MAKE)) {
+  MODELS_BY_MAKE[make] = Array.from(new Set([...(MODELS_BY_MAKE[make] || []), ...models]))
 }
 
 /**
