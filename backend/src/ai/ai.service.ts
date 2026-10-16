@@ -497,7 +497,17 @@ export class AiService {
             }
         }
         try {
-            const { aiConsentAcknowledged: _consent, ...vehicleData } = data;
+            // Even if an older client sends arbitrary keys, never allow
+            // spoofed dealer identity or warranty promises into OpenAI copy.
+            // Dealer facts are read exclusively from the authenticated DB.
+            const keys = [
+                'make', 'model', 'year', 'mileage', 'condition', 'fuelType',
+                'transmission', 'color', 'features', 'vrm', 'motStatus',
+                'engineSize', 'bodyType', 'serviceHistory', 'owners',
+            ];
+            const vehicleData = Object.fromEntries(keys
+                .filter(key => data[key] !== undefined)
+                .map(key => [key, data[key]]));
             const prompt = `You are a professional automotive copywriter for CarMazium, UK's premium car marketplace.
 Your task is to write a compelling, concise, and sales-optimized vehicle description based on the following details.
 Do NOT use markdown, asterisks, or formatting. Just return the raw text, divided into short, readable paragraphs.
