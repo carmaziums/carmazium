@@ -1040,13 +1040,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const confirmCheckboxMissing = hasAttemptedNext && !formData.declarationAcknowledged
 
     const totalSteps = isAuction ? 5 : 4
-    // "Method" is a cosmetic-only leading step representing the Retail/Auction choice
-    // already made on the landing screen — it doesn't participate in currentStep/
-    // validateStep numbering, it just makes that choice visually register as Step 1
-    // in the progress indicator.
+    // The listing method was already selected on the previous screen.
+    // Progress now counts only the real editable pages.
     const WIZARD_STEPS = isAuction
         ? [
-            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
@@ -1054,7 +1051,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             { id: 5, icon: CheckCircle, title: "Review" },
         ]
         : [
-            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
