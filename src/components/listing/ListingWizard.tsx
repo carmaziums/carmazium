@@ -10,7 +10,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw, Tag
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -21,7 +21,7 @@ import {
     type CreateListingRequest, type ListingMotHistoryEntry, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
     createHpiCheckoutSession, createListingCheckoutSession, publishListing,
-    getRetailConversionCandidate, convertAuctionToRetail,
+    getRetailConversionCandidate, convertAuctionToRetail, alsoListRetail,
     type RetailConversionCandidate
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
@@ -381,6 +381,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         payload: CreateListingRequest
     } | null>(null)
     const [isConvertingToRetail, setIsConvertingToRetail] = React.useState(false)
+    const [isCreatingLinkedRetail, setIsCreatingLinkedRetail] = React.useState(false)
+    const [confirmCancelAuction, setConfirmCancelAuction] = React.useState(false)
+    const [retailActionError, setRetailActionError] = React.useState<string | null>(null)
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
@@ -1840,6 +1843,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             return
                         }
 
+                        setConfirmCancelAuction(false)
+                        setRetailActionError(null)
                         setRetailConversion({
                             candidate: conversion.candidate,
                             payload: {
@@ -1959,6 +1964,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         }
     }
 
+    // The seller can add Retail alongside their existing Auction without
+    // cancelling bids or leaving the vehicle they already entered. Reuse the
+    // server's idempotent linked-listing flow and standard Stripe payment gate.
+    const confirmLinkedRetail = async () => {
+        if (!retailConversion || isCreatingLinkedRetail || isConvertingToRetail) return
+        const { candidate, payload } = retailConversion
+        const price = Number(payload.price)
+        const tier = payload.badgeTier === 'STANDARD' || payload.badgeTier === 'PREMIUM'
+            ? payload.badgeTier : 'BASIC'
+        if (!Number.isFinite(price) || price <= 0) {
+            setRetailActionError('Enter a valid Retail asking price before continuing.')
+            return
+        }
+        setRetailActionError(null)
+        setIsCreatingLinkedRetail(true)
+        let linkedListingId: string | null = null
+        try {
+            const result = await alsoListRetail(candidate.listingId, price, tier)
+            linkedListingId = result.linkedListingId
+            const checkout = await createListingCheckoutSession(linkedListingId, tier)
+            if (!checkout.url) throw new Error('Checkout did not return a payment link.')
+            window.location.href = checkout.url
+        } catch (error: any) {
+            setRetailActionError(linkedListingId
+                ? 'Your linked Retail draft was saved, but payment could not start. Open My Auctions and choose Resume Retail Payment. Do not upload the car or pay for a second listing.'
+                : (error?.message || 'Could not add this vehicle to Retail. Please try again.'))
+        } finally {
+            setIsCreatingLinkedRetail(false)
+        }
+    }
+
     const confirmRetailConversion = async () => {
         if (!retailConversion) return
 
@@ -2059,91 +2095,134 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         const { candidate, payload } = retailConversion
         const activeAuction = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED'
         const draftAuction = candidate.auctionStatus === 'DRAFT'
+        const busy = isConvertingToRetail || isCreatingLinkedRetail
         const tier = payload.badgeTier === 'PREMIUM'
             ? 'Premium £25'
             : payload.badgeTier === 'STANDARD'
                 ? 'Standard £10'
                 : 'Basic £1'
+        const closeModal = () => {
+            if (busy) return
+            setConfirmCancelAuction(false)
+            setRetailActionError(null)
+            setRetailConversion(null)
+        }
 
         return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-5">
-                <div className="glass-card p-0 max-w-lg w-full overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="retail-conversion-title">
-                    <div className="p-6 border-b border-[var(--border-default)] flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
-                            <AlertTriangle className="text-amber-500" size={24}/>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-3 sm:p-5">
+                <div className="glass-card p-0 max-w-lg w-full max-h-[92dvh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="retail-conversion-title">
+                    <div className="p-5 sm:p-6 border-b border-[var(--border-default)] flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                            <Tag className="text-emerald-500" size={24}/>
                         </div>
                         <div>
-                            <h3 id="retail-conversion-title" className="text-xl font-bold font-heading">Switch this vehicle to Retail?</h3>
+                            <h3 id="retail-conversion-title" className="text-xl font-bold font-heading">
+                                {activeAuction ? 'List in Retail without losing your Auction' : 'Switch this vehicle to Retail?'}
+                            </h3>
                             <p className="text-sm text-[var(--text-muted)] mt-1">{candidate.title}</p>
                         </div>
                     </div>
-
-                    <div className="p-6 space-y-4">
-                        {activeAuction ? (
-                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                                <p className="font-bold text-amber-500">Your existing auction will be cancelled.</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-2">
-                                    Continuing will close the auction before this vehicle is changed to a Retail listing.
-                                    {candidate.hasActiveBids ? " Existing auction bids will be closed and bidders will be notified." : ""}
-                                </p>
-                            </div>
-                        ) : draftAuction ? (
-                            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-                                <p className="font-bold">An Auction draft already exists for this vehicle.</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-2">
-                                    CarMazium will replace that Auction draft with this Retail listing instead of creating a duplicate.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-                                <p className="font-bold">Your previous auction is already closed.</p>
-                                <p className="text-sm text-[var(--text-muted)] mt-2">
-                                    CarMazium will reuse that vehicle listing for Retail instead of creating a duplicate.
-                                </p>
-                            </div>
-                        )}
-
-                        {activeAuction && (
-                            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
-                                <p className="font-bold text-[var(--text-primary)]">Prefer to advertise in both Auction and Retail?</p>
-                                <p className="text-sm text-[var(--text-secondary)]">
-                                    Keep this auction running. Open My Auctions, find the vehicle, select Also Retail, enter your asking price and complete the Retail package payment and review. You do not need to upload the vehicle again.
-                                </p>
-                                <Link href="/dashboard/seller/auctions" className="inline-flex items-center gap-2 min-h-[44px] text-sm font-bold text-emerald-400 hover:underline">
-                                    Keep Auction &amp; Also List Retail <ArrowRight size={16}/>
-                                </Link>
-                            </div>
-                        )}
+                    <div className="p-5 sm:p-6 space-y-4">
                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 text-sm">
-                            <p><strong>Retail package:</strong> {tier}</p>
+                            <p><strong>Retail asking price:</strong> {formatPrice(Number(payload.price))}</p>
+                            <p className="mt-1"><strong>Retail package:</strong> {tier}</p>
                             <p className="text-[var(--text-muted)] mt-2">
-                                After you confirm, the vehicle becomes a Retail draft. You will then continue to the normal payment step if a Retail listing fee is due. The listing will still require CarMazium review before going live.
+                                A Retail listing is subject to its normal payment and CarMazium review before going live.
                             </p>
                         </div>
 
-                        <p className="text-xs text-[var(--text-muted)]">
-                            If the auction already has a winner or the reserve has been met, CarMazium will block the conversion even after confirmation.
-                        </p>
-                    </div>
+                        {activeAuction ? (
+                            <>
+                                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 space-y-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">Option 1 · Keep both listings</p>
+                                        <p className="font-bold text-[var(--text-primary)] mt-1">Keep Auction running and also list in Retail</p>
+                                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                                            Your current Auction remains unchanged. CarMazium copies the vehicle details into a separate Retail draft, uses the asking price and package shown above, and takes you to the normal payment step.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        disabled={busy}
+                                        onClick={confirmLinkedRetail}
+                                        className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-700 border-none"
+                                    >
+                                        {isCreatingLinkedRetail
+                                            ? <><Loader2 size={16} className="mr-2 animate-spin"/>Preparing Retail checkout...</>
+                                            : <>Keep Auction &amp; Also List Retail <ArrowRight size={16} className="ml-2"/></>}
+                                    </Button>
+                                </div>
 
-                    <div className="p-5 border-t border-[var(--border-default)] flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            disabled={isConvertingToRetail}
-                            onClick={() => setRetailConversion(null)}
-                        >
-                            Keep Auction
-                        </Button>
-                        <Button
-                            type="button"
-                            disabled={isConvertingToRetail}
-                            onClick={confirmRetailConversion}
-                            className="bg-emerald-600 hover:bg-emerald-700 border-none"
-                        >
-                            {isConvertingToRetail
-                                ? <><Loader2 size={16} className="animate-spin mr-2"/>Switching...</>
-                                : <>{activeAuction ? "Cancel Auction & Continue" : "Switch to Retail & Continue"}<ArrowRight size={16} className="ml-2"/></>}
+                                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-wide text-amber-400">Option 2 · Replace the Auction</p>
+                                        <p className="font-bold text-[var(--text-primary)] mt-1">Switch to Retail only</p>
+                                        <p className="text-sm text-[var(--text-secondary)] mt-2">
+                                            This option cancels the existing Auction and changes its listing to Retail.
+                                            {candidate.hasActiveBids ? ' Existing bids will be closed and bidders notified.' : ''}
+                                            {' '}Only choose it if you no longer want this vehicle in Auction.
+                                        </p>
+                                    </div>
+                                    {!confirmCancelAuction ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={busy}
+                                            onClick={() => { setRetailActionError(null); setConfirmCancelAuction(true) }}
+                                            className="w-full min-h-[44px] border-amber-500/40 text-amber-400"
+                                        >
+                                            Switch to Retail Only (Cancel Auction)
+                                        </Button>
+                                    ) : (
+                                        <div role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 space-y-3">
+                                            <p className="text-sm font-bold text-red-400">Confirm cancellation of this Auction?</p>
+                                            <p className="text-xs text-[var(--text-secondary)]">
+                                                The current Auction will be closed. You cannot keep its existing bids running after this switch.
+                                            </p>
+                                            <div className="flex flex-col sm:flex-row gap-2">
+                                                <Button type="button" variant="outline" disabled={busy} onClick={() => setConfirmCancelAuction(false)}>Go Back</Button>
+                                                <Button type="button" disabled={busy} onClick={confirmRetailConversion} className="bg-red-700 hover:bg-red-800 border-none">
+                                                    {isConvertingToRetail
+                                                        ? <><Loader2 size={16} className="mr-2 animate-spin"/>Switching...</>
+                                                        : 'Confirm: Cancel Auction & Switch'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-[var(--text-muted)]">
+                                        An Auction with a winner or a met reserve cannot be switched; CarMazium enforces these restrictions before cancellation.
+                                    </p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="rounded-xl border border-primary/25 bg-primary/5 p-4">
+                                    <p className="font-bold">
+                                        {draftAuction ? 'An Auction draft already exists for this vehicle.' : 'Your previous Auction is already closed.'}
+                                    </p>
+                                    <p className="text-sm text-[var(--text-muted)] mt-2">
+                                        CarMazium will reuse the existing vehicle for Retail instead of creating a duplicate.
+                                    </p>
+                                </div>
+                                <Button type="button" disabled={busy} onClick={confirmRetailConversion}
+                                    className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-700 border-none">
+                                    {isConvertingToRetail
+                                        ? <><Loader2 size={16} className="mr-2 animate-spin"/>Switching...</>
+                                        : <>Switch to Retail &amp; Continue <ArrowRight size={16} className="ml-2"/></>}
+                                </Button>
+                            </>
+                        )}
+
+                        {retailActionError && (
+                            <div role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3">
+                                <p className="text-sm text-red-400">{retailActionError}</p>
+                                <Link href="/dashboard/seller/auctions" className="mt-2 inline-flex min-h-[40px] items-center font-bold text-sm text-[var(--text-primary)] underline">
+                                    Open My Auctions
+                                </Link>
+                            </div>
+                        )}
+                        <Button type="button" variant="outline" disabled={busy} onClick={closeModal} className="w-full min-h-[44px]">
+                            {activeAuction ? 'Not Now — Keep Existing Auction' : 'Not Now — Return to Listing'}
                         </Button>
                     </div>
                 </div>
