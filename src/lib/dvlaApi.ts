@@ -11,6 +11,9 @@ export interface OfficialVehicleData {
         revenueWeight?: number;
         realDrivingEmissions?: string;
         automatedVehicle?: boolean;
+        rawFuelType?: string;
+        rawEuroStatus?: string;
+        manufactureDate?: string;
     };
     mot?: {
         registrationDate?: string;
@@ -18,6 +21,8 @@ export interface OfficialVehicleData {
         secondaryColour?: string;
         lastMotTestDate?: string;
         motTestDueDate?: string;
+        primaryColour?: string;
+        dataSource?: string;
     };
 }
 
