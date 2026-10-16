@@ -27,6 +27,7 @@ on:
       - 'scripts/test-seo-pagination-and-search-claims.test.mjs'
       - 'scripts/test-seo-vehicle-offer-availability.test.mjs'
       - 'scripts/test-seo-vehicle-real-404.test.mjs'
+      - 'scripts/test-seo-legacy-vehicle-canonical-404.test.mjs'
       - 'scripts/test-seo-protected-auction-noindex.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
@@ -218,6 +219,8 @@ jobs:
         run: node --test scripts/test-seo-vehicle-offer-availability.test.mjs
       - name: Verify missing vehicle URLs return real 404s without mislabelling outages
         run: node --test scripts/test-seo-vehicle-real-404.test.mjs
+      - name: Verify legacy vehicle canonical slug and missing-vehicle HTTP 404
+        run: node --test scripts/test-seo-legacy-vehicle-canonical-404.test.mjs
       - name: Keep dealer-only auctions out of search indexes
         run: node --test scripts/test-seo-protected-auction-noindex.test.mjs
       - name: Check one-product parity
