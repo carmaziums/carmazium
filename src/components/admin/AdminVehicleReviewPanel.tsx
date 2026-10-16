@@ -89,7 +89,7 @@ export function AdminVehicleReviewPanel({ listing, onEdit, onUpdated }: {
                 <p className="mt-1 text-[var(--text-muted)]">{item.explanation}</p>
                 {item.sellerField && (
                   <label className="mt-2 inline-flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" checked={!excluded.includes(item.sellerField)}
+                    <input type="checkbox" checked={!excluded.includes(item.sellerField!)}
                       onChange={e => setExcluded(previous => e.target.checked
                         ? previous.filter(field => field !== item.sellerField)
                         : [...previous, item.sellerField!])} />
