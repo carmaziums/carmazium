@@ -13,6 +13,7 @@ import {
     Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { ImageUpload } from "@/components/listing/ImageUpload"
 import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
@@ -27,6 +28,7 @@ import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
 import { normalizeMotHistorySnapshot } from "@/lib/listingMotHistory"
+import { getExistingListingGuidance } from "@/lib/existingListingGuidance"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS, HGV_BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
@@ -2026,6 +2028,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             setIsConvertingToRetail(false)
         }
     }
+
+    const existingListingGuidance = submitError ? getExistingListingGuidance(submitError) : null
 
     // ─── Shared ──────────────────────────────────────────────────────────────────
 
@@ -4522,11 +4526,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </SummarySection>
                             )}
 
-                            {submitError && (
-                                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
+                            {submitError && (existingListingGuidance ? (
+                                <div role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:p-5 space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <Info size={20} className="mt-0.5 shrink-0 text-amber-400" />
+                                        <div>
+                                            <p className="font-bold text-[var(--text-primary)]">{existingListingGuidance.heading}</p>
+                                            <p className="text-sm text-amber-400 mt-0.5">Current status: {existingListingGuidance.status}</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-[var(--text-primary)]">{existingListingGuidance.explanation}</p>
+                                    <p className="text-sm font-bold text-[var(--text-primary)]">How to continue:</p>
+                                    <ol className="list-decimal pl-5 space-y-2 text-sm text-[var(--text-secondary)]">
+                                        {existingListingGuidance.steps.map((step, index) => <li key={index} className="pl-1">{step}</li>)}
+                                    </ol>
+                                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                                        <Link href={existingListingGuidance.href} className="inline-flex items-center justify-center gap-2 min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-white font-bold text-sm">
+                                            {existingListingGuidance.actionLabel} <ArrowRight size={16} />
+                                        </Link>
+                                        {existingListingGuidance.extraHref && (
+                                            <Link href={existingListingGuidance.extraHref} className="inline-flex items-center justify-center min-h-[44px] rounded-lg border border-[var(--border-default)] px-4 py-2 text-[var(--text-primary)] font-bold text-sm hover:bg-[var(--bg-input)]">
+                                                {existingListingGuidance.extraActionLabel}
+                                            </Link>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-[var(--text-muted)]">Your existing vehicle record is safe. Do not upload a duplicate or pay a second listing fee to start over.</p>
+                                </div>
+                            ) : (
+                                <div role="alert" className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
                                     <p className="text-red-400 text-sm">{submitError}</p>
                                 </div>
-                            )}
+                            ))}
                         </div>
                     )}
 
