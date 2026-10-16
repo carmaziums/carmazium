@@ -208,32 +208,12 @@ export function vehicleSpecificationAdjustmentFactor(request: VehicleValuationRe
     return clamp(factor, 0.18, 1.20)
 }
 
-export function applyVehicleValuationAdjustments(
-    base: VehicleValuation,
-    request: VehicleValuationRequest,
-): VehicleValuation {
-    const factor = vehicleSpecificationAdjustmentFactor(request)
-    if (Math.abs(factor - 1) < 0.0001 && base.retail.suggestedAsking <= base.low) return { ...base }
-
-    const low = roundMoney(base.low * factor)
-    const mid = roundMoney(base.mid * factor)
-    const high = roundMoney(base.high * factor)
-    // Old valuation snapshots use retail=high and auction=low. Rebase them
-    // on their original dealer guide when adjusting a saved journey.
-    const retailBase = base.retail.suggestedAsking > base.low
-        ? base.auction.marketValue
-        : base.retail.suggestedAsking
-    const retailSuggestedAsking = roundMoney(retailBase * factor)
-    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80)
-
+/** Auction uses the market-evidence low. Retail is precisely 20% higher. */
+export function alignVehicleValuationPrices(base: VehicleValuation): VehicleValuation {
+    const auctionMarketValue = base.low
+    const retailSuggestedAsking = Math.round(auctionMarketValue * 1.20)
     return {
         ...base,
-        low,
-        mid,
-        high,
-        explanation: Math.abs(factor - 1) < 0.0001
-            ? base.explanation
-            : `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
             suggestedAsking: retailSuggestedAsking,
             suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
@@ -246,6 +226,26 @@ export function applyVehicleValuationAdjustments(
             suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
         },
     }
+}
+
+export function applyVehicleValuationAdjustments(
+    base: VehicleValuation,
+    request: VehicleValuationRequest,
+): VehicleValuation {
+    const factor = vehicleSpecificationAdjustmentFactor(request)
+    if (Math.abs(factor - 1) < 0.0001) return alignVehicleValuationPrices(base)
+
+    const low = roundMoney(base.low * factor)
+    const mid = roundMoney(base.mid * factor)
+    const high = roundMoney(base.high * factor)
+
+    return alignVehicleValuationPrices({
+        ...base,
+        low,
+        mid,
+        high,
+        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
+    })
 }
 
 export async function getVehicleValuation(
