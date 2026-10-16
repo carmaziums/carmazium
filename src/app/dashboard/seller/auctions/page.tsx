@@ -338,15 +338,30 @@ function SellerAuctionsPage() {
     }
 
     async function handleAlsoRetailSubmit() {
-        if (!alsoRetailAuction || !alsoRetailPrice) return
+        if (!alsoRetailAuction) return
+        const price = Number(alsoRetailPrice)
+        if (!Number.isFinite(price) || price <= 0) {
+            setAlsoRetailError('Enter a valid Retail asking price above £0.')
+            return
+        }
         setAlsoRetailLoading(true)
         setAlsoRetailError(null)
+        let linkedListingId: string | null = null
         try {
-            const { linkedListingId } = await alsoListRetail(alsoRetailAuction.listingId, parseFloat(alsoRetailPrice), alsoRetailTier)
+            const linked = await alsoListRetail(alsoRetailAuction.listingId, price, alsoRetailTier)
+            linkedListingId = linked.linkedListingId
             const { url } = await createListingCheckout(linkedListingId, alsoRetailTier)
+            if (!url) throw new Error('The payment provider did not return a checkout link.')
             window.location.href = url
         } catch (err: any) {
-            setAlsoRetailError(err.message ?? 'Failed to create retail listing')
+            if (linkedListingId) {
+                // The Retail draft was created successfully. Never encourage a
+                // second upload or charge; reuse it through the existing option.
+                setAlsoRetailError('Your Retail draft has been saved, but checkout could not start. Close this window, refresh My Auctions, and select Resume Retail Payment. No need to upload again.')
+                await fetchAuctions().catch(() => {})
+            } else {
+                setAlsoRetailError(err?.message || 'Retail listing could not be created. Please try again.')
+            }
         } finally {
             setAlsoRetailLoading(false)
         }
@@ -1331,6 +1346,8 @@ function SellerAuctionsPage() {
                             <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">Retail Price (£)</label>
                             <input
                                 type="number"
+                                min="1"
+                                step="1"
                                 placeholder="e.g. 18500"
                                 value={alsoRetailPrice}
                                 onChange={e => setAlsoRetailPrice(e.target.value)}
