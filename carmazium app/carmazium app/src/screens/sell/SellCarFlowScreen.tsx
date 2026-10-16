@@ -1690,8 +1690,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function validateStep(s: Step): boolean {
     if (s === 1) {
       if (touchAndCheck(STEP1_FIELD_KEYS)) {
-        Alert.alert('Required details missing', 'Please complete the highlighted vehicle details and legal declarations before continuing.');
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP1_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'vrm';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Please complete this field.' });
+        scrollToMissingField(field);
         return false;
       }
       // Cross-field business rule (not a per-field "required" validation) —
@@ -1706,23 +1707,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
       if (allImages.length < MIN_PHOTOS) {
-        Alert.alert(
-          'More Photos Needed',
-          `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}.`,
-        );
+        setValidationIssue({ field: 'photos', message: `Add ${MIN_PHOTOS - allImages.length} more photo(s) to continue (minimum ${MIN_PHOTOS}).` });
+        scrollToMissingField('photos');
         return false;
       }
     }
     if (s === 3) {
       if (touchAndCheck(STEP3_FIELD_KEYS)) {
-        Alert.alert('Price needed', 'Enter a valid vehicle price to continue.');
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP3_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'priceAsking';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Enter a valid vehicle price.' });
+        scrollToMissingField(field);
         return false;
       }
     }
     if (s === 4 && isAuction) {
       if (touchAndCheck(STEP4_AUCTION_FIELD_KEYS)) {
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP4_AUCTION_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'reservePrice';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Complete the Auction details.' });
+        scrollToMissingField(field);
         return false;
       }
     }
@@ -2328,6 +2330,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
     }
     if (!validateStep(step)) return;
+    setValidationIssue(null);
+    validationSectionYRef.current = {};
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
     if (!editMode) updateDraft({
@@ -2345,6 +2349,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function handleBack() {
+    setValidationIssue(null);
+    validationSectionYRef.current = {};
     if (step > 1) setStep((step - 1) as Step);
     else navigation?.goBack();
   }
