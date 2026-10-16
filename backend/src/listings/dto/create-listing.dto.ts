@@ -18,7 +18,8 @@ import {
     Matches,
     MaxLength,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { normalizeListingMotHistory } from './normalize-listing-mot-history';
 
 // ─── Enums (mirror Prisma schema) ───────────────────────────────────────────
 
@@ -402,6 +403,7 @@ export class CreateListingDto {
     dateOfLastV5CIssued?: string;
 
     @ApiProperty({ description: 'MOT history snapshot captured during the registration lookup', type: 'array', required: false })
+    @Transform(({ value }) => normalizeListingMotHistory(value), { toClassOnly: true })
     @IsArray()
     @ArrayMaxSize(100)
     @IsObject({ each: true })
