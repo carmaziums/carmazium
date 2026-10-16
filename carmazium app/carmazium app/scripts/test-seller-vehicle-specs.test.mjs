@@ -172,3 +172,40 @@ test('native listing wizard preserves the same backend-locked quote as web', () 
   assert.match(api, /fetch\(\x60\$\{API_URL\}\/listings\/valuation\?/);
   assert.doesNotMatch(api, /getDeterministicFallbackValuation\(/);
 });
+
+test('native Auction-to-Retail conversion offers the same keep-both primary choice and explicit two-step cancellation', () => {
+  const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  assert.match(screen, /title="List in Retail without losing your Auction"/);
+  assert.match(screen, /OPTION 1 · KEEP BOTH LISTINGS/);
+  assert.match(screen, /KEEP AUCTION & ALSO LIST RETAIL/);
+  assert.match(screen, /OPTION 2 · REPLACE THE AUCTION/);
+  assert.match(screen, /setAuctionRetailConfirmCancel\(true\)/);
+  assert.match(screen, /CONFIRM: CANCEL AUCTION & SWITCH/);
+  assert.match(screen, /resolveAuctionRetailChoice\('CONVERT'\)/);
+  assert.match(screen, /if \(choice === 'KEEP_BOTH'\)/);
+  assert.match(screen, /navigation\?\.navigate\('SellerAuctions', \{/);
+  assert.match(screen, /alsoRetailListingId: conversion\.candidate\.listingId/);
+  assert.match(screen, /alsoRetailPrice: priceAsking/);
+  assert.match(screen, /if \(choice === null\) return/);
+  // The linked flow must never pass a cancellation flag.
+  const keep = screen.split("if (choice === 'KEEP_BOTH') {")[1].split('const converted = await convertAuctionToRetail')[0];
+  assert.doesNotMatch(keep, /confirmAuctionCancellation/);
+  const conversion = screen.split('const converted = await convertAuctionToRetail')[1];
+  assert.match(conversion, /confirmAuctionCancellation: true/);
+});
+
+test('native Auction screen reopens the existing vehicle at its entered Retail price and tier', () => {
+  const screen = readFileSync(new URL('../src/screens/seller/SellerAuctionsScreen.tsx', import.meta.url), 'utf8');
+  const routes = readFileSync(new URL('../src/navigation/MainStackNavigator.tsx', import.meta.url), 'utf8');
+  assert.match(routes, /alsoRetailListingId\?: string; alsoRetailPrice\?: string; alsoRetailTier\?:/);
+  assert.match(screen, /const source = auctions\.find\(a =>/);
+  assert.match(screen, /a\.listingId === alsoRetailListingId/);
+  assert.match(screen, /setRetailPrice\(alsoRetailPrefillPrice \?\? ''\)/);
+  assert.match(screen, /setRetailTier\(alsoRetailPrefillTier\)/);
+  assert.match(screen, /setAlsoRetailAuction\(source\)/);
+  assert.match(screen, /alsoRetailHandoffHandledRef\.current = alsoRetailListingId/);
+  assert.match(screen, /alsoRetailListingId: undefined/);
+  assert.match(screen, /const res = await alsoListRetail\(alsoRetailAuction\.listingId, price, retailTier\)/);
+  assert.match(screen, /type: 'LISTING_FEE'/);
+  assert.match(screen, /Create & Pay/);
+});

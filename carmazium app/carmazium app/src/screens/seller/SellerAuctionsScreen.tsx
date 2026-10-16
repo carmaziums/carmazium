@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -181,6 +181,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // below — when a listing id is passed in, jump straight to step 2 once
   // it's confirmed still eligible, instead of making them re-pick it.
   const preselectListingId: string | undefined = route.params?.preselectListingId;
+  const alsoRetailListingId: string | undefined = route.params?.alsoRetailListingId;
+  const alsoRetailPrefillPrice: string | undefined = route.params?.alsoRetailPrice;
+  const alsoRetailPrefillTier: 'BASIC' | 'STANDARD' | 'PREMIUM' = route.params?.alsoRetailTier ?? 'BASIC';
+  const alsoRetailHandoffHandledRef = useRef<string | null>(null);
   const [preselectHandled, setPreselectHandled] = useState(false);
 
   const [auctions, setAuctions] = useState<AuctionItem[]>([]);
@@ -311,6 +315,33 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     void fetchAuctions();
     void fetchWonAuctions();
   }, [fetchAuctions, fetchWonAuctions]));
+
+  // SellCarFlow's Keep Auction + Also Retail action should reopen the same
+  // Auction and seller-chosen price/plan, not make them search or upload again.
+  // Consume the route params once so returning from Stripe cannot reopen the
+  // payment sheet automatically or start duplicate checkout attempts.
+  useEffect(() => {
+    if (!alsoRetailListingId || loading || alsoRetailHandoffHandledRef.current === alsoRetailListingId) return;
+    alsoRetailHandoffHandledRef.current = alsoRetailListingId;
+    navigation?.setParams?.({
+      alsoRetailListingId: undefined,
+      alsoRetailPrice: undefined,
+      alsoRetailTier: undefined,
+    });
+    const source = auctions.find(a =>
+      a.listingId === alsoRetailListingId
+      && (a.status === 'ACTIVE' || a.status === 'SCHEDULED'),
+    );
+    if (!source) {
+      Alert.alert('Auction unavailable', 'This vehicle is no longer a running or scheduled Auction. Open My Auctions to check its status before adding Retail.');
+      return;
+    }
+    setActiveTab('ALL');
+    setRetailPrice(alsoRetailPrefillPrice ?? '');
+    setRetailTier(alsoRetailPrefillTier);
+    setRetailError(null);
+    setAlsoRetailAuction(source);
+  }, [alsoRetailListingId, alsoRetailPrefillPrice, alsoRetailPrefillTier, loading, auctions, navigation]);
 
   // ── Tab counts ──
   const counts: Record<TabFilter, number> = {
@@ -1535,6 +1566,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </Text>
         )}
 
+        <Text style={{ color: Colors.accentGreen, fontSize: 12, marginTop: 10, lineHeight: 18 }}>
+          Keep your existing Auction and bids running. This will create a linked Retail draft, then request the selected listing fee. Your Retail listing will require normal admin review.
+        </Text>
+
         {/* Price */}
         <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>ASKING PRICE (£) *</Text>
         <View style={styles.retailPriceRow}>
@@ -1587,7 +1622,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           activeOpacity={0.85}
         >
           {retailSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
-            <Text style={styles.retailSubmitText}>Create Listing</Text>
+            <Text style={styles.retailSubmitText}>Create & Pay</Text>
           )}
         </TouchableOpacity>
       </BottomSheet>
