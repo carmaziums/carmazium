@@ -634,7 +634,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                  never advertise an available retail offer to search engines. */}
             {listing.type === 'CLASSIFIED' &&
                 listing.status === 'ACTIVE' &&
-                !/(^|-)(undefined|test\\d*|aaa|qqq|www)(-|$)/i.test(listing.slug) && (
+                !/(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(listing.slug) && (
                 <VehicleJsonLd
                 name={listing.title}
                 description={`${listing.year} ${listing.make} ${listing.model} — ${formatPrice(listing.price)}. ${listing.mileage?.toLocaleString() || 0} miles, ${listing.fuelType || 'N/A'}, ${listing.transmission || 'N/A'}.`}
