@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { notFound } from "next/navigation"
 import { VehicleDetailPageClient } from "./VehicleDetailPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
@@ -7,14 +8,16 @@ import { serverBackendFetch } from "@/lib/serverBackendFetch"
 // Legacy vehicle links must point to the same www canonical as /buy-cars and the sitemap.
 const SITE_URL = "https://www.carmazium.com"
 
+/** Keep legacy URLs available without converting temporary API outages to 404s. */
 async function getListingBySlug(slug: string) {
     try {
         const res = await serverBackendFetch(`/listings/${slug}`, { next: { revalidate: 60 } })
-        if (!res.ok) return null
+        if (res.status === 404 || res.status === 410) return { listing: null, missing: true } as const
+        if (!res.ok) return { listing: null, missing: false } as const
         const json = await res.json()
-        return json.data ?? null
+        return { listing: json.data ?? null, missing: false } as const
     } catch {
-        return null
+        return { listing: null, missing: false } as const
     }
 }
 
@@ -27,17 +30,19 @@ async function getListingBySlug(slug: string) {
  */
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     const { id } = await params
-    const listing = await getListingBySlug(id)
-    const canonicalUrl = `${SITE_URL}/buy-cars/${id}`
+    const { listing, missing } = await getListingBySlug(id)
+    if (missing) notFound()
 
     if (!listing) {
         return { title: "Vehicle Not Found", robots: { index: false, follow: false } }
     }
 
+    // The requested param can be a UUID or old alias: canonicalise to the published slug.
+    const canonicalUrl = `${SITE_URL}/buy-cars/${listing.slug || id}`
     const title = `${listing.title} — ${formatPrice(listing.price)}`
     const description = listing.description
         ? `${listing.description.slice(0, 155).trim()}${listing.description.length > 155 ? '…' : ''}`
-        : `${listing.title}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Verified listing on CarMazium.`
+        : `${listing.title}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Vehicle listing on CarMazium.`
 
     return {
         title,
@@ -53,7 +58,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     // network round-trip. Passed down so the client component skips its own
     // fetch-on-mount (which used to mean an empty shell + a second,
     // uncached network hit before content ever appeared).
-    const initialListing = await getListingBySlug(id)
+    const { listing: initialListing, missing } = await getListingBySlug(id)
+    if (missing) notFound()
     return (
         <>
             {initialListing && (
