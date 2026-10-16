@@ -722,6 +722,10 @@ export class UsersService {
             website?: string;
             description?: string;
             logo?: string;
+            warrantyOffered?: boolean;
+            warrantyDetails?: string | null;
+            financeOffered?: boolean;
+            financeDetails?: string | null;
         },
     ) {
         const user = await this.prisma.user.findUnique({
@@ -752,10 +756,44 @@ export class UsersService {
         ]) {
             if (raw[key] !== undefined) allowed[key] = raw[key];
         }
+        for (const key of ['description', 'businessAddress', 'phone', 'website']) {
+            if (raw[key] !== undefined) {
+                if (typeof raw[key] !== 'string' || raw[key].length > (key === 'description' ? 2000 : 500)) {
+                    throw new BadRequestException(`Invalid ${key} business profile field`);
+                }
+                allowed[key] = (raw[key] as string).trim();
+            }
+        }
+        for (const field of ['warrantyOffered', 'financeOffered'] as const) {
+            if (raw[field] !== undefined) {
+                if (typeof raw[field] !== 'boolean') throw new BadRequestException(`${field} must be true or false`);
+                allowed[field] = raw[field];
+            }
+        }
+        for (const field of ['warrantyDetails', 'financeDetails'] as const) {
+            if (raw[field] !== undefined) {
+                if (raw[field] !== null && typeof raw[field] !== 'string') {
+                    throw new BadRequestException(`${field} must be text`);
+                }
+                if (typeof raw[field] === 'string' && raw[field].length > 1000) {
+                    throw new BadRequestException(`${field} must be 1,000 characters or fewer`);
+                }
+                allowed[field] = typeof raw[field] === 'string' ? raw[field].trim() || null : null;
+            }
+        }
 
         // On create, companyName is required — fall back to a placeholder so the
         // upsert doesn't fail when a dealer saves partial info before KYC.
         const existing = await this.prisma.dealerProfile.findUnique({ where: { userId: user.id } });
+        for (const prefix of ['warranty', 'finance'] as const) {
+            const offeredKey = prefix === 'warranty' ? 'warrantyOffered' : 'financeOffered';
+            const detailsKey = prefix === 'warranty' ? 'warrantyDetails' : 'financeDetails';
+            const offered = allowed[offeredKey] ?? existing?.[offeredKey] ?? false;
+            if (offered === false) allowed[detailsKey] = null;
+            if (offered === true && !(String(allowed[detailsKey] ?? existing?.[detailsKey] ?? '').trim())) {
+                throw new BadRequestException(`Provide ${prefix} details before advertising this service`);
+            }
+        }
 
         if (existing) {
             // Allow update if a profile already exists (handles OAuth role-sync edge cases)
@@ -783,6 +821,11 @@ export class UsersService {
                 website: data.website,
                 description: data.description,
                 logo: data.logo,
+                warrantyOffered: allowed.warrantyOffered === true,
+                warrantyDetails: allowed.warrantyDetails as string | null | undefined,
+                financeOffered: allowed.financeOffered === true,
+                financeDetails: allowed.financeDetails as string | null | undefined,
+                openingHours: allowed.openingHours as any,
             },
         });
     }
