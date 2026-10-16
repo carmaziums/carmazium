@@ -1130,6 +1130,89 @@ describe('ListingsService', () => {
     });
 
     describe('alsoListRetail', () => {
+        it('creates the Retail row before referencing it from the Auction FK', async () => {
+            const source = {
+                id: 'auction-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                deletedAt: null,
+                linkedListingId: null,
+                title: 'Nissan MICRA 2016',
+                images: [],
+                videoUrls: [],
+            };
+            prisma.listing.findUnique.mockResolvedValue(source);
+            // Simulate an immediate PostgreSQL self-referencing FK check: linking
+            // to a nonexistent retail ID must throw, exactly as production did.
+            const createdIds = new Set<string>();
+            prisma.listing.create.mockImplementation(async ({ data }: any) => {
+                expect(data.linkedListingId).toBe(source.id);
+                createdIds.add(data.id);
+                return data;
+            });
+            prisma.listing.updateMany.mockImplementation(async ({ data }: any) => {
+                if (!createdIds.has(data.linkedListingId)) throw new Error('P2003: listings_linkedListingId_fkey');
+                return { count: 1 };
+            });
+
+            const result = await service.alsoListRetail('auction-1', 'seller-1', {
+                price: 6995,
+                badgeTier: 'BASIC',
+            });
+            expect(prisma.listing.create).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({
+                        title: 'Nissan MICRA 2016',
+                        type: 'CLASSIFIED',
+                        status: 'DRAFT',
+                        price: 6995,
+                        badgeTier: 'BASIC',
+                        sellerId: 'seller-1',
+                        linkedListingId: source.id,
+                    }),
+                }),
+            );
+            expect(prisma.listing.create.mock.invocationCallOrder[0]).toBeLessThan(
+                prisma.listing.updateMany.mock.invocationCallOrder[0],
+            );
+            expect(result.linkedListingId).toBe(prisma.listing.create.mock.calls[0][0].data.id);
+            expect(prisma.listing.updateMany).toHaveBeenCalledWith({
+                where: {
+                    id: source.id,
+                    sellerId: source.sellerId,
+                    type: 'AUCTION',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: result.linkedListingId },
+            });
+        });
+
+        it('does not return an unclaimed retail draft when another request wins the link', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                deletedAt: null,
+                linkedListingId: null,
+                title: 'Nissan MICRA 2016',
+                images: [],
+                videoUrls: [],
+            });
+            prisma.listing.updateMany.mockResolvedValue({ count: 0 });
+
+            await expect(service.alsoListRetail('auction-1', 'seller-1', {
+                price: 6995,
+                badgeTier: 'BASIC',
+            })).rejects.toThrow(/linked Retail listing or changed during creation/i);
+            expect(prisma.listing.create).toHaveBeenCalledTimes(1);
+            expect(prisma.listing.create.mock.invocationCallOrder[0]).toBeLessThan(
+                prisma.listing.updateMany.mock.invocationCallOrder[0],
+            );
+        });
+
         it('returns the existing linked retail DRAFT instead of deleting and recreating it', async () => {
             prisma.listing.findUnique
                 .mockResolvedValueOnce({
