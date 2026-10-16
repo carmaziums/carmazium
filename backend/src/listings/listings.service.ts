@@ -3191,6 +3191,7 @@ export class ListingsService {
         return this.prisma.$transaction(async (tx) => {
             let source = await tx.listing.findUnique({
                 where: { id: listingId },
+                include: { damageRecords: true },
             });
             if (!source || source.deletedAt) throw new NotFoundException('Listing not found');
             if (source.sellerId !== sellerId) throw new ForbiddenException('You do not own this listing');
@@ -3262,6 +3263,18 @@ export class ListingsService {
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                     exteriorGrade: source.exteriorGrade,
+                    // A defect marked on the interactive 3D model is part of the
+                    // physical vehicle, not the selling channel. Copy its
+                    // original coordinates and evidence photo with fresh IDs.
+                    damageRecords: {
+                        create: (source.damageRecords ?? []).map(d => ({
+                            part: d.part,
+                            type: d.type,
+                            size: d.size,
+                            coords: d.coords as Prisma.InputJsonValue,
+                            imageUrl: d.imageUrl,
+                        })),
+                    },
                     bannerLabel: source.bannerLabel,
                     badgeTier: dto.badgeTier,
                     sellerId,
@@ -3332,6 +3345,7 @@ export class ListingsService {
                 where: { id: listingId },
                 include: {
                     hpiReport: { select: { id: true } },
+                    damageRecords: true,
                 },
             });
 
@@ -3429,6 +3443,18 @@ export class ListingsService {
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                     exteriorGrade: source.exteriorGrade,
+                    // A defect marked on the interactive 3D model is part of the
+                    // physical vehicle, not the selling channel. Copy its
+                    // original coordinates and evidence photo with fresh IDs.
+                    damageRecords: {
+                        create: (source.damageRecords ?? []).map(d => ({
+                            part: d.part,
+                            type: d.type,
+                            size: d.size,
+                            coords: d.coords as Prisma.InputJsonValue,
+                            imageUrl: d.imageUrl,
+                        })),
+                    },
                     bannerLabel: source.bannerLabel,
                     badgeTier: 'FREE',
                     sellerId,
