@@ -2645,16 +2645,41 @@ export class ListingsService {
             })
             : await this.prisma.listing.update({ where: { id }, data: updateData });
 
-        // Re-geocode if location changed
+        // Location changes must refresh map/search coordinates on both genuine
+        // linked rows. Constrain each late geocode write to the latest saved
+        // location so an older slow response cannot overwrite a newer edit.
         if (updateListingDto.location && updateListingDto.location !== listing.location) {
             this.geocodeLocation(updateListingDto.location)
-                .then(coords => {
-                    if (coords) return this.prisma.listing.update({
-                        where: { id },
-                        data: { latitude: coords.lat, longitude: coords.lng },
+                .then(async coords => {
+                    if (!coords) return;
+                    const data = { latitude: coords.lat, longitude: coords.lng };
+                    await this.prisma.listing.updateMany({
+                        where: { id, sellerId: listing.sellerId, location: updateListingDto.location, deletedAt: null },
+                        data,
                     });
+                    if (!updatedListing.linkedListingId) return;
+                    const counterpart = await this.prisma.listing.findUnique({
+                        where: { id: updatedListing.linkedListingId },
+                    });
+                    const plate = (value?: string | null) =>
+                        String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (counterpart && !counterpart.deletedAt && counterpart.status !== 'SOLD'
+                        && counterpart.linkedListingId === id
+                        && counterpart.sellerId === listing.sellerId
+                        && counterpart.type !== listing.type
+                        && !!plate(listing.vrm)
+                        && plate(counterpart.vrm) === plate(listing.vrm)) {
+                        await this.prisma.listing.updateMany({
+                            where: {
+                                id: counterpart.id, sellerId: listing.sellerId,
+                                linkedListingId: id, location: updateListingDto.location,
+                                deletedAt: null, status: { not: 'SOLD' },
+                            },
+                            data,
+                        });
+                    }
                 })
-                .catch(() => { /* silent */ });
+                .catch(() => { /* Location text remains saved; admin can retry geocoding. */ });
         }
 
         // Phase 2: If status changed to ACTIVE, increment seller's listing count
