@@ -1,4 +1,4 @@
-import { applyVehicleSpecificationAdjustments, calculateVehicleValuation } from './vehicle-valuation';
+import { alignVehicleValuationPrices, applyVehicleSpecificationAdjustments, calculateVehicleValuation } from './vehicle-valuation';
 
 describe('calculateVehicleValuation', () => {
     const vehicle = {
@@ -298,7 +298,7 @@ describe('calculateVehicleValuation', () => {
     });
 
 
-    it('uses the previous dealer guide for retail and prices auction 20 percent lower', () => {
+    it('uses the lower market band for auction and adds 20 percent for retail', () => {
         const result = calculateVehicleValuation(vehicle, [
             { price: 9000, year: 2019, mileage: 60000, kind: 'ACTIVE_ASK' },
             { price: 9500, year: 2019, mileage: 58000, kind: 'ACTIVE_ASK' },
@@ -307,14 +307,15 @@ describe('calculateVehicleValuation', () => {
             { price: 11000, year: 2021, mileage: 50000, kind: 'ACTIVE_ASK' },
         ]);
 
-        expect(result.retail.suggestedAsking).toBe(result.low);
+        expect(result.auction.marketValue).toBe(result.low);
+        expect(result.retail.suggestedAsking).toBe(Math.round(result.low * 1.20));
         expect(result.retail.suggestedMinimum).toBeLessThanOrEqual(result.retail.suggestedAsking);
-        expect(result.auction.marketValue).toBe(Math.round(result.retail.suggestedAsking * 0.8));
+        expect(result.retail.suggestedAsking).toBe(Math.round(result.auction.marketValue * 1.20));
         expect(result.auction.marketValue).toBeLessThan(result.retail.suggestedAsking);
         expect(result.auction.suggestedReserve).toBeLessThanOrEqual(result.auction.marketValue);
     });
 
-    it('retains the 20 percent auction discount after specification adjustments', () => {
+    it('retains a 20 percent retail premium after specification adjustments', () => {
         const base = calculateVehicleValuation(vehicle, []);
         const adjusted = applyVehicleSpecificationAdjustments(base, {
             ...vehicle,
@@ -322,9 +323,24 @@ describe('calculateVehicleValuation', () => {
             serviceHistory: 'Full',
             numberOfKeys: 2,
         });
-        expect(adjusted.auction.marketValue).toBe(Math.round(adjusted.retail.suggestedAsking * 0.8));
+        expect(adjusted.auction.marketValue).toBe(adjusted.low);
+        expect(adjusted.retail.suggestedAsking).toBe(Math.round(adjusted.auction.marketValue * 1.20));
         expect(adjusted.retail.suggestedMinimum).toBeLessThanOrEqual(adjusted.retail.suggestedAsking);
         expect(adjusted.auction.suggestedReserve).toBeLessThanOrEqual(adjusted.auction.marketValue);
+    });
+
+    it('prices a £10,000 market lower band as £10,000 auction and £12,000 Retail', () => {
+        const current = calculateVehicleValuation(vehicle, []);
+        const normalized = alignVehicleValuationPrices({
+            ...current,
+            low: 10000,
+            mid: 11000,
+            high: 12000,
+        });
+        expect(normalized.auction.marketValue).toBe(10000);
+        expect(normalized.retail.suggestedAsking).toBe(12000);
+        expect(normalized.auction.openingBid).toBe(7000);
+        expect(normalized.auction.suggestedReserve).toBeLessThanOrEqual(10000);
     });
 
     it('recalculates frozen valuations created under the previous high-retail rule', () => {

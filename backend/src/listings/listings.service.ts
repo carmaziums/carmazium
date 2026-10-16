@@ -60,6 +60,7 @@ import {
     getListingSubmissionReadiness,
 } from './listing-readiness';
 import {
+    alignVehicleValuationPrices,
     applyVehicleSpecificationAdjustments,
     calculateVehicleValuation,
     VehicleValuationComparable,
@@ -615,7 +616,10 @@ export class ListingsService {
             || !Number.isFinite(Number(quote.auction?.marketValue))
             || Number(quote.auction.marketValue) <= 0
         ) return null;
-        return quote;
+        // Preserve the underlying 24h market quote and its expiry. Pricing
+        // policy changes only how the original low band is displayed; it must
+        // not trigger another live search, extend a lock or change past sales.
+        return alignVehicleValuationPrices(quote);
     }
 
     private async findLockedVehicleQuote(dto: VehicleValuationDto): Promise<VehicleValuationResult | null> {

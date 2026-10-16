@@ -1528,10 +1528,10 @@ describe('ListingsService', () => {
                 valuationId,
             } as any);
 
-            // Old frozen auction guide (£2,650) is now the retail anchor;
-            // the dealer auction estimate is exactly 80% of that anchor.
-            expect(result.retail.suggestedAsking).toBe(2650);
-            expect(result.auction.marketValue).toBe(2120);
+            // The original £2,650 lower guide remains the Auction value;
+            // the Retail guide is exactly 20% higher, regardless of old snapshots.
+            expect(result.retail.suggestedAsking).toBe(3180);
+            expect(result.auction.marketValue).toBe(2650);
             expect(result.source).toBe('BLENDED_MARKET');
         });
     });
@@ -1591,7 +1591,32 @@ describe('ListingsService', () => {
             const lockRows = [...events.values()].filter((e: any) => e.type === 'valuation_price_lock');
             expect(lockRows).toHaveLength(1);
             expect(lockRows[0].payload.expiresAt).toBeTruthy();
-            expect(first.auction.marketValue).toBe(Math.round(first.retail.suggestedAsking * 0.8));
+            expect(first.auction.marketValue).toBe(first.low);
+            expect(first.retail.suggestedAsking).toBe(Math.round(first.auction.marketValue * 1.20));
+        });
+
+        it('reinterprets a historical locked quote using its existing lower market band without refreshing 24h TTL', async () => {
+            const events = mockPersistentQuotes();
+            const quote = await service.estimateVehicleValue({ ...car } as any);
+            const lock: any = [...events.values()].find((e: any) => e.type === 'valuation_price_lock');
+            const originalTimestamp = lock.createdAt;
+            const lockedAt = lock.payload.lockedAt;
+            // A quote previously written under the old policy has the same low,
+            // but sold the low as Retail and offered Auction at 80% of it.
+            lock.payload.valuation.retail.suggestedAsking = quote.low;
+            lock.payload.valuation.auction.marketValue = Math.round(quote.low * 0.8);
+            const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
+            liveSearch.mockClear();
+            const updated = await service.estimateVehicleValue({
+                ...car, registration: 'AB12CDE', mileage: 120000,
+            } as any);
+            expect(updated.auction.marketValue).toBe(quote.low);
+            expect(updated.retail.suggestedAsking).toBe(Math.round(quote.low * 1.20));
+            expect(updated.auction.openingBid).toBe(Math.round(quote.low * 0.70 * 100) / 100);
+            expect(liveSearch).not.toHaveBeenCalled();
+            expect(lock.createdAt).toBe(originalTimestamp);
+            expect(lock.payload.lockedAt).toBe(lockedAt);
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
         });
 
         it('refreshes the locked quote only after the original 24-hour window ends', async () => {
