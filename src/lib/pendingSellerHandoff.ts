@@ -45,20 +45,42 @@ export function createSellerHandoff(
         else if (typeof value === "number" && Number.isFinite(value)) selected[field] = value
         else if (typeof value === "boolean") selected[field] = value
     }
+    // Preserve allowlisted additional DVLA/DVSA facts across authentication.
+    // Client data is bounded and contains no vehicleId/VIN/authentication identifiers.
+    const extras = vehicle.officialVehicleData
+    if (extras && typeof extras === 'object' && !Array.isArray(extras)) {
+        const allowed: Record<string, string[]> = {
+            dvla: ['monthOfFirstDvlaRegistration', 'artEndDate', 'revenueWeight', 'realDrivingEmissions', 'automatedVehicle'],
+            mot: ['registrationDate', 'manufactureDate', 'secondaryColour', 'lastMotTestDate', 'motTestDueDate'],
+        }
+        const clean: Record<string, Record<string, string | number | boolean>> = {}
+        for (const source of Object.keys(allowed)) {
+            const record = (extras as Record<string, unknown>)[source]
+            if (!record || typeof record !== 'object' || Array.isArray(record)) continue
+            const entries: Record<string, string | number | boolean> = {}
+            for (const field of allowed[source]) {
+                const v = (record as Record<string, unknown>)[field]
+                if (typeof v === 'string' && v.length <= 80) entries[field] = v
+                else if (typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))) entries[field] = v
+            }
+            if (Object.keys(entries).length) clean[source] = entries
+        }
+        if (Object.keys(clean).length) selected.officialVehicleData = clean
+    }
     // A bounded, sanitised history travels with the verified vehicle facts
     // when the wizard loads after the initial click. Never store the entire
     // upstream response, tokens, VIN or unrelated seller/account information.
     if (Array.isArray(vehicle.motHistory)) {
-        selected.motHistory = vehicle.motHistory.slice(0, 20).flatMap((entry: unknown) => {
+        selected.motHistory = vehicle.motHistory.slice(0, 100).flatMap((entry: unknown) => {
             if (!entry || typeof entry !== "object") return []
             const test = entry as Record<string, unknown>
             if (test.testResult !== "PASSED" && test.testResult !== "FAILED") return []
             const safeText = (value: unknown, length = 160) =>
                 typeof value === "string" ? value.slice(0, length) : ""
-            const defects = Array.isArray(test.defects) ? test.defects.slice(0, 8).flatMap((item: unknown) => {
+            const defects = Array.isArray(test.defects) ? test.defects.slice(0, 100).flatMap((item: unknown) => {
                 if (!item || typeof item !== "object") return []
                 const defect = item as Record<string, unknown>
-                if (!["ADVISORY", "MINOR", "MAJOR", "DANGEROUS"].includes(String(defect.type))) return []
+                if (typeof defect.type !== 'string' || !defect.type || defect.type.length > 40) return []
                 return [{
                     text: safeText(defect.text, 240),
                     type: String(defect.type),
@@ -71,6 +93,7 @@ export function createSellerHandoff(
                 expiryDate: safeText(test.expiryDate, 40),
                 odometerValue: safeText(test.odometerValue, 20),
                 odometerUnit: safeText(test.odometerUnit, 12),
+                odometerResultType: safeText(test.odometerResultType, 20),
                 motTestNumber: safeText(test.motTestNumber, 40),
                 defects,
             }]
@@ -88,7 +111,7 @@ export function createSellerHandoff(
 }
 
 export function parseSellerHandoff(raw: string | null, now = Date.now()): PendingSellerHandoff | null {
-    if (!raw || raw.length > 75000) return null
+    if (!raw || raw.length > 500000) return null
     try {
         const candidate = JSON.parse(raw)
         if (typeof candidate?.createdAt !== "number" ||
