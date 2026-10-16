@@ -418,6 +418,7 @@ export class DvlaService {
             typeApproval: data.typeApproval,
             revenueWeight: data.revenueWeight,
             markedForExport: data.markedForExport,
+            firstUsedDate: data.firstUsedDate,
             monthOfFirstRegistration: data.monthOfFirstRegistration,
             dateOfLastV5CIssued: data.dateOfLastV5CIssued,
             officialVehicleData: normalizeOfficialVehicleData({ dvla: {
