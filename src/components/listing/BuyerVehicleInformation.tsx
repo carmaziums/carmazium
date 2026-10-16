@@ -49,6 +49,7 @@ function FactGroup({ title, icon, facts }: { title: string; icon: React.ReactNod
 /** Both buyer routes render only fields saved with the listing; no public API calls or inferred values. */
 export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
     const [showAllMot, setShowAllMot] = React.useState(false)
+    const official = listing.officialVehicleData
     const mot = (Array.isArray(listing.motHistory) ? listing.motHistory : [])
         .filter((item): item is ListingMotHistoryEntry =>
             Boolean(item && typeof item === "object" && typeof item.completedDate === "string"
@@ -64,6 +65,10 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Year", value: listing.year },
         { label: "Registration", value: listing.vrm },
         { label: "First registered", value: listing.monthOfFirstRegistration },
+        { label: "First registered with DVLA", value: official?.dvla?.monthOfFirstDvlaRegistration },
+        { label: "MOT vehicle registration date", value: ukDate(official?.mot?.registrationDate) },
+        { label: "MOT manufacturing date", value: ukDate(official?.mot?.manufactureDate) },
+        { label: "Secondary colour (MOT)", value: official?.mot?.secondaryColour },
         { label: "First used", value: ukDate(listing.firstUsedDate) },
         { label: "Body style", value: listing.bodyType ? humanize(listing.bodyType) : null },
         { label: "Exterior colour", value: listing.color },
@@ -89,6 +94,9 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Seats", value: listing.seats },
         { label: "Wheelplan", value: listing.wheelplan },
         { label: "Type approval", value: listing.typeApproval },
+        { label: "Revenue weight", value: official?.dvla?.revenueWeight != null ? official.dvla.revenueWeight + " kg" : null },
+        { label: "Real-driving emissions category", value: official?.dvla?.realDrivingEmissions },
+        { label: "Automated vehicle (DVLA)", value: official?.dvla?.automatedVehicle == null ? null : official.dvla.automatedVehicle ? "Yes" : "No" },
     ]
     const conditionFacts: Fact[] = [
         { label: "Condition (seller)", value: listing.condition ? humanize(listing.condition) : null },
@@ -104,6 +112,9 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Vehicle tax status (saved)", value: listing.taxStatus },
         { label: "Tax due date (saved)", value: ukDate(listing.taxDueDate) },
         { label: "Last V5C issue date", value: ukDate(listing.dateOfLastV5CIssued) },
+        { label: "Additional vehicle tax rate end", value: ukDate(official?.dvla?.artEndDate) },
+        { label: "Last MOT test date", value: ukDate(official?.mot?.lastMotTestDate) },
+        { label: "First MOT due date", value: ukDate(official?.mot?.motTestDueDate) },
         { label: "Marked for export (saved)", value: listing.markedForExport == null ? null : listing.markedForExport ? "Yes" : "No" },
     ]
 
