@@ -1218,13 +1218,30 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => getStepValidationError() === null
 
     const [stepValidationMessage, setStepValidationMessage] = React.useState<string | null>(null)
-    const [guidedFullScreen, setGuidedFullScreen] = React.useState(false)
+    // New Retail and Auction listings open the guided form by default.
+    // Website view reuses exactly the same saved form and current step.
+    const [guidedFullScreen, setGuidedFullScreen] = React.useState(true)
+    React.useEffect(() => {
+        if (!sellingMethod) setGuidedFullScreen(true)
+    }, [sellingMethod])
     React.useEffect(() => {
         if (!guidedFullScreen || !sellingMethod) return
         const previous = document.body.style.overflow
         document.body.style.overflow = 'hidden'
         return () => { document.body.style.overflow = previous }
     }, [guidedFullScreen, sellingMethod])
+
+    const switchWizardView = () => {
+        setGuidedFullScreen(prev => !prev)
+        // Reposition inside the new scrolling context without clearing
+        // any fields, the seller's draft or the current step.
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+            document.getElementById('listing-wizard-step-header')?.scrollIntoView({
+                behavior: 'auto',
+                block: 'start',
+            })
+        }))
+    }
 
     /** Return the exact first unanswered input, not a generic page position. */
     const firstInvalidField = (): { field: string; label: string } | null => {
@@ -2576,11 +2593,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
                 </div>
 
-                <div className="flex justify-end mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
+                        {guidedFullScreen
+                            ? "Guided application is on. We'll explain what to enter and why."
+                            : "Website view is on. Your listing progress and answers are unchanged."}
+                    </p>
                     <Button type="button" variant="outline" aria-pressed={guidedFullScreen}
-                        onClick={() => setGuidedFullScreen(v => !v)}
-                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10">
-                        {guidedFullScreen ? "Exit Guided Full-Screen" : "Open Guided Full-Screen"}
+                        onClick={switchWizardView}
+                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10 min-h-[44px] whitespace-normal">
+                        {guidedFullScreen ? "Continue on Website" : "Return to Guided Full-Screen"}
                     </Button>
                 </div>
                 <div id="listing-wizard-step-header" className="text-center mb-6 sm:mb-10 scroll-mt-20">
