@@ -408,11 +408,12 @@ function DVLAField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionBox({ title, children, accent, action }: {
+function SectionBox({ title, children, accent, action, onLayout }: {
   title: string; children: React.ReactNode; accent?: string; action?: React.ReactNode;
+  onLayout?: (event: any) => void;
 }) {
   return (
-    <View style={s.sectionBox}>
+    <View style={s.sectionBox} onLayout={onLayout}>
       <View style={[s.sectionBoxHeader, accent ? { borderLeftColor: accent } : {}]}>
         <Text style={s.sectionBoxTitle}>{title}</Text>
         {action && <View style={{ marginLeft: 'auto' }}>{action}</View>}
@@ -909,6 +910,32 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
   // Shared across steps since only one step's ScrollView is ever mounted at a time.
   const stepScrollRef = useRef<ScrollView>(null);
+  // Positions are measured in the currently mounted step's ScrollView.
+  const validationSectionYRef = useRef<Record<string, number>>({});
+  const [validationIssue, setValidationIssue] = useState<{ field: string; message: string } | null>(null);
+  const rememberValidationSection = (section: string) => (event: any) => {
+    validationSectionYRef.current[section] = event.nativeEvent.layout.y;
+  };
+  const scrollToMissingField = (field: string) => {
+    const sections: Record<string, string> = {
+      vrm: 'registration', make: 'identity', model: 'identity', year: 'identity',
+      bodyType: 'body', location: 'location',
+      mileage: 'technical', fuelType: 'technical', transmission: 'technical',
+      title: 'description', description: 'description',
+      condition: 'ownership', owners: 'ownership', departedRelationship: 'ownership',
+      writeOffCat: 'declarations', stolenRecovered: 'declarations', outstandingFinance: 'declarations',
+      isLegalKeeper: 'declarations', notOwnerRelationship: 'declarations', declAcknowledged: 'declarations',
+      priceAsking: 'pricing', priceMin: 'pricing',
+      auctionStartDate: 'start', reservePrice: 'auction-pricing', startingBid: 'auction-pricing',
+      minIncrement: 'auction-pricing', buyItNowPrice: 'auction-pricing', photos: 'photos',
+    };
+    const section = sections[field];
+    // Wait for inline field error/layout update; never force every error to y=0.
+    setTimeout(() => {
+      const y = validationSectionYRef.current[section];
+      stepScrollRef.current?.scrollTo({ y: Number.isFinite(y) ? Math.max(0, y - 12) : 0, animated: true });
+    }, 100);
+  };
 
   // Hydrate only after the authenticated user is known. A previous user's
   // in-memory draft is detached before reading this account's separate key.
