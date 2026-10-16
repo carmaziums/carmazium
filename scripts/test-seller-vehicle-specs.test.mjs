@@ -653,3 +653,14 @@ test('web guided seller wizard focuses first missing field without resetting who
   }
   assert.match(source, /role="alert" className="mb-5/)
 })
+
+test('seller can optionally open a full-screen guided form without a second draft flow', () => {
+  const source = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+  assert.match(source, /const \[guidedFullScreen, setGuidedFullScreen\] = React\.useState\(false\)/)
+  assert.match(source, /Open Guided Full-Screen/)
+  assert.match(source, /Exit Guided Full-Screen/)
+  assert.match(source, /setGuidedFullScreen\(v => !v\)/)
+  assert.match(source, /document\.body\.style\.overflow = 'hidden'/)
+  assert.match(source, /document\.body\.style\.overflow = previous/)
+  assert.match(source, /fixed inset-0 z-\[60\] overflow-y-auto/)
+})
