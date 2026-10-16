@@ -174,6 +174,23 @@ export class AdminController {
         return new StandardResponse(listing);
     }
 
+    @Post('listings/:id/refresh-official-data')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Admin-only fill of missing verified DVLA/DVSA facts, including a valid linked sibling' })
+    async refreshOfficialVehicleData(@Param('id') id: string): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.refreshOfficialVehicleData(id));
+    }
+
+    @Post('listings/:id/request-seller-details')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Admin-only request specifying seller-provided missing fields' })
+    async requestVehicleDetailsFromSeller(
+        @Param('id') id: string,
+        @Body('fields') fields: string[],
+    ): Promise<StandardResponse<any>> {
+        return new StandardResponse(await this.adminService.requestVehicleDetailsFromSeller(id, fields));
+    }
+
     @Post('listings/:id/relist-auction')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Admin-only one-click relist of an eligible seller draft into a 24-hour auction' })
