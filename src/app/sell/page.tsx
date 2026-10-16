@@ -95,6 +95,7 @@ type LandingVehiclePrefill = {
     wheelplan: string
     typeApproval: string
     motHistory: unknown[]
+    officialVehicleData?: import('@/lib/dvlaApi').OfficialVehicleData
 }
 
 type LandingValuationResult = {
@@ -353,7 +354,7 @@ function QuickValuationForm() {
                     primaryColour: vehicle.primaryColour || vehicle.colour || "",
                     engineSize: vehicle.engineSize ? String(vehicle.engineSize) : "",
                     euroStandard: vehicle.euroStandard || "",
-                    co2Emissions: vehicle.co2Emissions ? String(vehicle.co2Emissions) : "",
+                    co2Emissions: vehicle.co2Emissions != null ? String(vehicle.co2Emissions) : "",
                     dateOfLastV5CIssued: vehicle.dateOfLastV5CIssued || "",
                     firstUsedDate: vehicle.firstUsedDate || "",
                     motStatus: vehicle.motStatus || "",
@@ -365,6 +366,7 @@ function QuickValuationForm() {
                     wheelplan: vehicle.wheelplan || "",
                     typeApproval: vehicle.typeApproval || "",
                     motHistory: vehicle.motHistory || [],
+                    officialVehicleData: vehicle.officialVehicleData,
                 },
             })
             trackEvent(SELLER_FUNNEL.VALUATION_REQUESTED, {
