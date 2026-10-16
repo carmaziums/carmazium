@@ -82,8 +82,8 @@ export class AiController {
     @ApiCookieAuth()
     @ApiOperation({ summary: 'Generate a vehicle description using AI' })
     @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: false, transform: true }))
-    async generateDescription(@Body() dto: AiDescriptionDto) {
-        const result = await this.aiService.generateDescription(dto);
+    async generateDescription(@Body() dto: AiDescriptionDto, @CurrentUser() user: { id: string }) {
+        const result = await this.aiService.generateDescription(dto, user.id);
         return { success: true, data: result };
     }
 }
