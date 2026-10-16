@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -1566,6 +1566,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </Text>
         )}
 
+        <Text style={{ color: Colors.accentGreen, fontSize: 12, marginTop: 10, lineHeight: 18 }}>
+          Keep your existing Auction and bids running. This will create a linked Retail draft, then request the selected listing fee. Your Retail listing will require normal admin review.
+        </Text>
+
         {/* Price */}
         <Text style={[styles.retailFieldLabel, { marginTop: 18 }]}>ASKING PRICE (£) *</Text>
         <View style={styles.retailPriceRow}>
@@ -1618,7 +1622,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           activeOpacity={0.85}
         >
           {retailSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
-            <Text style={styles.retailSubmitText}>Create Listing</Text>
+            <Text style={styles.retailSubmitText}>Create & Pay</Text>
           )}
         </TouchableOpacity>
       </BottomSheet>
