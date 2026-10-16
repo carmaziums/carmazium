@@ -580,3 +580,28 @@ test("Auction to Retail guidance points customers to Also Retail and requires no
     assert.match(wizard, /Keep Auction &amp; Also List Retail/)
     assert.match(wizard, /href="\/dashboard\/seller\/auctions"/)
 })
+
+test("active Auction to Retail choice keeps the auction by default and creates linked Retail directly", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const modal = wizard.split("const RetailConversionModal = () => {")[1].split("// ─── HPI Payment Modal")[0]
+    assert.match(modal, /List in Retail without losing your Auction/)
+    assert.match(modal, /Option 1 · Keep both listings/)
+    assert.match(modal, /Keep Auction &amp; Also List Retail/)
+    assert.match(wizard, /const confirmLinkedRetail = async \(\) =>/)
+    assert.match(wizard, /await alsoListRetail\(candidate\.listingId, price, tier\)/)
+    assert.match(wizard, /await createListingCheckoutSession\(linkedListingId, tier\)/)
+    assert.match(wizard, /Your linked Retail draft was saved, but payment could not start/)
+    assert.match(modal, /onClick=\{confirmLinkedRetail\}/)
+})
+
+test("auction cancellation is deliberately secondary and needs a separate confirmation", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const modal = wizard.split("const RetailConversionModal = () => {")[1].split("// ─── HPI Payment Modal")[0]
+    assert.match(modal, /Option 2 · Replace the Auction/)
+    assert.match(modal, /!confirmCancelAuction \?/)
+    assert.match(modal, /setConfirmCancelAuction\(true\)/)
+    assert.match(modal, /Confirm: Cancel Auction & Switch/)
+    assert.match(modal, /onClick=\{confirmRetailConversion\}/)
+    assert.match(modal, /Not Now — Keep Existing Auction/)
+    assert.doesNotMatch(modal, /href="\/dashboard\/seller\/auctions"[^>]*Keep Auction/)
+})
