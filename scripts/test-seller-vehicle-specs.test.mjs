@@ -636,3 +636,20 @@ test('valuation price rule: low market guide is Auction, Retail is exactly 20% h
   assert.match(adjustmentSection, /return alignVehicleValuationPrices\(base\)/);
   assert.match(adjustmentSection, /const low = roundMoney\(base\.low \* factor\)/);
 });
+
+test('web guided seller wizard focuses first missing field without resetting whole page scroll', () => {
+  const source = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+  assert.match(source, /const firstInvalidField = \(\)/)
+  assert.match(source, /const focusMissingField = \(field: string\)/)
+  assert.match(source, /setStepValidationMessage\(missing/)
+  assert.match(source, /focusMissingField\(missing\.field\)/)
+  assert.match(source, /getElementById\('listing-wizard-step-header'\)/)
+  assert.match(source, /id="listing-wizard-panel"/)
+  assert.match(source, /className="sticky bottom-2/)
+  assert.doesNotMatch(source, /window\.scrollTo\(\{ top: 0/)
+  assert.doesNotMatch(source, /if \(focusFirstTransmissionOrBodyTypeError\(\)\)/)
+  for (const field of ['registration','make','model','year','location','mileage','title','description','photos','asking','minimum','start','reserve','increment','buy-now']) {
+    assert.match(source, new RegExp('listing-required-' + field), 'stable missing-field target: ' + field)
+  }
+  assert.match(source, /role="alert" className="mb-5/)
+})
