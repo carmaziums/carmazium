@@ -213,6 +213,7 @@ export interface Listing {
     transmission: string | null
     bodyType: string | null
     type: 'AUCTION' | 'CLASSIFIED'
+    vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE' | null
     status: 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'OFFER_ACCEPTED' | 'SOLD' | 'WITHDRAWN' | 'REJECTED'
     rejectionReason?: string | null
     viewCount: number
