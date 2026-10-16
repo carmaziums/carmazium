@@ -117,3 +117,23 @@ test('buyer fields exclude private commercial data, VIN, seller contact and rela
     assert.match(vehiclePage, /listing\.hpiReport\?\.status === 'COMPLETED'/);
     assert.doesNotMatch(vehiclePage, /listing\.badgeTier === 'PREMIUM' && \(\s*<AccordionItem title="HPI Verification"/);
 });
+
+test('simultaneously listed auction and retail copy every seller disclosure and 3D damage marker', () => {
+    // Both linked-listing directions must copy these vehicle facts in the same
+    // Prisma transaction without copying reserve, seller fees or statuses.
+    for (const field of [
+        'videoUrls', 'motHistory', 'officialVehicleData', 'features',
+        'mechanicalIssues', 'electricalIssues', 'serviceHistory', 'numberOfKeys',
+        'isDepartedSale', 'departedRelationship', 'notOwnerRelationship',
+        'deliveryAvailable', 'deliveryPricePerMile', 'deliveryMaxMiles',
+        'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
+        'exteriorGrade', 'co2Emissions', 'firstUsedDate', 'dateOfLastV5CIssued',
+    ]) {
+        const occurrences = (listings.match(new RegExp(field + ': source\\.' + field, 'g')) || []).length;
+        assert.equal(occurrences, 2, 'missing shared vehicle data in one linked channel: ' + field);
+    }
+    assert.equal((listings.match(/damageRecords: \{/g) || []).length >= 2, true);
+    assert.equal((listings.match(/coords: d\.coords as Prisma\.InputJsonValue/g) || []).length, 2);
+    assert.equal((listings.match(/damageRecords: true/g) || []).length >= 2, true);
+    assert.match(listings, /linkedListingId: listingId/);
+});
