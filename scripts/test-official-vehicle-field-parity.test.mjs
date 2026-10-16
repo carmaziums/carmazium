@@ -58,3 +58,62 @@ test('both public website pages and both native buyer pages show only saved vali
     assert.match(read('carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx'), /BuyerVehicleFacts/);
     assert.match(read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx'), /BuyerVehicleFacts/);
 });
+
+test('every buyer route renders the complete shared vehicle facts and saved MOT test defects', () => {
+    const webAuction = read('src/app/auctions/live/[id]/page.tsx');
+    const nativeAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+    assert.match(webAuction, /<BuyerVehicleInformation listing=\{auction\.listing as unknown as Listing\}/);
+    assert.doesNotMatch(webAuction, /motHistory\.slice\(0, 8\)/);
+    for (const file of [
+        'src/app/vehicle/[id]/VehicleDetailPageClient.tsx',
+        'src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx',
+    ]) assert.match(read(file), /<BuyerVehicleInformation listing=\{listing\}/);
+    for (const file of [
+        'carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx',
+        'carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx',
+    ]) assert.match(read(file), /<BuyerVehicleFacts record=/);
+    for (const panel of [buyerNative, buyerWeb]) {
+        for (const field of [
+            'motHistory', 'motTestNumber', 'odometerValue', 'odometerResultType',
+            'defects', 'typeApproval', 'wheelplan', 'numberOfKeys', 'serviceHistory',
+            'mechanicalIssues', 'electricalIssues', 'motExpiryDate', 'taxDueDate',
+            'firstUsedDate', 'dateOfLastV5CIssued', 'officialVehicleData',
+            'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
+            'isDepartedSale', 'deliveryAvailable', 'deliveryPricePerMile',
+            'deliveryMaxMiles', 'co2Emissions', 'markedForExport',
+        ]) {
+            assert.ok(panel.includes(field), 'missing buyer display mapping: ' + field);
+        }
+    }
+    assert.match(nativeAuction, /<BuyerVehicleFacts record=\{auction\?\.listing \?\? listing\}/);
+});
+
+test('all seller-uploaded media remains buyer-accessible across retail and auction', () => {
+    const nativeAuction = read('carmazium app/carmazium app/src/screens/vehicle/AuctionDetailScreen.tsx');
+    const nativeRetail = read('carmazium app/carmazium app/src/screens/vehicle/VehicleDetailScreen.tsx');
+    const webAuction = read('src/app/auctions/live/[id]/page.tsx');
+    const webGeneric = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
+    const webRetail = read('src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx');
+    assert.match(nativeAuction, /photoGallery\.map\(\(url, index\)/);
+    assert.match(nativeAuction, /setActivePhotoIndex\(index\)/);
+    assert.match(nativeAuction, /auction\.listing\.videoUrls\.filter/);
+    assert.match(nativeRetail, /listing\.videoUrls\.map/);
+    assert.match(webGeneric, /listing\.videoUrls\.filter/);
+    assert.match(webAuction, /\.videoUrls as string\[\]/);
+    assert.match(webRetail, /listing\.videoUrls/);
+    assert.match(nativeAuction, /listing\.images/);
+    assert.match(nativeRetail, /images\.map/);
+});
+
+test('buyer fields exclude private commercial data, VIN, seller contact and relationship free text', () => {
+    for (const panel of [buyerNative, buyerWeb]) {
+        for (const unsafe of ['priceMin', 'priceMax', 'auctionReservePrice', 'partnerDistributionAccepted',
+            'notOwnerRelationship', 'departedRelationship', 'stripeCustomerId']) {
+            assert.ok(!panel.includes(unsafe), 'private field unexpectedly in public buyer panel: ' + unsafe);
+        }
+        assert.ok(!/\bdata\.vin\b|\blisting\.vin\b/.test(panel), 'VIN should not be revealed in buyer panel');
+    }
+    const vehiclePage = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
+    assert.match(vehiclePage, /listing\.hpiReport\?\.status === 'COMPLETED'/);
+    assert.doesNotMatch(vehiclePage, /listing\.badgeTier === 'PREMIUM' && \(\s*<AccordionItem title="HPI Verification"/);
+});
