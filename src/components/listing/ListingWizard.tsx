@@ -3256,7 +3256,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                     {/* ── STEP 2: Media ─────────────────────────────────────────────────── */}
                     {currentStep === 2 && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                        <div id="listing-required-photos" className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Photos *</h2>
                                 <p className="text-sm text-[var(--text-muted)]">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
@@ -3602,6 +3602,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
                                 <Textarea
+                                    id="listing-required-description"
                                     placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
                                     onChange={(e) => set("description", e.target.value)}
@@ -4431,7 +4432,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </label>
                                 <div className="relative max-w-xs">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                    <Input type="number" placeholder="Leave blank to disable"
+                                    <Input id="listing-required-buy-now" type="number" placeholder="Leave blank to disable"
                                         value={auctionSchedule.buyItNowPrice}
                                         onChange={e => setAuctionSchedule(prev => ({ ...prev, buyItNowPrice: e.target.value }))}
                                         className={`${inputCls} pl-8 h-14`}
