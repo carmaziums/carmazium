@@ -14,15 +14,20 @@ import { EditorialTopicLinks } from "@/components/blog/EditorialTopicLinks"
 // Canonical SEO origin. The apex domain permanently redirects to www.
 const SITE_URL = "https://www.carmazium.com"
 
+/**
+ * Only the public Blog API's explicit 404/410 confirms that a post is absent.
+ * Do not turn 5xx, timeouts, or malformed API data into a "post removed" 404:
+ * those are temporary upstream failures and must remain retryable server errors.
+ */
 async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-    try {
-        const res = await serverBackendFetch(`/blog/${slug}`, { next: { revalidate: 60 } })
-        if (!res.ok) return null
-        const json = await res.json()
-        return json.data ?? null
-    } catch {
-        return null
+    const res = await serverBackendFetch(`/blog/${slug}`, { next: { revalidate: 60 } })
+    if (res.status === 404 || res.status === 410) return null
+    if (!res.ok) throw new Error(`[blog] Post lookup unavailable (HTTP ${res.status})`)
+    const json = await res.json()
+    if (!json?.data || typeof json.data !== "object") {
+        throw new Error("[blog] Malformed post lookup payload")
     }
+    return json.data as BlogPost
 }
 
 async function getRelatedPosts(slug: string): Promise<BlogPost[]> {
