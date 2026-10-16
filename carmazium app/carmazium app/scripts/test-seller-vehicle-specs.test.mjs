@@ -255,3 +255,14 @@ test('native listing wizard navigates to the first missing field for both retail
   assert.doesNotMatch(source, /stepScrollRef\.current\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
   assert.match(source, /setValidationIssue\(null\);\s+validationSectionYRef\.current = \{\};\s+const nextStep/);
 })
+
+test('native full-screen listing guide explains every step and incomplete fields', () => {
+  const source = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const stepGuidance = step === 1/);
+  assert.match(source, /const nativeFieldReasons: Record<string, string>/);
+  assert.match(source, /function renderStepGuidance\(\)/);
+  assert.match(source, /What to do: \{stepGuidance\.what\}/);
+  assert.match(source, /Why we ask: \{stepGuidance\.why\}/);
+  assert.match(source, /nativeFieldReasons\[validationIssue\.field\]/);
+  assert.equal((source.match(/\{renderStepGuidance\(\)\}/g) || []).length, 5);
+});
