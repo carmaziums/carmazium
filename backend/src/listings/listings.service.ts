@@ -2488,6 +2488,20 @@ export class ListingsService {
         if (updateListingDto.year) updateData.year = updateListingDto.year;
         if (updateListingDto.mileage) updateData.mileage = updateListingDto.mileage;
         if (updateListingDto.vrm) updateData.vrm = updateListingDto.vrm;
+        if (updateListingDto.vin !== undefined) updateData.vin = updateListingDto.vin;
+        if (updateListingDto.color !== undefined) updateData.color = updateListingDto.color;
+        if (updateListingDto.doors !== undefined) updateData.doors = updateListingDto.doors;
+        if (updateListingDto.seats !== undefined) updateData.seats = updateListingDto.seats;
+        if (updateListingDto.engineSize !== undefined) updateData.engineSize = updateListingDto.engineSize;
+        if (updateListingDto.bhp !== undefined) updateData.bhp = updateListingDto.bhp;
+        if (updateListingDto.bodyType !== undefined) updateData.bodyType = mapBodyType(updateListingDto.bodyType);
+        if (updateListingDto.features !== undefined) updateData.features = updateListingDto.features;
+        if (updateListingDto.location !== undefined) updateData.location = updateListingDto.location;
+        if (updateListingDto.condition !== undefined) updateData.condition = updateListingDto.condition;
+        if (updateListingDto.ulezCompliant !== undefined) updateData.ulezCompliant = updateListingDto.ulezCompliant;
+        if (updateListingDto.euroStandard !== undefined) updateData.euroStandard = updateListingDto.euroStandard;
+        if (updateListingDto.co2Emissions !== undefined) updateData.co2Emissions = updateListingDto.co2Emissions;
+        if (updateListingDto.isImported !== undefined) updateData.isImported = updateListingDto.isImported;
         if (updateListingDto.fuelType) updateData.fuelType = mapFuelType(updateListingDto.fuelType);
         if (updateListingDto.transmission) updateData.transmission = mapTransmission(updateListingDto.transmission);
         // status, listing type and badge tier are intentionally not editable here.
