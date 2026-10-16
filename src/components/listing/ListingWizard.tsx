@@ -2602,7 +2602,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
 
                 {/* Form card */}
-                <div id="listing-wizard-panel" className="dealer-glass-card p-4 sm:p-7 md:p-10 relative border-[var(--border-default)]">
+                <div id="listing-wizard-panel" style={{ overflow: "visible" }} className="dealer-glass-card p-4 sm:p-7 md:p-10 relative border-[var(--border-default)]">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 opacity-60" />
 
                     {stepValidationMessage && (
