@@ -403,7 +403,9 @@ export class CreateListingDto {
     dateOfLastV5CIssued?: string;
 
     @ApiProperty({ description: 'MOT history snapshot captured during the registration lookup', type: 'array', required: false })
-    @Transform(({ value }) => normalizeListingMotHistory(value), { toClassOnly: true })
+    @Transform(({ obj, value }) => normalizeListingMotHistory(
+        obj && Object.prototype.hasOwnProperty.call(obj, 'motHistory') ? obj.motHistory : value,
+    ), { toClassOnly: true })
     @IsArray()
     @ArrayMaxSize(100)
     @IsObject({ each: true })
