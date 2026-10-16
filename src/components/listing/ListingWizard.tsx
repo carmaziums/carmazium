@@ -1285,11 +1285,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             'buy-now': 'listing-required-buy-now',
         }
         const labels: Record<string, string> = {
-            fuel: 'Fuel Type', transmission: 'Transmission', owners: 'Previous Keepers',
-            writeoff: 'Insurance Write-Off Status', stolen: 'Stolen / Recovered',
+            fuel: 'Fuel Type', transmission: 'Transmission', owners: 'Number of Owners',
+            writeoff: 'Insurance Write-Off Status', stolen: 'reported stolen or recovered',
             finance: 'Outstanding Finance', keeper: 'Registered Keeper',
             relationship: 'Relationship to the registered keeper',
-            estate: 'Relationship to the deceased', auctionvalue: 'Estimated Market Value',
+            estate: 'Relationship to owner', auctionvalue: 'Estimated Market Value',
         }
         window.requestAnimationFrame(() => {
             const root = document.getElementById('listing-wizard-panel')
