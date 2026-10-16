@@ -266,3 +266,17 @@ test('native full-screen listing guide explains every step and incomplete fields
   assert.match(source, /nativeFieldReasons\[validationIssue\.field\]/);
   assert.equal((source.match(/\{renderStepGuidance\(\)\}/g) || []).length, 5);
 });
+
+test('dealer account settings can supply warranty and finance terms for MaziuM descriptions', () => {
+  const settings = readFileSync(new URL('../src/screens/main/SettingsScreen.tsx', import.meta.url), 'utf8');
+  const flow = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  assert.match(settings, /setDealerWarrantyOffered\(dp\.warrantyOffered === true\)/);
+  assert.match(settings, /setDealerFinanceDetails\(dp\.financeDetails \?\? ''\)/);
+  assert.match(settings, /warrantyDetails: dealerWarrantyOffered \? dealerWarrantyDetails\.trim\(\) : null/);
+  assert.match(settings, /financeDetails: dealerFinanceOffered \? dealerFinanceDetails\.trim\(\) : null/);
+  assert.match(settings, /accessibilityLabel="Warranty offered"/);
+  assert.match(settings, /accessibilityLabel="Finance offered"/);
+  assert.match(flow, /mazium_ai_consent_v2/);
+  assert.match(flow, /CarMazium separately adds the saved dealership introduction/);
+  assert.match(flow, /apiClient<any>\('\/ai\/generate-description'/);
+});
