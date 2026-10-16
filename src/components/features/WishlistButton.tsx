@@ -4,6 +4,11 @@ import * as React from "react"
 import { Heart } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "@/lib/listingApi"
+import {
+    addAuctionToShortlist,
+    removeAuctionFromShortlist,
+    isAuctionShortlisted,
+} from "@/lib/auctionShortlistApi"
 import { useAuth } from "@/context/AuthContext"
 
 interface Props {
@@ -28,6 +33,7 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
     const [saved, setSaved] = React.useState<boolean>(!!initialIsSaved)
     const [loading, setLoading] = React.useState(false)
     const [hydrated, setHydrated] = React.useState(initialIsSaved !== undefined)
+    const isShortlist = variant === "shortlist"
 
     // Only hydrate when authenticated — /watchlist/check requires a session,
     // and the app's apiClient auto-redirects to /login on 401. An anonymous
@@ -37,7 +43,9 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         let cancelled = false
         ;(async () => {
             try {
-                const v = await isInWatchlist(listingId)
+                const v = isShortlist
+                    ? await isAuctionShortlisted(listingId)
+                    : await isInWatchlist(listingId)
                 if (!cancelled) {
                     setSaved(v)
                     setHydrated(true)
@@ -49,7 +57,7 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         return () => {
             cancelled = true
         }
-    }, [listingId, hydrated, user])
+    }, [listingId, hydrated, user, isShortlist])
 
     const stop = (e: React.SyntheticEvent) => {
         e.preventDefault()
@@ -70,8 +78,13 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         const next = !saved
         setSaved(next)
         try {
-            if (next) await addToWatchlist(listingId)
-            else await removeFromWatchlist(listingId)
+            if (isShortlist) {
+                if (next) await addAuctionToShortlist(listingId)
+                else await removeAuctionFromShortlist(listingId)
+            } else {
+                if (next) await addToWatchlist(listingId)
+                else await removeFromWatchlist(listingId)
+            }
         } catch (err) {
             const msg = (err as Error).message
             if (msg === "AUTH_REDIRECT") return
@@ -82,7 +95,6 @@ export function WishlistButton({ listingId, initialIsSaved, className = "", vari
         }
     }
 
-    const isShortlist = variant === "shortlist"
     const size = isShortlist ? "min-h-11 px-3 gap-2" : variant === "card" ? "h-8 w-8" : "h-10 w-10"
     const iconSize = variant === "card" ? 15 : 18
     const label = isShortlist

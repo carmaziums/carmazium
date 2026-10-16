@@ -1,5 +1,12 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ListingStatus, ListingType } from '@prisma/client';
+
+const RETAIL_SAVED_STATUSES: ListingStatus[] = [
+    ListingStatus.ACTIVE,
+    ListingStatus.SOLD,
+    ListingStatus.OFFER_ACCEPTED,
+];
 
 @Injectable()
 export class WatchlistService {
@@ -12,9 +19,15 @@ export class WatchlistService {
         // Check if listing exists
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
+            select: { id: true, type: true, status: true, deletedAt: true },
         });
 
-        if (!listing || listing.deletedAt) {
+        // Generic Saved Cars is a RETAIL surface. Do not disclose whether a
+        // supplied ID belongs to trade-only auction inventory or a private
+        // draft/rejected row; expose the same not-found response instead.
+        if (!listing || listing.deletedAt ||
+            listing.type !== ListingType.CLASSIFIED ||
+            !RETAIL_SAVED_STATUSES.includes(listing.status)) {
             throw new NotFoundException('Listing not found');
         }
 
@@ -43,9 +56,16 @@ export class WatchlistService {
             where: {
                 userId_listingId: { userId, listingId },
             },
+            include: {
+                listing: {
+                    select: { type: true, status: true, deletedAt: true },
+                },
+            },
         });
 
-        if (!item) {
+        if (!item || item.listing.deletedAt ||
+            item.listing.type !== ListingType.CLASSIFIED ||
+            !RETAIL_SAVED_STATUSES.includes(item.listing.status)) {
             throw new NotFoundException('Listing not in watchlist');
         }
 
@@ -61,10 +81,24 @@ export class WatchlistService {
      */
     async findAll(userId: string, page = 1, limit = 20) {
         const skip = (page - 1) * limit;
+        const where = {
+            userId,
+            listing: {
+                type: ListingType.CLASSIFIED,
+                deletedAt: null,
+                status: {
+                    in: [
+                        ListingStatus.ACTIVE,
+                        ListingStatus.SOLD,
+                        ListingStatus.OFFER_ACCEPTED,
+                    ],
+                },
+            },
+        };
 
         const [items, total] = await Promise.all([
             this.prisma.watchlistItem.findMany({
-                where: { userId },
+                where,
                 include: {
                     listing: {
                         select: {
@@ -88,7 +122,7 @@ export class WatchlistService {
                 skip,
                 take: limit,
             }),
-            this.prisma.watchlistItem.count({ where: { userId } }),
+            this.prisma.watchlistItem.count({ where }),
         ]);
 
         return { data: items, total };
@@ -157,18 +191,118 @@ export class WatchlistService {
      * Check if a listing is in user's watchlist
      */
     async isInWatchlist(userId: string, listingId: string): Promise<boolean> {
-        const item = await this.prisma.watchlistItem.findUnique({
+        const item = await this.prisma.watchlistItem.findFirst({
             where: {
-                userId_listingId: { userId, listingId },
+                userId,
+                listingId,
+                listing: {
+                    type: ListingType.CLASSIFIED,
+                    deletedAt: null,
+                    status: {
+                        in: [
+                            ListingStatus.ACTIVE,
+                            ListingStatus.SOLD,
+                            ListingStatus.OFFER_ACCEPTED,
+                        ],
+                    },
+                },
             },
+            select: { id: true },
         });
         return !!item;
     }
 
     /**
-     * Get watchlist count for user
+     * Get retail Saved Cars count for user
      */
     async getCount(userId: string): Promise<number> {
-        return this.prisma.watchlistItem.count({ where: { userId } });
+        return this.prisma.watchlistItem.count({
+            where: {
+                userId,
+                listing: {
+                    type: ListingType.CLASSIFIED,
+                    deletedAt: null,
+                    status: {
+                        in: [
+                            ListingStatus.ACTIVE,
+                            ListingStatus.SOLD,
+                            ListingStatus.OFFER_ACCEPTED,
+                        ],
+                    },
+                },
+            },
+        });
+    }
+
+    /**
+     * Verified-dealer auction shortlist mutation. The controller owns trade
+     * verification; this service still verifies that the supplied listing is
+     * genuinely an auction so callers cannot route retail records through the
+     * trade mutation endpoint.
+     */
+    async addAuction(userId: string, listingId: string) {
+        const listing = await this.prisma.listing.findUnique({
+            where: { id: listingId },
+            select: {
+                id: true,
+                type: true,
+                deletedAt: true,
+                auction: { select: { id: true, deletedAt: true } },
+            },
+        });
+        if (!listing || listing.deletedAt ||
+            listing.type !== ListingType.AUCTION ||
+            !listing.auction || listing.auction.deletedAt) {
+            throw new NotFoundException('Auction listing not found');
+        }
+
+        const existing = await this.prisma.watchlistItem.findUnique({
+            where: { userId_listingId: { userId, listingId } },
+        });
+        if (existing) {
+            throw new ConflictException('Listing already in watchlist');
+        }
+        return this.prisma.watchlistItem.create({
+            data: { userId, listingId },
+            include: { listing: true },
+        });
+    }
+
+    async removeAuction(userId: string, listingId: string) {
+        const item = await this.prisma.watchlistItem.findUnique({
+            where: { userId_listingId: { userId, listingId } },
+            include: {
+                listing: {
+                    select: {
+                        type: true,
+                        deletedAt: true,
+                        auction: { select: { deletedAt: true } },
+                    },
+                },
+            },
+        });
+        if (!item || item.listing.deletedAt ||
+            item.listing.type !== ListingType.AUCTION ||
+            !item.listing.auction || item.listing.auction.deletedAt) {
+            throw new NotFoundException('Auction listing not in shortlist');
+        }
+        await this.prisma.watchlistItem.delete({ where: { id: item.id } });
+        return { success: true };
+    }
+
+    async isInAuctionShortlist(userId: string, listingId: string): Promise<boolean> {
+        const item = await this.prisma.watchlistItem.findFirst({
+            where: {
+                userId,
+                listingId,
+                listing: {
+                    type: ListingType.AUCTION,
+                    deletedAt: null,
+                    auction: { is: { deletedAt: null } },
+                },
+            },
+            select: { id: true },
+        });
+        return !!item;
     }
 }
