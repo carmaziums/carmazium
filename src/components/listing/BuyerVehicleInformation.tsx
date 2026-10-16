@@ -76,6 +76,8 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Advertised mileage (seller)", value: present(listing.mileage) ? Number(listing.mileage).toLocaleString("en-GB") + " miles" : null },
         { label: "Previous owners (seller)", value: listing.owners },
         { label: "Imported (seller)", value: listing.isImported === true ? "Yes" : null },
+        { label: "Vehicle category", value: listing.vehicleType ? humanize(listing.vehicleType) : null },
+        { label: "Collection area", value: listing.location },
     ]
     const technicalFacts: Fact[] = [
         { label: "Fuel type", value: listing.fuelType ? humanize(listing.fuelType) : official?.dvla?.rawFuelType },
@@ -106,7 +108,18 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Write-off category (seller)", value: listing.writeOffCategory && listing.writeOffCategory !== "NONE" ? humanize(listing.writeOffCategory) : null },
         { label: "Mechanical issues (seller)", value: listing.mechanicalIssues },
         { label: "Electrical issues (seller)", value: listing.electricalIssues },
+        { label: "Stolen or recovered (seller)", value: listing.stolenRecovered == null ? null : listing.stolenRecovered ? "Seller says Yes" : "Seller says No" },
+        { label: "Outstanding finance (seller)", value: listing.hasOutstandingFinance == null ? null : listing.hasOutstandingFinance ? "Seller says Yes" : "Seller says No" },
+        { label: "Registered keeper (seller)", value: listing.isLegalRegisteredKeeper == null ? null : listing.isLegalRegisteredKeeper ? "Seller says Yes" : "Seller says No" },
+        { label: "Seller authority / relationship", value: listing.isLegalRegisteredKeeper === false ? listing.notOwnerRelationship : null },
+        { label: "Estate sale (seller)", value: listing.isDepartedSale === true ? "Yes" : null },
+        { label: "Estate seller relationship", value: listing.isDepartedSale === true ? listing.departedRelationship : null },
     ]
+    const deliveryFacts: Fact[] = listing.deliveryAvailable === true ? [
+        { label: "Delivery offered", value: "Yes, subject to seller terms" },
+        { label: "Maximum delivery distance", value: listing.deliveryMaxMiles != null ? listing.deliveryMaxMiles + " miles" : "Ask seller about coverage" },
+        { label: "Advertised delivery rate", value: listing.deliveryPricePerMile != null ? "£" + Number(listing.deliveryPricePerMile).toFixed(2) + " per mile" : null },
+    ] : []
     const governmentFacts: Fact[] = [
         { label: "MOT status (saved)", value: listing.motStatus },
         { label: "MOT expiry (saved)", value: ukDate(listing.motExpiryDate) },
@@ -144,6 +157,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
                 <FactGroup title="Engine & technical specifications" icon={<Settings2 size={18} />} facts={technicalFacts} />
                 <FactGroup title="Condition & seller details" icon={<Gauge size={18} />} facts={conditionFacts} />
                 <FactGroup title="DVLA status snapshot" icon={<CalendarDays size={18} />} facts={governmentFacts} />
+                <FactGroup title="Seller delivery options" icon={<ClipboardList size={18} />} facts={deliveryFacts} />
             </div>
             <section className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 sm:p-6" aria-labelledby="buyer-mot-history-heading">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -192,6 +206,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
                                     </summary>
                                     <div className="mt-3 space-y-2 border-t border-[var(--border-default)] pt-3">
                                         {test.expiryDate && <p className="text-xs text-[var(--text-muted)]">Expiry recorded for this test: {ukDate(test.expiryDate)}</p>}
+                                        {test.odometerResultType && <p className="text-xs text-[var(--text-muted)]">Odometer reading status: {test.odometerResultType}</p>}
                                         {test.motTestNumber && <p className="break-all text-xs text-[var(--text-muted)]">MOT test reference: {test.motTestNumber}</p>}
                                         {defects.length ? (
                                             <ul className="space-y-2">
