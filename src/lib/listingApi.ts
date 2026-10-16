@@ -22,6 +22,8 @@ export interface ListingMotHistoryEntry {
     }>
 }
 
+import type { OfficialVehicleData } from './dvlaApi'
+
 export interface CreateListingRequest {
     title: string
     price: number
@@ -73,6 +75,7 @@ export interface CreateListingRequest {
     wheelplan?: string
     typeApproval?: string
     motHistory?: ListingMotHistoryEntry[]
+    officialVehicleData?: OfficialVehicleData
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
