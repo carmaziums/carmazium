@@ -8,6 +8,7 @@ import {
   StatusBar,
   TextInput,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +43,11 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   const [vatNumber, setVatNumber] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [introduction, setIntroduction] = useState('');
+  const [warrantyOffered, setWarrantyOffered] = useState(false);
+  const [warrantyDetails, setWarrantyDetails] = useState('');
+  const [financeOffered, setFinanceOffered] = useState(false);
+  const [financeDetails, setFinanceDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ tradingName?: string; vatNumber?: string }>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -96,6 +102,14 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
     if (!isSoleTrader && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
+    if (warrantyOffered && !warrantyDetails.trim()) {
+      setSubmitError('Add warranty terms and exclusions, or switch Warranty off.');
+      return;
+    }
+    if (financeOffered && !financeDetails.trim()) {
+      setSubmitError('Explain finance options and lender approval, or switch Finance off.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -119,6 +133,9 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           ...(!isSoleTrader && regNumber.trim() && { registrationNumber: regNumber.trim() }),
           ...(address.trim() && { businessAddress: address.trim() }),
           ...(phone.trim() && { phone: phone.trim() }),
+          description: introduction.trim(),
+          warrantyOffered, warrantyDetails: warrantyOffered ? warrantyDetails.trim() : null,
+          financeOffered, financeDetails: financeOffered ? financeDetails.trim() : null,
         }),
       });
 
@@ -294,6 +311,44 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                 <TextInput style={styles.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={Colors.iconMuted} />
                 <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
              </View>
+          </View>
+
+          <Text style={styles.sectionLabel}>OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES</Text>
+          <Text style={{ color: Colors.textSecondary, marginBottom: 14, fontSize: 12, lineHeight: 18 }}>
+            MaziuM can add these dealer details to vehicle descriptions. You can skip this section and complete it later under Settings → Business Profile.
+          </Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.inputLabel}>ABOUT YOUR BUSINESS</Text>
+            <TextInput style={[styles.textInput, { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 }]}
+              multiline maxLength={2000} value={introduction} onChangeText={setIntroduction}
+              placeholder="Introduce your dealership and how you help buyers."
+              placeholderTextColor={Colors.iconMuted} />
+          </View>
+          <View style={styles.formGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.inputLabel}>WE OFFER A WARRANTY</Text>
+              <Switch value={warrantyOffered} onValueChange={setWarrantyOffered}
+                accessibilityLabel="Warranty offered" />
+            </View>
+            {warrantyOffered && (
+              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
+                multiline maxLength={1000} value={warrantyDetails} onChangeText={setWarrantyDetails}
+                placeholder="Enter duration, covered components, limits and exclusions."
+                placeholderTextColor={Colors.iconMuted} />
+            )}
+          </View>
+          <View style={styles.formGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.inputLabel}>WE OFFER OR ARRANGE FINANCE</Text>
+              <Switch value={financeOffered} onValueChange={setFinanceOffered}
+                accessibilityLabel="Finance offered" />
+            </View>
+            {financeOffered && (
+              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
+                multiline maxLength={1000} value={financeDetails} onChangeText={setFinanceDetails}
+                placeholder="Finance provider or arrangement, subject to status and lender approval."
+                placeholderTextColor={Colors.iconMuted} />
+            )}
           </View>
 
           <View style={styles.signInRow}>
