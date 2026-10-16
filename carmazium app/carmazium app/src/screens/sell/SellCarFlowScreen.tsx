@@ -691,7 +691,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Ownership
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
-  const [markedForExport, setMarkedForExport] = useState(() => landingPrefill?.markedForExport === true);
+  const [markedForExport, setMarkedForExport] = useState<boolean | null>(() => landingPrefill?.markedForExport ?? null);
   const [condition, setCondition] = useState('');
   const [isDepartedSale, setIsDepartedSale] = useState(false);
   const [departedRelSelect, setDepartedRelSelect] = useState('');
@@ -1063,7 +1063,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setDescription(l.description ?? '');
         if (l.owners != null) setOwners(String(l.owners));
         setIsImported(!!l.isImported);
-        setMarkedForExport(!!l.markedForExport);
+        setMarkedForExport(l.markedForExport ?? null);
         setIsDepartedSale(!!l.isDepartedSale);
         if (l.departedRelationship) {
           const opt = RELATIONSHIP_OPTIONS.find(o => o === l.departedRelationship);
@@ -1320,7 +1320,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setEuroStandard('');
         setCo2Emissions('');
         setUlezCompliant(null);
-        setMarkedForExport(false);
+        setMarkedForExport(null);
         setMileage('');
         // A valuation/asking-price guide from the old registration must
         // never be presented as an offer for the newly entered vehicle.
@@ -1375,8 +1375,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.make) setMake(String(data.make));
       if (data.model) setModel(String(data.model));
       if (data.year) setYear(String(data.year));
-      if (data.colour) setColour(String(data.colour));
-      if (data.primaryColour) setColour(String(data.primaryColour));
+      if (data.colour || data.primaryColour) setColour(String(data.colour || data.primaryColour));
       if (data.engineSize) setEngineSize(String(data.engineSize));
       if (data.fuelType) setFuelType(String(data.fuelType));
       if (data.transmission) {
@@ -1399,7 +1398,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.taxStatus) setTaxStatus(String(data.taxStatus));
       if (data.motExpiryDate) setMotExpiry(String(data.motExpiryDate));
       if (data.taxDueDate) setTaxDue(String(data.taxDueDate));
-      if (data.markedForExport !== undefined) setMarkedForExport(!!data.markedForExport);
+      if (data.markedForExport !== undefined) setMarkedForExport(data.markedForExport);
       if (data.monthOfFirstRegistration) setFirstRegistered(String(data.monthOfFirstRegistration));
       if (data.wheelplan) setWheelplan(String(data.wheelplan));
       if (data.typeApproval) setTypeApproval(String(data.typeApproval));
@@ -1966,7 +1965,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         features, title, description, condition,
         owners: owners || undefined,
         isImported,
-        markedForExport,
+        markedForExport: markedForExport ?? undefined,
         isDepartedSale: isDepartedSale || undefined,
         departedRelationship: isDepartedSale ? (departedRelationship || undefined) : undefined,
         writeOffCategory: writeOffCat,
