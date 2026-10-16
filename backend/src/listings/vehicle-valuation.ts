@@ -396,49 +396,54 @@ export function vehicleSpecificationAdjustmentFactor(input: VehicleValuationInpu
     return clamp(factor, 0.18, 1.20);
 }
 
-export function applyVehicleSpecificationAdjustments(
-    base: VehicleValuationResult,
-    input: VehicleValuationInput,
-): VehicleValuationResult {
-    const factor = vehicleSpecificationAdjustmentFactor(input);
-    if (Math.abs(factor - 1) < 0.0001 && base.retail.suggestedAsking <= base.low) return { ...base };
-
-    const low = roundMoney(base.low * factor);
-    const mid = roundMoney(base.mid * factor);
-    const high = roundMoney(base.high * factor);
-    // Previously frozen valuation journeys contain the old retail=high,
-    // auction=low relationship. Rebase them on the former auction price so
-    // a page refresh cannot restore the inflated retail guide.
-    const retailBase = base.retail.suggestedAsking > base.low
-        ? base.auction.marketValue
-        : base.retail.suggestedAsking;
-    const retailSuggestedAsking = roundMoney(retailBase * factor);
-    const auctionMarketValue = Math.round(retailSuggestedAsking * 0.80);
-    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
-    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
-    const reserveHigh = auctionMarketValue;
-    const suggestedReserve = Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95));
-
+/**
+ * The market-evidence lower band is CarMazium's dealer auction valuation.
+ * Suggested Retail is exactly 20% above that amount (rounded to whole GBP).
+ * Always derive both guides from the lower band; never discount it again.
+ *
+ * Normalising legacy stored valuation snapshots in this one place also avoids
+ * incorrectly shifting the underlying comparables or changing saved listings.
+ */
+export function alignVehicleValuationPrices(base: VehicleValuationResult): VehicleValuationResult {
+    const auctionMarketValue = base.low;
+    const retailSuggestedAsking = Math.round(auctionMarketValue * 1.20);
     return {
         ...base,
-        low,
-        mid,
-        high,
-        explanation: Math.abs(factor - 1) < 0.0001
-            ? base.explanation
-            : `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
         retail: {
             suggestedAsking: retailSuggestedAsking,
             suggestedMinimum: Math.min(retailSuggestedAsking, roundMoney(retailSuggestedAsking * 0.95)),
         },
         auction: {
             marketValue: auctionMarketValue,
-            openingBid,
-            reserveLow,
-            reserveHigh,
-            suggestedReserve,
+            openingBid: Math.round(auctionMarketValue * 0.70 * 100) / 100,
+            reserveLow: Math.round(auctionMarketValue * 0.90 * 100) / 100,
+            reserveHigh: auctionMarketValue,
+            suggestedReserve: Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95)),
         },
     };
+}
+
+export function applyVehicleSpecificationAdjustments(
+    base: VehicleValuationResult,
+    input: VehicleValuationInput,
+): VehicleValuationResult {
+    const factor = vehicleSpecificationAdjustmentFactor(input);
+    if (Math.abs(factor - 1) < 0.0001) {
+        // Frozen 24-hour quotes or saved base journeys may carry the previous
+        // retail=low / auction=0.8*low policy. Reprice their same market base.
+        return alignVehicleValuationPrices(base);
+    }
+    const low = roundMoney(base.low * factor);
+    const mid = roundMoney(base.mid * factor);
+    const high = roundMoney(base.high * factor);
+
+    return alignVehicleValuationPrices({
+        ...base,
+        low,
+        mid,
+        high,
+        explanation: `${base.explanation} Seller-provided condition and specification have then been applied to that base value.`,
+    });
 }
 
 function normalizeComparable(
@@ -658,18 +663,10 @@ export function calculateVehicleValuation(
                     ? `Based on ${usable.length} similar CarMazium vehicles, including ${strongEvidence} completed sale, accepted-offer or auction outcome signal${strongEvidence === 1 ? '' : 's'}.`
                     : `Based on ${usable.length} similar live CarMazium asking prices. Completed-sale evidence for this exact vehicle is still limited.`;
 
-    // The former conservative dealer guide becomes the retail price guide.
-    // Auction is then priced exactly 20% below retail, not from the high
-    // end of the market-evidence range. Sellers still control their prices.
-    const suggestedAsking = low;
-    const suggestedMinimum = Math.min(suggestedAsking, roundMoney(suggestedAsking * 0.95));
-    const auctionMarketValue = Math.round(suggestedAsking * 0.80);
-    const openingBid = Math.round(auctionMarketValue * 0.70 * 100) / 100;
-    const reserveLow = Math.round(auctionMarketValue * 0.90 * 100) / 100;
-    const reserveHigh = Math.round(auctionMarketValue * 1.00 * 100) / 100;
-    const suggestedReserve = Math.min(auctionMarketValue, roundMoney(auctionMarketValue * 0.95));
-
-    return {
+    // The conservative lower market band is the Auction valuation. Retail
+    // is 20% higher. This applies consistently to live, blended and fallback
+    // market evidence; the seller may still set their own actual prices.
+    return alignVehicleValuationPrices({
         low,
         mid,
         high,
@@ -679,16 +676,9 @@ export function calculateVehicleValuation(
         evidence,
         source,
         explanation,
-        retail: {
-            suggestedAsking,
-            suggestedMinimum,
-        },
-        auction: {
-            marketValue: auctionMarketValue,
-            openingBid,
-            reserveLow,
-            reserveHigh,
-            suggestedReserve,
-        },
-    };
+        // alignVehicleValuationPrices replaces these input placeholders with
+        // values calculated from the final lower band.
+        retail: { suggestedAsking: 0, suggestedMinimum: 0 },
+        auction: { marketValue: 0, openingBid: 0, reserveLow: 0, reserveHigh: 0, suggestedReserve: 0 },
+    });
 }
