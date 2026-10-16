@@ -331,16 +331,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const hasAiSharingConsent = React.useCallback(() => {
         if (typeof window === "undefined") return false
-        return window.localStorage.getItem("mazium_ai_consent_v1") === "accepted"
+        return window.localStorage.getItem("mazium_ai_consent_v2") === "accepted"
     }, [])
 
     const ensureAiSharingConsent = React.useCallback(() => {
         if (hasAiSharingConsent()) return true
         const accepted = window.confirm(
-            "AI data sharing\n\nTo generate the description, CarMazium will send the vehicle details you entered, including the registration where available, to OpenAI. AI can make mistakes, so review the result before publishing.\n\nDo you consent to this AI processing?"
+            "AI data sharing\n\nMaziuM sends your vehicle details, including registration where available, to OpenAI. For dealer accounts, CarMazium separately adds your saved business introduction, general location and dealer-stated warranty or finance terms. Direct contact details are excluded. Review all text before publishing.\n\nDo you consent to this AI processing?"
         )
         if (accepted) {
-            window.localStorage.setItem("mazium_ai_consent_v1", "accepted")
+            window.localStorage.setItem("mazium_ai_consent_v2", "accepted")
         }
         return accepted
     }, [hasAiSharingConsent])
@@ -3724,7 +3724,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     rows={5}
                                     className={`${inputCls} resize-none`}
                                 />
-                                <p className="text-xs text-[var(--text-secondary)]">{formData.description.length}/1000 characters</p>
+                                <p className="text-xs text-[var(--text-secondary)]">{formData.description.length} characters · Review all AI-generated text before publishing</p>
                                 {/* AI-Assisted Description */}
                                 <Button
                                     type="button"
@@ -3743,7 +3743,11 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 color: formData.color,
                                                 features: formData.features,
                                                 vrm: formData.vrm,
-                                                motStatus: formData.motStatus
+                                                motStatus: formData.motStatus,
+                                                serviceHistory: formData.serviceHistory,
+                                                owners: formData.owners,
+                                                bodyType: formData.bodyType,
+                                                engineSize: formData.engineSize
                                             })
                                             set("description", res.text)
                                         } catch (err) {
@@ -3773,7 +3777,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 ? "MaziuM is drafting your description..."
                                                 : !formData.make && !formData.model && !formData.year
                                                     ? "Add the vehicle make, model or year above to enable MaziuM."
-                                                    : "Draft a description with MaziuM. Vehicle details are shared with OpenAI only after you consent."}
+                                                    : "Draft vehicle copy with MaziuM. Dealer profiles add an introduction, location and saved warranty/finance terms where provided."}
                                         </span>
                                     </span>
                                 </Button>
