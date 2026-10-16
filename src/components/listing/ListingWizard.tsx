@@ -17,7 +17,7 @@ import { ImageUpload } from "@/components/listing/ImageUpload"
 import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
     createListing, formatPrice, getDamageRecords,
-    type CreateListingRequest, type BodyTypeValue,
+    type CreateListingRequest, type ListingMotHistoryEntry, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
     createHpiCheckoutSession, createListingCheckoutSession, publishListing,
     getRetailConversionCandidate, convertAuctionToRetail,
@@ -26,6 +26,7 @@ import {
 import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
+import { normalizeMotHistorySnapshot } from "@/lib/listingMotHistory"
 import { aiGenerateDescription } from "@/lib/aiApi"
 import { BODY_TYPE_ICONS, BODY_TYPE_LABELS, BODY_TYPE_KEYS, HGV_BODY_TYPE_KEYS } from "@/components/icons/BodyTypeIcons"
 import { CAR_MAKES, getModelsForMake, getVariantsForModel } from "@/lib/carData"
@@ -495,7 +496,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     typeApproval: l.typeApproval || '',
                     firstUsedDate: l.firstUsedDate || '',
                     dateOfLastV5CIssued: l.dateOfLastV5CIssued || '',
-                    motHistory: Array.isArray(l.motHistory) ? l.motHistory : [],
+                    motHistory: normalizeMotHistorySnapshot(l.motHistory),
                     images: l.images || [],
                     videoUrls: l.videoUrls || [],
                     priceMin: l.priceMin ? String(l.priceMin) : '',
@@ -624,6 +625,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 ...prev, ...parsed,
                 transmission: normalizeSellerTransmission(parsed.transmission),
                 bodyType: normalizeSellerBodyType(parsed.bodyType, getBodyTypeKeysForVehicleType(parsed.vehicleType || 'CAR')),
+                motHistory: normalizeMotHistorySnapshot(parsed.motHistory),
             }))
             setSellingMethod('list')
 
@@ -675,6 +677,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             ...INITIAL_FORM, ...verifiedDraft,
             transmission: normalizeSellerTransmission(verifiedDraft.transmission),
             bodyType: normalizeSellerBodyType(verifiedDraft.bodyType, getBodyTypeKeysForVehicleType(verifiedDraft.vehicleType || 'CAR')),
+            motHistory: normalizeMotHistorySnapshot(verifiedDraft.motHistory),
         })
         setSellingMethod('list')
         setDraftListingId(savedDraftId)
@@ -1580,6 +1583,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const priceMin = formData.priceMin ? parseFloat(formData.priceMin) : priceAsking
             const priceMax = priceAsking // Retail asking-price ceiling
             const displayPrice = priceAsking
+            const validMotHistory = normalizeMotHistorySnapshot<ListingMotHistoryEntry>(formData.motHistory)
 
             const payload: CreateListingRequest = {
                 title: formData.title,
@@ -1620,7 +1624,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 dateOfLastV5CIssued: formData.dateOfLastV5CIssued || undefined,
                 wheelplan: formData.wheelplan || undefined,
                 typeApproval: formData.typeApproval || undefined,
-                motHistory: formData.motHistory.length > 0 ? formData.motHistory : undefined,
+                motHistory: validMotHistory.length > 0 ? validMotHistory : undefined,
                 badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                 status: formData.status,
                 vehicleType: formData.vehicleType as VehicleTypeValue,
@@ -2493,7 +2497,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     // Historical MOT mileage is evidence, not the
                                                     // seller's current odometer. Preserve the
                                                     // mileage they entered for the public advert.
-                                                    set("motHistory", r.motHistory)
+                                                    set("motHistory", normalizeMotHistorySnapshot(r.motHistory))
                                                 }
                                                 
                                                 if (r.colour) set("color", r.colour)

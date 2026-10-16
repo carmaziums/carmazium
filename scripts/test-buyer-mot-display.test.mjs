@@ -54,7 +54,7 @@ test("first-use date survives the registration-to-listing handoff", () => {
 
 test("seller's current mileage is never overwritten with the historical MOT odometer", () => {
     const wizard = read("src/components/listing/ListingWizard.tsx")
-    assert.match(wizard, /set\("motHistory", r\.motHistory\)/)
+    assert.match(wizard, /set\("motHistory", normalizeMotHistorySnapshot\(r\.motHistory\)\)/)
     assert.doesNotMatch(wizard, /if \(latestOdometer\) set\("mileage", latestOdometer\)/)
     assert.match(wizard, /Historical MOT mileage is evidence/)
 })
