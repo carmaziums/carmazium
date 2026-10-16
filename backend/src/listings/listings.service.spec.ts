@@ -1239,30 +1239,27 @@ describe('ListingsService', () => {
             expect(prisma.listing.updateMany).not.toHaveBeenCalled();
         });
 
-        it('returns the winning link when another request claims the source first', async () => {
-            prisma.listing.findUnique
-                .mockResolvedValueOnce({
-                    id: 'auction-1',
-                    sellerId: 'seller-1',
-                    type: 'AUCTION',
-                    status: 'ACTIVE',
-                    deletedAt: null,
-                    linkedListingId: null,
-                    title: 'BMW M3',
-                })
-                .mockResolvedValueOnce({
-                    linkedListingId: 'retail-winner',
-                });
-            prisma.listing.updateMany.mockResolvedValue({ count: 0 });
+        it('does not point the auction at a draft if inserting that Retail draft fails', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'auction-1',
+                sellerId: 'seller-1',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+                deletedAt: null,
+                linkedListingId: null,
+                title: 'BMW M3',
+                images: [],
+                videoUrls: [],
+            });
+            prisma.listing.create.mockRejectedValue(new Error('Retail draft insertion failed'));
 
-            const result = await service.alsoListRetail(
+            await expect(service.alsoListRetail(
                 'auction-1',
                 'seller-1',
                 { price: 12000, badgeTier: 'BASIC' },
-            );
+            )).rejects.toThrow('Retail draft insertion failed');
 
-            expect(result).toEqual({ linkedListingId: 'retail-winner' });
-            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
         });
     });
 
