@@ -209,3 +209,34 @@ test('native Auction screen reopens the existing vehicle at its entered Retail p
   assert.match(screen, /type: 'LISTING_FEE'/);
   assert.match(screen, /Create & Pay/);
 });
+
+test('valuation price rule: low market guide is Auction, Retail is exactly 20% higher', () => {
+  const valuationSource = readFileSync(new URL('../src/lib/valuationApi.ts', import.meta.url), 'utf8');
+  const helper = valuationSource.split('export function alignVehicleValuationPrices(')[1]
+    ?.split('export function applyVehicleValuationAdjustments(')[0];
+  assert.ok(helper, 'shared client pricing helper must exist');
+  const program = ts.transpileModule('export function alignVehicleValuationPrices(' + helper, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    reportDiagnostics: true,
+  });
+  assert.equal(program.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0);
+  const out = {};
+  runInNewContext(program.outputText, { exports: out, roundMoney: (v) => Math.round(v / 50) * 50 });
+  const quote = {
+    low: 10000, mid: 11000, high: 12000, source: 'CARMAZIUM_MARKET',
+    retail: { suggestedAsking: 10000, suggestedMinimum: 9500 },
+    auction: { marketValue: 8000, openingBid: 5600, reserveLow: 7200, reserveHigh: 8000, suggestedReserve: 7600 },
+  };
+  const priced = out.alignVehicleValuationPrices(quote);
+  assert.equal(priced.auction.marketValue, 10000);
+  assert.equal(priced.retail.suggestedAsking, 12000);
+  assert.equal(priced.auction.openingBid, 7000);
+  assert.equal(priced.low, 10000);
+  assert.equal(priced.mid, 11000);
+  assert.equal(priced.high, 12000);
+  assert.equal(quote.auction.marketValue, 8000, 'must not mutate stored quotes');
+  assert.equal(quote.retail.suggestedAsking, 10000);
+  const adjustmentSection = valuationSource.split('export function applyVehicleValuationAdjustments(')[1]?.split('export async function getVehicleValuation(')[0];
+  assert.match(adjustmentSection, /return alignVehicleValuationPrices\(base\)/);
+  assert.match(adjustmentSection, /const low = roundMoney\(base\.low \* factor\)/);
+});
