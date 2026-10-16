@@ -111,9 +111,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
         { label: "Stolen or recovered (seller)", value: listing.stolenRecovered == null ? null : listing.stolenRecovered ? "Seller says Yes" : "Seller says No" },
         { label: "Outstanding finance (seller)", value: listing.hasOutstandingFinance == null ? null : listing.hasOutstandingFinance ? "Seller says Yes" : "Seller says No" },
         { label: "Registered keeper (seller)", value: listing.isLegalRegisteredKeeper == null ? null : listing.isLegalRegisteredKeeper ? "Seller says Yes" : "Seller says No" },
-        { label: "Seller authority / relationship", value: listing.isLegalRegisteredKeeper === false ? listing.notOwnerRelationship : null },
         { label: "Estate sale (seller)", value: listing.isDepartedSale === true ? "Yes" : null },
-        { label: "Estate seller relationship", value: listing.isDepartedSale === true ? listing.departedRelationship : null },
     ]
     const deliveryFacts: Fact[] = listing.deliveryAvailable === true ? [
         { label: "Delivery offered", value: "Yes, subject to seller terms" },
