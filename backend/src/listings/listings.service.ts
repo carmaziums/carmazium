@@ -3256,6 +3256,8 @@ export class ListingsService {
                     wheelplan: source.wheelplan, typeApproval: source.typeApproval,
                     variant: source.variant, driveType: source.driveType,
                     numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    mechanicalIssues: source.mechanicalIssues,
+                    electricalIssues: source.electricalIssues,
                     owners: source.owners, torqueNm: source.torqueNm,
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
@@ -3268,7 +3270,14 @@ export class ListingsService {
                     stolenRecovered: source.stolenRecovered,
                     hasOutstandingFinance: source.hasOutstandingFinance,
                     isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    isDepartedSale: source.isDepartedSale,
+                    departedRelationship: source.departedRelationship,
+                    notOwnerRelationship: source.notOwnerRelationship,
                     writeOffCategory: source.writeOffCategory,
+                    // Delivery terms concern the physical car and are retained on both channels.
+                    deliveryAvailable: source.deliveryAvailable,
+                    deliveryPricePerMile: source.deliveryPricePerMile,
+                    deliveryMaxMiles: source.deliveryMaxMiles,
                     linkedListingId: listingId,
                 } as any,
             });
@@ -3414,6 +3423,8 @@ export class ListingsService {
                     wheelplan: source.wheelplan, typeApproval: source.typeApproval,
                     variant: source.variant, driveType: source.driveType,
                     numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    mechanicalIssues: source.mechanicalIssues,
+                    electricalIssues: source.electricalIssues,
                     owners: source.owners, torqueNm: source.torqueNm,
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
@@ -3426,7 +3437,14 @@ export class ListingsService {
                     stolenRecovered: source.stolenRecovered,
                     hasOutstandingFinance: source.hasOutstandingFinance,
                     isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    isDepartedSale: source.isDepartedSale,
+                    departedRelationship: source.departedRelationship,
+                    notOwnerRelationship: source.notOwnerRelationship,
                     writeOffCategory: source.writeOffCategory,
+                    // Delivery terms concern the physical car and are retained on both channels.
+                    deliveryAvailable: source.deliveryAvailable,
+                    deliveryPricePerMile: source.deliveryPricePerMile,
+                    deliveryMaxMiles: source.deliveryMaxMiles,
                     linkedListingId: listingId,
                     auction: {
                         create: {
