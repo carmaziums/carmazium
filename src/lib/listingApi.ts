@@ -14,6 +14,7 @@ export interface ListingMotHistoryEntry {
     expiryDate?: string
     odometerValue?: string
     odometerUnit?: string
+    odometerResultType?: string
     motTestNumber?: string
     defects?: Array<{
         text: string
@@ -241,6 +242,7 @@ export interface Listing {
     wheelplan: string | null
     typeApproval: string | null
     motHistory?: ListingMotHistoryEntry[] | null
+    officialVehicleData?: OfficialVehicleData | null
     // Extended vehicle details
     variant: string | null
     driveType: string | null
