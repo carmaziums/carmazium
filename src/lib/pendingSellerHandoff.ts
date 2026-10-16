@@ -50,8 +50,8 @@ export function createSellerHandoff(
     const extras = vehicle.officialVehicleData
     if (extras && typeof extras === 'object' && !Array.isArray(extras)) {
         const allowed: Record<string, string[]> = {
-            dvla: ['monthOfFirstDvlaRegistration', 'artEndDate', 'revenueWeight', 'realDrivingEmissions', 'automatedVehicle'],
-            mot: ['registrationDate', 'manufactureDate', 'secondaryColour', 'lastMotTestDate', 'motTestDueDate'],
+            dvla: ['monthOfFirstDvlaRegistration', 'artEndDate', 'revenueWeight', 'realDrivingEmissions', 'automatedVehicle', 'rawFuelType', 'rawEuroStatus', 'manufactureDate'],
+            mot: ['registrationDate', 'manufactureDate', 'secondaryColour', 'lastMotTestDate', 'motTestDueDate', 'primaryColour', 'dataSource'],
         }
         const clean: Record<string, Record<string, string | number | boolean>> = {}
         for (const source of Object.keys(allowed)) {
