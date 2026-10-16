@@ -3186,30 +3186,11 @@ export class ListingsService {
                 source = { ...source, linkedListingId: null };
             }
 
-            const claimed = await tx.listing.updateMany({
-                where: {
-                    id: listingId,
-                    sellerId,
-                    type: 'AUCTION',
-                    linkedListingId: null,
-                    deletedAt: null,
-                },
-                data: { linkedListingId: newListingId },
-            });
-
-            if (claimed.count !== 1) {
-                const refreshed = await tx.listing.findUnique({
-                    where: { id: listingId },
-                    select: { linkedListingId: true },
-                });
-                if (refreshed?.linkedListingId) {
-                    return { linkedListingId: refreshed.linkedListingId };
-                }
-                throw new BadRequestException(
-                    'The auction listing changed while the retail listing was being created. Refresh and try again.',
-                );
-            }
-
+            // The linkedListingId column is a self-referencing foreign key.
+            // Create the new retail row *before* the auction source points at
+            // its ID, as alsoAuction() does for the reverse direction. Claiming
+            // the source first triggers a PostgreSQL FK violation and a 500.
+            // The transaction rolls this draft back if the later claim loses.
             const slug = this.generateSlug(source.title);
             await tx.listing.create({
                 data: {
@@ -3254,6 +3235,25 @@ export class ListingsService {
                     linkedListingId: listingId,
                 } as any,
             });
+
+            // Compare-and-set after the target row exists, so both foreign-key
+            // directions are valid. If two requests race, one claims the source
+            // and the other rolls back its unclaimed retail draft completely.
+            const claimed = await tx.listing.updateMany({
+                where: {
+                    id: listingId,
+                    sellerId,
+                    type: 'AUCTION',
+                    linkedListingId: null,
+                    deletedAt: null,
+                },
+                data: { linkedListingId: newListingId },
+            });
+            if (claimed.count !== 1) {
+                throw new BadRequestException(
+                    'This auction already has a linked Retail listing or changed during creation. Refresh My Auctions and use the existing Retail draft or Resume Retail Payment.',
+                );
+            }
 
             return { linkedListingId: newListingId };
         });
