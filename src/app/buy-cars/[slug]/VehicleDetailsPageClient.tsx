@@ -629,8 +629,13 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             {showHpiModal && listing && (
                 <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
             )}
-            {/* Vehicle JSON-LD */}
-            <VehicleJsonLd
+            {/* Match the listing's robots metadata and the public sitemap:
+                 a sold, offer-accepted, auction or seeded/test vehicle must
+                 never advertise an available retail offer to search engines. */}
+            {listing.type === 'CLASSIFIED' &&
+                listing.status === 'ACTIVE' &&
+                !/(^|-)(undefined|test\\d*|aaa|qqq|www)(-|$)/i.test(listing.slug) && (
+                <VehicleJsonLd
                 name={listing.title}
                 description={`${listing.year} ${listing.make} ${listing.model} — ${formatPrice(listing.price)}. ${listing.mileage?.toLocaleString() || 0} miles, ${listing.fuelType || 'N/A'}, ${listing.transmission || 'N/A'}.`}
                 image={validImages[0]}
@@ -646,7 +651,8 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                 condition={listing.condition ?? undefined}
                 vin={listing.vin ?? undefined}
                 engineSize={listing.engineSize ?? undefined}
-            />
+                />
+            )}
 
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
