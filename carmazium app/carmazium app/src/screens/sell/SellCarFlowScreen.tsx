@@ -2452,11 +2452,82 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     );
   }
 
+  // Native screens are already full-screen by default. Explain *what* to
+  // complete and *why* within the active scroll view, matching the web guide.
+  const stepGuidance = step === 1 ? {
+    what: 'Enter the registration, check DVLA/MOT data, then complete the condition, ownership and legal declarations.',
+    why: 'Accurate details help buyers search and understand the car. Required fields are marked and highlighted if missed.',
+  } : step === 2 ? {
+    what: `Add at least ${MIN_PHOTOS} clear photos, including exterior, interior and any damage.`,
+    why: 'Photos and disclosed faults help buyers judge the car before making offers or bids. HPI is optional.',
+  } : step === 3 ? {
+    what: isAuction ? 'Check the Auction valuation and confirm the market value.' : 'Choose the public Retail asking price and optional minimum.',
+    why: isAuction
+      ? 'This value sets the 70% opening-bid reference; you still control the reserve.'
+      : 'Buyers see the asking price, not the optional minimum offer floor.',
+  } : step === 4 && isAuction ? {
+    what: 'Choose when bidding starts, set a hidden reserve and a minimum bid increment.',
+    why: 'The reserve protects your minimum accepted price and the increment controls bidding steps.',
+  } : {
+    what: 'Review each section and correct any details before publishing.',
+    why: 'Accurate information reduces errors before listing review and any required Retail payment.',
+  };
+
+  const nativeFieldReasons: Record<string, string> = {
+    vrm: 'Registration helps retrieve vehicle information from DVLA/MOT.',
+    make: 'Make identifies the vehicle manufacturer.',
+    model: 'Model helps buyers search for the right vehicle.',
+    year: 'Year tells buyers the age of the vehicle.',
+    mileage: 'Mileage affects valuation and buyer confidence.',
+    title: 'The title identifies the vehicle in listings.',
+    location: 'Location helps buyers plan collection or delivery.',
+    fuelType: 'Fuel type is important for searching and comparing vehicles.',
+    description: 'Describe the car and relevant faults honestly.',
+    transmission: 'Buyers often search specifically for manual or automatic vehicles.',
+    bodyType: 'Body type allows buyers to filter by vehicle shape.',
+    condition: 'Condition gives buyers realistic expectations.',
+    owners: 'Keeper history is useful background for buyers.',
+    departedRelationship: 'Estate sales require an explanation of your relationship to the owner.',
+    writeOffCat: 'Insurance write-off status should be declared accurately.',
+    stolenRecovered: 'History of theft or recovery may affect a buying decision.',
+    outstandingFinance: 'Existing finance may affect completion of a sale.',
+    isLegalKeeper: 'CarMazium needs to understand your authority to sell.',
+    notOwnerRelationship: 'Explain your relationship to the registered keeper.',
+    declAcknowledged: 'You must confirm the declarations are accurate.',
+    priceAsking: 'This price is used as the Retail asking price or the Auction valuation guide.',
+    auctionStartDate: 'A scheduled Auction needs a valid future start date.',
+    reservePrice: 'The hidden reserve is your minimum acceptable price.',
+    startingBid: 'The starting bid is automatically calculated from the Auction value.',
+    minIncrement: 'Each subsequent bid must rise by at least this amount.',
+    buyItNowPrice: 'Buy It Now is optional; leave it empty if not wanted.',
+    photos: 'Photos allow buyers to assess the condition before bidding or offering.',
+  };
+
+  function renderStepGuidance() {
+    return (
+      <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, marginBottom: 14, gap: 7 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
+          <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>
+            Your guide · {STEP_LABELS[step - 1]}
+          </Text>
+        </View>
+        <Text style={{ color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
+          What to do: {stepGuidance.what}
+        </Text>
+        <Text style={{ color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
+          Why we ask: {stepGuidance.why}
+        </Text>
+      </View>
+    );
+  }
+
   // ─── Step 1 — Vehicle Details ─────────────────────────────────────────────────
 
   function renderStep1() {
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderStepGuidance()}
 
         {!editMode && (
           <SectionBox title="How would you like to sell?" accent={Colors.accent}>
@@ -3126,6 +3197,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderStepGuidance()}
 
         {/* Photo Tracker */}
         <View style={s.photoTracker} onLayout={rememberValidationSection("photos")}>
@@ -3351,6 +3423,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderStepGuidance()}
 
         {/* Listing Method — tapping a pricing tier used to silently flip
             listingType as a side effect (setListingType(badge.listingType)
@@ -3676,6 +3749,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const askNum = auctionMarketValue;
     return (
       <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+        {renderStepGuidance()}
 
         <SectionBox title="Live Auction — 24-Hour Fixed Duration" accent={Colors.lightOrange_f97316}>
           <Text style={[s.fieldHint, { color: Colors.lightOrange_fb923c }]}>
@@ -3819,6 +3893,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
     return (
       <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+        {renderStepGuidance()}
         <Text style={s.reviewHeading}>Review Your Listing</Text>
 
         {/* Vehicle Identity */}
@@ -4078,6 +4153,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             >
               <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 }}>
                 {validationIssue.message} · Tap to go to this field
+              </Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, marginTop: 4 }}>
+                {nativeFieldReasons[validationIssue.field] ?? 'Complete this information to continue.'}
               </Text>
             </TouchableOpacity>
           )}
