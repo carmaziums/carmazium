@@ -43,6 +43,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { DealersService } from '../dealers/dealers.service';
 import { DvlaService } from '../dvla/dvla.service';
 import { motEnrichmentUpdate } from './mot-backfill';
+import { normalizeOfficialVehicleData, mergeOfficialVehicleData } from './official-vehicle-data';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import {
@@ -1399,6 +1400,7 @@ export class ListingsService {
                     wheelplan: dto.wheelplan ?? null,
                     typeApproval: dto.typeApproval ?? null,
                     motHistory: dto.motHistory ? (dto.motHistory as Prisma.InputJsonValue) : undefined,
+                    officialVehicleData: normalizeOfficialVehicleData(dto.officialVehicleData) as Prisma.InputJsonValue | undefined,
                     badgeTier,
                     isFeatured: false,
                     featuredUntil: null,
@@ -1826,6 +1828,7 @@ export class ListingsService {
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
                 motHistory: createListingDto.motHistory ? (createListingDto.motHistory as Prisma.InputJsonValue) : undefined,
+                officialVehicleData: normalizeOfficialVehicleData(createListingDto.officialVehicleData) as Prisma.InputJsonValue | undefined,
                 // Retail package tier. PREMIUM receives its included 28-day
                 // Featured Boost only when the listing is approved and goes live,
                 // so draft/review time never consumes the customer's boost.
@@ -2502,6 +2505,9 @@ export class ListingsService {
         if (updateListingDto.wheelplan !== undefined) updateData.wheelplan = updateListingDto.wheelplan;
         if (updateListingDto.typeApproval !== undefined) updateData.typeApproval = updateListingDto.typeApproval;
         if (updateListingDto.motHistory !== undefined) updateData.motHistory = updateListingDto.motHistory;
+        if (updateListingDto.officialVehicleData !== undefined) {
+            updateData.officialVehicleData = mergeOfficialVehicleData(listing.officialVehicleData, updateListingDto.officialVehicleData);
+        }
         if (updateListingDto.stolenRecovered !== undefined) updateData.stolenRecovered = updateListingDto.stolenRecovered;
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
@@ -3242,6 +3248,7 @@ export class ListingsService {
                     motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
                     // Retain persisted official history across Auction ↔ Retail channels.
                     motHistory: source.motHistory ?? undefined,
+                    officialVehicleData: source.officialVehicleData ?? undefined,
                     markedForExport: source.markedForExport,
                     monthOfFirstRegistration: source.monthOfFirstRegistration,
                     firstUsedDate: source.firstUsedDate,
@@ -3399,6 +3406,7 @@ export class ListingsService {
                     motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
                     // Retain persisted official history across Auction ↔ Retail channels.
                     motHistory: source.motHistory ?? undefined,
+                    officialVehicleData: source.officialVehicleData ?? undefined,
                     markedForExport: source.markedForExport,
                     monthOfFirstRegistration: source.monthOfFirstRegistration,
                     firstUsedDate: source.firstUsedDate,
