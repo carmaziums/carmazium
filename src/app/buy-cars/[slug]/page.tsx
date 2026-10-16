@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { notFound } from "next/navigation"
 import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
@@ -14,20 +15,30 @@ function isLikelyTestListingSlug(slug: string): boolean {
     return /(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(slug)
 }
 
+/**
+ * Distinguish a confirmed missing vehicle from an upstream outage.
+ * Next.js must serve an HTTP 404 for a backend-confirmed missing/deleted slug
+ * rather than a 200 "Vehicle not found" page (a Google soft 404).
+ * Do not mark the vehicle nonexistent when the API times out or returns 5xx.
+ * The public listing endpoint can still return real SOLD/OFFER_ACCEPTED records;
+ * their existing robots and UI states remain unchanged.
+ */
 async function getListingBySlug(slug: string) {
     try {
         const res = await serverBackendFetch(`/listings/${slug}`, { next: { revalidate: 60 } })
-        if (!res.ok) return null
+        if (res.status === 404 || res.status === 410) return { listing: null, missing: true } as const
+        if (!res.ok) return { listing: null, missing: false } as const
         const json = await res.json()
-        return json.data ?? null
+        return { listing: json.data ?? null, missing: false } as const
     } catch {
-        return null
+        return { listing: null, missing: false } as const
     }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
     const { slug } = await params
-    const listing = await getListingBySlug(slug)
+    const { listing, missing } = await getListingBySlug(slug)
+    if (missing) notFound()
 
     if (!listing) {
         return { title: "Vehicle Not Found", robots: { index: false, follow: false } }
@@ -86,7 +97,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     // round-trip. Passed down so the client component doesn't have to fetch
     // it again itself on mount (that used to mean an empty shell + a second,
     // uncached network hit before content ever appeared).
-    const initialListing = await getListingBySlug(slug)
+    const { listing: initialListing, missing } = await getListingBySlug(slug)
+    if (missing) notFound()
     return (
         <>
             {initialListing && (
