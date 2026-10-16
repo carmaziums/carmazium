@@ -1642,70 +1642,69 @@ export class DealersService {
         const profile = await this.getDealerProfile(userId);
         const email = dto.email.toLowerCase().trim();
 
-        // 1. If user exists, add them directly as active staff
+        // Existing users must explicitly accept a dealer-team invitation too.
+        // An invite must never activate a revoked membership or change another
+        // person's User.role just because a dealer entered their email.
         const targetUser = await this.prisma.user.findUnique({ where: { email } });
         if (targetUser) {
-            const existing = await this.prisma.dealerStaff.findUnique({
+            const membership = await this.prisma.dealerStaff.findUnique({
                 where: { userId_dealerProfileId: { userId: targetUser.id, dealerProfileId: profile.id } },
             });
-            if (existing) {
-                if (existing.isActive) throw new BadRequestException('User is already a staff member of this dealership');
-                // Reactivate previously deactivated staff + re-elevate role
-                const [reactivated] = await this.prisma.$transaction([
-                    this.prisma.dealerStaff.update({
-                        where: { id: existing.id },
-                        data: { isActive: true, role: dto.role as any },
-                        include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
-                    }),
-                    this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
-                ]);
-                this.sendStaffAddedNotifications(targetUser, profile.companyName, dto.role);
-                return reactivated;
+            if (membership?.isActive) {
+                throw new BadRequestException('User is already a staff member of this dealership');
             }
-
-            const [staff] = await this.prisma.$transaction([
-                this.prisma.dealerStaff.create({
-                    data: {
-                        userId: targetUser.id,
-                        dealerProfileId: profile.id,
-                        role: dto.role as any,
-                    },
-                    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
-                }),
-                this.prisma.user.update({ where: { id: targetUser.id }, data: { role: 'DEALER' } }),
-            ]);
-
-            this.sendStaffAddedNotifications(targetUser, profile.companyName, dto.role);
-            return staff;
         }
 
-        // 2. If user doesn't exist, create a pending invitation with a secure token
+        const now = new Date();
+        const newToken = randomBytes(32).toString('hex');
+        const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         const existingInvite = await this.prisma.dealerInvite.findUnique({
             where: { email_dealerProfileId: { email, dealerProfileId: profile.id } },
         });
-        if (existingInvite) throw new BadRequestException('An invitation has already been sent to this email');
 
-        const token = randomBytes(32).toString('hex');
+        let invite;
+        if (existingInvite) {
+            // Prevent accidental role changes to an outstanding invitation.
+            // An expired link can be renewed, but the old bearer token must
+            // become unusable. Conditional update protects against two dealer
+            // administrators re-issuing the same invitation concurrently.
+            if (existingInvite.expiresAt > now) {
+                throw new BadRequestException('An invitation has already been sent to this email');
+            }
+            const rotated = await this.prisma.dealerInvite.updateMany({
+                where: { id: existingInvite.id, token: existingInvite.token, expiresAt: { lte: now } },
+                data: { token: newToken, role: dto.role as any, expiresAt, createdAt: now },
+            });
+            if (rotated.count !== 1) {
+                throw new BadRequestException('This invitation was renewed elsewhere. Refresh the team list.');
+            }
+            invite = { id: existingInvite.id, email, role: dto.role, expiresAt, token: newToken };
+        } else {
+            invite = await this.prisma.dealerInvite.create({
+                data: { email, dealerProfileId: profile.id, role: dto.role as any, token: newToken, expiresAt },
+            });
+        }
 
-        const invite = await this.prisma.dealerInvite.create({
-            data: {
-                email,
-                dealerProfileId: profile.id,
-                role: dto.role as any,
-                token,
-                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            },
-        });
+        // Do not claim "invitation sent" if delivery failed: free the failed
+        // token for retry while ensuring a concurrent rotation is not removed.
+        try {
+            const delivery = await this.emailService.sendStaffInviteEmail(
+                email, profile.companyName, dto.role, newToken,
+            );
+            // EmailService.dispatch catches provider failures and returns
+            // null when Gmail AND Resend fail, instead of throwing.
+            if (!delivery?.id) {
+                throw new Error('No email provider accepted the invitation');
+            }
+        } catch {
+            await this.prisma.dealerInvite.deleteMany({
+                where: { id: invite.id, token: newToken },
+            });
+            throw new BadRequestException('Could not email the invitation. Please try again.');
+        }
 
-        // Send the invitation email
-        await this.emailService.sendStaffInviteEmail(
-            email,
-            profile.companyName,
-            dto.role,
-            token,
-        ).catch(() => {}); // fire-and-forget
-
-        return invite;
+        // Never return bearer credentials in a dealer/team API response.
+        return { id: invite.id, email, role: invite.role, expiresAt: invite.expiresAt, status: 'PENDING' };
     }
 
     async acceptInvite(token: string, userId: string) {
