@@ -101,6 +101,61 @@ describe('DvlaService AI specification enrichment', () => {
         expect(aiService.enrichVehicleSpecification).not.toHaveBeenCalled();
     });
 
+    it('does not drop returned DVLA extras, DVSA registration facts, zero CO2 or legacy failure defects', async () => {
+        const withExtras = {
+            ...dvlaPayload,
+            co2Emissions: 0,
+            monthOfFirstDvlaRegistration: '2022-04',
+            artEndDate: '2027-05-01',
+            revenueWeight: 3500,
+            realDrivingEmissions: '1',
+            automatedVehicle: false,
+        };
+        const motExtras = {
+            ...motPayload,
+            registrationDate: '2022-03-02',
+            manufactureDate: '2022-02-01',
+            secondaryColour: 'WHITE',
+            lastMotTestDate: '2025-06-01',
+            motTestDueDate: '2026-06-01',
+            motTests: [{
+                ...motPayload.motTests[0],
+                odometerResultType: 'READ',
+                defects: [{ text: 'Historic reason for failure', type: 'FAIL', dangerous: false }],
+            }],
+        };
+        (global as any).fetch = jest.fn(async (url: string) => {
+            if (url.includes('login.microsoftonline.com'))
+                return { ok: true, json: async () => ({ access_token: 'test-token', expires_in: 3600 }) };
+            if (url.includes('history.mot.api.gov.uk'))
+                return { ok: true, json: async () => motExtras };
+            return { ok: true, json: async () => withExtras };
+        });
+        const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
+        const result = await service.lookupVrm('XGZ5459');
+        expect(result.co2Emissions).toBe(0);
+        expect(result.officialVehicleData).toEqual({
+            dvla: {
+                monthOfFirstDvlaRegistration: '2022-04',
+                artEndDate: '2027-05-01',
+                revenueWeight: 3500,
+                realDrivingEmissions: '1',
+                automatedVehicle: false,
+            },
+            mot: {
+                registrationDate: '2022-03-02',
+                manufactureDate: '2022-02-01',
+                secondaryColour: 'WHITE',
+                lastMotTestDate: '2025-06-01',
+                motTestDueDate: '2026-06-01',
+            },
+        });
+        expect(result.motHistory?.[0].odometerResultType).toBe('READ');
+        expect(result.motHistory?.[0].defects).toEqual([
+            { text: 'Historic reason for failure', type: 'FAIL', dangerous: false },
+        ]);
+    });
+
     it('caches the Entra token across distinct vehicle lookups', async () => {
         const service = new DvlaService(config as any, { enrichVehicleSpecification: jest.fn() } as any);
         await service.lookupVrm('XGZ5459');
