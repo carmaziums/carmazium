@@ -240,3 +240,18 @@ test('valuation price rule: low market guide is Auction, Retail is exactly 20% h
   assert.match(adjustmentSection, /return alignVehicleValuationPrices\(base\)/);
   assert.match(adjustmentSection, /const low = roundMoney\(base\.low \* factor\)/);
 });
+
+test('native listing wizard navigates to the first missing field for both retail and auction', () => {
+  const source = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
+  assert.match(source, /const rememberValidationSection = \(section: string\)/);
+  assert.match(source, /const scrollToMissingField = \(field: string\)/);
+  assert.match(source, /STEP1_FIELD_KEYS\.find\(k => fieldErrorRaw\(k\) != null\)/);
+  assert.match(source, /STEP4_AUCTION_FIELD_KEYS\.find\(k => fieldErrorRaw\(k\) != null\)/);
+  assert.match(source, /setValidationIssue\(\{ field, message:/);
+  assert.match(source, /Tap to go to this field/);
+  assert.match(source, /onLayout=\{rememberValidationSection\("registration"\)\}/);
+  assert.match(source, /onLayout=\{rememberValidationSection\("declarations"\)\}/);
+  assert.match(source, /onLayout=\{rememberValidationSection\("auction-pricing"\)\}/);
+  assert.doesNotMatch(source, /stepScrollRef\.current\?\.scrollTo\(\{ y: 0, animated: true \}\)/);
+  assert.match(source, /setValidationIssue\(null\);\s+validationSectionYRef\.current = \{\};\s+const nextStep/);
+})

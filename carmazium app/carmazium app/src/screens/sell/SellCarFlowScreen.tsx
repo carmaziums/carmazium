@@ -408,11 +408,12 @@ function DVLAField({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionBox({ title, children, accent, action }: {
+function SectionBox({ title, children, accent, action, onLayout }: {
   title: string; children: React.ReactNode; accent?: string; action?: React.ReactNode;
+  onLayout?: (event: any) => void;
 }) {
   return (
-    <View style={s.sectionBox}>
+    <View style={s.sectionBox} onLayout={onLayout}>
       <View style={[s.sectionBoxHeader, accent ? { borderLeftColor: accent } : {}]}>
         <Text style={s.sectionBoxTitle}>{title}</Text>
         {action && <View style={{ marginLeft: 'auto' }}>{action}</View>}
@@ -909,6 +910,45 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const fieldTouched = (key: string) => () => setTouched(prev => ({ ...prev, [key]: true }));
   // Shared across steps since only one step's ScrollView is ever mounted at a time.
   const stepScrollRef = useRef<ScrollView>(null);
+  // Positions are measured in the currently mounted step's ScrollView.
+  const validationSectionYRef = useRef<Record<string, number>>({});
+  const validationFieldOffsetsRef = useRef<Record<string, { section: string; offset: number }>>({});
+  const [validationIssue, setValidationIssue] = useState<{ field: string; message: string } | null>(null);
+  const rememberValidationSection = (section: string) => (event: any) => {
+    validationSectionYRef.current[section] = event.nativeEvent.layout.y;
+  };
+  // Controls inside a long section can be located more precisely than merely
+  // landing at the section title. Layout is relative to SectionBox body.
+  const rememberNestedField = (section: string, field: string) => (event: any) => {
+    validationFieldOffsetsRef.current[field] = {
+      section,
+      offset: event.nativeEvent.layout.y + 48 + 14,
+    };
+  };
+  const scrollToMissingField = (field: string) => {
+    const sections: Record<string, string> = {
+      vrm: 'registration', make: 'identity', model: 'identity', year: 'identity',
+      bodyType: 'body', location: 'location',
+      mileage: 'technical', fuelType: 'technical', transmission: 'technical',
+      title: 'description', description: 'description',
+      condition: 'ownership', owners: 'ownership', departedRelationship: 'ownership',
+      writeOffCat: 'declarations', stolenRecovered: 'declarations', outstandingFinance: 'declarations',
+      isLegalKeeper: 'declarations', notOwnerRelationship: 'declarations', declAcknowledged: 'declarations',
+      priceAsking: 'pricing', priceMin: 'pricing',
+      auctionStartDate: 'start', reservePrice: 'auction-pricing', startingBid: 'auction-pricing',
+      minIncrement: 'auction-pricing', buyItNowPrice: 'auction-pricing', photos: 'photos',
+    };
+    const section = sections[field];
+    // Wait for inline field error/layout update; never force every error to y=0.
+    setTimeout(() => {
+      const base = validationSectionYRef.current[section];
+      const nested = validationFieldOffsetsRef.current[field];
+      const y = Number.isFinite(base)
+        ? base + (nested?.section === section ? nested.offset : 0)
+        : 0;
+      stepScrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
+    }, 100);
+  };
 
   // Hydrate only after the authenticated user is known. A previous user's
   // in-memory draft is detached before reading this account's separate key.
@@ -1663,8 +1703,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function validateStep(s: Step): boolean {
     if (s === 1) {
       if (touchAndCheck(STEP1_FIELD_KEYS)) {
-        Alert.alert('Required details missing', 'Please complete the highlighted vehicle details and legal declarations before continuing.');
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP1_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'vrm';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Please complete this field.' });
+        scrollToMissingField(field);
         return false;
       }
       // Cross-field business rule (not a per-field "required" validation) —
@@ -1679,23 +1720,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       // Tapping Next explains the minimum instead of silently disabling it;
       // the existing rule is unchanged and is still enforced at publication.
       if (allImages.length < MIN_PHOTOS) {
-        Alert.alert(
-          'More Photos Needed',
-          `Listings need at least ${MIN_PHOTOS} photos before they can be published. You have ${allImages.length}.`,
-        );
+        setValidationIssue({ field: 'photos', message: `Add ${MIN_PHOTOS - allImages.length} more photo(s) to continue (minimum ${MIN_PHOTOS}).` });
+        scrollToMissingField('photos');
         return false;
       }
     }
     if (s === 3) {
       if (touchAndCheck(STEP3_FIELD_KEYS)) {
-        Alert.alert('Price needed', 'Enter a valid vehicle price to continue.');
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP3_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'priceAsking';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Enter a valid vehicle price.' });
+        scrollToMissingField(field);
         return false;
       }
     }
     if (s === 4 && isAuction) {
       if (touchAndCheck(STEP4_AUCTION_FIELD_KEYS)) {
-        stepScrollRef.current?.scrollTo({ y: 0, animated: true });
+        const field = STEP4_AUCTION_FIELD_KEYS.find(k => fieldErrorRaw(k) != null) ?? 'reservePrice';
+        setValidationIssue({ field, message: fieldErrorRaw(field) ?? 'Complete the Auction details.' });
+        scrollToMissingField(field);
         return false;
       }
     }
@@ -2301,6 +2343,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       setTouched(prev => ({ ...prev, priceAsking: true, priceMin: priceMin.trim() ? true : prev.priceMin }));
     }
     if (!validateStep(step)) return;
+    setValidationIssue(null);
+    validationSectionYRef.current = {};
     const nextStep = Math.min(step + 1, totalSteps) as Step;
     // Persist current state to draft before advancing
     if (!editMode) updateDraft({
@@ -2318,6 +2362,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   }
 
   function handleBack() {
+    setValidationIssue(null);
+    validationSectionYRef.current = {};
     if (step > 1) setStep((step - 1) as Step);
     else navigation?.goBack();
   }
@@ -2464,7 +2510,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Registration */}
-        <SectionBox title="Registration (VRM) *" accent={Colors.accent}>
+        <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
           <Text style={s.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
           <View style={s.vrmRow}>
             <TextInput
@@ -2564,7 +2610,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         )}
 
         {/* Make / Model / Year */}
-        <SectionBox title="Make / Model / Year">
+        <SectionBox title="Make / Model / Year" onLayout={rememberValidationSection("identity")}>
           <View style={{ gap: 12 }}>
             <View>
               <PickerField
@@ -2648,7 +2694,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Body Type — no hidden mandatory choice for motorcycles. */}
-        {vehicleType !== 'MOTORCYCLE' && <SectionBox title="Body Type *">
+        {vehicleType !== 'MOTORCYCLE' && <SectionBox title="Body Type *" onLayout={rememberValidationSection("body")}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {(vehicleType === 'HGV' ? HGV_BODY_TYPES : BODY_TYPES).map(bt => (
               <TouchableOpacity
@@ -2666,7 +2712,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>}
 
         {/* Location */}
-        <SectionBox title="Location *">
+        <SectionBox title="Location *" onLayout={rememberValidationSection("location")}>
           <FieldInput
             label="LOCATION *"
             value={location}
@@ -2685,7 +2731,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Technical Specs */}
-        <SectionBox title="Technical Specs">
+        <SectionBox title="Technical Specs" onLayout={rememberValidationSection("technical")}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <SL label="MILEAGE" required />
@@ -2727,7 +2773,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Listing Title & Description */}
-        <SectionBox title="Listing Title & Description">
+        <SectionBox title="Listing Title & Description" onLayout={rememberValidationSection("description")}>
           <View style={{ marginBottom: 16 }}>
             <View style={s.titleLabelRow}>
               <SL label="LISTING TITLE" required />
@@ -2880,7 +2926,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         )}
 
         {/* Ownership */}
-        <SectionBox title="Ownership">
+        <SectionBox title="Ownership" onLayout={rememberValidationSection("ownership")}>
           <PillRow
             label="CONDITION"
             options={CONDITIONS}
@@ -2963,11 +3009,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Write-Off & Legal Declaration */}
-        <SectionBox title="Write-Off & Legal Declaration" accent={Colors.accent}>
+        <SectionBox title="Write-Off & Legal Declaration" accent={Colors.accent} onLayout={rememberValidationSection("declarations")}>
           <Text style={s.warnText}>
             Required by law. False declarations can constitute fraud and must be reported to relevant authorities.
           </Text>
-          <View>
+          <View onLayout={rememberNestedField('declarations', 'writeOffCat')}>
             <SL label="INSURANCE WRITE-OFF STATUS *" required />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {WRITE_OFF_CATS.map(c => (
@@ -2983,7 +3029,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
             {fieldError('writeOffCat') ? <Text style={s.inlineError}>{fieldError('writeOffCat')}</Text> : null}
           </View>
-          <View style={{ marginTop: 16 }}>
+          <View onLayout={rememberNestedField('declarations', 'stolenRecovered')} style={{ marginTop: 16 }}>
             <YesNoRow
               label="HAS THIS VEHICLE EVER BEEN REPORTED STOLEN OR RECOVERED? *"
               value={stolenRecovered}
@@ -3043,6 +3089,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
           </View>
           <TouchableOpacity
+            onLayout={rememberNestedField('declarations', 'declAcknowledged')}
             style={[s.declRow, declAcknowledged && s.declRowActive]}
             onPress={() => setDeclAcknowledged(p => { setTouched(prev => ({ ...prev, declAcknowledged: true })); return !p; })}
             activeOpacity={0.8}
@@ -3071,10 +3118,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const remaining = MIN_PHOTOS - totalCount;
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
 
         {/* Photo Tracker */}
-        <View style={s.photoTracker}>
+        <View style={s.photoTracker} onLayout={rememberValidationSection("photos")}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="camera" size={14} color={Colors.accent} />
             <Text style={s.photoTrackerLabel}>Photo Tracker</Text>
@@ -3363,7 +3410,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           )}
         </SectionBox>
 
-        <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent}>
+        <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent} onLayout={rememberValidationSection('pricing')}>
           {isAuction ? (
             <Text style={s.fieldHint}>
               Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.
@@ -3630,7 +3677,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* When to start */}
-        <SectionBox title="When to Start *" accent={Colors.lightOrange_f97316}>
+        <SectionBox title="When to Start *" accent={Colors.lightOrange_f97316} onLayout={rememberValidationSection("start")}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
               style={[s.auctionModeBtn, auctionStartMode === 'NOW' && s.auctionModeBtnActive]}
@@ -3667,7 +3714,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         </SectionBox>
 
         {/* Pricing */}
-        <SectionBox title="Auction Pricing" accent={Colors.lightOrange_f97316}>
+        <SectionBox title="Auction Pricing" accent={Colors.lightOrange_f97316} onLayout={rememberValidationSection("auction-pricing")}>
           <FieldInput
             label="RESERVE PRICE (£) *"
             value={reservePrice}
@@ -4011,6 +4058,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {((step === 4 && !isAuction) || step === 5) && renderStep4()}
           </KeyboardStickyView>
 
+          {/* Validation stays visible by the Next button while the page moves
+              to the actual missing field. Tapping it replays the jump. */}
+          {validationIssue && (
+            (validationIssue.field === 'photos' ? allImages.length < MIN_PHOTOS : !!fieldErrorRaw(validationIssue.field))
+          ) && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={"Go to missing field: " + validationIssue.field}
+              onPress={() => scrollToMissingField(validationIssue.field)}
+              style={{ marginHorizontal: 16, marginBottom: 4, padding: 12, borderRadius: 10, backgroundColor: Colors.error + '20', borderWidth: 1, borderColor: Colors.error }}
+            >
+              <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: 12 }}>
+                {validationIssue.message} · Tap to go to this field
+              </Text>
+            </TouchableOpacity>
+          )}
           {/* Bottom Actions */}
           <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
             {step > 1 && (

@@ -1040,13 +1040,10 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const confirmCheckboxMissing = hasAttemptedNext && !formData.declarationAcknowledged
 
     const totalSteps = isAuction ? 5 : 4
-    // "Method" is a cosmetic-only leading step representing the Retail/Auction choice
-    // already made on the landing screen — it doesn't participate in currentStep/
-    // validateStep numbering, it just makes that choice visually register as Step 1
-    // in the progress indicator.
+    // The listing method was already selected on the previous screen.
+    // Progress now counts only the real editable pages.
     const WIZARD_STEPS = isAuction
         ? [
-            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
@@ -1054,7 +1051,6 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             { id: 5, icon: CheckCircle, title: "Review" },
         ]
         : [
-            { id: 0, icon: List, title: "Method" },
             { id: 1, icon: Car, title: "Details" },
             { id: 2, icon: Camera, title: "Media" },
             { id: 3, icon: DollarSign, title: "Pricing" },
@@ -1072,8 +1068,18 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.make, formData.model, formData.year])
 
+    // Move to the start of the *new form step*, never the top of the site.
+    // Invalid Next clicks do not change currentStep and therefore never trigger
+    // this effect or disrupt the seller's scroll position.
     React.useEffect(() => {
-        window.scrollTo({ top: 0, behavior: "smooth" })
+        if (!sellingMethod) return
+        const frame = window.requestAnimationFrame(() => {
+            document.getElementById('listing-wizard-step-header')?.scrollIntoView({
+                behavior: 'auto',
+                block: 'start',
+            })
+        })
+        return () => window.cancelAnimationFrame(frame)
     }, [currentStep, sellingMethod])
 
     // If the listing type switches from AUCTION to CLASSIFIED (e.g. user changes
@@ -1208,32 +1214,114 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
     const validateStep = (): boolean => getStepValidationError() === null
 
-    const focusFirstTransmissionOrBodyTypeError = (): boolean => {
-        if (currentStep !== 1) return false
+    const [stepValidationMessage, setStepValidationMessage] = React.useState<string | null>(null)
+    const [guidedFullScreen, setGuidedFullScreen] = React.useState(false)
+    React.useEffect(() => {
+        if (!guidedFullScreen || !sellingMethod) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = previous }
+    }, [guidedFullScreen, sellingMethod])
 
-        const target = !normalizeSellerTransmission(formData.transmission)
-            ? {
-                id: 'transmission-field',
-                message: 'Please select the transmission to continue.',
+    /** Return the exact first unanswered input, not a generic page position. */
+    const firstInvalidField = (): { field: string; label: string } | null => {
+        if (currentStep === 1) {
+            const required: Array<[string, string, boolean]> = [
+                ['registration', 'Registration', !formData.vrm.trim()],
+                ['make', 'Make', !formData.make.trim()],
+                ['model', 'Model', !formData.model.trim()],
+                ['year', 'Year', !formData.year.trim()],
+                ['condition', 'Condition', !formData.condition],
+                ['body', 'Body Type', formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)],
+                ['location', 'Location', !formData.location.trim()],
+                ['mileage', 'Mileage', !formData.mileage.trim()],
+                ['fuel', 'Fuel Type', !formData.fuelType],
+                ['transmission', 'Transmission', !normalizeSellerTransmission(formData.transmission)],
+                ['title', 'Listing Title', !formData.title || formData.title.length < 5],
+                ['description', 'Description', !formData.description.trim()],
+                ['owners', 'Previous Keepers', !formData.owners],
+                ['writeoff', 'Insurance Write-Off Status', !formData.writeOffCategory],
+                ['stolen', 'Stolen / Recovered', formData.stolenRecovered === null],
+                ['finance', 'Outstanding Finance', formData.hasOutstandingFinance === null],
+                ['keeper', 'Registered Keeper', formData.isLegalRegisteredKeeper === null],
+                ['relationship', 'Registered Keeper Relationship', formData.isLegalRegisteredKeeper === false && !formData.notOwnerRelationship?.trim()],
+                ['estate', 'Estate / Departed Sale Relationship', formData.isDepartedSale && !formData.departedRelationship?.trim()],
+                ['confirmation', 'Declaration Confirmation', !formData.declarationAcknowledged],
+            ]
+            const missing = required.find(([, , invalid]) => invalid)
+            return missing ? { field: missing[0], label: missing[1] } : null
+        }
+        if (currentStep === 2) return { field: 'photos', label: 'Photos' }
+        if (currentStep === 3) {
+            const price = Number(formData.priceAsking)
+            if (!Number.isFinite(price) || price <= 0) return { field: 'asking', label: isAuction ? 'Auction Value' : 'Asking Price' }
+            if (formData.priceMin && (!Number.isFinite(Number(formData.priceMin)) || Number(formData.priceMin) <= 0 || Number(formData.priceMin) > price)) {
+                return { field: 'minimum', label: 'Lower (Minimum) Price' }
             }
-            : formData.vehicleType !== 'MOTORCYCLE' && !normalizeSellerBodyType(formData.bodyType, bodyTypeKeys)
-                ? {
-                    id: 'body-type-field',
-                    message: formData.vehicleType === 'HGV'
-                        ? 'Please select the HGV body type to continue.'
-                        : 'Please select the body type to continue.',
-                }
-                : null
+        }
+        if (currentStep === 4 && isAuction) {
+            if (auctionSchedule.startTime !== 'NOW' && (!auctionSchedule.startTime || !Number.isFinite(new Date(auctionSchedule.startTime).getTime()) || new Date(auctionSchedule.startTime).getTime() <= Date.now())) return { field: 'start', label: 'Auction Start Date' }
+            if (!(Number(auctionSchedule.reservePrice) > 0)) return { field: 'reserve', label: 'Reserve Price' }
+            if (!(Number(auctionSchedule.startingBid) > 0)) return { field: 'auctionvalue', label: 'Auction Value' }
+            if (!(Number(auctionSchedule.minIncrement) > 0)) return { field: 'increment', label: 'Minimum Bid Increment' }
+            if (auctionSchedule.buyItNowPrice && !(Number(auctionSchedule.buyItNowPrice) > 0)) return { field: 'buy-now', label: 'Buy It Now Price' }
+        }
+        return null
+    }
 
-        if (!target) return false
-
-        window.setTimeout(() => {
-            const element = document.getElementById(target.id)
-            element?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            element?.querySelector<HTMLElement>('select, button, input, textarea')?.focus({ preventScroll: true })
-        }, 50)
-        alert(target.message)
-        return true
+    /** Exact field anchors take precedence; labels cover custom SelectField controls. */
+    const focusMissingField = (field: string) => {
+        const anchorIds: Record<string, string> = {
+            registration: 'listing-required-registration',
+            make: 'listing-required-make',
+            model: 'listing-required-model',
+            year: 'listing-required-year',
+            condition: 'vehicle-condition-field',
+            body: 'body-type-field',
+            location: 'listing-required-location',
+            mileage: 'listing-required-mileage',
+            title: 'listing-required-title',
+            description: 'listing-required-description',
+            confirmation: 'seller-declaration-acknowledged',
+            photos: 'listing-required-photos',
+            asking: 'listing-required-asking',
+            minimum: 'listing-required-minimum',
+            start: 'listing-required-start',
+            reserve: 'listing-required-reserve',
+            increment: 'listing-required-increment',
+            'buy-now': 'listing-required-buy-now',
+        }
+        const labels: Record<string, string> = {
+            fuel: 'Fuel Type', transmission: 'Transmission', owners: 'Number of Owners',
+            writeoff: 'Insurance Write-Off Status', stolen: 'reported stolen or recovered',
+            finance: 'Outstanding Finance', keeper: 'Registered Keeper',
+            relationship: 'Relationship to the registered keeper',
+            estate: 'Relationship to owner', auctionvalue: 'Estimated Market Value',
+        }
+        window.requestAnimationFrame(() => {
+            const root = document.getElementById('listing-wizard-panel')
+            let target = document.getElementById(anchorIds[field])
+            if (!target && root && labels[field]) {
+                const text = labels[field].toLowerCase()
+                const label = [...root.querySelectorAll('label')].find(node =>
+                    (node.textContent ?? '').trim().toLowerCase().includes(text)
+                )
+                target = (label?.closest('div.space-y-2') ?? label?.parentElement ?? null) as HTMLElement | null
+            }
+            if (!target) target = root?.querySelector<HTMLElement>('[data-listing-step-content]') ?? null
+            if (!target) return
+            const scrollTarget = field === 'confirmation' ? target.closest('label') ?? target : target
+            scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const focusTarget = scrollTarget.matches('input,select,textarea,button')
+                ? scrollTarget as HTMLElement
+                : scrollTarget.querySelector<HTMLElement>('input:not([type="hidden"]):not([disabled]),select:not([disabled]),textarea:not([disabled]),button:not([disabled])')
+            if (focusTarget) {
+                focusTarget.focus({ preventScroll: true })
+            } else {
+                (scrollTarget as HTMLElement).tabIndex = -1
+                ;(scrollTarget as HTMLElement).focus({ preventScroll: true })
+            }
+        })
     }
 
     const handleNext = () => {
@@ -1248,27 +1336,15 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 step_name: WIZARD_STEPS.find(s => s.id === currentStep)?.title ?? String(currentStep),
                 validation_error: validationError ?? 'unknown',
             })
-            if (focusFirstTransmissionOrBodyTypeError()) return
-            if (currentStep === 1 && !formData.condition) {
-                window.setTimeout(() => {
-                    document.getElementById('vehicle-condition-field')?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center',
-                    })
-                }, 50)
-            } else if (currentStep === 1 && validationError === "Please tick the confirmation box to continue.") {
-                // Bring the actual native checkbox into view for the common
-                // case shown on Android, instead of displaying a generic alert.
-                window.setTimeout(() => {
-                    const checkbox = document.getElementById("seller-declaration-acknowledged") as HTMLInputElement | null
-                    checkbox?.closest("label")?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    checkbox?.focus({ preventScroll: true })
-                }, 50)
-            }
-            alert(validationError ?? "Please complete the required information before proceeding.")
+            const missing = firstInvalidField()
+            setStepValidationMessage(missing
+                ? `Please complete ${missing.label} to continue. ${validationError ?? ''}`
+                : validationError ?? 'Please complete the required information before proceeding.')
+            if (missing) focusMissingField(missing.field)
             return
         }
         setHasAttemptedNext(false)
+        setStepValidationMessage(null)
         trackEvent(SELLER_FUNNEL.LISTING_STEP_COMPLETED, {
             listing_type: listingTypeLabel(formData.listingType),
             step: currentStep,
@@ -2460,15 +2536,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // ─── Wizard ───────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen py-12">
+        <div className={guidedFullScreen ? "fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-[var(--bg-body)] py-4 sm:py-8" : "min-h-screen py-6 sm:py-12"}>
             <div className="container mx-auto px-5 max-w-3xl">
                 <LoginModal />
                 <RetailConversionModal />
                 <HpiPaymentModal />
                 <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
 
-                {/* Wizard actions */}
-                <div className="mb-6 flex items-center justify-between gap-3">
+                {/* Wizard actions: optional full-screen, distraction-free mode.
+                    Both modes use the exact same form and draft state. */}
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <Button variant="ghost" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] group px-2"
                         onClick={() => {
                             if (currentStep > 1) {
@@ -2495,15 +2572,22 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
                 </div>
 
-                <div className="text-center mb-10">
+                <div className="flex justify-end mb-4">
+                    <Button type="button" variant="outline" aria-pressed={guidedFullScreen}
+                        onClick={() => setGuidedFullScreen(v => !v)}
+                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10">
+                        {guidedFullScreen ? "Exit Guided Full-Screen" : "Open Guided Full-Screen"}
+                    </Button>
+                </div>
+                <div id="listing-wizard-step-header" className="text-center mb-6 sm:mb-10 scroll-mt-20">
                     <h2 className="text-3xl md:text-4xl font-heading font-bold">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
                     </h2>
-                    <p className="text-[var(--text-muted)] mt-2">Step {currentStep + 1} of {totalSteps + 1}</p>
+                    <p className="text-[var(--text-muted)] mt-2">Guided listing · Step {currentStep} of {totalSteps} · {WIZARD_STEPS.find(s => s.id === currentStep)?.title}</p>
                 </div>
 
                 {/* Progress stepper */}
-                <div className="glass-card px-6 py-5 mb-8 flex justify-between relative overflow-hidden">
+                <div className="glass-card px-3 sm:px-6 py-3 sm:py-5 mb-5 sm:mb-8 flex justify-between relative overflow-x-auto">
                     {WIZARD_STEPS.map((step) => (
                         <div key={step.id} className={`flex flex-col items-center relative z-10 flex-1 ${currentStep >= step.id ? "text-primary" : "text-[var(--text-muted)]"}`}>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1.5 border transition-all ${currentStep >= step.id ? "bg-primary text-white shadow-neon border-primary" : "bg-[var(--bg-input)] border-[var(--border-default)]"}`}>
@@ -2518,9 +2602,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 </div>
 
                 {/* Form card */}
-                <div className="dealer-glass-card p-10 md:p-14 relative overflow-hidden border-[var(--border-default)]">
+                <div id="listing-wizard-panel" style={{ overflow: "visible" }} className="dealer-glass-card p-4 sm:p-7 md:p-10 relative border-[var(--border-default)]">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 opacity-60" />
 
+                    {stepValidationMessage && (
+                        <div role="alert" className="mb-5 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-sm font-semibold text-red-300">
+                            {stepValidationMessage} <span className="block mt-1 text-xs font-normal">We have taken you to the first field that needs attention.</span>
+                        </div>
+                    )}
                     {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -2555,7 +2644,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
+                                    <Input id="listing-required-registration" placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => {
                                             const nextVrm = e.target.value.toUpperCase()
                                             lookupRequestRef.current += 1
@@ -2827,7 +2916,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Make / Model / Year */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
+                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
                                     {(() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
@@ -2865,7 +2954,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
+                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
                                     {(() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
@@ -2919,7 +3008,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
-                                    <Input type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
+                                    <Input id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
@@ -3143,7 +3232,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location *</label>
                                 <div className="flex gap-3">
-                                    <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
+                                    <Input id="listing-required-location" placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
                                     <Button type="button" variant="outline" disabled={geoLoading}
                                         onClick={async () => {
                                             if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return }
@@ -3178,7 +3267,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                     {/* ── STEP 2: Media ─────────────────────────────────────────────────── */}
                     {currentStep === 2 && (
-                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                        <div id="listing-required-photos" className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                             <div className="space-y-4">
                                 <h2 className="text-xl font-bold font-heading border-b border-[var(--border-default)] pb-4">Photos *</h2>
                                 <p className="text-sm text-[var(--text-muted)]">Upload up to 100 photos. Aim for at least 20 for the best results, and organise them by selecting the relevant category below.</p>
@@ -3310,7 +3399,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
-                                    <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
+                                    <Input id="listing-required-mileage" type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
                                 {/* Give sellers value guidance immediately after the
@@ -3519,11 +3608,12 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Listing Title *</label>
-                                <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
+                                <Input id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
                                 <Textarea
+                                    id="listing-required-description"
                                     placeholder="Describe service history, any extras, reason for selling..."
                                     value={formData.description}
                                     onChange={(e) => set("description", e.target.value)}
@@ -3997,7 +4087,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                            <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
+                                            <Input id="listing-required-minimum" type="number" placeholder="e.g. 18000" value={formData.priceMin}
                                                 onChange={(e) => set("priceMin", e.target.value)}
                                                 className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
                                         </div>
@@ -4015,7 +4105,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg font-bold">£</span>
-                                        <Input type="number" placeholder="e.g. 20000" value={formData.priceAsking}
+                                        <Input id="listing-required-asking" type="number" placeholder="e.g. 20000" value={formData.priceAsking}
                                             onChange={(e) => set("priceAsking", e.target.value)}
                                             className={`${inputCls} pl-8 text-lg h-14 border-primary/30 focus:border-primary ring-1 ring-primary/10`} />
                                     </div>
@@ -4262,6 +4352,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {auctionSchedule.startTime !== 'NOW' && (<div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Start Date &amp; Time *</label>
                                 <Input
+                                    id="listing-required-start"
                                     type="datetime-local"
                                     value={auctionSchedule.startTime === 'NOW' ? '' : auctionSchedule.startTime}
                                     min={new Date().toISOString().slice(0, 16)}
@@ -4284,7 +4375,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 15000"
+                                        <Input id="listing-required-reserve" type="number" placeholder="e.g. 15000"
                                             value={auctionSchedule.reservePrice}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, reservePrice: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.reservePrice ? 'border-red-500' : ''}`}
@@ -4334,7 +4425,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 100"
+                                        <Input id="listing-required-increment" type="number" placeholder="e.g. 100"
                                             value={auctionSchedule.minIncrement}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, minIncrement: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.minIncrement ? 'border-red-500' : ''}`}
@@ -4352,7 +4443,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </label>
                                 <div className="relative max-w-xs">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                    <Input type="number" placeholder="Leave blank to disable"
+                                    <Input id="listing-required-buy-now" type="number" placeholder="Leave blank to disable"
                                         value={auctionSchedule.buyItNowPrice}
                                         onChange={e => setAuctionSchedule(prev => ({ ...prev, buyItNowPrice: e.target.value }))}
                                         className={`${inputCls} pl-8 h-14`}
@@ -4651,13 +4742,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
 
                     {/* Navigation */}
-                    <div className="flex justify-between mt-10 pt-6 border-t border-[var(--border-default)]">
+                    <div className="sticky bottom-2 z-20 flex justify-between gap-3 mt-10 p-3 sm:p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]/95 backdrop-blur-lg shadow-xl">
                         {currentStep > 1
                             ? <Button variant="outline" onClick={handleBack} className="px-7 hover:bg-primary/5 dark:hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
                         }
                         {currentStep < totalSteps
-                            ? <Button onClick={handleNext} className="px-7 shadow-neon">Next <ArrowRight className="ml-2 h-4 w-4" /></Button>
+                            ? <Button onClick={handleNext} className="px-7 shadow-neon">Next Step <ArrowRight className="ml-2 h-4 w-4" /></Button>
                             : <Button onClick={handleSubmit} disabled={isSubmitting}
                                 className="px-7 bg-emerald-600 hover:bg-emerald-700 border-none shadow-[0_0_20px_rgba(16,185,129,0.4)] disabled:opacity-50">
                                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</> : <>Publish <CheckCircle className="ml-2 h-4 w-4" /></>}
