@@ -2563,11 +2563,87 @@ export class ListingsService {
             updateData.partnerDistributionAcceptedAt = updateListingDto.partnerDistributionAccepted ? new Date() : null;
         }
 
-        // Update the listing
-        const updatedListing = await this.prisma.listing.update({
-            where: { id },
-            data: updateData,
-        });
+        // A linked auction and retail listing describe the same physical car.
+        // Mirror seller-edited VEHICLE facts atomically, never channel-specific
+        // prices, review/status, badges, boosting or partner permissions.
+        // Keep each channel's title as its own seller-authored marketing text.
+        const vehicleFields = new Set([
+            'description', 'images', 'videoUrls', 'make', 'model', 'year', 'mileage',
+            'vrm', 'vin', 'fuelType', 'transmission', 'color', 'doors', 'seats',
+            'engineSize', 'bhp', 'bodyType', 'features', 'location', 'condition',
+            'ulezCompliant', 'euroStandard', 'co2Emissions', 'motStatus', 'taxStatus',
+            'motExpiryDate', 'taxDueDate', 'markedForExport',
+            'monthOfFirstRegistration', 'firstUsedDate', 'dateOfLastV5CIssued',
+            'wheelplan', 'typeApproval', 'motHistory', 'officialVehicleData',
+            'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
+            'writeOffCategory', 'variant', 'driveType', 'numberOfKeys',
+            'serviceHistory', 'mechanicalIssues', 'electricalIssues', 'owners',
+            'torqueNm', 'topSpeedMph', 'zeroTo60Mph', 'combinedMpg', 'extraUrbanMpg',
+            'isDepartedSale', 'departedRelationship', 'notOwnerRelationship',
+            'deliveryAvailable', 'deliveryPricePerMile', 'deliveryMaxMiles',
+            'isImported',
+        ]);
+        const sharedData = Object.fromEntries(
+            Object.entries(updateData).filter(([key]) => vehicleFields.has(key)),
+        );
+        const normalizePlate = (plate: string | null | undefined) =>
+            String(plate ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (listing.linkedListingId && updateData.vrm
+            && normalizePlate(updateData.vrm) !== normalizePlate(listing.vrm)) {
+            throw new BadRequestException(
+                'Change a vehicle registration through controlled admin correction before editing two linked listings.',
+            );
+        }
+        const updatedListing = listing.linkedListingId
+            ? await this.prisma.$transaction(async tx => {
+                const current = await tx.listing.findUnique({ where: { id } });
+                if (!current || current.deletedAt || current.sellerId !== listing.sellerId) {
+                    throw new BadRequestException('Vehicle listing changed; reload before editing.');
+                }
+                const counterpart = current.linkedListingId
+                    ? await tx.listing.findUnique({ where: { id: current.linkedListingId } })
+                    : null;
+                const sameVehicle = !!counterpart && !counterpart.deletedAt
+                    && counterpart.status !== 'SOLD'
+                    && counterpart.linkedListingId === current.id
+                    && counterpart.sellerId === current.sellerId
+                    && counterpart.type !== current.type
+                    && !!normalizePlate(current.vrm)
+                    && normalizePlate(current.vrm) === normalizePlate(counterpart.vrm);
+                if (sameVehicle && sharedData.writeOffCategory
+                    && ['CAT_A', 'CAT_B'].includes(String(sharedData.writeOffCategory))
+                    && counterpart!.type === 'CLASSIFIED') {
+                    throw new BadRequestException(
+                        'Cat A/B vehicle declarations cannot be mirrored into a Retail listing. Withdraw the linked Retail listing first.',
+                    );
+                }
+                const saved = await tx.listing.update({ where: { id }, data: updateData });
+                if (sameVehicle && Object.keys(sharedData).length) {
+                    const mirrored = { ...sharedData };
+                    if (mirrored.officialVehicleData !== undefined) {
+                        mirrored.officialVehicleData = mergeOfficialVehicleData(
+                            counterpart!.officialVehicleData, mirrored.officialVehicleData,
+                        );
+                    }
+                    const written = await tx.listing.updateMany({
+                        where: {
+                            id: counterpart!.id,
+                            linkedListingId: current.id,
+                            sellerId: current.sellerId,
+                            updatedAt: counterpart!.updatedAt,
+                            deletedAt: null,
+                        },
+                        data: mirrored,
+                    });
+                    if (written.count !== 1) {
+                        throw new BadRequestException(
+                            'Linked vehicle listing changed during editing; reload and try again.',
+                        );
+                    }
+                }
+                return saved;
+            })
+            : await this.prisma.listing.update({ where: { id }, data: updateData });
 
         // Re-geocode if location changed
         if (updateListingDto.location && updateListingDto.location !== listing.location) {
