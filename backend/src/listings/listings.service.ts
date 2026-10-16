@@ -3063,6 +3063,32 @@ export class ListingsService {
         }
 
         const updated = await this.prisma.$transaction(async (tx) => {
+            // A manual/off-platform Retail sale cannot overtake its still-running
+            // linked auction or an auction winner. Use the exact same auction
+            // advisory lock as the bidding/retail-offer lifecycle.
+            if (listing.linkedListingId) {
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${listing.linkedListingId}, 0))::text`;
+                const linkedAuction = await tx.auction.findFirst({
+                    where: { listingId: listing.linkedListingId, deletedAt: null },
+                    select: {
+                        status: true, winnerId: true, wonAt: true,
+                        provisionalOfferBidId: true,
+                    },
+                });
+                if (linkedAuction?.winnerId || linkedAuction?.wonAt) {
+                    throw new BadRequestException(
+                        'This vehicle already has an auction winner. Resolve the auction sale or cancellation before recording a Retail sale.',
+                    );
+                }
+                if (linkedAuction && (
+                    ['ACTIVE', 'SCHEDULED'].includes(linkedAuction.status)
+                    || linkedAuction.provisionalOfferBidId
+                )) {
+                    throw new BadRequestException(
+                        'This vehicle is still in a linked auction. End or cancel the auction through its controlled workflow before recording a manual Retail sale. An accepted Retail offer automatically closes the linked auction.',
+                    );
+                }
+            }
             // Compare-and-set the listing state. Only one concurrent completion can
             // win, so double-clicks/racing requests cannot create duplicate sale
             // counters or overwrite a cancellation that committed first.
