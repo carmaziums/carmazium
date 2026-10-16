@@ -809,6 +809,7 @@ model Listing {
   wheelplan                String? // e.g. "2 AXLE RIGID BODY"
   typeApproval             String? // e.g. "M1"
   motHistory               Json? // MOT history snapshot returned during listing lookup
+  officialVehicleData       Json? // Additional bounded DVLA/DVSA v1 facts; never seller declarations or speculative specs
   // Phase 5: Featured boost
   isFeatured               Boolean           @default(false)
   featuredUntil            DateTime?
