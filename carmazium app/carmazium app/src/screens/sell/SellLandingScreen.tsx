@@ -26,6 +26,7 @@ type DvlaPreview = {
   monthOfFirstRegistration?: string; firstUsedDate?: string;
   dateOfLastV5CIssued?: string; wheelplan?: string; typeApproval?: string;
   motHistory?: import('../../data/listings').NativeMotTest[];
+  officialVehicleData?: import('../../data/listings').OfficialVehicleData;
 };
 type RouteSellingMode = 'AUCTION' | 'CLASSIFIED';
 
@@ -175,6 +176,7 @@ export const SellLandingScreen: React.FC = () => {
         dateOfLastV5CIssued: dvlaDetails?.dateOfLastV5CIssued,
         wheelplan: dvlaDetails?.wheelplan, typeApproval: dvlaDetails?.typeApproval,
         motHistory: dvlaDetails?.motHistory,
+        officialVehicleData: dvlaDetails?.officialVehicleData,
       },
     });
   };

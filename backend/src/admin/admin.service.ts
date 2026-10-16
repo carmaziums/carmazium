@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
+import { Injectable, Optional, Logger, NotFoundException, BadRequestException, BadGatewayException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ListingStatus, Prisma, UserRole } from '@prisma/client';
@@ -14,6 +14,9 @@ import { HandoverDocumentsService } from '../auctions/handover-documents.service
 import { buildListingActivationData } from '../listings/listing-activation';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { hasOtherActiveRetailRegistration } from '../listings/retail-uniqueness';
+import { DvlaService } from '../dvla/dvla.service';
+import { motEnrichmentUpdate } from '../listings/mot-backfill';
+import { mergeOfficialVehicleData } from '../listings/official-vehicle-data';
 import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
 import { classifyHistoricalAuction } from './auction-history-reconciliation';
 import {
@@ -36,6 +39,7 @@ export class AdminService {
         private readonly sellersService: SellersService,
         private readonly auctionsService: AuctionsService,
         private readonly handoverDocuments: HandoverDocumentsService,
+        @Optional() private readonly dvlaService?: DvlaService,
     ) { }
 
     async getAllUsers(page = 1, limit = 20, search?: string) {
@@ -800,6 +804,138 @@ export class AdminService {
             throw new NotFoundException('Listing not found');
         }
         return listing;
+    }
+
+    /**
+     * Admin-triggered DVLA/DVSA refresh. Only fills independently verified,
+     * currently empty fields. Never overwrites seller mileage, keys, service
+     * records, reserve/price, declarations or a completed sale. Where a genuine
+     * reciprocal auction/retail pair exists, fill the same missing official
+     * fields on both records without changing either lifecycle.
+     */
+    async refreshOfficialVehicleData(id: string) {
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        if (!listing || listing.deletedAt) throw new NotFoundException('Listing not found');
+        if (listing.status === 'SOLD') {
+            throw new BadRequestException('Completed sale records cannot be modified');
+        }
+        if (!listing.vrm || !this.dvlaService) {
+            throw new BadGatewayException('Official vehicle lookup is not available for this listing');
+        }
+        const official = await this.dvlaService.lookupVrm(listing.vrm, false);
+        const norm = (v: string | null | undefined) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!official.vrm || norm(official.vrm) !== norm(listing.vrm)
+            || (listing.make && official.make && norm(listing.make) !== norm(official.make))
+            || (listing.year && official.year && Math.abs(listing.year - official.year) > 2)) {
+            throw new BadGatewayException('Official registration, make or year did not match; nothing was changed');
+        }
+
+        const ids = [listing.id];
+        if (listing.linkedListingId) {
+            const sibling = await this.prisma.listing.findUnique({ where: { id: listing.linkedListingId } });
+            if (sibling && !sibling.deletedAt && sibling.status !== 'SOLD'
+                && sibling.linkedListingId === listing.id && sibling.sellerId === listing.sellerId
+                && sibling.type !== listing.type && norm(sibling.vrm) === norm(listing.vrm)) {
+                ids.push(sibling.id);
+            }
+        }
+        const updated: Array<{ listingId: string; fields: string[] }> = [];
+        const missing = (v: unknown) => v == null || (typeof v === 'string' && v.trim() === '');
+        const officialFields = [
+            'motStatus', 'motExpiryDate', 'taxStatus', 'taxDueDate',
+            'monthOfFirstRegistration', 'wheelplan', 'typeApproval',
+            'firstUsedDate', 'dateOfLastV5CIssued',
+        ] as const;
+        for (const listingId of ids) {
+            const current = await this.prisma.listing.findUnique({ where: { id: listingId } });
+            if (!current || current.deletedAt || current.status === 'SOLD'
+                || norm(current.vrm) !== norm(listing.vrm)) continue;
+            // A reciprocal link is not permission to apply facts to a mismatched vehicle.
+            if ((current.make && official.make && norm(current.make) !== norm(official.make))
+                || (current.year && official.year && Math.abs(current.year - official.year) > 2)) continue;
+            const patch: Record<string, unknown> = {};
+            for (const field of officialFields) {
+                if (missing(current[field]) && !missing(official[field])) patch[field] = official[field];
+            }
+            if (missing(current.make) && !missing(official.make)) patch.make = official.make;
+            if (current.year == null && official.year) patch.year = official.year;
+            if (current.engineSize == null && official.engineSize) patch.engineSize = official.engineSize;
+            if (missing(current.color) && (official.colour || official.primaryColour)) {
+                patch.color = official.colour || official.primaryColour;
+            }
+            if (current.fuelType == null && official.fuelType) patch.fuelType = official.fuelType;
+            if (current.euroStandard == null && official.euroStandard) patch.euroStandard = official.euroStandard;
+            if (current.co2Emissions == null && official.co2Emissions != null) patch.co2Emissions = official.co2Emissions;
+            if (current.markedForExport == null && official.markedForExport != null) {
+                patch.markedForExport = official.markedForExport;
+            }
+            const enrichment = motEnrichmentUpdate({
+                ...current,
+                make: current.make || official.make,
+                year: current.year || official.year,
+            }, official);
+            if (enrichment && (!Array.isArray(current.motHistory) || current.motHistory.length === 0)) {
+                patch.motHistory = enrichment.motHistory as unknown as Prisma.InputJsonValue;
+            }
+            if (missing(current.model) && (enrichment?.model || official.model)) {
+                patch.model = enrichment?.model || official.model;
+            }
+            const supplementary = mergeOfficialVehicleData(current.officialVehicleData, official.officialVehicleData);
+            if (supplementary && JSON.stringify(current.officialVehicleData ?? null) !== JSON.stringify(supplementary)) {
+                patch.officialVehicleData = supplementary as Prisma.InputJsonValue;
+            }
+            if (Object.keys(patch).length === 0) continue;
+            // Optimistic version check: never overwrite an edit made after our read.
+            const changed = await this.prisma.listing.updateMany({
+                where: { id: listingId, updatedAt: current.updatedAt, deletedAt: null },
+                data: patch as Prisma.ListingUpdateManyMutationInput,
+            });
+            if (changed.count === 1) updated.push({ listingId, fields: Object.keys(patch) });
+        }
+        return {
+            updated,
+            officialMotTestsAvailable: Array.isArray(official.motHistory) && official.motHistory.length > 0,
+            message: updated.length
+                ? 'Only missing verified government data was filled. Seller-entered values were preserved.'
+                : 'No new verified data was available. No listing values were changed.',
+        };
+    }
+
+    /** Notify the seller of precisely named seller-entered gaps; admin only. */
+    async requestVehicleDetailsFromSeller(id: string, requested: string[]) {
+        const listing = await this.prisma.listing.findUnique({ where: { id } });
+        if (!listing || listing.deletedAt) throw new NotFoundException('Listing not found');
+        if (!listing.sellerId || listing.status === 'SOLD') {
+            throw new BadRequestException('Cannot request changes on this listing');
+        }
+        const labels: Record<string, string> = {
+            model: 'vehicle model',
+            transmission: 'gearbox / transmission',
+            location: 'collection location',
+            features: 'vehicle equipment',
+            numberOfKeys: 'number of keys',
+            serviceHistory: 'service history',
+            owners: 'previous keepers',
+        };
+        if (!Array.isArray(requested)) {
+            throw new BadRequestException('Choose the seller fields you need');
+        }
+        const fields = [...new Set(requested)].filter(field => Object.prototype.hasOwnProperty.call(labels, field));
+        if (!fields.length || fields.length > 7 || fields.length !== new Set(requested).size) {
+            throw new BadRequestException('Choose valid seller-editable fields only');
+        }
+        const notification = await this.notificationsService.create({
+            userId: listing.sellerId,
+            type: 'SYSTEM',
+            title: 'Please complete information about your vehicle',
+            message: 'CarMazium needs the following details for "' + listing.title + '": '
+                + fields.map(field => labels[field]).join(', ') + '. Please update your listing. If you need help, contact CarMazium.',
+            link: '/dashboard/seller/listings',
+            entityType: 'LISTING',
+            entityId: listing.id,
+        });
+        this.notificationsGateway.sendNotification(listing.sellerId, notification);
+        return { requestedFields: fields };
     }
 
     /**

@@ -1,3 +1,4 @@
+import type { OfficialVehicleData } from '../data/listings';
 import { apiClient } from './apiClient';
 import { CarListing, type NativeMotTest } from '../data/listings';
 import { formatTransmission } from './transmission';
@@ -98,6 +99,7 @@ export interface ApiListing {
   // Real DVLA / seller-declared history fields — confirmed present on GET /listings/{id}
   // response (2026-07-11 live check). See mobile-audit.md W1.
   motHistory?: NativeMotTest[] | null;
+  officialVehicleData?: OfficialVehicleData | null;
   firstUsedDate?: string | null;
   dateOfLastV5CIssued?: string | null;
   motStatus?: string | null;
@@ -329,6 +331,7 @@ export function mapApiListingToCarListing(l: ApiListing): CarListing {
     videoUrls:            l.videoUrls            ?? null,
     badgeTier:            l.badgeTier            ?? null,
     motHistory:               Array.isArray(l.motHistory) ? l.motHistory : null,
+    officialVehicleData:      l.officialVehicleData ?? null,
     firstUsedDate:            l.firstUsedDate            ?? null,
     dateOfLastV5CIssued:      l.dateOfLastV5CIssued      ?? null,
     markedForExport:          l.markedForExport          ?? null,

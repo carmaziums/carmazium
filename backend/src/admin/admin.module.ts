@@ -10,9 +10,10 @@ import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuctionsModule } from '../auctions/auctions.module';
+import { DvlaModule } from '../dvla/dvla.module';
 
 @Module({
-    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule, EmailModule, NotificationsModule, SellersModule, AuctionsModule, DealersModule],
+    imports: [PrismaModule, AuthModule, ConfigModule, PaymentsModule, EmailModule, NotificationsModule, SellersModule, AuctionsModule, DealersModule, DvlaModule],
     controllers: [AdminController],
     providers: [AdminService],
     exports: [AdminService],

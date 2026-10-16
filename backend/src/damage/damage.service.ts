@@ -67,7 +67,7 @@ export class DamageAnalysisService {
     return this.prisma.$transaction(async tx => {
       const listing = await tx.listing.findUnique({
         where: { id: listingId },
-        select: { id: true, sellerId: true, status: true, images: true },
+        select: { id: true, sellerId: true, status: true, images: true, vrm: true, type: true, linkedListingId: true },
       });
       if (!listing) throw new NotFoundException('Listing not found.');
       const actor = await tx.user.findUnique({
@@ -170,6 +170,49 @@ export class DamageAnalysisService {
             coords: d.coords as any, imageUrl: d.imageUrl || null,
           })),
         });
+      }
+      // The same physical car may be advertised in an Auction and in Retail.
+      // Copy the complete, newly saved 3D damage evidence to its genuine,
+      // reciprocal counterpart inside this transaction. Fresh IDs are required
+      // because a DamageRecord belongs to only one listing.
+      if (listing.linkedListingId) {
+        const other = await tx.listing.findUnique({
+          where: { id: listing.linkedListingId },
+          select: {
+            id: true, sellerId: true, status: true, deletedAt: true,
+            type: true, vrm: true, linkedListingId: true,
+          },
+        });
+        const plate = (value?: string | null) =>
+          String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const sameVehicle = other && !other.deletedAt && other.status !== 'SOLD'
+          && other.sellerId === listing.sellerId
+          && other.linkedListingId === listing.id
+          && other.type !== listing.type && !!plate(listing.vrm)
+          && plate(other.vrm) === plate(listing.vrm);
+        if (sameVehicle) {
+          await tx.damageRecord.deleteMany({ where: { listingId: other.id } });
+          if (detections.length) {
+            await tx.damageRecord.createMany({
+              data: detections.map(d => ({
+                listingId: other.id,
+                part: d.part, type: d.type, size: d.size,
+                coords: d.coords as any, imageUrl: d.imageUrl || null,
+              })),
+            });
+          }
+          const mirror = await tx.listing.updateMany({
+            where: {
+              id: other.id, linkedListingId: listing.id,
+              sellerId: listing.sellerId, status: { not: 'SOLD' },
+              deletedAt: null,
+            },
+            data: { exteriorGrade: computeExteriorGrade(detections) },
+          });
+          if (mirror.count !== 1) {
+            throw new BadRequestException('Linked vehicle damage record changed. Reload and retry.');
+          }
+        }
       }
       // Prisma 6 permits filtering a unique update by the previously checked
       // sellerId. This makes a concurrent ownership transfer fail atomically

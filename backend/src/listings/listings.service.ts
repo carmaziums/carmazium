@@ -43,6 +43,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { DealersService } from '../dealers/dealers.service';
 import { DvlaService } from '../dvla/dvla.service';
 import { motEnrichmentUpdate } from './mot-backfill';
+import { normalizeOfficialVehicleData, mergeOfficialVehicleData } from './official-vehicle-data';
 import { buildListingActivationData } from './listing-activation';
 import { brandAdminSeller, brandListingSeller } from './admin-seller-branding';
 import {
@@ -1403,6 +1404,7 @@ export class ListingsService {
                     wheelplan: dto.wheelplan ?? null,
                     typeApproval: dto.typeApproval ?? null,
                     motHistory: dto.motHistory ? (dto.motHistory as Prisma.InputJsonValue) : undefined,
+                    officialVehicleData: normalizeOfficialVehicleData(dto.officialVehicleData) as Prisma.InputJsonValue | undefined,
                     badgeTier,
                     isFeatured: false,
                     featuredUntil: null,
@@ -1830,6 +1832,7 @@ export class ListingsService {
                 wheelplan: createListingDto.wheelplan ?? null,
                 typeApproval: createListingDto.typeApproval ?? null,
                 motHistory: createListingDto.motHistory ? (createListingDto.motHistory as Prisma.InputJsonValue) : undefined,
+                officialVehicleData: normalizeOfficialVehicleData(createListingDto.officialVehicleData) as Prisma.InputJsonValue | undefined,
                 // Retail package tier. PREMIUM receives its included 28-day
                 // Featured Boost only when the listing is approved and goes live,
                 // so draft/review time never consumes the customer's boost.
@@ -2489,6 +2492,20 @@ export class ListingsService {
         if (updateListingDto.year) updateData.year = updateListingDto.year;
         if (updateListingDto.mileage) updateData.mileage = updateListingDto.mileage;
         if (updateListingDto.vrm) updateData.vrm = updateListingDto.vrm;
+        if (updateListingDto.vin !== undefined) updateData.vin = updateListingDto.vin;
+        if (updateListingDto.color !== undefined) updateData.color = updateListingDto.color;
+        if (updateListingDto.doors !== undefined) updateData.doors = updateListingDto.doors;
+        if (updateListingDto.seats !== undefined) updateData.seats = updateListingDto.seats;
+        if (updateListingDto.engineSize !== undefined) updateData.engineSize = updateListingDto.engineSize;
+        if (updateListingDto.bhp !== undefined) updateData.bhp = updateListingDto.bhp;
+        if (updateListingDto.bodyType !== undefined) updateData.bodyType = mapBodyType(updateListingDto.bodyType);
+        if (updateListingDto.features !== undefined) updateData.features = updateListingDto.features;
+        if (updateListingDto.location !== undefined) updateData.location = updateListingDto.location;
+        if (updateListingDto.condition !== undefined) updateData.condition = updateListingDto.condition;
+        if (updateListingDto.ulezCompliant !== undefined) updateData.ulezCompliant = updateListingDto.ulezCompliant;
+        if (updateListingDto.euroStandard !== undefined) updateData.euroStandard = updateListingDto.euroStandard;
+        if (updateListingDto.co2Emissions !== undefined) updateData.co2Emissions = updateListingDto.co2Emissions;
+        if (updateListingDto.isImported !== undefined) updateData.isImported = updateListingDto.isImported;
         if (updateListingDto.fuelType) updateData.fuelType = mapFuelType(updateListingDto.fuelType);
         if (updateListingDto.transmission) updateData.transmission = mapTransmission(updateListingDto.transmission);
         // status, listing type and badge tier are intentionally not editable here.
@@ -2506,6 +2523,9 @@ export class ListingsService {
         if (updateListingDto.wheelplan !== undefined) updateData.wheelplan = updateListingDto.wheelplan;
         if (updateListingDto.typeApproval !== undefined) updateData.typeApproval = updateListingDto.typeApproval;
         if (updateListingDto.motHistory !== undefined) updateData.motHistory = updateListingDto.motHistory;
+        if (updateListingDto.officialVehicleData !== undefined) {
+            updateData.officialVehicleData = mergeOfficialVehicleData(listing.officialVehicleData, updateListingDto.officialVehicleData);
+        }
         if (updateListingDto.stolenRecovered !== undefined) updateData.stolenRecovered = updateListingDto.stolenRecovered;
         if (updateListingDto.hasOutstandingFinance !== undefined) updateData.hasOutstandingFinance = updateListingDto.hasOutstandingFinance;
         if (updateListingDto.isLegalRegisteredKeeper !== undefined) updateData.isLegalRegisteredKeeper = updateListingDto.isLegalRegisteredKeeper;
@@ -2547,22 +2567,123 @@ export class ListingsService {
             updateData.partnerDistributionAcceptedAt = updateListingDto.partnerDistributionAccepted ? new Date() : null;
         }
 
-        // Update the listing
-        const updatedListing = await this.prisma.listing.update({
-            where: { id },
-            data: updateData,
-        });
+        // A linked auction and retail listing describe the same physical car.
+        // Mirror seller-edited VEHICLE facts atomically, never channel-specific
+        // prices, review/status, badges, boosting or partner permissions.
+        // Keep each channel's title as its own seller-authored marketing text.
+        const vehicleFields = new Set([
+            'description', 'images', 'videoUrls', 'make', 'model', 'year', 'mileage',
+            'vrm', 'vin', 'fuelType', 'transmission', 'color', 'doors', 'seats',
+            'engineSize', 'bhp', 'bodyType', 'features', 'location', 'condition',
+            'ulezCompliant', 'euroStandard', 'co2Emissions', 'motStatus', 'taxStatus',
+            'motExpiryDate', 'taxDueDate', 'markedForExport',
+            'monthOfFirstRegistration', 'firstUsedDate', 'dateOfLastV5CIssued',
+            'wheelplan', 'typeApproval', 'motHistory', 'officialVehicleData',
+            'stolenRecovered', 'hasOutstandingFinance', 'isLegalRegisteredKeeper',
+            'writeOffCategory', 'variant', 'driveType', 'numberOfKeys',
+            'serviceHistory', 'mechanicalIssues', 'electricalIssues', 'owners',
+            'torqueNm', 'topSpeedMph', 'zeroTo60Mph', 'combinedMpg', 'extraUrbanMpg',
+            'isDepartedSale', 'departedRelationship', 'notOwnerRelationship',
+            'deliveryAvailable', 'deliveryPricePerMile', 'deliveryMaxMiles',
+            'isImported',
+        ]);
+        const sharedData = Object.fromEntries(
+            Object.entries(updateData).filter(([key]) => vehicleFields.has(key)),
+        );
+        const normalizePlate = (plate: string | null | undefined) =>
+            String(plate ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (listing.linkedListingId && updateData.vrm
+            && normalizePlate(updateData.vrm) !== normalizePlate(listing.vrm)) {
+            throw new BadRequestException(
+                'Change a vehicle registration through controlled admin correction before editing two linked listings.',
+            );
+        }
+        const updatedListing = listing.linkedListingId
+            ? await this.prisma.$transaction(async tx => {
+                const current = await tx.listing.findUnique({ where: { id } });
+                if (!current || current.deletedAt || current.sellerId !== listing.sellerId) {
+                    throw new BadRequestException('Vehicle listing changed; reload before editing.');
+                }
+                const counterpart = current.linkedListingId
+                    ? await tx.listing.findUnique({ where: { id: current.linkedListingId } })
+                    : null;
+                const sameVehicle = !!counterpart && !counterpart.deletedAt
+                    && counterpart.status !== 'SOLD'
+                    && counterpart.linkedListingId === current.id
+                    && counterpart.sellerId === current.sellerId
+                    && counterpart.type !== current.type
+                    && !!normalizePlate(current.vrm)
+                    && normalizePlate(current.vrm) === normalizePlate(counterpart.vrm);
+                if (sameVehicle && sharedData.writeOffCategory
+                    && ['CAT_A', 'CAT_B'].includes(String(sharedData.writeOffCategory))
+                    && counterpart!.type === 'CLASSIFIED') {
+                    throw new BadRequestException(
+                        'Cat A/B vehicle declarations cannot be mirrored into a Retail listing. Withdraw the linked Retail listing first.',
+                    );
+                }
+                const saved = await tx.listing.update({ where: { id }, data: updateData });
+                if (sameVehicle && Object.keys(sharedData).length) {
+                    const mirrored = { ...sharedData };
+                    if (mirrored.officialVehicleData !== undefined) {
+                        mirrored.officialVehicleData = mergeOfficialVehicleData(
+                            counterpart!.officialVehicleData, mirrored.officialVehicleData,
+                        );
+                    }
+                    const written = await tx.listing.updateMany({
+                        where: {
+                            id: counterpart!.id,
+                            linkedListingId: current.id,
+                            sellerId: current.sellerId,
+                            updatedAt: counterpart!.updatedAt,
+                            deletedAt: null,
+                        },
+                        data: mirrored,
+                    });
+                    if (written.count !== 1) {
+                        throw new BadRequestException(
+                            'Linked vehicle listing changed during editing; reload and try again.',
+                        );
+                    }
+                }
+                return saved;
+            })
+            : await this.prisma.listing.update({ where: { id }, data: updateData });
 
-        // Re-geocode if location changed
+        // Location changes must refresh map/search coordinates on both genuine
+        // linked rows. Constrain each late geocode write to the latest saved
+        // location so an older slow response cannot overwrite a newer edit.
         if (updateListingDto.location && updateListingDto.location !== listing.location) {
             this.geocodeLocation(updateListingDto.location)
-                .then(coords => {
-                    if (coords) return this.prisma.listing.update({
-                        where: { id },
-                        data: { latitude: coords.lat, longitude: coords.lng },
+                .then(async coords => {
+                    if (!coords) return;
+                    const data = { latitude: coords.lat, longitude: coords.lng };
+                    await this.prisma.listing.updateMany({
+                        where: { id, sellerId: listing.sellerId, location: updateListingDto.location, deletedAt: null },
+                        data,
                     });
+                    if (!updatedListing.linkedListingId) return;
+                    const counterpart = await this.prisma.listing.findUnique({
+                        where: { id: updatedListing.linkedListingId },
+                    });
+                    const plate = (value?: string | null) =>
+                        String(value ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+                    if (counterpart && !counterpart.deletedAt && counterpart.status !== 'SOLD'
+                        && counterpart.linkedListingId === id
+                        && counterpart.sellerId === listing.sellerId
+                        && counterpart.type !== listing.type
+                        && !!plate(listing.vrm)
+                        && plate(counterpart.vrm) === plate(listing.vrm)) {
+                        await this.prisma.listing.updateMany({
+                            where: {
+                                id: counterpart.id, sellerId: listing.sellerId,
+                                linkedListingId: id, location: updateListingDto.location,
+                                deletedAt: null, status: { not: 'SOLD' },
+                            },
+                            data,
+                        });
+                    }
                 })
-                .catch(() => { /* silent */ });
+                .catch(() => { /* Location text remains saved; admin can retry geocoding. */ });
         }
 
         // Phase 2: If status changed to ACTIVE, increment seller's listing count
@@ -3067,6 +3188,32 @@ export class ListingsService {
         }
 
         const updated = await this.prisma.$transaction(async (tx) => {
+            // A manual/off-platform Retail sale cannot overtake its still-running
+            // linked auction or an auction winner. Use the exact same auction
+            // advisory lock as the bidding/retail-offer lifecycle.
+            if (listing.linkedListingId) {
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${listing.linkedListingId}, 0))::text`;
+                const linkedAuction = await tx.auction.findFirst({
+                    where: { listingId: listing.linkedListingId, deletedAt: null },
+                    select: {
+                        status: true, winnerId: true, wonAt: true,
+                        provisionalOfferBidId: true,
+                    },
+                });
+                if (linkedAuction?.winnerId || linkedAuction?.wonAt) {
+                    throw new BadRequestException(
+                        'This vehicle already has an auction winner. Resolve the auction sale or cancellation before recording a Retail sale.',
+                    );
+                }
+                if (linkedAuction && (
+                    ['ACTIVE', 'SCHEDULED'].includes(linkedAuction.status)
+                    || linkedAuction.provisionalOfferBidId
+                )) {
+                    throw new BadRequestException(
+                        'This vehicle is still in a linked auction. End or cancel the auction through its controlled workflow before recording a manual Retail sale. An accepted Retail offer automatically closes the linked auction.',
+                    );
+                }
+            }
             // Compare-and-set the listing state. Only one concurrent completion can
             // win, so double-clicks/racing requests cannot create duplicate sale
             // counters or overwrite a cancellation that committed first.
@@ -3163,6 +3310,7 @@ export class ListingsService {
         return this.prisma.$transaction(async (tx) => {
             let source = await tx.listing.findUnique({
                 where: { id: listingId },
+                include: { damageRecords: true },
             });
             if (!source || source.deletedAt) throw new NotFoundException('Listing not found');
             if (source.sellerId !== sellerId) throw new ForbiddenException('You do not own this listing');
@@ -3218,15 +3366,34 @@ export class ListingsService {
                     euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
                     motStatus: source.motStatus, taxStatus: source.taxStatus,
                     motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                    // Retain persisted official history across Auction ↔ Retail channels.
+                    motHistory: source.motHistory ?? undefined,
+                    officialVehicleData: source.officialVehicleData ?? undefined,
                     markedForExport: source.markedForExport,
                     monthOfFirstRegistration: source.monthOfFirstRegistration,
+                    firstUsedDate: source.firstUsedDate,
+                    dateOfLastV5CIssued: source.dateOfLastV5CIssued,
                     wheelplan: source.wheelplan, typeApproval: source.typeApproval,
                     variant: source.variant, driveType: source.driveType,
                     numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    mechanicalIssues: source.mechanicalIssues,
+                    electricalIssues: source.electricalIssues,
                     owners: source.owners, torqueNm: source.torqueNm,
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                     exteriorGrade: source.exteriorGrade,
+                    // A defect marked on the interactive 3D model is part of the
+                    // physical vehicle, not the selling channel. Copy its
+                    // original coordinates and evidence photo with fresh IDs.
+                    damageRecords: {
+                        create: (source.damageRecords ?? []).map(d => ({
+                            part: d.part,
+                            type: d.type,
+                            size: d.size,
+                            coords: d.coords as Prisma.InputJsonValue,
+                            imageUrl: d.imageUrl,
+                        })),
+                    },
                     bannerLabel: source.bannerLabel,
                     badgeTier: dto.badgeTier,
                     sellerId,
@@ -3235,7 +3402,14 @@ export class ListingsService {
                     stolenRecovered: source.stolenRecovered,
                     hasOutstandingFinance: source.hasOutstandingFinance,
                     isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    isDepartedSale: source.isDepartedSale,
+                    departedRelationship: source.departedRelationship,
+                    notOwnerRelationship: source.notOwnerRelationship,
                     writeOffCategory: source.writeOffCategory,
+                    // Delivery terms concern the physical car and are retained on both channels.
+                    deliveryAvailable: source.deliveryAvailable,
+                    deliveryPricePerMile: source.deliveryPricePerMile,
+                    deliveryMaxMiles: source.deliveryMaxMiles,
                     linkedListingId: listingId,
                 } as any,
             });
@@ -3290,6 +3464,7 @@ export class ListingsService {
                 where: { id: listingId },
                 include: {
                     hpiReport: { select: { id: true } },
+                    damageRecords: true,
                 },
             });
 
@@ -3371,15 +3546,34 @@ export class ListingsService {
                     euroStandard: source.euroStandard, co2Emissions: source.co2Emissions,
                     motStatus: source.motStatus, taxStatus: source.taxStatus,
                     motExpiryDate: source.motExpiryDate, taxDueDate: source.taxDueDate,
+                    // Retain persisted official history across Auction ↔ Retail channels.
+                    motHistory: source.motHistory ?? undefined,
+                    officialVehicleData: source.officialVehicleData ?? undefined,
                     markedForExport: source.markedForExport,
                     monthOfFirstRegistration: source.monthOfFirstRegistration,
+                    firstUsedDate: source.firstUsedDate,
+                    dateOfLastV5CIssued: source.dateOfLastV5CIssued,
                     wheelplan: source.wheelplan, typeApproval: source.typeApproval,
                     variant: source.variant, driveType: source.driveType,
                     numberOfKeys: source.numberOfKeys, serviceHistory: source.serviceHistory,
+                    mechanicalIssues: source.mechanicalIssues,
+                    electricalIssues: source.electricalIssues,
                     owners: source.owners, torqueNm: source.torqueNm,
                     topSpeedMph: source.topSpeedMph, zeroTo60Mph: source.zeroTo60Mph,
                     combinedMpg: source.combinedMpg, extraUrbanMpg: source.extraUrbanMpg,
                     exteriorGrade: source.exteriorGrade,
+                    // A defect marked on the interactive 3D model is part of the
+                    // physical vehicle, not the selling channel. Copy its
+                    // original coordinates and evidence photo with fresh IDs.
+                    damageRecords: {
+                        create: (source.damageRecords ?? []).map(d => ({
+                            part: d.part,
+                            type: d.type,
+                            size: d.size,
+                            coords: d.coords as Prisma.InputJsonValue,
+                            imageUrl: d.imageUrl,
+                        })),
+                    },
                     bannerLabel: source.bannerLabel,
                     badgeTier: 'FREE',
                     sellerId,
@@ -3388,7 +3582,14 @@ export class ListingsService {
                     stolenRecovered: source.stolenRecovered,
                     hasOutstandingFinance: source.hasOutstandingFinance,
                     isLegalRegisteredKeeper: source.isLegalRegisteredKeeper,
+                    isDepartedSale: source.isDepartedSale,
+                    departedRelationship: source.departedRelationship,
+                    notOwnerRelationship: source.notOwnerRelationship,
                     writeOffCategory: source.writeOffCategory,
+                    // Delivery terms concern the physical car and are retained on both channels.
+                    deliveryAvailable: source.deliveryAvailable,
+                    deliveryPricePerMile: source.deliveryPricePerMile,
+                    deliveryMaxMiles: source.deliveryMaxMiles,
                     linkedListingId: listingId,
                     auction: {
                         create: {

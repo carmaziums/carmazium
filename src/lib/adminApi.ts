@@ -804,6 +804,29 @@ export async function relistAdminDraftAsAuction(listingId: string) {
   return result.data;
 }
 
+/** Explicit admin action only; does not change seller-entered data. */
+export async function refreshAdminOfficialVehicleData(listingId: string): Promise<{
+  updated: Array<{ listingId: string; fields: string[] }>;
+  officialMotTestsAvailable: boolean;
+  message: string;
+}> {
+  const result = await apiClient<{ data: {
+    updated: Array<{ listingId: string; fields: string[] }>;
+    officialMotTestsAvailable: boolean;
+    message: string;
+  } }>(`/admin/listings/${listingId}/refresh-official-data`, { method: 'POST' });
+  return result.data;
+}
+
+/** Requests only seller-editable fields; government information is not sent as a seller task. */
+export async function requestAdminSellerVehicleDetails(listingId: string, fields: string[]): Promise<{ requestedFields: string[] }> {
+  const result = await apiClient<{ data: { requestedFields: string[] } }>(
+    `/admin/listings/${listingId}/request-seller-details`,
+    { method: 'POST', body: JSON.stringify({ fields }) },
+  );
+  return result.data;
+}
+
 export async function getAdminListing(id: string) {
   const result = await apiClient<{ data: any }>(`/admin/listings/${id}`);
   return result.data;

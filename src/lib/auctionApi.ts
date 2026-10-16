@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient';
+import type { OfficialVehicleData } from './dvlaApi';
 
 const API = '';
 
@@ -69,6 +70,12 @@ export interface AuctionListing {
     owners: string | null;
     serviceHistory: string | null;
     // Additional non-sensitive listing details already stored on the vehicle.
+    officialVehicleData?: OfficialVehicleData | null;
+    notOwnerRelationship?: string | null;
+    departedRelationship?: string | null;
+    deliveryPricePerMile?: number | string | null;
+    deliveryMaxMiles?: number | null;
+    videoUrls?: string[] | null;
     variant?: string | null;
     driveType?: string | null;
     numberOfKeys?: number | null;

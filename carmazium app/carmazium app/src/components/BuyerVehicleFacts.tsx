@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
 import { FontFamily } from '../constants/typography';
-import type { NativeMotTest } from '../data/listings';
+import type { NativeMotTest, OfficialVehicleData } from '../data/listings';
 
 const displayDate = (value: unknown): string | null => {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -32,6 +32,8 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
   if (!record) return null;
   const data = record as Record<string, unknown>;
+  const official = data.officialVehicleData && typeof data.officialVehicleData === 'object'
+    ? data.officialVehicleData as OfficialVehicleData : undefined;
   const history = (Array.isArray(data.motHistory) ? data.motHistory : [])
     .filter((item): item is NativeMotTest => Boolean(item && typeof item === 'object'
       && typeof item.completedDate === 'string'
@@ -43,16 +45,27 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
       ['Make', data.make], ['Model', data.model], ['Variant / trim', data.variant],
       ['Registration', data.vrm], ['First registered', data.monthOfFirstRegistration],
       ['First used', displayDate(data.firstUsedDate)], ['Colour', data.color ?? data.colour],
+      ['First DVLA registration', official?.dvla?.monthOfFirstDvlaRegistration],
+      ['MOT registration date', displayDate(official?.mot?.registrationDate)],
+      ['Manufacture date', displayDate(official?.mot?.manufactureDate ?? official?.dvla?.manufactureDate)],
+      ['Secondary colour (MOT)', official?.mot?.secondaryColour],
+      ['Primary colour (MOT)', official?.mot?.primaryColour],
       ['Body type', data.bodyType ?? data.bodyTypeRaw], ['Drive type', data.driveType],
       ['Doors', data.doors], ['Seats', data.seats], ['Previous owners (seller)', data.owners],
       ['Keys (seller)', data.numberOfKeys],
+      ['Vehicle category', data.vehicleType],
+      ['Collection area', data.location],
+      ['Imported (seller)', data.isImported === true ? 'Yes' : null],
     ] },
     { title: 'TECHNICAL & EMISSIONS', entries: [
-      ['Fuel', data.fuelType], ['Transmission', data.transmission],
+      ['Fuel', data.fuelType ?? official?.dvla?.rawFuelType], ['Transmission', data.transmission],
       ['Engine (cc)', data.engineSize], ['Power (bhp)', data.bhp],
-      ['Euro standard', data.euroStandard],
+      ['Euro standard', data.euroStandard ?? official?.dvla?.rawEuroStatus],
       ['CO₂ (g/km)', data.co2Emissions], ['Type approval', data.typeApproval],
       ['Wheelplan', data.wheelplan],
+      ['Revenue weight (kg)', official?.dvla?.revenueWeight],
+      ['Real-driving emissions category', official?.dvla?.realDrivingEmissions],
+      ['Automated vehicle (DVLA)', official?.dvla?.automatedVehicle == null ? null : official.dvla.automatedVehicle ? 'Yes' : 'No'],
       ['Torque (Nm)', data.torqueNm], ['Combined MPG', data.combinedMpg],
       ['Extra-urban MPG', data.extraUrbanMpg],
       ['Top speed (mph)', data.topSpeedMph ?? data.topSpeed],
@@ -64,12 +77,26 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
       ['Tax status (saved)', data.taxStatus],
       ['Tax due (saved)', displayDate(data.taxDueDate)],
       ['Last V5C issued', displayDate(data.dateOfLastV5CIssued)],
+      ['Additional vehicle tax rate end', displayDate(official?.dvla?.artEndDate)],
+      ['Last MOT test date', displayDate(official?.mot?.lastMotTestDate)],
+      ['First MOT due date', displayDate(official?.mot?.motTestDueDate)],
       ['Marked for export (saved)', data.markedForExport == null ? null : data.markedForExport ? 'Yes' : 'No'],
+    ] },
+    { title: 'SELLER DELIVERY OPTIONS', entries: [
+      ['Delivery offered', data.deliveryAvailable === true ? 'Yes, subject to seller terms' : null],
+      ['Maximum delivery distance', data.deliveryAvailable === true && typeof data.deliveryMaxMiles === 'number' ? data.deliveryMaxMiles + ' miles' : null],
+      ['Advertised delivery rate', data.deliveryAvailable === true && data.deliveryPricePerMile != null && Number.isFinite(Number(data.deliveryPricePerMile)) ? '£' + Number(data.deliveryPricePerMile).toFixed(2) + ' per mile' : null],
     ] },
     { title: 'SELLER DECLARATIONS', entries: [
       ['Service history (seller)', data.serviceHistory],
       ['Known mechanical issues (seller)', data.mechanicalIssues],
       ['Known electrical issues (seller)', data.electricalIssues],
+      ['Vehicle condition (seller)', data.condition ?? data.conditionRaw],
+      ['Stolen / recovered (seller)', data.stolenRecovered == null ? null : data.stolenRecovered === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Outstanding finance (seller)', data.hasOutstandingFinance == null ? null : data.hasOutstandingFinance === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Registered keeper (seller)', data.isLegalRegisteredKeeper == null ? null : data.isLegalRegisteredKeeper === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Estate sale (seller)', data.isDepartedSale === true ? 'Yes' : null],
+      ['Features / options', Array.isArray(data.features) ? data.features.filter((v): v is string => typeof v === 'string' && !!v.trim()).join(', ') : null],
       ['Write-off category (seller)', data.writeOffCategory && data.writeOffCategory !== 'NONE' ? data.writeOffCategory : null],
     ] },
   ];
@@ -129,6 +156,7 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
                 <View style={styles.defects}>
                   {!!test.expiryDate && <Text style={styles.note}>Test expiry: {displayDate(test.expiryDate)}</Text>}
                   {!!test.motTestNumber && <Text style={styles.note}>MOT reference: {test.motTestNumber}</Text>}
+                  {!!test.odometerResultType && <Text style={styles.note}>Odometer reading status: {test.odometerResultType}</Text>}
                   {!defects.length && <Text style={styles.note}>No individual defect text was saved for this test.</Text>}
                   {defects.map((defect, i) => (
                     <View key={i} style={styles.defect}>

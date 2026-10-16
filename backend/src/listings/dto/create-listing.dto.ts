@@ -20,6 +20,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { normalizeListingMotHistory } from './normalize-listing-mot-history';
+import { normalizeOfficialVehicleData, type OfficialVehicleData } from '../official-vehicle-data';
 
 // ─── Enums (mirror Prisma schema) ───────────────────────────────────────────
 
@@ -412,6 +413,12 @@ export class CreateListingDto {
     @IsOptional()
     motHistory?: Record<string, unknown>[];
 
+
+    @ApiProperty({ description: 'Additional DVLA/DVSA vehicle metadata not held in separate columns; allowlisted by server', required: false })
+    @Transform(({ value }) => normalizeOfficialVehicleData(value), { toClassOnly: true })
+    @IsObject()
+    @IsOptional()
+    officialVehicleData?: OfficialVehicleData;
 
     @ApiProperty({ description: 'Badge tier: FREE (auction only), BASIC (£1 retail), STANDARD (£10), or PREMIUM (£25 + boost)', example: 'BASIC', required: false, default: 'BASIC' })
     @IsString()

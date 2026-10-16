@@ -655,6 +655,73 @@ describe('ListingsService', () => {
         });
     });
 
+    describe('complete seller edit persistence and dual-channel consistency', () => {
+        it('saves all seller-entered specifications including zero/false on a normal edit', async () => {
+            const existing = {
+                id: 'listing-tech', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'DRAFT', location: 'Birmingham', linkedListingId: null, deletedAt: null,
+            };
+            prisma.listing.findUnique.mockResolvedValue(existing);
+            prisma.listing.update.mockImplementation(async ({ data }: any) => ({ ...existing, ...data }));
+            await service.update('listing-tech', 'seller-1', {
+                color: 'BLUE', bodyType: 'HATCHBACK', doors: 5, seats: 5, engineSize: 1498,
+                bhp: 113, features: ['Air Conditioning'], location: 'Birmingham',
+                co2Emissions: 0, ulezCompliant: false, isImported: false,
+                condition: 'GOOD', vin: 'WVWZZZ1KZAW000001',
+            } as any);
+            const fields = prisma.listing.update.mock.calls[0][0].data;
+            expect(fields).toMatchObject({
+                color: 'BLUE', bodyType: 'HATCHBACK', doors: 5, seats: 5, engineSize: 1498,
+                bhp: 113, features: ['Air Conditioning'], location: 'Birmingham',
+                co2Emissions: 0, ulezCompliant: false, isImported: false,
+                condition: 'GOOD', vin: 'WVWZZZ1KZAW000001',
+            });
+        });
+
+        it('mirrors physical-vehicle disclosures but never pricing or badge data into the linked auction', async () => {
+            const updatedAt = new Date('2026-10-16T12:00:00.000Z');
+            const source = {
+                id: 'retail-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', vrm: 'AB12CDE', linkedListingId: 'auction-2',
+                updatedAt, location: 'Birmingham', deletedAt: null,
+            };
+            const other = {
+                ...source, id: 'auction-2', type: 'AUCTION', linkedListingId: 'retail-1',
+            };
+            prisma.listing.findUnique.mockImplementation(async ({ where }: any) =>
+                where.id === 'auction-2' ? other : source);
+            prisma.listing.update.mockImplementation(async ({ data }: any) => ({ ...source, ...data }));
+            const result = await service.update('retail-1', 'seller-1', {
+                price: 9950, priceMin: 9000, badgeTier: 'PREMIUM',
+                color: 'SILVER', mechanicalIssues: 'Seller confirms clutch noise',
+                electricalIssues: 'Warning light observed', numberOfKeys: 2,
+                hasOutstandingFinance: true,
+            } as any);
+            expect(result.color).toBe('SILVER');
+            const mirrored = prisma.listing.updateMany.mock.calls[0][0];
+            expect(mirrored.where).toMatchObject({ id: 'auction-2', linkedListingId: 'retail-1', sellerId: 'seller-1' });
+            expect(mirrored.data).toMatchObject({
+                color: 'SILVER', mechanicalIssues: 'Seller confirms clutch noise',
+                electricalIssues: 'Warning light observed', numberOfKeys: 2,
+                hasOutstandingFinance: true,
+            });
+            expect(mirrored.data).not.toHaveProperty('price');
+            expect(mirrored.data).not.toHaveProperty('priceMin');
+            expect(mirrored.data).not.toHaveProperty('badgeTier');
+        });
+
+        it('does not allow changing registration identity inside a linked auction/retail pair', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'retail-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', vrm: 'AB12CDE', linkedListingId: 'auction-2', deletedAt: null,
+            });
+            await expect(service.update('retail-1', 'seller-1', {
+                vrm: 'ZZ99ZZZ',
+            } as any)).rejects.toThrow(/vehicle registration through controlled admin correction/i);
+            expect(prisma.listing.update).not.toHaveBeenCalled();
+        });
+    });
+
     describe('controlled sale completion', () => {
         it('routes generic SOLD through recordSale and uses the accepted buyer/price', async () => {
             const active = {

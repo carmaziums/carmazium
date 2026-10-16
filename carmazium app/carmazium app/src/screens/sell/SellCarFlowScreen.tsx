@@ -36,6 +36,7 @@ import {
   type RetailConversionCandidate,
 } from '../../lib/listingsApi';
 import { CAR_MAKES, getModelsForMake } from '../../data/carData';
+import type { OfficialVehicleData } from '../../data/listings';
 import { BottomSheet } from '../../components/BottomSheet';
 import * as Location from 'expo-location';
 import { getAuctionOpeningBid, getAuctionReserveGuide } from '../../lib/auctionPricing';
@@ -53,6 +54,7 @@ import {
 type Step = 1 | 2 | 3 | 4 | 5;
 
 interface DvlaData {
+  officialVehicleData?: OfficialVehicleData;
   make?: string; model?: string; colour?: string; primaryColour?: string; year?: number;
   engineSize?: number; fuelType?: string; transmission?: string;
   variant?: string; bodyType?: string; driveType?: string;
@@ -643,6 +645,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [typeApproval, setTypeApproval] = useState(() => landingPrefill?.typeApproval || '');
   // DVSA MOT history is saved to the listing for buyer viewing. Historical
   // MOT mileage must never replace seller-entered current mileage.
+  const [officialVehicleData, setOfficialVehicleData] = useState<OfficialVehicleData | undefined>(() => landingPrefill?.officialVehicleData);
   const [motHistory, setMotHistory] = useState<import('../../data/listings').NativeMotTest[]>(
     () => landingPrefill?.motHistory ?? [],
   );
@@ -689,7 +692,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // Ownership
   const [owners, setOwners] = useState('');
   const [isImported, setIsImported] = useState(false);
-  const [markedForExport, setMarkedForExport] = useState(() => landingPrefill?.markedForExport === true);
+  const [markedForExport, setMarkedForExport] = useState<boolean | null>(() => landingPrefill?.markedForExport ?? null);
   const [condition, setCondition] = useState('');
   const [isDepartedSale, setIsDepartedSale] = useState(false);
   const [departedRelSelect, setDepartedRelSelect] = useState('');
@@ -1066,7 +1069,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         if (l.taxDueDate) setTaxDue(String(l.taxDueDate));
         if (l.monthOfFirstRegistration) setFirstRegistered(String(l.monthOfFirstRegistration));
         if (l.firstUsedDate) setFirstUsedDate(String(l.firstUsedDate));
+        if (l.dateOfLastV5CIssued) setLastV5C(String(l.dateOfLastV5CIssued));
         if (Array.isArray(l.motHistory)) setMotHistory(l.motHistory);
+        if (l.officialVehicleData) setOfficialVehicleData(l.officialVehicleData);
         if (l.wheelplan) setWheelplan(String(l.wheelplan));
         if (l.typeApproval) setTypeApproval(String(l.typeApproval));
         setVariant(l.variant ?? '');
@@ -1098,7 +1103,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setDescription(l.description ?? '');
         if (l.owners != null) setOwners(String(l.owners));
         setIsImported(!!l.isImported);
-        setMarkedForExport(!!l.markedForExport);
+        setMarkedForExport(l.markedForExport ?? null);
         setIsDepartedSale(!!l.isDepartedSale);
         if (l.departedRelationship) {
           const opt = RELATIONSHIP_OPTIONS.find(o => o === l.departedRelationship);
@@ -1344,6 +1349,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setMotStatus('');
         setMotExpiry('');
         setMotHistory([]);
+        setOfficialVehicleData(undefined);
         setTaxStatus('');
         setTaxDue('');
         setFirstRegistered('');
@@ -1354,7 +1360,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         setEuroStandard('');
         setCo2Emissions('');
         setUlezCompliant(null);
-        setMarkedForExport(false);
+        setMarkedForExport(null);
         setMileage('');
         // A valuation/asking-price guide from the old registration must
         // never be presented as an offer for the newly entered vehicle.
@@ -1409,8 +1415,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.make) setMake(String(data.make));
       if (data.model) setModel(String(data.model));
       if (data.year) setYear(String(data.year));
-      if (data.colour) setColour(String(data.colour));
-      if (data.primaryColour) setColour(String(data.primaryColour));
+      if (data.colour || data.primaryColour) setColour(String(data.colour || data.primaryColour));
       if (data.engineSize) setEngineSize(String(data.engineSize));
       if (data.fuelType) setFuelType(String(data.fuelType));
       if (data.transmission) {
@@ -1428,18 +1433,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (data.seats != null) setSeats(String(data.seats));
       if (data.bhp != null) setBhp(String(data.bhp));
       if (data.euroStandard) setEuroStandard(String(data.euroStandard));
-      if (data.co2Emissions) setCo2Emissions(String(data.co2Emissions));
+      if (data.co2Emissions != null) setCo2Emissions(String(data.co2Emissions));
       if (data.motStatus) setMotStatus(String(data.motStatus));
       if (data.taxStatus) setTaxStatus(String(data.taxStatus));
       if (data.motExpiryDate) setMotExpiry(String(data.motExpiryDate));
       if (data.taxDueDate) setTaxDue(String(data.taxDueDate));
-      if (data.markedForExport !== undefined) setMarkedForExport(!!data.markedForExport);
+      if (data.markedForExport !== undefined) setMarkedForExport(data.markedForExport);
       if (data.monthOfFirstRegistration) setFirstRegistered(String(data.monthOfFirstRegistration));
       if (data.wheelplan) setWheelplan(String(data.wheelplan));
       if (data.typeApproval) setTypeApproval(String(data.typeApproval));
       if (data.dateOfLastV5CIssued) setLastV5C(String(data.dateOfLastV5CIssued));
       if (data.firstUsedDate) setFirstUsedDate(String(data.firstUsedDate));
       if (Array.isArray(data.motHistory)) setMotHistory(data.motHistory);
+      if (data.officialVehicleData) setOfficialVehicleData(data.officialVehicleData);
       setDvlaFetched(true);
     } catch (err: any) {
       if (requestId === lookupRequestRef.current) {
@@ -2001,7 +2007,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         features, title, description, condition,
         owners: owners || undefined,
         isImported,
-        markedForExport,
+        markedForExport: markedForExport ?? undefined,
         isDepartedSale: isDepartedSale || undefined,
         departedRelationship: isDepartedSale ? (departedRelationship || undefined) : undefined,
         writeOffCategory: writeOffCat,
@@ -2027,6 +2033,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         monthOfFirstRegistration: firstRegistered, firstUsedDate,
         dateOfLastV5CIssued: lastV5C, wheelplan, typeApproval,
         motHistory: motHistory.length ? motHistory : undefined,
+        officialVehicleData,
       };
       // Remove undefined values
       Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);

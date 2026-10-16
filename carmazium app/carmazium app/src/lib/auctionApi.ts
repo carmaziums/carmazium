@@ -35,6 +35,34 @@ export interface AuctionBid {
 }
 
 export interface AuctionListingDetail {
+  videoUrls?: string[] | null;
+  officialVehicleData?: import('../data/listings').OfficialVehicleData | null;
+  motHistory?: import('../data/listings').NativeMotTest[] | null;
+  vin?: string | null;
+  vrm?: string | null;
+  monthOfFirstRegistration?: string | null;
+  firstUsedDate?: string | null;
+  dateOfLastV5CIssued?: string | null;
+  motStatus?: string | null;
+  motExpiryDate?: string | null;
+  taxStatus?: string | null;
+  taxDueDate?: string | null;
+  markedForExport?: boolean | null;
+  wheelplan?: string | null;
+  typeApproval?: string | null;
+  co2Emissions?: number | null;
+  numberOfKeys?: number | null;
+  serviceHistory?: string | null;
+  mechanicalIssues?: string | null;
+  electricalIssues?: string | null;
+  stolenRecovered?: boolean | null;
+  hasOutstandingFinance?: boolean | null;
+  isLegalRegisteredKeeper?: boolean | null;
+  writeOffCategory?: string | null;
+  notOwnerRelationship?: string | null;
+  departedRelationship?: string | null;
+  deliveryPricePerMile?: number | string | null;
+  deliveryMaxMiles?: number | null;
   id: string;
   vehicleId?: string | null;
   sellerId?: string | null;

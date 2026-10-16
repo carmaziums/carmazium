@@ -12,12 +12,35 @@ export type Transmission = 'Automatic' | 'Manual' | 'Semi-Automatic' | 'CVT' | '
 export type Category = 'Sports' | 'SUV' | 'Saloon' | 'Convertible' | 'Supercar' | 'Estate' | 'Hatchback' | 'Crossover' | 'MPV' | 'Van' | 'Pickup' | 'Motorcycle' | 'HGV' | 'Not specified';
 export type Condition = 'New' | 'Used' | 'Certified Pre-Owned';
 
+export interface OfficialVehicleData {
+  dvla?: {
+    monthOfFirstDvlaRegistration?: string;
+    artEndDate?: string;
+    revenueWeight?: number;
+    realDrivingEmissions?: string;
+    automatedVehicle?: boolean;
+    rawFuelType?: string;
+    rawEuroStatus?: string;
+    manufactureDate?: string;
+  };
+  mot?: {
+    registrationDate?: string;
+    manufactureDate?: string;
+    secondaryColour?: string;
+    lastMotTestDate?: string;
+    motTestDueDate?: string;
+    primaryColour?: string;
+    dataSource?: string;
+  };
+}
+
 export interface NativeMotTest {
   completedDate: string;
   testResult: 'PASSED' | 'FAILED' | string;
   expiryDate?: string;
   odometerValue?: string;
   odometerUnit?: string;
+  odometerResultType?: string;
   motTestNumber?: string;
   defects?: Array<{ text: string; type: string; dangerous?: boolean }>;
 }
@@ -141,6 +164,7 @@ export interface CarListing {
   // Real DVLA / seller-declared history fields (see mobile-audit.md W1) — null/undefined means
   // "not disclosed", never assume a positive value as a fallback.
   motHistory?: NativeMotTest[] | null;
+  officialVehicleData?: OfficialVehicleData | null;
   firstUsedDate?: string | null;
   dateOfLastV5CIssued?: string | null;
   markedForExport?: boolean | null;

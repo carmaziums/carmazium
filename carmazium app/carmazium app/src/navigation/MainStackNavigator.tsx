@@ -172,6 +172,7 @@ export type MainStackParamList = {
     taxStatus?: string; taxDueDate?: string; markedForExport?: boolean;
     monthOfFirstRegistration?: string; firstUsedDate?: string; dateOfLastV5CIssued?: string;
     wheelplan?: string; typeApproval?: string; motHistory?: import('../data/listings').NativeMotTest[];
+    officialVehicleData?: import('../data/listings').OfficialVehicleData;
   } } | undefined;
   SellerListings: undefined;
   SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;

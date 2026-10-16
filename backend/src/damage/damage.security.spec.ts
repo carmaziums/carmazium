@@ -34,6 +34,7 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
         id: 'listing-one', sellerId, status: options.status ?? 'DRAFT', images: options.images ?? [],
       }),
       update: jest.fn().mockResolvedValue({ id: 'listing-one', exteriorGrade: 1 }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     };
     const user = {
       findUnique: jest.fn().mockResolvedValue({
@@ -95,6 +96,56 @@ describe('Damage issue #521 — transactional owner/staff authorization', () => 
     expect(h.tx.listing.update).toHaveBeenCalledWith({
       where: { id: 'listing-one', sellerId: owner }, data: { exteriorGrade: 1 },
     });
+  });
+
+  it('copies the real 3D evidence to a reciprocal retail/auction sibling using new record IDs', async () => {
+    const h = harness();
+    h.tx.listing.findUnique.mockImplementation(async ({ where }: any) =>
+      where.id === 'listing-two'
+        ? {
+            id: 'listing-two', sellerId: owner, vrm: 'AB12CDE',
+            type: 'CLASSIFIED', linkedListingId: 'listing-one',
+            status: 'ACTIVE', deletedAt: null,
+          }
+        : {
+            id: 'listing-one', sellerId: owner, vrm: 'AB12CDE',
+            type: 'AUCTION', linkedListingId: 'listing-two',
+            status: 'ACTIVE', images: [],
+          },
+    );
+    await h.service.saveDamageRecords('listing-one', [defect], owner);
+    expect(h.tx.damageRecord.deleteMany).toHaveBeenCalledWith({ where: { listingId: 'listing-two' } });
+    expect(h.tx.damageRecord.createMany).toHaveBeenCalledTimes(2);
+    const copied = h.tx.damageRecord.createMany.mock.calls[1][0].data[0];
+    expect(copied).toMatchObject({
+      listingId: 'listing-two', part: defect.part, type: defect.type,
+      size: defect.size, imageUrl: proof, coords: defect.coords,
+    });
+    expect(copied).not.toHaveProperty('id');
+    expect(h.tx.listing.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: 'listing-two', linkedListingId: 'listing-one' }),
+      data: { exteriorGrade: 1 },
+    }));
+  });
+
+  it('does not copy damage records across unrelated or non-reciprocal listings', async () => {
+    const h = harness();
+    h.tx.listing.findUnique.mockImplementation(async ({ where }: any) =>
+      where.id === 'listing-two'
+        ? {
+            id: 'listing-two', sellerId: outsider, vrm: 'AB12CDE',
+            type: 'CLASSIFIED', linkedListingId: 'listing-one',
+            status: 'ACTIVE', deletedAt: null,
+          }
+        : {
+            id: 'listing-one', sellerId: owner, vrm: 'AB12CDE',
+            type: 'AUCTION', linkedListingId: 'listing-two',
+            status: 'ACTIVE', images: [],
+          },
+    );
+    await h.service.saveDamageRecords('listing-one', [defect], owner);
+    expect(h.tx.damageRecord.createMany).toHaveBeenCalledTimes(1);
+    expect(h.tx.listing.updateMany).not.toHaveBeenCalled();
   });
 
   it('blocks a different seller or retail buyer before reading or replacing any damage', async () => {

@@ -14,6 +14,7 @@ export interface ListingMotHistoryEntry {
     expiryDate?: string
     odometerValue?: string
     odometerUnit?: string
+    odometerResultType?: string
     motTestNumber?: string
     defects?: Array<{
         text: string
@@ -21,6 +22,8 @@ export interface ListingMotHistoryEntry {
         dangerous?: boolean
     }>
 }
+
+import type { OfficialVehicleData } from './dvlaApi'
 
 export interface CreateListingRequest {
     title: string
@@ -73,6 +76,7 @@ export interface CreateListingRequest {
     wheelplan?: string
     typeApproval?: string
     motHistory?: ListingMotHistoryEntry[]
+    officialVehicleData?: OfficialVehicleData
     status?: 'DRAFT' | 'ACTIVE' | 'SOLD'
     badgeTier?: 'FREE' | 'BASIC' | 'STANDARD' | 'PREMIUM'
     vehicleType?: VehicleTypeValue
@@ -209,6 +213,7 @@ export interface Listing {
     transmission: string | null
     bodyType: string | null
     type: 'AUCTION' | 'CLASSIFIED'
+    vehicleType?: 'CAR' | 'HGV' | 'MOTORCYCLE' | null
     status: 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'OFFER_ACCEPTED' | 'SOLD' | 'WITHDRAWN' | 'REJECTED'
     rejectionReason?: string | null
     viewCount: number
@@ -238,6 +243,7 @@ export interface Listing {
     wheelplan: string | null
     typeApproval: string | null
     motHistory?: ListingMotHistoryEntry[] | null
+    officialVehicleData?: OfficialVehicleData | null
     // Extended vehicle details
     variant: string | null
     driveType: string | null

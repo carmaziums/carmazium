@@ -1163,12 +1163,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                         <span className="text-[var(--text-primary)] font-semibold text-sm">Seller says {listing.isLegalRegisteredKeeper ? 'Yes' : 'No'}</span>
                                     </div>
                                 )}
-                                {listing.isLegalRegisteredKeeper === false && listing.notOwnerRelationship && (
-                                    <div className="flex justify-between gap-4">
-                                        <span className="text-[var(--text-muted)] text-sm">Authority / relationship:</span>
-                                        <span className="text-[var(--text-primary)] font-semibold text-sm text-right">{listing.notOwnerRelationship}</span>
-                                    </div>
-                                )}
                                 {listing.writeOffCategory && (
                                     <div className="flex justify-between gap-4">
                                         <span className="text-[var(--text-muted)] text-sm">Write-off declaration:</span>

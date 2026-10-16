@@ -4,11 +4,34 @@ import { apiClient } from './apiClient';
 export type EuroStandardValue = 'EURO_4' | 'EURO_5' | 'EURO_6' | 'EURO_6D';
 export type BodyTypeValue = 'SEDAN' | 'SUV' | 'HATCHBACK' | 'COUPE' | 'CONVERTIBLE' | 'ESTATE' | 'CROSSOVER' | 'SPORTS_CAR' | 'MINIVAN' | 'PICKUP_TRUCK' | 'STATION_WAGON' | 'MPV' | 'VAN';
 
+export interface OfficialVehicleData {
+    dvla?: {
+        monthOfFirstDvlaRegistration?: string;
+        artEndDate?: string;
+        revenueWeight?: number;
+        realDrivingEmissions?: string;
+        automatedVehicle?: boolean;
+        rawFuelType?: string;
+        rawEuroStatus?: string;
+        manufactureDate?: string;
+    };
+    mot?: {
+        registrationDate?: string;
+        manufactureDate?: string;
+        secondaryColour?: string;
+        lastMotTestDate?: string;
+        motTestDueDate?: string;
+        primaryColour?: string;
+        dataSource?: string;
+    };
+}
+
 export interface DvlaLookupResult {
     make?: string;
     model?: string;
     colour?: string;
     primaryColour?: string;
+    officialVehicleData?: OfficialVehicleData;
     firstUsedDate?: string;
     year?: number;
     engineSize?: number;
@@ -49,13 +72,14 @@ export interface MotTestResult {
     expiryDate?: string;
     odometerValue?: string;
     odometerUnit?: string;
+    odometerResultType?: string;
     motTestNumber: string;
     defects?: MotTestDefect[];
 }
 
 export interface MotTestDefect {
     text: string;
-    type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS';
+    type: string;
     dangerous: boolean;
 }
 
