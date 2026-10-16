@@ -500,3 +500,35 @@ test("website listing wizard preserves the backend 24-hour quote", () => {
     assert.doesNotMatch(valuationApi, /getDeterministicFallbackValuation\(/)
     assert.match(valuationApi, /throw new Error\('VALUATION_UNAVAILABLE'\)/)
 })
+
+test("seller web MOT normalization preserves official tests and revives serialized entries", () => {
+    const source = readFileSync(new URL("../src/lib/listingMotHistory.ts", import.meta.url), "utf8")
+    const js = ts.transpileModule(source, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+        reportDiagnostics: true,
+    })
+    assert.equal(js.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0)
+    const helperExports = {}
+    runInNewContext(js.outputText, { exports: helperExports }, { filename: "listingMotHistory.js" })
+    const { normalizeMotHistorySnapshot } = helperExports
+    const valid = {
+        completedDate: "2026-10-01 10:30:00", testResult: "PASSED",
+        odometerValue: "43012", motTestNumber: "123456789012",
+        defects: [{ type: "ADVISORY", text: "Tyre wearing", dangerous: false }],
+    }
+    const tests = [valid, JSON.stringify(valid), "corrupt", null, [], "42"]
+    assert.deepEqual(JSON.parse(JSON.stringify(normalizeMotHistorySnapshot(tests))), [valid, valid])
+    assert.deepEqual(JSON.parse(JSON.stringify(normalizeMotHistorySnapshot(JSON.stringify([valid])))), [valid])
+    assert.equal(normalizeMotHistorySnapshot("corrupt").length, 0)
+})
+
+test("retail, auction, HPI return and shared listing mutations use the MOT compatibility guard", () => {
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    const api = readFileSync(new URL("../src/lib/listingApi.ts", import.meta.url), "utf8")
+    assert.match(wizard, /motHistory: normalizeMotHistorySnapshot\(l\.motHistory\)/)
+    assert.match(wizard, /motHistory: normalizeMotHistorySnapshot\(parsed\.motHistory\)/)
+    assert.match(wizard, /motHistory: normalizeMotHistorySnapshot\(verifiedDraft\.motHistory\)/)
+    assert.match(wizard, /set\("motHistory", normalizeMotHistorySnapshot\(r\.motHistory\)\)/)
+    assert.match(wizard, /motHistory: validMotHistory\.length > 0 \? validMotHistory : undefined/)
+    assert.ok((api.match(/JSON\.stringify\(withValidMotHistory\(/g) || []).length >= 4)
+})
