@@ -532,3 +532,51 @@ test("retail, auction, HPI return and shared listing mutations use the MOT compa
     assert.match(wizard, /motHistory: validMotHistory\.length > 0 \? validMotHistory : undefined/)
     assert.ok((api.match(/JSON\.stringify\(withValidMotHistory\(/g) || []).length >= 4)
 })
+
+test("duplicate vehicle error gives clear, safe Retail to Auction next steps", () => {
+    const source = readFileSync(new URL("../src/lib/existingListingGuidance.ts", import.meta.url), "utf8")
+    const compiled = ts.transpileModule(source, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+        reportDiagnostics: true,
+    })
+    assert.equal(compiled.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error).length, 0)
+    const output = {}
+    runInNewContext(compiled.outputText, { exports: output }, { filename: "existingListingGuidance.js" })
+    const { getExistingListingGuidance } = output
+
+    const pending = getExistingListingGuidance("This vehicle already has an existing classified listing (pending_review).")
+    assert.equal(pending.heading, "Your vehicle is already listed in Retail")
+    assert.equal(pending.status, "Under review")
+    assert.equal(pending.href, "/dashboard/user?tab=inventory")
+    assert.ok(pending.steps.join(" ").includes("Once it shows Live"))
+    assert.ok(pending.steps.join(" ").includes("Put to Auction"))
+    assert.ok(!pending.steps.join(" ").includes("create another listing"))
+
+    const live = getExistingListingGuidance("This vehicle already has an existing classified listing (active).")
+    assert.ok(live.steps.join(" ").includes("More options"))
+    assert.ok(live.steps.join(" ").includes("Put to Auction"))
+    assert.ok(live.explanation.includes("Retail listing will remain"))
+    const draft = getExistingListingGuidance("This vehicle already has an existing classified listing (draft).")
+    assert.ok(draft.steps.join(" ").includes("Publish"))
+    assert.equal(getExistingListingGuidance("This listing had an unrelated error"), null)
+})
+
+test("Auction to Retail guidance points customers to Also Retail and requires normal payment", () => {
+    const source = readFileSync(new URL("../src/lib/existingListingGuidance.ts", import.meta.url), "utf8")
+    const compiled = ts.transpileModule(source, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    })
+    const output = {}
+    runInNewContext(compiled.outputText, { exports: output }, { filename: "existingListingGuidance.js" })
+    const auction = output.getExistingListingGuidance("This vehicle already has an existing auction listing (active).")
+    assert.equal(auction.href, "/dashboard/seller/auctions")
+    assert.ok(auction.steps.join(" ").includes("Also Retail"))
+    assert.ok(auction.steps.join(" ").includes("Basic £1"))
+    assert.ok(auction.steps.join(" ").includes("payment and review"))
+    const wizard = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+    assert.match(wizard, /getExistingListingGuidance\(submitError\)/)
+    assert.match(wizard, /existingListingGuidance\.steps\.map/)
+    assert.match(wizard, /href=\{existingListingGuidance\.href\}/)
+    assert.match(wizard, /Keep Auction &amp; Also List Retail/)
+    assert.match(wizard, /href="\/dashboard\/seller\/auctions"/)
+})
