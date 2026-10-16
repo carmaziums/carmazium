@@ -60,7 +60,11 @@ test('large-type tabs wrap rather than reducing to illegible 60 percent and deal
   assert.ok(tabs.includes('maxFontSizeMultiplier={2}'));
   assert.ok(!tabs.includes('minimumFontScale={0.6}'));
   assert.ok(!tabs.includes('adjustsFontSizeToFit'));
-  assert.ok(drawer.includes('getBottomTabBarHeight(fontScale, insets.bottom)'));
+  // Modal now spans the device viewport and respects the OS inset rather than
+  // leaving a dead bottom-tab strip that cannot be tapped through a Modal.
+  assert.ok(drawer.includes('bottom: Math.max(insets.bottom, 8)'));
+  assert.ok(drawer.includes('height: sheetHeight'));
+  assert.ok(drawer.includes('onRequestClose={closeDrawer}'));
   assert.ok(layout.includes('getBottomTabItemHeight(fontScale) + 16 + Math.max(0, bottomInset)'));
   assert.ok(layout.includes('fontScale >= 1.6 ? 76 : fontScale >= 1.3 ? 64 : 48'));
   assert.ok(drawer.includes('dealerMode'));

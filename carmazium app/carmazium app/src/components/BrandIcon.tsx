@@ -7,6 +7,9 @@ const ICON_MAP: Record<string, string> = {
   // Navigation
   'home-outline': 'Home',
   'home': 'Home',
+  // Do not fall back to HelpCircle for the app's primary navigation button.
+  'menu': 'Menu',
+  'menu-outline': 'Menu',
   'chevron-back': 'ChevronLeft',
   'chevron-forward': 'ChevronRight',
   'chevron-up': 'ChevronUp',
