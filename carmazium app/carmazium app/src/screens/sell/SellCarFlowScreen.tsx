@@ -1272,7 +1272,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   const sellerAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
-    return userId ? `mazium_ai_consent_v1:${userId}` : '';
+    return userId ? `mazium_ai_consent_v2:${userId}` : '';
   };
 
   const hasSellerAiConsent = async (): Promise<boolean> => {
@@ -1291,7 +1291,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     return new Promise<boolean>((resolve) => {
       Alert.alert(
         'AI data sharing',
-        'To generate a description, CarMazium will send the vehicle details you entered, including the registration where available, to OpenAI. AI can make mistakes, so review the result before publishing. Do you consent to this AI processing?',
+        'MaziuM sends the entered vehicle data, including the registration where available, to OpenAI. For dealer accounts, CarMazium separately adds the saved dealership introduction, general location and offered warranty or finance details when supplied. Direct contact details are excluded. Review the description before publishing. Do you consent to AI processing?',
         [
           { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
           {
@@ -2905,6 +2905,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               placeholderTextColor={Colors.borderMuted}
               multiline
             />
+            <Text style={s.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
           </View>
         </SectionBox>
 

@@ -519,8 +519,13 @@ model DealerProfile {
   businessAddress    String?
   /// Dealership logo URL
   logo               String?
-  /// Short description / tagline
+  /// Business introduction written by the dealer for buyers.
   description        String?
+  /// Public terms supplied by the dealer, never inferred from vehicle data.
+  warrantyOffered    Boolean   @default(false)
+  warrantyDetails    String?
+  financeOffered     Boolean   @default(false)
+  financeDetails     String?
   /// Contact phone number
   phone              String?
   /// Dealership website URL

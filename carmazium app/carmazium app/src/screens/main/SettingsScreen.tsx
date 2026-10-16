@@ -193,6 +193,10 @@ export const SettingsScreen: React.FC = () => {
             setDealerPhone(dp.phone ?? '');
             setDealerWebsite(dp.website ?? '');
             setDealerDescription(dp.description ?? '');
+            setDealerWarrantyOffered(dp.warrantyOffered === true);
+            setDealerWarrantyDetails(dp.warrantyDetails ?? '');
+            setDealerFinanceOffered(dp.financeOffered === true);
+            setDealerFinanceDetails(dp.financeDetails ?? '');
             setDealerLogo(dp.logo ?? '');
             setDealerBusinessType(dp.kyc?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED');
             setDealerKycStatus(dp.kyc?.status ?? null);
@@ -241,6 +245,10 @@ export const SettingsScreen: React.FC = () => {
   const [dealerPhone, setDealerPhone] = useState('');
   const [dealerWebsite, setDealerWebsite] = useState('');
   const [dealerDescription, setDealerDescription] = useState('');
+  const [dealerWarrantyOffered, setDealerWarrantyOffered] = useState(false);
+  const [dealerWarrantyDetails, setDealerWarrantyDetails] = useState('');
+  const [dealerFinanceOffered, setDealerFinanceOffered] = useState(false);
+  const [dealerFinanceDetails, setDealerFinanceDetails] = useState('');
   const [dealerLogo, setDealerLogo] = useState('');
   const [dealerSaving, setDealerSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -277,6 +285,14 @@ export const SettingsScreen: React.FC = () => {
     if (!isSoleTraderDealer && !trimmedVat) nextFieldErrors.vatNumber = 'VAT number is required';
     setDealerFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) return;
+    if (dealerWarrantyOffered && !dealerWarrantyDetails.trim()) {
+      Alert.alert('Warranty details needed', 'Provide warranty cover, duration and exclusions, or switch Warranty off.');
+      return;
+    }
+    if (dealerFinanceOffered && !dealerFinanceDetails.trim()) {
+      Alert.alert('Finance details needed', 'Describe the finance options and that approval depends on the lender, or switch Finance off.');
+      return;
+    }
 
     setDealerSaving(true);
     try {
@@ -292,6 +308,10 @@ export const SettingsScreen: React.FC = () => {
           phone: dealerPhone.trim(),
           website: dealerWebsite.trim(),
           description: dealerDescription.trim(),
+          warrantyOffered: dealerWarrantyOffered,
+          warrantyDetails: dealerWarrantyOffered ? dealerWarrantyDetails.trim() : null,
+          financeOffered: dealerFinanceOffered,
+          financeDetails: dealerFinanceOffered ? dealerFinanceDetails.trim() : null,
           logo: dealerLogo,
         }),
       });
@@ -922,17 +942,49 @@ export const SettingsScreen: React.FC = () => {
               </View>
 
               <View>
-                <FieldLabel label="DESCRIPTION / TAGLINE" />
+                <FieldLabel label="ABOUT YOUR DEALERSHIP" />
                 <TextInput
                   style={[styles.inputField, { height: 72, paddingTop: 12, textAlignVertical: 'top' }]}
                   value={dealerDescription}
                   onChangeText={setDealerDescription}
-                  placeholder="A short line about your dealership"
+                  placeholder="Introduce your business and what you do for customers"
                   placeholderTextColor={Colors.iconMuted}
                   multiline
                 />
               </View>
 
+              <Text style={styles.payoutDesc}>MaziuM can add your business introduction and verified location to future vehicle descriptions. The dealer profile is the source of truth; AI will not invent your policies.</Text>
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleTitle}>We offer a vehicle warranty</Text>
+                <Switch value={dealerWarrantyOffered} onValueChange={setDealerWarrantyOffered}
+                  accessibilityLabel="Warranty offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
+              </View>
+              {dealerWarrantyOffered && (
+                <View>
+                  <FieldLabel label="WARRANTY DURATION, COVER, LIMITS & EXCLUSIONS" />
+                  <TextInput style={[styles.inputField, { minHeight: 105, textAlignVertical: 'top' }]}
+                    multiline maxLength={1000} value={dealerWarrantyDetails}
+                    onChangeText={setDealerWarrantyDetails}
+                    placeholder="Enter your actual warranty terms. Do not promise cover not provided."
+                    placeholderTextColor={Colors.iconMuted} />
+                </View>
+              )}
+              <View style={styles.toggleRow}>
+                <Text style={styles.toggleTitle}>We offer or arrange finance</Text>
+                <Switch value={dealerFinanceOffered} onValueChange={setDealerFinanceOffered}
+                  accessibilityLabel="Finance offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
+              </View>
+              {dealerFinanceOffered && (
+                <View>
+                  <FieldLabel label="FINANCE OPTIONS & CONDITIONS" />
+                  <TextInput style={[styles.inputField, { minHeight: 105, textAlignVertical: 'top' }]}
+                    multiline maxLength={1000} value={dealerFinanceDetails}
+                    onChangeText={setDealerFinanceDetails}
+                    placeholder="Describe actual finance arrangements, eligibility and lender approval."
+                    placeholderTextColor={Colors.iconMuted} />
+                </View>
+              )}
+              <Text style={styles.payoutDesc}>Optional sales terms are included only after you save them. All finance remains subject to eligibility and lender approval. You must review generated descriptions before publishing.</Text>
               <View style={styles.cardDivider} />
               <TouchableOpacity
                 style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}

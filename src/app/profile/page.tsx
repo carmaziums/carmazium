@@ -205,6 +205,10 @@ export default function ProfilePage() {
         phone: "",
         website: "",
         description: "",
+        warrantyOffered: false,
+        warrantyDetails: "",
+        financeOffered: false,
+        financeDetails: "",
         logo: "",
         openingHours: Object.fromEntries(DAYS.map((day) => [day, ""])) as Record<string, string>,
     })
@@ -231,6 +235,10 @@ export default function ProfilePage() {
             phone: dealer?.phone || "",
             website: dealer?.website || "",
             description: dealer?.description || "",
+            warrantyOffered: dealer?.warrantyOffered === true,
+            warrantyDetails: dealer?.warrantyDetails || "",
+            financeOffered: dealer?.financeOffered === true,
+            financeDetails: dealer?.financeDetails || "",
             logo: dealer?.logo || "",
             openingHours: {
                 ...Object.fromEntries(DAYS.map((day) => [day, ""])),
@@ -287,6 +295,10 @@ export default function ProfilePage() {
         ...(businessForm.phone.trim() ? { phone: businessForm.phone.trim() } : {}),
         ...(businessForm.website.trim() ? { website: businessForm.website.trim() } : {}),
         description: businessForm.description.trim(),
+        warrantyOffered: businessForm.warrantyOffered,
+        warrantyDetails: businessForm.warrantyOffered ? businessForm.warrantyDetails.trim() : null,
+        financeOffered: businessForm.financeOffered,
+        financeDetails: businessForm.financeOffered ? businessForm.financeDetails.trim() : null,
         openingHours: Object.fromEntries(Object.entries(businessForm.openingHours).filter(([, value]) => value.trim())),
         ...extra,
     }), [businessForm, isSoleTraderKyc])
@@ -294,6 +306,14 @@ export default function ProfilePage() {
     const handleUpdateBusiness = async () => {
         if (!businessForm.companyName.trim()) {
             setRoleError("Business / trading name is required.")
+            return
+        }
+        if (businessForm.warrantyOffered && !businessForm.warrantyDetails.trim()) {
+            setRoleError("Enter the warranty duration, cover and exclusions, or switch Warranty Offered off.")
+            return
+        }
+        if (businessForm.financeOffered && !businessForm.financeDetails.trim()) {
+            setRoleError("Explain the finance provider or arrangements, eligibility and that finance is subject to approval.")
             return
         }
         setBusinessLoading(true)
@@ -504,10 +524,50 @@ export default function ProfilePage() {
                             <Field label="Website" type="url" value={businessForm.website} onChange={(value) => setBusinessForm({ ...businessForm, website: value })} />
                             <div className="md:col-span-2"><Field label="Business Address / Service Area" value={businessForm.businessAddress} onChange={(value) => setBusinessForm({ ...businessForm, businessAddress: value })} /></div>
                             <div className="space-y-2 md:col-span-2">
-                                <label className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>Business Description</label>
+                                <label className="text-sm font-bold uppercase" style={{ color: "var(--text-muted)" }}>About Your Dealership</label>
+                                <p className="mb-2 text-xs text-[var(--text-secondary)]">Tell buyers what your business does and what makes it different. MaziuM can add this introduction to your vehicle descriptions. Do not include phone numbers or website links in Auction copy.</p>
                                 <textarea value={businessForm.description} onChange={(event) => setBusinessForm({ ...businessForm, description: event.target.value })} rows={4} maxLength={2000} className="w-full border rounded-lg px-4 py-3 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none" style={{ background: "var(--bg-input)", borderColor: "var(--border-default)", color: "var(--text-primary)" }} />
                             </div>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                <label className="flex items-center gap-3 text-sm font-bold">
+                                    <input type="checkbox" checked={businessForm.warrantyOffered}
+                                        onChange={event => setBusinessForm({ ...businessForm, warrantyOffered: event.target.checked })} />
+                                    We offer a vehicle warranty
+                                </label>
+                                {businessForm.warrantyOffered && (
+                                    <>
+                                        <label className="block text-xs font-semibold text-[var(--text-secondary)]" htmlFor="dealer-warranty-details">Warranty duration, coverage, limits and exclusions</label>
+                                        <textarea id="dealer-warranty-details" rows={5} maxLength={1000} required
+                                            value={businessForm.warrantyDetails}
+                                            onChange={event => setBusinessForm({ ...businessForm, warrantyDetails: event.target.value })}
+                                            placeholder="e.g. 3-month engine and gearbox warranty, with details of cover, claims limits and exclusions..."
+                                            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-primary)]" />
+                                    </>
+                                )}
+                                <p className="text-xs text-[var(--text-muted)]">Only warranty terms you supply will be included. Do not promise cover the buyer will not receive.</p>
+                            </div>
+                            <div className="space-y-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4">
+                                <label className="flex items-center gap-3 text-sm font-bold">
+                                    <input type="checkbox" checked={businessForm.financeOffered}
+                                        onChange={event => setBusinessForm({ ...businessForm, financeOffered: event.target.checked })} />
+                                    We can offer or arrange finance
+                                </label>
+                                {businessForm.financeOffered && (
+                                    <>
+                                        <label className="block text-xs font-semibold text-[var(--text-secondary)]" htmlFor="dealer-finance-details">Finance arrangements and conditions</label>
+                                        <textarea id="dealer-finance-details" rows={5} maxLength={1000} required
+                                            value={businessForm.financeDetails}
+                                            onChange={event => setBusinessForm({ ...businessForm, financeDetails: event.target.value })}
+                                            placeholder="e.g. Finance may be available through our authorised partners, subject to status, eligibility and lender approval..."
+                                            className="w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] p-3 text-sm text-[var(--text-primary)]" />
+                                    </>
+                                )}
+                                <p className="text-xs text-[var(--text-muted)]">Describe only the finance service you can lawfully provide. Never promise approval or guaranteed rates.</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-[var(--text-muted)]">These optional statements appear in future MaziuM descriptions when you generate them. Review every description before publishing. Your existing listings will not be rewritten automatically.</p>
                         <div>
                             <h4 className="font-bold mb-3">Opening Hours</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
