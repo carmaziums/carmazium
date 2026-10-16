@@ -1069,8 +1069,25 @@ export class ListingsService {
         }
 
         const existing = matches[0];
+        // Clear, channel- and status-specific instructions are important for
+        // older website and native clients that display this API error as text.
+        // Never suggest adding a new row to bypass review/payment/auction rules.
+        const existingIsRetail = existing.type === 'CLASSIFIED';
+        const nextStep = existingIsRetail
+            ? existing.status === 'ACTIVE'
+                ? 'To add an Auction as well: open My Listings, find this vehicle, choose More options > Put to Auction, set the schedule and reserve, and submit for review. Your Retail listing stays in place.'
+                : existing.status === 'PENDING_REVIEW'
+                    ? 'Your Retail listing is already Under Review. Open My Listings to track it. Once approved and Live, choose More options > Put to Auction to add an Auction without uploading again.'
+                    : existing.status === 'DRAFT' || existing.status === 'REJECTED'
+                        ? 'Open My Listings to finish, edit or resubmit this existing Retail listing. When it is approved and Live, use More options > Put to Auction.'
+                        : 'Open My Listings and check the existing sale or listing status. Do not create a second vehicle listing while a sale or restriction is unresolved.'
+            : existing.status === 'ACTIVE' || existing.status === 'PENDING_REVIEW'
+                ? 'Open My Auctions and find this vehicle. When Also Retail is available, select it, enter the Retail asking price, choose your Retail package (Basic £1), and complete payment and review. To replace an eligible Auction rather than keep both channels, use the Retail selling flow and confirm the cancellation warning.'
+                : existing.status === 'DRAFT' || existing.status === 'REJECTED'
+                    ? 'Open My Listings to complete or correct this Auction first. Once it is approved and available in My Auctions, choose Also Retail to advertise in Retail too.'
+                    : 'Open My Auctions to review the auction result. Use only the available post-auction Retail options; a winning bid or completed sale cannot be bypassed.';
         throw new BadRequestException(
-            `This vehicle already has an existing ${existing.type.toLowerCase()} listing (${existing.status.toLowerCase()}). Open that listing instead of creating a duplicate.`,
+            `This vehicle already has an existing ${existing.type.toLowerCase()} listing (${existing.status.toLowerCase()}). ${nextStep}`,
         );
     }
 

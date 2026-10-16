@@ -573,6 +573,38 @@ describe('ListingsService', () => {
             expect(prisma.listing.create).not.toHaveBeenCalled();
         });
 
+        it('tells a seller with a pending Retail review exactly how to add an Auction later', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'retail-pending',
+                vrm: 'AB12CDE',
+                type: 'CLASSIFIED',
+                status: 'PENDING_REVIEW',
+            }]);
+
+            await expect(service.create({
+                ...payload,
+                listingType: 'AUCTION',
+                badgeTier: 'FREE',
+            } as any, sellerId)).rejects.toThrow(/once approved and Live.*More options > Put to Auction/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+            expect(prisma.auction.create).not.toHaveBeenCalled();
+        });
+
+        it('explains how an existing Auction can also be advertised in Retail', async () => {
+            prisma.listing.findMany.mockResolvedValue([{
+                id: 'active-auction',
+                vrm: 'AB12CDE',
+                type: 'AUCTION',
+                status: 'ACTIVE',
+            }]);
+
+            await expect(service.create(payload as any, sellerId))
+                .rejects.toThrow(/My Auctions.*Also Retail.*Basic £1/i);
+
+            expect(prisma.listing.create).not.toHaveBeenCalled();
+        });
+
         it('rejects a normal create when the same VRM already exists in the other channel', async () => {
             prisma.listing.findMany.mockResolvedValue([{
                 id: 'auction-draft',
