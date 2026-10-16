@@ -25,6 +25,7 @@ on:
       - 'scripts/test-public-contact-parity.test.mjs'
       - 'scripts/test-seo-honest-auction-guide.test.mjs'
       - 'scripts/test-seo-pagination-and-search-claims.test.mjs'
+      - 'scripts/test-seo-vehicle-offer-availability.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - '.github/workflows/carmazium-android-release-candidate.yml'
@@ -211,6 +212,8 @@ jobs:
         run: node --test scripts/test-seo-honest-auction-guide.test.mjs
       - name: Verify canonical blog pagination and accurate retail search metadata
         run: node --test scripts/test-seo-pagination-and-search-claims.test.mjs
+      - name: Prevent unavailable vehicles from publishing InStock JSON-LD offers
+        run: node --test scripts/test-seo-vehicle-offer-availability.test.mjs
       - name: Check one-product parity
         run: node scripts/check-product-parity.mjs
       - name: Check code-controlled release readiness
