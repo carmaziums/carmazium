@@ -10,7 +10,7 @@ import {
     Car, Camera, List, DollarSign, CheckCircle,
     ArrowRight, ArrowLeft, Loader2, Search,
     BadgeCheck, TrendingDown, Upload, Eye, X,
-    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw
+    Shield, Star, Sparkles, Zap, MapPin, LocateFixed, Edit, Info, Handshake, CreditCard, AlertTriangle, ChevronDown, Lock, FileText, Activity, Gavel, Clock, RotateCcw, Tag
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -2222,7 +2222,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
                         )}
                         <Button type="button" variant="outline" disabled={busy} onClick={closeModal} className="w-full min-h-[44px]">
-                            Not Now — Keep Existing Auction
+                            {activeAuction ? 'Not Now — Keep Existing Auction' : 'Not Now — Return to Listing'}
                         </Button>
                     </div>
                 </div>
