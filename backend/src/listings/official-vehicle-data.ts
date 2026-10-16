@@ -13,6 +13,9 @@ export type OfficialVehicleData = {
         revenueWeight?: number;
         realDrivingEmissions?: string;
         automatedVehicle?: boolean;
+        rawFuelType?: string;
+        rawEuroStatus?: string;
+        manufactureDate?: string;
     };
     mot?: {
         registrationDate?: string;
@@ -20,12 +23,14 @@ export type OfficialVehicleData = {
         secondaryColour?: string;
         lastMotTestDate?: string;
         motTestDueDate?: string;
+        primaryColour?: string;
+        dataSource?: string;
     };
 };
 
 const stringFields = {
-    dvla: ['monthOfFirstDvlaRegistration', 'artEndDate', 'realDrivingEmissions'],
-    mot: ['registrationDate', 'manufactureDate', 'secondaryColour', 'lastMotTestDate', 'motTestDueDate'],
+    dvla: ['monthOfFirstDvlaRegistration', 'artEndDate', 'realDrivingEmissions', 'rawFuelType', 'rawEuroStatus', 'manufactureDate'],
+    mot: ['registrationDate', 'manufactureDate', 'secondaryColour', 'lastMotTestDate', 'motTestDueDate', 'primaryColour', 'dataSource'],
 } as const;
 
 export function normalizeOfficialVehicleData(value: unknown): OfficialVehicleData | undefined {
