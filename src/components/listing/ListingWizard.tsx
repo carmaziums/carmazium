@@ -21,7 +21,7 @@ import {
     type CreateListingRequest, type ListingMotHistoryEntry, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
     createHpiCheckoutSession, createListingCheckoutSession, publishListing,
-    getRetailConversionCandidate, convertAuctionToRetail,
+    getRetailConversionCandidate, convertAuctionToRetail, alsoListRetail,
     type RetailConversionCandidate
 } from "@/lib/listingApi"
 import { uploadImage } from "@/lib/supabase"
@@ -381,6 +381,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         payload: CreateListingRequest
     } | null>(null)
     const [isConvertingToRetail, setIsConvertingToRetail] = React.useState(false)
+    const [isCreatingLinkedRetail, setIsCreatingLinkedRetail] = React.useState(false)
+    const [confirmCancelAuction, setConfirmCancelAuction] = React.useState(false)
+    const [retailActionError, setRetailActionError] = React.useState<string | null>(null)
 
     // HPI Payment State
     const [showHpiModal, setShowHpiModal] = React.useState(false)
@@ -1840,6 +1843,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             return
                         }
 
+                        setConfirmCancelAuction(false)
+                        setRetailActionError(null)
                         setRetailConversion({
                             candidate: conversion.candidate,
                             payload: {
@@ -1956,6 +1961,37 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    // The seller can add Retail alongside their existing Auction without
+    // cancelling bids or leaving the vehicle they already entered. Reuse the
+    // server's idempotent linked-listing flow and standard Stripe payment gate.
+    const confirmLinkedRetail = async () => {
+        if (!retailConversion || isCreatingLinkedRetail || isConvertingToRetail) return
+        const { candidate, payload } = retailConversion
+        const price = Number(payload.price)
+        const tier = payload.badgeTier === 'STANDARD' || payload.badgeTier === 'PREMIUM'
+            ? payload.badgeTier : 'BASIC'
+        if (!Number.isFinite(price) || price <= 0) {
+            setRetailActionError('Enter a valid Retail asking price before continuing.')
+            return
+        }
+        setRetailActionError(null)
+        setIsCreatingLinkedRetail(true)
+        let linkedListingId: string | null = null
+        try {
+            const result = await alsoListRetail(candidate.listingId, price, tier)
+            linkedListingId = result.linkedListingId
+            const checkout = await createListingCheckoutSession(linkedListingId, tier)
+            if (!checkout.url) throw new Error('Checkout did not return a payment link.')
+            window.location.href = checkout.url
+        } catch (error: any) {
+            setRetailActionError(linkedListingId
+                ? 'Your linked Retail draft was saved, but payment could not start. Open My Auctions and choose Resume Retail Payment. Do not upload the car or pay for a second listing.'
+                : (error?.message || 'Could not add this vehicle to Retail. Please try again.'))
+        } finally {
+            setIsCreatingLinkedRetail(false)
         }
     }
 
