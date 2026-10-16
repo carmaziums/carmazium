@@ -280,3 +280,12 @@ test('dealer account settings can supply warranty and finance terms for MaziuM d
   assert.match(flow, /CarMazium separately adds the saved dealership introduction/);
   assert.match(flow, /apiClient<any>\('\/ai\/generate-description'/);
 });
+
+test('new dealer onboarding accepts optional genuine business introduction warranty and finance', () => {
+  const code = readFileSync(new URL('../src/screens/main/DealerOnboardingScreen.tsx', import.meta.url), 'utf8');
+  assert.match(code, /description: introduction\.trim\(\)/);
+  assert.match(code, /warrantyOffered, warrantyDetails: warrantyOffered/);
+  assert.match(code, /financeOffered, financeDetails: financeOffered/);
+  assert.match(code, /OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES/);
+  assert.match(code, /You can skip this section/)
+});
