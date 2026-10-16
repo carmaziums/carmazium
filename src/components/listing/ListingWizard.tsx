@@ -1215,6 +1215,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => getStepValidationError() === null
 
     const [stepValidationMessage, setStepValidationMessage] = React.useState<string | null>(null)
+    const [guidedFullScreen, setGuidedFullScreen] = React.useState(false)
+    React.useEffect(() => {
+        if (!guidedFullScreen || !sellingMethod) return
+        const previous = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = previous }
+    }, [guidedFullScreen, sellingMethod])
 
     /** Return the exact first unanswered input, not a generic page position. */
     const firstInvalidField = (): { field: string; label: string } | null => {
@@ -2529,15 +2536,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     // ─── Wizard ───────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen py-6 sm:py-12">
+        <div className={guidedFullScreen ? "fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-[var(--bg-body)] py-4 sm:py-8" : "min-h-screen py-6 sm:py-12"}>
             <div className="container mx-auto px-5 max-w-3xl">
                 <LoginModal />
                 <RetailConversionModal />
                 <HpiPaymentModal />
                 <PendingReviewModal open={!!pendingReview} listingTitle={pendingReview?.title} onContinue={() => pendingReview?.onContinue()} />
 
-                {/* Wizard actions */}
-                <div className="mb-6 flex items-center justify-between gap-3">
+                {/* Wizard actions: optional full-screen, distraction-free mode.
+                    Both modes use the exact same form and draft state. */}
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <Button variant="ghost" className="text-[var(--text-muted)] hover:text-[var(--text-primary)] group px-2"
                         onClick={() => {
                             if (currentStep > 1) {
@@ -2564,6 +2572,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
                 </div>
 
+                <div className="flex justify-end mb-4">
+                    <Button type="button" variant="outline" aria-pressed={guidedFullScreen}
+                        onClick={() => setGuidedFullScreen(v => !v)}
+                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10">
+                        {guidedFullScreen ? "Exit Guided Full-Screen" : "Open Guided Full-Screen"}
+                    </Button>
+                </div>
                 <div id="listing-wizard-step-header" className="text-center mb-6 sm:mb-10 scroll-mt-20">
                     <h2 className="text-3xl md:text-4xl font-heading font-bold">
                         {formData.listingType === "AUCTION" ? "List for Auction" : "List Your Car"}
