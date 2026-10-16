@@ -17,7 +17,7 @@ import { ImageUpload } from "@/components/listing/ImageUpload"
 import { PendingReviewModal } from "@/components/listing/PendingReviewModal"
 import {
     createListing, formatPrice, getDamageRecords,
-    type CreateListingRequest, type BodyTypeValue,
+    type CreateListingRequest, type ListingMotHistoryEntry, type BodyTypeValue,
     type EuroStandardValue, type VehicleTypeValue,
     createHpiCheckoutSession, createListingCheckoutSession, publishListing,
     getRetailConversionCandidate, convertAuctionToRetail,
@@ -1583,7 +1583,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             const priceMin = formData.priceMin ? parseFloat(formData.priceMin) : priceAsking
             const priceMax = priceAsking // Retail asking-price ceiling
             const displayPrice = priceAsking
-            const validMotHistory = normalizeMotHistorySnapshot(formData.motHistory)
+            const validMotHistory = normalizeMotHistorySnapshot<ListingMotHistoryEntry>(formData.motHistory)
 
             const payload: CreateListingRequest = {
                 title: formData.title,
