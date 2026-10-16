@@ -2633,7 +2633,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Registration (VRM) *</label>
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <Input placeholder="e.g. AB12 CDE" value={formData.vrm}
+                                    <Input id="listing-required-registration" placeholder="e.g. AB12 CDE" value={formData.vrm}
                                         onChange={(e) => {
                                             const nextVrm = e.target.value.toUpperCase()
                                             lookupRequestRef.current += 1
@@ -2905,7 +2905,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Make / Model / Year */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
+                                    <label id="listing-required-make" className="text-sm font-bold uppercase text-[var(--text-muted)]">Make *</label>
                                     {(() => {
                                         // Case-insensitive match — DVLA returns uppercase (e.g. "TOYOTA")
                                         const matchedMake = CAR_MAKES.find(m => m.toLowerCase() === formData.make.trim().toLowerCase())
@@ -2943,7 +2943,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     })()}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
+                                    <label id="listing-required-model" className="text-sm font-bold uppercase text-[var(--text-muted)]">Model *</label>
                                     {(() => {
                                         // getModelsForMake is already case-insensitive
                                         const models = getModelsForMake(formData.make)
@@ -2997,7 +2997,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Year *</label>
-                                    <Input type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
+                                    <Input id="listing-required-year" type="number" placeholder="2023" value={formData.year} onChange={(e) => set("year", e.target.value)} className={inputCls} />
                                 </div>
                             </div>
 
@@ -3221,7 +3221,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)] flex items-center gap-1.5"><MapPin size={13} /> Location *</label>
                                 <div className="flex gap-3">
-                                    <Input placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
+                                    <Input id="listing-required-location" placeholder="e.g. London, Manchester" value={formData.location} onChange={(e) => set("location", e.target.value)} className={`${inputCls} flex-1 ${hasAttemptedNext && !formData.location ? 'border-red-500' : ''}`} />
                                     <Button type="button" variant="outline" disabled={geoLoading}
                                         onClick={async () => {
                                             if (!navigator.geolocation) { alert("Geolocation is not supported by your browser."); return }
@@ -3388,7 +3388,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {/* Mileage */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Mileage *</label>
-                                    <Input type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
+                                    <Input id="listing-required-mileage" type="number" placeholder="e.g. 45000" value={formData.mileage} onChange={(e) => set("mileage", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.mileage ? 'border-red-500' : ''}`} />
                                 </div>
 
                                 {/* Give sellers value guidance immediately after the
@@ -3597,7 +3597,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {/* Title & Description */}
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Listing Title *</label>
-                                <Input placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
+                                <Input id="listing-required-title" placeholder="e.g. BMW M4 Competition 2023" value={formData.title} onChange={(e) => set("title", e.target.value)} className={`${inputCls} ${hasAttemptedNext && !formData.title ? 'border-red-500' : ''}`} />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Description *</label>
@@ -4075,7 +4075,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         </label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                            <Input type="number" placeholder="e.g. 18000" value={formData.priceMin}
+                                            <Input id="listing-required-minimum" type="number" placeholder="e.g. 18000" value={formData.priceMin}
                                                 onChange={(e) => set("priceMin", e.target.value)}
                                                 className={`${inputCls} pl-8 text-lg h-14 ${formData.priceMin && formData.priceAsking && parseFloat(formData.priceMin) > parseFloat(formData.priceAsking) ? 'border-red-500' : ''}`} />
                                         </div>
@@ -4093,7 +4093,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg font-bold">£</span>
-                                        <Input type="number" placeholder="e.g. 20000" value={formData.priceAsking}
+                                        <Input id="listing-required-asking" type="number" placeholder="e.g. 20000" value={formData.priceAsking}
                                             onChange={(e) => set("priceAsking", e.target.value)}
                                             className={`${inputCls} pl-8 text-lg h-14 border-primary/30 focus:border-primary ring-1 ring-primary/10`} />
                                     </div>
@@ -4340,6 +4340,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {auctionSchedule.startTime !== 'NOW' && (<div className="space-y-2">
                                 <label className="text-sm font-bold uppercase text-[var(--text-muted)]">Start Date &amp; Time *</label>
                                 <Input
+                                    id="listing-required-start"
                                     type="datetime-local"
                                     value={auctionSchedule.startTime === 'NOW' ? '' : auctionSchedule.startTime}
                                     min={new Date().toISOString().slice(0, 16)}
@@ -4362,7 +4363,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 15000"
+                                        <Input id="listing-required-reserve" type="number" placeholder="e.g. 15000"
                                             value={auctionSchedule.reservePrice}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, reservePrice: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.reservePrice ? 'border-red-500' : ''}`}
@@ -4412,7 +4413,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                     </label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] text-lg">£</span>
-                                        <Input type="number" placeholder="e.g. 100"
+                                        <Input id="listing-required-increment" type="number" placeholder="e.g. 100"
                                             value={auctionSchedule.minIncrement}
                                             onChange={e => setAuctionSchedule(prev => ({ ...prev, minIncrement: e.target.value }))}
                                             className={`${inputCls} pl-8 h-14 ${hasAttemptedNext && !auctionSchedule.minIncrement ? 'border-red-500' : ''}`}
