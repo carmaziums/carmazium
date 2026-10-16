@@ -849,6 +849,9 @@ export class AdminService {
             const current = await this.prisma.listing.findUnique({ where: { id: listingId } });
             if (!current || current.deletedAt || current.status === 'SOLD'
                 || norm(current.vrm) !== norm(listing.vrm)) continue;
+            // A reciprocal link is not permission to apply facts to a mismatched vehicle.
+            if ((current.make && official.make && norm(current.make) !== norm(official.make))
+                || (current.year && official.year && Math.abs(current.year - official.year) > 2)) continue;
             const patch: Record<string, unknown> = {};
             for (const field of officialFields) {
                 if (missing(current[field]) && !missing(official[field])) patch[field] = official[field];
@@ -860,7 +863,11 @@ export class AdminService {
             if (current.markedForExport == null && official.markedForExport != null) {
                 patch.markedForExport = official.markedForExport;
             }
-            const enrichment = motEnrichmentUpdate(current, official);
+            const enrichment = motEnrichmentUpdate({
+                ...current,
+                make: current.make || official.make,
+                year: current.year || official.year,
+            }, official);
             if (enrichment && (!Array.isArray(current.motHistory) || current.motHistory.length === 0)) {
                 patch.motHistory = enrichment.motHistory as unknown as Prisma.InputJsonValue;
             }
