@@ -181,6 +181,7 @@ export interface CreateListingPayload {
   deliveryAvailable?: boolean;
   deliveryMaxMiles?: number;
   deliveryPricePerMile?: number;
+  partnerDistributionAccepted?: boolean;
 }
 
 export interface SellerStats {
