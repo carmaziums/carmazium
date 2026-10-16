@@ -27,6 +27,7 @@ import {
 import { uploadImage } from "@/lib/supabase"
 import { getSessionStatus, applyHpiFee } from "@/lib/paymentApi"
 import { dvlaLookup, dvlaEnrich } from "@/lib/dvlaApi"
+import type { OfficialVehicleData } from "@/lib/dvlaApi"
 import { normalizeMotHistorySnapshot } from "@/lib/listingMotHistory"
 import { getExistingListingGuidance } from "@/lib/existingListingGuidance"
 import { aiGenerateDescription } from "@/lib/aiApi"
@@ -114,6 +115,7 @@ interface FormData {
     wheelplan: string
     typeApproval: string
     motHistory: any[]
+    officialVehicleData?: OfficialVehicleData
     firstUsedDate: string
     primaryColour?: string
     dateOfLastV5CIssued: string
@@ -494,7 +496,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     taxDueDate: l.taxDueDate || '',
                     monthOfFirstRegistration: l.monthOfFirstRegistration || '',
                     euroStandard: l.euroStandard || '',
-                    co2Emissions: l.co2Emissions ? String(l.co2Emissions) : '',
+                    co2Emissions: l.co2Emissions != null ? String(l.co2Emissions) : '',
                     ulezCompliant: l.ulezCompliant ?? null,
                     markedForExport: l.markedForExport ?? null,
                     wheelplan: l.wheelplan || '',
@@ -502,6 +504,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     firstUsedDate: l.firstUsedDate || '',
                     dateOfLastV5CIssued: l.dateOfLastV5CIssued || '',
                     motHistory: normalizeMotHistorySnapshot(l.motHistory),
+                    officialVehicleData: l.officialVehicleData ?? undefined,
                     images: l.images || [],
                     videoUrls: l.videoUrls || [],
                     priceMin: l.priceMin ? String(l.priceMin) : '',
@@ -1630,6 +1633,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 wheelplan: formData.wheelplan || undefined,
                 typeApproval: formData.typeApproval || undefined,
                 motHistory: validMotHistory.length > 0 ? validMotHistory : undefined,
+                officialVehicleData: formData.officialVehicleData,
                 badgeTier: (formData.listingType === 'CLASSIFIED' && formData.badgeTier === 'FREE') ? 'BASIC' : formData.badgeTier,
                 status: formData.status,
                 vehicleType: formData.vehicleType as VehicleTypeValue,
@@ -2594,7 +2598,8 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                     set("motHistory", normalizeMotHistorySnapshot(r.motHistory))
                                                 }
                                                 
-                                                if (r.colour) set("color", r.colour)
+                                                if (r.colour || r.primaryColour) set("color", r.colour || r.primaryColour || "")
+                                                if (r.officialVehicleData) set("officialVehicleData", r.officialVehicleData)
                                                 if (r.year) set("year", String(r.year))
                                                 if (r.engineSize) set("engineSize", String(r.engineSize))
                                                 if (r.fuelType) {
@@ -2635,7 +2640,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 if (r.seats != null) set("seats", String(r.seats))
                                                 if (r.bhp != null) set("bhp", String(r.bhp))
                                                 if (r.euroStandard) set("euroStandard", r.euroStandard as EuroStandardValue)
-                                                if (r.co2Emissions) set("co2Emissions", String(r.co2Emissions))
+                                                if (r.co2Emissions != null) set("co2Emissions", String(r.co2Emissions))
                                                 // DVLA extended fields
                                                 if (r.motStatus) set("motStatus", r.motStatus)
                                                 if (r.taxStatus) set("taxStatus", r.taxStatus)
