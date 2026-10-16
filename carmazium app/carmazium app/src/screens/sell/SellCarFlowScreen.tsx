@@ -2905,6 +2905,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               placeholderTextColor={Colors.borderMuted}
               multiline
             />
+            <Text style={s.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
           </View>
         </SectionBox>
 
