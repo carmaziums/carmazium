@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiService } from '../ai/ai.service';
+import { normalizeOfficialVehicleData, type OfficialVehicleData } from '../listings/official-vehicle-data';
 
 // ─── DVLA VES API Response ────────────────────────────────────────────────────
 
@@ -26,6 +27,9 @@ export interface DvlaVehicleResponse {
     firstUsedDate?: string;
     manufactureDate?: string;
     monthOfFirstRegistration?: string;
+    monthOfFirstDvlaRegistration?: string;
+    artEndDate?: string;
+    automatedVehicle?: boolean;
 }
 
 // ─── Mapped lookup result returned to the frontend ────────────────────────────
@@ -68,6 +72,7 @@ export interface DvlaLookupResult {
         source: 'AI_LIVE_WEB';
     };
     dataSource: 'DVLA';
+    officialVehicleData?: OfficialVehicleData;
     motHistory?: MotTestResult[];
     /** MOT reading is historical, NOT a verified current odometer figure. */
     lastMotMileage?: { value: number; unit: 'MI' | 'KM'; recordedAt: string };
@@ -81,13 +86,14 @@ export interface MotTestResult {
     expiryDate?: string;
     odometerValue?: string;
     odometerUnit?: string;
+    odometerResultType?: string;
     motTestNumber: string;
     defects?: MotTestDefect[];
 }
 
 export interface MotTestDefect {
     text: string;
-    type: 'ADVISORY' | 'MINOR' | 'MAJOR' | 'DANGEROUS';
+    type: string; // DVSA test records may also include older failure categories
     dangerous: boolean;
 }
 
@@ -245,6 +251,10 @@ export class DvlaService {
             && (!motResult.value.make || !combined.make
                 || motResult.value.make.toUpperCase() === combined.make.toUpperCase())) {
             combined.motHistory = motResult.value.motTests;
+            combined.officialVehicleData = normalizeOfficialVehicleData({
+                ...combined.officialVehicleData,
+                mot: motResult.value.extraVehicleFacts,
+            });
             if (!combined.engineSize && motResult.value.engineSize) combined.engineSize = motResult.value.engineSize;
             if (!combined.fuelType && motResult.value.fuelType) combined.fuelType = motResult.value.fuelType;
             if (!combined.year && motResult.value.year) combined.year = motResult.value.year;
@@ -410,6 +420,13 @@ export class DvlaService {
             markedForExport: data.markedForExport,
             monthOfFirstRegistration: data.monthOfFirstRegistration,
             dateOfLastV5CIssued: data.dateOfLastV5CIssued,
+            officialVehicleData: normalizeOfficialVehicleData({ dvla: {
+                monthOfFirstDvlaRegistration: data.monthOfFirstDvlaRegistration,
+                artEndDate: data.artEndDate,
+                revenueWeight: data.revenueWeight,
+                realDrivingEmissions: data.realDrivingEmissions,
+                automatedVehicle: data.automatedVehicle,
+            } }),
             realDrivingEmissions: data.realDrivingEmissions,
             transmission: (data as any).transmission,
             dataSource: 'DVLA' as const,
@@ -498,6 +515,7 @@ export class DvlaService {
         model?: string;
         primaryColour?: string;
         firstUsedDate?: string;
+        extraVehicleFacts?: NonNullable<OfficialVehicleData['mot']>;
         engineSize?: number;
         fuelType?: string;
         year?: number;
@@ -543,10 +561,11 @@ export class DvlaService {
                         expiryDate: typeof test.expiryDate === 'string' ? test.expiryDate : undefined,
                         odometerValue: test.odometerValue == null ? undefined : String(test.odometerValue),
                         odometerUnit: typeof test.odometerUnit === 'string' ? test.odometerUnit : undefined,
+                        odometerResultType: typeof test.odometerResultType === 'string' ? test.odometerResultType : undefined,
                         motTestNumber: String(test.motTestNumber || ''),
                         defects: (Array.isArray(test.defects) ? test.defects : [])
-                            .filter((d: any) => d && typeof d.text === 'string'
-                                && ['ADVISORY', 'MINOR', 'MAJOR', 'DANGEROUS'].includes(d.type))
+                            .filter((d: any) => d && typeof d.text === 'string' && typeof d.type === 'string'
+                                && d.type.length > 0 && d.type.length <= 40 && d.text.length <= 1000)
                             .map((d: any) => ({
                                 text: d.text,
                                 type: d.type as MotTestDefect['type'],
@@ -573,6 +592,13 @@ export class DvlaService {
                     model: typeof vehicle.model === 'string' ? vehicle.model.trim() : undefined,
                     primaryColour: typeof vehicle.primaryColour === 'string' ? vehicle.primaryColour : undefined,
                     firstUsedDate: typeof vehicle.firstUsedDate === 'string' ? vehicle.firstUsedDate : undefined,
+                    extraVehicleFacts: normalizeOfficialVehicleData({ mot: {
+                        registrationDate: vehicle.registrationDate,
+                        manufactureDate: vehicle.manufactureDate,
+                        secondaryColour: vehicle.secondaryColour,
+                        lastMotTestDate: vehicle.lastMotTestDate,
+                        motTestDueDate: vehicle.motTestDueDate,
+                    } })?.mot,
                     engineSize: Number.isFinite(engineSize) && engineSize > 0 ? engineSize : undefined,
                     fuelType: motFuel,
                     year: manufacturerYear && manufacturerYear >= 1900 && manufacturerYear <= 2035
