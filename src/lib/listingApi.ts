@@ -120,11 +120,19 @@ export interface CreateListingResponse {
  * Create a new listing
  */
 import { apiClient } from './apiClient'
+import { normalizeMotHistorySnapshot } from './listingMotHistory'
+
+// Keep every caller of the shared listing API compatible with restored MOT
+// snapshots, not just the main web wizard. The backend validates independently.
+function withValidMotHistory<T extends object>(data: T): T {
+    if (!('motHistory' in data) || (data as { motHistory?: unknown }).motHistory === undefined) return data
+    return { ...data, motHistory: normalizeMotHistorySnapshot((data as { motHistory?: unknown }).motHistory) }
+}
 
 export async function createListing(data: CreateListingRequest): Promise<CreateListingResponse> {
     return apiClient<CreateListingResponse>('/listings', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(withValidMotHistory(data)),
     })
 }
 
@@ -515,7 +523,7 @@ export async function getSellerStats(): Promise<SellerStats> {
 export async function createAuthenticatedListing(data: CreateListingRequest): Promise<CreateListingResponse> {
     return apiClient<CreateListingResponse>('/listings', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(withValidMotHistory(data)),
     })
 }
 
@@ -532,7 +540,7 @@ export async function deleteListing(listingId: string): Promise<void> {
 export async function updateListing(listingId: string, fields: Partial<Record<string, unknown>>): Promise<Listing> {
     const data = await apiClient<{ data: Listing }>(`/listings/${listingId}`, {
         method: 'PATCH',
-        body: JSON.stringify(fields),
+        body: JSON.stringify(withValidMotHistory(fields)),
     })
     return data.data
 }
@@ -1366,7 +1374,7 @@ export async function convertAuctionToRetail(
         data: { listingId: string; slug: string; auctionCancelled: boolean; bidderCount: number }
     }>(`/listings/${listingId}/convert-to-retail`, {
         method: 'POST',
-        body: JSON.stringify(input),
+        body: JSON.stringify(withValidMotHistory(input)),
     })
     return data.data
 }
