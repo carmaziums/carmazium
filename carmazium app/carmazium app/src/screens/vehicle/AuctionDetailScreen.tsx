@@ -203,6 +203,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const role = useAuthStore((s) => s.role);
 
   // ── Auction state ──
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [auction, setAuction] = useState<AuctionDetail | null>(null);
   const [dealerAccess, setDealerAccess] = useState<DealerAccess | null>(null);
   const [dealerAccessLoading, setDealerAccessLoading] = useState(false);
@@ -1028,11 +1029,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const quickBidAmounts = hasRealBids
     ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
     : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
-  const image = String(
-    (auction && auction.listing && auction.listing.images && auction.listing.images[0])
-    || (listing.images && listing.images[0])
-    || ''
-  );
+  // Seller-uploaded photos must all be accessible to buyers, not only index 0.
+  // The loaded auction row is authoritative; the route card is a fallback.
+  const photoGallery = ((auction?.listing?.images?.length ? auction.listing.images : listing.images) || [])
+    .filter((url): url is string => typeof url === 'string' && /^https:\/\//i.test(url));
+  const image = photoGallery[Math.min(activePhotoIndex, Math.max(photoGallery.length - 1, 0))] || '';
   const title = String(
     (auction && auction.listing && auction.listing.title)
     || `${listing.year || ''} ${listing.make || ''} ${listing.model || ''}`.trim()
@@ -1480,6 +1481,26 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </View>
 
+        {/* Full seller-uploaded gallery: select any vehicle photo on iOS/Android. */}
+        {photoGallery.length > 1 && (
+          <View style={{ gap: 8, marginTop: 10 }}>
+            <Text style={{ color: Colors.textSecondary, fontSize: 12, paddingHorizontal: 14 }}>
+              Photo {Math.min(activePhotoIndex + 1, photoGallery.length)} of {photoGallery.length} — select a thumbnail
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 9 }}>
+              {photoGallery.map((url, index) => (
+                <TouchableOpacity key={url + index} accessibilityRole="button"
+                  accessibilityLabel={`View vehicle photo ${index + 1} of ${photoGallery.length}`}
+                  accessibilityState={{ selected: index === activePhotoIndex }}
+                  onPress={() => setActivePhotoIndex(index)}
+                  style={{ borderWidth: 2, borderRadius: 9, borderColor: index === activePhotoIndex ? Colors.infoBlue : Colors.borderSubtle, overflow: 'hidden' }}>
+                  <Image source={{ uri: url }} style={{ width: 78, height: 60 }} contentFit="cover" cachePolicy="memory-disk" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Anti-snipe alert */}
         {antiSnipeActive && isActive && (
           <View style={s.antiSnipeBar}>
@@ -1565,6 +1586,22 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.descText}>{auction?.listing?.description ?? listing.description}</Text>
               </View>
             ) : null}
+
+            {/* Videos uploaded by the seller are as relevant in auctions as in retail. */}
+            {Array.isArray(auction?.listing?.videoUrls) && auction.listing.videoUrls.some(url => typeof url === 'string' && /^https:\/\//i.test(url)) && (
+              <View style={s.card}>
+                <Text style={s.cardSectionTitle}>Seller Vehicle Videos</Text>
+                {auction.listing.videoUrls.filter((url): url is string => typeof url === 'string' && /^https:\/\//i.test(url)).map((url, index) => (
+                  <TouchableOpacity key={url + index} accessibilityRole="link"
+                    accessibilityLabel={`Open seller vehicle video ${index + 1}`}
+                    onPress={() => { void Linking.openURL(url).catch(() => Alert.alert('Cannot open video', 'This video link is currently unavailable.')); }}
+                    style={{ paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.borderSubtle }}>
+                    <Text style={{ color: Colors.infoBlue, fontFamily: FontFamily.bold }}>View video {index + 1}</Text>
+                    <Text numberOfLines={1} style={{ color: Colors.textMuted, fontSize: 11 }}>{url}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             {/* Import disclosure */}
             {(auction?.listing?.isImported ?? listing.isImported) && (
@@ -1658,78 +1695,6 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               )}
             </View>
-
-            {/* Full buyer-relevant listing details — never display seller's
-                contact, private reserve, VIN or free-text keeper relationship. */}
-            {auction?.listing && (() => {
-              const l = auction.listing as any;
-              const moreDetails: [string, string | number | null | undefined][] = [
-                ['Variant / trim', l.variant],
-                ['Drive type', l.driveType],
-                ['Number of keys', l.numberOfKeys],
-                ['Number of owners', l.owners],
-                ['Service history', l.serviceHistory],
-                ['Torque', l.torqueNm != null ? `${l.torqueNm} Nm` : null],
-                ['Top speed', l.topSpeedMph != null ? `${l.topSpeedMph} mph` : null],
-                ['0–60 mph', l.zeroTo60Mph != null ? `${l.zeroTo60Mph} sec` : null],
-                ['Combined economy', l.combinedMpg != null ? `${l.combinedMpg} mpg` : null],
-                ['Extra-urban economy', l.extraUrbanMpg != null ? `${l.extraUrbanMpg} mpg` : null],
-              ];
-              const historyDetails: [string, string | number | null | undefined][] = [
-                ['First used', l.firstUsedDate],
-                ['Last V5C issued', l.dateOfLastV5CIssued],
-                ['Type approval', l.typeApproval],
-                ['Wheelplan', l.wheelplan],
-                ['Marked for export', l.markedForExport == null ? null : l.markedForExport ? 'Yes' : 'No'],
-              ];
-              const declarations: [string, string | number | null | undefined][] = [
-                ['Stolen / recovered', l.stolenRecovered == null ? null : l.stolenRecovered ? 'Seller says yes' : 'Seller says no'],
-                ['Outstanding finance', l.hasOutstandingFinance == null ? null : l.hasOutstandingFinance ? 'Seller says yes' : 'Seller says no'],
-                ['Registered keeper', l.isLegalRegisteredKeeper == null ? null : l.isLegalRegisteredKeeper ? 'Seller says yes' : 'Seller says no'],
-                ['Insurance write-off', l.writeOffCategory == null ? null : l.writeOffCategory === 'NONE' ? 'Seller says none' : `Seller says ${String(l.writeOffCategory).replace(/_/g, ' ')}`],
-                ['Imported', l.isImported == null ? null : l.isImported ? 'Seller says yes' : 'Seller says no'],
-              ];
-              const visible = (rows: typeof moreDetails) => rows.filter(([, value]) => value !== null && value !== undefined && value !== '');
-              const details = visible(moreDetails);
-              const history = visible(historyDetails);
-              const declared = visible(declarations);
-              if (!details.length && !history.length && !declared.length) return null;
-              const renderRows = (rows: typeof moreDetails) => rows.map(([key, value]) => (
-                <View key={key} style={s.specRow}>
-                  <Text style={s.specKey}>{key}</Text>
-                  <Text style={[s.specVal, { flexShrink: 1, textAlign: 'right' }]}>{String(value)}</Text>
-                </View>
-              ));
-              return (
-                <View style={s.card}>
-                  <Text style={s.cardSectionTitle}>Additional Vehicle Information</Text>
-                  {details.length > 0 && (
-                    <View style={s.specsSection}>
-                      <Text style={s.specGroup}>Ownership, history & performance</Text>
-                      {renderRows(details)}
-                    </View>
-                  )}
-                  {history.length > 0 && (
-                    <View style={[s.specsSection, { marginTop: details.length ? 16 : 0 }]}>
-                      <Text style={s.specGroup}>Recorded vehicle details</Text>
-                      {renderRows(history)}
-                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
-                        Saved when the listing was created or edited; may not reflect subsequent DVLA updates.
-                      </Text>
-                    </View>
-                  )}
-                  {declared.length > 0 && (
-                    <View style={[s.specsSection, { marginTop: 16, padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 10 }]}>
-                      <Text style={[s.specGroup, { color: Colors.warning }]}>Seller declarations</Text>
-                      {renderRows(declared)}
-                      <Text style={[s.muted, { fontSize: 10, marginTop: 8 }]}>
-                        Seller statements, not independent HPI or finance checks. Review any separately provided completed report before bidding.
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })()}
 
             {/* Same full DVLA/MOT and seller-facts panel as the Retail buyer page. */}
             <BuyerVehicleFacts record={auction?.listing ?? listing} />
