@@ -53,6 +53,9 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
       ['Body type', data.bodyType ?? data.bodyTypeRaw], ['Drive type', data.driveType],
       ['Doors', data.doors], ['Seats', data.seats], ['Previous owners (seller)', data.owners],
       ['Keys (seller)', data.numberOfKeys],
+      ['Vehicle category', data.vehicleType],
+      ['Collection area', data.location],
+      ['Imported (seller)', data.isImported === true ? 'Yes' : null],
     ] },
     { title: 'TECHNICAL & EMISSIONS', entries: [
       ['Fuel', data.fuelType ?? official?.dvla?.rawFuelType], ['Transmission', data.transmission],
@@ -79,10 +82,23 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
       ['First MOT due date', displayDate(official?.mot?.motTestDueDate)],
       ['Marked for export (saved)', data.markedForExport == null ? null : data.markedForExport ? 'Yes' : 'No'],
     ] },
+    { title: 'SELLER DELIVERY OPTIONS', entries: [
+      ['Delivery offered', data.deliveryAvailable === true ? 'Yes, subject to seller terms' : null],
+      ['Maximum delivery distance', data.deliveryAvailable === true && typeof data.deliveryMaxMiles === 'number' ? data.deliveryMaxMiles + ' miles' : null],
+      ['Advertised delivery rate', data.deliveryAvailable === true && data.deliveryPricePerMile != null && Number.isFinite(Number(data.deliveryPricePerMile)) ? '£' + Number(data.deliveryPricePerMile).toFixed(2) + ' per mile' : null],
+    ] },
     { title: 'SELLER DECLARATIONS', entries: [
       ['Service history (seller)', data.serviceHistory],
       ['Known mechanical issues (seller)', data.mechanicalIssues],
       ['Known electrical issues (seller)', data.electricalIssues],
+      ['Vehicle condition (seller)', data.condition ?? data.conditionRaw],
+      ['Stolen / recovered (seller)', data.stolenRecovered == null ? null : data.stolenRecovered === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Outstanding finance (seller)', data.hasOutstandingFinance == null ? null : data.hasOutstandingFinance === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Registered keeper (seller)', data.isLegalRegisteredKeeper == null ? null : data.isLegalRegisteredKeeper === true ? 'Seller says Yes' : 'Seller says No'],
+      ['Authority / relationship to keeper', data.isLegalRegisteredKeeper === false ? data.notOwnerRelationship : null],
+      ['Estate sale (seller)', data.isDepartedSale === true ? 'Yes' : null],
+      ['Estate seller relationship', data.isDepartedSale === true ? data.departedRelationship : null],
+      ['Features / options', Array.isArray(data.features) ? data.features.filter((v): v is string => typeof v === 'string' && !!v.trim()).join(', ') : null],
       ['Write-off category (seller)', data.writeOffCategory && data.writeOffCategory !== 'NONE' ? data.writeOffCategory : null],
     ] },
   ];
