@@ -11,6 +11,7 @@ on:
       - "src/lib/adminVehicleReview.ts"
       - "src/lib/adminApi.ts"
       - "scripts/test-admin-vehicle-review.test.mjs"
+      - "scripts/test-official-vehicle-field-parity.test.mjs"
       - "src/app/pricing/**"
       - "src/app/dashboard/seller/auctions/**"
       - "src/app/dashboard/dealer/inventory/**"
@@ -83,6 +84,9 @@ jobs:
 
       - name: Verify admin-only review and dual-channel official data preservation
         run: node --test scripts/test-admin-vehicle-review.test.mjs
+
+      - name: Verify DVLA and MOT field integrity across web, app and backend
+        run: node --test scripts/test-official-vehicle-field-parity.test.mjs
 
       - name: Typecheck web listing surfaces
         shell: bash
