@@ -1060,6 +1060,72 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             { id: 4, icon: CheckCircle, title: "Review" },
         ]
 
+    // Human-readable guidance belongs to the *current step*. It supplements,
+    // rather than changes, the existing DVLA/MOT lookup, validation and rules.
+    const stepGuide = currentStep === 1
+        ? {
+            what: "Enter your registration and check the vehicle details. Answer the condition, ownership and legal questions truthfully.",
+            why: "Registration can fill available DVLA/MOT details for you. Accurate information helps buyers understand the vehicle and avoids delays at review.",
+            reminder: "Items marked * are required. Extra vehicle information is optional unless marked.",
+        }
+        : currentStep === 2
+            ? {
+                what: "Add at least 10 clear photos showing the exterior, interior and any faults. Finish or cancel any open damage-map entry.",
+                why: "Buyers need to see the car and its condition before making an offer or bidding. HPI remains optional.",
+                reminder: "Upload photos, then choose Next Step. You can add more photos later.",
+            }
+            : currentStep === 3
+                ? {
+                    what: isAuction
+                        ? "Review CarMazium's Auction valuation, then confirm the estimated value for your vehicle."
+                        : "Review the suggested Retail value and choose your own public asking price. A lower acceptable offer price is optional.",
+                    why: isAuction
+                        ? "The value helps calculate the opening bid; it is not shown as an advertised asking price to bidders."
+                        : "Buyers see the asking price. Any lower acceptable offer floor is not shown publicly.",
+                    reminder: "These are guides only. You stay in control of your vehicle's asking price or Auction reserve.",
+                }
+                : currentStep === 4 && isAuction
+                    ? {
+                        what: "Choose whether your Auction starts now or later. Enter your reserve and the minimum bid increment.",
+                        why: "The reserve is the minimum you would accept and stays hidden from bidders. CarMazium calculates the opening bid automatically.",
+                        reminder: "Buy It Now is optional. Check the dates and prices before continuing.",
+                    }
+                    : {
+                        what: "Check the details, photos, price and declarations. Use Edit beside a section to make any corrections.",
+                        why: "A final review helps prevent mistakes before submitting your vehicle for moderation and any applicable Retail checkout.",
+                        reminder: "Nothing in this guidance changes CarMazium's listing fees, Auction rules or admin approval.",
+                    }
+
+    const fieldReasons: Record<string, string> = {
+        registration: "The registration is used to find available DVLA and MOT vehicle details.",
+        make: "The make identifies the manufacturer and helps buyers find your car.",
+        model: "The model helps buyers search for and compare the correct vehicle.",
+        year: "The vehicle's year helps buyers judge its age and market value.",
+        condition: "A condition declaration helps buyers understand wear and any faults.",
+        body: "Body type helps buyers filter for the vehicle shape they want.",
+        location: "The area helps buyers decide whether collection or delivery is practical.",
+        mileage: "Mileage is important to valuation and buyer confidence.",
+        fuel: "Fuel type is a core buying and search filter.",
+        transmission: "Transmission allows buyers to find manual or automatic vehicles.",
+        title: "A clear title identifies the vehicle in search results.",
+        description: "Describe the car honestly, including relevant faults, history and features.",
+        owners: "The keeper history provides useful background to buyers.",
+        writeoff: "Buyers must be told about an insurance write-off declaration.",
+        stolen: "An accurate stolen/recovered answer helps buyers understand vehicle history.",
+        finance: "Outstanding finance may affect completion of the sale.",
+        keeper: "We need to understand your authority to sell the vehicle.",
+        relationship: "If you are not the keeper, explain your relationship to the keeper.",
+        estate: "For an estate sale, explain your relationship to the owner.",
+        confirmation: "You must confirm your declarations are accurate before listing.",
+        photos: "At least 10 clear photos are needed to show buyers the vehicle.",
+        asking: "Your chosen price supplies the reference for this listing.",
+        minimum: "The optional lower price cannot be more than the asking price.",
+        start: "A future start needs a valid date and time.",
+        reserve: "The hidden reserve is the minimum amount you would accept.",
+        auctionvalue: "The Auction valuation sets the automatic opening-bid guide.",
+        increment: "Each new bid must rise by at least the minimum increment.",
+        "buy-now": "This optional price lets buyers request an immediate purchase.",
+    }
     // Auto-generate title from make + model + year
     React.useEffect(() => {
         if (formData.make && formData.model && formData.year) {
@@ -1218,13 +1284,30 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const validateStep = (): boolean => getStepValidationError() === null
 
     const [stepValidationMessage, setStepValidationMessage] = React.useState<string | null>(null)
-    const [guidedFullScreen, setGuidedFullScreen] = React.useState(false)
+    // New Retail and Auction listings open the guided form by default.
+    // Website view reuses exactly the same saved form and current step.
+    const [guidedFullScreen, setGuidedFullScreen] = React.useState(true)
+    React.useEffect(() => {
+        if (!sellingMethod) setGuidedFullScreen(true)
+    }, [sellingMethod])
     React.useEffect(() => {
         if (!guidedFullScreen || !sellingMethod) return
         const previous = document.body.style.overflow
         document.body.style.overflow = 'hidden'
         return () => { document.body.style.overflow = previous }
     }, [guidedFullScreen, sellingMethod])
+
+    const switchWizardView = () => {
+        setGuidedFullScreen(prev => !prev)
+        // Reposition inside the new scrolling context without clearing
+        // any fields, the seller's draft or the current step.
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+            document.getElementById('listing-wizard-step-header')?.scrollIntoView({
+                behavior: 'auto',
+                block: 'start',
+            })
+        }))
+    }
 
     /** Return the exact first unanswered input, not a generic page position. */
     const firstInvalidField = (): { field: string; label: string } | null => {
@@ -2576,11 +2659,16 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
                 </div>
 
-                <div className="flex justify-end mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <p className="text-xs sm:text-sm text-[var(--text-secondary)]">
+                        {guidedFullScreen
+                            ? "Guided application is on. We'll explain what to enter and why."
+                            : "Website view is on. Your listing progress and answers are unchanged."}
+                    </p>
                     <Button type="button" variant="outline" aria-pressed={guidedFullScreen}
-                        onClick={() => setGuidedFullScreen(v => !v)}
-                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10">
-                        {guidedFullScreen ? "Exit Guided Full-Screen" : "Open Guided Full-Screen"}
+                        onClick={switchWizardView}
+                        className="border-primary/40 text-primary hover:text-primary hover:bg-primary/10 min-h-[44px] whitespace-normal">
+                        {guidedFullScreen ? "Continue on Website" : "Return to Guided Full-Screen"}
                     </Button>
                 </div>
                 <div id="listing-wizard-step-header" className="text-center mb-6 sm:mb-10 scroll-mt-20">
@@ -2614,6 +2702,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             {stepValidationMessage} <span className="block mt-1 text-xs font-normal">We have taken you to the first field that needs attention.</span>
                         </div>
                     )}
+                    {/* Always-visible context for both first-time and experienced
+                        sellers, without sending their form data to AI. */}
+                    <section aria-label="Guidance for this listing step" className="mb-6 rounded-xl border border-sky-500/30 bg-sky-500/5 p-4 sm:p-5 space-y-3">
+                        <div className="flex items-center gap-2 text-sky-700 dark:text-sky-300">
+                            <Info size={18} aria-hidden="true" />
+                            <h3 className="font-bold text-sm sm:text-base">Your guide: {WIZARD_STEPS.find(s => s.id === currentStep)?.title}</h3>
+                        </div>
+                        <p className="text-sm text-[var(--text-primary)]"><strong>What to do:</strong> {stepGuide.what}</p>
+                        <p className="text-sm text-[var(--text-secondary)]"><strong>Why we ask:</strong> {stepGuide.why}</p>
+                        <p className="text-xs text-[var(--text-muted)]">{stepGuide.reminder}</p>
+                    </section>
                     {/* ── STEP 1: Identity ──────────────────────────────────────────────── */}
                     {currentStep === 1 && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -4747,7 +4846,25 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                     )}
 
                     {/* Navigation */}
-                    <div className="sticky bottom-2 z-20 flex justify-between gap-3 mt-10 p-3 sm:p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]/95 backdrop-blur-lg shadow-xl">
+                    <div className="sticky bottom-2 z-20 mt-10 p-3 sm:p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]/95 backdrop-blur-lg shadow-xl">
+                        {stepValidationMessage && (() => {
+                            const missing = firstInvalidField()
+                            return (
+                                <div role="alert" className="mb-3 flex flex-col gap-2 border-l-2 border-red-500 pl-3">
+                                    <p className="text-sm font-semibold text-red-400">
+                                        {missing ? `Please complete: ${missing.label}` : stepValidationMessage}
+                                    </p>
+                                    {missing && (
+                                        <>
+                                            <p className="text-xs text-[var(--text-secondary)]">{fieldReasons[missing.field] ?? "Please complete this field to continue."}</p>
+                                            <button type="button" className="self-start text-xs font-semibold underline text-primary"
+                                                onClick={() => focusMissingField(missing.field)}>Go to missing field</button>
+                                        </>
+                                    )}
+                                </div>
+                            )
+                        })()}
+                        <div className="flex justify-between gap-3">
                         {currentStep > 1
                             ? <Button variant="outline" onClick={handleBack} className="px-7 hover:bg-primary/5 dark:hover:bg-white/10"><ArrowLeft className="mr-2 h-4 w-4" /> Back</Button>
                             : <div />
@@ -4759,6 +4876,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Publishing...</> : <>Publish <CheckCircle className="ml-2 h-4 w-4" /></>}
                             </Button>
                         }
+                        </div>
                     </div>
                 </div>
             </div>

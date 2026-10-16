@@ -654,13 +654,27 @@ test('web guided seller wizard focuses first missing field without resetting who
   assert.match(source, /role="alert" className="mb-5/)
 })
 
-test('seller can optionally open a full-screen guided form without a second draft flow', () => {
+test('full-screen guided form is the default; switching to website preserves the current listing', () => {
   const source = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
-  assert.match(source, /const \[guidedFullScreen, setGuidedFullScreen\] = React\.useState\(false\)/)
-  assert.match(source, /Open Guided Full-Screen/)
-  assert.match(source, /Exit Guided Full-Screen/)
-  assert.match(source, /setGuidedFullScreen\(v => !v\)/)
+  assert.match(source, /const \[guidedFullScreen, setGuidedFullScreen\] = React\.useState\(true\)/)
+  assert.match(source, /if \(!sellingMethod\) setGuidedFullScreen\(true\)/)
+  assert.match(source, /Continue on Website/)
+  assert.match(source, /Return to Guided Full-Screen/)
+  assert.match(source, /const switchWizardView = \(\) =>/)
+  assert.match(source, /setGuidedFullScreen\(prev => !prev\)/)
   assert.match(source, /document\.body\.style\.overflow = 'hidden'/)
   assert.match(source, /document\.body\.style\.overflow = previous/)
   assert.match(source, /fixed inset-0 z-\[60\] overflow-y-auto/)
+  const switchFn = source.split('const switchWizardView = () => {')[1].split('    /** Return the exact first unanswered input')[0]
+  assert.doesNotMatch(switchFn, /setFormData\(|setCurrentStep\(|clearDraft|localStorage\.removeItem/)
+})
+test('web guide explains what to enter, why it matters and how to correct errors', () => {
+  const source = readFileSync(new URL("../src/components/listing/ListingWizard.tsx", import.meta.url), "utf8")
+  assert.match(source, /const stepGuide = currentStep === 1/)
+  assert.match(source, /What to do:/)
+  assert.match(source, /Why we ask:/)
+  assert.match(source, /const fieldReasons: Record<string, string>/)
+  assert.match(source, /Go to missing field/)
+  assert.match(source, /focusMissingField\(missing\.field\)/)
+  assert.match(source, /Your guide:/)
 })
