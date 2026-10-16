@@ -141,6 +141,7 @@ describe('DvlaService AI specification enrichment', () => {
                 revenueWeight: 3500,
                 realDrivingEmissions: '1',
                 automatedVehicle: false,
+                rawFuelType: 'DIESEL',
             },
             mot: {
                 registrationDate: '2022-03-02',
@@ -148,6 +149,7 @@ describe('DvlaService AI specification enrichment', () => {
                 secondaryColour: 'WHITE',
                 lastMotTestDate: '2025-06-01',
                 motTestDueDate: '2026-06-01',
+                primaryColour: 'BLACK',
             },
         });
         expect(result.motHistory?.[0].odometerResultType).toBe('READ');
