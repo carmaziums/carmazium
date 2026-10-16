@@ -912,9 +912,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const stepScrollRef = useRef<ScrollView>(null);
   // Positions are measured in the currently mounted step's ScrollView.
   const validationSectionYRef = useRef<Record<string, number>>({});
+  const validationFieldOffsetsRef = useRef<Record<string, { section: string; offset: number }>>({});
   const [validationIssue, setValidationIssue] = useState<{ field: string; message: string } | null>(null);
   const rememberValidationSection = (section: string) => (event: any) => {
     validationSectionYRef.current[section] = event.nativeEvent.layout.y;
+  };
+  // Controls inside a long section can be located more precisely than merely
+  // landing at the section title. Layout is relative to SectionBox body.
+  const rememberNestedField = (section: string, field: string) => (event: any) => {
+    validationFieldOffsetsRef.current[field] = {
+      section,
+      offset: event.nativeEvent.layout.y + 48 + 14,
+    };
   };
   const scrollToMissingField = (field: string) => {
     const sections: Record<string, string> = {
@@ -932,8 +941,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const section = sections[field];
     // Wait for inline field error/layout update; never force every error to y=0.
     setTimeout(() => {
-      const y = validationSectionYRef.current[section];
-      stepScrollRef.current?.scrollTo({ y: Number.isFinite(y) ? Math.max(0, y - 12) : 0, animated: true });
+      const base = validationSectionYRef.current[section];
+      const nested = validationFieldOffsetsRef.current[field];
+      const y = Number.isFinite(base)
+        ? base + (nested?.section === section ? nested.offset : 0)
+        : 0;
+      stepScrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: true });
     }, 100);
   };
 
@@ -3000,7 +3013,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <Text style={s.warnText}>
             Required by law. False declarations can constitute fraud and must be reported to relevant authorities.
           </Text>
-          <View>
+          <View onLayout={rememberNestedField('declarations', 'writeOffCat')}>
             <SL label="INSURANCE WRITE-OFF STATUS *" required />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {WRITE_OFF_CATS.map(c => (
@@ -3016,7 +3029,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
             {fieldError('writeOffCat') ? <Text style={s.inlineError}>{fieldError('writeOffCat')}</Text> : null}
           </View>
-          <View style={{ marginTop: 16 }}>
+          <View onLayout={rememberNestedField('declarations', 'stolenRecovered')} style={{ marginTop: 16 }}>
             <YesNoRow
               label="HAS THIS VEHICLE EVER BEEN REPORTED STOLEN OR RECOVERED? *"
               value={stolenRecovered}
@@ -3076,6 +3089,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
           </View>
           <TouchableOpacity
+            onLayout={rememberNestedField('declarations', 'declAcknowledged')}
             style={[s.declRow, declAcknowledged && s.declRowActive]}
             onPress={() => setDeclAcknowledged(p => { setTouched(prev => ({ ...prev, declAcknowledged: true })); return !p; })}
             activeOpacity={0.8}
