@@ -16,6 +16,7 @@ import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { hasOtherActiveRetailRegistration } from '../listings/retail-uniqueness';
 import { DvlaService } from '../dvla/dvla.service';
 import { motEnrichmentUpdate } from '../listings/mot-backfill';
+import { mergeOfficialVehicleData } from '../listings/official-vehicle-data';
 import { sellerBonusEmailState, SellerBonusEmailState } from './seller-bonus-email-state';
 import { classifyHistoricalAuction } from './auction-history-reconciliation';
 import {
@@ -859,6 +860,11 @@ export class AdminService {
             if (missing(current.make) && !missing(official.make)) patch.make = official.make;
             if (current.year == null && official.year) patch.year = official.year;
             if (current.engineSize == null && official.engineSize) patch.engineSize = official.engineSize;
+            if (missing(current.color) && (official.colour || official.primaryColour)) {
+                patch.color = official.colour || official.primaryColour;
+            }
+            if (current.fuelType == null && official.fuelType) patch.fuelType = official.fuelType;
+            if (current.euroStandard == null && official.euroStandard) patch.euroStandard = official.euroStandard;
             if (current.co2Emissions == null && official.co2Emissions != null) patch.co2Emissions = official.co2Emissions;
             if (current.markedForExport == null && official.markedForExport != null) {
                 patch.markedForExport = official.markedForExport;
@@ -871,7 +877,13 @@ export class AdminService {
             if (enrichment && (!Array.isArray(current.motHistory) || current.motHistory.length === 0)) {
                 patch.motHistory = enrichment.motHistory as unknown as Prisma.InputJsonValue;
             }
-            if (missing(current.model) && enrichment?.model) patch.model = enrichment.model;
+            if (missing(current.model) && (enrichment?.model || official.model)) {
+                patch.model = enrichment?.model || official.model;
+            }
+            const supplementary = mergeOfficialVehicleData(current.officialVehicleData, official.officialVehicleData);
+            if (supplementary && JSON.stringify(current.officialVehicleData ?? null) !== JSON.stringify(supplementary)) {
+                patch.officialVehicleData = supplementary as Prisma.InputJsonValue;
+            }
             if (Object.keys(patch).length === 0) continue;
             // Optimistic version check: never overwrite an edit made after our read.
             const changed = await this.prisma.listing.updateMany({
