@@ -2103,6 +2103,17 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                             </div>
                         )}
 
+                        {activeAuction && (
+                            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
+                                <p className="font-bold text-[var(--text-primary)]">Prefer to advertise in both Auction and Retail?</p>
+                                <p className="text-sm text-[var(--text-secondary)]">
+                                    Keep this auction running. Open My Auctions, find the vehicle, select Also Retail, enter your asking price and complete the Retail package payment and review. You do not need to upload the vehicle again.
+                                </p>
+                                <Link href="/dashboard/seller/auctions" className="inline-flex items-center gap-2 min-h-[44px] text-sm font-bold text-emerald-400 hover:underline">
+                                    Keep Auction &amp; Also List Retail <ArrowRight size={16}/>
+                                </Link>
+                            </div>
+                        )}
                         <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-4 text-sm">
                             <p><strong>Retail package:</strong> {tier}</p>
                             <p className="text-[var(--text-muted)] mt-2">
