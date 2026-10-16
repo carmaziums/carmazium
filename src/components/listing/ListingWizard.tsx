@@ -329,21 +329,23 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
     const { trackEvent } = useAnalytics()
     const router = useRouter()
 
+    const aiConsentKey = profile?.id ? `mazium_ai_consent_v2:${profile.id}` : null
     const hasAiSharingConsent = React.useCallback(() => {
-        if (typeof window === "undefined") return false
-        return window.localStorage.getItem("mazium_ai_consent_v2") === "accepted"
-    }, [])
+        if (typeof window === "undefined" || !aiConsentKey) return false
+        return window.localStorage.getItem(aiConsentKey) === "accepted"
+    }, [aiConsentKey])
 
     const ensureAiSharingConsent = React.useCallback(() => {
+        if (!aiConsentKey) return false
         if (hasAiSharingConsent()) return true
         const accepted = window.confirm(
             "AI data sharing\n\nMaziuM sends your vehicle details, including registration where available, to OpenAI. For dealer accounts, CarMazium separately adds your saved business introduction, general location and dealer-stated warranty or finance terms. Direct contact details are excluded. Review all text before publishing.\n\nDo you consent to this AI processing?"
         )
         if (accepted) {
-            window.localStorage.setItem("mazium_ai_consent_v2", "accepted")
+            window.localStorage.setItem(aiConsentKey, "accepted")
         }
         return accepted
-    }, [hasAiSharingConsent])
+    }, [hasAiSharingConsent, aiConsentKey])
 
     const [currentStep, setCurrentStep] = React.useState(1)
     const [formData, setFormData] = React.useState<FormData>(INITIAL_FORM)
