@@ -25,7 +25,7 @@ test("description action retains consent and does not alter its API contract", (
     assert.match(action, /if \(!ensureAiSharingConsent\(\)\) return/)
     assert.match(action, /aiGenerateDescription\(/)
     assert.match(action, /set\("description", res\.text\)/)
-    assert.match(cta, /Saved dealer introductions and stated warranty\/finance terms/)
+    assert.match(cta, /Dealer profiles add an introduction, location and saved warranty\/finance terms/)
     assert.match(cta, /aria-busy=\{isGeneratingDesc\}/)
 })
 
