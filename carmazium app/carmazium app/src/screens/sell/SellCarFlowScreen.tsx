@@ -644,7 +644,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [typeApproval, setTypeApproval] = useState(() => landingPrefill?.typeApproval || '');
   // DVSA MOT history is saved to the listing for buyer viewing. Historical
   // MOT mileage must never replace seller-entered current mileage.
-  const [officialVehicleData, setOfficialVehicleData] = useState<OfficialVehicleData | undefined>(undefined);
+  const [officialVehicleData, setOfficialVehicleData] = useState<OfficialVehicleData | undefined>(() => landingPrefill?.officialVehicleData);
   const [motHistory, setMotHistory] = useState<import('../../data/listings').NativeMotTest[]>(
     () => landingPrefill?.motHistory ?? [],
   );
