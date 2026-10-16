@@ -1112,23 +1112,13 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                             ))}
                                         </div>
                                     </AccordionItem>
-                                    {/* HPI Verification Badges in Features */}
-                                    {listing.badgeTier === 'PREMIUM' && (
-                                        <AccordionItem title="HPI Verification" icon={<ShieldCheck size={18} />}>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
-                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
-                                                    Condition Check
-                                                </div>
-                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
-                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
-                                                    Stolen Check
-                                                </div>
-                                                <div className="flex items-center gap-2 text-sm text-emerald-300">
-                                                    <CheckCircle size={12} className="text-emerald-400 shrink-0" />
-                                                    Finance Check
-                                                </div>
-                                            </div>
+                                    {/* Premium marketing badges do not imply an HPI check.
+                                        Only a completed report may be described as available. */}
+                                    {listing.hpiReport?.status === 'COMPLETED' && (
+                                        <AccordionItem title="HPI Report Available" icon={<ShieldCheck size={18} />}>
+                                            <p className="text-sm text-[var(--text-secondary)]">
+                                                A completed HPI report is available through the vehicle report section. Review its actual findings; package tier alone is not a vehicle history check.
+                                            </p>
                                         </AccordionItem>
                                     )}
 
