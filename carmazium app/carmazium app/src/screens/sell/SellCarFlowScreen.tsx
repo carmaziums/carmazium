@@ -601,6 +601,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
   const [showDvlaDetails, setShowDvlaDetails] = useState(false);
+  // Show the same two safe choices as web when this registration already has
+  // a running Auction. Cancellation is never the default.
+  const [auctionRetailChoice, setAuctionRetailChoice] = useState<RetailConversionCandidate | null>(null);
+  const [auctionRetailConfirmCancel, setAuctionRetailConfirmCancel] = useState(false);
+  const retailChoiceResolverRef = useRef<((choice: 'KEEP_BOTH' | 'CONVERT' | null) => void) | null>(null);
   const [showExtraSpecs, setShowExtraSpecs] = useState(false);
   const currentUserId = useAuthStore(state => state.isAuthenticated ? state.user?.id : null);
 
@@ -1857,23 +1862,38 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     }
   }
 
-  // ─── Auction → Retail conversion confirmation ────────────────────────────────
+  // ─── Safe Auction → Retail choice (iOS and Android) ────────────────────────
+  // The user must explicitly choose *keep both* or *replace the auction*.
+  // For a running auction the choice appears in a native BottomSheet rather
+  // than an Alert which previously emphasised the destructive switch.
+  function resolveAuctionRetailChoice(choice: 'KEEP_BOTH' | 'CONVERT' | null) {
+    const resolver = retailChoiceResolverRef.current;
+    retailChoiceResolverRef.current = null;
+    setAuctionRetailChoice(null);
+    setAuctionRetailConfirmCancel(false);
+    resolver?.(choice);
+  }
 
-  function confirmAuctionToRetail(candidate: RetailConversionCandidate): Promise<boolean> {
+  function confirmAuctionToRetail(
+    candidate: RetailConversionCandidate,
+  ): Promise<'KEEP_BOTH' | 'CONVERT' | null> {
     const isRunning = candidate.auctionStatus === 'ACTIVE' || candidate.auctionStatus === 'SCHEDULED';
-    const message = isRunning
-      ? 'This vehicle is already in an auction. Switching to Retail will cancel that auction, stop further bidding and reuse the same vehicle listing. The Retail listing will still require its normal listing fee and admin review.'
-      : 'This vehicle already has an auction history. CarMazium will reuse the same vehicle listing as Retail instead of creating a duplicate. The Retail listing will still require its normal listing fee and admin review.';
-
+    if (isRunning) {
+      return new Promise(resolve => {
+        retailChoiceResolverRef.current = resolve;
+        setAuctionRetailConfirmCancel(false);
+        setAuctionRetailChoice(candidate);
+      });
+    }
     return new Promise(resolve => {
       Alert.alert(
-        'Switch auction to Retail?',
-        message,
+        'Switch existing Auction to Retail?',
+        'The old Auction is not running. CarMazium will reuse its existing vehicle listing as a Retail draft, then apply the normal listing fee and review. No duplicate upload is needed.',
         [
-          { text: 'Keep Auction', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Switch to Retail', style: 'destructive', onPress: () => resolve(true) },
+          { text: 'Not Now', style: 'cancel', onPress: () => resolve(null) },
+          { text: 'Switch to Retail', onPress: () => resolve('CONVERT') },
         ],
-        { cancelable: true, onDismiss: () => resolve(false) },
+        { cancelable: true, onDismiss: () => resolve(null) },
       );
     });
   }
@@ -2061,8 +2081,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               return;
             }
 
-            const confirmed = await confirmAuctionToRetail(conversion.candidate);
-            if (!confirmed) return;
+            const choice = await confirmAuctionToRetail(conversion.candidate);
+            if (choice === null) return;
+            if (choice === 'KEEP_BOTH') {
+              // Reuse the existing native Auction → Retail payment flow, opening
+              // the chosen car and price instead of asking to upload it again.
+              // No mutation, cancellation or payment occurs on this screen.
+              navigation?.navigate('SellerAuctions', {
+                alsoRetailListingId: conversion.candidate.listingId,
+                alsoRetailPrice: priceAsking,
+                alsoRetailTier: badgeTier === 'STANDARD' || badgeTier === 'PREMIUM' ? badgeTier : 'BASIC',
+              });
+              return;
+            }
 
             const converted = await convertAuctionToRetail(conversion.candidate.listingId, {
               ...payload,
@@ -4022,6 +4053,73 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
         </>
       )}
+
+      {/* Safe dual-channel listing choices. The destructive path requires a
+          separate confirmation and cannot be triggered by the primary button. */}
+      <BottomSheet
+        visible={auctionRetailChoice !== null}
+        onClose={() => resolveAuctionRetailChoice(null)}
+        title="List in Retail without losing your Auction"
+        maxHeightPercent={92}
+      >
+        <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 24, gap: 14 }}>
+          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm }}>
+            {auctionRetailChoice?.title || [year, make, model].filter(Boolean).join(' ')}
+          </Text>
+          <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.whiteAlpha05, gap: 5 }}>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>
+              Retail asking price: £{(Number(priceAsking) || 0).toLocaleString('en-GB')}
+            </Text>
+            <Text style={{ color: Colors.textSecondary, fontFamily: FontFamily.medium }}>
+              Retail package: {badgeTier === 'PREMIUM' ? 'Premium £25' : badgeTier === 'STANDARD' ? 'Standard £10' : 'Basic £1'}
+            </Text>
+            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs }}>
+              The Retail listing will require its normal payment and admin review.
+            </Text>
+          </View>
+          <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.accentGreen + '12', borderWidth: 1, borderColor: Colors.accentGreen, gap: 9 }}>
+            <Text style={{ color: Colors.accentGreen, fontFamily: FontFamily.bold }}>OPTION 1 · KEEP BOTH LISTINGS</Text>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Keep Auction running and also list in Retail</Text>
+            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
+              Your existing Auction and its bids stay unchanged. We will open the same vehicle, price and Retail package so you can complete payment without uploading again.
+            </Text>
+            <TouchableOpacity onPress={() => resolveAuctionRetailChoice('KEEP_BOTH')} accessibilityRole="button"
+              style={{ backgroundColor: Colors.accentGreen, padding: 15, borderRadius: 10, alignItems: 'center', minHeight: 48 }}>
+              <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>KEEP AUCTION & ALSO LIST RETAIL</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha15, gap: 10 }}>
+            <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold }}>OPTION 2 · REPLACE THE AUCTION</Text>
+            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Switch to Retail only</Text>
+            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
+              This will cancel the Auction and stop bidding. Select this only if you no longer want the vehicle in Auction. Existing winners or met reserves may block cancellation.
+            </Text>
+            {!auctionRetailConfirmCancel ? (
+              <TouchableOpacity onPress={() => setAuctionRetailConfirmCancel(true)} accessibilityRole="button"
+                style={{ borderWidth: 1, borderColor: Colors.warning, borderRadius: 10, padding: 13, alignItems: 'center', minHeight: 46 }}>
+                <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold }}>Switch to Retail Only (Cancel Auction)</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ gap: 9, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.error }}>
+                <Text style={{ color: Colors.error, fontFamily: FontFamily.bold }}>Confirm: cancel this Auction?</Text>
+                <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs }}>
+                  Once cancelled, the active bids will not continue.
+                </Text>
+                <TouchableOpacity onPress={() => setAuctionRetailConfirmCancel(false)} style={{ padding: 12, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.white }}>Go Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => resolveAuctionRetailChoice('CONVERT')} accessibilityRole="button"
+                  style={{ padding: 14, borderRadius: 9, backgroundColor: Colors.error, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>CONFIRM: CANCEL AUCTION & SWITCH</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => resolveAuctionRetailChoice(null)} style={{ padding: 14, alignItems: 'center' }}>
+            <Text style={{ color: Colors.textSecondary }}>Not Now — Keep Existing Auction</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 };
