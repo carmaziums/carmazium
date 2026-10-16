@@ -1077,6 +1077,23 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                             </div>
                         )}
 
+                        {/* Show the seller's uploaded video links on the /vehicle route,
+                            as they already appear in retail and live auctions. */}
+                        {Array.isArray(listing.videoUrls) && listing.videoUrls.some(url => typeof url === "string" && /^https:\/\//i.test(url)) && (
+                            <section className="mb-6 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-5 sm:p-7">
+                                <h3 className="mb-3 border-l-4 border-primary pl-4 text-lg font-bold text-[var(--text-primary)]">Seller Vehicle Videos</h3>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {listing.videoUrls.filter((url): url is string => typeof url === "string" && /^https:\/\//i.test(url)).map((url, i) => (
+                                        <a key={url + i} href={url} target="_blank" rel="noopener noreferrer"
+                                            className="break-all rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3 text-sm font-semibold text-blue-600 hover:border-primary/40 dark:text-blue-300">
+                                            View seller video {i + 1}
+                                            <span className="mt-1 block truncate text-xs font-normal text-[var(--text-muted)]">{url}</span>
+                                        </a>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
                         {/* Shared full buyer vehicle details: DVLA facts, seller specs and the saved MOT timeline. */}
                         <BuyerVehicleInformation listing={listing} />
 
