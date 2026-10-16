@@ -174,7 +174,7 @@ export type MainStackParamList = {
     wheelplan?: string; typeApproval?: string; motHistory?: import('../data/listings').NativeMotTest[];
   } } | undefined;
   SellerListings: undefined;
-  SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean } | undefined;
+  SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
   UnifiedDashboard: undefined;
