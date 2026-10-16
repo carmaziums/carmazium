@@ -1260,7 +1260,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
             }
         }
         if (currentStep === 4 && isAuction) {
-            if (auctionSchedule.startTime !== 'NOW' && (!auctionSchedule.startTime || new Date(auctionSchedule.startTime).getTime() <= Date.now())) return { field: 'start', label: 'Auction Start Date' }
+            if (auctionSchedule.startTime !== 'NOW' && (!auctionSchedule.startTime || !Number.isFinite(new Date(auctionSchedule.startTime).getTime()) || new Date(auctionSchedule.startTime).getTime() <= Date.now())) return { field: 'start', label: 'Auction Start Date' }
             if (!(Number(auctionSchedule.reservePrice) > 0)) return { field: 'reserve', label: 'Reserve Price' }
             if (!(Number(auctionSchedule.startingBid) > 0)) return { field: 'auctionvalue', label: 'Auction Value' }
             if (!(Number(auctionSchedule.minIncrement) > 0)) return { field: 'increment', label: 'Minimum Bid Increment' }
