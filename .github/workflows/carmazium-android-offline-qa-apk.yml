@@ -85,6 +85,9 @@ jobs:
             if (typeof cfg[key] !== 'string' || !cfg[key]) throw new Error('Missing public preview value: '+key);
             fs.appendFileSync(process.env.GITHUB_ENV, key + '=' + cfg[key] + '\n');
           }
+          // Independent Android review version; never changes the production package.
+          app.expo.version = '1.0.1';
+          app.expo.android.versionCode = 2;
           app.expo.name = 'CarMazium QA';
           app.expo.slug = 'carmazium-qa';
           app.expo.scheme = 'carmazium-qa';
