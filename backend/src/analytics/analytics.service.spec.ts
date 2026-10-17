@@ -118,6 +118,7 @@ describe('AnalyticsService live valuation analytics', () => {
 
         expect(result.today).toEqual({
             requests: 18,
+            serverOnlyQuotes: 0,
             uniqueSessions: 13,
             loggedInUsers: 11,
             loggedInSessions: 11,
@@ -149,6 +150,7 @@ describe('AnalyticsService live valuation analytics', () => {
         expect(result.last7Days[1]).toEqual({
             date: '2026-09-21',
             requests: 18,
+            serverOnlyQuotes: 0,
             sessions: 13,
             valuationAttempts: 20,
             figuresReturned: 17,
