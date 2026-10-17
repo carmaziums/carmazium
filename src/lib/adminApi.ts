@@ -1111,6 +1111,7 @@ export interface ValuationLiveAnalytics {
     auctionRequests: number;
     retailRequests: number;
     valuationAttempts: number;
+    serverOnlyQuotes: number;
     figuresReturned: number;
     withoutFigures: number;
     confirmedNoFigures: number;
@@ -1141,6 +1142,7 @@ export interface ValuationLiveAnalytics {
     requests: number;
     sessions: number;
     valuationAttempts: number;
+    serverOnlyQuotes: number;
     figuresReturned: number;
     withoutFigures: number;
     confirmedNoFigures: number;
@@ -1164,6 +1166,7 @@ export interface ValuationLiveAnalytics {
   recent: Array<{
     id: string;
     createdAt: string;
+    auditOrigin: 'customer_event' | 'valuation_quote_issued' | 'valuation_price_lock';
     registration: string | null;
     mileage: number | null;
     make: string | null;
