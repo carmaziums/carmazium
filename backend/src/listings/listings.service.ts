@@ -626,8 +626,8 @@ export class ListingsService {
     private async compareArchivedVehicleQuotes(dto: VehicleValuationDto) {
         const cutoff = new Date();
         cutoff.setUTCMonth(cutoff.getUTCMonth() - QUOTE_HISTORY_MONTHS);
-        const make = dto.make.trim().replace(/\\s+/g, ' ').toUpperCase();
-        const model = dto.model.trim().replace(/\\s+/g, ' ').toUpperCase();
+        const make = dto.make.trim().replace(/\s+/g, ' ').toUpperCase();
+        const model = dto.model.trim().replace(/\s+/g, ' ').toUpperCase();
         const rows = await this.prisma.$queryRaw<Array<{
             createdAt: Date;
             type: string;
