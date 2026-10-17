@@ -631,7 +631,7 @@ export class AnalyticsService {
             day: '2-digit',
         }).format(new Date());
         const todayFunnel = funnelDailyRaw.find((row) => row.date === todayDate);
-        const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0);
+        const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0) + serverOnlyCount(todayDate);
         const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
         const todayReachedReview = Number(todayFunnel?.reached_review ?? 0);
         const todayApprovedLive = Number(todayFunnel?.approved_live ?? 0);
@@ -649,7 +649,7 @@ export class AnalyticsService {
                 historicalFallback: 'session',
             },
             today: {
-                requests: Number(overview.requests ?? 0),
+                requests: Number(overview.requests ?? 0) + serverOnlyCount(todayDate),
                 serverOnlyQuotes: serverOnlyCount(todayDate),
                 uniqueSessions: Number(overview.unique_sessions ?? 0),
                 loggedInUsers: Number(overview.logged_in_users ?? 0),
@@ -693,7 +693,7 @@ export class AnalyticsService {
             })),
             last7Days: sevenDayRaw.map((row) => {
                 const funnel = funnelDailyRaw.find((item) => item.date === row.date);
-                const journeys = Number(funnel?.valuation_journeys ?? 0);
+                const journeys = Number(funnel?.valuation_journeys ?? 0) + serverOnlyCount(row.date);
                 const converted = Number(funnel?.converted_journeys ?? 0);
                 const valuationAttempts = Number(row.valuation_attempts ?? 0);
                 const figuresReturned = Number(row.figures_returned ?? 0);
@@ -701,7 +701,7 @@ export class AnalyticsService {
                 const withoutFigures = confirmedNoFigures;
                 return {
                     date: row.date,
-                    requests: Number(row.requests),
+                    requests: Number(row.requests) + serverOnlyCount(row.date),
                     serverOnlyQuotes: serverOnlyCount(row.date),
                     sessions: Number(row.sessions),
                     valuationAttempts,
