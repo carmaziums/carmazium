@@ -1,5 +1,6 @@
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
+import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
 import { hasOtherActiveRetailRegistration } from './retail-uniqueness';
 import { geoBounds, haversineMiles } from './search-geo';
 import {
@@ -592,6 +593,17 @@ export class ListingsService {
                     liveSources: [...liveSourceDomains].sort(),
                     valuationStrategy: 'FALLBACK',
                 };
+                // Read historical *quoted* figures only as a diagnostic benchmark.
+                // Never turn past estimates into market comparables or change the
+                // quote based on them: model-generated quotes can be circular.
+                try {
+                    const historical = await this.compareArchivedVehicleQuotes(dto);
+                    if (historical.vehicleCount > 0) {
+                        calculatedBase.marketEvidence.historicalQuotes = historical;
+                    }
+                } catch (error) {
+                    this.logger.warn(`Historical quote comparison unavailable: ${error}`);
+                }
             }
         }
 
@@ -603,6 +615,57 @@ export class ListingsService {
         return this.freezeCustomerQuote(dto,
             applyVehicleSpecificationAdjustments(stableBase, specificationInput),
         );
+    }
+
+
+    /**
+     * Internal 12-month trend check when current live UK sources are empty.
+     * The 24-hour customer quote is not extended, and historical estimates do
+     * not count as actual sales or newly scraped external market evidence.
+     */
+    private async compareArchivedVehicleQuotes(dto: VehicleValuationDto) {
+        const cutoff = new Date();
+        cutoff.setUTCMonth(cutoff.getUTCMonth() - QUOTE_HISTORY_MONTHS);
+        const make = dto.make.trim().replace(/\\s+/g, ' ').toUpperCase();
+        const model = dto.model.trim().replace(/\\s+/g, ' ').toUpperCase();
+        const rows = await this.prisma.$queryRaw<Array<{
+            createdAt: Date;
+            type: string;
+            payload: Record<string, any>;
+        }>>(Prisma.sql`
+            SELECT "createdAt", type, payload
+            FROM analytics_events
+            WHERE type IN ('valuation_quote_issued', 'valuation_requested')
+              AND "createdAt" >= ${cutoff}
+              AND UPPER(TRIM(COALESCE(payload#>>'{identity,make}', payload->>'make', ''))) = ${make}
+              AND UPPER(TRIM(COALESCE(payload#>>'{identity,model}', payload->>'model', ''))) = ${model}
+            ORDER BY "createdAt" DESC
+            LIMIT 400
+        `);
+
+        const observations: ArchivedValuationObservation[] = rows.map(row => {
+            const payload = row.payload ?? {};
+            const vehicle = payload.identity ?? payload;
+            const quote = payload.valuation ?? {};
+            return {
+                createdAt: row.createdAt,
+                registration: vehicle.registration ?? null,
+                make: String(vehicle.make ?? ''),
+                model: String(vehicle.model ?? ''),
+                year: Number(vehicle.year),
+                mileage: Number(vehicle.mileage),
+                auctionPrice: Number(quote.auction?.marketValue ?? payload.market_value),
+                retailPrice: Number(quote.retail?.suggestedAsking ?? payload.retail_suggested_asking),
+                source: String(quote.source ?? payload.valuation_source ?? ''),
+                liveComparableCount: Number(
+                    quote.marketEvidence?.liveUkComparables
+                    ?? (['LIVE_UK_MARKET', 'BLENDED_MARKET'].includes(payload.valuation_source)
+                        ? payload.valuation_comparables : 0)
+                    ?? 0
+                ),
+            };
+        });
+        return summariseHistoricalQuotes(observations, dto);
     }
 
     /**
