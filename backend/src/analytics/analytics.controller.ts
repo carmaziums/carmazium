@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
+import { ValuationHistoryService } from './valuation-history.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CaptureEmailDto } from './dto/capture-email.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
@@ -26,7 +27,10 @@ function extractIp(req: Request): string | null {
 
 @Controller('analytics')
 export class AnalyticsController {
-    constructor(private readonly analyticsService: AnalyticsService) { }
+    constructor(
+        private readonly analyticsService: AnalyticsService,
+        private readonly valuationHistory: ValuationHistoryService,
+    ) { }
 
     // ─── Public Endpoints ──────────────────────────────────────────────────────
 
@@ -76,6 +80,15 @@ export class AnalyticsController {
     @Roles(UserRole.ADMIN)
     async getLiveValuationAnalytics() {
         return this.analyticsService.getValuationAnalytics();
+    }
+
+    /** Read-only archived quotes: admin only, exactly 12 months. */
+    @Get('valuations/history')
+    @UseGuards(SessionAuthGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
+    async getQuoteHistory(@Query('q') query?: string, @Query('page') page?: string) {
+        const rawPage = page ? Number.parseInt(page, 10) : 1;
+        return this.valuationHistory.getHistory(query || '', Number.isFinite(rawPage) ? rawPage : 1);
     }
 
     @Get('auctions/first-offers')
