@@ -294,6 +294,7 @@ export default function AdminAnalyticsPage() {
             item.valuationComparables,
             item.liveMarketStatus || "",
             item.valuationResult || "",
+            item.auditOrigin === "customer_event" ? "Customer event" : "Recovered backend quote",
             item.listingType || "",
             item.listingStatus || "",
         ])
@@ -320,6 +321,7 @@ export default function AdminAnalyticsPage() {
             "Comparables",
             "Live market status",
             "Valuation result",
+            "Audit origin",
             "Listing route",
             "Listing status",
         ]
