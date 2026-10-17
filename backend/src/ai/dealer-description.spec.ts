@@ -35,6 +35,45 @@ describe('Dealer-enriched MaziuM vehicle descriptions', () => {
         expect(publicDealerCopy('Call +44 7123 456789')).not.toContain('7123');
     });
 
+    it('redacts precise addresses, postcodes, bare domains and social handles in dealer-provided text', () => {
+        const appendix = dealerDescriptionAppendix({
+            companyName: 'Example Motors',
+            businessAddress: 'Birmingham',
+            description: 'Independent local dealer, 181 Example Road, B19 1ES. Visit examplemotors.co.uk or @examplemotors.',
+            warrantyOffered: true,
+            warrantyDetails: '30-day engine and gearbox warranty. Call 0121 555 1234 for details.',
+            financeOffered: false,
+        });
+        expect(appendix).toContain('based in Birmingham.');
+        expect(appendix).toContain('30-day engine and gearbox warranty');
+        for (const prohibited of ['181 Example Road', 'B19 1ES', 'examplemotors.co.uk', '@examplemotors', '0121 555 1234']) {
+            expect(appendix).not.toContain(prohibited);
+        }
+        expect(dealerPublicArea('Birmingham, West Midlands')).toBe('Birmingham, West Midlands');
+        expect(dealerPublicArea('Regent Street')).toBe('');
+        expect(dealerPublicArea('181 Example Road')).toBe('');
+    });
+
+    it('redacts contacts accidentally repeated in the AI vehicle section, keeping paragraph breaks', async () => {
+        const prisma: any = {
+            dealerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
+            dealerStaff: { findMany: jest.fn().mockResolvedValue([]) },
+        };
+        const service = new AiService({ get: () => 'test-key' } as any, prisma);
+        (service as any).openai = {
+            chat: { completions: { create: jest.fn().mockResolvedValue({
+                choices: [{ message: { content: 'Reliable hatchback.\n\nFind us at 12 Example Street, B19 1ES or seller.co.uk.\n\nManual gearbox.' } }],
+            }) } },
+            moderations: { create: jest.fn().mockResolvedValue({ results: [{ flagged: false }] }) },
+        };
+        const { text } = await service.generateDescription({ make: 'Ford' }, 'owner-id');
+        expect(text).toContain('Reliable hatchback.\n\n');
+        expect(text).toContain('\n\nManual gearbox.');
+        expect(text).not.toContain('12 Example Street');
+        expect(text).not.toContain('B19 1ES');
+        expect(text).not.toContain('seller.co.uk');
+    });
+
     it('sources the dealer profile on the backend for an authenticated dealer, not from a spoofed request', async () => {
         const dealerProfile = {
             companyName: 'Real Dealer',
