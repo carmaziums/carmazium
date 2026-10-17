@@ -166,6 +166,7 @@ export class AnalyticsService {
             recentRaw,
             serverOnlyRecentRaw,
             serverOnlyDailyRaw,
+            serverOnlyHourlyRaw,
         ] = await Promise.all([
             this.prisma.$queryRawUnsafe<Array<{
                 requests: string;
@@ -605,6 +606,16 @@ export class AnalyticsService {
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
                 GROUP BY (s."createdAt" AT TIME ZONE 'Europe/London')::date
             `),
+            this.prisma.$queryRawUnsafe<Array<{ hour: string; total: string }>>(`${missingServerQuotesSql}
+                SELECT TO_CHAR(date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
+                       COUNT(*)::text AS total
+                FROM dedup s
+                WHERE s."createdAt" >= (date_trunc('day', now() AT TIME ZONE 'Europe/London') AT TIME ZONE 'Europe/London')
+                  AND s."createdAt" < ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
+                  AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
+                  AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
+                GROUP BY date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London')
+            `),
         ]);
 
         const overview = overviewRaw[0] ?? {
@@ -686,11 +697,18 @@ export class AnalyticsService {
                     ? Math.round((todayApprovedLive / todayValuationJourneys) * 1000) / 10
                     : 0,
             },
-            hourly: hourlyRaw.map((row) => ({
-                hour: row.hour,
-                requests: Number(row.requests),
-                sessions: Number(row.sessions),
-            })),
+            hourly: [...new Set([
+                ...hourlyRaw.map(row => row.hour),
+                ...(serverOnlyHourlyRaw ?? []).map(row => row.hour),
+            ])].sort().map(hour => {
+                const client = hourlyRaw.find(row => row.hour === hour);
+                const recovered = (serverOnlyHourlyRaw ?? []).find(row => row.hour === hour);
+                return {
+                    hour,
+                    requests: Number(client?.requests ?? 0) + Number(recovered?.total ?? 0),
+                    sessions: Number(client?.sessions ?? 0),
+                };
+            }),
             last7Days: sevenDayRaw.map((row) => {
                 const funnel = funnelDailyRaw.find((item) => item.date === row.date);
                 const journeys = Number(funnel?.valuation_journeys ?? 0) + serverOnlyCount(row.date);
