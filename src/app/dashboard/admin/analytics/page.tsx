@@ -418,10 +418,10 @@ export default function AdminAnalyticsPage() {
                                     </div>
                                     <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
                                         <StatCard label="Applied for Valuation" value={valuationLive.today.valuationAttempts} icon={Car} color="bg-blue-500/20" />
-                                        <StatCard label="Got Figures" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
-                                        <StatCard label="No Figures Returned" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
+                                        <StatCard label="Got Figures (Browser)" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
+                                        <StatCard label="No Figures Returned (Browser)" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
                                         <StatCard label="Recovered Backend Quotes" value={valuationLive.today.serverOnlyQuotes ?? 0} icon={ShieldCheck} color="bg-amber-500/20" />
-                                        <StatCard label="Figure Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
+                                        <StatCard label="Browser Tracking Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
                                     </div>
                                     <div className="overflow-x-auto border-t border-[var(--border-default)]">
                                         <table className="w-full text-xs">
