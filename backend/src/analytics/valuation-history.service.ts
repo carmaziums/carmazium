@@ -58,15 +58,15 @@ export class ValuationHistoryService {
             cutoff, pattern, (safePage - 1) * 100);
 
         const groups = await this.prisma.$queryRawUnsafe<Array<{
-            make: string; model: string; quotes: bigint; uniqueVehicles: bigint;
+            make: string; model: string; year: number | null; quotes: bigint; uniqueVehicles: bigint;
             auctionMedian: number | null; retailMedian: number | null;
         }>>(base +
-            " SELECT COALESCE(make,'Unknown') AS make,COALESCE(model,'Unknown') AS model,"
+            " SELECT COALESCE(make,'Unknown') AS make,COALESCE(model,'Unknown') AS model,year,"
             + ' COUNT(*) AS quotes,'
             + " COUNT(DISTINCT NULLIF(regexp_replace(UPPER(COALESCE(registration,'')), '[^A-Z0-9]', '', 'g'), '')) AS \"uniqueVehicles\","
             + ' percentile_cont(0.5) WITHIN GROUP (ORDER BY auction::double precision) AS "auctionMedian",'
             + ' percentile_cont(0.5) WITHIN GROUP (ORDER BY retail::double precision) AS "retailMedian"'
-            + ' FROM delivered GROUP BY make,model ORDER BY quotes DESC LIMIT 30',
+            + ' FROM delivered GROUP BY make,model,year ORDER BY quotes DESC LIMIT 30',
             cutoff, pattern);
 
         return {
@@ -81,7 +81,7 @@ export class ValuationHistoryService {
                 source: row.source, origin: row.type,
             })),
             byModel: groups.map(g => ({
-                make: g.make, model: g.model, quotes: Number(g.quotes),
+                make: g.make, model: g.model, year: g.year, quotes: Number(g.quotes),
                 uniqueVehicles: Number(g.uniqueVehicles),
                 auctionMedian: g.auctionMedian == null ? null : Number(g.auctionMedian),
                 retailMedian: g.retailMedian == null ? null : Number(g.retailMedian),
