@@ -19,6 +19,7 @@ import {
 } from "@/lib/adminApi"
 import { formatPrice } from "@/lib/listingApi"
 import { DateRangeFilter } from "@/components/dealer"
+import { ValuationQuoteHistoryPanel } from "@/components/admin/ValuationQuoteHistoryPanel"
 import type { DateRangePreset } from "@/components/dealer"
 
 function fmtDate(d: Date): string {
@@ -717,6 +718,8 @@ export default function AdminAnalyticsPage() {
                                         </div>
                                     )}
                                 </div>
+
+                                <ValuationQuoteHistoryPanel />
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
                                     New valuation journeys now retain the vehicle registration, mileage and exact CarMazium guide figures shown at valuation time for internal pricing QA. Older rows may show “Legacy” because those values were not historically stored; where a legacy valuation later became a listing, registration and mileage are recovered from that listing when available. The funnel still attributes a listing to a valuation for up to 30 days.

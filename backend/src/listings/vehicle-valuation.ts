@@ -1,3 +1,5 @@
+import type { HistoricalQuoteComparison } from './valuation-quote-history';
+
 export type ValuationEvidenceKind =
     | 'SALE'
     | 'ACCEPTED_OFFER'
@@ -79,6 +81,7 @@ export interface VehicleValuationResult {
         blendedMarketAttempts?: number;
         liveSources?: string[];
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
+        historicalQuotes?: HistoricalQuoteComparison;
     };
     explanation: string;
     retail: {

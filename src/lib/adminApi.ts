@@ -1210,6 +1210,40 @@ export async function getLiveValuationAnalytics(): Promise<ValuationLiveAnalytic
   return apiClient<ValuationLiveAnalytics>('/analytics/valuations/live');
 }
 
+export interface ValuationQuoteHistory {
+  months: number;
+  page: number;
+  hasMore: boolean;
+  note: string;
+  rows: Array<{
+    id: string;
+    createdAt: string;
+    registration: string | null;
+    make: string | null;
+    model: string | null;
+    year: number | null;
+    mileage: number | null;
+    auctionPrice: number | null;
+    retailPrice: number | null;
+    source: string | null;
+    origin: string;
+  }>;
+  byModel: Array<{
+    make: string;
+    model: string;
+    year: number | null;
+    quotes: number;
+    uniqueVehicles: number;
+    auctionMedian: number | null;
+    retailMedian: number | null;
+  }>;
+}
+
+export function getValuationQuoteHistory(q = "", page = 1): Promise<ValuationQuoteHistory> {
+  const params = new URLSearchParams({ q, page: String(page) });
+  return apiClient<ValuationQuoteHistory>(`/analytics/valuations/history?${params.toString()}`);
+}
+
 export interface AuctionFirstOfferAnalytics {
   generatedAt: string;
   windowDays: number;
