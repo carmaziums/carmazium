@@ -294,6 +294,7 @@ export default function AdminAnalyticsPage() {
             item.valuationComparables,
             item.liveMarketStatus || "",
             item.valuationResult || "",
+            item.auditOrigin === "customer_event" ? "Customer event" : "Recovered backend quote",
             item.listingType || "",
             item.listingStatus || "",
         ])
@@ -320,6 +321,7 @@ export default function AdminAnalyticsPage() {
             "Comparables",
             "Live market status",
             "Valuation result",
+            "Audit origin",
             "Listing route",
             "Listing status",
         ]
@@ -416,9 +418,10 @@ export default function AdminAnalyticsPage() {
                                     </div>
                                     <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
                                         <StatCard label="Applied for Valuation" value={valuationLive.today.valuationAttempts} icon={Car} color="bg-blue-500/20" />
-                                        <StatCard label="Got Figures" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
-                                        <StatCard label="No Figures Returned" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
-                                        <StatCard label="Figure Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
+                                        <StatCard label="Got Figures (Browser)" value={valuationLive.today.figuresReturned} icon={CheckCircle2} color="bg-emerald-500/20" />
+                                        <StatCard label="No Figures Returned (Browser)" value={valuationLive.today.withoutFigures} icon={AlertTriangle} color="bg-rose-500/20" />
+                                        <StatCard label="Recovered Backend Quotes" value={valuationLive.today.serverOnlyQuotes ?? 0} icon={ShieldCheck} color="bg-amber-500/20" />
+                                        <StatCard label="Browser Tracking Success Rate" value={`${valuationLive.today.figureSuccessRate.toFixed(1)}%`} icon={TrendingUp} color="bg-yellow-500/20" />
                                     </div>
                                     <div className="overflow-x-auto border-t border-[var(--border-default)]">
                                         <table className="w-full text-xs">
@@ -593,7 +596,7 @@ export default function AdminAnalyticsPage() {
                                                 <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Valuation Price Audit</p>
                                             </div>
                                             <p className="mt-1 text-[11px] text-[var(--text-secondary)]">
-                                                Latest 100 valuation journeys. New valuations record the registration, mileage and exact guide figures shown to the seller so CarMazium pricing can be benchmarked against the market.
+                                                Latest 100 recorded valuations, including backend price records recovered when browser tracking was missing. Anonymous visitors cannot be identified by name.
                                             </p>
                                         </div>
                                         <Button
@@ -691,7 +694,9 @@ export default function AdminAnalyticsPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                                {item.approvedLive ? (
+                                                                {(item.auditOrigin === "valuation_quote_issued" || item.auditOrigin === "valuation_price_lock") ? (
+                                                                    <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-black uppercase text-amber-500" title="Exact price saved by the backend; customer event missing. Listing attribution cannot be confirmed from the price alone.">Recovered quote</span>
+                                                                ) : item.approvedLive ? (
                                                                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Approved & Live</span>
                                                                 ) : item.rejected ? (
                                                                     <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-1 font-black uppercase text-rose-400">Rejected</span>

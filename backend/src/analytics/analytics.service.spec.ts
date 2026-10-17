@@ -118,6 +118,7 @@ describe('AnalyticsService live valuation analytics', () => {
 
         expect(result.today).toEqual({
             requests: 18,
+            serverOnlyQuotes: 0,
             uniqueSessions: 13,
             loggedInUsers: 11,
             loggedInSessions: 11,
@@ -149,6 +150,7 @@ describe('AnalyticsService live valuation analytics', () => {
         expect(result.last7Days[1]).toEqual({
             date: '2026-09-21',
             requests: 18,
+            serverOnlyQuotes: 0,
             sessions: 13,
             valuationAttempts: 20,
             figuresReturned: 17,
@@ -218,6 +220,45 @@ describe('AnalyticsService live valuation analytics', () => {
             historicalFallback: 'session',
         });
     });
+
+    it('displays an orphaned server quote with exact Mercedes prices without inventing a user identity', async () => {
+        jest.useFakeTimers();
+        jest.setSystemTime(new Date('2026-10-17T17:00:00.000Z'));
+        const prisma: any = { $queryRawUnsafe: jest.fn() };
+        const rows = [
+            [{ requests: '0', unique_sessions: '0', logged_in_users: '0',
+               logged_in_sessions: '0', anonymous_sessions: '0', auction_requests: '0',
+               retail_requests: '0', valuation_attempts: '0', figures_returned: '0',
+               confirmed_no_figures: '0' }],
+            [], [], [], [],
+            [{
+                id: 'locked-mercedes',
+                created_at: new Date('2026-10-17T16:02:02.220Z'),
+                payload: { audit_origin: 'valuation_price_lock',
+                    registration: 'SD70XRP', make: 'MERCEDES-BENZ',
+                    model: 'GLB 200', year: '2020', mileage: '50000',
+                    valuation_result: 'figures_returned',
+                    market_value: '16800', retail_suggested_asking: '20160',
+                },
+                started: false, converted: false, listing_id: null,
+                converted_listing_type: null, listing_status: null,
+                listing_vrm: null, listing_mileage: null, fee_paid: false,
+                reached_review: false, approved_live: false, rejected: false,
+            }],
+            [{ date: '2026-10-17', total: '1' }],
+        ];
+        rows.forEach(value => prisma.$queryRawUnsafe.mockResolvedValueOnce(value));
+        const output = await new AnalyticsService(prisma).getValuationAnalytics();
+        expect(output.today.serverOnlyQuotes).toBe(1);
+        expect(output.recent[0]).toEqual(expect.objectContaining({
+            registration: 'SD70XRP', make: 'MERCEDES-BENZ',
+            marketValue: 16800, retailSuggestedAsking: 20160,
+            auditOrigin: 'valuation_price_lock',
+        }));
+        expect(output.recent[0]).not.toHaveProperty('userId');
+        expect(output.recent[0]).not.toHaveProperty('sessionId');
+    });
+
 });
 
 

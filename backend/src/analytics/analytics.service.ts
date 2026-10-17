@@ -118,12 +118,55 @@ export class AnalyticsService {
      * "today" cards remain correct across BST/GMT changes.
      */
     async getValuationAnalytics() {
+
+        // Price locks were already persisted before browser-side analytics was
+        // reliable. Quote receipts now also cover all successful responses.
+        // Do not invent identity or customer-visible prices from base snapshots.
+        const missingServerQuotesSql = `
+            WITH candidates AS (
+                SELECT e.id, e."createdAt", e.payload, e."sessionId", e.type,
+                    regexp_replace(upper(COALESCE(e.payload#>>'{identity,registration}', '')),
+                                   '[^A-Z0-9]', '', 'g') AS vrm,
+                    NULLIF(e.payload->>'valuation_id', '') AS valuation_id
+                FROM analytics_events e
+                WHERE e.type IN ('valuation_quote_issued', 'valuation_price_lock')
+                  AND e."createdAt" > NOW() - interval '90 days'
+            ), missing_client AS (
+                SELECT s.* FROM candidates s
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM analytics_events c
+                    WHERE c.type='valuation_requested'
+                      AND c."createdAt" BETWEEN s."createdAt"-interval '15 minutes' AND s."createdAt"+interval '15 minutes'
+                      AND (
+                        (s.valuation_id IS NOT NULL AND c.payload->>'valuation_id'=s.valuation_id)
+                        OR (s.valuation_id IS NULL AND s.vrm<>'' AND regexp_replace(upper(COALESCE(c.payload->>'registration','')),
+                            '[^A-Z0-9]','','g')=s.vrm)
+                      )
+                )
+                AND (
+                    s.type <> 'valuation_price_lock'
+                    OR NOT EXISTS (
+                        SELECT 1 FROM candidates q WHERE q.type='valuation_quote_issued'
+                          AND s.vrm<>'' AND q.vrm=s.vrm
+                          AND q."createdAt" BETWEEN s."createdAt"-interval '1 minute'
+                                                AND s."createdAt"+interval '25 hours'
+                    )
+                )
+            ), dedup AS (
+                SELECT DISTINCT ON (COALESCE(valuation_id,'event:'||id))
+                    * FROM missing_client
+                ORDER BY COALESCE(valuation_id,'event:'||id), "createdAt" DESC
+            )
+        `;
         const [
             overviewRaw,
             hourlyRaw,
             sevenDayRaw,
             funnelDailyRaw,
             recentRaw,
+            serverOnlyRecentRaw,
+            serverOnlyDailyRaw,
+            serverOnlyHourlyRaw,
         ] = await Promise.all([
             this.prisma.$queryRawUnsafe<Array<{
                 requests: string;
@@ -506,8 +549,72 @@ export class AnalyticsService {
                     ORDER BY e."createdAt" ASC
                     LIMIT 1
                 ) approval ON TRUE
+
                 ORDER BY v."createdAt" DESC
                 LIMIT 100
+            `),
+            this.prisma.$queryRawUnsafe<Array<{
+                id: string; created_at: Date; payload: Record<string, unknown>;
+                started: boolean; converted: boolean; listing_id: string | null;
+                converted_listing_type: string | null; listing_status: string | null;
+                listing_vrm: string | null; listing_mileage: number | null;
+                fee_paid: boolean; reached_review: boolean;
+                approved_live: boolean; rejected: boolean;
+            }>>(`${missingServerQuotesSql}
+                SELECT s.id, s."createdAt" AS created_at,
+                  jsonb_build_object(
+                    'registration', NULLIF(s.vrm,''),
+                    'make', s.payload#>>'{identity,make}',
+                    'model', s.payload#>>'{identity,model}',
+                    'year', s.payload#>>'{identity,year}',
+                    'mileage', s.payload#>>'{identity,mileage}',
+                    'valuation_id', s.valuation_id,
+                    'valuation_result', 'figures_returned',
+                    'valuation_source', s.payload#>>'{valuation,source}',
+                    'valuation_confidence', s.payload#>>'{valuation,confidence}',
+                    'valuation_confidence_score', s.payload#>>'{valuation,confidenceScore}',
+                    'valuation_comparables', s.payload#>>'{valuation,comparables}',
+                    'live_market_status', s.payload#>>'{valuation,marketEvidence,liveUkSearchStatus}',
+                    'valuation_low', s.payload#>>'{valuation,low}',
+                    'valuation_mid', s.payload#>>'{valuation,mid}',
+                    'valuation_high', s.payload#>>'{valuation,high}',
+                    'market_value', s.payload#>>'{valuation,auction,marketValue}',
+                    'auction_opening_bid', s.payload#>>'{valuation,auction,openingBid}',
+                    'auction_reserve_low', s.payload#>>'{valuation,auction,reserveLow}',
+                    'auction_reserve_high', s.payload#>>'{valuation,auction,reserveHigh}',
+                    'auction_suggested_reserve', s.payload#>>'{valuation,auction,suggestedReserve}',
+                    'retail_suggested_asking', s.payload#>>'{valuation,retail,suggestedAsking}',
+                    'retail_suggested_minimum', s.payload#>>'{valuation,retail,suggestedMinimum}',
+                    'audit_origin', s.type
+                  ) AS payload,
+                  FALSE AS started, FALSE AS converted, NULL::text AS listing_id,
+                  NULL::text AS converted_listing_type, NULL::text AS listing_status,
+                  NULL::text AS listing_vrm, NULL::integer AS listing_mileage,
+                  FALSE AS fee_paid, FALSE AS reached_review,
+                  FALSE AS approved_live, FALSE AS rejected
+                FROM dedup s
+                WHERE COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
+                  AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
+                ORDER BY s."createdAt" DESC LIMIT 100
+            `),
+            this.prisma.$queryRawUnsafe<Array<{ date: string; total: string }>>(`${missingServerQuotesSql}
+                SELECT TO_CHAR((s."createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
+                       COUNT(*)::text AS total
+                FROM dedup s
+                WHERE s."createdAt" >= NOW()-interval '7 days'
+                  AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
+                  AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
+                GROUP BY (s."createdAt" AT TIME ZONE 'Europe/London')::date
+            `),
+            this.prisma.$queryRawUnsafe<Array<{ hour: string; total: string }>>(`${missingServerQuotesSql}
+                SELECT TO_CHAR(date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
+                       COUNT(*)::text AS total
+                FROM dedup s
+                WHERE s."createdAt" >= (date_trunc('day', now() AT TIME ZONE 'Europe/London') AT TIME ZONE 'Europe/London')
+                  AND s."createdAt" < ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
+                  AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
+                  AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
+                GROUP BY date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London')
             `),
         ]);
 
@@ -524,6 +631,10 @@ export class AnalyticsService {
             confirmed_no_figures: '0',
         };
 
+        const serverOnlyDaily = serverOnlyDailyRaw ?? [];
+        const serverOnlyCount = (date: string) =>
+            Number(serverOnlyDaily.find(row => row.date === date)?.total ?? 0);
+
         const todayDate = new Intl.DateTimeFormat('en-CA', {
             timeZone: 'Europe/London',
             year: 'numeric',
@@ -531,7 +642,7 @@ export class AnalyticsService {
             day: '2-digit',
         }).format(new Date());
         const todayFunnel = funnelDailyRaw.find((row) => row.date === todayDate);
-        const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0);
+        const todayValuationJourneys = Number(todayFunnel?.valuation_journeys ?? 0) + serverOnlyCount(todayDate);
         const todayConvertedJourneys = Number(todayFunnel?.converted_journeys ?? 0);
         const todayReachedReview = Number(todayFunnel?.reached_review ?? 0);
         const todayApprovedLive = Number(todayFunnel?.approved_live ?? 0);
@@ -549,7 +660,8 @@ export class AnalyticsService {
                 historicalFallback: 'session',
             },
             today: {
-                requests: Number(overview.requests ?? 0),
+                requests: Number(overview.requests ?? 0) + serverOnlyCount(todayDate),
+                serverOnlyQuotes: serverOnlyCount(todayDate),
                 uniqueSessions: Number(overview.unique_sessions ?? 0),
                 loggedInUsers: Number(overview.logged_in_users ?? 0),
                 loggedInSessions: Number(overview.logged_in_sessions ?? 0),
@@ -585,14 +697,21 @@ export class AnalyticsService {
                     ? Math.round((todayApprovedLive / todayValuationJourneys) * 1000) / 10
                     : 0,
             },
-            hourly: hourlyRaw.map((row) => ({
-                hour: row.hour,
-                requests: Number(row.requests),
-                sessions: Number(row.sessions),
-            })),
+            hourly: [...new Set([
+                ...hourlyRaw.map(row => row.hour),
+                ...(serverOnlyHourlyRaw ?? []).map(row => row.hour),
+            ])].sort().map(hour => {
+                const client = hourlyRaw.find(row => row.hour === hour);
+                const recovered = (serverOnlyHourlyRaw ?? []).find(row => row.hour === hour);
+                return {
+                    hour,
+                    requests: Number(client?.requests ?? 0) + Number(recovered?.total ?? 0),
+                    sessions: Number(client?.sessions ?? 0),
+                };
+            }),
             last7Days: sevenDayRaw.map((row) => {
                 const funnel = funnelDailyRaw.find((item) => item.date === row.date);
-                const journeys = Number(funnel?.valuation_journeys ?? 0);
+                const journeys = Number(funnel?.valuation_journeys ?? 0) + serverOnlyCount(row.date);
                 const converted = Number(funnel?.converted_journeys ?? 0);
                 const valuationAttempts = Number(row.valuation_attempts ?? 0);
                 const figuresReturned = Number(row.figures_returned ?? 0);
@@ -600,7 +719,8 @@ export class AnalyticsService {
                 const withoutFigures = confirmedNoFigures;
                 return {
                     date: row.date,
-                    requests: Number(row.requests),
+                    requests: Number(row.requests) + serverOnlyCount(row.date),
+                    serverOnlyQuotes: serverOnlyCount(row.date),
                     sessions: Number(row.sessions),
                     valuationAttempts,
                     figuresReturned,
@@ -632,7 +752,10 @@ export class AnalyticsService {
                         : 0,
                 };
             }),
-            recent: recentRaw.map((event) => {
+            recent: [...recentRaw, ...(serverOnlyRecentRaw ?? [])]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0, 100)
+                .map((event) => {
                 const payload = (event.payload ?? {}) as Record<string, unknown>;
                 const numberFromPayload = (key: string) => {
                     const raw = payload[key];
@@ -651,6 +774,7 @@ export class AnalyticsService {
                 return {
                     id: event.id,
                     createdAt: event.created_at,
+                    auditOrigin: typeof payload.audit_origin === 'string' ? payload.audit_origin : 'customer_event',
                     registration,
                     mileage,
                     make: typeof payload.make === 'string' ? payload.make : null,

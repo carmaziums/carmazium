@@ -175,6 +175,31 @@ export class ListingsService {
      * finally the conservative age/mileage/transmission model with LOW confidence.
      */
     async estimateVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
+        // Every successful public valuation response (including a reused 24-hour
+        // quote) gets a server-owned audit receipt. Browser analytics are
+        // best-effort and must not be the only way admins see the price.
+        const result = await this.computeVehicleValue(dto);
+        try {
+            await this.prisma.analyticsEvent.create({
+                data: {
+                    type: 'valuation_quote_issued',
+                    sessionId: dto.valuationId || undefined,
+                    payload: {
+                        valuation_id: dto.valuationId || null,
+                        identity: this.valuationIdentity(dto),
+                        valuation: JSON.parse(JSON.stringify(result)),
+                        audit_source: 'backend_response',
+                    } as Prisma.InputJsonValue,
+                },
+            });
+        } catch (error) {
+            // The canonical price-lock remains available for reconciliation.
+            this.logger.warn(`Valuation audit receipt failed: ${error}`);
+        }
+        return result;
+    }
+
+    private async computeVehicleValue(dto: VehicleValuationDto): Promise<VehicleValuationResult> {
         const make = dto.make.trim();
         const model = dto.model.trim();
 
