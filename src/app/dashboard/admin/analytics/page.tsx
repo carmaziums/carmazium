@@ -694,7 +694,7 @@ export default function AdminAnalyticsPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                                {item.auditOrigin !== "customer_event" ? (
+                                                                {(item.auditOrigin === "valuation_quote_issued" || item.auditOrigin === "valuation_price_lock") ? (
                                                                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 font-black uppercase text-amber-500" title="Exact price saved by the backend; customer event missing. Listing attribution cannot be confirmed from the price alone.">Recovered quote</span>
                                                                 ) : item.approvedLive ? (
                                                                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-black uppercase text-emerald-400">Approved & Live</span>
