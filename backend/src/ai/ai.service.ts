@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 import { AiReportStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiReportDto, UpdateAiReportDto } from './ai.dto';
-import { dealerDescriptionAppendix, DealerDescriptionFacts } from './dealer-description';
+import { dealerDescriptionAppendix, DealerDescriptionFacts, publicDealerCopy } from './dealer-description';
 
 interface FilterCard {
     label: string;
@@ -531,8 +531,15 @@ ${JSON.stringify(vehicleData, null, 2)}
                 max_tokens: 400,
             });
 
-            const content = completion.choices[0]?.message?.content?.trim() || '';
-            if (!content) throw new Error('Empty response from OpenAI');
+            // A vehicle feature or generated sentence may itself contain an
+            // address, telephone, website or social handle. Clean the model's
+            // text too, while preserving the paragraph breaks for buyers.
+            const content = (completion.choices[0]?.message?.content || '')
+                .split(/\r?\n/)
+                .map(line => publicDealerCopy(line))
+                .join('\n')
+                .trim();
+            if (!content) throw new Error('Empty or contact-only response from OpenAI');
 
             const finalText = dealerBlock ? `${content}\n\n${dealerBlock}` : content;
             if (await this.isUnsafe(finalText)) {

@@ -15,11 +15,24 @@ export interface DealerDescriptionFacts {
     financeDetails?: string | null;
 }
 
+/**
+ * Scrub direct contact/location clues from both saved dealer copy and AI output.
+ * Auction descriptions must never become a pre-win contact channel.
+ * This is intentionally conservative: the dealer's general area is generated
+ * separately from structured businessAddress, not copied from free text.
+ */
 export function publicDealerCopy(text: string | null | undefined): string {
     return (text || '')
         .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
         .replace(/\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b/gi, '')
-        .replace(/(?:\+44[\s.-]?|0)(?:\d[\s().-]?){9,11}/g, '')
+        .replace(/\b(?:[a-z0-9-]+\.)+(?:co\.uk|org\.uk|ac\.uk|gov\.uk|com|net|org|io|uk|info|biz)\b(?:\/[^\s]*)?/gi, '')
+        .replace(/(?:\+44[\s().-]?|0)(?:\d[\s().-]?){9,11}/g, '')
+        .replace(/\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/gi, '')
+        .replace(/\b\d{1,5}[A-Z]?(?:[-/]\d{1,5}[A-Z]?)?\s+(?:(?:[A-Z][\w'-]*\s+){0,5})(?:Road|Rd|Street|St|Lane|Ln|Avenue|Ave|Drive|Dr|Close|Crescent|Court|Ct|Way|Place|Pl|Gardens|Gdns|Terrace|Square|Sq)\b\.?/gi, '')
+        .replace(/@[a-z0-9_.]+/gi, '')
+        .replace(/\s+,/g, ',')
+        .replace(/(?:,\s*){2,}/g, ', ')
+        .replace(/,\s*(?=[.!?]|$)/g, '')
         .replace(/\s+/g, ' ')
         .trim();
 }
@@ -27,11 +40,12 @@ export function publicDealerCopy(text: string | null | undefined): string {
 export function dealerPublicArea(address: string | null | undefined): string {
     if (!address) return '';
     const chunks = address.split(',').map(x => x.trim()).filter(Boolean);
-    // An address can be "Street, City, Postcode". Never use the street
-    // component even if the seller has a complete address stored for KYC.
-    const publicChunks = chunks.length > 1 ? chunks.slice(1) : [];
-    return publicChunks
-        .filter(part => !/\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/i.test(part))
+    // Keep a plain city/region even when it is the only saved value.
+    // A first component with house-number or postcode is never an area.
+    const possibleAreas = chunks.length > 1 && /\d/.test(chunks[0]) ? chunks.slice(1) : chunks;
+    return possibleAreas
+        .filter(part => !/\d/.test(part))
+        .filter(part => !/\b(?:Road|Rd|Street|St|Lane|Ln|Avenue|Ave|Drive|Dr|Close|Crescent|Court|Ct|Way|Place|Pl|Gardens|Gdns|Terrace|Square|Sq)\b/i.test(part))
         .filter(part => !/^(?:UK|United Kingdom|England|Scotland|Wales)$/i.test(part))
         .slice(0, 2)
         .map(part => publicDealerCopy(part))
