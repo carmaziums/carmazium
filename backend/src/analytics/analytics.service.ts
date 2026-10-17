@@ -122,7 +122,7 @@ export class AnalyticsService {
         // Price locks were already persisted before browser-side analytics was
         // reliable. Quote receipts now also cover all successful responses.
         // Do not invent identity or customer-visible prices from base snapshots.
-        const missingServerQuotesSql = \`
+        const missingServerQuotesSql = `
             WITH candidates AS (
                 SELECT e.id, e."createdAt", e.payload, e."sessionId", e.type,
                     regexp_replace(upper(COALESCE(e.payload#>>'{identity,registration}', '')),
@@ -157,7 +157,7 @@ export class AnalyticsService {
                     * FROM missing_client
                 ORDER BY COALESCE(valuation_id,'event:'||id), "createdAt" DESC
             )
-        \`;
+        `;
         const [
             overviewRaw,
             hourlyRaw,
@@ -551,7 +551,7 @@ export class AnalyticsService {
 
                 ORDER BY v."createdAt" DESC
                 LIMIT 100
-            \`),
+            `),
             this.prisma.$queryRawUnsafe<Array<{
                 id: string; created_at: Date; payload: Record<string, unknown>;
                 started: boolean; converted: boolean; listing_id: string | null;
@@ -559,7 +559,7 @@ export class AnalyticsService {
                 listing_vrm: string | null; listing_mileage: number | null;
                 fee_paid: boolean; reached_review: boolean;
                 approved_live: boolean; rejected: boolean;
-            }>>(\`\${missingServerQuotesSql}
+            }>>(`${missingServerQuotesSql}
                 SELECT s.id, s."createdAt" AS created_at,
                   jsonb_build_object(
                     'registration', NULLIF(s.vrm,''),
@@ -595,8 +595,8 @@ export class AnalyticsService {
                 WHERE COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
                 ORDER BY s."createdAt" DESC LIMIT 100
-            \`),
-            this.prisma.$queryRawUnsafe<Array<{ date: string; total: string }>>(\`\${missingServerQuotesSql}
+            `),
+            this.prisma.$queryRawUnsafe<Array<{ date: string; total: string }>>(`${missingServerQuotesSql}
                 SELECT TO_CHAR((s."createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
                        COUNT(*)::text AS total
                 FROM dedup s
@@ -604,7 +604,7 @@ export class AnalyticsService {
                   AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
                 GROUP BY (s."createdAt" AT TIME ZONE 'Europe/London')::date
-            \`),
+            `),
         ]);
 
         const overview = overviewRaw[0] ?? {
