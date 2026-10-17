@@ -3788,7 +3788,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         <p className="font-bold text-[var(--text-primary)]">About your dealership</p>
                                         <p className="text-[var(--text-secondary)]">MaziuM uses your saved dealer introduction, general business location and any warranty or finance terms you provided. It skips missing fields and never promises services you have not selected.</p>
                                         {!isDealerStaff
-                                            ? <Link href="/profile?section=business" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Add or review warranty, finance and your business introduction in a new tab</Link>
+                                            ? <Link href="/profile?section=business" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline">Add or review your dealer warranty, finance and introduction</Link>
                                             : <p className="text-[var(--text-secondary)]">Ask the dealership owner to update the Business Profile to add sales terms.</p>}
                                     </div>
                                 )}
