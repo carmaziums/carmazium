@@ -139,7 +139,7 @@ export class AnalyticsService {
                       AND c."createdAt" BETWEEN s."createdAt"-interval '15 minutes' AND s."createdAt"+interval '15 minutes'
                       AND (
                         (s.valuation_id IS NOT NULL AND c.payload->>'valuation_id'=s.valuation_id)
-                        OR (s.vrm<>'' AND regexp_replace(upper(COALESCE(c.payload->>'registration','')),
+                        OR (s.valuation_id IS NULL AND s.vrm<>'' AND regexp_replace(upper(COALESCE(c.payload->>'registration','')),
                             '[^A-Z0-9]','','g')=s.vrm)
                       )
                 )
