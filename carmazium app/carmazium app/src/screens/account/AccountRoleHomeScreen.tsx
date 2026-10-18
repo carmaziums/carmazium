@@ -70,7 +70,7 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <View style={{ height: insets.top }} />
 
       <View style={ts.header}>
@@ -118,7 +118,7 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Ionicons name="chatbubbles-outline" size={18} color={Colors.textPrimary} />
+            <Ionicons name="chatbubbles-outline" size={18} color={appearanceMode === 'light' ? '#0F172A' : Colors.textPrimary} />
             <Text style={ts.secondaryActionText}>Messages</Text>
           </TouchableOpacity>
         </View>
