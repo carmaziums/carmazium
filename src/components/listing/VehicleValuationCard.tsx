@@ -107,6 +107,15 @@ export function VehicleValuationCard({
                     <p className="mt-3 text-xs font-semibold text-[var(--text-secondary)]">
                         {isAuction ? "Retail asking guide" : "Dealer auction guide"}: {formatPrice(alternativeValue)}
                     </p>
+                    {valuation.valuationMethod === "SEPARATE_MARKETS" && (
+                        <p className="mt-2 text-xs text-[var(--text-muted)]">
+                            {isAuction
+                                ? valuation.channelEvidence?.independentlyObservedTrade
+                                    ? "Dealer guide supported by observed auction outcomes."
+                                    : "Dealer guide is a model estimate; insufficient observed auction results."
+                                : `Retail guide derived from ${valuation.channelEvidence?.retailComparableCount ?? 0} comparable market prices.`}
+                        </p>
+                    )
                 </div>
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
