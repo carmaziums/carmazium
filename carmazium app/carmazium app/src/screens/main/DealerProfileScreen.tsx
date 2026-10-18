@@ -782,6 +782,21 @@ const lightDealerProfileStyles = StyleSheet.create({
   funnelLabel: { color: '#334155' },
   funnelVal: { color: '#0F172A' },
   switchProfileText: { color: '#0F172A' },
+  extraInsightsBody: { backgroundColor: '#EEF5FB' },
+  attentionList: { backgroundColor: '#EEF5FB' },
+  attentionRow: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  attentionIconWrap: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  listingsList: { backgroundColor: '#FFFFFF' },
+  listingInfo: { backgroundColor: '#FFFFFF' },
+  listingMeta: { color: '#64748B' },
+  rankBadgeGray: { backgroundColor: '#E5EEF7' },
+  rankBadgeText: { color: '#0F172A' },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  headerToday: { backgroundColor: '#EEF5FB' },
+  tabContent: { backgroundColor: '#EEF5FB' },
+  funnelTrack: { backgroundColor: '#E5EEF7' },
+  funnelRightText: { color: '#64748B' },
+  sectionActionText: { color: '#D11A26' },
 });
 
 const styles = StyleSheet.create({
