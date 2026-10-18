@@ -269,6 +269,7 @@ const lightDealerFinanceScreenStyles = StyleSheet.create({
   vehicleTitle: { color: '#0F172A' },
   appliedDate: { color: '#64748B' },
   cardMetaText: { color: '#64748B' },
+  depositAmount: { color: '#0F172A' },
 });
 
 const styles = StyleSheet.create({
