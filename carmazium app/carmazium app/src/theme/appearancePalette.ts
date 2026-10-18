@@ -28,6 +28,20 @@ const dark = {
   header: '#1E293B',
   tab: '#243047',
 };
+/**
+ * High-contrast labels on pale/white surfaces. Brand accents remain unchanged
+ * for dark mode and large filled buttons. Each text token meets 4.5:1 against
+ * #EEF5FB, #F7FBFF and white.
+ */
+export const lightReadableText = {
+  muted: '#526177',
+  accent: '#CC1820',
+  success: '#047857',
+  warning: '#92400E',
+  info: '#1D4ED8',
+  error: '#B91C1C',
+} as const;
+
 export type AppearancePalette = typeof light;
 export const appearancePalette = (mode: AppearanceMode): AppearancePalette =>
   mode === 'light' ? light : dark;
