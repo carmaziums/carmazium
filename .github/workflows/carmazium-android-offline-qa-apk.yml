@@ -18,6 +18,7 @@ on:
       - 'carmazium app/carmazium app/src/components/**/*.tsx'
       - 'carmazium app/carmazium app/src/theme/**/*.ts'
       - 'scripts/test-native-visual-parity-block9.test.mjs'
+      - 'scripts/ci/android-qa-emulator-smoke.sh'
       - 'carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx'
       - 'carmazium app/carmazium app/src/components/BottomSheet.tsx'
