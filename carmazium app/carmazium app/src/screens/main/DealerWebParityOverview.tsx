@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical web layout: src/app/dashboard/dealer/page.tsx.
@@ -67,6 +68,8 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   userName, canManageInventory, canManageCrm, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightDealerOverviewStyles } : styles;
   const [range, setRange] = useState<Range>(initialRange);
   const [draftAmount, setDraftAmount] = useState('30');
   const [draftUnit, setDraftUnit] = useState<RangeUnit>('days');
@@ -155,42 +158,42 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   ];
 
   return (
-    <View style={styles.main}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeading}>
-          <View style={styles.heroIcon}>
+    <View style={ts.main}>
+      <View style={ts.hero}>
+        <View style={ts.heroHeading}>
+          <View style={ts.heroIcon}>
             <Ionicons name="business-outline" size={24} color={Colors.textPrimary} />
           </View>
-          <View style={styles.heroCopy}>
-            <Text style={styles.heroTitle}>DEALER COMMAND CENTRE</Text>
-            <Text style={styles.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
+          <View style={ts.heroCopy}>
+            <Text style={ts.heroTitle}>DEALER COMMAND CENTRE</Text>
+            <Text style={ts.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
             {summary?.isVerified === true && (
-              <View style={styles.verifiedLine}>
+              <View style={ts.verifiedLine}>
                 <Ionicons name="shield-checkmark-outline" size={14} color={Colors.warning} />
-                <Text style={styles.verifiedText}>Verified Dealer</Text>
+                <Text style={ts.verifiedText}>Verified Dealer</Text>
               </View>
             )}
           </View>
         </View>
       </View>
 
-      <View style={styles.sectionIntro}>
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <Text style={styles.sectionHint}>
+      <View style={ts.sectionIntro}>
+        <Text style={ts.sectionTitle}>Overview</Text>
+        <Text style={ts.sectionHint}>
           Choose days, months or years, or view everything since this dealer account was created.
           Compare with the immediately preceding period.
         </Text>
       </View>
 
-      <View style={styles.rangePanel}>
-        <View style={styles.presetRow}>
+      <View style={ts.rangePanel}>
+        <View style={ts.presetRow}>
           {PRESETS.map(preset => {
             const active = preset.allTime ? range.allTime
               : !range.allTime && range.value === preset.value && range.unit === preset.unit;
             return (
               <TouchableOpacity
                 key={preset.label}
-                style={[styles.preset, active && styles.presetSelected]}
+                style={[ts.preset, active && ts.presetSelected]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={preset.allTime ? 'All time' : preset.label}
@@ -199,14 +202,14 @@ export const DealerWebParityOverview: React.FC<Props> = ({
                   value: preset.value ?? previous.value, unit: preset.unit ?? previous.unit,
                 }))}
               >
-                <Text style={[styles.presetText, active && styles.presetTextSelected]}>{preset.label}</Text>
+                <Text style={[ts.presetText, active && ts.presetTextSelected]}>{preset.label}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-        <View style={styles.customRow}>
+        <View style={ts.customRow}>
           <TextInput
-            style={styles.amountInput}
+            style={ts.amountInput}
             value={draftAmount}
             onChangeText={setDraftAmount}
             onSubmitEditing={applyCustom}
@@ -220,96 +223,96 @@ export const DealerWebParityOverview: React.FC<Props> = ({
               onPress={() => setDraftUnit(unit)}
               accessibilityRole="button"
               accessibilityState={{ selected: draftUnit === unit }}
-              style={[styles.unitButton, draftUnit === unit && styles.unitSelected]}
+              style={[ts.unitButton, draftUnit === unit && ts.unitSelected]}
             >
-              <Text style={[styles.unitText, draftUnit === unit && styles.unitTextSelected]}>
+              <Text style={[ts.unitText, draftUnit === unit && ts.unitTextSelected]}>
                 {unit === 'days' ? 'Days' : unit === 'months' ? 'Months' : 'Years'}
               </Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity onPress={applyCustom} style={styles.applyButton} accessibilityRole="button">
-            <Text style={styles.applyText}>Apply</Text>
+          <TouchableOpacity onPress={applyCustom} style={ts.applyButton} accessibilityRole="button">
+            <Text style={ts.applyText}>Apply</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity
           accessibilityRole="switch"
           accessibilityState={{ checked: range.compare }}
           accessibilityLabel="Compare previous period"
-          style={styles.compareRow}
+          style={ts.compareRow}
           onPress={() => setRange(previous => ({ ...previous, compare: !previous.compare }))}
         >
           <Ionicons name={range.compare ? 'checkbox' : 'square-outline'} size={21}
             color={range.compare ? Colors.accent : Colors.textMuted} />
-          <Text style={styles.compareText}>Compare previous</Text>
+          <Text style={ts.compareText}>Compare previous</Text>
         </TouchableOpacity>
         {range.allTime && summary?.accountCreatedAt && (
-          <Text style={styles.accountSince}>
+          <Text style={ts.accountSince}>
             All available data since {new Date(summary.accountCreatedAt).toLocaleDateString('en-GB')}
           </Text>
         )}
       </View>
 
       {error && (
-        <Text accessibilityRole="alert" style={styles.error}>
+        <Text accessibilityRole="alert" style={ts.error}>
           Dashboard statistics could not be refreshed. {summary
             ? 'Previously loaded values are shown below.'
             : 'Values are hidden until data is available.'}
         </Text>
       )}
       {loading && !summary && (
-        <View style={styles.loadingLine}>
+        <View style={ts.loadingLine}>
           <ActivityIndicator color={Colors.accent} />
-          <Text style={styles.loadingText}>Loading your dashboard…</Text>
+          <Text style={ts.loadingText}>Loading your dashboard…</Text>
         </View>
       )}
-      <View style={styles.metrics}>
+      <View style={ts.metrics}>
         {metricItems.map(item => {
           const content = (
             <>
-              <View style={styles.metricTop}>
+              <View style={ts.metricTop}>
                 <Ionicons name={item.icon as any} size={19} color={item.color} />
-                <Text style={styles.metricStatus}>{item.status}</Text>
+                <Text style={ts.metricStatus}>{item.status}</Text>
               </View>
-              <Text style={styles.metricValue}>{displayMetric(item.value)}</Text>
-              <Text style={styles.metricTitle}>{item.title}</Text>
-              <Text style={styles.metricDetail}>{item.detail}</Text>
-              {!!item.comparison && <Text style={styles.comparison}>{item.comparison}</Text>}
+              <Text style={ts.metricValue}>{displayMetric(item.value)}</Text>
+              <Text style={ts.metricTitle}>{item.title}</Text>
+              <Text style={ts.metricDetail}>{item.detail}</Text>
+              {!!item.comparison && <Text style={ts.comparison}>{item.comparison}</Text>}
             </>
           );
           return item.destination ? (
             <TouchableOpacity
-              key={item.title} style={styles.metricCard}
+              key={item.title} style={ts.metricCard}
               accessibilityRole="button"
               accessibilityLabel={`${item.title}: ${displayMetric(item.value)}. Open ${item.destination}`}
               onPress={() => onNavigate(item.destination!)}
               activeOpacity={0.8}
             >{content}</TouchableOpacity>
           ) : (
-            <View key={item.title} style={styles.metricCard}>{content}</View>
+            <View key={item.title} style={ts.metricCard}>{content}</View>
           );
         })}
       </View>
 
-      <View style={styles.actionSection}>
-        <Text style={styles.actionsTitle}>Main actions</Text>
-        <Text style={styles.sectionHint}>
+      <View style={ts.actionSection}>
+        <Text style={ts.actionsTitle}>Main actions</Text>
+        <Text style={ts.sectionHint}>
           One entry point for each job. Related tools live inside that area.
         </Text>
         {actions.filter(action => action.show).map(action => (
           <TouchableOpacity
             key={action.destination}
-            style={styles.actionCard}
+            style={ts.actionCard}
             onPress={() => onNavigate(action.destination)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel={action.title}
           >
-            <View style={styles.actionIcon}>
+            <View style={ts.actionIcon}>
               <Ionicons name={action.icon as any} size={22} color={Colors.accent} />
             </View>
-            <View style={styles.actionText}>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionDescription}>{action.description}</Text>
+            <View style={ts.actionText}>
+              <Text style={ts.actionTitle}>{action.title}</Text>
+              <Text style={ts.actionDescription}>{action.description}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
@@ -318,6 +321,35 @@ export const DealerWebParityOverview: React.FC<Props> = ({
     </View>
   );
 };
+
+const lightDealerOverviewStyles = StyleSheet.create({
+  hero: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  heroIcon: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  heroTitle: { color: '#0F172A' },
+  heroSubtitle: { color: '#64748B' },
+  sectionTitle: { color: '#0F172A' },
+  sectionHint: { color: '#64748B' },
+  rangePanel: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  preset: { backgroundColor: '#F7FBFF' },
+  presetText: { color: '#334155' },
+  amountInput: { backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC' },
+  unitButton: { backgroundColor: '#F7FBFF' },
+  unitText: { color: '#334155' },
+  unitTextSelected: { color: '#0F172A' },
+  compareText: { color: '#334155' },
+  accountSince: { color: '#64748B' },
+  loadingText: { color: '#334155' },
+  metricCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  metricStatus: { color: '#64748B' },
+  metricValue: { color: '#0F172A' },
+  metricTitle: { color: '#0F172A' },
+  metricDetail: { color: '#64748B' },
+  comparison: { color: '#334155' },
+  actionsTitle: { color: '#0F172A' },
+  actionCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  actionTitle: { color: '#0F172A' },
+  actionDescription: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   main: { paddingHorizontal: 20, paddingTop: 12, gap: 18 },
