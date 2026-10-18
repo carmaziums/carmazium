@@ -66,6 +66,34 @@ test('remaining buyer journeys do not show dark gradients or white controls in l
   assert.ok(palette.includes('if (!action &&'), 'semantic status and CTA buttons retain their colours');
 });
 
+test('all native screen full-page dark gradients have a light path, except branded image/splash artwork',()=>{
+  const rootScreens=resolve(root,'carmazium app/carmazium app/src/screens');
+  const walk=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(entry=>
+    entry.isDirectory() ? walk(resolve(dir,entry.name)) :
+    entry.name.endsWith('.tsx') ? [resolve(dir,entry.name)] : []);
+  const exceptions=new Set([
+    // Marketing artwork uses an image vignette for white lettering.
+    'onboarding/OnboardingScreen.tsx',
+    // Branded splash intentionally has a dark image background.
+    'loading/SplashScreen.tsx',
+  ]);
+  let total=0;
+  for(const file of walk(rootScreens)){
+    const relative=file.slice(rootScreens.length+1).replaceAll('\\','/');
+    if(exceptions.has(relative)) continue;
+    const content=readFileSync(file,'utf8');
+    // A literal full-page gradient containing bgPrimary always draws navy,
+    // regardless of a separately themed container or card style.
+    const regex=/<LinearGradient\\b[\\s\\S]{0,250}?colors=\\{\\s*\\[([^\\]]*)\\]\\s*\\}/g;
+    for(const match of content.matchAll(regex)){
+      if(!match[1].includes('Colors.bgPrimary'))continue;
+      total++;
+      assert.fail(relative+' renders an unconditional dark full-page gradient in light mode');
+    }
+  }
+  assert.ok(total===0,'no unguarded bgPrimary gradients outside intentionally dark artwork');
+});
+
 test('Dashboard gauge is visually distinct from More grid and Menu selection is readable',()=>{
   const iconMap=app('components/BrandIcon.tsx');
   assert.ok(tabs.includes("name: 'DealerHome', icon: 'speedometer-outline', iconActive: 'speedometer'"));
