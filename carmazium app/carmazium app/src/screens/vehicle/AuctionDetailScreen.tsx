@@ -317,6 +317,9 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   // ── UI state ──
   const [activeTab, setActiveTab] = useState<'details' | 'bids' | 'seller'>('details');
+  // Details-first layout: bidding actions stay collapsed until deliberately opened.
+  // Keep all bid state and backend submission safeguards intact when toggling.
+  const [bidPanelExpanded, setBidPanelExpanded] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
   // ── Animations ──
@@ -1975,12 +1978,43 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )
         )}
 
-        {/* Spacer for sticky bid console */}
-        <View style={{ height: 180 }} />
+        {/* Clearance for compact bid/action bar; expanded controls remain bounded. */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ── Sticky Bid Console ── */}
+      {/* Compact action bar; expand a height-limited scrolling bid panel only on request. */}
       <View style={[s.bidConsole, { paddingBottom: insets.bottom || 16 }]}>
+        <TouchableOpacity
+          style={s.bidConsoleToggle}
+          onPress={() => { Keyboard.dismiss(); setBidPanelExpanded(open => !open); }}
+          accessibilityRole="button"
+          accessibilityLabel={bidPanelExpanded ? 'Collapse bidding panel' : 'Open bidding panel'}
+          accessibilityState={{ expanded: bidPanelExpanded }}
+          accessibilityHint="Expand or collapse bid controls without hiding vehicle details"
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={s.bidToggleEyebrow}>
+              {isCancelled ? 'AUCTION CANCELLED' : isEnded ? (userWon ? 'AUCTION WON · ACTIONS' : 'AUCTION ENDED')
+                : isSeller ? 'SELLER AUCTION CONTROLS' : isScheduled ? 'BIDDING OPENS SOON' : 'LIVE AUCTION · BID'}
+            </Text>
+            <Text style={s.bidToggleAmount} numberOfLines={1}>
+              {isActive ? `${fmt(displayBidAmount)} · ${hasRealBids ? 'Current bid' : 'Starting bid'}`
+                : isEnded ? (userWon ? 'View next steps' : 'View auction result') : isScheduled ? 'View auction timetable' : 'View actions'}
+            </Text>
+          </View>
+          <View style={s.bidConsoleChevron}>
+            <Ionicons name={bidPanelExpanded ? 'chevron-down' : 'chevron-up'} size={19} color={Colors.white} />
+          </View>
+        </TouchableOpacity>
+        {bidPanelExpanded && (
+          <ScrollView
+            style={{ maxHeight: Math.max(230, Dimensions.get('window').height * 0.55) }}
+            contentContainerStyle={s.expandedBidContent}
+            showsVerticalScrollIndicator
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+          >
         {isCancelled ? (
           <View style={s.bidStateBox}>
             <Ionicons name="ban-outline" size={20} color={Colors.iconMuted} />
@@ -2334,6 +2368,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           </View>
         )}
+          </ScrollView>
+        )}
       </View>
     </ScreenWrapper>
   );
@@ -2504,7 +2540,12 @@ const s = StyleSheet.create({
   sellerName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Bid console
-  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.borderHi, paddingHorizontal: 14, paddingTop: 12 },
+  bidConsole: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Colors.bgPrimary, borderTopWidth: 1, borderTopColor: Colors.borderHi, paddingHorizontal: 14, paddingTop: 8 },
+  bidConsoleToggle: { minHeight: 59, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 5 },
+  bidToggleEyebrow: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.size10, letterSpacing: 0.7 },
+  bidToggleAmount: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginTop: 3 },
+  bidConsoleChevron: { backgroundColor: Colors.accent, width: 40, height: 40, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  expandedBidContent: { paddingTop: 11, paddingBottom: 12 },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
   currentBidVal: { fontFamily: FontFamily.mono, fontSize: FontSize.size22, color: Colors.white },
