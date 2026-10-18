@@ -21,6 +21,17 @@ const top=app('components/WebsiteTopBar.tsx');
 const layout=app('lib/nativeLayoutParity.ts');
 const evidence=read('docs/native/website-native-visual-parity-block9-20261010.md');
 
+test('Android QA launch smoke test rejects system dialog or other foreground window',()=>{
+  const smoke=read('scripts/ci/android-qa-emulator-smoke.sh');
+  assert.ok(smoke.includes('adb shell dumpsys window windows'), 'must inspect real focused Android window');
+  assert.ok(smoke.includes('"$focus" != *"$APP_ID"*'), 'live PID behind launcher modal is not a visual pass');
+  assert.ok(smoke.includes('focused-window.txt'), 'diagnostic must be retained for owner review');
+  assert.ok(smoke.includes('exit 1'), 'failed focus must fail emulator CI');
+  const workflow=read('.github/workflows/carmazium-android-offline-qa-apk.yml');
+  assert.ok(workflow.includes("'scripts/ci/android-qa-emulator-smoke.sh'"),
+    'future QA builds must rerun whenever smoke logic changes');
+});
+
 test('every literal native icon across screens and shared components has a real mapped glyph',()=>{
   const srcRoot=resolve(root,'carmazium app/carmazium app/src');
   const map=app('components/BrandIcon.tsx');
