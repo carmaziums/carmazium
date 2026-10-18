@@ -138,8 +138,9 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
       } else if (value.color === Colors.textSecondary) {
         changes.color = light.secondary;
       } else if (value.color === Colors.textMuted || value.color === Colors.textFaint ||
-                 value.color === Colors.iconMuted || legacyPaleText.has(value.color) ||
-                 legacyPlaceholder.has(value.color)) {
+                 value.color === Colors.iconMuted ||
+                 (typeof value.color === 'string' &&
+                  (legacyPaleText.has(value.color) || legacyPlaceholder.has(value.color)))) {
         changes.color = light.muted;
       } else if (value.color === Colors.paleBlue_93c5fd || value.color === Colors.infoBlueLight) {
         changes.color = lightReadableText.info;
