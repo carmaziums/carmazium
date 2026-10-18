@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily } from '../constants/typography';
 import type { NativeMotTest, OfficialVehicleData } from '../data/listings';
 
@@ -29,6 +31,8 @@ const motOdometer = (test: NativeMotTest): string | null => {
 /** Only allowlisted, saved listing facts are rendered. No public DVLA call or guessed trims. */
 export function BuyerVehicleFacts({ record }: { record: object | null | undefined }) {
   const [allTests, setAllTests] = useState(false);
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightBuyerFactsStyles) : styles;
   const [expandedTest, setExpandedTest] = useState<string | null>(null);
   if (!record) return null;
   const data = record as Record<string, unknown>;
@@ -101,69 +105,69 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
     ] },
   ];
   return (
-    <View style={styles.root}>
-      <View style={styles.header}>
+    <View style={ts.root}>
+      <View style={ts.header}>
         <Ionicons name="list-outline" size={19} color={Colors.infoBlue} />
-        <Text style={styles.heading}>FULL VEHICLE INFORMATION</Text>
+        <Text style={ts.heading}>FULL VEHICLE INFORMATION</Text>
       </View>
-      <Text style={styles.note}>Saved registration-check details and seller information. Fields not supplied are omitted; this is not a live DVLA update or HPI report.</Text>
+      <Text style={ts.note}>Saved registration-check details and seller information. Fields not supplied are omitted; this is not a live DVLA update or HPI report.</Text>
       {groups.map(group => {
         const entries = group.entries.map(([label, value]) => [label, readable(value)] as const)
           .filter((entry): entry is readonly [string, string] => entry[1] !== null);
         if (!entries.length) return null;
         return (
-          <View key={group.title} style={styles.card}>
-            <Text style={styles.subheading}>{group.title}</Text>
+          <View key={group.title} style={ts.card}>
+            <Text style={ts.subheading}>{group.title}</Text>
             {entries.map(([label, value]) => (
-              <View key={label} style={styles.row}>
-                <Text style={styles.key}>{label}</Text>
-                <Text style={styles.value}>{value}</Text>
+              <View key={label} style={ts.row}>
+                <Text style={ts.key}>{label}</Text>
+                <Text style={ts.value}>{value}</Text>
               </View>
             ))}
           </View>
         );
       })}
-      <View style={styles.card}>
-        <Text style={styles.subheading}>MOT TEST HISTORY</Text>
-        <Text style={styles.note}>Saved test results and original odometer readings. Historical MOT mileage is not the seller's current mileage.</Text>
+      <View style={ts.card}>
+        <Text style={ts.subheading}>MOT TEST HISTORY</Text>
+        <Text style={ts.note}>Saved test results and original odometer readings. Historical MOT mileage is not the seller's current mileage.</Text>
         {latestRecorded && (
-          <View style={styles.highlight}>
-            <Text style={styles.highlightTitle}>LATEST RECORDED MOT ODOMETER</Text>
-            <Text style={styles.highlightValue}>{motOdometer(latestRecorded)}</Text>
-            <Text style={styles.note}>Recorded {displayDate(latestRecorded.completedDate)}</Text>
+          <View style={ts.highlight}>
+            <Text style={ts.highlightTitle}>LATEST RECORDED MOT ODOMETER</Text>
+            <Text style={ts.highlightValue}>{motOdometer(latestRecorded)}</Text>
+            <Text style={ts.note}>Recorded {displayDate(latestRecorded.completedDate)}</Text>
           </View>
         )}
-        {history.length === 0 && <Text style={styles.note}>No MOT history was saved with this listing. This does not mean no MOT tests exist.</Text>}
+        {history.length === 0 && <Text style={ts.note}>No MOT history was saved with this listing. This does not mean no MOT tests exist.</Text>}
         {(allTests ? history : history.slice(0, 5)).map((test, index) => {
           const key = test.motTestNumber || test.completedDate + '-' + index;
           const expanded = expandedTest === key;
           const defects = Array.isArray(test.defects) ? test.defects.filter(d => d && typeof d.text === 'string') : [];
           const passed = test.testResult === 'PASSED';
           return (
-            <View key={key} style={styles.test}>
-              <TouchableOpacity style={styles.testHeader} onPress={() => setExpandedTest(expanded ? null : key)}
+            <View key={key} style={ts.test}>
+              <TouchableOpacity style={ts.testHeader} onPress={() => setExpandedTest(expanded ? null : key)}
                 accessibilityRole="button" accessibilityState={{ expanded }}
                 accessibilityLabel={test.testResult + ' MOT test ' + (displayDate(test.completedDate) ?? '')}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.result, { color: passed ? Colors.success : Colors.error }]}>
+                  <Text style={[ts.result, { color: passed ? Colors.success : Colors.error }]}>
                     {passed ? 'PASSED' : 'FAILED'} · {displayDate(test.completedDate)}
                   </Text>
-                  <Text style={styles.note}>{motOdometer(test) || 'Odometer unavailable'} · {defects.length} recorded advisory/defect item(s)</Text>
+                  <Text style={ts.note}>{motOdometer(test) || 'Odometer unavailable'} · {defects.length} recorded advisory/defect item(s)</Text>
                 </View>
                 <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={17} color={Colors.textSecondary}/>
               </TouchableOpacity>
               {expanded && (
-                <View style={styles.defects}>
-                  {!!test.expiryDate && <Text style={styles.note}>Test expiry: {displayDate(test.expiryDate)}</Text>}
-                  {!!test.motTestNumber && <Text style={styles.note}>MOT reference: {test.motTestNumber}</Text>}
-                  {!!test.odometerResultType && <Text style={styles.note}>Odometer reading status: {test.odometerResultType}</Text>}
-                  {!defects.length && <Text style={styles.note}>No individual defect text was saved for this test.</Text>}
+                <View style={ts.defects}>
+                  {!!test.expiryDate && <Text style={ts.note}>Test expiry: {displayDate(test.expiryDate)}</Text>}
+                  {!!test.motTestNumber && <Text style={ts.note}>MOT reference: {test.motTestNumber}</Text>}
+                  {!!test.odometerResultType && <Text style={ts.note}>Odometer reading status: {test.odometerResultType}</Text>}
+                  {!defects.length && <Text style={ts.note}>No individual defect text was saved for this test.</Text>}
                   {defects.map((defect, i) => (
-                    <View key={i} style={styles.defect}>
-                      <Text style={[styles.defectType, { color: defect.type === 'MAJOR' || defect.type === 'DANGEROUS' ? Colors.error : Colors.warning }]}>
+                    <View key={i} style={ts.defect}>
+                      <Text style={[ts.defectType, { color: defect.type === 'MAJOR' || defect.type === 'DANGEROUS' ? Colors.error : Colors.warning }]}>
                         {defect.type}
                       </Text>
-                      <Text style={styles.value}>{defect.text}</Text>
+                      <Text style={ts.value}>{defect.text}</Text>
                     </View>
                   ))}
                 </View>
@@ -171,18 +175,35 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
             </View>
           );
         })}
-        {history.length > 5 && <TouchableOpacity style={styles.more} accessibilityRole="button"
+        {history.length > 5 && <TouchableOpacity style={ts.more} accessibilityRole="button"
           onPress={() => setAllTests(previous => !previous)}>
-          <Text style={styles.moreText}>{allTests ? 'Show recent five tests' : 'Show all ' + history.length + ' MOT tests'}</Text>
+          <Text style={ts.moreText}>{allTests ? 'Show recent five tests' : 'Show all ' + history.length + ' MOT tests'}</Text>
         </TouchableOpacity>}
-        <Text style={styles.note}>MOT and tax statuses can change after the listing was created. Check the official government record.</Text>
-        <TouchableOpacity accessibilityRole="link" style={styles.more} onPress={() => Linking.openURL('https://www.gov.uk/check-mot-history')}>
-          <Text style={styles.moreText}>Check MOT history on GOV.UK</Text>
+        <Text style={ts.note}>MOT and tax statuses can change after the listing was created. Check the official government record.</Text>
+        <TouchableOpacity accessibilityRole="link" style={ts.more} onPress={() => Linking.openURL('https://www.gov.uk/check-mot-history')}>
+          <Text style={ts.moreText}>Check MOT history on GOV.UK</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+const lightBuyerFactsStyles = StyleSheet.create({
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  heading: { color: '#0F172A' },
+  subheading: { color: '#0F172A' },
+  key: { color: '#526177' },
+  value: { color: '#0F172A' },
+  note: { color: '#526177' },
+  row: { borderBottomColor: '#D5E1EC' },
+  highlight: { backgroundColor: '#F7FBFF' },
+  highlightTitle: { color: '#047857' },
+  highlightValue: { color: '#0F172A' },
+  test: { borderColor: '#D5E1EC' },
+  defects: { borderTopColor: '#D5E1EC' },
+  defect: { backgroundColor: '#F7FBFF' },
+  moreText: { color: '#1D4ED8' },
+});
+
 const styles = StyleSheet.create({
   root: { gap: 12, marginVertical: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
