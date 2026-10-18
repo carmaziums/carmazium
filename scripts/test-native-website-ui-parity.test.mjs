@@ -12,7 +12,7 @@ const tabs = app('navigation/TabNavigator.tsx');
 const drawer = app('components/GlobalDrawer.tsx');
 const bar = app('components/WebsiteTopBar.tsx');
 
-test('web dealer bottom navigation and native route labels have the same information architecture', () => {
+test('web dealer and native Dashboard shortcuts retain matching destinations with clearer native label', () => {
   for (const segment of [
     '/dashboard/dealer',
     '/dashboard/dealer/inventory',
@@ -20,7 +20,7 @@ test('web dealer bottom navigation and native route labels have the same informa
     '/dashboard/dealer/auctions',
   ]) assert.ok(web.includes(segment), segment);
   for (const [route,label] of [
-    ['DealerHome','Home'],
+    ['DealerHome','Dashboard'],
     ['DealerStock','Stock'],
     ['DealerCustomers','Customers'],
     ['DealerBuyBid','Buy & Bid'],
@@ -31,7 +31,9 @@ test('web dealer bottom navigation and native route labels have the same informa
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
     assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
   }
+  // DealerHome still opens the same Command Centre; only its display label changed.
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
+  assert.ok(web.includes('Home'), 'website continues to label its dealer home separately');
   assert.ok(tabs.includes("openDrawer();"));
   assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));
 });
