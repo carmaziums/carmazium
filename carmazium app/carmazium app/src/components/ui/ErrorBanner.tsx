@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { FontFamily, FontSize } from '../../constants/typography';
 
 interface ErrorBannerProps {
@@ -13,10 +14,12 @@ const ERROR_BG = Colors.errorAlpha10;
 const ERROR_BORDER = Colors.errorAlpha30;
 
 export const ErrorBanner: React.FC<ErrorBannerProps> = ({ message, onRetry }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const light = appearanceMode === 'light';
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, light && { backgroundColor: '#FDECEC', borderColor: '#E8B5B9' }]}>
       <Ionicons name="alert-circle-outline" size={18} color={Colors.error} />
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.message, light && { color: '#7F1D1D' }]}>{message}</Text>
       {onRetry ? (
         <TouchableOpacity onPress={onRetry} activeOpacity={0.7}>
           <Text style={styles.retry}>Try again</Text>
