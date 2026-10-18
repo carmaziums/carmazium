@@ -28,6 +28,10 @@ describe('Optional Firecrawl valuation evidence', () => {
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: undefined }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, url: 'https://dealer.example.evil.test/cars/abc' }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, url: 'http://dealer.example/cars/abc' }, approved)).toBeNull();
+        expect(parseVerifiedAdvert(vehicle, { ...row,
+            metadata: { sourceURL: 'https://unapproved.example/redirect', statusCode: 200 } }, approved)).toBeNull();
+        expect(parseVerifiedAdvert(vehicle, { ...row,
+            metadata: { sourceURL: row.url, statusCode: 404 } }, approved)).toBeNull();
     });
 
     it('requires numeric model identifiers, not just model family names', () => {
@@ -47,6 +51,8 @@ describe('Optional Firecrawl valuation evidence', () => {
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page + '\nPrice £11,000' }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page.replace('Mileage: 112,600 miles', 'Mileage: unknown') }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page + '\nStatus: SOLD' }, approved)).toBeNull();
+        expect(parseVerifiedAdvert(vehicle, { ...row,
+            markdown: page.replace('Advertised cash price for the entire vehicle:', 'Deposit:') }, approved)).toBeNull();
     });
 
     it('rejects model and engine/trim mismatches', () => {
