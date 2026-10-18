@@ -7,6 +7,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical web layout: src/app/dashboard/dealer/page.tsx.
@@ -69,7 +70,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   onNavigate, refreshToken = 0,
 }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightDealerOverviewStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerOverviewStyles) : styles;
   const [range, setRange] = useState<Range>(initialRange);
   const [draftAmount, setDraftAmount] = useState('30');
   const [draftUnit, setDraftUnit] = useState<RangeUnit>('days');
