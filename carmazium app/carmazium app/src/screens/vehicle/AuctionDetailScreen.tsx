@@ -2007,7 +2007,10 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </View>
           <View style={ts.bidConsoleChevron}>
-            <Ionicons name={bidPanelExpanded ? 'chevron-down' : 'chevron-up'} size={19} color={Colors.white} />
+            <Text style={ts.bidChevronLabel}>
+              {bidPanelExpanded ? 'CLOSE' : isActive && canPlaceBid && !isSeller ? 'BID' : 'VIEW'}
+            </Text>
+            <Ionicons name={bidPanelExpanded ? 'chevron-down' : 'chevron-up'} size={18} color={Colors.white} />
           </View>
         </TouchableOpacity>
         {bidPanelExpanded && (
@@ -2243,7 +2246,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
               <Text style={[ts.minNextBid, !hasRealBids && { color: Colors.warning }]}>
                 {hasRealBids ? 'Min next: ' : 'First offer from: '}
-                <Text style={{ color: hasRealBids ? Colors.white : Colors.warning, fontFamily: FontFamily.mono }}>
+                <Text style={{ color: hasRealBids ? (appearanceMode === 'light' ? '#0F172A' : Colors.white) : Colors.warning, fontFamily: FontFamily.mono }}>
                   {fmt(minimumAllowedBid)}
                 </Text>
               </Text>
@@ -2598,7 +2601,8 @@ const s = StyleSheet.create({
   bidConsoleToggle: { minHeight: 59, flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 5 },
   bidToggleEyebrow: { color: Colors.accent, fontFamily: FontFamily.bold, fontSize: FontSize.size10, letterSpacing: 0.7 },
   bidToggleAmount: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginTop: 3 },
-  bidConsoleChevron: { backgroundColor: Colors.accent, width: 40, height: 40, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+  bidConsoleChevron: { backgroundColor: Colors.accent, minWidth: 70, height: 44, borderRadius: 11, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 10 },
+  bidChevronLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.white },
   expandedBidContent: { paddingTop: 11, paddingBottom: 12 },
   bidStateBox: { alignItems: 'center', paddingVertical: 12, gap: 6 },
   bidStateText: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.white },
