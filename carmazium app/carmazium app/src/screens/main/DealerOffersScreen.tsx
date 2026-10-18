@@ -23,7 +23,7 @@ import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -412,7 +412,7 @@ export const DealerOffersScreen: React.FC = () => {
           <View style={ts.cardTopCenter}>
             <Text style={ts.buyerName} numberOfLines={1}>{name}</Text>
             <View style={[ts.statusChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[ts.statusChipText, { color: cfg.chipText }]}>
+              <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (offer.status === 'ACCEPTED' ? lightReadableText.success : offer.status === 'PENDING' ? lightReadableText.warning : offer.status === 'COUNTERED' ? lightReadableText.info : lightReadableText.muted) : cfg.chipText }]}>
                 {cfg.chipLabel}
               </Text>
             </View>
@@ -426,7 +426,7 @@ export const DealerOffersScreen: React.FC = () => {
         <View style={ts.amountRow}>
           <Text style={ts.offerAmount}>{formatPrice(offer.amount)}</Text>
           {diff != null && (
-            <Text style={[ts.diffText, { color: diff >= 0 ? Colors.success : Colors.accent }]}>
+            <Text style={[ts.diffText, { color: diff >= 0 ? (appearanceMode === 'light' ? lightReadableText.success : Colors.success) : (appearanceMode === 'light' ? lightReadableText.error : Colors.accent) }]}>
               {diff >= 0 ? `+${formatPrice(diff)}` : formatPrice(diff)} vs asking
             </Text>
           )}
@@ -577,6 +577,7 @@ export const DealerOffersScreen: React.FC = () => {
     messagingBuyerId,
     handleMessageBuyer,
     openSaleModal,
+    appearanceMode,
   ]);
 
   // ─────────────── main render ───────────────────────
