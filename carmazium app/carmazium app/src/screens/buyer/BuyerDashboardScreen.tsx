@@ -19,6 +19,7 @@ import { getFeaturedListings } from '../../lib/listingsApi';
 import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
@@ -84,25 +85,29 @@ const KpiCard: React.FC<{
   sublabel: string;
   loading: boolean;
   fullWidth?: boolean;
-}> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => (
-  <View style={[styles.kpiCard, fullWidth && styles.kpiCardFull]}>
-    <View style={[styles.kpiGlow, { backgroundColor: tone }]} />
-    <View style={styles.kpiTopRow}>
-      <Text style={styles.kpiEyebrow}>{label}</Text>
+}> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
+  return (
+  <View style={[ts.kpiCard, fullWidth && ts.kpiCardFull]}>
+    <View style={[ts.kpiGlow, { backgroundColor: tone }]} />
+    <View style={ts.kpiTopRow}>
+      <Text style={ts.kpiEyebrow}>{label}</Text>
       <Ionicons name={icon as any} size={14} color={tone} />
     </View>
     {loading ? (
       <Skeleton w={80} h={28} r={6} />
     ) : (
-      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={ts.kpiValue}>{value}</Text>
     )}
     {loading ? (
       <Skeleton w={56} h={10} r={4} />
     ) : (
-      <Text style={[styles.kpiDelta, { color: tone }]}>{sublabel}</Text>
+      <Text style={[ts.kpiDelta, { color: tone }]}>{sublabel}</Text>
     )}
   </View>
-);
+  );
+};
 
 // ─── Activity Row ─────────────────────────────────────────────────────────────
 
@@ -114,29 +119,35 @@ const ActivityRow: React.FC<{
   time: string;
   onPress?: () => void;
   isLast?: boolean;
-}> = ({ icon, tone, title, subtitle, time, onPress, isLast }) => (
+}> = ({ icon, tone, title, subtitle, time, onPress, isLast }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
+  return (
   <TouchableOpacity
-    style={[styles.activityRow, !isLast && styles.activityRowBorder]}
+    style={[ts.activityRow, !isLast && ts.activityRowBorder]}
     activeOpacity={0.7}
     onPress={onPress}
   >
-    <View style={[styles.activityIcon, { backgroundColor: `${tone}1F`, borderColor: `${tone}45` }]}>
+    <View style={[ts.activityIcon, { backgroundColor: `${tone}1F`, borderColor: `${tone}45` }]}>
       <Ionicons name={icon as any} size={16} color={tone} />
     </View>
-    <View style={styles.activityText}>
-      <Text style={styles.activityTitle}>{title}</Text>
+    <View style={ts.activityText}>
+      <Text style={ts.activityTitle}>{title}</Text>
       {subtitle !== '–' && subtitle !== '' && (
-        <Text style={styles.activitySubtitle} numberOfLines={1}>{subtitle}</Text>
+        <Text style={ts.activitySubtitle} numberOfLines={1}>{subtitle}</Text>
       )}
     </View>
-    <Text style={styles.activityTime}>{time}</Text>
+    <Text style={ts.activityTime}>{time}</Text>
   </TouchableOpacity>
-);
+  );
+};
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
   const { user } = useAuthStore();
 
   const [dash, setDash] = useState<BuyerDashData | null>(null);
@@ -225,7 +236,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
   const hotDealImage = hotDeal?.images?.[0] ?? null;
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -236,24 +247,24 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={ts.header}>
         <Logo size="sm" />
-        <View style={styles.headerRight}>
+        <View style={ts.headerRight}>
           <TouchableOpacity
-            style={styles.bellBtn}
+            style={ts.bellBtn}
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('Notifications')}
            accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
             <Ionicons name="notifications-outline" size={18} color={Colors.white} />
-            {unreadCount > 0 && <View style={styles.bellDot} />}
+            {unreadCount > 0 && <View style={ts.bellDot} />}
           </TouchableOpacity>
           <HamburgerButton />
         </View>
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -271,21 +282,21 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         ) : null}
 
         {/* ── 1. Greeting ── */}
-        <View style={styles.greetingSection}>
-          <View style={styles.greetingTopRow}>
+        <View style={ts.greetingSection}>
+          <View style={ts.greetingTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.greetingHeadline}>Hello, {firstName}</Text>
-              <Text style={styles.greetingSubtitle}>Your buying activity at a glance</Text>
+              <Text style={ts.greetingHeadline}>Hello, {firstName}</Text>
+              <Text style={ts.greetingSubtitle}>Your buying activity at a glance</Text>
             </View>
-            <View style={styles.periodPillRow}>
+            <View style={ts.periodPillRow}>
               {(['7d', '30d'] as const).map((p) => (
                 <TouchableOpacity
                   key={p}
-                  style={[styles.periodPill, period === p && styles.periodPillActive]}
+                  style={[ts.periodPill, period === p && ts.periodPillActive]}
                   onPress={() => setPeriod(p)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.periodPillText, period === p && styles.periodPillTextActive]}>
+                  <Text style={[ts.periodPillText, period === p && ts.periodPillTextActive]}>
                     {p === '7d' ? '7D' : '30D'}
                   </Text>
                 </TouchableOpacity>
@@ -295,31 +306,31 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
 
         {/* Immediate everyday actions, before the account statistics. */}
-        <View style={styles.buyerJourneyRow}>
+        <View style={ts.buyerJourneyRow}>
           <TouchableOpacity
-            style={styles.buyerJourneyBuy}
+            style={ts.buyerJourneyBuy}
             onPress={() => navigation?.navigate('Tabs', { screen: 'Search' })}
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
             <Ionicons name="car-outline" size={20} color={Colors.white} />
-            <Text style={styles.buyerJourneyLabel}>Browse Cars</Text>
+            <Text style={ts.buyerJourneyLabel}>Browse Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.buyerJourneySaved}
+            style={ts.buyerJourneySaved}
             onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
             accessibilityRole="button"
             accessibilityLabel="View your saved cars"
             activeOpacity={0.8}
           >
             <Ionicons name="heart-outline" size={20} color={Colors.white} />
-            <Text style={styles.buyerJourneyLabel}>Saved Cars</Text>
+            <Text style={ts.buyerJourneyLabel}>Saved Cars</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── 2. KPI 2×2 Grid ── */}
-        <View style={styles.kpiGrid}>
+        <View style={ts.kpiGrid}>
           <KpiCard
             label="ACTIVE OFFERS"
             icon="document-text-outline"
@@ -365,26 +376,26 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
         {/* ── 3. Hot Deal ── (only when available) */}
         {hotDeal && (
-          <View style={styles.hotDealSection}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionEyebrow}>FEATURED LISTING</Text>
+          <View style={ts.hotDealSection}>
+            <View style={ts.sectionHeaderRow}>
+              <Text style={ts.sectionEyebrow}>FEATURED LISTING</Text>
             </View>
-            <View style={styles.hotDealCard}>
+            <View style={ts.hotDealCard}>
               {hotDealImage ? (
-                <Image source={{ uri: hotDealImage }} style={styles.hotDealImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                <Image source={{ uri: hotDealImage }} style={ts.hotDealImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               ) : (
-                <View style={[styles.hotDealImage, styles.hotDealImagePlaceholder]} />
+                <View style={[ts.hotDealImage, ts.hotDealImagePlaceholder]} />
               )}
-              <View style={styles.hotDealInfo}>
-                <Text style={styles.hotDealTitle} numberOfLines={2}>{hotDealTitle}</Text>
-                <View style={styles.hotDealPriceRow}>
-                  <Text style={styles.hotDealPrice}>{hotDealPrice}</Text>
+              <View style={ts.hotDealInfo}>
+                <Text style={ts.hotDealTitle} numberOfLines={2}>{hotDealTitle}</Text>
+                <View style={ts.hotDealPriceRow}>
+                  <Text style={ts.hotDealPrice}>{hotDealPrice}</Text>
                   <TouchableOpacity
-                    style={styles.hotDealCta}
+                    style={ts.hotDealCta}
                     activeOpacity={0.8}
                     onPress={() => navigation?.navigate('VehicleDetail', { listing: hotDeal })}
                   >
-                    <Text style={styles.hotDealCtaText}>View</Text>
+                    <Text style={ts.hotDealCtaText}>View</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -393,15 +404,15 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         )}
 
         {/* ── 4. Recent Activity ── */}
-        <View style={styles.activitySection}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.activitySectionTitle}>RECENT ACTIVITY</Text>
+        <View style={ts.activitySection}>
+          <View style={ts.sectionHeaderRow}>
+            <Text style={ts.activitySectionTitle}>RECENT ACTIVITY</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={() => navigation?.navigate('Notifications')}>
-              <Text style={styles.seeAllText}>See all</Text>
+              <Text style={ts.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.activityCard}>
+          <View style={ts.activityCard}>
             {!loading && hasActivity ? (
               <>
                 {recentOffers.map((offer, idx) => {
@@ -459,86 +470,86 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </>
             ) : (
               <>
-                <View style={styles.skeletonRow} />
-                <View style={styles.skeletonRow} />
-                <View style={[styles.skeletonRow, { marginBottom: 0 }]} />
+                <View style={ts.skeletonRow} />
+                <View style={ts.skeletonRow} />
+                <View style={[ts.skeletonRow, { marginBottom: 0 }]} />
               </>
             )}
           </View>
         </View>
 
         {/* ── 5. Quick actions ── */}
-        <View style={styles.quickActionsSection}>
-          <Text style={styles.activitySectionTitle}>QUICK ACTIONS</Text>
-          <View style={styles.quickRow}>
+        <View style={ts.quickActionsSection}>
+          <Text style={ts.activitySectionTitle}>QUICK ACTIONS</Text>
+          <View style={ts.quickRow}>
             <TouchableOpacity
-              style={styles.quickTile}
+              style={ts.quickTile}
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerBids')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
+              <View style={[ts.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
                 <Ionicons name="hammer-outline" size={18} color={Colors.success} />
               </View>
-              <Text style={styles.quickLabel}>My Bids</Text>
+              <Text style={ts.quickLabel}>My Bids</Text>
               {activeBids > 0 && (
-                <View style={styles.quickBadge}>
-                  <Text style={styles.quickBadgeText}>{activeBids}</Text>
+                <View style={ts.quickBadge}>
+                  <Text style={ts.quickBadgeText}>{activeBids}</Text>
                 </View>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickTile}
+              style={ts.quickTile}
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerOffers')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
+              <View style={[ts.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
                 <Ionicons name="document-text-outline" size={18} color={Colors.warning} />
               </View>
-              <Text style={styles.quickLabel}>My Offers</Text>
+              <Text style={ts.quickLabel}>My Offers</Text>
               {activeOffers > 0 && (
-                <View style={[styles.quickBadge, { backgroundColor: Colors.warning }]}>
-                  <Text style={styles.quickBadgeText}>{activeOffers}</Text>
+                <View style={[ts.quickBadge, { backgroundColor: Colors.warning }]}>
+                  <Text style={ts.quickBadgeText}>{activeOffers}</Text>
                 </View>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickTile}
+              style={ts.quickTile}
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('Tabs', { screen: 'Saved' })}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.accentAlpha12 }]}>
+              <View style={[ts.quickIcon, { backgroundColor: Colors.accentAlpha12 }]}>
                 <Ionicons name="heart" size={18} color={Colors.accent} />
               </View>
-              <Text style={styles.quickLabel}>Watchlist</Text>
+              <Text style={ts.quickLabel}>Watchlist</Text>
               {watchlistCount > 0 && (
-                <View style={[styles.quickBadge, { backgroundColor: Colors.accent }]}>
-                  <Text style={styles.quickBadgeText}>{watchlistCount}</Text>
+                <View style={[ts.quickBadge, { backgroundColor: Colors.accent }]}>
+                  <Text style={ts.quickBadgeText}>{watchlistCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickTile}
+              style={ts.quickTile}
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerPurchaseHistory')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.infoBlueAlpha12 }]}>
+              <View style={[ts.quickIcon, { backgroundColor: Colors.infoBlueAlpha12 }]}>
                 <Ionicons name="receipt-outline" size={18} color={Colors.infoBlue} />
               </View>
-              <Text style={styles.quickLabel}>History</Text>
+              <Text style={ts.quickLabel}>History</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickTile}
+              style={ts.quickTile}
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('BuyerDeliveryRequests')}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
+              <View style={[ts.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
                 <Ionicons name="car-outline" size={18} color={Colors.accentGreen} />
               </View>
-              <Text style={styles.quickLabel}>Delivery</Text>
+              <Text style={ts.quickLabel}>Delivery</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
@@ -565,19 +576,19 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
 
         {/* ── 6. Profile Card ── */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileAvatarText}>{initials}</Text>
+        <View style={ts.profileCard}>
+          <View style={ts.profileAvatar}>
+            <Text style={ts.profileAvatarText}>{initials}</Text>
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={1}>{displayName}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{displayEmail}</Text>
-            <View style={styles.verifiedBadge}>
+          <View style={ts.profileInfo}>
+            <Text style={ts.profileName} numberOfLines={1}>{displayName}</Text>
+            <Text style={ts.profileEmail} numberOfLines={1}>{displayEmail}</Text>
+            <View style={ts.verifiedBadge}>
               <Ionicons name="checkmark-circle-sharp" size={11} color={Colors.success} />
-              <Text style={styles.verifiedBadgeText}>VERIFIED BUYER</Text>
+              <Text style={ts.verifiedBadgeText}>VERIFIED BUYER</Text>
             </View>
           </View>
-          <IconButton style={styles.profileGear} icon={<Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
+          <IconButton style={ts.profileGear} icon={<Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
         </View>
 
         <View style={{ height: 110 }} />
@@ -590,6 +601,37 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
 const CARD_BG = 'rgba(20,26,42,0.70)';
 const CARD_BORDER = Colors.whiteAlpha06;
+
+const lightBuyerStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  bellBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  greetingHeadline: {color: '#0F172A'},
+  greetingSubtitle: {color: '#64748B'},
+  buyerJourneyBuy: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  buyerJourneySaved: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  buyerJourneyLabel: {color: '#0F172A'},
+  periodPill: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  periodPillText: {color: '#334155'},
+  kpiCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  kpiEyebrow: {color: '#64748B'},
+  kpiValue: {color: '#0F172A'},
+  hotDealCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  hotDealImagePlaceholder: {backgroundColor: '#F7FBFF'},
+  hotDealTitle: {color: '#0F172A'},
+  hotDealPrice: {color: '#0F172A'},
+  sectionEyebrow: {color: '#64748B'},
+  activitySectionTitle: {color: '#0F172A'},
+  activityCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  activityRowBorder: {borderBottomColor: '#D5E1EC'},
+  activityTitle: {color: '#0F172A'},
+  activitySubtitle: {color: '#64748B'},
+  activityTime: {color: '#64748B'},
+  quickTile: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  quickLabel: {color: '#334155'},
+  profileCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  profileName: {color: '#0F172A'},
+  profileEmail: {color: '#64748B'},
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
