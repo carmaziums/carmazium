@@ -12,9 +12,11 @@ export class SimpleDmsGuard implements CanActivate {
   constructor(private readonly config: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // A global kill switch AND a per-partner kill switch; both default to off.
+    // Three independent kill switches. The final production-approval gate remains
+    // absent in deployment configuration until bilateral written acceptance.
     if (this.config.get<string>('PARTNER_API_ENABLED') !== 'true' ||
-        this.config.get<string>('PARTNER_API_SIMPLEDMS_ENABLED') !== 'true') {
+        this.config.get<string>('PARTNER_API_SIMPLEDMS_ENABLED') !== 'true' ||
+        this.config.get<string>('PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED') !== 'true') {
       throw new NotFoundException();
     }
 
