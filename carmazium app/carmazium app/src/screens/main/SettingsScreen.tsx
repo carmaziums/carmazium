@@ -722,7 +722,7 @@ export const SettingsScreen: React.FC = () => {
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="First name"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
               />
             </View>
             <View style={styles.fieldDividerV} />
@@ -733,7 +733,7 @@ export const SettingsScreen: React.FC = () => {
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Last name"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
               />
             </View>
           </View>
@@ -751,7 +751,7 @@ export const SettingsScreen: React.FC = () => {
                 value={profilePhone}
                 onChangeText={setProfilePhone}
                 placeholder="Not set"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 keyboardType="phone-pad"
               />
             </View>
@@ -878,7 +878,7 @@ export const SettingsScreen: React.FC = () => {
                   value={dealerCompanyName}
                   onChangeText={v => { setDealerCompanyName(v); if (dealerFieldErrors.companyName) setDealerFieldErrors(prev => ({ ...prev, companyName: undefined })); }}
                   placeholder={isSoleTraderDealer ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 />
                 {dealerFieldErrors.companyName ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
               </View>
@@ -892,7 +892,7 @@ export const SettingsScreen: React.FC = () => {
                       value={dealerVatNumber}
                       onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                       placeholder="e.g. GB 123 456 789"
-                      placeholderTextColor={Colors.iconMuted}
+                      placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                     />
                     {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
                   </View>
@@ -905,7 +905,7 @@ export const SettingsScreen: React.FC = () => {
                       onChangeText={setDealerRegNumber}
                       keyboardType="numeric"
                       placeholder="e.g. 12345678"
-                      placeholderTextColor={Colors.iconMuted}
+                      placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                     />
                   </View>
                 </>
@@ -918,7 +918,7 @@ export const SettingsScreen: React.FC = () => {
                   value={dealerAddress}
                   onChangeText={setDealerAddress}
                   placeholder="e.g. 42 Sloane St, SW1X 9LT"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 />
               </View>
 
@@ -931,7 +931,7 @@ export const SettingsScreen: React.FC = () => {
                     onChangeText={setDealerPhone}
                     keyboardType="phone-pad"
                     placeholder="e.g. +44 20 7123 4567"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                   />
                 </View>
                 <View style={{ width: 12 }} />
@@ -944,7 +944,7 @@ export const SettingsScreen: React.FC = () => {
                     autoCapitalize="none"
                     keyboardType="url"
                     placeholder="e.g. yourdealer.co.uk"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                   />
                 </View>
               </View>
@@ -956,7 +956,7 @@ export const SettingsScreen: React.FC = () => {
                   value={dealerDescription}
                   onChangeText={setDealerDescription}
                   placeholder="Introduce your business and what you do for customers"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                   multiline
                 />
               </View>
@@ -974,7 +974,7 @@ export const SettingsScreen: React.FC = () => {
                     multiline maxLength={1000} value={dealerWarrantyDetails}
                     onChangeText={setDealerWarrantyDetails}
                     placeholder="Enter your actual warranty terms. Do not promise cover not provided."
-                    placeholderTextColor={Colors.iconMuted} />
+                    placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted} />
                 </View>
               )}
               <View style={styles.toggleRow}>
@@ -989,7 +989,7 @@ export const SettingsScreen: React.FC = () => {
                     multiline maxLength={1000} value={dealerFinanceDetails}
                     onChangeText={setDealerFinanceDetails}
                     placeholder="Describe actual finance arrangements, eligibility and lender approval."
-                    placeholderTextColor={Colors.iconMuted} />
+                    placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted} />
                 </View>
               )}
               <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>Optional sales terms are included only after you save them. All finance remains subject to eligibility and lender approval. You must review generated descriptions before publishing.</Text>
@@ -1101,7 +1101,7 @@ export const SettingsScreen: React.FC = () => {
               value={currentPwd}
               onChangeText={setCurrentPwd}
               placeholder="••••••••"
-              placeholderTextColor={Colors.iconMuted}
+              placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
               secureTextEntry={!showCurrentPwd}
               autoCapitalize="none"
             />
@@ -1117,7 +1117,7 @@ export const SettingsScreen: React.FC = () => {
                   value={newPwd}
                   onChangeText={setNewPwd}
                   placeholder="Min. 8 characters"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                   secureTextEntry={!showNewPwd}
                   autoCapitalize="none"
                 />
@@ -1133,7 +1133,7 @@ export const SettingsScreen: React.FC = () => {
                   value={confirmPwd}
                   onChangeText={setConfirmPwd}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                   secureTextEntry={!showConfirmPwd}
                   autoCapitalize="none"
                 />
@@ -1216,7 +1216,7 @@ export const SettingsScreen: React.FC = () => {
             value={bankName}
             onChangeText={setBankName}
             placeholder="e.g. John Smith"
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
             autoCapitalize="words"
           />
 
@@ -1228,7 +1228,7 @@ export const SettingsScreen: React.FC = () => {
                 value={sortCode}
                 onChangeText={setSortCode}
                 placeholder="e.g. 00-00-00"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 keyboardType="numbers-and-punctuation"
               />
             </View>
@@ -1240,7 +1240,7 @@ export const SettingsScreen: React.FC = () => {
                 value={accountNumber}
                 onChangeText={setAccountNumber}
                 placeholder="e.g. 12345678"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 keyboardType="numeric"
                 maxLength={8}
               />
@@ -1267,7 +1267,7 @@ export const SettingsScreen: React.FC = () => {
         {/* ── Danger zone ── */}
         <View style={styles.dangerCard}>
           <SectionHeader icon="warning-outline" label="DANGER ZONE" />
-          <Text style={styles.dangerCopy}>
+          <Text style={[styles.dangerCopy, appearanceMode === 'light' && lightSettingsStyles.dangerCopy]}>
             Deleting your account is permanent. Your active listings are withdrawn and your
             personal details are removed.
           </Text>
@@ -1424,13 +1424,13 @@ export const SettingsScreen: React.FC = () => {
         title="Delete your account?"
         avoidKeyboard
       >
-        <View style={styles.verifyModalBody}>
+        <View style={[styles.verifyModalBody, appearanceMode === 'light' && lightSettingsStyles.verifyModalBody]}>
           {deleteError ? (
             <View style={{ marginBottom: 16 }}>
               <ErrorBanner message={deleteError} />
             </View>
           ) : null}
-          <Text style={styles.dangerCopy}>
+          <Text style={[styles.dangerCopy, appearanceMode === 'light' && lightSettingsStyles.dangerCopy]}>
             This is permanent and cannot be undone. Your active listings will be withdrawn and
             your personal details removed. Type DELETE below to confirm.
           </Text>
@@ -1440,7 +1440,7 @@ export const SettingsScreen: React.FC = () => {
             value={deleteConfirmText}
             onChangeText={setDeleteConfirmText}
             placeholder="Type DELETE"
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             editable={!deleting}
@@ -1463,7 +1463,7 @@ export const SettingsScreen: React.FC = () => {
             onPress={() => { if (!deleting) { setDeleteModalOpen(false); setDeleteError(null); } }}
             disabled={deleting}
           >
-            <Text style={styles.resendLinkText}>Cancel</Text>
+            <Text style={[styles.resendLinkText, appearanceMode === 'light' && lightSettingsStyles.resendLinkText]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </BottomSheet>
@@ -1475,7 +1475,7 @@ export const SettingsScreen: React.FC = () => {
         title={`Trader Verification (Step ${verifyStage === 'address' ? 1 : 2}/2)`}
         avoidKeyboard
       >
-        <View style={styles.verifyModalBody}>
+        <View style={[styles.verifyModalBody, appearanceMode === 'light' && lightSettingsStyles.verifyModalBody]}>
           {verifyError ? (
             <View style={{ marginBottom: 16 }}>
               <ErrorBanner message={verifyError} />
@@ -1483,8 +1483,8 @@ export const SettingsScreen: React.FC = () => {
           ) : null}
           {verifyStage === 'address' && (
             <View>
-              <Text style={styles.verifyStepTitle}>Confirm Your Address</Text>
-              <Text style={styles.verifyStepSub}>
+              <Text style={[styles.verifyStepTitle, appearanceMode === 'light' && lightSettingsStyles.verifyStepTitle]}>Confirm Your Address</Text>
+              <Text style={[styles.verifyStepSub, appearanceMode === 'light' && lightSettingsStyles.verifyStepSub]}>
                 Enter your current residential address. We'll email a 6-digit verification code to {user?.email || 'your account email'}.
               </Text>
               <TextInput
@@ -1492,7 +1492,7 @@ export const SettingsScreen: React.FC = () => {
                 value={verifyAddressInput}
                 onChangeText={setVerifyAddressInput}
                 placeholder="Enter your full address"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 autoCapitalize="words"
                 multiline
               />
@@ -1509,8 +1509,8 @@ export const SettingsScreen: React.FC = () => {
           )}
           {verifyStage === 'code' && (
             <View>
-              <Text style={styles.verifyStepTitle}>Enter Verification Code</Text>
-              <Text style={styles.verifyStepSub}>
+              <Text style={[styles.verifyStepTitle, appearanceMode === 'light' && lightSettingsStyles.verifyStepTitle]}>Enter Verification Code</Text>
+              <Text style={[styles.verifyStepSub, appearanceMode === 'light' && lightSettingsStyles.verifyStepSub]}>
                 We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
               </Text>
               <TextInput
@@ -1518,7 +1518,7 @@ export const SettingsScreen: React.FC = () => {
                 value={verificationCode}
                 onChangeText={setVerificationCode}
                 placeholder="Enter 6-digit code"
-                placeholderTextColor={Colors.iconMuted}
+                placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 keyboardType="number-pad"
                 maxLength={6}
               />
@@ -1532,7 +1532,7 @@ export const SettingsScreen: React.FC = () => {
                   : <Text style={styles.stripeBtnText}>CONFIRM & VERIFY</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={{ alignItems: 'center', marginTop: 14 }} onPress={() => { setVerifyStage('address'); setVerifyError(null); }}>
-                <Text style={styles.resendLinkText}>Wrong address? Go back</Text>
+                <Text style={[styles.resendLinkText, appearanceMode === 'light' && lightSettingsStyles.resendLinkText]}>Wrong address? Go back</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1579,7 +1579,13 @@ const lightSettingsStyles = StyleSheet.create({
   payoutDesc: { color: '#334155' },
   sectionLabel: { color: '#0F172A' },
   fieldInputValue: { color: '#0F172A' },
-  inputField: { color: '#0F172A' },
+  inputField: { color: '#0F172A', backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  verifyModalBody: { backgroundColor: '#FFFFFF' },
+  verifyStepTitle: { color: '#0F172A' },
+  verifyStepSub: { color: '#334155' },
+  resendLinkText: { color: '#334155' },
+  dangerCopy: { color: '#334155' },
+  stripeNote: { color: '#64748B' },
 });
 
 const styles = StyleSheet.create({
