@@ -166,8 +166,10 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     </TouchableOpacity>
   );
 
-  return (
-    <View style={styles.screen}>
+  // Render the website-matched dealer hub inside the selected section's
+  // scroll surface; no fixed half-screen header above the actual vehicles.
+  const hubHeader = (
+    <>
       <WebsiteTopBar />
       <View style={styles.heading}>
         <Text style={styles.pageTitle}>Auctions & Buying</Text>
@@ -197,21 +199,11 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {section === 'live' ? (
-        <View style={styles.liveContainer}>
-          {!accessLoading && !canPlaceBid && (
-            <Text style={styles.permissionNotice}>
-              You can browse auctions. Placing bids requires dealer bidding permission.
-            </Text>
-          )}
-          <LiveScreen embeddedDealerHub />
-        </View>
-      ) : section === 'shortlisted' ? (
-        <DealerAuctionShortlist navigation={navigation} />
-      ) : section === 'bids' ? (
-        <DealerActiveBidPositions navigation={navigation} />
-      ) : (
-        <>
+    </>
+  );
+  const myAuctionHeader = (
+    <>
+      {hubHeader}
           {canManageInventory && needsHandover > 0 && !error && !loading && (
             <TouchableOpacity style={styles.warning} onPress={openManager}
               accessibilityRole="button"
@@ -246,6 +238,36 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
               ))}
             </View>
           )}
+            <View style={[styles.sectionHeading, { marginHorizontal: 20 }]}>
+              <Text style={styles.sectionTitle}>My Auctions</Text>
+              {canManageInventory && (
+                <TouchableOpacity accessibilityRole="button" onPress={openManager}>
+                  <Text style={styles.manageLink}>Manage Auctions</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+    </>
+  );
+
+  return (
+    <View style={styles.screen}>
+      {section === 'live' ? (
+        <LiveScreen embeddedDealerHub embeddedHeader={
+          <>
+            {hubHeader}
+            {!accessLoading && !canPlaceBid && (
+              <Text style={styles.permissionNotice}>
+                You can browse auctions. Placing bids requires dealer bidding permission.
+              </Text>
+            )}
+          </>
+        } />
+      ) : section === 'shortlisted' ? (
+        <DealerAuctionShortlist navigation={navigation} header={hubHeader} />
+      ) : section === 'bids' ? (
+        <DealerActiveBidPositions navigation={navigation} header={hubHeader} />
+      ) : (
+        <>
           <FlatList
             style={styles.list}
             contentContainerStyle={styles.listContent}
@@ -255,16 +277,8 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
             refreshControl={<RefreshControl
               refreshing={refreshing} onRefresh={() => { void fetchOwned(true); }}
               tintColor={Colors.accent} />}
-            ListHeaderComponent={
-              <View style={styles.sectionHeading}>
-                <Text style={styles.sectionTitle}>My Auctions</Text>
-                {canManageInventory && (
-                  <TouchableOpacity accessibilityRole="button" onPress={openManager}>
-                    <Text style={styles.manageLink}>Manage Auctions</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            }
+            ListHeaderComponent={myAuctionHeader}
+            ListHeaderComponentStyle={{ marginHorizontal: -20 }}
             ListEmptyComponent={
               loading ? <View style={styles.emptyState}>
                 <ActivityIndicator color={Colors.accent} />
