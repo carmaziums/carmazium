@@ -264,8 +264,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
                   !isFocused && { color: palette.muted },
                 ]}
-                numberOfLines={2}
-                maxFontSizeMultiplier={2}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}
+                maxFontSizeMultiplier={1.3}
                 ellipsizeMode="tail"
               >
                 {config.label}
@@ -352,6 +354,8 @@ const styles = StyleSheet.create({
     ...TextPresets.tabLabel,
     textAlign: 'center',
     flexShrink: 1,
+    fontSize: 10,
+    letterSpacing: 0,
   },
   tabLabelActive: {
     color: Colors.accent,
