@@ -90,6 +90,14 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
   const neutralBorders = new Set<string>([Colors.border, Colors.borderHi, Colors.borderStrong,
     Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.glassBorderStrong,
     Colors.inputBorder]);
+  const legacyPaleText = new Set<string>([
+    Colors.lightGrey, Colors.paleBlue_c0c0cb, Colors.paleBlue_d0d0da,
+    Colors.paleBlue_e2e2ea, Colors.paleGrey_c0c0c8, Colors.paleGrey_cccccc,
+    Colors.lightBlue_9ca3af, Colors.lightBlue_a0a0b0,
+  ]);
+  const legacyPlaceholder = new Set<string>([
+    Colors.textDisabled, Colors.inputPlaceholder, Colors.borderMuted,
+  ]);
   for (const [name, raw] of Object.entries(base)) {
     if (!raw || typeof raw !== 'object') continue;
     const value = raw as Record<string, unknown>;
@@ -121,14 +129,6 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
       changes.borderTopColor = light.border;
     }
     const textLike = /(?:title|label|text|heading|subtitle|subtext|body|desc|hint|value|amount|meta|date|name|copy|price|caption|placeholder|eyebrow|detail|paragraph|message)/.test(id);
-    const legacyPaleText = new Set<string>([
-      Colors.lightGrey, Colors.paleBlue_c0c0cb, Colors.paleBlue_d0d0da,
-      Colors.paleBlue_e2e2ea, Colors.paleGrey_c0c0c8, Colors.paleGrey_cccccc,
-      Colors.lightBlue_9ca3af, Colors.lightBlue_a0a0b0,
-    ]);
-    const legacyPlaceholder = new Set<string>([
-      Colors.textDisabled, Colors.inputPlaceholder, Colors.borderMuted,
-    ]);
     // Do not convert foreground white on brand/CTA/selected chip fills:
     // only plain typography and muted secondary text are safe to remap.
     if (textLike && !action) {
