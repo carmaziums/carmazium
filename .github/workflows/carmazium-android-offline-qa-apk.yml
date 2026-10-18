@@ -12,6 +12,12 @@ on:
       - 'carmazium app/carmazium app/src/navigation/TabNavigator.tsx'
       - 'carmazium app/carmazium app/src/components/GlobalDrawer.tsx'
       - 'carmazium app/carmazium app/src/components/WebsiteTopBar.tsx'
+      # All native routes/shared surfaces must be included; otherwise a passing
+      # source CI run can leave owners testing a stale APK.
+      - 'carmazium app/carmazium app/src/screens/**/*.tsx'
+      - 'carmazium app/carmazium app/src/components/**/*.tsx'
+      - 'carmazium app/carmazium app/src/theme/**/*.ts'
+      - 'scripts/test-native-visual-parity-block9.test.mjs'
       - 'carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx'
       - 'carmazium app/carmazium app/src/components/BottomSheet.tsx'
