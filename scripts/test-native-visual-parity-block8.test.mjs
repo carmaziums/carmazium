@@ -66,12 +66,14 @@ test('website reputation endpoints used for genuine received/given reviews and u
   assert.ok(!settings.includes('5.0 based on 100'), 'do not fabricate reviews');
 });
 
-test('account type is non-mutating and appearance reports fixed native theme truthfully', () => {
+test('account type is non-mutating and appearance uses a persisted real selector without pretending complete screen parity', () => {
   assert.ok(settings.includes('Explore Partner Account'));
   assert.ok(settings.includes("navigation.navigate('PartnerDashboard')"));
   assert.ok(settings.includes('Changing your dashboard view does not change your verified account permissions.'));
   assert.ok(settings.includes("selectCategory('verification')"));
-  assert.ok(settings.includes('live light/dark switch is not yet supported'));
+  assert.ok(settings.includes("(['dark', 'light'] as const).map"), 'dark and light selector exists');
+  assert.ok(settings.includes('setAppearanceMode(choice)'), 'selector is wired to persisted mode');
+  assert.ok(settings.includes('The dark appearance remains the fully tested default until full light-mode QA is complete.'));
   assert.ok(!settings.includes('setDarkMode('), 'never give a fake toggle');
   assert.ok(settings.includes("'/users/me'"));
   assert.ok(settings.includes('handleDeleteAccount'));
