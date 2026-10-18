@@ -30,6 +30,8 @@ test('every native screen with styled surfaces subscribes to the saved appearanc
   for (const file of files){
     const src=readFileSync(file,'utf8');
     if(!src.includes('StyleSheet.create(')) continue;
+    // Native splash has intentional fixed brand artwork, independent of preference.
+    if(file.endsWith('/loading/SplashScreen.tsx')) continue;
     assert.ok(src.includes('useAppearanceStore'),
       'missing appearance subscription: '+file.slice(screensRoot.length));
     assert.ok(src.includes('adaptLegacyLightStyles(') ||
@@ -47,7 +49,8 @@ test('Dashboard gauge is visually distinct from More grid and Menu selection is 
   assert.ok(drawer.includes("rowLabelActive: { color: '#7F1D1D' }"));
   assert.ok(drawer.includes("rowActive: { backgroundColor: '#FCE8EA'"));
   assert.ok(drawer.includes("item.id === 'dashboard' && activeTab === 'DealerHome'"));
-  assert.ok(!drawer.includes("item.tabName === activeTab);"), 'must not mark public Home active when dealer dashboard is open');
+  assert.ok(drawer.includes("dealerMode\n                ? item.id === 'dashboard' && activeTab === 'DealerHome'"),
+    'dealer Dashboard should only highlight Dashboard in the public Menu');
 });
 
 test('all three sensitive dealer bottom tabs have actual KYC + permission screen gates',()=>{
