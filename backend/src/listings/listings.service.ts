@@ -675,14 +675,19 @@ export class ListingsService {
      */
     private valuationPriceLockId(dto: VehicleValuationDto): string {
         const vrm = (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        const identity = vrm
-            ? `VRM|${vrm}`
-            : [
-                dto.make.trim().toUpperCase(),
-                dto.model.trim().toUpperCase(),
-                dto.year,
-                dto.mileage,
-            ].join('|');
+        // The quote covers one exact vehicle configuration, not every vehicle
+        // sharing a VRM. In particular, changing mileage must never replay a
+        // different mileage's 24-hour price (EW19CFY regression).
+        const identity = [
+            vrm || 'UNREGISTERED',
+            dto.make.trim().toUpperCase(),
+            dto.model.trim().toUpperCase(),
+            dto.year,
+            dto.mileage,
+            (dto.variant ?? '').trim().toUpperCase().replace(/\\s+/g, ' '),
+            (dto.fuelType ?? '').trim().toUpperCase(),
+            (dto.transmission ?? '').trim().toUpperCase(),
+        ].join('|');
         return `valuation-price-lock:${createHash('sha256').update(identity).digest('hex')}`;
     }
 
@@ -810,13 +815,12 @@ export class ListingsService {
         const identity = payload.identity ?? {};
         const expected = this.valuationIdentity(dto);
 
-        const sameIdentity = expected.registration
-            ? String(identity.registration ?? '') === expected.registration
-            : !identity.registration
-                && String(identity.make ?? '') === expected.make
-                && String(identity.model ?? '') === expected.model
-                && Number(identity.year) === expected.year
-                && Number(identity.mileage) === expected.mileage;
+        const sameIdentity =
+            String(identity.registration ?? '') === expected.registration
+            && String(identity.make ?? '') === expected.make
+            && String(identity.model ?? '') === expected.model
+            && Number(identity.year) === expected.year
+            && Number(identity.mileage) === expected.mileage;
 
         if (!sameIdentity) {
             throw new BadRequestException(
