@@ -18,6 +18,8 @@ import { convertAndCompress, uploadToStorage } from '../../lib/storageHelper';
 import { startAddressVerification, confirmAddressVerification } from '../../lib/addressVerificationApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { appearancePalette } from '../../theme/appearancePalette';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -58,6 +60,9 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
 // ══════════════════════════ COMPONENT ════════════════════════════
 
 export const SettingsScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const setAppearanceMode = useAppearanceStore(state => state.setMode);
+  const palette = appearancePalette(appearanceMode);
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const singleColumnSettings = useSingleColumnSettings(viewportWidth, fontScale);
@@ -593,10 +598,10 @@ export const SettingsScreen: React.FC = () => {
     }
   };
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: palette.background }]}>
+      <StatusBar barStyle={appearanceMode === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? [palette.background, palette.background, palette.background] : [Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
       />
@@ -1277,13 +1282,39 @@ export const SettingsScreen: React.FC = () => {
         )}
 
         {activeCategory === 'appearance' && (
-          <View style={styles.accountSectionCard}>
+          <View style={[styles.accountSectionCard, appearanceMode === 'light' && { backgroundColor: palette.card, borderColor: palette.border }]}>
             <SectionHeader icon="color-palette-outline" label="APPEARANCE" />
-            <Text style={styles.accountSectionTitle}>Dark appearance</Text>
-            <Text style={styles.accountSectionText}>
-              The app currently uses the CarMazium website's dark colour palette.
-              A live light/dark switch is not yet supported by the native theme engine.
-              This screen does not pretend that changing the website theme changes app colours.
+            <Text style={[styles.accountSectionTitle, { color: palette.text }]}>Choose your appearance</Text>
+            <Text style={[styles.accountSectionText, { color: palette.secondary }]}>
+              Dark or light, based on your preference. Saved on this device.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 7 }}>
+              {(['dark', 'light'] as const).map(choice => (
+                <TouchableOpacity
+                  key={choice}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: appearanceMode === choice }}
+                  accessibilityLabel={choice === 'dark' ? 'Dark appearance' : 'Light appearance'}
+                  style={{
+                    flex: 1, minHeight: 54, borderWidth: 1.5, borderRadius: 12,
+                    borderColor: appearanceMode === choice ? Colors.accent : palette.border,
+                    backgroundColor: appearanceMode === choice ? Colors.accentAlpha10 : palette.elevated,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                  onPress={() => { void setAppearanceMode(choice); }}
+                >
+                  <Ionicons name={choice === 'dark' ? 'moon-outline' : 'sunny-outline'} size={18}
+                    color={appearanceMode === choice ? Colors.accent : palette.secondary} />
+                  <Text style={{ color: palette.text, fontFamily: FontFamily.bold, fontSize: 13 }}>
+                    {choice === 'dark' ? 'Dark' : 'Light'}
+                  </Text>
+                  {appearanceMode === choice &&
+                    <Ionicons name="checkmark-circle" size={16} color={Colors.accent} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.accountSectionText, { color: palette.muted, fontSize: 11 }]}>
+              Theme rollout is being validated across all screens. The dark appearance remains the fully tested default until full light-mode QA is complete.
             </Text>
           </View>
         )}
