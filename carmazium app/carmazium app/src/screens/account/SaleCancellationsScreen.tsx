@@ -137,7 +137,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha04, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
       />
       <View style={{ height: insets.top }} />
