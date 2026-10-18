@@ -40,6 +40,31 @@ test('web dealer and native Dashboard shortcuts retain matching destinations wit
   assert.ok(dealerMore.includes('allowedTools = EXTRA_DEALER_TOOLS.filter(tool => hasPermission(tool.permission))'));
 });
 
+test('owner reference APK navigation contract: ten-item Menu, five buyer tabs and distinct dealer Tools', () => {
+  // 18 Oct owner-supplied CarMazium-QA-Android(3).apk, SHA256
+  // dfc4c4d832668a2e63d32d3112421134206123aa051c7fc4780ba6cce2f4b5b2
+  const menu = drawer.split('const MAIN_MENU: MenuItem[] = [')[1]?.split('\n];')[0];
+  assert.ok(menu, 'the reviewed ten-item public Menu must exist');
+  for (const id of ['home','valuation','buy','sell','tradexchange',
+    'compare','pricing','about','settings','dashboard']) {
+    assert.ok(menu.includes("id: '"+id+"'"), 'missing public Menu action: ' + id);
+  }
+  assert.ok(drawer.includes("label: 'Get Valuation'"));
+  assert.ok(drawer.includes("label: 'User Dashboard'"));
+  assert.ok(drawer.includes("label: 'Retail Listings'"));
+  assert.ok(drawer.includes("label: 'Sell by Auction · FREE'"));
+  assert.ok(!drawer.includes('const DEALER_PRIMARY_ITEMS'), 'do not resurrect duplicate dealer Menu');
+  assert.ok(!drawer.includes('More pages & information'), 'remove old oversized drawer');
+  for(const route of ['Home','Search','Sell','Saved','Profile']) {
+    assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
+  }
+  assert.ok(tabs.includes('<Tab.Screen name="DealerMore" component={GatedDealerMoreTab} />'));
+  assert.ok(dealerMore.includes('Dealer Tools'));
+  assert.ok(dealerMore.includes('hasPermission(tool.permission)'));
+  assert.ok(!tabs.includes("if (isDrawerOpen) closeDrawer()"), 'dealer More is a separate screen, not a drawer toggle');
+  assert.ok(tabs.includes("name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard'"));
+});
+
 test('role switching and permissions retain secured routes and consumer deep links', () => {
   assert.ok(tabs.includes("role === 'dealer' && accountRole === 'dealer'"));
   assert.ok(tabs.includes("key={dealerMode ? 'dealer-workspace' : 'marketplace-workspace'}"));
