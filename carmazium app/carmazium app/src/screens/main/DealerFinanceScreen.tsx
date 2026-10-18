@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getMyFinanceApplications, FinanceApplication, FinanceApplicationStatus } from '../../lib/financeApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -82,6 +84,8 @@ const formatPrice = (n: number): string => `£${n.toLocaleString('en-GB')}`;
 
 export const DealerFinanceScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerFinanceScreenStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [applications, setApplications] = useState<FinanceApplication[]>([]);
@@ -119,7 +123,7 @@ export const DealerFinanceScreen: React.FC = () => {
 
   const renderSkeletons = () => (
     <View>
-      <View style={styles.statsGrid}>
+      <View style={ts.statsGrid}>
         <Skeleton w={HALF_CARD} h={80} r={16} />
         <Skeleton w={HALF_CARD} h={80} r={16} />
         <Skeleton w={HALF_CARD} h={80} r={16} />
@@ -133,7 +137,7 @@ export const DealerFinanceScreen: React.FC = () => {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <EmptyState
         icon="card-outline"
         title="No finance applications"
@@ -143,16 +147,16 @@ export const DealerFinanceScreen: React.FC = () => {
   );
 
   const renderStatsGrid = () => (
-    <View style={styles.statsGrid}>
+    <View style={ts.statsGrid}>
       {(Object.keys(STATUS_CONFIG) as FinanceApplicationStatus[]).map((status) => {
         const cfg = STATUS_CONFIG[status];
         return (
-          <View key={status} style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <View key={status} style={ts.statCard}>
+            <View style={[ts.statIconWrap, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
               <Ionicons name={cfg.icon} size={14} color={cfg.color} />
             </View>
-            <Text style={styles.statValue}>{counts[status]}</Text>
-            <Text style={styles.statLabel}>{cfg.label.toUpperCase()}</Text>
+            <Text style={ts.statValue}>{counts[status]}</Text>
+            <Text style={ts.statLabel}>{cfg.label.toUpperCase()}</Text>
           </View>
         );
       })}
@@ -166,28 +170,28 @@ export const DealerFinanceScreen: React.FC = () => {
       || 'Vehicle';
 
     return (
-      <View style={styles.appCard}>
-        <View style={styles.cardTopRow}>
-          <View style={styles.cardCenter}>
-            <Text style={styles.vehicleTitle} numberOfLines={1}>{vehicleTitle}</Text>
-            <Text style={styles.appliedDate}>Applied {formatDate(item.createdAt)}</Text>
+      <View style={ts.appCard}>
+        <View style={ts.cardTopRow}>
+          <View style={ts.cardCenter}>
+            <Text style={ts.vehicleTitle} numberOfLines={1}>{vehicleTitle}</Text>
+            <Text style={ts.appliedDate}>Applied {formatDate(item.createdAt)}</Text>
           </View>
-          <Text style={styles.depositAmount}>{formatPrice(item.depositAmount)}</Text>
+          <Text style={ts.depositAmount}>{formatPrice(item.depositAmount)}</Text>
         </View>
 
-        <View style={styles.cardMetaRow}>
-          <Text style={styles.cardMetaText}>{item.termMonths} month term</Text>
+        <View style={ts.cardMetaRow}>
+          <Text style={ts.cardMetaText}>{item.termMonths} month term</Text>
           {item.monthlyPayment != null && (
             <>
-              <View style={styles.cardMetaDot} />
-              <Text style={styles.cardMetaText}>{formatPrice(item.monthlyPayment)}/mo est.</Text>
+              <View style={ts.cardMetaDot} />
+              <Text style={ts.cardMetaText}>{formatPrice(item.monthlyPayment)}/mo est.</Text>
             </>
           )}
         </View>
 
-        <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+        <View style={[ts.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
           <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-          <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+          <Text style={[ts.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
         </View>
       </View>
     );
@@ -196,7 +200,7 @@ export const DealerFinanceScreen: React.FC = () => {
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
@@ -209,9 +213,9 @@ export const DealerFinanceScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Finance</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Finance</Text>
         <HamburgerButton />
       </View>
 
@@ -221,20 +225,20 @@ export const DealerFinanceScreen: React.FC = () => {
           <ErrorBanner message="Could not load finance applications. Check your connection." onRetry={() => fetchData()} />
         </View>
       ) : loading ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={ts.scroll} contentContainerStyle={ts.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeletons()}
           <View style={{ height: 110 }} />
         </ScrollView>
       ) : (
         <FlatList
-          style={styles.scroll}
+          style={ts.scroll}
           data={applications}
           keyExtractor={(item) => item.id}
           renderItem={renderApplicationCard}
           ListHeaderComponent={applications.length > 0 ? renderStatsGrid : null}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 110 }} />}
-          contentContainerStyle={[styles.scrollContent, applications.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[ts.scrollContent, applications.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -251,6 +255,21 @@ export const DealerFinanceScreen: React.FC = () => {
 };
 
 // ═══════════════════════════ STYLES ════════════════════════════════
+
+const lightDealerFinanceScreenStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  headerTitle: { color: '#0F172A' },
+  statCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statValue: { color: '#0F172A' },
+  statLabel: { color: '#64748B' },
+  emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  appCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  vehicleTitle: { color: '#0F172A' },
+  appliedDate: { color: '#64748B' },
+  cardMetaText: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   container: {
