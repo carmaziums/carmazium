@@ -726,7 +726,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             onChangeText={setCounterAmount}
             keyboardType="numeric"
             placeholder="Enter amount"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
             selectionColor={Colors.accent}
           />
 
@@ -779,7 +779,7 @@ export const SellerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation 
             editable={false}
             keyboardType="numeric"
             placeholder="Agreed price"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
             selectionColor={Colors.accent}
           />
 
