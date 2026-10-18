@@ -226,7 +226,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </Text>
               </View>
             )}
-            {!!msg.content && <Text style={[ts.bubbleText, ts.photoCaption]}>{msg.content}</Text>}
+            {!!msg.content && <Text style={[ts.bubbleText, ts.photoCaption, { color: isOwn || appearanceMode !== 'light' ? Colors.white : '#0F172A' }]}>{msg.content}</Text>}
             <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
               <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
                 {formatMessageTime(msg.createdAt)}
@@ -312,7 +312,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             msg.deliveryStatus === 'failed' && ts.bubbleFailed,
           ]}
         >
-          <Text style={ts.bubbleText}>{msg.content}</Text>
+          <Text style={[ts.bubbleText, { color: isOwn || appearanceMode !== 'light' ? Colors.white : '#0F172A' }]}>{msg.content}</Text>
           <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
             <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
