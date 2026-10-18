@@ -51,14 +51,15 @@ const SectionHeader: React.FC<{ icon: string; label: string }> = ({ icon, label 
     <View style={styles.sectionIconWrap}>
       <Ionicons name={icon as any} size={14} color={Colors.accent} />
     </View>
-    <Text style={[styles.sectionLabel, appearanceMode === 'light' && lightSettingsStyles.sectionLabel, appearanceMode === 'light' && lightSettingsStyles.sectionLabel]}>{label}</Text>
+    <Text style={[styles.sectionLabel, appearanceMode === 'light' && lightSettingsStyles.sectionLabel]}>{label}</Text>
   </View>
   );
 };
 
-const FieldLabel: React.FC<{ label: string }> = ({ label }) => (
-  <Text style={[styles.fieldLabel, appearanceMode === 'light' && lightSettingsStyles.fieldLabel, appearanceMode === 'light' && lightSettingsStyles.fieldLabel]}>{label}</Text>
-);
+const FieldLabel: React.FC<{ label: string }> = ({ label }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  return <Text style={[styles.fieldLabel, appearanceMode === 'light' && lightSettingsStyles.fieldLabel]}>{label}</Text>;
+};
 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
@@ -619,8 +620,8 @@ export const SettingsScreen: React.FC = () => {
         keyboardDismissMode="on-drag"
       >
       <View style={styles.settingsPageHeader}>
-        <Text style={[styles.settingsPageTitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageTitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageTitle]}>Account Settings</Text>
-        <Text style={[styles.settingsPageSubtitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageSubtitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageSubtitle]}>
+        <Text style={[styles.settingsPageTitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageTitle]}>Account Settings</Text>
+        <Text style={[styles.settingsPageSubtitle, appearanceMode === 'light' && lightSettingsStyles.settingsPageSubtitle]}>
           One place for your profile, business, notifications, payouts and security.
         </Text>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
@@ -629,9 +630,9 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.settingsBackText}>Back</Text>
         </TouchableOpacity>
       </View>
-        <View style={[styles.accountToolsPanel, appearanceMode === 'light' && lightSettingsStyles.accountToolsPanel, appearanceMode === 'light' && lightSettingsStyles.accountToolsPanel]}>
-          <Text style={[styles.accountToolsHeading, appearanceMode === 'light' && lightSettingsStyles.accountToolsHeading, appearanceMode === 'light' && lightSettingsStyles.accountToolsHeading]}>YOUR ACCOUNT TOOLS</Text>
-          <Text style={[styles.accountToolsSub, appearanceMode === 'light' && lightSettingsStyles.accountToolsSub, appearanceMode === 'light' && lightSettingsStyles.accountToolsSub]}>Quick access to the same conversations and saved vehicles on web and app.</Text>
+        <View style={[styles.accountToolsPanel, appearanceMode === 'light' && lightSettingsStyles.accountToolsPanel]}>
+          <Text style={[styles.accountToolsHeading, appearanceMode === 'light' && lightSettingsStyles.accountToolsHeading]}>YOUR ACCOUNT TOOLS</Text>
+          <Text style={[styles.accountToolsSub, appearanceMode === 'light' && lightSettingsStyles.accountToolsSub]}>Quick access to the same conversations and saved vehicles on web and app.</Text>
           <View style={styles.accountToolsGrid}>
             {[
               { id: 'saved', label: 'Saved Cars', icon: 'heart-outline',
@@ -645,7 +646,7 @@ export const SettingsScreen: React.FC = () => {
                 accessibilityRole="button" accessibilityLabel={tool.label}
                 onPress={tool.action}>
                 <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
-                <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>{tool.label}</Text>
+                <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>{tool.label}</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
             ))}
@@ -653,7 +654,7 @@ export const SettingsScreen: React.FC = () => {
               accessibilityLabel="Contact Support" disabled={supportLoading}
               onPress={() => { void handleContactSupport(); }}>
               <Ionicons name="help-circle-outline" size={19} color={Colors.accent} />
-              <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>
+              <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>
                 {supportLoading ? 'Opening support…' : 'Contact Support'}
               </Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
@@ -691,7 +692,7 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 1. PROFILE INFORMATION ── */}
         <SectionHeader icon="person-circle-outline" label="PROFILE INFORMATION" />
-        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
           <TouchableOpacity
             style={styles.avatarRow}
             activeOpacity={0.8}
@@ -704,12 +705,12 @@ export const SettingsScreen: React.FC = () => {
               ) : profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatarImage} contentFit="cover" />
               ) : (
-                <Text style={[styles.avatarInitials, appearanceMode === 'light' && lightSettingsStyles.avatarInitials, appearanceMode === 'light' && lightSettingsStyles.avatarInitials]}>{initials}</Text>
+                <Text style={[styles.avatarInitials, appearanceMode === 'light' && lightSettingsStyles.avatarInitials]}>{initials}</Text>
               )}
             </View>
             <View>
               <Text style={styles.avatarChangeText}>Change photo</Text>
-              <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
+              <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
             </View>
           </TouchableOpacity>
 
@@ -717,7 +718,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={styles.fieldWrap}>
               <FieldLabel label="FIRST NAME" />
               <TextInput
-                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
+                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="First name"
@@ -728,7 +729,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={styles.fieldWrap}>
               <FieldLabel label="LAST NAME" />
               <TextInput
-                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
+                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Last name"
@@ -740,13 +741,13 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.fieldRow}>
             <View style={styles.fieldWrap}>
               <FieldLabel label="EMAIL ADDRESS" />
-              <Text style={[styles.fieldValueReadonly, appearanceMode === 'light' && lightSettingsStyles.fieldValueReadonly, appearanceMode === 'light' && lightSettingsStyles.fieldValueReadonly]}>{profileEmail || '—'}</Text>
+              <Text style={[styles.fieldValueReadonly, appearanceMode === 'light' && lightSettingsStyles.fieldValueReadonly]}>{profileEmail || '—'}</Text>
             </View>
             <View style={styles.fieldDividerV} />
             <View style={styles.fieldWrap}>
               <FieldLabel label="PHONE NUMBER" />
               <TextInput
-                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
+                style={[styles.fieldInput, appearanceMode === 'light' && lightSettingsStyles.fieldInput]}
                 value={profilePhone}
                 onChangeText={setProfilePhone}
                 placeholder="Not set"
@@ -756,7 +757,7 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
+          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
           <TouchableOpacity
             style={[styles.saveBtn, profileSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
@@ -775,7 +776,7 @@ export const SettingsScreen: React.FC = () => {
           <>
             <SectionHeader icon="notifications-outline" label="NOTIFICATIONS & PRIVACY" />
             <TouchableOpacity
-          style={[styles.notificationShortcut, appearanceMode === 'light' && lightSettingsStyles.notificationShortcut, appearanceMode === 'light' && lightSettingsStyles.notificationShortcut]}
+          style={[styles.notificationShortcut, appearanceMode === 'light' && lightSettingsStyles.notificationShortcut]}
           onPress={() => navigation.navigate('NotificationSettings')}
           activeOpacity={0.8}
           accessibilityRole="button"
@@ -785,12 +786,12 @@ export const SettingsScreen: React.FC = () => {
             <Ionicons name="notifications-outline" size={22} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.notificationShortcutTitle, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutTitle, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutTitle]}>Notification preferences</Text>
-            <Text style={[styles.notificationShortcutHint, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutHint, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutHint]}>Choose auction, offer and email alerts</Text>
+            <Text style={[styles.notificationShortcutTitle, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutTitle]}>Notification preferences</Text>
+            <Text style={[styles.notificationShortcutHint, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutHint]}>Choose auction, offer and email alerts</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
         </TouchableOpacity>
-            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
           {!preferencesFetchComplete && (
             <Text style={styles.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
           )}
@@ -799,7 +800,7 @@ export const SettingsScreen: React.FC = () => {
           )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
-              <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Email me when a listing is sold</Text>
+              <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Email me when a listing is sold</Text>
             </View>
             <Switch
               value={notifyOnSale}
@@ -813,7 +814,7 @@ export const SettingsScreen: React.FC = () => {
           </View>
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
-              <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Show my profile publicly</Text>
+              <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Show my profile publicly</Text>
             </View>
             <Switch
               value={showPublicProfile}
@@ -825,7 +826,7 @@ export const SettingsScreen: React.FC = () => {
               ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
-              <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
+              <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
               <TouchableOpacity
                 style={[styles.saveBtn, (preferencesSaving || !preferencesLoaded) && { opacity: 0.55 }]}
                 activeOpacity={0.8}
@@ -848,7 +849,7 @@ export const SettingsScreen: React.FC = () => {
         {canManageBusiness && (
           <>
             <SectionHeader icon="storefront-outline" label="DEALERSHIP PROFILE" />
-            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
               <TouchableOpacity
                 style={styles.avatarRow}
                 activeOpacity={0.8}
@@ -866,14 +867,14 @@ export const SettingsScreen: React.FC = () => {
                 </View>
                 <View>
                   <Text style={styles.avatarChangeText}>Change logo</Text>
-                  <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
+                  <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
                 </View>
               </TouchableOpacity>
 
               <View>
                 <FieldLabel label={isSoleTraderDealer ? "TRADING NAME" : "COMPANY NAME"} />
                 <TextInput
-                  style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                  style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                   value={dealerCompanyName}
                   onChangeText={v => { setDealerCompanyName(v); if (dealerFieldErrors.companyName) setDealerFieldErrors(prev => ({ ...prev, companyName: undefined })); }}
                   placeholder={isSoleTraderDealer ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
@@ -887,7 +888,7 @@ export const SettingsScreen: React.FC = () => {
                   <View>
                     <FieldLabel label="VAT NUMBER" />
                     <TextInput
-                      style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                      style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                       value={dealerVatNumber}
                       onChangeText={v => { setDealerVatNumber(v); if (dealerFieldErrors.vatNumber) setDealerFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                       placeholder="e.g. GB 123 456 789"
@@ -899,7 +900,7 @@ export const SettingsScreen: React.FC = () => {
                   <View>
                     <FieldLabel label="COMPANIES HOUSE REG" />
                     <TextInput
-                      style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                      style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                       value={dealerRegNumber}
                       onChangeText={setDealerRegNumber}
                       keyboardType="numeric"
@@ -913,7 +914,7 @@ export const SettingsScreen: React.FC = () => {
               <View>
                 <FieldLabel label="BUSINESS ADDRESS" />
                 <TextInput
-                  style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                  style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                   value={dealerAddress}
                   onChangeText={setDealerAddress}
                   placeholder="e.g. 42 Sloane St, SW1X 9LT"
@@ -925,7 +926,7 @@ export const SettingsScreen: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   <FieldLabel label="BUSINESS PHONE" />
                   <TextInput
-                    style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                    style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                     value={dealerPhone}
                     onChangeText={setDealerPhone}
                     keyboardType="phone-pad"
@@ -937,7 +938,7 @@ export const SettingsScreen: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   <FieldLabel label="WEBSITE" />
                   <TextInput
-                    style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                    style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                     value={dealerWebsite}
                     onChangeText={setDealerWebsite}
                     autoCapitalize="none"
@@ -960,9 +961,9 @@ export const SettingsScreen: React.FC = () => {
                 />
               </View>
 
-              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>MaziuM can add your business introduction and verified location to future vehicle descriptions. The dealer profile is the source of truth; AI will not invent your policies.</Text>
+              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>MaziuM can add your business introduction and verified location to future vehicle descriptions. The dealer profile is the source of truth; AI will not invent your policies.</Text>
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer a vehicle warranty</Text>
+                <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer a vehicle warranty</Text>
                 <Switch value={dealerWarrantyOffered} onValueChange={setDealerWarrantyOffered}
                   accessibilityLabel="Warranty offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
               </View>
@@ -977,7 +978,7 @@ export const SettingsScreen: React.FC = () => {
                 </View>
               )}
               <View style={styles.toggleRow}>
-                <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer or arrange finance</Text>
+                <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer or arrange finance</Text>
                 <Switch value={dealerFinanceOffered} onValueChange={setDealerFinanceOffered}
                   accessibilityLabel="Finance offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
               </View>
@@ -991,8 +992,8 @@ export const SettingsScreen: React.FC = () => {
                     placeholderTextColor={Colors.iconMuted} />
                 </View>
               )}
-              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>Optional sales terms are included only after you save them. All finance remains subject to eligibility and lender approval. You must review generated descriptions before publishing.</Text>
-              <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
+              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>Optional sales terms are included only after you save them. All finance remains subject to eligibility and lender approval. You must review generated descriptions before publishing.</Text>
+              <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
               <TouchableOpacity
                 style={[styles.saveBtn, dealerSaving && { opacity: 0.6 }]}
                 activeOpacity={0.8}
@@ -1015,8 +1016,8 @@ export const SettingsScreen: React.FC = () => {
         {canManageBusiness && (
           <>
             <SectionHeader icon="shield-checkmark-outline" label="BUSINESS VERIFICATION" />
-            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
-              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
+            <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+              <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
                 Legal type: {isSoleTraderDealer ? 'Sole Trader' : 'Registered Company'}
                 {dealerKycStatus ? ` • Status: ${dealerKycStatus}` : ''}
               </Text>
@@ -1044,22 +1045,22 @@ export const SettingsScreen: React.FC = () => {
             invited users a reachable way in: paste the link/code here. */}
         {!isDealerAccount && !isDealerStaff && (
           <TouchableOpacity
-            style={[styles.inviteRow, appearanceMode === 'light' && lightSettingsStyles.inviteRow, appearanceMode === 'light' && lightSettingsStyles.inviteRow]}
+            style={[styles.inviteRow, appearanceMode === 'light' && lightSettingsStyles.inviteRow]}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('AcceptInvite')}
           >
             <View style={styles.inviteIconWrap}>
               <Ionicons name="mail-open-outline" size={16} color={Colors.accent} />
             </View>
-            <Text style={[styles.inviteRowText, appearanceMode === 'light' && lightSettingsStyles.inviteRowText, appearanceMode === 'light' && lightSettingsStyles.inviteRowText]}>Have a dealer team invite? Accept it here</Text>
+            <Text style={[styles.inviteRowText, appearanceMode === 'light' && lightSettingsStyles.inviteRowText]}>Have a dealer team invite? Accept it here</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
           </TouchableOpacity>
         )}
 
         {/* ── 3. TRADER VERIFICATION ── */}
         <SectionHeader icon={isAddressVerified ? 'shield-checkmark-outline' : 'shield-outline'} label="TRADER VERIFICATION" />
-        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
-          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
+        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
             {isAddressVerified
               ? 'Your address is verified. Dealer KYC and other account verification checks are tracked separately.'
               : 'Verify your address to complete this part of account verification. Other checks may still be required.'}
@@ -1092,11 +1093,11 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 4. SECURITY & PASSWORD ── */}
         <SectionHeader icon="lock-closed-outline" label="SECURITY & PASSWORD" />
-        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
           <FieldLabel label="CURRENT PASSWORD" />
-          <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
+          <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
             <TextInput
-              style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
+              style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
               value={currentPwd}
               onChangeText={setCurrentPwd}
               placeholder="••••••••"
@@ -1110,9 +1111,9 @@ export const SettingsScreen: React.FC = () => {
           <View style={styles.pwdRow}>
             <View style={{ flex: 1 }}>
               <FieldLabel label="NEW PASSWORD" />
-              <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
+              <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
                 <TextInput
-                  style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
+                  style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
                   value={newPwd}
                   onChangeText={setNewPwd}
                   placeholder="Min. 8 characters"
@@ -1126,9 +1127,9 @@ export const SettingsScreen: React.FC = () => {
             <View style={{ width: 12 }} />
             <View style={{ flex: 1 }}>
               <FieldLabel label="CONFIRM NEW PASSWORD" />
-              <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
+              <View style={[styles.pwdInputWrap, appearanceMode === 'light' && lightSettingsStyles.pwdInputWrap]}>
                 <TextInput
-                  style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
+                  style={[styles.pwdInput, appearanceMode === 'light' && lightSettingsStyles.pwdInput]}
                   value={confirmPwd}
                   onChangeText={setConfirmPwd}
                   placeholder="••••••••"
@@ -1141,7 +1142,7 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
+          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
           <TouchableOpacity
             style={[styles.updatePwdBtn, pwdSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
@@ -1160,8 +1161,8 @@ export const SettingsScreen: React.FC = () => {
           <>
         {/* ── 5. PAYOUTS ── */}
         <SectionHeader icon="card-outline" label="PAYOUTS" />
-        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
-          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
+        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
             Connect a bank account to receive your £100 seller bonus after a successful auction handover is verified.
           </Text>
 
@@ -1204,14 +1205,14 @@ export const SettingsScreen: React.FC = () => {
 
         {/* ── 6. BANK ACCOUNT DETAILS ── */}
         <SectionHeader icon="business-outline" label="BANK ACCOUNT DETAILS" />
-        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
-          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
+        <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
+          <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>
             Provide your UK bank details as a fallback. CarMazium can manually transfer your £100 bonus if Stripe Connect isn't available.
           </Text>
 
           <FieldLabel label="ACCOUNT HOLDER NAME" />
           <TextInput
-            style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+            style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
             value={bankName}
             onChangeText={setBankName}
             placeholder="e.g. John Smith"
@@ -1223,7 +1224,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={{ flex: 1 }}>
               <FieldLabel label="SORT CODE" />
               <TextInput
-                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                 value={sortCode}
                 onChangeText={setSortCode}
                 placeholder="e.g. 00-00-00"
@@ -1235,7 +1236,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={{ flex: 1 }}>
               <FieldLabel label="ACCOUNT NUMBER" />
               <TextInput
-                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                 value={accountNumber}
                 onChangeText={setAccountNumber}
                 placeholder="e.g. 12345678"
@@ -1246,7 +1247,7 @@ export const SettingsScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
+          <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
           <TouchableOpacity
             style={[styles.bankSaveBtn, bankSaving && { opacity: 0.6 }]}
             activeOpacity={0.8}
@@ -1323,9 +1324,9 @@ export const SettingsScreen: React.FC = () => {
         )}
 
         {activeCategory === 'reviews' && (
-          <View style={[styles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard]}>
+          <View style={[styles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard]}>
             <SectionHeader icon="star-outline" label="RATINGS & REVIEWS" />
-            <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>See what others have written about you and the reviews you have given.</Text>
+            <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>See what others have written about you and the reviews you have given.</Text>
             {ratingLoading && <ActivityIndicator color={Colors.accent} style={{ marginVertical: 10 }} />}
             {!!ratingError && (
               <Text style={styles.accountErrorText}>{ratingError}</Text>
@@ -1333,10 +1334,10 @@ export const SettingsScreen: React.FC = () => {
             {!!ratingSummary && (
               <View style={styles.reviewSummary}>
                 <Ionicons name="star" size={20} color={Colors.warning} />
-                <Text style={[styles.reviewScore, appearanceMode === 'light' && lightSettingsStyles.reviewScore, appearanceMode === 'light' && lightSettingsStyles.reviewScore]}>
+                <Text style={[styles.reviewScore, appearanceMode === 'light' && lightSettingsStyles.reviewScore]}>
                   {Number(ratingSummary.average).toFixed(1)}
                 </Text>
-                <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
+                <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
                   ({ratingSummary.count.toLocaleString('en-GB')} reviews)
                 </Text>
               </View>
@@ -1348,14 +1349,14 @@ export const SettingsScreen: React.FC = () => {
                   { label: 'Reviews given', items: ratingGiven, from: 'target' as const },
                 ]).map(group => (
                   <View key={group.label} style={styles.reviewGroup}>
-                    <Text style={[styles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle]}>{group.label}</Text>
+                    <Text style={[styles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle]}>{group.label}</Text>
                     {group.items.length === 0 && (
-                      <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>No {group.label.toLowerCase()} yet.</Text>
+                      <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>No {group.label.toLowerCase()} yet.</Text>
                     )}
                     {group.items.map(review => (
-                      <View key={review.id} style={[styles.reviewRow, appearanceMode === 'light' && lightSettingsStyles.reviewRow, appearanceMode === 'light' && lightSettingsStyles.reviewRow]}>
+                      <View key={review.id} style={[styles.reviewRow, appearanceMode === 'light' && lightSettingsStyles.reviewRow]}>
                         <View style={styles.reviewRowHeading}>
-                          <Text style={[styles.reviewName, appearanceMode === 'light' && lightSettingsStyles.reviewName, appearanceMode === 'light' && lightSettingsStyles.reviewName]}>
+                          <Text style={[styles.reviewName, appearanceMode === 'light' && lightSettingsStyles.reviewName]}>
                             {group.from === 'reviewer'
                               ? review.reviewer?.displayName || 'CarMazium user'
                               : review.target?.displayName || 'CarMazium user'}
@@ -1364,8 +1365,8 @@ export const SettingsScreen: React.FC = () => {
                             {Number(review.rating).toFixed(1)} / 5
                           </Text>
                         </View>
-                        {!!review.comment && <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>{review.comment}</Text>}
-                        <Text style={[styles.reviewDate, appearanceMode === 'light' && lightSettingsStyles.reviewDate, appearanceMode === 'light' && lightSettingsStyles.reviewDate]}>
+                        {!!review.comment && <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>{review.comment}</Text>}
+                        <Text style={[styles.reviewDate, appearanceMode === 'light' && lightSettingsStyles.reviewDate]}>
                           {Number.isFinite(new Date(review.createdAt).getTime())
                             ? new Date(review.createdAt).toLocaleDateString('en-GB')
                             : ''}
@@ -1380,12 +1381,12 @@ export const SettingsScreen: React.FC = () => {
         )}
 
         {activeCategory === 'account' && (
-          <View style={[styles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard]}>
+          <View style={[styles.accountSectionCard, appearanceMode === 'light' && lightSettingsStyles.accountSectionCard]}>
             <SectionHeader icon="settings-outline" label="ACCOUNT TYPE" />
-            <Text style={[styles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle]}>
+            <Text style={[styles.accountSectionTitle, appearanceMode === 'light' && lightSettingsStyles.accountSectionTitle]}>
               {isDealerStaff ? 'Dealer team member' : isDealerAccount ? 'Partner Account' : 'Personal Account'}
             </Text>
-            <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
+            <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
               Personal accounts let individuals buy and sell vehicles.
               Partner accounts manage verified trade and business services.
               Changing your dashboard view does not change your verified account permissions.
@@ -1405,7 +1406,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={17} color={Colors.white} />
               </TouchableOpacity>
             ) : (
-              <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
+              <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>
                 Business ownership, legal type and verification changes must be made by the dealership owner.
               </Text>
             )}
@@ -1435,7 +1436,7 @@ export const SettingsScreen: React.FC = () => {
           </Text>
           <FieldLabel label="CONFIRMATION" />
           <TextInput
-            style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+            style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
             value={deleteConfirmText}
             onChangeText={setDeleteConfirmText}
             placeholder="Type DELETE"
@@ -1513,7 +1514,7 @@ export const SettingsScreen: React.FC = () => {
                 We've emailed a 6-digit code to {user?.email || 'your account email'}. Enter it below to verify {verifyAddressInput.trim()}.
               </Text>
               <TextInput
-                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
+                style={[styles.inputField, appearanceMode === 'light' && lightSettingsStyles.inputField]}
                 value={verificationCode}
                 onChangeText={setVerificationCode}
                 placeholder="Enter 6-digit code"
