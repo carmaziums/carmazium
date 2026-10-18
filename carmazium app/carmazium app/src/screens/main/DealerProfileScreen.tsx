@@ -767,7 +767,6 @@ const lightDealerProfileStyles = StyleSheet.create({
   emptyCardText: { color: '#64748B' },
   listingRow: { backgroundColor: '#FFFFFF' },
   listingTitle: { color: '#0F172A' },
-  listingMeta: { color: '#64748B' },
   listingPrice: { color: '#0F172A' },
   listDivider: { backgroundColor: '#D5E1EC' },
   attentionTitle: { color: '#0F172A' },
