@@ -39,7 +39,7 @@ export const IconButton: React.FC<IconButtonProps> = ({
   const iconElement = React.isValidElement(icon)
     ? icon
     : icon
-      ? React.createElement(icon as ComponentType<{ size?: number; color?: string }>, { size, color })
+      ? React.createElement(icon as ComponentType<{ size?: number; color?: string }>, { size, color: effectiveColor })
       : null;
 
   return (
