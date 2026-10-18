@@ -41,6 +41,10 @@ type MenuItem = {
   children?: MenuItem[];
 };
 
+// Reference navigation: owner's 18 Oct 2026 CarMazium-QA-Android(3).apk
+// SHA256 dfc4c4d832668a2e63d32d3112421134206123aa051c7fc4780ba6cce2f4b5b2.
+// New standalone QA APKs must retain Get Valuation, User Dashboard and
+// a separately permission-gated Dealer Tools tab, not the older expanded menu.
 // Ten entry points only. Role-specific management stays inside the dashboard
 // and account type/verification stays on the dedicated Settings page.
 const MAIN_MENU: MenuItem[] = [
