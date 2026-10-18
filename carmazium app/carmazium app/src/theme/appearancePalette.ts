@@ -83,7 +83,9 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
     // Legacy "glass" cards rely on a near-white alpha over navy; on light pages
     // that alpha is virtually invisible. Convert neutral glass surfaces into cards.
     Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04,
-    Colors.whiteAlpha06, Colors.whiteAlpha08,
+    Colors.whiteAlpha05, Colors.whiteAlpha06, Colors.whiteAlpha07,
+    Colors.whiteAlpha08, Colors.whiteAlpha09, Colors.whiteAlpha10,
+    Colors.whiteAlpha12,
   ]);
   const neutralBorders = new Set<string>([Colors.border, Colors.borderHi, Colors.borderStrong,
     Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.glassBorderStrong,
