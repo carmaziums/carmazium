@@ -12,6 +12,8 @@ import { WebView, WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import {FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
@@ -41,6 +43,8 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
   onCancel,
   onClose,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightStripeCheckoutStyles) : styles;
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
@@ -67,36 +71,36 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={ts.container}>
+        <StatusBar barStyle={appearanceMode === 'light' ? "dark-content" : "light-content"} translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
-        <View style={styles.header}>
-          <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
-          <Text style={styles.title}>{title}</Text>
-          <View style={styles.closeBtn} />
+        <View style={ts.header}>
+          <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
+          <Text style={ts.title}>{title}</Text>
+          <View style={ts.closeBtn} />
         </View>
 
         {url ? (
-          <View style={styles.webviewWrap}>
+          <View style={ts.webviewWrap}>
             <WebView
               source={{ uri: url }}
               onNavigationStateChange={handleNav}
               onLoadStart={() => setLoading(true)}
               onLoadEnd={() => setLoading(false)}
-              style={styles.webview}
+              style={ts.webview}
               startInLoadingState
               javaScriptEnabled
               domStorageEnabled
               thirdPartyCookiesEnabled
             />
             {loading && (
-              <View style={styles.loadingOverlay} pointerEvents="none">
+              <View style={ts.loadingOverlay} pointerEvents="none">
                 <ActivityIndicator size="large" color={Colors.accent} />
               </View>
             )}
           </View>
         ) : (
-          <View style={styles.loadingOverlay}>
+          <View style={ts.loadingOverlay}>
             <ActivityIndicator size="large" color={Colors.accent} />
           </View>
         )}
@@ -104,6 +108,13 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
     </Modal>
   );
 };
+
+const lightStripeCheckoutStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  header: {backgroundColor: '#FFFFFF', borderBottomColor: '#D5E1EC'},
+  closeBtn: {backgroundColor: '#F7FBFF', borderColor: '#D5E1EC'},
+  title: {color: '#0F172A'},
+});
 
 const styles = StyleSheet.create({
   container: {
