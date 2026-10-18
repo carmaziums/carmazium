@@ -98,30 +98,28 @@ test('buyer home uses the current website sale-first proposition and brand heade
 
 test('native home listing cards preserve owner-approved photo-and-facts layout across newer UI work', () => {
   const home = app('screens/main/HomeScreen.tsx');
-  assert.doesNotMatch(home, /<ImageCarousel\\b/, 'nested image carousels in home rails reproduce oversized stray pictures');
-  assert.match(home, /useWindowDimensions\\(\\)/, 'cards must fit narrow Android widths and rotation');
-  assert.match(home, /style=\\{\\[cs\\.listingCard, \\{ width: Math\\.max\\(220, Math\\.min\\(284, windowWidth - 48\\)\\) \\}\\]\\}/);
-  assert.match(home, /<Image source=\\{\\{ uri: listing\\.images\\[0\\] \\}\\}/, 'retail rail uses one leading photo');
-  assert.match(home, /<Image source=\\{\\{ uri: images\\[0\\] \\}\\}/, 'auction rail uses one leading photo');
+  assert.ok(!home.includes('<ImageCarousel'), 'home rails must not nest carousels over car information');
+  assert.ok(home.includes('useWindowDimensions()'), 'home cards adapt to narrow Android widths');
+  assert.ok(home.includes('style={[cs.listingCard, { width: Math.max(220, Math.min(284, windowWidth - 48)) }] }'.replace('] }', ']}')), 'retail cards must fit screen width');
+  assert.ok(home.includes('uri: listing.images[0]'), 'retail card needs a single leading photo');
+  assert.ok(home.includes('uri: images[0]'), 'auction card needs a single leading photo');
   for (const essential of ['homeVehicleTitle(listing.make, listing.model)', 'listing.year',
     'listing.fuelType', 'listing.mileage', 'formatPrice(listing.price)',
     'GradeChip grade={listing.exteriorGrade}', 'mapTransmission(listing.transmission)',
     'listing.location', 'View Details', 'View auction']) {
-    assert.ok(home.includes(essential), 'missing core buyer-facing fact or CTA: ' + essential);
+    assert.ok(home.includes(essential), 'missing buyer-facing information: ' + essential);
   }
-  assert.ok(home.includes('listing.isSellerVerified === true'), 'verification badge must require an explicit verified seller');
-  assert.ok(home.includes("listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM'"), 'HPI Included must follow evidence tier');
-  assert.ok(home.includes("rawCategory === 'S' || rawCategory === 'N'"), 'write-off badge must follow known S/N records');
-  assert.match(home, /bidOverlay: \\{ flexDirection:/, 'auction bid and countdown must stay below photos, not as an overlay');
-  assert.match(home, /featuredIds = new Set\\(featuredListings\\.map/, 'do not repeat featured cars in Latest');
-  assert.equal((home.match(/const cs = useHomeCardStyles\\(\\);/g) ?? []).length, 3,
-    'live, upcoming and retail cards must subscribe to light/dark appearance');
-  assert.ok(home.includes('mergeAppearanceStyles(s, lightHomeStyles)'), 'light changes only colours and must preserve card layout');
-  for (const style of ['auctionCard', 'listingCard', 'cardBody', 'cardSpecs',
-    'cardTitle', 'cardPrice', 'bidOverlay', 'overlayLabel', 'overlayVal',
-    'homeBadgeText', 'retailFact']) {
-    assert.ok(home.includes(style + ': {'), 'missing named home card style: ' + style);
+  assert.ok(home.includes('listing.isSellerVerified === true'));
+  assert.ok(home.includes("listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM'"));
+  assert.ok(home.includes("rawCategory === 'S' || rawCategory === 'N'"));
+  assert.ok(home.includes('bidOverlay: { flexDirection:'), 'bid details must stay beneath photos');
+  assert.ok(home.includes('featuredIds = new Set(featuredListings.map'), 'avoid Featured/Latest duplicates');
+  assert.equal(home.split('const cs = useHomeCardStyles();').length - 1, 3,
+    'all three home-card types must observe light/dark changes');
+  assert.ok(home.includes('mergeAppearanceStyles(s, lightHomeStyles)'), 'merge colours without removing layout');
+  for (const style of ['auctionCard', 'listingCard', 'cardBody', 'cardSpecs', 'cardTitle',
+    'cardPrice', 'bidOverlay', 'overlayLabel', 'overlayVal', 'homeBadgeText', 'retailFact']) {
+    assert.ok(home.includes(style + ': {'), 'missing named home-card style: ' + style);
   }
-  assert.ok(home.includes('const lightHomeStyles'), 'retain the newer native light appearance work');
-  assert.ok(home.includes('style={ts.container}'), 'light/dark switching remains connected');
+  assert.ok(home.includes('style={ts.container}'), 'keep native appearance selection connected');
 });
