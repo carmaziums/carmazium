@@ -727,7 +727,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
       {/* Background */}
       <LinearGradient
-        colors={[Colors.accentAlpha05, Colors.infoBlueAlpha03, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.7 }}
         style={StyleSheet.absoluteFillObject}
