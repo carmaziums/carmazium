@@ -47,6 +47,7 @@ const sections = [
       <>
         <p>We use personal data to operate the marketplace, create and secure accounts, publish listings, run auctions, connect buyers and sellers, administer Partner services, process CarMazium fees and incentives, provide customer support, detect fraud and misuse, verify users and businesses, send service notifications, improve the platform and comply with legal obligations.</p>
         <p>Our legal bases may include performance of a contract, steps taken at your request before entering a contract, compliance with legal obligations, our legitimate interests in operating and protecting the marketplace, and consent where consent is required.</p>
+        <p>Where we distribute an active vehicle listing to an approved automotive marketplace, dealer-research or referral partner, this is intended to help the seller reach relevant motor-trade buyers and to let authorised dealers research stock. We assess whether performance of the listing contract and/or our legitimate interests in effective vehicle advertising and dealer discovery is an appropriate lawful basis. For processing relying on legitimate interests, we must document a purpose, necessity and balancing assessment, including reasonable expectations and the rights of any identifiable seller or keeper, before enabling the relevant feed. SimpleDMS must independently assess its own lawful basis for dealer research and permitted historical vehicle observations. Uploading a listing grants a publication licence under the Terms; it is not automatically UK GDPR consent to every separate recipient and later processing purpose.</p>
       </>
     ),
   },
@@ -58,6 +59,7 @@ const sections = [
         <p>CarMazium uses OpenAI for optional AI features including MaziuM chat, native AI Search, AI-assisted listing descriptions and, where you have consented, live vehicle-specification enrichment. Before an interactive AI prompt or seller vehicle data is sent to OpenAI, the website or native app requires an explicit acknowledgement. Core DVLA/MOT vehicle lookup remains available without AI enrichment. Do not include unnecessary sensitive personal information, passwords, payment credentials or authentication codes in AI prompts.</p>
         <p>If you use the in-app “Report AI response” feature, CarMazium stores the reported AI response, the associated prompt where available, your selected reason and any optional details so an administrator can review the report and improve safety controls. You can stop sending new prompts to OpenAI at any time through the MaziuM AI privacy controls; the assistant will ask for acknowledgement again before another prompt is sent.</p>
         <p>We may also use vehicle-data, verification, email, analytics and communications providers where needed to deliver a feature. Providers receive only the information reasonably necessary for their role and are subject to contractual or platform safeguards as applicable.</p>
+        <p>CarMazium may also provide a restricted, authenticated vehicle feed to approved automotive marketplace, dealer-research and referral partners, such as SimpleDMS / BuySmart where that integration is enabled. Such partners are not given access to CarMazium user sessions, administration systems, payment credentials or private verification documents.</p>
       </>
     ),
   },
@@ -71,10 +73,14 @@ const sections = [
     ),
   },
   {
-    title: "7. Sharing information with other users",
+    title: "7. Sharing information with other users and approved automotive partners",
     body: (
       <>
         <p>Information you intentionally publish in a vehicle listing or public profile may be visible to other users or visitors. Contact details and documents are disclosed only where the relevant product flow permits it.</p>
+        <p>For an approved vehicle-distribution or dealer-research integration, CarMazium may share selected active-Listing information such as the auction/listing reference, vehicle make/model/variant/year, mileage and specification, auction timing/status, starting bid, current valid bid where authorised, registration where required for server-side vehicle matching, broad town/region, approved public vehicle photographs, and a CarMazium source or referral link.</p>
+        <p>These partner feeds must not include seller, buyer or bidder identity/contact information, reserve price, private KYC or handover material, payment information, internal CarMazium valuations, exact seller address, or VIN unless a later feature is separately assessed and disclosed.</p>
+        <p>Live partner inventory must be refreshed and removed when it is no longer live; the proposed SimpleDMS live display becomes stale after 15 minutes, and its separate restricted live cache has a 24-hour cleanup ceiling. If the limited SimpleDMS / BuySmart historical-record licence is legally approved and enabled, permitted protected vehicle-matching and minimal auction-event observations (for example, original mileage, repeat appearances and time-stamped changed bid observations) may be retained for up to 36 calendar months from the vehicle's last permitted CarMazium observation. Separately issued evidence reports may be retained for up to 36 months from original issue. These are upper limits under the partner arrangement, not a promise that every listing is shared or retained for the maximum period. Historical evidence cannot be presented as proof of a completed sale or actual transaction price. Under this arrangement raw registration, seller/bidder identity, reserve prices, photographs and photograph URLs are excluded from historical records and saved reports.</p>
+        <p>Partner distribution and any historical processing remain disabled until the required privacy, contractual and security approvals are completed. For listings created before the new notices take effect, we will assess compatibility with the original collection purpose and provide appropriate prior notice; existing terms alone are not treated as proof of specific consent for a newly introduced partner-history purpose.</p>
         <p>Private member-to-member chats are intended for the participants. A specific message and attachment may be shared with CarMazium moderators when a participant reports it, and relevant records may be reviewed when needed for a dispute, safety, fraud or legal issue.</p>
       </>
     ),
@@ -107,7 +113,8 @@ const sections = [
     body: (
       <>
         <p>Subject to applicable law and exemptions, you may have rights to access personal data, correct inaccurate data, request deletion, restrict or object to certain processing, receive portable data and withdraw consent where processing relies on consent.</p>
-        <p>To exercise a privacy right, email <a className="text-primary underline" href="mailto:info@carmazium.com?subject=Privacy%20request">info@carmazium.com</a>. We may need to verify your identity before acting on a request.</p>
+        <p><strong>Right to object to legitimate-interests processing:</strong> where we or an approved automotive partner rely on legitimate interests for listing distribution or vehicle-history research, you may object at any time. We will assess and respond under applicable law, including whether processing must cease, and communicate appropriate suppression/correction to the partner. Requests to stop use of personal data for direct marketing are treated under the stronger applicable right to object. You may also request correction of inaccurate observations, including any mistaken vehicle match.</p>
+        <p>To exercise a privacy right or raise an objection about partner distribution, email <a className="text-primary underline" href="mailto:info@carmazium.com?subject=Partner%20listing%20privacy%20request">info@carmazium.com</a>. Where the request concerns SimpleDMS's own processing, you may also contact <a className="text-primary underline" href="mailto:info@simpledms.co.uk?subject=CarMazium%20data%20privacy%20request">info@simpledms.co.uk</a>. We may need to verify your identity before acting on a request.</p>
         <p>You may also raise a concern with the UK Information Commissioner’s Office if you believe your data-protection rights have been infringed.</p>
       </>
     ),
@@ -129,7 +136,7 @@ export default function PrivacyPolicyPage() {
         <div className="mb-8">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Legal</p>
           <h1 className="mt-2 text-4xl md:text-5xl font-black font-heading uppercase tracking-tight text-[var(--text-primary)]">Privacy Policy</h1>
-          <p className="mt-3 text-sm text-[var(--text-muted)]">Last updated: 26 September 2026</p>
+          <p className="mt-3 text-sm text-[var(--text-muted)]">Last updated: 18 October 2026</p>
           <p className="mt-5 max-w-3xl text-[var(--text-secondary)] leading-7">
             This policy explains how CarMazium handles personal data across the website, iPhone and Android apps, marketplace, auctions, Partner services and MaziuM AI.
           </p>

@@ -1858,6 +1858,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             vrm,
             images: allImages,
             listingType,
+            partnerDistributionAccepted: declAcknowledged,
             make: make || undefined,
             model: model || undefined,
             status: 'DRAFT',
@@ -3179,6 +3180,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <Text style={s.declText}>
               I confirm that the above declarations are true and accurate to the best of my knowledge.
               I understand that false declarations on this listing may have legal consequences.
+              I also acknowledge that, while this listing is live, CarMazium may distribute the approved public listing details and vehicle photographs through approved automotive marketplace, dealer-research or referral partners in accordance with the current Terms and Privacy Policy.
             </Text>
           </TouchableOpacity>
           {fieldError('declAcknowledged') ? <Text style={s.inlineError}>{fieldError('declAcknowledged')}</Text> : null}
