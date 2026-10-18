@@ -9,6 +9,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
@@ -54,7 +55,7 @@ const timeLeft = (raw: string, now: number): string => {
 
 function Thumbnail({ uri }: { uri?: string }) {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
   return <View style={ts.thumb}>
     {uri ? <Image source={{ uri }} style={ts.image} contentFit="cover" cachePolicy="memory-disk" />
       : <Ionicons name="car-outline" size={25} color={Colors.textMuted} />}
@@ -63,7 +64,7 @@ function Thumbnail({ uri }: { uri?: string }) {
 
 function ErrorText({ message, onRetry }: { message: string; onRetry: () => void }) {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
   return <View style={ts.error}>
     <Text style={ts.errorText}>{message}</Text>
     <TouchableOpacity onPress={onRetry} accessibilityRole="button">
@@ -74,7 +75,7 @@ function ErrorText({ message, onRetry }: { message: string; onRetry: () => void 
 
 export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -203,7 +204,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
 
 export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
