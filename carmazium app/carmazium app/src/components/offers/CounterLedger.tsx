@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 
 // The backend keeps a single Offer row per negotiation, not one row per
@@ -75,6 +77,8 @@ interface Row {
 
 export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) => {
   const rows: Row[] = [];
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightCounterLedgerStyles) : styles;
 
   const buyerLabel = viewerRole === 'BUYER' ? 'You offered' : 'Buyer offered';
   const buyerCounterLabel = viewerRole === 'BUYER' ? 'You countered' : 'Buyer countered';
@@ -124,16 +128,16 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
   const expiry = offer.status === 'COUNTERED' ? fmtExpiry(offer.counterExpiresAt) : null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={ts.container}>
+      <View style={ts.headerRow}>
         <Ionicons name="git-network-outline" size={12} color={Colors.textMuted} />
-        <Text style={styles.headerLabel}>NEGOTIATION HISTORY</Text>
+        <Text style={ts.headerLabel}>NEGOTIATION HISTORY</Text>
         {expiry && (
           <View
             style={[
-              styles.expiryChip,
-              expiry.tone === 'warning' && styles.expiryChipWarning,
-              expiry.tone === 'error' && styles.expiryChipError,
+              ts.expiryChip,
+              expiry.tone === 'warning' && ts.expiryChipWarning,
+              expiry.tone === 'error' && ts.expiryChipError,
             ]}
           >
             <Ionicons
@@ -149,7 +153,7 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
             />
             <Text
               style={[
-                styles.expiryChipText,
+                ts.expiryChipText,
                 expiry.tone === 'warning' && { color: Colors.warning },
                 expiry.tone === 'error' && { color: Colors.error },
               ]}
@@ -160,35 +164,35 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
         )}
       </View>
 
-      <View style={styles.timeline}>
+      <View style={ts.timeline}>
         {rows.map((row, i) => (
-          <View key={`${row.side}-${i}`} style={styles.timelineRow}>
-            <View style={styles.gutter}>
+          <View key={`${row.side}-${i}`} style={ts.timelineRow}>
+            <View style={ts.gutter}>
               <View
                 style={[
-                  styles.dot,
-                  row.side === 'SELLER' && styles.dotSeller,
-                  row.isLastMove && styles.dotLastMove,
+                  ts.dot,
+                  row.side === 'SELLER' && ts.dotSeller,
+                  row.isLastMove && ts.dotLastMove,
                 ]}
               />
-              {i < rows.length - 1 && <View style={styles.connector} />}
+              {i < rows.length - 1 && <View style={ts.connector} />}
             </View>
-            <View style={styles.rowBody}>
-              <View style={styles.rowTop}>
-                <Text style={styles.rowLabel}>{row.label}</Text>
+            <View style={ts.rowBody}>
+              <View style={ts.rowTop}>
+                <Text style={ts.rowLabel}>{row.label}</Text>
                 {row.attemptCount != null && row.attemptCount > 1 && (
-                  <Text style={styles.attemptCount}>×{row.attemptCount}</Text>
+                  <Text style={ts.attemptCount}>×{row.attemptCount}</Text>
                 )}
                 {row.isLastMove && (
-                  <View style={styles.currentPill}>
-                    <Text style={styles.currentPillText}>CURRENT</Text>
+                  <View style={ts.currentPill}>
+                    <Text style={ts.currentPillText}>CURRENT</Text>
                   </View>
                 )}
               </View>
-              <View style={styles.rowBottom}>
-                <Text style={styles.rowAmount}>{fmtPrice(row.amount)}</Text>
+              <View style={ts.rowBottom}>
+                <Text style={ts.rowAmount}>{fmtPrice(row.amount)}</Text>
                 {row.timestamp && (
-                  <Text style={styles.rowTimestamp}>· {fmtDate(row.timestamp)}</Text>
+                  <Text style={ts.rowTimestamp}>· {fmtDate(row.timestamp)}</Text>
                 )}
               </View>
             </View>
@@ -198,6 +202,17 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
     </View>
   );
 };
+
+const lightCounterLedgerStyles = StyleSheet.create({
+  container: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  headerLabel: { color: '#64748B' },
+  rowLabel: { color: '#334155' },
+  rowAmount: { color: '#0F172A' },
+  rowTimestamp: { color: '#64748B' },
+  connector: { backgroundColor: '#D5E1EC' },
+  expiryChip: { borderColor: '#D5E1EC' },
+  expiryChipText: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   container: {
