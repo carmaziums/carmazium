@@ -15,6 +15,8 @@ on:
       - 'carmazium app/carmazium app/src/navigation/TabNavigator.tsx'
       - 'carmazium app/carmazium app/src/components/GlobalDrawer.tsx'
       - 'carmazium app/carmazium app/src/screens/main/SettingsScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/SearchScreen.tsx'
+      - 'carmazium app/carmazium app/src/screens/main/HomeScreen.tsx'
   push:
     branches: [main]
     paths:
@@ -32,6 +34,11 @@ on:
 
 permissions:
   contents: read
+
+# On pull_request, github.sha is a synthetic merge commit, NOT the PR head.
+# Pin the checkout, embedded marker and emulator evidence to the source head.
+env:
+  QA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 concurrency:
   group: carmazium-android-standalone-qa
@@ -52,13 +59,16 @@ jobs:
       CI: '1'
       EXPO_NO_TELEMETRY: '1'
       EXPO_PUBLIC_QA_READ_ONLY: '1'
-      EXPO_PUBLIC_QA_COMMIT_SHA: ${{ github.sha }}
+      EXPO_PUBLIC_QA_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       APP_ENV: 'preview'
       SENTRY_DISABLE_AUTO_UPLOAD: 'true'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ env.QA_SOURCE_SHA }}
+      - name: Verify exact QA source head
+        run: test "$(git rev-parse HEAD)" = "$QA_SOURCE_SHA"
       - name: Install Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -150,7 +160,7 @@ jobs:
           sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
           {
             echo '### CarMazium Android QA APK — standalone installation'
-            echo "- Source commit: $GITHUB_SHA"
+            echo "- Source commit: $QA_SOURCE_SHA"
             echo '- Package: `uk.carmazium.qa` (separate from installed CarMazium)'
             echo '- Update channel: disabled; no Expo account needed'
             echo '- Build type: bundled release JS, signed with ephemeral Android **debug** signing key'
@@ -179,6 +189,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ env.QA_SOURCE_SHA }}
+      - name: Verify exact QA source head
+        run: test "$(git rev-parse HEAD)" = "$QA_SOURCE_SHA"
       - name: Download this commit's compiled QA APK (no production app)
         uses: actions/download-artifact@v4
         with:
@@ -199,7 +212,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: bash scripts/ci/android-qa-emulator-smoke.sh
+          script: GITHUB_SHA="$QA_SOURCE_SHA" bash scripts/ci/android-qa-emulator-smoke.sh
       - name: Upload unauthenticated launch screenshot and build identifiers
         if: always()
         uses: actions/upload-artifact@v4
