@@ -379,7 +379,7 @@ export default function App() {
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
         </DrawerProvider>
-        <StatusBar style={appearanceMode === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style="light" />
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>
