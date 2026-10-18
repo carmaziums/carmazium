@@ -353,21 +353,21 @@ const CARD_WIDTH = (width - 24 * 2 - 16) / 2;
 
 const lightSavedStyles = StyleSheet.create({
   container: {backgroundColor: '#EEF5FB'},
-  headerSub: {color: '#64748B'},
+  headerSub: {color: '#526177'},
   headerTitle: {color: '#0F172A'},
   iconBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   skeletonCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   gridCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   gridImgWrap: {backgroundColor: '#F7FBFF'},
-  cardMeta: {color: '#64748B'},
+  cardMeta: {color: '#526177'},
   cardTitle: {color: '#0F172A'},
   cardPrice: {color: '#0F172A'},
-  viewCountText: {color: '#64748B'},
-  listSortLabel: {color: '#64748B'},
+  viewCountText: {color: '#526177'},
+  listSortLabel: {color: '#526177'},
   listSortChangeText: {color: '#334155'},
   listCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   listTitle: {color: '#0F172A'},
-  listMeta: {color: '#64748B'},
+  listMeta: {color: '#526177'},
   listPrice: {color: '#0F172A'},
 });
 
