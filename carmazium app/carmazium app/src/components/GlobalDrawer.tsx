@@ -237,7 +237,7 @@ export const GlobalDrawer: React.FC = () => {
   const initial   = userName.charAt(0).toUpperCase();
 
   const renderIcon = (item: MenuItem, active: boolean, goldMode?: boolean, blueMode?: boolean) => {
-    const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : Colors.lightGrey;
+    const color = active ? Colors.accent : goldMode ? Colors.warning : blueMode ? Colors.infoBlue : appearanceMode === 'light' ? '#334155' : Colors.lightGrey;
     return item.iconLib === 'mci'
       ? <MaterialCommunityIcons name={item.icon} size={19} color={color} />
       : <Ionicons name={item.icon} size={19} color={color} />;
@@ -317,10 +317,10 @@ export const GlobalDrawer: React.FC = () => {
                   <Text style={[ts.rowLabel, active && ts.rowLabelActive]} maxFontSizeMultiplier={2}>{item.label}</Text>
                   {item.children ? (
                     <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18}
-                      color={Colors.lightGrey} accessibilityElementsHidden />
+                      color={appearanceMode === 'light' ? '#334155' : Colors.lightGrey} accessibilityElementsHidden />
                   ) : (
                     <Ionicons name="chevron-forward" size={15}
-                      color={Colors.iconMuted} accessibilityElementsHidden />
+                      color={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted} accessibilityElementsHidden />
                   )}
                 </TouchableOpacity>
                 {!!expanded && (
