@@ -13,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { normalizeNativeTransmission, normalizeNativeBodyType, normalizeNativeRegistration, type NativeVehicleType } from '../../lib/sellerVehicleSpecs';
@@ -601,6 +603,8 @@ function Damage3DMapper({
 
 export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightSellFlowStyles) : s;
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
   const [showDvlaDetails, setShowDvlaDetails] = useState(false);
@@ -2438,14 +2442,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderStepper() {
     return (
-      <View style={s.stepperContainer} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: totalSteps, now: step }}>
-        <View style={s.stepperSummary}>
-          <Text style={s.stepperCount}>STEP {step} OF {totalSteps}</Text>
-          <Text style={s.stepperCurrent}>{STEP_LABELS[step - 1]}</Text>
+      <View style={ts.stepperContainer} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: totalSteps, now: step }}>
+        <View style={ts.stepperSummary}>
+          <Text style={ts.stepperCount}>STEP {step} OF {totalSteps}</Text>
+          <Text style={ts.stepperCurrent}>{STEP_LABELS[step - 1]}</Text>
         </View>
-        <View style={s.stepperTrack}>
+        <View style={ts.stepperTrack}>
           {STEP_LABELS.map((label, index) => (
-            <View key={label} style={[s.stepperSegment, index < step && s.stepperSegmentComplete]} />
+            <View key={label} style={[ts.stepperSegment, index < step && ts.stepperSegmentComplete]} />
           ))}
         </View>
       </View>
@@ -2526,15 +2530,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderStep1() {
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 120 }]}>
         {renderStepGuidance()}
 
         {!editMode && (
           <SectionBox title="How would you like to sell?" accent={Colors.accent}>
-            <Text style={s.fieldHint}>Choose once now. You can change your choice later in Pricing.</Text>
-            <View style={s.methodChoices}>
+            <Text style={ts.fieldHint}>Choose once now. You can change your choice later in Pricing.</Text>
+            <View style={ts.methodChoices}>
               <TouchableOpacity
-                style={[s.methodChoice, listingType === 'AUCTION' && s.methodChoiceSelected]}
+                style={[ts.methodChoice, listingType === 'AUCTION' && ts.methodChoiceSelected]}
                 onPress={() => chooseListingMethod('AUCTION')}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: listingType === 'AUCTION' }}
@@ -2542,13 +2546,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               >
                 <Ionicons name="hammer-outline" size={23} color={listingType === 'AUCTION' ? Colors.accent : Colors.textSecondary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.methodTitle}>Auction · FREE</Text>
-                  <Text style={s.methodDescription}>Verified traders bid. Eligible sellers can receive £100 after a successful sale and approved handover.</Text>
+                  <Text style={ts.methodTitle}>Auction · FREE</Text>
+                  <Text style={ts.methodDescription}>Verified traders bid. Eligible sellers can receive £100 after a successful sale and approved handover.</Text>
                 </View>
                 <Ionicons name={listingType === 'AUCTION' ? 'radio-button-on' : 'radio-button-off'} size={23} color={listingType === 'AUCTION' ? Colors.accent : Colors.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.methodChoice, listingType === 'CLASSIFIED' && s.methodChoiceSelected]}
+                style={[ts.methodChoice, listingType === 'CLASSIFIED' && ts.methodChoiceSelected]}
                 onPress={() => chooseListingMethod('CLASSIFIED')}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: listingType === 'CLASSIFIED' }}
@@ -2556,8 +2560,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               >
                 <Ionicons name="pricetag-outline" size={23} color={listingType === 'CLASSIFIED' ? Colors.accent : Colors.textSecondary} />
                 <View style={{ flex: 1 }}>
-                  <Text style={s.methodTitle}>Retail · £1</Text>
-                  <Text style={s.methodDescription}>Advertise at your asking price with a one-time basic listing fee until sold.</Text>
+                  <Text style={ts.methodTitle}>Retail · £1</Text>
+                  <Text style={ts.methodDescription}>Advertise at your asking price with a one-time basic listing fee until sold.</Text>
                 </View>
                 <Ionicons name={listingType === 'CLASSIFIED' ? 'radio-button-on' : 'radio-button-off'} size={23} color={listingType === 'CLASSIFIED' ? Colors.accent : Colors.textSecondary} />
               </TouchableOpacity>
@@ -2571,7 +2575,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {(['CAR', 'HGV', 'MOTORCYCLE'] as const).map(t => (
               <TouchableOpacity
                 key={t}
-                style={[s.pill, { flex: 1, justifyContent: 'center' }, vehicleType === t && s.pillActive]}
+                style={[ts.pill, { flex: 1, justifyContent: 'center' }, vehicleType === t && ts.pillActive]}
                 onPress={() => {
                   vehicleTypeRef.current = t;
                   setVehicleType(t);
@@ -2579,7 +2583,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[s.pillText, vehicleType === t && s.pillTextActive]}>
+                <Text style={[ts.pillText, vehicleType === t && ts.pillTextActive]}>
                   {t === 'HGV' ? 'HGV / Commercial' : t === 'MOTORCYCLE' ? 'Motorcycle' : 'Car'}
                 </Text>
               </TouchableOpacity>
@@ -2589,10 +2593,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Registration */}
         <SectionBox title="Registration (VRM) *" accent={Colors.accent} onLayout={rememberValidationSection("registration")}>
-          <Text style={s.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
-          <View style={s.vrmRow}>
+          <Text style={ts.fieldHint}>Enter the UK registration plate and tap Analyse to auto-fill vehicle details.</Text>
+          <View style={ts.vrmRow}>
             <TextInput
-              style={s.vrmInput}
+              style={ts.vrmInput}
               value={vrm}
               onChangeText={handlePlateChange}
               placeholder="e.g. AB12 CDE"
@@ -2606,35 +2610,35 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               autoCorrect={false}
             />
             <TouchableOpacity
-              style={[s.vrmBtn, dvlaLoading && { opacity: 0.6 }]}
+              style={[ts.vrmBtn, dvlaLoading && { opacity: 0.6 }]}
               onPress={() => handleDvlaLookup()}
               disabled={dvlaLoading}
               activeOpacity={0.8}
             >
               {dvlaLoading
                 ? <ActivityIndicator size="small" color={Colors.black} />
-                : <Text style={s.vrmBtnText}>ANALYSE DATA</Text>
+                : <Text style={ts.vrmBtnText}>ANALYSE DATA</Text>
               }
             </TouchableOpacity>
           </View>
           {dvlaFetched && (
-            <View style={s.dvlaSuccess}>
+            <View style={ts.dvlaSuccess}>
               <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
-              <Text style={s.dvlaSuccessText}>DVLA data loaded — these fields are auto-filled but editable.</Text>
+              <Text style={ts.dvlaSuccessText}>DVLA data loaded — these fields are auto-filled but editable.</Text>
             </View>
           )}
         </SectionBox>
 
         <TouchableOpacity
-          style={s.optionalSectionToggle}
+          style={ts.optionalSectionToggle}
           onPress={() => setShowDvlaDetails(v => !v)}
           accessibilityRole="button"
           accessibilityState={{ expanded: showDvlaDetails }}
           activeOpacity={0.8}
         >
           <View style={{ flex: 1 }}>
-            <Text style={s.optionalSectionTitle}>MOT, tax and DVLA details</Text>
-            <Text style={s.optionalSectionHint}>{motStatus ? `MOT: ${motStatus} · ` : ''}{dvlaFetched ? 'Vehicle data loaded' : 'Review or enter extra registration details'}</Text>
+            <Text style={ts.optionalSectionTitle}>MOT, tax and DVLA details</Text>
+            <Text style={ts.optionalSectionHint}>{motStatus ? `MOT: ${motStatus} · ` : ''}{dvlaFetched ? 'Vehicle data loaded' : 'Review or enter extra registration details'}</Text>
           </View>
           <Ionicons name={showDvlaDetails ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -2648,8 +2652,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             and monthOfFirstRegistration has no manual-entry field on web
             either — both are DVLA-lookup-only. */}
         <SectionBox title="Registration & Compliance" accent={Colors.infoBlue}>
-          <Text style={s.fieldHint}>These fields are auto-filled from the DVLA and MOT databases, but can be manually adjusted.</Text>
-          <View style={s.dvlaGrid}>
+          <Text style={ts.fieldHint}>These fields are auto-filled from the DVLA and MOT databases, but can be manually adjusted.</Text>
+          <View style={ts.dvlaGrid}>
             <DVLAField label="LAST V5C ISSUED" value={lastV5C} />
             <DVLAField label="FIRST REGISTERED" value={firstRegistered} />
           </View>
@@ -2661,22 +2665,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <FieldInput label="WHEELPLAN" value={wheelplan} onChange={setWheelplan} placeholder="e.g. 2 AXLE RIGID BODY" />
           <FieldInput label="VIN" value={vin} onChange={setVin} placeholder="17-character VIN" hint="Optional — from VIN database" />
           {motHistory.length > 0 && (
-            <View style={s.motHistoryBox}>
-              <Text style={s.motHistoryTitle}>MOT HISTORY</Text>
+            <View style={ts.motHistoryBox}>
+              <Text style={ts.motHistoryTitle}>MOT HISTORY</Text>
               {motHistory.slice(0, 5).map((test, i) => (
-                <View key={i} style={s.motHistoryRow}>
+                <View key={i} style={ts.motHistoryRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.motHistoryDate}>
+                    <Text style={ts.motHistoryDate}>
                       {new Date(test.completedDate).toLocaleDateString('en-GB')}
                     </Text>
                     {test.odometerValue ? (
-                      <Text style={s.motHistoryMeta}>
+                      <Text style={ts.motHistoryMeta}>
                         {Number(test.odometerValue).toLocaleString()} {test.odometerUnit}
                       </Text>
                     ) : null}
                   </View>
-                  <View style={[s.motHistoryBadge, test.testResult === 'PASSED' ? s.motHistoryBadgePass : s.motHistoryBadgeFail]}>
-                    <Text style={s.motHistoryBadgeText}>{test.testResult}</Text>
+                  <View style={[ts.motHistoryBadge, test.testResult === 'PASSED' ? ts.motHistoryBadgePass : ts.motHistoryBadgeFail]}>
+                    <Text style={ts.motHistoryBadgeText}>{test.testResult}</Text>
                   </View>
                 </View>
               ))}
@@ -2760,11 +2764,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               {['1', '2', '3+ Keys'].map(k => (
                 <TouchableOpacity
                   key={k}
-                  style={[s.pill, numberOfKeys === k && s.pillActive]}
+                  style={[ts.pill, numberOfKeys === k && ts.pillActive]}
                   onPress={() => setNumberOfKeys(k)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.pillText, numberOfKeys === k && s.pillTextActive]}>{k}</Text>
+                  <Text style={[ts.pillText, numberOfKeys === k && ts.pillTextActive]}>{k}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -2777,16 +2781,16 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {(vehicleType === 'HGV' ? HGV_BODY_TYPES : BODY_TYPES).map(bt => (
               <TouchableOpacity
                 key={bt.v}
-                style={[s.pill, s.bodyTypePill, bodyType === bt.v && s.pillActive]}
+                style={[ts.pill, ts.bodyTypePill, bodyType === bt.v && ts.pillActive]}
                 onPress={() => setBodyType(bt.v)}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name={bt.icon as any} size={18} color={bodyType === bt.v ? Colors.white : Colors.textSecondary} />
-                <Text style={[s.pillText, bodyType === bt.v && s.pillTextActive]}>{bt.l}</Text>
+                <Text style={[ts.pillText, bodyType === bt.v && ts.pillTextActive]}>{bt.l}</Text>
               </TouchableOpacity>
             ))}
           </View>
-          {fieldError('bodyType') ? <Text style={s.inlineError}>{fieldError('bodyType')}</Text> : null}
+          {fieldError('bodyType') ? <Text style={ts.inlineError}>{fieldError('bodyType')}</Text> : null}
         </SectionBox>}
 
         {/* Location */}
@@ -2799,12 +2803,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             required
             error={fieldError('location') ?? undefined}
           />
-          <TouchableOpacity style={s.locateMeBtn} onPress={handleLocateMe} activeOpacity={0.7} disabled={locatingMe}>
+          <TouchableOpacity style={ts.locateMeBtn} onPress={handleLocateMe} activeOpacity={0.7} disabled={locatingMe}>
             {locatingMe
               ? <ActivityIndicator size="small" color={Colors.accent} />
               : <Ionicons name="locate" size={15} color={Colors.accent} />
             }
-            <Text style={s.locateMeBtnText}>{locatingMe ? 'Locating…' : 'Use my location'}</Text>
+            <Text style={ts.locateMeBtnText}>{locatingMe ? 'Locating…' : 'Use my location'}</Text>
           </TouchableOpacity>
         </SectionBox>
 
@@ -2814,7 +2818,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             <View style={{ flex: 1 }}>
               <SL label="MILEAGE" required />
               <TextInput
-                style={[s.input, { borderColor: fieldBorderColor('mileage') }]}
+                style={[ts.input, { borderColor: fieldBorderColor('mileage') }]}
                 value={mileage}
                 onChangeText={v => { setMileage(v); if (touched.mileage) setTouched(prev => ({ ...prev, mileage: true })); }}
                 onBlur={fieldTouched('mileage')}
@@ -2823,7 +2827,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 keyboardType="number-pad"
                 autoCorrect={false}
               />
-              {fieldError('mileage') ? <Text style={s.inlineError}>{fieldError('mileage')}</Text> : null}
+              {fieldError('mileage') ? <Text style={ts.inlineError}>{fieldError('mileage')}</Text> : null}
             </View>
             <View style={{ flex: 1 }}>
               <FieldInput label="COLOUR" value={colour} onChange={setColour} placeholder="e.g. Silver" />
@@ -2831,7 +2835,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
           <PillRow label="FUEL TYPE" options={FUEL_TYPES} value={fuelType as any} onSelect={setFuelType} />
           <PillRow label="TRANSMISSION *" options={TRANSMISSIONS} value={transmission as any} onSelect={setTransmission} />
-          {fieldError('transmission') ? <Text style={s.inlineError}>{fieldError('transmission')}</Text> : null}
+          {fieldError('transmission') ? <Text style={ts.inlineError}>{fieldError('transmission')}</Text> : null}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <FieldInput label="ENGINE SIZE (CC)" value={engineSize} onChange={setEngineSize} placeholder="e.g. 1998" keyboardType="number-pad" />
@@ -2853,10 +2857,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Listing Title & Description */}
         <SectionBox title="Listing Title & Description" onLayout={rememberValidationSection("description")}>
           <View style={{ marginBottom: 16 }}>
-            <View style={s.titleLabelRow}>
+            <View style={ts.titleLabelRow}>
               <SL label="LISTING TITLE" required />
               <TouchableOpacity
-                style={s.autoTitleBtn}
+                style={ts.autoTitleBtn}
                 onPress={() => setTitle([year, make, model, variant].filter(Boolean).join(' ').slice(0, 120))}
                 disabled={!make.trim() || !model.trim()}
                 accessibilityState={{ disabled: !make.trim() || !model.trim() }}
@@ -2865,11 +2869,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 activeOpacity={0.8}
               >
                 <Ionicons name="sparkles-outline" size={14} color={Colors.accent} />
-                <Text style={s.autoTitleText}>Auto-fill title</Text>
+                <Text style={ts.autoTitleText}>Auto-fill title</Text>
               </TouchableOpacity>
             </View>
             <TextInput
-              style={[s.input, { borderColor: fieldBorderColor('title') }]}
+              style={[ts.input, { borderColor: fieldBorderColor('title') }]}
               value={title}
               onChangeText={v => { setTitle(v); if (touched.title) setTouched(prev => ({ ...prev, title: true })); }}
               onBlur={fieldTouched('title')}
@@ -2877,13 +2881,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               placeholderTextColor={Colors.borderMuted}
               autoCorrect={false}
             />
-            {fieldError('title') ? <Text style={s.inlineError}>{fieldError('title')}</Text> : null}
+            {fieldError('title') ? <Text style={ts.inlineError}>{fieldError('title')}</Text> : null}
           </View>
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <SL label="DESCRIPTION" />
               <TouchableOpacity
-                style={[s.aiBtn, aiGenerating && { opacity: 0.6 }]}
+                style={[ts.aiBtn, aiGenerating && { opacity: 0.6 }]}
                 onPress={handleGenerateDescription}
                 disabled={aiGenerating}
                 activeOpacity={0.8}
@@ -2892,33 +2896,33 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <>
                       <Ionicons name="sparkles" size={12} color={Colors.white} />
-                      <Text style={s.aiBtnText}>AUTO GENERATE WITH AI</Text>
+                      <Text style={ts.aiBtnText}>AUTO GENERATE WITH AI</Text>
                     </>
                 }
               </TouchableOpacity>
             </View>
             <TextInput
-              style={[s.input, { height: 120, textAlignVertical: 'top', paddingTop: 12 }]}
+              style={[ts.input, { height: 120, textAlignVertical: 'top', paddingTop: 12 }]}
               value={description}
               onChangeText={setDescription}
               placeholder="Describe your vehicle for potential buyers..."
               placeholderTextColor={Colors.borderMuted}
               multiline
             />
-            <Text style={s.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
+            <Text style={ts.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
           </View>
         </SectionBox>
 
         <TouchableOpacity
-          style={s.optionalSectionToggle}
+          style={ts.optionalSectionToggle}
           onPress={() => setShowExtraSpecs(v => !v)}
           accessibilityRole="button"
           accessibilityState={{ expanded: showExtraSpecs }}
           activeOpacity={0.8}
         >
           <View style={{ flex: 1 }}>
-            <Text style={s.optionalSectionTitle}>Extra vehicle specifications</Text>
-            <Text style={s.optionalSectionHint}>Performance, ULEZ, emissions and optional features</Text>
+            <Text style={ts.optionalSectionTitle}>Extra vehicle specifications</Text>
+            <Text style={ts.optionalSectionHint}>Performance, ULEZ, emissions and optional features</Text>
           </View>
           <Ionicons name={showExtraSpecs ? 'chevron-up' : 'chevron-down'} size={21} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -2926,7 +2930,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <>
         {/* Performance & Economy */}
         <SectionBox title="Performance & Economy">
-          <Text style={s.fieldHint}>Optional — fill in from manufacturer specs.</Text>
+          <Text style={ts.fieldHint}>Optional — fill in from manufacturer specs.</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <View style={{ flex: 1 }}>
               <FieldInput label="0-60 MPH (SEC)" value={zeroTo60} onChange={setZeroTo60} placeholder="e.g. 4.5" keyboardType="decimal-pad" />
@@ -2963,7 +2967,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* Features */}
         <SectionBox title="Features">
           <TextInput
-            style={[s.input, { marginBottom: 12 }]}
+            style={[ts.input, { marginBottom: 12 }]}
             placeholder="Search vehicle equipment"
             placeholderTextColor={Colors.borderMuted}
             value={featureSearch}
@@ -2975,15 +2979,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             if (!visible.length) return null;
             return (
               <View key={group} style={{ marginBottom: 16 }}>
-                <Text style={[s.pillText, { marginBottom: 8, color: Colors.textSecondary }]}>{group}</Text>
+                <Text style={[ts.pillText, { marginBottom: 8, color: Colors.textSecondary }]}>{group}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {visible.map(f => {
                     const on = features.includes(f);
                     return <TouchableOpacity key={f}
-                      style={[s.pill, on && s.pillActive]}
+                      style={[ts.pill, on && ts.pillActive]}
                       onPress={() => setFeatures(p => on ? p.filter(x => x !== f) : [...p, f])}
                       activeOpacity={0.7}>
-                      <Text style={[s.pillText, on && s.pillTextActive]}>{f}</Text>
+                      <Text style={[ts.pillText, on && ts.pillTextActive]}>{f}</Text>
                     </TouchableOpacity>;
                   })}
                 </View>
@@ -2991,7 +2995,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             );
           })}
           <TextInput
-            style={[s.input, { marginTop: 12 }]}
+            style={[ts.input, { marginTop: 12 }]}
             placeholder="Additional features (comma separated)"
             placeholderTextColor={Colors.borderMuted}
             onSubmitEditing={e => {
@@ -3014,7 +3018,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             required
             error={fieldError('condition') ?? undefined}
           />
-          <Text style={s.fieldHint}>General condition is declared by the seller; Exterior Grade 1–5 is calculated separately from the damage map and is searchable.</Text>
+          <Text style={ts.fieldHint}>General condition is declared by the seller; Exterior Grade 1–5 is calculated separately from the damage map and is searchable.</Text>
           <PillRow
             label="NUMBER OF OWNERS"
             options={OWNERS_OPTIONS}
@@ -3024,7 +3028,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             error={fieldError('owners') ?? undefined}
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-            <Text style={s.sectionLabel}>IMPORTED VEHICLE</Text>
+            <Text style={ts.sectionLabel}>IMPORTED VEHICLE</Text>
             <Switch
               value={isImported}
               onValueChange={setIsImported}
@@ -3040,7 +3044,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               autofill and still sent in the submit payload. */}
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-            <Text style={s.sectionLabel}>DEPARTED / ESTATE SALE</Text>
+            <Text style={ts.sectionLabel}>DEPARTED / ESTATE SALE</Text>
             <Switch
               value={isDepartedSale}
               onValueChange={v => {
@@ -3051,7 +3055,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               thumbColor={Colors.white}
             />
           </View>
-          <Text style={s.fieldHint}>
+          <Text style={ts.fieldHint}>
             Buyers will see a Deceased Estate badge on your listing. You may be asked for probate documentation.
           </Text>
           {isDepartedSale && (
@@ -3061,7 +3065,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 {RELATIONSHIP_OPTIONS.map(opt => (
                   <TouchableOpacity
                     key={opt}
-                    style={[s.pill, departedRelSelect === opt && s.pillActive]}
+                    style={[ts.pill, departedRelSelect === opt && ts.pillActive]}
                     onPress={() => {
                       setDepartedRelSelect(opt);
                       if (opt !== 'Other') setDepartedRelOther('');
@@ -3069,27 +3073,27 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.pillText, departedRelSelect === opt && s.pillTextActive]}>{opt}</Text>
+                    <Text style={[ts.pillText, departedRelSelect === opt && ts.pillTextActive]}>{opt}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
               {departedRelSelect === 'Other' && (
                 <TextInput
-                  style={[s.input, { marginTop: 10 }]}
+                  style={[ts.input, { marginTop: 10 }]}
                   value={departedRelOther}
                   onChangeText={v => { setDepartedRelOther(v); setTouched(prev => ({ ...prev, departedRelationship: true })); }}
                   placeholder="Please specify your relationship"
                   placeholderTextColor={Colors.borderMuted}
                 />
               )}
-              {fieldError('departedRelationship') ? <Text style={s.inlineError}>{fieldError('departedRelationship')}</Text> : null}
+              {fieldError('departedRelationship') ? <Text style={ts.inlineError}>{fieldError('departedRelationship')}</Text> : null}
             </View>
           )}
         </SectionBox>
 
         {/* Write-Off & Legal Declaration */}
         <SectionBox title="Write-Off & Legal Declaration" accent={Colors.accent} onLayout={rememberValidationSection("declarations")}>
-          <Text style={s.warnText}>
+          <Text style={ts.warnText}>
             Required by law. False declarations can constitute fraud and must be reported to relevant authorities.
           </Text>
           <View onLayout={rememberNestedField('declarations', 'writeOffCat')}>
@@ -3098,15 +3102,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               {WRITE_OFF_CATS.map(c => (
                 <TouchableOpacity
                   key={c.v}
-                  style={[s.pill, writeOffCat === c.v && s.pillActive, c.v !== 'NONE' && writeOffCat === c.v && { backgroundColor: Colors.accentAlpha15, borderColor: Colors.accent }]}
+                  style={[ts.pill, writeOffCat === c.v && ts.pillActive, c.v !== 'NONE' && writeOffCat === c.v && { backgroundColor: Colors.accentAlpha15, borderColor: Colors.accent }]}
                   onPress={() => { setWriteOffCat(c.v); setTouched(prev => ({ ...prev, writeOffCat: true })); }}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.pillText, writeOffCat === c.v && s.pillTextActive]}>{c.l}</Text>
+                  <Text style={[ts.pillText, writeOffCat === c.v && ts.pillTextActive]}>{c.l}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            {fieldError('writeOffCat') ? <Text style={s.inlineError}>{fieldError('writeOffCat')}</Text> : null}
+            {fieldError('writeOffCat') ? <Text style={ts.inlineError}>{fieldError('writeOffCat')}</Text> : null}
           </View>
           <View onLayout={rememberNestedField('declarations', 'stolenRecovered')} style={{ marginTop: 16 }}>
             <YesNoRow
@@ -3141,7 +3145,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   {NOT_OWNER_RELATIONSHIP_OPTIONS.map(opt => (
                     <TouchableOpacity
                       key={opt}
-                      style={[s.pill, notOwnerRelSelect === opt && s.pillActive]}
+                      style={[ts.pill, notOwnerRelSelect === opt && ts.pillActive]}
                       onPress={() => {
                         setNotOwnerRelSelect(opt);
                         if (opt !== 'Other') setNotOwnerRelOther('');
@@ -3149,13 +3153,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={[s.pillText, notOwnerRelSelect === opt && s.pillTextActive]}>{opt}</Text>
+                      <Text style={[ts.pillText, notOwnerRelSelect === opt && ts.pillTextActive]}>{opt}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
                 {notOwnerRelSelect === 'Other' && (
                   <TextInput
-                    style={[s.input, { marginTop: 8 }]}
+                    style={[ts.input, { marginTop: 8 }]}
                     value={notOwnerRelOther}
                     onChangeText={v => { setNotOwnerRelOther(v); setTouched(prev => ({ ...prev, notOwnerRelationship: true })); }}
                     placeholder="Describe your relationship"
@@ -3163,25 +3167,25 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     autoCorrect={false}
                   />
                 )}
-                {fieldError('notOwnerRelationship') ? <Text style={s.inlineError}>{fieldError('notOwnerRelationship')}</Text> : null}
+                {fieldError('notOwnerRelationship') ? <Text style={ts.inlineError}>{fieldError('notOwnerRelationship')}</Text> : null}
               </View>
             )}
           </View>
           <TouchableOpacity
             onLayout={rememberNestedField('declarations', 'declAcknowledged')}
-            style={[s.declRow, declAcknowledged && s.declRowActive]}
+            style={[ts.declRow, declAcknowledged && ts.declRowActive]}
             onPress={() => setDeclAcknowledged(p => { setTouched(prev => ({ ...prev, declAcknowledged: true })); return !p; })}
             activeOpacity={0.8}
           >
-            <View style={[s.checkbox, declAcknowledged && s.checkboxActive]}>
+            <View style={[ts.checkbox, declAcknowledged && ts.checkboxActive]}>
               {declAcknowledged && <Ionicons name="checkmark" size={12} color={Colors.white} />}
             </View>
-            <Text style={s.declText}>
+            <Text style={ts.declText}>
               I confirm that the above declarations are true and accurate to the best of my knowledge.
               I understand that false declarations on this listing may have legal consequences.
             </Text>
           </TouchableOpacity>
-          {fieldError('declAcknowledged') ? <Text style={s.inlineError}>{fieldError('declAcknowledged')}</Text> : null}
+          {fieldError('declAcknowledged') ? <Text style={ts.inlineError}>{fieldError('declAcknowledged')}</Text> : null}
         </SectionBox>
 
       </ScrollView>
@@ -3197,58 +3201,58 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const remaining = MIN_PHOTOS - totalCount;
 
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 120 }]}>
         {renderStepGuidance()}
 
         {/* Photo Tracker */}
-        <View style={s.photoTracker} onLayout={rememberValidationSection("photos")}>
+        <View style={ts.photoTracker} onLayout={rememberValidationSection("photos")}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="camera" size={14} color={Colors.accent} />
-            <Text style={s.photoTrackerLabel}>Photo Tracker</Text>
+            <Text style={ts.photoTrackerLabel}>Photo Tracker</Text>
           </View>
           {/* Below the minimum the count that matters is the one blocking Next,
               not the tracker's ceiling — showing "3 / 100" while Next is
               disabled tells the seller nothing about why. */}
-          <Text style={[s.photoTrackerCount, belowMinimum && s.photoTrackerCountShort]}>
+          <Text style={[ts.photoTrackerCount, belowMinimum && ts.photoTrackerCountShort]}>
             {belowMinimum ? `${totalCount} / ${MIN_PHOTOS} MINIMUM` : `${totalCount} / ${MAX_PHOTOS}`}
           </Text>
         </View>
-        <View style={s.photoTrackerBar}>
+        <View style={ts.photoTrackerBar}>
           {/* Progress runs to the same hard MAX_PHOTOS limit enforced by web,
               mobile and the backend. RECOMMENDED_PHOTOS remains coaching only. */}
-          <View style={[s.photoTrackerFill, { width: `${Math.min((totalCount / MAX_PHOTOS) * 100, 100)}%` }]} />
+          <View style={[ts.photoTrackerFill, { width: `${Math.min((totalCount / MAX_PHOTOS) * 100, 100)}%` }]} />
         </View>
-        <Text style={[s.photoTrackerHint, belowMinimum && s.photoTrackerHintBlocking]}>
+        <Text style={[ts.photoTrackerHint, belowMinimum && ts.photoTrackerHintBlocking]}>
           {belowMinimum
             ? `Add ${remaining} more photo${remaining === 1 ? '' : 's'} to continue — listings need ${MIN_PHOTOS} to publish.`
             : `Aim for at least ${RECOMMENDED_PHOTOS} photos. Cars with ${RECOMMENDED_PHOTOS}+ photos sell on average 40% faster.`}
         </Text>
 
         {/* Photo Category Tabs */}
-        <View style={s.photoTabs}>
+        <View style={ts.photoTabs}>
           {(['Exterior', 'Interior', 'Damage'] as const).map(tab => (
             <TouchableOpacity
               key={tab}
-              style={[s.photoTab, photoTab === tab && s.photoTabActive]}
+              style={[ts.photoTab, photoTab === tab && ts.photoTabActive]}
               onPress={() => setPhotoTab(tab)}
               activeOpacity={0.7}
             >
-              <Text style={[s.photoTabText, photoTab === tab && s.photoTabTextActive]}>{tab}</Text>
+              <Text style={[ts.photoTabText, photoTab === tab && ts.photoTabTextActive]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Pro Tip */}
         {photoTab === 'Exterior' && (
-          <View style={s.proTip}>
+          <View style={ts.proTip}>
             <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text style={s.proTipText}>PRO TIP — EXTERIOR: Park in an open, well-lit area. Take photos from all 4 corners, straight on front/back, and close-ups of wheels.</Text>
+            <Text style={ts.proTipText}>PRO TIP — EXTERIOR: Park in an open, well-lit area. Take photos from all 4 corners, straight on front/back, and close-ups of wheels.</Text>
           </View>
         )}
         {photoTab === 'Interior' && (
-          <View style={s.proTip}>
+          <View style={ts.proTip}>
             <Ionicons name="information-circle-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text style={s.proTipText}>PRO TIP — INTERIOR: Photograph dashboard, steering wheel, infotainment, seats, boot, and any wear.</Text>
+            <Text style={ts.proTipText}>PRO TIP — INTERIOR: Photograph dashboard, steering wheel, infotainment, seats, boot, and any wear.</Text>
           </View>
         )}
 
@@ -3256,7 +3260,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <>
             {/* Upload Zone */}
             <TouchableOpacity
-              style={s.uploadZone}
+              style={ts.uploadZone}
               onPress={handlePickPhoto}
               disabled={uploadingPhoto}
               activeOpacity={0.7}
@@ -3265,9 +3269,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 ? <ActivityIndicator color={Colors.accent} />
                 : <>
                     <Ionicons name="camera-outline" size={28} color={Colors.iconMuted} />
-                    <Text style={s.uploadZoneTitle}>Add {photoTab} Photos</Text>
-                    <Text style={s.uploadZoneHint}>Tap to select from gallery · Max {MAX_PHOTOS} photos</Text>
-                    <Text style={s.uploadZoneFormats}>JPEG, PNG, WebP, HEIC · auto-converted to JPEG</Text>
+                    <Text style={ts.uploadZoneTitle}>Add {photoTab} Photos</Text>
+                    <Text style={ts.uploadZoneHint}>Tap to select from gallery · Max {MAX_PHOTOS} photos</Text>
+                    <Text style={ts.uploadZoneFormats}>JPEG, PNG, WebP, HEIC · auto-converted to JPEG</Text>
                   </>
               }
             </TouchableOpacity>
@@ -3275,30 +3279,30 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {/* Photo Grid */}
             {tabImages.length > 0 && (
               <View>
-                <Text style={[s.sectionLabel, { marginTop: 20 }]}>ALL UPLOADED PHOTOS</Text>
-                <View style={s.photoGrid}>
+                <Text style={[ts.sectionLabel, { marginTop: 20 }]}>ALL UPLOADED PHOTOS</Text>
+                <View style={ts.photoGrid}>
                   {tabImages.map((uri, i) => {
                     const category = photoTab.toLowerCase();
                     const progressKey = `${category}-${i}`;
                     const progress = uploadProgress[progressKey];
                     const isUploading = progress !== undefined && progress < 100;
                     return (
-                      <View key={uri} style={s.photoThumb}>
+                      <View key={uri} style={ts.photoThumb}>
                         <ExpoImage
                           source={{ uri: parseVehicleImageMetadata(uri).src }}
-                          style={s.photoThumbImg}
+                          style={ts.photoThumbImg}
                           contentFit="cover"
                           transition={200}
                           placeholderContentFit="cover"
                         />
                         {/* Per-image upload progress bar */}
                         {isUploading && (
-                          <View style={s.photoProgressBar}>
-                            <View style={[s.photoProgressFill, { width: `${progress}%` as any }]} />
+                          <View style={ts.photoProgressBar}>
+                            <View style={[ts.photoProgressFill, { width: `${progress}%` as any }]} />
                           </View>
                         )}
                         {parseVehicleImageMetadata(uri).src === parseVehicleImageMetadata(allImages[0]).src && (
-                          <View style={s.coverBadge}><Text style={s.coverBadgeText}>COVER</Text></View>
+                          <View style={ts.coverBadge}><Text style={ts.coverBadgeText}>COVER</Text></View>
                         )}
                         <View style={{ position: 'absolute', left: 4, bottom: 4, flexDirection: 'row', gap: 3 }}>
                           <TouchableOpacity
@@ -3327,7 +3331,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                             <Ionicons name="chevron-forward" size={12} color={Colors.white} />
                           </TouchableOpacity>
                         </View>
-                        <IconButton style={s.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => void removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
+                        <IconButton style={ts.photoRemoveBtn} icon={<Ionicons name="close" size={10} color={Colors.white} />} onPress={() => void removePhoto(photoTab, uri)} accessibilityLabel="Remove photo" />
                       </View>
                     );
                   })}
@@ -3339,7 +3343,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           /* Damage Map */
           <View>
             <SectionBox title="Damage Map — Select Damaged Areas" accent={Colors.warning}>
-              <Text style={s.fieldHint}>
+              <Text style={ts.fieldHint}>
                 Drag to rotate the 3D model. Tap a zone to mark damage, hide it, or attach a photo.
               </Text>
               <Damage3DMapper
@@ -3356,14 +3360,14 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Video Links */}
         <SectionBox title="Video Links (optional)">
-          <Text style={s.fieldHint}>
+          <Text style={ts.fieldHint}>
             Add YouTube, Instagram, Facebook or X links to show your car in action.
           </Text>
 
           {/* Input + Add row */}
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <TextInput
-              style={[s.input, { flex: 1, marginBottom: 0 }]}
+              style={[ts.input, { flex: 1, marginBottom: 0 }]}
               value={videoInput}
               onChangeText={setVideoInput}
               onSubmitEditing={handleAddVideoUrl}
@@ -3376,12 +3380,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               editable={videoUrls.length < 5}
             />
             <TouchableOpacity
-              style={[s.pill, s.pillActive, { paddingHorizontal: 16, alignSelf: 'stretch', justifyContent: 'center' }]}
+              style={[ts.pill, ts.pillActive, { paddingHorizontal: 16, alignSelf: 'stretch', justifyContent: 'center' }]}
               onPress={handleAddVideoUrl}
               disabled={videoUrls.length >= 5}
               activeOpacity={0.7}
             >
-              <Text style={s.pillTextActive}>Add</Text>
+              <Text style={ts.pillTextActive}>Add</Text>
             </TouchableOpacity>
           </View>
 
@@ -3391,10 +3395,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               {videoUrls.map(url => (
                 <View
                   key={url}
-                  style={[s.pill, s.pillActive, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }]}
+                  style={[ts.pill, ts.pillActive, { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 }]}
                 >
                   <Ionicons name="play-circle-outline" size={14} color={Colors.white} />
-                  <Text style={[s.pillTextActive, { flex: 1, fontSize: FontSize.xs }]} numberOfLines={1}>
+                  <Text style={[ts.pillTextActive, { flex: 1, fontSize: FontSize.xs }]} numberOfLines={1}>
                     {url.length > 40 ? `${url.slice(0, 40)}…` : url}
                   </Text>
                   <IconButton icon={<Ionicons name="close" size={13} color={Colors.white} />} onPress={() => setVideoUrls(p => p.filter(v => v !== url))} accessibilityLabel="Remove video" />
@@ -3405,7 +3409,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
           {/* Limit notice */}
           {videoUrls.length >= 5 && (
-            <Text style={[s.fieldHint, { color: Colors.warning, marginTop: 6 }]}>
+            <Text style={[ts.fieldHint, { color: Colors.warning, marginTop: 6 }]}>
               Max 5 videos
             </Text>
           )}
@@ -3423,7 +3427,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const isValidRange = askVal > 0 && (minVal === 0 || minVal < askVal);
 
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 120 }]}>
         {renderStepGuidance()}
 
         {/* Listing Method — tapping a pricing tier used to silently flip
@@ -3433,7 +3437,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             different flow with no explicit choice ever made. This is now
             the one place listingType changes; tier cards only set badgeTier. */}
         <SectionBox title="Listing Method">
-          <Text style={s.fieldHint}>
+          <Text style={ts.fieldHint}>
             Choose how you want to sell — a fixed-price retail listing, or a live auction.
           </Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -3443,13 +3447,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             ]).map(opt => (
               <TouchableOpacity
                 key={opt.v}
-                style={[s.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && s.pillActive]}
+                style={[ts.pill, { flex: 1, justifyContent: 'center' }, listingType === opt.v && ts.pillActive]}
                 onPress={() => {
                   chooseListingMethod(opt.v);
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[s.pillText, listingType === opt.v && s.pillTextActive]}>{opt.l}</Text>
+                <Text style={[ts.pillText, listingType === opt.v && ts.pillTextActive]}>{opt.l}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -3457,47 +3461,47 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         <SectionBox title="Vehicle Valuation" accent={Colors.infoBlue}>
           {valuationLoading ? (
-            <View style={s.valuationLoadingRow}>
+            <View style={ts.valuationLoadingRow}>
               <ActivityIndicator size="small" color={Colors.infoBlueLight} />
-              <Text style={s.valuationStatusText}>Calculating current market value…</Text>
+              <Text style={ts.valuationStatusText}>Calculating current market value…</Text>
             </View>
           ) : valuationError ? (
-            <View style={s.valuationNotice}>
+            <View style={ts.valuationNotice}>
               <Ionicons name="information-circle-outline" size={16} color={Colors.warning} />
-              <Text style={s.valuationNoticeText}>{valuationError}</Text>
+              <Text style={ts.valuationNoticeText}>{valuationError}</Text>
             </View>
           ) : valuation ? (
             <>
               <TouchableOpacity
-                style={s.valuationCard}
+                style={ts.valuationCard}
                 onPress={applyValuationGuide}
                 activeOpacity={0.8}
               >
-                <Text style={s.valuationCardLabel}>{listingType === 'AUCTION' ? 'ESTIMATED DEALER AUCTION VALUE' : 'SUGGESTED RETAIL ASKING PRICE'}</Text>
-                <Text style={s.valuationAuctionPrice}>£{(listingType === 'AUCTION' ? valuation.auction.marketValue : valuation.retail.suggestedAsking).toLocaleString('en-GB')}</Text>
-                <Text style={s.valuationCardHint}>
+                <Text style={ts.valuationCardLabel}>{listingType === 'AUCTION' ? 'ESTIMATED DEALER AUCTION VALUE' : 'SUGGESTED RETAIL ASKING PRICE'}</Text>
+                <Text style={ts.valuationAuctionPrice}>£{(listingType === 'AUCTION' ? valuation.auction.marketValue : valuation.retail.suggestedAsking).toLocaleString('en-GB')}</Text>
+                <Text style={ts.valuationCardHint}>
                   {valuation.confidence === 'LOW'
                     ? 'Limited market evidence. This is a rough guide, not a verified sale price. You can set your own price.'
                     : 'Market guide from available evidence, adjusted by the condition and specification you provide.'}
                 </Text>
-                <Text style={s.valuationApplyText}>{listingType === 'AUCTION' ? 'Use auction guide' : 'Use retail price'}</Text>
+                <Text style={ts.valuationApplyText}>{listingType === 'AUCTION' ? 'Use auction guide' : 'Use retail price'}</Text>
               </TouchableOpacity>
-              <Text style={s.valuationEvidenceText}>
+              <Text style={ts.valuationEvidenceText}>
                 Guide only. Changing condition or specification adjusts this saved base value; it does not start another market search.
               </Text>
             </>
           ) : (
-            <Text style={s.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
+            <Text style={ts.fieldHint}>Complete the vehicle make, model, year and mileage to see the current market value.</Text>
           )}
         </SectionBox>
 
         <SectionBox title={isAuction ? 'Set Your Auction Value' : 'Set Your Retail Price Range'} accent={Colors.accent} onLayout={rememberValidationSection('pricing')}>
           {isAuction ? (
-            <Text style={s.fieldHint}>
+            <Text style={ts.fieldHint}>
               Use the current market value as a starting point. CarMazium automatically sets the Opening Bid at 70% of the value you enter, while you remain in control of the reserve.
             </Text>
           ) : (
-            <Text style={s.fieldHint}>
+            <Text style={ts.fieldHint}>
               The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Asking Price</Text> is displayed publicly.
               The <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Lower (Min)</Text> defines your acceptable offer floor.
             </Text>
@@ -3509,11 +3513,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             {!isAuction && (
               <View style={{ flex: 1 }}>
                 <SL label="LOWER (MIN)" />
-                <Text style={s.fieldHint}>Floor price — not visible to buyers</Text>
-                <View style={[s.priceInputWrap, touched.priceMin ? { borderColor: fieldBorderColor('priceMin') } : {}]}>
-                  <Text style={s.priceCurrency}>£</Text>
+                <Text style={ts.fieldHint}>Floor price — not visible to buyers</Text>
+                <View style={[ts.priceInputWrap, touched.priceMin ? { borderColor: fieldBorderColor('priceMin') } : {}]}>
+                  <Text style={ts.priceCurrency}>£</Text>
                   <TextInput
-                    style={s.priceInput}
+                    style={ts.priceInput}
                     value={priceMin}
                     onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
                     onBlur={fieldTouched('priceMin')}
@@ -3522,18 +3526,18 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     keyboardType="number-pad"
                   />
                 </View>
-                {fieldError('priceMin') ? <Text style={s.inlineError}>{fieldError('priceMin')}</Text> : null}
+                {fieldError('priceMin') ? <Text style={ts.inlineError}>{fieldError('priceMin')}</Text> : null}
               </View>
             )}
             <View style={{ flex: 1 }}>
               <SL label={isAuction ? 'CURRENT MARKET VALUE *' : 'ASKING PRICE *'} required />
-              <Text style={s.fieldHintRed}>
+              <Text style={ts.fieldHintRed}>
                 {isAuction ? 'Internal reference · not shown to bidders' : 'Displayed on listing'}
               </Text>
-              <View style={[s.priceInputWrap, s.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
-                <Text style={[s.priceCurrency, { color: Colors.accent }]}>£</Text>
+              <View style={[ts.priceInputWrap, ts.priceInputWrapActive, touched.priceAsking ? { borderColor: fieldBorderColor('priceAsking') } : {}]}>
+                <Text style={[ts.priceCurrency, { color: Colors.accent }]}>£</Text>
                 <TextInput
-                  style={s.priceInput}
+                  style={ts.priceInput}
                   value={priceAsking}
                   onChangeText={v => { setPriceAsking(v); if (touched.priceAsking) setTouched(prev => ({ ...prev, priceAsking: true })); }}
                   onBlur={fieldTouched('priceAsking')}
@@ -3542,7 +3546,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   keyboardType="number-pad"
                 />
               </View>
-              {fieldError('priceAsking') ? <Text style={s.inlineError}>{fieldError('priceAsking')}</Text> : null}
+              {fieldError('priceAsking') ? <Text style={ts.inlineError}>{fieldError('priceAsking')}</Text> : null}
             </View>
           </View>
 
@@ -3552,19 +3556,19 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {!isAuction && (minVal > 0 || askVal > 0) && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[s.fieldHint, { color: Colors.warning }]}>YOUR PRICE RANGE</Text>
-                <Text style={[s.fieldHint, { color: isValidRange ? Colors.accentGreen : Colors.accent }]}>
+                <Text style={[ts.fieldHint, { color: Colors.warning }]}>YOUR PRICE RANGE</Text>
+                <Text style={[ts.fieldHint, { color: isValidRange ? Colors.accentGreen : Colors.accent }]}>
                   {isValidRange ? '✓ VALID' : '⚠ CHECK'}
                 </Text>
               </View>
-              <View style={s.priceRangeBar}>
-                <View style={[s.priceRangeFill, !isValidRange && { backgroundColor: Colors.accent }]} />
+              <View style={ts.priceRangeBar}>
+                <View style={[ts.priceRangeFill, !isValidRange && { backgroundColor: Colors.accent }]} />
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={[s.priceRangeLabel, { color: Colors.warning }]}>
+                <Text style={[ts.priceRangeLabel, { color: Colors.warning }]}>
                   {minVal > 0 ? `£${minVal.toLocaleString()}` : '£0'}
                 </Text>
-                <Text style={[s.priceRangeLabel, { color: Colors.white }]}>
+                <Text style={[ts.priceRangeLabel, { color: Colors.white }]}>
                   {askVal > 0 ? `£${askVal.toLocaleString()}` : '—'}
                 </Text>
               </View>
@@ -3573,17 +3577,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
           {/* Listing Ribbon Label */}
           <View style={{ marginTop: 20 }}>
-            <Text style={s.sectionLabel}>LISTING RIBBON LABEL (optional)</Text>
-            <Text style={s.fieldHint}>Appears as a coloured tag on your listing card</Text>
+            <Text style={ts.sectionLabel}>LISTING RIBBON LABEL (optional)</Text>
+            <Text style={ts.fieldHint}>Appears as a coloured tag on your listing card</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
               {BANNER_LABELS.map(label => (
                 <TouchableOpacity
                   key={label}
-                  style={[s.pill, bannerLabel === label && s.pillActive]}
+                  style={[ts.pill, bannerLabel === label && ts.pillActive]}
                   onPress={() => setBannerLabel(p => p === label ? '' : label)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[s.pillText, bannerLabel === label && s.pillTextActive]}>{label}</Text>
+                  <Text style={[ts.pillText, bannerLabel === label && ts.pillTextActive]}>{label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -3593,7 +3597,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 selected, and the input shows blank whenever the current value
                 is one of the presets rather than custom text. */}
             <TextInput
-              style={[s.input, { marginTop: 10 }]}
+              style={[ts.input, { marginTop: 10 }]}
               value={BANNER_LABELS.includes(bannerLabel) ? '' : bannerLabel}
               onChangeText={setBannerLabel}
               placeholder="Or type your own label…"
@@ -3609,8 +3613,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {/* Toggle row — matches the isImported Switch pattern */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={s.sectionLabel}>OFFER DELIVERY</Text>
-              <Text style={s.fieldHint}>Buyers can request delivery to their address</Text>
+              <Text style={ts.sectionLabel}>OFFER DELIVERY</Text>
+              <Text style={ts.fieldHint}>Buyers can request delivery to their address</Text>
             </View>
             <Switch
               value={deliveryAvailable}
@@ -3624,9 +3628,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {deliveryAvailable && (
             <View style={{ marginTop: 16, gap: 16 }}>
               <View>
-                <Text style={s.sectionLabel}>MAX DELIVERY RADIUS (MILES)</Text>
+                <Text style={ts.sectionLabel}>MAX DELIVERY RADIUS (MILES)</Text>
                 <TextInput
-                  style={s.input}
+                  style={ts.input}
                   value={deliveryMaxMiles}
                   onChangeText={setDeliveryMaxMiles}
                   placeholder="e.g. 50"
@@ -3637,9 +3641,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </View>
 
               <View>
-                <Text style={s.sectionLabel}>PRICE PER MILE (£, ex-VAT)</Text>
+                <Text style={ts.sectionLabel}>PRICE PER MILE (£, ex-VAT)</Text>
                 <TextInput
-                  style={s.input}
+                  style={ts.input}
                   value={deliveryPricePerMile}
                   onChangeText={setDeliveryPricePerMile}
                   placeholder="e.g. 2.00"
@@ -3661,9 +3665,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     : 70 + (EXAMPLE_MILES - 30) * 1.5;
                 const totalExVat = feeExVat + ppm * EXAMPLE_MILES;
                 return (
-                  <View style={s.deliveryPreview}>
+                  <View style={ts.deliveryPreview}>
                     <Ionicons name="information-circle-outline" size={13} color={Colors.infoBlueLight} accessibilityElementsHidden importantForAccessibility="no" />
-                    <Text style={s.deliveryPreviewText}>
+                    <Text style={ts.deliveryPreviewText}>
                       {`Example: ${EXAMPLE_MILES}-mile delivery = £${Math.round(totalExVat)} ex-VAT`}
                       {ppm > 0 ? ` (£${Math.round(feeExVat)} base + £${Math.round(ppm * EXAMPLE_MILES)} per-mile)` : ' (base fee only)'}
                     </Text>
@@ -3678,7 +3682,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             chosen above (Auction's Free tier vs Classified's Basic/Standard/
             Premium tiers were never really alternatives to each other). */}
         <SectionBox title="Seller Badges">
-          <Text style={s.fieldHint}>
+          <Text style={ts.fieldHint}>
             Boost buyer confidence with trust badges on your listing. Badges increase buyer engagement and sell rates.
           </Text>
           <View style={{ gap: 10, marginTop: 8 }}>
@@ -3688,49 +3692,49 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 <TouchableOpacity
                   key={badge.id}
                   style={[
-                    s.badgeCard,
+                    ts.badgeCard,
                     active && { borderColor: badge.accent, backgroundColor: `${badge.accent}14` },
                   ]}
                   onPress={() => setBadgeTier(badge.id)}
                   activeOpacity={0.8}
                 >
                   {badge.id === 'STANDARD' && (
-                    <View style={[s.badgePopular, { backgroundColor: Colors.infoBlue }]}><Text style={s.badgePopularText}>Standard</Text></View>
+                    <View style={[ts.badgePopular, { backgroundColor: Colors.infoBlue }]}><Text style={ts.badgePopularText}>Standard</Text></View>
                   )}
                   {badge.id === 'PREMIUM' && (
-                    <View style={[s.badgePopular, { backgroundColor: Colors.warning }]}>
-                      <Text style={[s.badgePopularText, { color: Colors.black }]}>Best Value</Text>
+                    <View style={[ts.badgePopular, { backgroundColor: Colors.warning }]}>
+                      <Text style={[ts.badgePopularText, { color: Colors.black }]}>Best Value</Text>
                     </View>
                   )}
                   {active && (
-                    <View style={[s.badgeSelected, { backgroundColor: badge.accent }]}>
-                      <Text style={[s.badgeSelectedText, badge.id === 'PREMIUM' && { color: Colors.black }]}>Selected</Text>
+                    <View style={[ts.badgeSelected, { backgroundColor: badge.accent }]}>
+                      <Text style={[ts.badgeSelectedText, badge.id === 'PREMIUM' && { color: Colors.black }]}>Selected</Text>
                     </View>
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View style={[s.radioCircle, active && { backgroundColor: badge.accent, borderColor: badge.accent }]}>
+                    <View style={[ts.radioCircle, active && { backgroundColor: badge.accent, borderColor: badge.accent }]}>
                       {active && <Ionicons name="checkmark" size={12} color={badge.id === 'PREMIUM' ? Colors.black : Colors.white} />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         {badge.id === 'FREE' && <Ionicons name="hammer-outline" size={12} color={badge.accent} />}
-                        <Text style={[s.badgeLabel, { color: badge.accent }]}>{badge.label}</Text>
+                        <Text style={[ts.badgeLabel, { color: badge.accent }]}>{badge.label}</Text>
                       </View>
-                      <Text style={[s.badgePrice, { color: badge.accent }]}>{badge.price}</Text>
-                      <Text style={s.badgeSub}>{badge.sub}</Text>
+                      <Text style={[ts.badgePrice, { color: badge.accent }]}>{badge.price}</Text>
+                      <Text style={ts.badgeSub}>{badge.sub}</Text>
                     </View>
                   </View>
                   <View style={{ marginTop: 10, marginLeft: 36, gap: 4 }}>
                     {badge.features.map(f => (
                       <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
-                        <Text style={s.badgeFeatureText}>{f}</Text>
+                        <Text style={ts.badgeFeatureText}>{f}</Text>
                       </View>
                     ))}
                     {badge.negative.map(f => (
                       <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="close" size={12} color={Colors.borderMuted} />
-                        <Text style={[s.badgeFeatureText, { color: Colors.borderMuted }]}>{f}</Text>
+                        <Text style={[ts.badgeFeatureText, { color: Colors.borderMuted }]}>{f}</Text>
                       </View>
                     ))}
                   </View>
@@ -3749,11 +3753,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   function renderAuctionSchedule() {
     const askNum = auctionMarketValue;
     return (
-      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 120 }]}>
+      <ScrollView ref={stepScrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 120 }]}>
         {renderStepGuidance()}
 
         <SectionBox title="Live Auction — 24-Hour Fixed Duration" accent={Colors.lightOrange_f97316}>
-          <Text style={[s.fieldHint, { color: Colors.lightOrange_fb923c }]}>
+          <Text style={[ts.fieldHint, { color: Colors.lightOrange_fb923c }]}>
             Your auction will run for exactly 24 hours. Anti-snipe protection automatically extends bidding by 3 minutes if a bid arrives in the final 3 minutes.
           </Text>
         </SectionBox>
@@ -3762,22 +3766,22 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         <SectionBox title="When to Start *" accent={Colors.lightOrange_f97316} onLayout={rememberValidationSection("start")}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity
-              style={[s.auctionModeBtn, auctionStartMode === 'NOW' && s.auctionModeBtnActive]}
+              style={[ts.auctionModeBtn, auctionStartMode === 'NOW' && ts.auctionModeBtnActive]}
               onPress={() => setAuctionStartMode('NOW')}
               activeOpacity={0.7}
             >
-              <Text style={s.auctionModeBtnIcon}>⚡</Text>
-              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'NOW' && { color: Colors.lightOrange_fb923c }]}>Start Immediately</Text>
-              <Text style={s.auctionModeBtnHint}>Auction goes live right now</Text>
+              <Text style={ts.auctionModeBtnIcon}>⚡</Text>
+              <Text style={[ts.auctionModeBtnTitle, auctionStartMode === 'NOW' && { color: Colors.lightOrange_fb923c }]}>Start Immediately</Text>
+              <Text style={ts.auctionModeBtnHint}>Auction goes live right now</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.auctionModeBtn, auctionStartMode === 'SCHEDULED' && s.auctionModeBtnActive]}
+              style={[ts.auctionModeBtn, auctionStartMode === 'SCHEDULED' && ts.auctionModeBtnActive]}
               onPress={() => setAuctionStartMode('SCHEDULED')}
               activeOpacity={0.7}
             >
-              <Text style={s.auctionModeBtnIcon}>🗓️</Text>
-              <Text style={[s.auctionModeBtnTitle, auctionStartMode === 'SCHEDULED' && { color: Colors.lightOrange_fb923c }]}>Schedule</Text>
-              <Text style={s.auctionModeBtnHint}>Choose a start date & time</Text>
+              <Text style={ts.auctionModeBtnIcon}>🗓️</Text>
+              <Text style={[ts.auctionModeBtnTitle, auctionStartMode === 'SCHEDULED' && { color: Colors.lightOrange_fb923c }]}>Schedule</Text>
+              <Text style={ts.auctionModeBtnHint}>Choose a start date & time</Text>
             </TouchableOpacity>
           </View>
           {auctionStartMode === 'SCHEDULED' && (
@@ -3790,7 +3794,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 required
                 error={fieldError('auctionStartDate') ?? undefined}
               />
-              <Text style={s.fieldHint}>Format: YYYY-MM-DD HH:MM (24-hour)</Text>
+              <Text style={ts.fieldHint}>Format: YYYY-MM-DD HH:MM (24-hour)</Text>
             </View>
           )}
         </SectionBox>
@@ -3840,15 +3844,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           ) : null}
           <View style={{ marginBottom: 16 }}>
             <SL label="OPENING BID (£)" />
-            <Text style={s.fieldHint}>
+            <Text style={ts.fieldHint}>
               CarMazium sets this automatically at 70% of your Dealer Auction Value, giving verified traders room to enter the bidding competitively.
             </Text>
-            <View style={[s.input, { opacity: 0.85, justifyContent: 'center' }]}>
+            <View style={[ts.input, { opacity: 0.85, justifyContent: 'center' }]}>
               <Text style={{ fontFamily: FontFamily.mono, fontSize: FontSize.md, color: Colors.white }}>
                 {platformOpeningBid > 0 ? `£${platformOpeningBid.toLocaleString('en-GB')}` : 'Set market value first'}
               </Text>
             </View>
-            {fieldError('startingBid') ? <Text style={s.inlineError}>{fieldError('startingBid')}</Text> : null}
+            {fieldError('startingBid') ? <Text style={ts.inlineError}>{fieldError('startingBid')}</Text> : null}
           </View>
           <FieldInput
             label="MINIMUM BID INCREMENT (£) *"
@@ -3872,12 +3876,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
         {/* Summary */}
         <SectionBox title="Auction Summary">
-          <View style={s.reviewGrid}>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>DURATION</Text><Text style={s.reviewCellValue}>24 Hours</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>ANTI-SNIPE</Text><Text style={s.reviewCellValue}>3 Minutes</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>START</Text><Text style={s.reviewCellValue}>{auctionStartMode === 'NOW' ? 'Immediately' : auctionStartDate || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>OPENING BID</Text><Text style={s.reviewCellValue}>{platformOpeningBid > 0 ? `£${platformOpeningBid.toLocaleString('en-GB')}` : '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>LISTING FEE</Text><Text style={[s.reviewCellValue, { color: Colors.accentGreen }]}>Free</Text></View>
+          <View style={ts.reviewGrid}>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>DURATION</Text><Text style={ts.reviewCellValue}>24 Hours</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>ANTI-SNIPE</Text><Text style={ts.reviewCellValue}>3 Minutes</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>START</Text><Text style={ts.reviewCellValue}>{auctionStartMode === 'NOW' ? 'Immediately' : auctionStartDate || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>OPENING BID</Text><Text style={ts.reviewCellValue}>{platformOpeningBid > 0 ? `£${platformOpeningBid.toLocaleString('en-GB')}` : '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>LISTING FEE</Text><Text style={[ts.reviewCellValue, { color: Colors.accentGreen }]}>Free</Text></View>
           </View>
         </SectionBox>
 
@@ -3893,32 +3897,32 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const minNum = parseFloat(priceMin.replace(/[^0-9.]/g, '')) || 0;
 
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: 140 }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 140 }]}>
         {renderStepGuidance()}
-        <Text style={s.reviewHeading}>Review Your Listing</Text>
+        <Text style={ts.reviewHeading}>Review Your Listing</Text>
 
         {/* Vehicle Identity */}
         <SectionBox title="Vehicle Identity" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
+          <TouchableOpacity style={ts.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
-            <Text style={s.reviewEditText}>Edit</Text>
+            <Text style={ts.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
-          <View style={s.reviewGrid}>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>VRM</Text><Text style={s.reviewCellValue}>{String(vrm) || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>MAKE</Text><Text style={s.reviewCellValue}>{String(make) || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>MODEL</Text><Text style={s.reviewCellValue}>{String(model) || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>YEAR</Text><Text style={s.reviewCellValue}>{String(year) || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>BODY</Text><Text style={s.reviewCellValue}>{String(bodyType) || '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>LOCATION</Text><Text style={s.reviewCellValue}>{String(location) || '—'}</Text></View>
+          <View style={ts.reviewGrid}>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>VRM</Text><Text style={ts.reviewCellValue}>{String(vrm) || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>MAKE</Text><Text style={ts.reviewCellValue}>{String(make) || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>MODEL</Text><Text style={ts.reviewCellValue}>{String(model) || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>YEAR</Text><Text style={ts.reviewCellValue}>{String(year) || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>BODY</Text><Text style={ts.reviewCellValue}>{String(bodyType) || '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>LOCATION</Text><Text style={ts.reviewCellValue}>{String(location) || '—'}</Text></View>
           </View>
         </SectionBox>
 
         {/* Photos */}
         <SectionBox title={`Photos (${allImages.length})`} action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(2)} activeOpacity={0.7}>
+          <TouchableOpacity style={ts.reviewEditBtn} onPress={() => setStep(2)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
-            <Text style={s.reviewEditText}>Edit</Text>
+            <Text style={ts.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
           {allImages.length > 0 ? (
@@ -3934,30 +3938,30 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               ))}
             </ScrollView>
           ) : (
-            <Text style={s.fieldHint}>No photos added yet.</Text>
+            <Text style={ts.fieldHint}>No photos added yet.</Text>
           )}
         </SectionBox>
 
         {/* Technical Specs */}
         <SectionBox title="Technical Specs" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
+          <TouchableOpacity style={ts.reviewEditBtn} onPress={() => setStep(1)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
-            <Text style={s.reviewEditText}>Edit</Text>
+            <Text style={ts.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
-          <View style={s.reviewGrid}>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>MILEAGE</Text><Text style={s.reviewCellValue}>{mileage ? `${parseInt(String(mileage).replace(/\D/g, '') || '0', 10).toLocaleString()} mi` : '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>FUEL</Text><Text style={s.reviewCellValue}>{String(fuelType || '—')}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>TRANSMISSION</Text><Text style={s.reviewCellValue}>{String(transmission || '—')}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>BHP</Text><Text style={s.reviewCellValue}>{String(bhp || '—')}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>ENGINE</Text><Text style={s.reviewCellValue}>{engineSize ? `${String(engineSize)}cc` : '—'}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>COLOUR</Text><Text style={s.reviewCellValue}>{String(colour || '—')}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>DOORS</Text><Text style={s.reviewCellValue}>{String(doors || '—')}</Text></View>
-            <View style={s.reviewCell}><Text style={s.reviewCellLabel}>SEATS</Text><Text style={s.reviewCellValue}>{String(seats || '—')}</Text></View>
+          <View style={ts.reviewGrid}>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>MILEAGE</Text><Text style={ts.reviewCellValue}>{mileage ? `${parseInt(String(mileage).replace(/\D/g, '') || '0', 10).toLocaleString()} mi` : '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>FUEL</Text><Text style={ts.reviewCellValue}>{String(fuelType || '—')}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>TRANSMISSION</Text><Text style={ts.reviewCellValue}>{String(transmission || '—')}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>BHP</Text><Text style={ts.reviewCellValue}>{String(bhp || '—')}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>ENGINE</Text><Text style={ts.reviewCellValue}>{engineSize ? `${String(engineSize)}cc` : '—'}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>COLOUR</Text><Text style={ts.reviewCellValue}>{String(colour || '—')}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>DOORS</Text><Text style={ts.reviewCellValue}>{String(doors || '—')}</Text></View>
+            <View style={ts.reviewCell}><Text style={ts.reviewCellLabel}>SEATS</Text><Text style={ts.reviewCellValue}>{String(seats || '—')}</Text></View>
           </View>
           {(String(motStatus) || String(taxStatus)) ? (
             <>
-              <View style={s.dvlaGrid}>
+              <View style={ts.dvlaGrid}>
                 {motStatus ? <DVLAField label="MOT STATUS" value={String(motStatus)} /> : null}
                 {motExpiry ? <DVLAField label="MOT EXPIRY" value={String(motExpiry)} /> : null}
                 {taxStatus ? <DVLAField label="TAX STATUS" value={String(taxStatus)} /> : null}
@@ -3970,43 +3974,43 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           {features.length > 0 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
               {features.map((f, fi) => (
-                <View key={fi} style={s.reviewFeatureChip}>
-                  <Text style={s.reviewFeatureChipText}>{String(f)}</Text>
+                <View key={fi} style={ts.reviewFeatureChip}>
+                  <Text style={ts.reviewFeatureChipText}>{String(f)}</Text>
                 </View>
               ))}
             </View>
           )}
           {title ? <View style={{ marginTop: 12 }}>
-            <Text style={s.reviewCellLabel}>TITLE</Text>
-            <Text style={[s.reviewCellValue, { fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginTop: 4 }]}>{String(title)}</Text>
+            <Text style={ts.reviewCellLabel}>TITLE</Text>
+            <Text style={[ts.reviewCellValue, { fontFamily: FontFamily.bold, fontSize: FontSize.size14, marginTop: 4 }]}>{String(title)}</Text>
           </View> : null}
         </SectionBox>
 
         {/* Pricing */}
         <SectionBox title="Pricing" action={
-          <TouchableOpacity style={s.reviewEditBtn} onPress={() => setStep(3)} activeOpacity={0.7}>
+          <TouchableOpacity style={ts.reviewEditBtn} onPress={() => setStep(3)} activeOpacity={0.7}>
             <Ionicons name="create-outline" size={12} color={Colors.accent} />
-            <Text style={s.reviewEditText}>Edit</Text>
+            <Text style={ts.reviewEditText}>Edit</Text>
           </TouchableOpacity>
         }>
-          <View style={s.reviewGrid}>
+          <View style={ts.reviewGrid}>
             {!isAuction && (
-              <View style={s.reviewCell}>
-                <Text style={s.reviewCellLabel}>LOWER (MIN)</Text>
-                <Text style={s.reviewCellValue}>{minNum > 0 ? `£${minNum.toLocaleString()}` : '—'}</Text>
+              <View style={ts.reviewCell}>
+                <Text style={ts.reviewCellLabel}>LOWER (MIN)</Text>
+                <Text style={ts.reviewCellValue}>{minNum > 0 ? `£${minNum.toLocaleString()}` : '—'}</Text>
               </View>
             )}
-            <View style={s.reviewCell}>
-              <Text style={s.reviewCellLabel}>{isAuction ? 'ESTIMATED MARKET VALUE' : 'ASKING PRICE'}</Text>
-              <Text style={[s.reviewCellValue, { color: Colors.white, fontFamily: FontFamily.extraBold, fontSize: FontSize.lg }]}>
+            <View style={ts.reviewCell}>
+              <Text style={ts.reviewCellLabel}>{isAuction ? 'ESTIMATED MARKET VALUE' : 'ASKING PRICE'}</Text>
+              <Text style={[ts.reviewCellValue, { color: Colors.white, fontFamily: FontFamily.extraBold, fontSize: FontSize.lg }]}>
                 {askNum > 0 ? `£${askNum.toLocaleString()}` : '—'}
               </Text>
             </View>
           </View>
           {badge && (
             <View style={{ marginTop: 8 }}>
-              <Text style={s.reviewCellLabel}>BADGE</Text>
-              <Text style={[s.reviewCellValue, { color: badge.accent }]}>{badge.label} — {badge.price}</Text>
+              <Text style={ts.reviewCellLabel}>BADGE</Text>
+              <Text style={[ts.reviewCellValue, { color: badge.accent }]}>{badge.label} — {badge.price}</Text>
             </View>
           )}
         </SectionBox>
@@ -4014,13 +4018,13 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         {/* HPI is optional. Standard/Premium already include it in the
             listing package, so never offer those sellers a second £9.99 charge. */}
         {hpiUnlocked ? (
-          <View style={s.hpiCallout}>
-            <View style={s.hpiCalloutIcon}>
+          <View style={ts.hpiCallout}>
+            <View style={ts.hpiCalloutIcon}>
               <Ionicons name="shield-checkmark" size={22} color={Colors.accentGreen} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>HPI Check Verified</Text>
-              <Text style={s.hpiCalloutSub}>
+              <Text style={ts.hpiCalloutTitle}>HPI Check Verified</Text>
+              <Text style={ts.hpiCalloutSub}>
                 {hpiSummary?.isClear === false
                   ? 'This vehicle has records on file — full report available to buyers.'
                   : 'No adverse history found — a Verified badge will show on your listing.'}
@@ -4028,38 +4032,38 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </View>
           </View>
         ) : !isAuction && (badgeTier === 'STANDARD' || badgeTier === 'PREMIUM') ? (
-          <View style={s.hpiCallout}>
-            <View style={s.hpiCalloutIcon}>
+          <View style={ts.hpiCallout}>
+            <View style={ts.hpiCalloutIcon}>
               <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>HPI Check Included</Text>
-              <Text style={s.hpiCalloutSub}>
+              <Text style={ts.hpiCalloutTitle}>HPI Check Included</Text>
+              <Text style={ts.hpiCalloutSub}>
                 Your {badgeTier === 'PREMIUM' ? 'Premium' : 'Standard'} package includes the HPI report. It is requested automatically after the listing fee is paid.
               </Text>
             </View>
-            <View style={s.hpiCalloutBadge}>
-              <Text style={s.hpiCalloutPrice}>INCLUDED</Text>
+            <View style={ts.hpiCalloutBadge}>
+              <Text style={ts.hpiCalloutPrice}>INCLUDED</Text>
             </View>
           </View>
         ) : (
           <TouchableOpacity
-            style={s.hpiCallout}
+            style={ts.hpiCallout}
             activeOpacity={0.8}
             onPress={handleUnlockHpi}
             disabled={hpiUnlocking}
           >
-            <View style={s.hpiCalloutIcon}>
+            <View style={ts.hpiCalloutIcon}>
               {hpiUnlocking
                 ? <ActivityIndicator size="small" color={Colors.infoBlue} />
                 : <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>Add Optional HPI Vehicle Check</Text>
-              <Text style={s.hpiCalloutSub}>Add a vehicle-history report if you want one; it is not required to publish.</Text>
+              <Text style={ts.hpiCalloutTitle}>Add Optional HPI Vehicle Check</Text>
+              <Text style={ts.hpiCalloutSub}>Add a vehicle-history report if you want one; it is not required to publish.</Text>
             </View>
-            <View style={s.hpiCalloutBadge}>
-              <Text style={s.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
+            <View style={ts.hpiCalloutBadge}>
+              <Text style={ts.hpiCalloutPrice}>{hpiUnlocking ? '...' : '£9.99'}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -4071,7 +4075,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <View style={s.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -4080,11 +4084,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       />
 
       {/* Header */}
-      <View style={[s.header, { paddingTop: insets.top + 14 }]}>
-        <IconButton style={s.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={handleBack} accessibilityLabel="Go back" />
-        <View style={s.headerCenter}>
-          <Text style={s.headerSub}>SELL MY CAR</Text>
-          <Text style={s.headerTitle}>
+      <View style={[ts.header, { paddingTop: insets.top + 14 }]}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={handleBack} accessibilityLabel="Go back" />
+        <View style={ts.headerCenter}>
+          <Text style={ts.headerSub}>SELL MY CAR</Text>
+          <Text style={ts.headerTitle}>
             {step === 1 ? 'Vehicle Details' : step === 2 ? 'Media & Damage' : step === 3 ? 'Pricing' : (step === 4 && isAuction) ? 'Auction Schedule' : 'Review & Publish'}
           </Text>
         </View>
@@ -4098,25 +4102,25 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       </View>
 
       {editLoading ? (
-        <View style={s.editLoadingWrap}>
+        <View style={ts.editLoadingWrap}>
           <ActivityIndicator color={Colors.accent} size="large" />
-          <Text style={s.editLoadingText}>Loading your listing…</Text>
+          <Text style={ts.editLoadingText}>Loading your listing…</Text>
         </View>
       ) : (
         <>
           {renderStepper()}
 
           {!editMode && (
-            <View style={s.freshActionRow}>
+            <View style={ts.freshActionRow}>
               <TouchableOpacity
                 onPress={handleStartFresh}
                 activeOpacity={0.75}
-                style={s.freshActionBtn}
+                style={ts.freshActionBtn}
                 accessibilityRole="button"
                 accessibilityLabel="Start a fresh vehicle listing"
               >
                 <Ionicons name="refresh-outline" size={13} color={Colors.accent} />
-                <Text style={s.freshActionText}>START FRESH</Text>
+                <Text style={ts.freshActionText}>START FRESH</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -4161,20 +4165,20 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             </TouchableOpacity>
           )}
           {/* Bottom Actions */}
-          <View style={[s.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
+          <View style={[ts.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
             {step > 1 && (
-              <TouchableOpacity style={s.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
+              <TouchableOpacity style={ts.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
                 <Ionicons name="arrow-back" size={16} color={Colors.white} />
-                <Text style={s.backBtnSmText}>BACK</Text>
+                <Text style={ts.backBtnSmText}>BACK</Text>
               </TouchableOpacity>
             )}
             {step < totalSteps ? (
               <TouchableOpacity
-                style={s.nextBtn}
+                style={ts.nextBtn}
                 onPress={handleNext}
                 activeOpacity={0.8}
               >
-                <Text style={s.nextBtnText}>
+                <Text style={ts.nextBtnText}>
                   {step === 1 ? 'NEXT · MEDIA'
                     : step === 2 ? 'NEXT · PRICING'
                     : step === 3 && isAuction ? 'NEXT · AUCTION'
@@ -4185,7 +4189,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[s.nextBtn, s.publishBtn, isPublishing && { opacity: 0.7 }]}
+                style={[ts.nextBtn, ts.publishBtn, isPublishing && { opacity: 0.7 }]}
                 onPress={handlePublish}
                 activeOpacity={0.8}
                 disabled={isPublishing}
@@ -4193,7 +4197,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 {isPublishing
                   ? <ActivityIndicator color={Colors.white} size="small" />
                   : <>
-                      <Text style={s.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
+                      <Text style={ts.nextBtnText}>{editMode ? 'SAVE CHANGES' : 'PUBLISH LISTING'}</Text>
                       <Ionicons name="checkmark" size={16} color={Colors.white} style={{ marginLeft: 8 }} />
                     </>
                 }
@@ -4274,6 +4278,98 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+const lightSellFlowStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  sectionBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC', borderWidth: 1 },
+  methodChoice: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  optionalSectionToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  freshActionBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  dvlaField: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  motHistoryBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  pill: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  yesno: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  photoTab: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  uploadZone: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  photoThumb: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  dmgRecord: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  valuationCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  priceInputWrap: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  badgeCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  reviewCell: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  reviewFeatureChip: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  auctionModeBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  hpiCallout: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  photoTracker: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  proTip: { backgroundColor: '#FFFFFF' },
+  deliveryPreview: { backgroundColor: '#FFFFFF' },
+  pickerFieldInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  pickerSearchInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  input: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  vrmInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  priceInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  pickerOptionRow: { backgroundColor: '#F7FBFF' },
+  valuationNotice: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  editLoadingText: { color: '#0F172A' },
+  headerTitle: { color: '#0F172A' },
+  sectionBoxTitle: { color: '#0F172A' },
+  sectionLabel: { color: '#0F172A' },
+  pickerFieldValue: { color: '#0F172A' },
+  pickerOptionText: { color: '#0F172A' },
+  methodTitle: { color: '#0F172A' },
+  optionalSectionTitle: { color: '#0F172A' },
+  photoTrackerLabel: { color: '#0F172A' },
+  photoTrackerCount: { color: '#0F172A' },
+  uploadZoneTitle: { color: '#0F172A' },
+  dmgFormTitle: { color: '#0F172A' },
+  dmgRecordZone: { color: '#0F172A' },
+  motHistoryTitle: { color: '#0F172A' },
+  motHistoryDate: { color: '#0F172A' },
+  dvlaFieldValue: { color: '#0F172A' },
+  valuationCardLabel: { color: '#0F172A' },
+  valuationRetailPrice: { color: '#0F172A' },
+  valuationAuctionPrice: { color: '#0F172A' },
+  badgeLabel: { color: '#0F172A' },
+  badgePrice: { color: '#0F172A' },
+  reviewHeading: { color: '#0F172A' },
+  reviewCellValue: { color: '#0F172A' },
+  auctionModeBtnTitle: { color: '#0F172A' },
+  hpiCalloutTitle: { color: '#0F172A' },
+  methodDescription: { color: '#64748B' },
+  optionalSectionHint: { color: '#64748B' },
+  stepLabel: { color: '#64748B' },
+  stepperCurrent: { color: '#64748B' },
+  sectionBoxBody: { color: '#64748B' },
+  fieldHint: { color: '#64748B' },
+  deliveryPreviewText: { color: '#64748B' },
+  pickerFieldPlaceholder: { color: '#64748B' },
+  pickerEmptyText: { color: '#64748B' },
+  dvlaFieldLabel: { color: '#64748B' },
+  motHistoryMeta: { color: '#64748B' },
+  pillText: { color: '#64748B' },
+  yesnoText: { color: '#64748B' },
+  photoTabText: { color: '#64748B' },
+  uploadZoneHint: { color: '#64748B' },
+  uploadZoneFormats: { color: '#64748B' },
+  photoTrackerHint: { color: '#64748B' },
+  proTipText: { color: '#64748B' },
+  valuationStatusText: { color: '#64748B' },
+  valuationNoticeText: { color: '#64748B' },
+  valuationCardHint: { color: '#64748B' },
+  valuationEvidenceText: { color: '#64748B' },
+  valuationApplyText: { color: '#64748B' },
+  badgeSub: { color: '#64748B' },
+  badgeFeatureText: { color: '#64748B' },
+  reviewCellLabel: { color: '#64748B' },
+  reviewFeatureChipText: { color: '#64748B' },
+  auctionModeBtnHint: { color: '#64748B' },
+  hpiCalloutSub: { color: '#64748B' },
+  hpiCalloutPrice: { color: '#64748B' },
+  bottomBar: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
+  backBtnSm: { backgroundColor: '#F7FBFF' },
+  backBtnSmText: { color: '#334155' },
+});
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
