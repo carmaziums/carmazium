@@ -466,6 +466,21 @@ test('light appearance reaches nested KYC, CRM, dashboard and upload field compo
   assert.ok(!upload.includes('placeholderTextColor={Colors.borderMuted}'),'no unreadable fixed dim upload placeholder');
 });
 
+test('team cards and seller offer forms respond to light appearance',()=>{
+  const team=app('screens/main/DealerTeamScreen.tsx');
+  const seller=app('screens/seller/SellerOffersScreen.tsx');
+  const role=team.slice(team.indexOf('const RolePill: React.FC'), team.indexOf('// ─── Staff card'));
+  const staff=team.slice(team.indexOf('const StaffCard: React.FC'),team.indexOf('// ─── Main screen'));
+  for (const source of [role,staff]) {
+    assert.ok(source.includes('useAppearanceStore(state => state.mode)'),'nested dealer team component must subscribe to theme');
+    assert.ok(source.includes('mergeAppearanceStyles(styles, lightDealerTeamScreenStyles)'),'nested staff theme must preserve layout');
+    assert.ok(source.includes('style={ts.' )||source.includes('style={[ts.'),'nested staff components must use themed style');
+  }
+  assert.ok(role.includes("backgroundColor: mode === 'light' ? '#FFFFFF'"),'unselected role chips must not blend into light mode');
+  assert.ok(!seller.includes('placeholderTextColor={Colors.textMuted}'),'offer input placeholders cannot keep pale dark token');
+  assert.ok(seller.includes("placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}"));
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
