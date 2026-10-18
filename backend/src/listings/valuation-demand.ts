@@ -24,6 +24,8 @@ export function assessFirstPartyMarketDemand(
         auction?: {
             updatedAt?: Date | string | null;
             winningBidAmount?: unknown;
+            sellerFundsConfirmedAt?: Date | string | null;
+            buyerRefusedAt?: Date | string | null;
         } | null;
     }>,
     now = new Date(),
@@ -36,10 +38,11 @@ export function assessFirstPartyMarketDemand(
     const active = rows.filter(row => row.status === 'ACTIVE').length;
     const sold = rows.filter(row =>
         inWindow(row.sale?.createdAt)
-        || (row.offers ?? []).some(offer => inWindow(offer.updatedAt))
         || (
             Number(row.auction?.winningBidAmount) > 0
-            && inWindow(row.auction?.updatedAt)
+            && row.auction?.sellerFundsConfirmedAt != null
+            && row.auction?.buyerRefusedAt == null
+            && inWindow(row.auction?.sellerFundsConfirmedAt)
         )
     ).length;
     const neutral = {
