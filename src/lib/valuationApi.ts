@@ -59,6 +59,7 @@ export interface VehicleValuation {
         liveUkSearchStatus?: 'USED' | 'INSUFFICIENT' | 'UNAVAILABLE'
         rawLiveUkComparables?: number
         liveUkAttempts?: number
+        firecrawlVerifiedComparables?: number
         blendedMarketAttempts?: number
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK'
         demand?: {
