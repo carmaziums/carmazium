@@ -7,6 +7,11 @@ const ICON_MAP: Record<string, string> = {
   // Navigation
   'home-outline': 'Home',
   'home': 'Home',
+  'menu': 'Menu',
+  'menu-outline': 'Menu',
+  'apps-outline': 'LayoutGrid',
+  'apps': 'LayoutGrid',
+  'help-circle': 'CircleHelp',
   'chevron-back': 'ChevronLeft',
   'chevron-forward': 'ChevronRight',
   'chevron-up': 'ChevronUp',
