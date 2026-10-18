@@ -5,7 +5,7 @@ name: CarMazium Android standalone QA APK (no Expo credentials)
 # or publish to the production Expo OTA channel.
 on:
   push:
-    branches: [main, fix/native-home-card-preserve-qa-20261018]
+    branches: [main, fix/native-home-card-preserve-qa-20261018, fix/native-qa-restore-approved-navigation-20261018]
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx'
@@ -107,6 +107,13 @@ jobs:
           if (app.expo.android.package !== 'uk.carmazium.qa' || app.expo.updates.enabled !== false) throw new Error('Unsafe QA app configuration');
           console.log('QA Android package and disabled OTA verified. Public preview environment selected.');
           NODE
+      - name: Verify reference navigation and mobile UI contract before packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          node ../../scripts/test-native-website-ui-parity.test.mjs
+          node ../../scripts/test-native-visual-parity-block9.test.mjs
+          node ../../scripts/test-native-visual-parity-block8.test.mjs
       - name: Typecheck QA app
         run: npm run typescript
       - name: Generate native Android project from managed Expo config
@@ -136,6 +143,21 @@ jobs:
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
           "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
+          # Compare shipped Hermes JavaScript labels against the owner's supplied
+          # 18 Oct reference APK (SHA256 dfc4c4d83266...ce2f4b5b2).
+          # Prevent the old sprawling menu from reappearing in an approved QA build.
+          python3 - "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" <<'PY'
+          import sys,zipfile
+          with zipfile.ZipFile(sys.argv[1]) as apk_file:
+              js=apk_file.read('assets/index.android.bundle')
+          required=[b'Dealer Tools',b'Get Valuation',b'User Dashboard']
+          missing=[name.decode() for name in required if name not in js]
+          if missing:
+              raise SystemExit('Wrong navigation bundle; required approved-reference labels missing: '+', '.join(missing))
+          if b'More pages & information' in js:
+              raise SystemExit('Old expanded-menu bundle detected; refuse to publish incorrect QA APK')
+          print('Approved reference-menu labels found in packaged Android bundle.')
+          PY
           sha256sum "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | tee "$GITHUB_WORKSPACE/qa-apk/SHA256SUMS.txt"
           {
             echo '### CarMazium Android QA APK — standalone installation'
