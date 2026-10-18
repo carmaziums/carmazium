@@ -271,6 +271,28 @@ test('AA contrast in light-mode text and statuses across every pale background',
   assert.ok(valuation.includes("mode === 'light' ? '#526177' : Colors.textMuted"),'text-input placeholders must not stay pale on white');
 });
 
+test('Trader Verification light sheet retains readable text, error notice and input hints',()=>{
+  const settings=app('screens/main/SettingsScreen.tsx');
+  const errorBanner=app('components/ui/ErrorBanner.tsx');
+  const sheet=app('components/BottomSheet.tsx');
+  for(const token of [
+    "verifyStepTitle: { color: '#0F172A' }",
+    "verifyStepSub: { color: '#334155' }",
+    "verifyModalBody: { backgroundColor: '#FFFFFF' }",
+    "inputField: { color: '#0F172A', backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' }",
+    "placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}",
+    "appearanceMode === 'light' && lightSettingsStyles.verifyStepTitle",
+    "appearanceMode === 'light' && lightSettingsStyles.verifyStepSub",
+    "appearanceMode === 'light' && lightSettingsStyles.resendLinkText",
+  ]) assert.ok(settings.includes(token), 'Trader Verification must be readable: '+token);
+  assert.ok(errorBanner.includes("light && { color: '#7F1D1D' }"),
+    'QA READ ONLY warning must show dark red text on pale red background');
+  assert.ok(errorBanner.includes("backgroundColor: '#FDECEC'"),
+    'ErrorBanner needs its own accessible pale red surface');
+  assert.ok(sheet.includes('numberOfLines={2} ellipsizeMode="tail"'),
+    'Trader Verification step heading must not be clipped to one line');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
