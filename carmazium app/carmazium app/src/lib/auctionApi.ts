@@ -82,6 +82,12 @@ export interface AuctionListingDetail {
   transmission: string;
   category?: string | null;
   bodyType?: string | null;
+  vehicleType?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  ulezCompliant?: boolean | null;
+  euroStandard?: string | null;
+  driveType?: string | null;
   condition?: string | null;
   colour?: string | null;
   // Card-parity fields (Buy Cars ↔ Auction card parity) — all real fields
