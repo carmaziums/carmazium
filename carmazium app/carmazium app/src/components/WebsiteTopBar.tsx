@@ -52,7 +52,7 @@ export const WebsiteTopBar: React.FC = () => {
           accessibilityLabel="Notifications"
           activeOpacity={0.75}
         >
-          <Ionicons name="notifications-outline" size={20} color={palette.secondary} />
+          <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.accountButton, appearanceMode === 'light' && { backgroundColor: palette.input, borderColor: palette.border }]}
