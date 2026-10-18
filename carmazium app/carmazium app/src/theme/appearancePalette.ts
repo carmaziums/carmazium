@@ -64,3 +64,57 @@ export function mergeAppearanceStyles<T extends Record<string, object>>(
   }
   return result;
 }
+
+/**
+ * Transitional semantic palette for legacy screens that still hold their
+ * dark-mode StyleSheet in a single file. Preserves EVERY base layout property.
+ * Only neutral text/surface/border tokens are mapped. Never recolour warning,
+ * success, error or brand-filled actions (including text on red CTA buttons).
+ *
+ * This is a safety net, not a substitute for individual page visual QA:
+ * gradients, inline styles, images and third-party components need inspection.
+ */
+export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T): T {
+  const patch: Partial<Record<keyof T, object>> = {};
+  const rootBackgrounds = new Set([Colors.bgPrimary, Colors.bgBody]);
+  const lightCards = new Set([
+    Colors.bgSecondary, Colors.bgTertiary, Colors.bgCardSolid, Colors.bgSurface,
+    Colors.bgCard, Colors.bgCardHi, Colors.bgElevated, Colors.inputBg,
+  ]);
+  const neutralBorders = new Set([Colors.border, Colors.borderHi,
+    Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.inputBorder]);
+  for (const [name, raw] of Object.entries(base)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const value = raw as Record<string, unknown>;
+    const changes: Record<string, string> = {};
+    const id = name.toLowerCase();
+    const bg = value.backgroundColor;
+    const action = /(?:primary|danger|success|error|warning|active|selected|brand|accent|submit|publish|confirm|cancel|red|green|blue|badge|status|trophy|avatar|photo|overlay|image)/.test(id);
+    if (!action && typeof bg === 'string' && rootBackgrounds.has(bg)) {
+      changes.backgroundColor = light.background;
+    } else if (!action && typeof bg === 'string' && lightCards.has(bg)) {
+      changes.backgroundColor = /input|field|search|picker/.test(id) ? light.elevated : light.card;
+    }
+    if (!action && typeof value.borderColor === 'string' && neutralBorders.has(value.borderColor)) {
+      changes.borderColor = light.border;
+    }
+    if (!action && typeof value.borderBottomColor === 'string' && neutralBorders.has(value.borderBottomColor)) {
+      changes.borderBottomColor = light.border;
+    }
+    if (!action && typeof value.borderTopColor === 'string' && neutralBorders.has(value.borderTopColor)) {
+      changes.borderTopColor = light.border;
+    }
+    const textLike = /(?:title|label|text|heading|subtitle|subtext|body|desc|hint|value|amount|meta|date|name|copy|price|caption|placeholder)/.test(id);
+    if (textLike && !action) {
+      if (value.color === Colors.textPrimary || value.color === Colors.white) {
+        changes.color = light.text;
+      } else if (value.color === Colors.textSecondary) {
+        changes.color = light.secondary;
+      } else if (value.color === Colors.textMuted || value.color === Colors.textFaint || value.color === Colors.iconMuted) {
+        changes.color = light.muted;
+      }
+    }
+    if (Object.keys(changes).length) patch[name as keyof T] = changes;
+  }
+  return mergeAppearanceStyles(base, patch);
+}
