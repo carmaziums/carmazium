@@ -84,7 +84,7 @@ test('all native screen full-page dark gradients have a light path, except brand
     const content=readFileSync(file,'utf8');
     // A literal full-page gradient containing bgPrimary always draws navy,
     // regardless of a separately themed container or card style.
-    const regex=/<LinearGradient\\b[\\s\\S]{0,250}?colors=\\{\\s*\\[([^\\]]*)\\]\\s*\\}/g;
+    const regex=/<LinearGradient\b[\s\S]{0,250}?colors=\{\s*\[([^\]]*)\]\s*\}/g;
     for(const match of content.matchAll(regex)){
       if(!match[1].includes('Colors.bgPrimary'))continue;
       total++;
