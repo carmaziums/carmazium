@@ -91,7 +91,9 @@ test('remaining buyer journeys do not show dark gradients or white controls in l
   assert.ok(account.includes("appearanceMode === 'light' ? '#0F172A' : Colors.textPrimary"),
     'Messages icon is not white on a white card');
   const palette=app('theme/appearancePalette.ts');
-  assert.ok(palette.includes('Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04'));
+  for(const transparent of ['Colors.glassBg','Colors.whiteAlpha02','Colors.whiteAlpha03','Colors.whiteAlpha04']) {
+    assert.ok(palette.includes(transparent),'legacy translucent surface not converted: '+transparent);
+  }
   for(const alpha of ['Colors.whiteAlpha05','Colors.whiteAlpha06','Colors.whiteAlpha07',
     'Colors.whiteAlpha08','Colors.whiteAlpha09','Colors.whiteAlpha10','Colors.whiteAlpha12']){
     assert.ok(palette.includes(alpha),'neutral glass surface not converted in light mode: '+alpha);
