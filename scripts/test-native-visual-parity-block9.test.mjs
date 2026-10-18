@@ -511,6 +511,41 @@ test('chat messages theme at row level and keep white text on outgoing red bubbl
     'outgoing red chat bubbles retain white text while received white bubbles use navy');
 });
 
+test('every non-splash native screen declares a light/dark appearance path',()=>{
+  const screenRoot=resolve(root,'carmazium app/carmazium app/src/screens');
+  const walk=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(e=>
+    e.isDirectory() ? walk(resolve(dir,e.name)) :
+    e.name.endsWith('.tsx') ? [resolve(dir,e.name)] : []);
+  const files=walk(screenRoot);
+  // The launch splash deliberately retains the navy brand identity.
+  assert.ok(files.length >= 81, 'detect silently omitted native screens');
+  for(const file of files) {
+    if(file.endsWith('/loading/SplashScreen.tsx')) continue;
+    const code=readFileSync(file,'utf8');
+    assert.ok(code.includes('useAppearanceStore'),file+' must subscribe to user light/dark selection');
+    assert.ok(code.includes('adaptLegacyLightStyles(') ||
+      code.includes('mergeAppearanceStyles(') ||
+      code.includes("appearanceMode === 'light'") ||
+      code.includes("mode === 'light'"),
+      file+' must apply that theme to its surfaces, not merely read the preference');
+  }
+});
+
+test('shared light palette remaps legacy pale text without recolouring branded CTA labels',()=>{
+  const src=app('theme/appearancePalette.ts');
+  assert.ok(src.includes('Colors.lightGrey'), 'pale grey labels were invisible on white');
+  assert.ok(src.includes('Colors.paleBlue_e2e2ea'), 'legacy pale blue labels are not readable on white');
+  assert.ok(src.includes('Colors.inputPlaceholder'), 'legacy muted placeholders need a darker foreground');
+  assert.ok(src.includes('legacyPaleText.has(value.color)'), 'use semantic muted text');
+  assert.ok(src.includes('changes.color = lightReadableText.warning'), 'warning copy needs an AA-level amber');
+  assert.ok(src.includes('changes.color = lightReadableText.info'), 'info copy needs an AA-level blue');
+  assert.ok(src.includes('textLike && !action'), 'never change filled CTA white foreground');
+  assert.ok(src.includes("name.toLowerCase()"), 'adapt by named styles, not blindly by colour');
+  const menu=app('components/GlobalDrawer.tsx');
+  assert.ok(menu.includes("rowLabelActive: { color: '#7F1D1D' }"),
+    'light-mode selected Menu row must have dark red foreground');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
