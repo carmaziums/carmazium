@@ -166,6 +166,115 @@ const numOrNull = (v: string): number | null => {
   return Number.isFinite(n) ? n : Number.NaN;
 };
 
+const EQUIVALENT_FEATURE_LABELS: string[][] = [
+  [
+    "Navigation",
+    "Sat Nav",
+    "Satellite Navigation",
+    "GPS Navigation"
+  ],
+  [
+    "Bluetooth",
+    "Bluetooth / Hands Free",
+    "Bluetooth Hands-Free",
+    "Bluetooth Hands Free"
+  ],
+  [
+    "Reverse Camera",
+    "Reversing Camera",
+    "Rear View Camera",
+    "Rear-View Camera",
+    "Rear Camera"
+  ],
+  [
+    "360 Camera",
+    "360° Camera",
+    "Surround View Camera",
+    "Surround Camera"
+  ],
+  [
+    "Parking Sensors",
+    "Front and Rear Parking Sensors",
+    "Parking Sensors (Front)",
+    "Parking Sensors (Rear)"
+  ],
+  [
+    "Front Parking Sensors",
+    "Parking Sensors (Front)",
+    "Front and Rear Parking Sensors"
+  ],
+  [
+    "Rear Parking Sensors",
+    "Parking Sensors (Rear)",
+    "Front and Rear Parking Sensors"
+  ],
+  [
+    "Electric Tailgate",
+    "Power Tailgate",
+    "Powered Tailgate"
+  ],
+  [
+    "Wireless Phone Charging",
+    "Wireless Charging",
+    "Wireless Smartphone Charging"
+  ],
+  [
+    "ISOFIX",
+    "ISOFIX Child Seat Mounts",
+    "ISOFIX Points"
+  ],
+  [
+    "LED Headlights",
+    "LED Headlamps"
+  ],
+  [
+    "Lane Assist",
+    "Lane Keep Assist",
+    "Lane Keeping Assist"
+  ],
+  [
+    "Electronic Stability Control",
+    "ESP",
+    "ESC",
+    "Stability Control"
+  ],
+  [
+    "Tyre Pressure Monitoring",
+    "TPMS",
+    "Tyre Pressure Monitoring System"
+  ],
+  [
+    "Power-Folding Mirrors",
+    "Electric Folding Mirrors",
+    "Folding Mirrors"
+  ],
+  [
+    "Panoramic Roof",
+    "Panoramic Sunroof"
+  ],
+  [
+    "Electric Seats",
+    "Electric Front Seats",
+    "Electrically Adjustable Seats"
+  ],
+  [
+    "Heated Seats",
+    "Heated Front Seats"
+  ],
+  [
+    "Climate Control",
+    "Automatic Climate Control"
+  ],
+  [
+    "Front Fog Lights",
+    "Fog Lights"
+  ],
+  [
+    "Rear Entertainment",
+    "Rear Seat Entertainment"
+  ]
+];
+
 /** How many filter groups are active — drives the badge on the Filters button. */
 export const countActiveAuctionFilters = (f: AuctionFilterState): number =>
   [
@@ -229,10 +338,17 @@ export const matchesAuctionFilters = (
   if (filters.driveType && norm(listing.driveType) !== norm(filters.driveType)) return false;
   if (filters.conditions.length && !filters.conditions.some(x => norm(x) === norm(listing.condition))) return false;
   if (filters.exteriorGrades.length && (listing.exteriorGrade == null || !filters.exteriorGrades.includes(listing.exteriorGrade))) return false;
-  if (filters.writeOffCategories.length && !filters.writeOffCategories.some(x => norm(x) === norm(listing.writeOffCategory))) return false;
+  if (filters.writeOffCategories.length && !filters.writeOffCategories.some(x =>
+    norm(x) === norm(listing.writeOffCategory) ||
+    // Same legacy Cat S/N/C/D condition fallback as website grade-search.
+    (['cats', 'catn', 'catc', 'catd'].includes(norm(x)) && norm(x) === norm(listing.condition))
+  )) return false;
   if (filters.ulezCompliant && listing.ulezCompliant !== (filters.ulezCompliant === 'yes')) return false;
   if (filters.euroStandard && norm(listing.euroStandard) !== norm(filters.euroStandard)) return false;
-  if (filters.features.length && !filters.features.every(feature => (listing.features || []).some(x => norm(x) === norm(feature)))) return false;
+  if (filters.features.length && !filters.features.every(feature => {
+    const aliases = EQUIVALENT_FEATURE_LABELS.find(labels => labels.some(label => norm(label) === norm(feature))) || [];
+    return (listing.features || []).some(actual => [feature, ...aliases].some(label => norm(label) === norm(actual)));
+  })) return false;
   if (filters.sellerType && listing.sellerType !== filters.sellerType) return false;
   if (filters.vehicleType && norm(listing.vehicleType) !== norm(filters.vehicleType)) return false;
   if (filters.isImported && listing.isImported !== (filters.isImported === 'yes')) return false;
