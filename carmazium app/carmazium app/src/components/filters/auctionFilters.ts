@@ -160,8 +160,10 @@ const norm = (v: unknown): string =>
 
 const numOrNull = (v: string): number | null => {
   if (!v.trim()) return null;
-  const n = Number(v.replace(/[^0-9.]/g, ''));
-  return Number.isFinite(n) ? n : null;
+  const clean = v.trim().replace(/[£,\\s]/g, '');
+  if (!/^\\d+(?:\\.\\d+)?$/.test(clean)) return Number.NaN;
+  const n = Number(clean);
+  return Number.isFinite(n) ? n : Number.NaN;
 };
 
 /** How many filter groups are active — drives the badge on the Filters button. */
@@ -201,6 +203,7 @@ export const matchesAuctionFilters = (
   ): boolean => {
     const lower = numOrNull(min);
     const upper = numOrNull(max);
+    if (Number.isNaN(lower) || Number.isNaN(upper)) return false;
     if (lower == null && upper == null) return true;
     if (!hasNumber(value)) return false; // Not supplied ≠ zero.
     return (lower == null || value >= lower) && (upper == null || value <= upper);
@@ -209,7 +212,8 @@ export const matchesAuctionFilters = (
   if (filters.model.trim() && !norm(listing.model).includes(norm(filters.model))) return false;
   if (filters.variant.trim() && !norm(listing.variant).includes(norm(filters.variant))) return false;
   if (filters.bodyTypes.length && !filters.bodyTypes.some(b => norm(b) === norm(listing.bodyType ?? listing.category))) return false;
-  if (filters.fuelTypes.length && !filters.fuelTypes.some(x => norm(x) === norm(listing.fuelType))) return false;
+  const normFuel = (value: unknown) => norm(value) === 'hydrogen' ? 'hydrogencell' : norm(value);
+  if (filters.fuelTypes.length && !filters.fuelTypes.some(x => normFuel(x) === normFuel(listing.fuelType))) return false;
   if (filters.transmissions.length && !filters.transmissions.some(x => norm(x) === norm(listing.transmission))) return false;
   if (!matchesMinMax(listing.year, filters.minYear, filters.maxYear)) return false;
   if (!matchesMinMax(listing.mileage, filters.minMileage, filters.maxMileage)) return false;
