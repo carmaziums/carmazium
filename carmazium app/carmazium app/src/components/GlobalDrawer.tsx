@@ -386,8 +386,8 @@ const lightGlobalDrawerStyles = StyleSheet.create({
   closeBtn: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
   userCard: { backgroundColor: '#FFFFFF' },
   userName: { color: '#0F172A' },
-  userEmail: { color: '#64748B' },
-  groupLabel: { color: '#64748B' },
+  userEmail: { color: '#526177' },
+  groupLabel: { color: '#526177' },
   row: { backgroundColor: '#FFFFFF' },
   rowLabel: { color: '#0F172A' },
   subMenu: { backgroundColor: '#F7FBFF' },
@@ -399,7 +399,7 @@ const lightGlobalDrawerStyles = StyleSheet.create({
   divider: { backgroundColor: '#D5E1EC' },
   footer: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
   footerBrand: { color: '#0F172A' },
-  footerTagline: { color: '#64748B' },
+  footerTagline: { color: '#526177' },
 });
 
 const styles = StyleSheet.create({
