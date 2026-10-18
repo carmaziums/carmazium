@@ -1457,11 +1457,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       </View>
 
       {/* Status tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={ts.tabsContent}
-      >
+      <View style={ts.tabsContent}>
         {(['ALL', 'LIVE', 'SCHEDULED', 'ENDED', 'WON'] as TabFilter[]).map(tab => (
           <TouchableOpacity
             key={tab}
@@ -1474,7 +1470,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* A failed API request must not appear as an empty auction portfolio. */}
       {(activeTab === 'WON' ? wonFetchError : auctionsFetchError) && (
@@ -2195,13 +2191,18 @@ const styles = StyleSheet.create({
     color: Colors.white,
   },
   tabsContent: {
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    paddingHorizontal: 15,
     gap: 8,
-    paddingBottom: 16,
+    paddingBottom: 14,
   },
   tab: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    minHeight: 40,
+    justifyContent: 'center',
     borderRadius: Radius.card,
     backgroundColor: Colors.whiteAlpha04,
     borderWidth: 1,
