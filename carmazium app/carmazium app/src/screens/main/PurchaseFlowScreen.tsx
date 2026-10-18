@@ -500,6 +500,8 @@ const lightPurchaseFlowScreenStyles = StyleSheet.create({
   successWrap: { backgroundColor: '#FFFFFF' },
   successTitle: { color: '#0F172A' },
   successSub: { color: '#64748B' },
+  bottomNote: { color: '#64748B' },
+  heroImgPlaceholder: { backgroundColor: '#F7FBFF' },
 });
 
 const styles = StyleSheet.create({
