@@ -773,7 +773,7 @@ export const SearchScreen: React.FC = () => {
         }
         renderItem={renderListingItem}
         ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-        onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
+        onEndReached={() => { if (!loading && !searchError && listings.length > 0 && hasMore && !loadingMore) fetch(false); }}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
           loading && listings.length === 0 ? (
