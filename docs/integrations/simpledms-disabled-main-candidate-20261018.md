@@ -3,7 +3,7 @@
 **Status: DRAFT, DO NOT MERGE OR DEPLOY AS A PARTNER LAUNCH.** This candidate ports the older partner API code and its existing test suite onto current CarMazium `main` without replacing current user, auction, pricing, payment, listing, DVLA or MOT code. There is no schema migration, customer data export, production credential creation or enabling operation in this PR.
 
 ## Default deny design
-- Both `PARTNER_API_ENABLED=true` **and** `PARTNER_API_SIMPLEDMS_ENABLED=true` would eventually be required before a partner route can return anything; neither flag is set by this PR and the defaults are OFF.
+- Three explicit flags must be true to expose the partner routes: `PARTNER_API_ENABLED=true`, `PARTNER_API_SIMPLEDMS_ENABLED=true`, and the separate final written-release approval sentinel `PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED=true`. The last gate is never set by this PR and defaults to OFF. Even an accidentally existing partner key and the two earlier flags cannot expose the feed before the third gate is intentionally provisioned.
 - Authenticated `X-Partner-Key` header with SHA-256 digest comparison; no CarMazium session, Supabase access token or admin key authorises the feed.
 - Inventory and single-auction endpoints share the same eligibility filter: live ACTIVE auctions, ACTIVE AUCTION-type unwithdrawn listings and non-null `partnerDistributionAcceptedAt`. No inferred acceptance or legacy backfill.
 - No seller/bidder identity, reserve, private KYC/finance or buyer contacts are selected. Registration, current valid bid, region and current-live image URLs each require specific opt-in settings.
