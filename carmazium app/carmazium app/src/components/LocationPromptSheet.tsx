@@ -6,6 +6,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 
@@ -39,6 +41,8 @@ export const LocationPromptSheet: React.FC = () => {
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const updateUser = useAuthStore((s) => s.updateUser);
 
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLocationPromptStyles) : styles;
   const [dismissed, setDismissed] = useState(dismissedThisSession);
   const [location, setLocation] = useState('');
   const [postcode, setPostcode] = useState('');
@@ -86,19 +90,19 @@ export const LocationPromptSheet: React.FC = () => {
 
   return (
     <BottomSheet visible onClose={handleDismiss} title="Complete your profile" avoidKeyboard>
-      <View style={styles.body}>
-        <View style={styles.iconWrap}>
+      <View style={ts.body}>
+        <View style={ts.iconWrap}>
           <Ionicons name="location-outline" size={20} color={Colors.accent} />
         </View>
 
-        <Text style={styles.blurb}>
+        <Text style={ts.blurb}>
           Add your town and postcode so we can show you distance to vehicles and
           accurate delivery estimates.
         </Text>
 
-        <Text style={styles.label}>Town or city</Text>
+        <Text style={ts.label}>Town or city</Text>
         <TextInput
-          style={styles.input}
+          style={ts.input}
           value={location}
           onChangeText={setLocation}
           placeholder="e.g. Manchester"
@@ -107,9 +111,9 @@ export const LocationPromptSheet: React.FC = () => {
           editable={!saving}
         />
 
-        <Text style={styles.label}>Postcode</Text>
+        <Text style={ts.label}>Postcode</Text>
         <TextInput
-          style={styles.input}
+          style={ts.input}
           value={postcode}
           onChangeText={setPostcode}
           placeholder="e.g. M1 2AB"
@@ -119,10 +123,10 @@ export const LocationPromptSheet: React.FC = () => {
           editable={!saving}
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={ts.error}>{error}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          style={[ts.saveBtn, saving && ts.saveBtnDisabled]}
           onPress={handleSave}
           disabled={saving}
           activeOpacity={0.85}
@@ -131,7 +135,7 @@ export const LocationPromptSheet: React.FC = () => {
           {saving ? (
             <ActivityIndicator size="small" color={Colors.white} />
           ) : (
-            <Text style={styles.saveBtnText}>Save</Text>
+            <Text style={ts.saveBtnText}>Save</Text>
           )}
         </TouchableOpacity>
 
@@ -141,12 +145,19 @@ export const LocationPromptSheet: React.FC = () => {
           activeOpacity={0.7}
           accessibilityRole="button"
         >
-          <Text style={styles.laterText}>Not now</Text>
+          <Text style={ts.laterText}>Not now</Text>
         </TouchableOpacity>
       </View>
     </BottomSheet>
   );
 };
+
+const lightLocationPromptStyles = StyleSheet.create({
+  blurb: {color: '#334155'},
+  label: {color: '#334155'},
+  input: {backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC'},
+  laterText: {color: '#526177'},
+});
 
 const styles = StyleSheet.create({
   body: {
