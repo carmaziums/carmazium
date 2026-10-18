@@ -13,7 +13,7 @@ import { Colors } from '../../constants/colors';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
-import { CAR_MAKES, getModelsForMake } from '../../data/carData';
+import { CAR_MAKES, getModelsForMake, getVariantsForModel } from '../../data/carData';
 import { VEHICLE_FEATURE_GROUPS } from '../../data/vehicleFeatures';
 import { EXTERIOR_GRADE_OPTIONS } from '../../lib/exteriorGrade';
 import { useLocation } from '../../context/LocationContext';
@@ -26,6 +26,7 @@ import {
 } from './auctionFilters';
 
 // Match the full website/retail catalogue rather than just five common fuels.
+const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes-Benz', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Land Rover', 'Tesla'];
 const FUEL_OPTIONS = [
   'Petrol', 'Diesel', 'Hybrid', 'Plug-in Hybrid', 'Electric',
   'LPG', 'Hydrogen', 'Bi Fuel', 'Natural Gas', 'Petrol Hybrid',
@@ -90,7 +91,7 @@ const Pill: React.FC<{ label: string; selected: boolean; onPress: () => void }> 
     accessibilityRole="button"
     accessibilityState={{ selected }}
   >
-    <Text style={[styles.pillText, selected && styles.pillTextSelected]} numberOfLines={1}>
+    <Text style={[styles.pillText, selected && styles.pillTextSelected]} numberOfLines={2}>
       {label}
     </Text>
   </TouchableOpacity>
@@ -122,8 +123,9 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   const hasDistanceOrigin = latitude != null && longitude != null;
   const makeOptions = Array.from(new Set([...CAR_MAKES, ...availableMakes, ...draft.makes]));
   const searchedMakes = makeOptions.filter(m => m.toLowerCase().includes(makeQuery.trim().toLowerCase()));
-  const visibleMakes = makeQuery.trim() ? searchedMakes : showAllMakes ? makeOptions : [...new Set([...availableMakes, ...draft.makes, ...CAR_MAKES.slice(0, 12)])];
+  const visibleMakes = makeQuery.trim() ? searchedMakes : showAllMakes ? makeOptions : [...new Set([...availableMakes, ...draft.makes, ...POPULAR_MAKES])];
   const modelOptions = draft.makes.length === 1 ? getModelsForMake(draft.makes[0]) : [];
+  const variantOptions = draft.makes.length === 1 && draft.model.trim() ? getVariantsForModel(draft.makes[0], draft.model) : [];
 
 
   // Re-seed the draft each time the sheet opens so a cancelled edit doesn't
@@ -217,6 +219,15 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           <Section title="Variant / trim">
             <TextInput style={styles.input} value={draft.variant} onChangeText={t => set('variant', t)}
               placeholder="e.g. M Sport, GT Line" placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} />
+            {variantOptions.length > 0 && (
+              <View style={[styles.pillWrap, { marginTop: 10 }]}>
+                {variantOptions.filter(v => !draft.variant || v.toLowerCase().includes(draft.variant.toLowerCase()))
+                  .slice(0, 30).map(v => (
+                    <Pill key={v} label={v} selected={draft.variant === v}
+                      onPress={() => set('variant', draft.variant === v ? '' : v)} />
+                  ))}
+              </View>
+            )}
           </Section>
 
           <Section title="Body type">
@@ -501,6 +512,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pill: {
+    maxWidth: '100%',
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: Radius.pill,
@@ -516,6 +528,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size12,
     color: Colors.textSecondary,
+    lineHeight: 18,
   },
   pillTextSelected: {
     color: Colors.accent,
