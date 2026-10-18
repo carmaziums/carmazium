@@ -33,6 +33,8 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -163,6 +165,8 @@ const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightVehicleDetailStyles) : styles;
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
   const { refreshRooms } = useChat();
@@ -757,7 +761,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     const extraCount = totalImages - maxThumbnails;
 
     return (
-      <View style={styles.thumbnailRow}>
+      <View style={ts.thumbnailRow}>
         {itemsToShow.map((img, idx) => {
           const isActive = activeImage === idx;
           const isLast = idx === maxThumbnails - 1;
@@ -766,15 +770,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               key={idx}
               activeOpacity={0.8}
               style={[
-                styles.thumbnailWrapper,
-                isActive && styles.thumbnailActive,
+                ts.thumbnailWrapper,
+                isActive && ts.thumbnailActive,
               ]}
               onPress={() => handleThumbnailPress(idx)}
             >
-              <Image source={{ uri: img }} style={styles.thumbnailImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+              <Image source={{ uri: img }} style={ts.thumbnailImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
               {isLast && extraCount > 0 && (
-                <View style={styles.thumbnailOverlay}>
-                  <Text style={styles.thumbnailOverlayText}>+{extraCount + 1}</Text>
+                <View style={ts.thumbnailOverlay}>
+                  <Text style={ts.thumbnailOverlayText}>+{extraCount + 1}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -785,32 +789,32 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Main Scrollable Content */}
       <ScrollView
-        style={styles.scrollView}
+        style={ts.scrollView}
         contentContainerStyle={[
-          styles.scrollContent,
+          ts.scrollContent,
           { paddingBottom: insets.bottom + 120 },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Gallery Section — spring-snap gesture gallery */}
-        <View style={styles.galleryContainer}>
+        <View style={ts.galleryContainer}>
           <GestureDetector gesture={galleryPanGesture}>
-            <Animated.View style={[styles.galleryStrip, galleryAnimatedStyle]}>
+            <Animated.View style={[ts.galleryStrip, galleryAnimatedStyle]}>
               {images.map((img, idx) => (
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={0.95}
                   onPress={() => openFullscreen(idx)}
-                  style={styles.galleryImageWrap}
+                  style={ts.galleryImageWrap}
                 >
                   <Image
                     source={{ uri: img }}
-                    style={styles.galleryImage}
+                    style={ts.galleryImage}
                     contentFit="cover"
                     transition={200}
                     cachePolicy="memory-disk"
@@ -823,31 +827,31 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Page dot indicator */}
           {totalImages > 1 && (
-            <View style={styles.pageDots}>
+            <View style={ts.pageDots}>
               {images.map((_, idx) => (
                 <View
                   key={idx}
-                  style={[styles.pageDot, activeImage === idx && styles.pageDotActive]}
+                  style={[ts.pageDot, activeImage === idx && ts.pageDotActive]}
                 />
               ))}
             </View>
           )}
 
           {/* Photo counter */}
-          <View style={styles.photoCounter}>
-            <Text style={styles.photoCounterText}>
+          <View style={ts.photoCounter}>
+            <Text style={ts.photoCounterText}>
               {activeImage + 1}/{totalImages}
             </Text>
           </View>
 
           {/* Floating Header Actions */}
-          <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-            <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+          <View style={[ts.floatingHeader, { top: insets.top + 8 }]}>
+            <IconButton style={ts.iconCircleBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-            <View style={styles.headerRightActions}>
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
-              <IconButton style={styles.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+            <View style={ts.headerRightActions}>
+              <IconButton style={ts.iconCircleBtn} icon={<Ionicons name="git-compare-outline" size={18} color={Colors.white} />} onPress={() => navigation.navigate('Compare', { initialListing: listing })} accessibilityLabel="Compare this car" />
+              <IconButton style={ts.iconCircleBtn} icon={<Ionicons name="share-social-outline" size={18} color={Colors.white} />} onPress={() => Share.share({ message: `Check out this ${listing.year} ${listing.make} ${listing.model} on Carmazium!` })} accessibilityLabel="Share this listing" />
+              <IconButton style={ts.iconCircleBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggleSaved} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
             </View>
           </View>
 
@@ -856,38 +860,38 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
 
         {/* Content Details Block */}
-        <View style={styles.detailsBlock}>
+        <View style={ts.detailsBlock}>
           {/* Subtitle / Verification Tag */}
-          <View style={styles.verifiedHeaderRow}>
-            <Text style={styles.colorLabel}>
+          <View style={ts.verifiedHeaderRow}>
+            <Text style={ts.colorLabel}>
               {listing.colour.toUpperCase()}
             </Text>
             {listing.isSellerVerified === true && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>✓ VERIFIED</Text>
+              <View style={ts.verifiedBadge}>
+                <Text style={ts.verifiedText}>✓ VERIFIED</Text>
               </View>
             )}
           </View>
 
           {/* Seller-set banner ribbon (e.g. "Price Drop", "Just Arrived") */}
           {listing.bannerLabel && (
-            <View style={styles.detailBannerChip}>
-              <Text style={styles.detailBannerText}>{listing.bannerLabel}</Text>
+            <View style={ts.detailBannerChip}>
+              <Text style={ts.detailBannerText}>{listing.bannerLabel}</Text>
             </View>
           )}
 
           {/* Car Name & Model */}
-          <Text style={styles.carTitle}>
+          <Text style={ts.carTitle}>
             {listing.year} {listing.make} {listing.model}
           </Text>
-          {!!listing.variant && <Text style={styles.variantLabel}>{listing.variant}</Text>}
+          {!!listing.variant && <Text style={ts.variantLabel}>{listing.variant}</Text>}
 
           {/* Location row — hidden entirely (not a dangling icon) when the
               listing has no location, same pattern as GradeChip's null case */}
           {!!listing.location && (
-            <View style={styles.locationRow}>
+            <View style={ts.locationRow}>
               <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
-              <Text style={styles.locationText}>{listing.location}</Text>
+              <Text style={ts.locationText}>{listing.location}</Text>
             </View>
           )}
 
@@ -906,13 +910,13 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               isSold ? 'SOLD — this vehicle is no longer available' :
               s;
             return (
-              <View style={[styles.statusBanner, isSold ? styles.statusBannerSold : styles.statusBannerWarning]}>
+              <View style={[ts.statusBanner, isSold ? ts.statusBannerSold : ts.statusBannerWarning]}>
                 <Ionicons
                   name={isSold ? 'close-circle' : 'alert-circle-outline'}
                   size={18}
                   color={isSold ? Colors.error : Colors.warning}
                 />
-                <Text style={[styles.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
+                <Text style={[ts.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
                   {label}
                 </Text>
               </View>
@@ -920,17 +924,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           })()}
 
           {/* Price & Monthly Pricing */}
-          <View style={styles.priceContainerRow}>
-            <Text style={styles.priceText}>
+          <View style={ts.priceContainerRow}>
+            <Text style={ts.priceText}>
               {formatPrice(listing.price)}
             </Text>
-            <Text style={styles.monthlyText}>
+            <Text style={ts.monthlyText}>
               {listing.monthlyPayment
                 ? `Indicative: ${listing.monthlyPayment}`
                 : `Est. £${Math.round(calcMonthlyPayment()).toLocaleString('en-GB')}/mo*`}
             </Text>
           </View>
-          <Text style={styles.financeDisclaimer}>*Illustrative monthly estimate only, not a finance offer. Terms and eligibility may vary.</Text>
+          <Text style={ts.financeDisclaimer}>*Illustrative monthly estimate only, not a finance offer. Terms and eligibility may vary.</Text>
           {/* Buyer's own offer status chip — copy mirrors web's OfferStatusChip
               (VehicleDetailPageClient.tsx L31-90). Hidden on the buyer's own
               listings and when there's no offer yet. */}
@@ -963,20 +967,20 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             const chipInner = (
               <>
                 <Ionicons name={config.icon} size={13} color={config.color} />
-                <Text style={[styles.offerStatusChipText, { color: config.color }]}>{config.text}</Text>
+                <Text style={[ts.offerStatusChipText, { color: config.color }]}>{config.text}</Text>
                 {isCounter && <Ionicons name="chevron-forward" size={13} color={config.color} />}
               </>
             );
             return isCounter ? (
               <TouchableOpacity
-                style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}
+                style={[ts.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}
                 onPress={() => navigation.navigate('BuyerOffers')}
                 activeOpacity={0.75}
               >
                 {chipInner}
               </TouchableOpacity>
             ) : (
-              <View style={[styles.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}>
+              <View style={[ts.offerStatusChip, { borderColor: config.color + '55', backgroundColor: config.color + '18' }]}>
                 {chipInner}
               </View>
             );
@@ -984,21 +988,21 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Vehicle-origin import badge — separate from "imported listing from another platform". */}
           {listing.isImported ? (
-            <View style={styles.vehicleImportBadge}>
+            <View style={ts.vehicleImportBadge}>
               <Ionicons name="globe-outline" size={12} color="#111827" />
-              <Text style={styles.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
+              <Text style={ts.vehicleImportBadgeText}>IMPORTED VEHICLE</Text>
             </View>
           ) : null}
 
           {/* Imported-from badge — links to the original listing on the external platform */}
           {listing.importedFromUrl ? (
             <TouchableOpacity
-              style={styles.importedBadge}
+              style={ts.importedBadge}
               onPress={() => Linking.openURL(listing.importedFromUrl!)}
               activeOpacity={0.7}
             >
               <Ionicons name="globe-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.importedBadgeText}>
+              <Text style={ts.importedBadgeText}>
                 {`See on ${
                   listing.importedSource === 'AUTOTRADER' ? 'AutoTrader' :
                   listing.importedSource === 'CARGURUS'   ? 'CarGurus'   :
@@ -1011,64 +1015,64 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Show the complete gearbox value: semi-automatic, CVT and missing
               source data must never be represented as "Manual". */}
-          <View style={styles.specBadgesRow}>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>YEAR</Text>
-              <Text style={styles.specBadgeValue}>{listing.year}</Text>
+          <View style={ts.specBadgesRow}>
+            <View style={ts.specBadgeBox}>
+              <Text style={ts.specBadgeLabel}>YEAR</Text>
+              <Text style={ts.specBadgeValue}>{listing.year}</Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>MILEAGE</Text>
-              <Text style={styles.specBadgeValue}>
+            <View style={ts.specBadgeBox}>
+              <Text style={ts.specBadgeLabel}>MILEAGE</Text>
+              <Text style={ts.specBadgeValue}>
                 {Number(listing.mileage).toLocaleString('en-GB')} mi
               </Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>FUEL</Text>
-              <Text style={styles.specBadgeValue}>{listing.fuelType}</Text>
+            <View style={ts.specBadgeBox}>
+              <Text style={ts.specBadgeLabel}>FUEL</Text>
+              <Text style={ts.specBadgeValue}>{listing.fuelType}</Text>
             </View>
-            <View style={styles.specBadgeBox}>
-              <Text style={styles.specBadgeLabel}>TRANSMISSION</Text>
-              <Text style={styles.specBadgeValue}>{listing.transmission || 'Not specified'}</Text>
+            <View style={ts.specBadgeBox}>
+              <Text style={ts.specBadgeLabel}>TRANSMISSION</Text>
+              <Text style={ts.specBadgeValue}>{listing.transmission || 'Not specified'}</Text>
             </View>
           </View>
 
-          <View style={styles.buyerJourneyNote}>
+          <View style={ts.buyerJourneyNote}>
             <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
-            <Text style={styles.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
+            <Text style={ts.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
           </View>
           {listing.ulezCompliant === false && (
-            <View style={styles.ulezWarning}>
+            <View style={ts.ulezWarning}>
               <Ionicons name="alert-circle-outline" size={17} color={Colors.warning} />
-              <Text style={styles.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
+              <Text style={ts.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
             </View>
           )}
 
           {/* Dual-channel: linked live auction cross-link */}
           {listing.linkedListing?.auction?.status === 'ACTIVE' && (
             <TouchableOpacity
-              style={styles.linkedAuctionBanner}
+              style={ts.linkedAuctionBanner}
               activeOpacity={0.75}
               onPress={handleOpenLinkedAuction}
               disabled={openingLinkedAuction}
             >
               <Ionicons name="hammer-outline" size={14} color={Colors.warning} />
-              <Text style={styles.linkedAuctionText}>
+              <Text style={ts.linkedAuctionText}>
                 {'Also in Live Auction — ends '}
                 {new Date(listing.linkedListing.auction.endTime).toLocaleString('en-GB', {
                   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
                 })}
               </Text>
-              <Text style={styles.linkedAuctionCta}>View →</Text>
+              <Text style={ts.linkedAuctionCta}>View →</Text>
             </TouchableOpacity>
           )}
 
           {/* Section: About This Car */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>ABOUT THIS CAR</Text>
+          <View style={ts.sectionContainer}>
+            <Text style={ts.sectionHeaderTitle}>ABOUT THIS CAR</Text>
             {listing.description ? (
-              <Text style={styles.aboutText}>{listing.description}</Text>
+              <Text style={ts.aboutText}>{listing.description}</Text>
             ) : (
-              <Text style={[styles.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
+              <Text style={[ts.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
                 No description provided
               </Text>
             )}
@@ -1079,15 +1083,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               always shows the full list; mobile collapses it since feature
               lists can run long on a small screen (Prompt M1). */}
           {listing.features && listing.features.length > 0 && (
-            <View style={styles.sectionContainer}>
+            <View style={ts.sectionContainer}>
               <TouchableOpacity
-                style={styles.featuresHeaderRow}
+                style={ts.featuresHeaderRow}
                 activeOpacity={0.7}
                 onPress={toggleFeatures}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: featuresExpanded }}
               >
-                <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>
+                <Text style={[ts.sectionHeaderTitle, { marginBottom: 0 }]}>
                   VEHICLE FEATURES ({listing.features.length})
                 </Text>
                 <Ionicons
@@ -1097,11 +1101,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               </TouchableOpacity>
               {featuresExpanded && (
-                <View style={styles.featuresGrid}>
+                <View style={ts.featuresGrid}>
                   {listing.features.map((feature, idx) => (
-                    <View key={`${feature}-${idx}`} style={styles.featureChip}>
+                    <View key={`${feature}-${idx}`} style={ts.featureChip}>
                       <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
-                      <Text style={styles.featureChipText}>{feature}</Text>
+                      <Text style={ts.featureChipText}>{feature}</Text>
                     </View>
                   ))}
                 </View>
@@ -1112,8 +1116,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Videos — YouTube gets a tappable thumbnail, other
               platforms (Instagram/Facebook/X) get a labelled link chip */}
           {listing.videoUrls != null && listing.videoUrls.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeaderTitle}>VIDEOS</Text>
+            <View style={ts.sectionContainer}>
+              <Text style={ts.sectionHeaderTitle}>VIDEOS</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
                 {listing.videoUrls.map((url, i) => {
                   const ytId = extractYouTubeId(url);
@@ -1121,7 +1125,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     return (
                       <TouchableOpacity
                         key={`video-${i}`}
-                        style={styles.videoThumbWrap}
+                        style={ts.videoThumbWrap}
                         activeOpacity={0.85}
                         onPress={() => Linking.openURL(url)}
                         accessibilityLabel="Play video"
@@ -1129,10 +1133,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       >
                         <Image
                           source={{ uri: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` }}
-                          style={styles.videoThumb}
+                          style={ts.videoThumb}
                           contentFit="cover"
                         />
-                        <View style={styles.videoPlayOverlay}>
+                        <View style={ts.videoPlayOverlay}>
                           <Ionicons name="play-circle" size={36} color={Colors.white} />
                         </View>
                       </TouchableOpacity>
@@ -1142,12 +1146,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   return (
                     <TouchableOpacity
                       key={`video-${i}`}
-                      style={styles.videoLinkChip}
+                      style={ts.videoLinkChip}
                       activeOpacity={0.85}
                       onPress={() => Linking.openURL(url)}
                     >
                       <Ionicons name="videocam-outline" size={16} color={Colors.accent} />
-                      <Text style={styles.videoLinkText}>{platform}</Text>
+                      <Text style={ts.videoLinkText}>{platform}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -1164,34 +1168,34 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               genuinely decision-relevant fields keep an explicit "Not
               disclosed", where the absence is itself information. */}
           <TouchableOpacity
-            style={styles.extraSpecToggle}
+            style={ts.extraSpecToggle}
             activeOpacity={0.8}
             onPress={() => setExtraSpecsExpanded(v => !v)}
             accessibilityRole="button"
             accessibilityState={{ expanded: extraSpecsExpanded }}
             accessibilityLabel={extraSpecsExpanded ? 'Hide extra vehicle specifications' : 'Show extra vehicle specifications'}
           >
-            <Text style={styles.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
+            <Text style={ts.extraSpecToggleText}>{extraSpecsExpanded ? 'Hide extra specifications' : 'View performance and running costs'}</Text>
             <Ionicons name={extraSpecsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={Colors.accent} />
           </TouchableOpacity>
           {SPEC_GROUPS.filter(group => extraSpecsExpanded || (group.title !== 'PERFORMANCE' && group.title !== 'RUNNING COSTS')).map((group) => {
             const rows = group.rows(listing).filter((r) => r.value != null && r.value !== '');
             if (rows.length === 0) return null;
             return (
-              <View key={group.title} style={styles.sectionContainer}>
-                <Text style={styles.sectionHeaderTitle}>{group.title}</Text>
-                <View style={styles.specCardContainer}>
+              <View key={group.title} style={ts.sectionContainer}>
+                <Text style={ts.sectionHeaderTitle}>{group.title}</Text>
+                <View style={ts.specCardContainer}>
                   {rows.map((r, i) => (
                     <View
                       key={r.label}
-                      style={[styles.specRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
+                      style={[ts.specRow, i === rows.length - 1 && { borderBottomWidth: 0 }]}
                     >
-                      <Text style={styles.specRowLabel}>{r.label}</Text>
+                      <Text style={ts.specRowLabel}>{r.label}</Text>
                       <Text
                         style={[
-                          styles.specRowValue,
-                          r.tone === 'good' && styles.specValueGood,
-                          r.tone === 'warn' && styles.specValueWarn,
+                          ts.specRowValue,
+                          r.tone === 'good' && ts.specValueGood,
+                          r.tone === 'warn' && ts.specValueWarn,
                         ]}
                       >
                         {r.value}
@@ -1228,67 +1232,67 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Vehicle History — real DVLA/seller-declared fields only.
               Paid HPI report below (:314-360, 1399-1406) is the actual verified check;
               this grid must never imply that outcome for free. */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>VEHICLE HISTORY</Text>
-            <View style={styles.historyGrid}>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>WRITE-OFF</Text>
+          <View style={ts.sectionContainer}>
+            <Text style={ts.sectionHeaderTitle}>VEHICLE HISTORY</Text>
+            <View style={ts.historyGrid}>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>WRITE-OFF</Text>
                 <Text style={[
-                  styles.historyValue,
+                  ts.historyValue,
                   listing.writeOffCategory == null ? undefined
-                    : listing.writeOffCategory === 'NONE' ? styles.greenText : styles.warnText,
+                    : listing.writeOffCategory === 'NONE' ? ts.greenText : ts.warnText,
                 ]}>
                   {listing.writeOffCategory == null
                     ? 'Not disclosed'
                     : listing.writeOffCategory === 'NONE' ? 'None' : listing.writeOffCategory}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>FINANCE</Text>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>FINANCE</Text>
                 <Text style={[
-                  styles.historyValue,
+                  ts.historyValue,
                   listing.hasOutstandingFinance == null ? undefined
-                    : listing.hasOutstandingFinance ? styles.warnText : styles.greenText,
+                    : listing.hasOutstandingFinance ? ts.warnText : ts.greenText,
                 ]}>
                   {listing.hasOutstandingFinance == null
                     ? 'Not disclosed'
                     : listing.hasOutstandingFinance ? 'Outstanding' : 'None declared'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>STOLEN</Text>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>STOLEN</Text>
                 <Text style={[
-                  styles.historyValue,
+                  ts.historyValue,
                   listing.stolenRecovered == null ? undefined
-                    : listing.stolenRecovered ? styles.warnText : styles.greenText,
+                    : listing.stolenRecovered ? ts.warnText : ts.greenText,
                 ]}>
                   {listing.stolenRecovered == null
                     ? 'Not disclosed'
                     : listing.stolenRecovered ? 'Marker found' : 'No marker'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>OWNERS</Text>
-                <Text style={styles.historyValue}>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>OWNERS</Text>
+                <Text style={ts.historyValue}>
                   {listing.owners != null ? String(listing.owners) : 'Not disclosed'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>MOT</Text>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>MOT</Text>
                 <Text style={[
-                  styles.historyValue,
+                  ts.historyValue,
                   listing.motStatus == null ? undefined
-                    : listing.motStatus.toLowerCase() === 'valid' ? styles.greenText : styles.warnText,
+                    : listing.motStatus.toLowerCase() === 'valid' ? ts.greenText : ts.warnText,
                 ]}>
                   {listing.motStatus ?? 'Not disclosed'}
                 </Text>
               </View>
-              <View style={styles.historyBox}>
-                <Text style={styles.historyLabel}>TAX</Text>
+              <View style={ts.historyBox}>
+                <Text style={ts.historyLabel}>TAX</Text>
                 <Text style={[
-                  styles.historyValue,
+                  ts.historyValue,
                   listing.taxStatus == null ? undefined
-                    : listing.taxStatus.toLowerCase() === 'taxed' ? styles.greenText : styles.warnText,
+                    : listing.taxStatus.toLowerCase() === 'taxed' ? ts.greenText : ts.warnText,
                 ]}>
                   {listing.taxStatus ?? 'Not disclosed'}
                 </Text>
@@ -1297,7 +1301,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Section: HPI Report CTA */}
-          <View style={styles.sectionContainer}>
+          <View style={ts.sectionContainer}>
             {hpiError ? (
               <ErrorBanner message={hpiError} onRetry={handleHpiCheck} />
             ) : null}
@@ -1308,12 +1312,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                  than a green tick it hasn't earned. */
               isReportReady(hpiData) ? (
                 <TouchableOpacity
-                  style={styles.hpiButton}
+                  style={ts.hpiButton}
                   activeOpacity={0.8}
                   onPress={() => setHpiModalVisible(true)}
                 >
-                  <View style={styles.hpiReportLeft}>
-                    <View style={styles.hpiIconBg}>
+                  <View style={ts.hpiReportLeft}>
+                    <View style={ts.hpiIconBg}>
                       <Ionicons
                         name={hpiData.isClear ? 'shield-checkmark' : 'warning'}
                         size={16}
@@ -1321,8 +1325,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
-                      <Text style={styles.hpiReportSub}>
+                      <Text style={ts.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={ts.hpiReportSub}>
                         {hpiData.isClear ? 'All checks passed · tap to view' : 'Adverse history — tap to review'}
                       </Text>
                     </View>
@@ -1331,17 +1335,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={styles.hpiButton}
+                  style={ts.hpiButton}
                   activeOpacity={0.8}
                   onPress={() => setHpiModalVisible(true)}
                 >
-                  <View style={styles.hpiReportLeft}>
-                    <View style={[styles.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
+                  <View style={ts.hpiReportLeft}>
+                    <View style={[ts.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
                       <Ionicons name="time-outline" size={16} color={Colors.warning} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.hpiReportTitle}>Vehicle History Report</Text>
-                      <Text style={[styles.hpiReportSub, { color: Colors.warning }]}>
+                      <Text style={ts.hpiReportTitle}>Vehicle History Report</Text>
+                      <Text style={[ts.hpiReportSub, { color: Colors.warning }]}>
                         Requested — being prepared by our team
                       </Text>
                     </View>
@@ -1351,18 +1355,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )
             ) : (
               <TouchableOpacity
-                style={styles.hpiButton}
+                style={ts.hpiButton}
                 activeOpacity={0.8}
                 onPress={handleHpiCheck}
                 disabled={hpiLoading}
               >
-                <View style={styles.hpiReportLeft}>
-                  <View style={styles.hpiIconBg}>
+                <View style={ts.hpiReportLeft}>
+                  <View style={ts.hpiIconBg}>
                     <Ionicons name="document-text-outline" size={16} color={Colors.infoBlue} />
                   </View>
                   <View>
-                    <Text style={styles.hpiReportTitle}>Check HPI (£9.99)</Text>
-                    <Text style={styles.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
+                    <Text style={ts.hpiReportTitle}>Check HPI (£9.99)</Text>
+                    <Text style={ts.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
                   </View>
                 </View>
                 {hpiLoading
@@ -1376,9 +1380,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Section: Condition & Damage — always renders (Prompt 6). Grade
               pill is the ONLY place exteriorGrade appears on this screen —
               never duplicated in the specs grid above. */}
-          <View style={styles.sectionContainer}>
+          <View style={ts.sectionContainer}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text style={[styles.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
+              <Text style={[ts.sectionHeaderTitle, { marginBottom: 0 }]}>CONDITION & DAMAGE</Text>
               <GradeChip grade={listing.exteriorGrade} variant="pill" />
             </View>
             <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
@@ -1397,11 +1401,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* Section: Seller */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeaderTitle}>SELLER</Text>
+          <View style={ts.sectionContainer}>
+            <Text style={ts.sectionHeaderTitle}>SELLER</Text>
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.sellerCard}
+              style={ts.sellerCard}
               onPress={() => {
                 if (listing.seller?.id) {
                   navigation.navigate('SellerProfile', { sellerId: listing.seller.id });
@@ -1410,23 +1414,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
               }}
             >
-              <View style={styles.sellerAvatar}>
-                <Text style={styles.sellerAvatarText}>
+              <View style={ts.sellerAvatar}>
+                <Text style={ts.sellerAvatarText}>
                   {getInitials(listing.dealer)}
                 </Text>
               </View>
-              <View style={styles.sellerInfo}>
-                <View style={styles.sellerNameRow}>
-                  <Text style={styles.sellerName} numberOfLines={1}>{listing.dealer}</Text>
+              <View style={ts.sellerInfo}>
+                <View style={ts.sellerNameRow}>
+                  <Text style={ts.sellerName} numberOfLines={1}>{listing.dealer}</Text>
                   {/* This tick used to render unconditionally, so EVERY seller
                       looked verified — the same fake-trust-chrome problem a
                       previous audit removed elsewhere in the app. Now gated on
                       real verification. */}
                   {(listing.seller?.isVerifiedDealer || listing.isSellerVerified) && (
-                    <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={styles.blueCheck} />
+                    <Ionicons name="checkmark-circle" size={15} color={Colors.infoBlue} style={ts.blueCheck} />
                   )}
                 </View>
-                <Text style={styles.sellerSubtext} numberOfLines={1}>
+                <Text style={ts.sellerSubtext} numberOfLines={1}>
                   {[
                     listing.location,
                     listing.rating != null ? `${listing.rating} ★` : null,
@@ -1440,7 +1444,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {sellerPhoneAvailable && sellerPhone && (
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  style={[styles.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
+                  style={[ts.sellerChatBtn, { backgroundColor: Colors.successAlpha06, borderColor: Colors.successAlpha20 }]}
                   onPress={(e) => {
                     e.stopPropagation();
                     if (currentUser && (listing.seller?.companyName || listing.seller?.isVerifiedDealer)) {
@@ -1460,7 +1464,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.sellerChatBtn}
+                style={ts.sellerChatBtn}
                 onPress={(e) => {
                   e.stopPropagation();
                   if (listing.seller?.id) {
@@ -1481,17 +1485,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 itself and its website never reached a buyer. Only rendered
                 when the dealer actually filled the fields in. */}
             {(listing.seller?.description || listing.seller?.website || listing.seller?.memberSince) && (
-              <View style={styles.dealerDetailCard}>
+              <View style={ts.dealerDetailCard}>
                 {!!listing.seller?.description && (
-                  <Text style={styles.dealerDescription} numberOfLines={5}>
+                  <Text style={ts.dealerDescription} numberOfLines={5}>
                     {listing.seller.description}
                   </Text>
                 )}
-                <View style={styles.dealerMetaRow}>
+                <View style={ts.dealerMetaRow}>
                   {!!listing.seller?.memberSince && (
-                    <View style={styles.dealerMetaItem}>
+                    <View style={ts.dealerMetaItem}>
                       <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.dealerMetaText}>
+                      <Text style={ts.dealerMetaText}>
                         Member since{' '}
                         {new Date(listing.seller.memberSince).toLocaleDateString('en-GB', {
                           month: 'short',
@@ -1501,9 +1505,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     </View>
                   )}
                   {!!listing.seller?.businessAddress && (
-                    <View style={styles.dealerMetaItem}>
+                    <View style={ts.dealerMetaItem}>
                       <Ionicons name="business-outline" size={12} color={Colors.textMuted} />
-                      <Text style={styles.dealerMetaText} numberOfLines={1}>
+                      <Text style={ts.dealerMetaText} numberOfLines={1}>
                         {listing.seller.businessAddress}
                       </Text>
                     </View>
@@ -1511,7 +1515,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 {!!listing.seller?.website && (
                   <TouchableOpacity
-                    style={styles.dealerWebsiteBtn}
+                    style={ts.dealerWebsiteBtn}
                     activeOpacity={0.75}
                     accessibilityRole="link"
                     onPress={() => {
@@ -1521,7 +1525,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     }}
                   >
                     <Ionicons name="globe-outline" size={13} color={Colors.accent} />
-                    <Text style={styles.dealerWebsiteText} numberOfLines={1}>
+                    <Text style={ts.dealerWebsiteText} numberOfLines={1}>
                       {listing.seller.website.replace(/^https?:\/\//i, '')}
                     </Text>
                     <Ionicons name="open-outline" size={12} color={Colors.accent} />
@@ -1537,31 +1541,31 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 thousand pounds, this is the most useful thing on the screen
                 after the price. */}
             {!!listing.seller?.reviews?.length && (
-              <View style={styles.reviewsBlock}>
-                <View style={styles.reviewsHeader}>
-                  <Text style={styles.reviewsTitle}>
+              <View style={ts.reviewsBlock}>
+                <View style={ts.reviewsHeader}>
+                  <Text style={ts.reviewsTitle}>
                     Reviews ({listing.seller.reviews.length})
                   </Text>
                   {listing.seller.responseRate != null && listing.seller.responseRate > 0 && (
-                    <Text style={styles.reviewsResponse}>
+                    <Text style={ts.reviewsResponse}>
                       Replies to {Math.round(listing.seller.responseRate)}% of enquiries
                     </Text>
                   )}
                 </View>
 
                 {listing.seller.reviews.map((r) => (
-                  <View key={r.id} style={styles.reviewCard}>
-                    <View style={styles.reviewTop}>
-                      <View style={styles.reviewAvatar}>
+                  <View key={r.id} style={ts.reviewCard}>
+                    <View style={ts.reviewTop}>
+                      <View style={ts.reviewAvatar}>
                         {r.reviewerImage ? (
-                          <Image source={{ uri: r.reviewerImage }} style={styles.reviewAvatarImg} contentFit="cover" />
+                          <Image source={{ uri: r.reviewerImage }} style={ts.reviewAvatarImg} contentFit="cover" />
                         ) : (
-                          <Text style={styles.reviewAvatarText}>{getInitials(r.reviewerName)}</Text>
+                          <Text style={ts.reviewAvatarText}>{getInitials(r.reviewerName)}</Text>
                         )}
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.reviewerName} numberOfLines={1}>{r.reviewerName}</Text>
-                        <Text style={styles.reviewDate}>
+                        <Text style={ts.reviewerName} numberOfLines={1}>{r.reviewerName}</Text>
+                        <Text style={ts.reviewDate}>
                           {new Date(r.createdAt).toLocaleDateString('en-GB', {
                             day: 'numeric',
                             month: 'short',
@@ -1572,7 +1576,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       {/* These ARE 1-5 star ratings, unlike the seller's
                           reliabilityScore, which is a weighted composite and
                           must not be drawn as stars. */}
-                      <View style={styles.reviewStars}>
+                      <View style={ts.reviewStars}>
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Ionicons
                             key={n}
@@ -1584,7 +1588,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       </View>
                     </View>
                     {!!r.comment && (
-                      <Text style={styles.reviewComment}>{r.comment}</Text>
+                      <Text style={ts.reviewComment}>{r.comment}</Text>
                     )}
                   </View>
                 ))}
@@ -1594,24 +1598,24 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Expandable Finance Calculator — Coming Soon */}
           <TouchableOpacity
-            style={styles.financeCard}
+            style={ts.financeCard}
             activeOpacity={0.85}
             onPress={() => setFinanceExpanded(!financeExpanded)}
           >
-            <View style={styles.financeIconWrapper}>
+            <View style={ts.financeIconWrapper}>
               <Ionicons name="calculator-outline" size={18} color={Colors.accent} />
             </View>
-            <View style={styles.financeTextContent}>
-              <Text style={styles.financeTitle}>
+            <View style={ts.financeTextContent}>
+              <Text style={ts.financeTitle}>
                 Finance Calculator
               </Text>
-              <Text style={styles.financeSubtext}>
+              <Text style={ts.financeSubtext}>
                 19% APR representative · tap to expand
               </Text>
             </View>
             {/* Coming Soon badge */}
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Coming Soon</Text>
+            <View style={ts.comingSoonBadge}>
+              <Text style={ts.comingSoonText}>Coming Soon</Text>
             </View>
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
@@ -1622,30 +1626,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
 
           {financeExpanded && (
-            <View style={styles.financeCalcBody}>
+            <View style={ts.financeCalcBody}>
               {/* Coming Soon overlay message */}
-              <View style={styles.financeComingSoonBox}>
+              <View style={ts.financeComingSoonBox}>
                 <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
-                <Text style={styles.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
-                <Text style={styles.financeComingSoonSub}>
+                <Text style={ts.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
+                <Text style={ts.financeComingSoonSub}>
                   Finance options will be available here. Contact the seller directly to discuss finance.
                 </Text>
               </View>
 
               {/* Deposit Row — inert preview */}
-              <View style={[styles.calcRow, { opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>DEPOSIT</Text>
-                <Text style={styles.calcValue}>
+              <View style={[ts.calcRow, { opacity: 0.4 }]}>
+                <Text style={ts.calcLabel}>DEPOSIT</Text>
+                <Text style={ts.calcValue}>
                   {depositPct}% — £{Math.round(listing.price * depositPct / 100).toLocaleString('en-GB')}
                 </Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={[ts.depositStepsRow, { opacity: 0.4 }]}>
                 {[0, 10, 20, 30, 40, 50].map(pct => (
                   <View
                     key={pct}
-                    style={[styles.depositStep, depositPct === pct && styles.depositStepActive]}
+                    style={[ts.depositStep, depositPct === pct && ts.depositStepActive]}
                   >
-                    <Text style={[styles.depositStepText, depositPct === pct && styles.depositStepTextActive]}>
+                    <Text style={[ts.depositStepText, depositPct === pct && ts.depositStepTextActive]}>
                       {pct}%
                     </Text>
                   </View>
@@ -1653,17 +1657,17 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
 
               {/* Term Row — inert preview */}
-              <View style={[styles.calcRow, { marginTop: 14, opacity: 0.4 }]}>
-                <Text style={styles.calcLabel}>TERM</Text>
-                <Text style={styles.calcValue}>{termMonths} months</Text>
+              <View style={[ts.calcRow, { marginTop: 14, opacity: 0.4 }]}>
+                <Text style={ts.calcLabel}>TERM</Text>
+                <Text style={ts.calcValue}>{termMonths} months</Text>
               </View>
-              <View style={[styles.depositStepsRow, { opacity: 0.4 }]}>
+              <View style={[ts.depositStepsRow, { opacity: 0.4 }]}>
                 {[12, 24, 36, 48, 60].map(t => (
                   <View
                     key={t}
-                    style={[styles.depositStep, termMonths === t && styles.depositStepActive]}
+                    style={[ts.depositStep, termMonths === t && ts.depositStepActive]}
                   >
-                    <Text style={[styles.depositStepText, termMonths === t && styles.depositStepTextActive]}>
+                    <Text style={[ts.depositStepText, termMonths === t && ts.depositStepTextActive]}>
                       {t}m
                     </Text>
                   </View>
@@ -1674,7 +1678,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* Vehicle-history status must reflect the actual report state. */}
           <View style={[
-            styles.protectionCard,
+            ts.protectionCard,
             !(hpiData && isReportReady(hpiData) && hpiData.isClear) && {
               backgroundColor: Colors.whiteAlpha03,
               borderColor: Colors.whiteAlpha08,
@@ -1686,7 +1690,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               color={hpiData && isReportReady(hpiData) && hpiData.isClear ? Colors.midGreen_00d28e : Colors.textMuted}
             />
             <Text style={[
-              styles.protectionText,
+              ts.protectionText,
               !(hpiData && isReportReady(hpiData) && hpiData.isClear) && { color: Colors.textSecondary },
             ]}>
               {hpiData && isReportReady(hpiData)
@@ -1699,51 +1703,51 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {/* ── Delivery section — only when seller offers delivery ── */}
           {listing.deliveryAvailable && (
-            <View style={styles.deliveryCard}>
+            <View style={ts.deliveryCard}>
               {/* Header row */}
-              <View style={styles.deliveryHeader}>
-                <View style={styles.deliveryIconWrap}>
+              <View style={ts.deliveryHeader}>
+                <View style={ts.deliveryIconWrap}>
                   <Ionicons name="car-outline" size={16} color={Colors.accentGreen} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.deliveryTitle}>Delivery available</Text>
+                  <Text style={ts.deliveryTitle}>Delivery available</Text>
                   {listing.deliveryMaxMiles ? (
-                    <Text style={styles.deliverySubtitle}>
+                    <Text style={ts.deliverySubtitle}>
                       Up to {listing.deliveryMaxMiles} miles from the seller
                     </Text>
                   ) : null}
                 </View>
-                <View style={styles.deliveryFeeWrap}>
+                <View style={ts.deliveryFeeWrap}>
                   {deliveryQuoteLoading ? (
                     <ActivityIndicator size="small" color={Colors.accentGreen} />
                   ) : deliveryFee != null ? (
                     <>
-                      <Text style={styles.deliveryFeeLabel}>ESTIMATE</Text>
-                      <Text style={styles.deliveryFeeValue}>£{deliveryFee}</Text>
+                      <Text style={ts.deliveryFeeLabel}>ESTIMATE</Text>
+                      <Text style={ts.deliveryFeeValue}>£{deliveryFee}</Text>
                     </>
                   ) : listing.deliveryPricePerMile ? (
                     <>
-                      <Text style={styles.deliveryFeeLabel}>FROM</Text>
-                      <Text style={styles.deliveryFeeValue}>£{listing.deliveryPricePerMile}/mi</Text>
+                      <Text style={ts.deliveryFeeLabel}>FROM</Text>
+                      <Text style={ts.deliveryFeeValue}>£{listing.deliveryPricePerMile}/mi</Text>
                     </>
                   ) : (
-                    <Text style={styles.deliveryFeeHint}>Enter postcode for a quote</Text>
+                    <Text style={ts.deliveryFeeHint}>Enter postcode for a quote</Text>
                   )}
                 </View>
               </View>
 
               {/* Distance / postcode summary row */}
               {userPostcode ? (
-                <Text style={styles.deliveryDistanceLine}>
+                <Text style={ts.deliveryDistanceLine}>
                   {deliveryDistanceMiles != null
                     ? `≈ ${deliveryDistanceMiles} mi from ${userPostcode}`
                     : `From ${userPostcode} — seller location coordinates missing, server will validate`}
                 </Text>
               ) : (
-                <View style={styles.postcodeEntryRow}>
+                <View style={ts.postcodeEntryRow}>
                   <Ionicons name="location-outline" size={13} color={Colors.infoBlueLight} />
                   <TextInput
-                    style={styles.postcodeInput}
+                    style={ts.postcodeInput}
                     value={postcodeDraft}
                     onChangeText={setPostcodeDraft}
                     autoCapitalize="characters"
@@ -1781,7 +1785,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     {postcodeSaving ? (
                       <ActivityIndicator size="small" color={Colors.infoBlueLight} />
                     ) : (
-                      <Text style={styles.postcodeSaveText}>Save</Text>
+                      <Text style={ts.postcodeSaveText}>Save</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1789,9 +1793,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
               {/* Outside-radius warning */}
               {outsideRadius && (
-                <View style={styles.deliveryOutsideRadius}>
+                <View style={ts.deliveryOutsideRadius}>
                   <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_f87171} />
-                  <Text style={styles.deliveryOutsideRadiusText}>
+                  <Text style={ts.deliveryOutsideRadiusText}>
                     Outside your delivery radius ({deliveryDistanceMiles} mi &gt; {listing.deliveryMaxMiles} mi)
                   </Text>
                 </View>
@@ -1800,22 +1804,22 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Request Delivery button — only when offer is ACCEPTED and inside radius */}
               {offerStatus === 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
                 <TouchableOpacity
-                  style={styles.deliveryRequestBtn}
+                  style={ts.deliveryRequestBtn}
                   onPress={() => setDeliveryModalVisible(true)}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="car-outline" size={15} color={Colors.white} />
-                  <Text style={styles.deliveryRequestBtnText}>Request Delivery</Text>
+                  <Text style={ts.deliveryRequestBtnText}>Request Delivery</Text>
                 </TouchableOpacity>
               )}
               {deliverySubmitted && (
-                <View style={styles.deliverySuccessRow}>
+                <View style={ts.deliverySuccessRow}>
                   <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
-                  <Text style={styles.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
+                  <Text style={ts.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
                 </View>
               )}
               {offerStatus !== 'ACCEPTED' && !deliverySubmitted && !outsideRadius && (
-                <Text style={styles.deliveryPendingHint}>
+                <Text style={ts.deliveryPendingHint}>
                   Request delivery once your offer is accepted.
                 </Text>
               )}
@@ -1831,14 +1835,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         title="Request Delivery"
         avoidKeyboard
       >
-        <Text style={styles.modalSheetSubtitle}>
+        <Text style={ts.modalSheetSubtitle}>
           Enter your delivery address. The seller will confirm and arrange logistics.
         </Text>
 
         {/* Street */}
-        <Text style={styles.deliveryInputLabel}>STREET ADDRESS</Text>
+        <Text style={ts.deliveryInputLabel}>STREET ADDRESS</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={ts.deliveryInput}
           value={deliveryStreet}
           onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
           placeholder="e.g. 42 Park Lane"
@@ -1847,9 +1851,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
 
         {/* City */}
-        <Text style={styles.deliveryInputLabel}>CITY / TOWN</Text>
+        <Text style={ts.deliveryInputLabel}>CITY / TOWN</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={ts.deliveryInput}
           value={deliveryCity}
           onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
           placeholder="e.g. London"
@@ -1858,9 +1862,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
 
         {/* Postcode */}
-        <Text style={styles.deliveryInputLabel}>POSTCODE</Text>
+        <Text style={ts.deliveryInputLabel}>POSTCODE</Text>
         <TextInput
-          style={styles.deliveryInput}
+          style={ts.deliveryInput}
           value={deliveryPostcode}
           onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
           placeholder="e.g. SW1A 1AA"
@@ -1869,9 +1873,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
 
         {/* Notes (optional) */}
-        <Text style={styles.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
+        <Text style={ts.deliveryInputLabel}>NOTES (OPTIONAL)</Text>
         <TextInput
-          style={[styles.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
+          style={[ts.deliveryInput, { height: 72, textAlignVertical: 'top', paddingTop: 12 }]}
           value={deliveryNotes}
           onChangeText={setDeliveryNotes}
           placeholder="e.g. Leave at reception, call on arrival…"
@@ -1884,7 +1888,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         )}
 
         <TouchableOpacity
-          style={[styles.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
+          style={[ts.deliveryModalSubmitBtn, deliverySubmitting && { opacity: 0.6 }]}
           onPress={handleDeliveryRequest}
           disabled={deliverySubmitting}
           activeOpacity={0.85}
@@ -1892,7 +1896,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {deliverySubmitting ? (
             <ActivityIndicator color={Colors.white} size="small" />
           ) : (
-            <Text style={styles.deliveryModalSubmitText}>Confirm Delivery Request</Text>
+            <Text style={ts.deliveryModalSubmitText}>Confirm Delivery Request</Text>
           )}
         </TouchableOpacity>
       </BottomSheet>
@@ -1901,14 +1905,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* The kit fades the content out under the CTA rather than cutting it
           with a hairline and an opaque slab — the bar reads as floating over
           the page instead of bolted to the bottom of it. */}
-      <View style={[styles.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
+      <View style={[ts.stickyCTAOuter, { paddingBottom: insets.bottom + 12 }]} pointerEvents="box-none">
         <LinearGradient
           colors={['rgba(10,13,20,0)', Colors.bgPrimary, Colors.bgPrimary]}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFillObject}
           pointerEvents="none"
         />
-        <IconButton style={styles.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
+        <IconButton style={ts.chatButton} icon={<Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.white} />} onPress={() => {
             if (listing.seller?.id) {
               setEnquireVisible(true);
             } else {
@@ -1932,7 +1936,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             s;
           return isActive ? (
             <TouchableOpacity
-              style={styles.makeOfferButton}
+              style={ts.makeOfferButton}
               activeOpacity={0.8}
               onPress={() => {
                 if (myOffer?.status === 'COUNTERED') {
@@ -1950,18 +1954,18 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 setOfferModalVisible(true);
               }}
             >
-              <Text style={styles.makeOfferText}>
+              <Text style={ts.makeOfferText}>
                 {myOffer?.status === 'PENDING'
                   ? 'EDIT MY OFFER'
                   : myOffer?.status === 'COUNTERED'
                     ? 'MANAGE COUNTER'
                     : 'MAKE A PRIVATE OFFER'}
               </Text>
-              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={styles.offerArrow} />
+              <Ionicons name="arrow-forward" size={18} color={Colors.white} style={ts.offerArrow} />
             </TouchableOpacity>
           ) : (
-            <View style={[styles.makeOfferButton, styles.makeOfferButtonDisabled]}>
-              <Text style={styles.makeOfferText}>{disabledLabel}</Text>
+            <View style={[ts.makeOfferButton, ts.makeOfferButtonDisabled]}>
+              <Text style={ts.makeOfferText}>{disabledLabel}</Text>
             </View>
           );
         })()}
@@ -1975,33 +1979,33 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         avoidKeyboard
       >
         {!offerSubmitted ? (
-          <View style={styles.modalBody}>
-            <Text style={styles.modalSubheading}>
+          <View style={ts.modalBody}>
+            <Text style={ts.modalSubheading}>
               Submit a custom purchase offer to {listing.dealer}.
             </Text>
 
             {/* Offer details */}
-            <View style={styles.offerBoxContainer}>
-              <Text style={styles.offerLabel}>ASKING PRICE</Text>
-              <Text style={styles.askingPriceValue}>{formatPrice(listing.price)}</Text>
+            <View style={ts.offerBoxContainer}>
+              <Text style={ts.offerLabel}>ASKING PRICE</Text>
+              <Text style={ts.askingPriceValue}>{formatPrice(listing.price)}</Text>
             </View>
 
             {/* Adjuster input */}
-            <View style={styles.offerAdjusterContainer}>
-              <Text style={styles.offerLabel}>YOUR OFFER</Text>
-              <View style={styles.adjusterRow}>
+            <View style={ts.offerAdjusterContainer}>
+              <Text style={ts.offerLabel}>YOUR OFFER</Text>
+              <View style={ts.adjusterRow}>
                 <IconButton
-                  style={styles.adjustBtn}
+                  style={ts.adjustBtn}
                   icon={<Ionicons name="remove" size={20} color={Colors.white} />}
                   onPress={() => adjustOffer(-500)}
                   disabled={offerAmount <= OFFER_MIN}
                   accessibilityLabel="Decrease offer by £500"
                 />
 
-                <View style={styles.offerAmountInputWrap}>
-                  <Text style={styles.offerAmountCurrency}>£</Text>
+                <View style={ts.offerAmountInputWrap}>
+                  <Text style={ts.offerAmountCurrency}>£</Text>
                   <TextInput
-                    style={styles.offerAmountInput}
+                    style={ts.offerAmountInput}
                     value={offerAmountDraft}
                     onChangeText={handleOfferAmountChange}
                     onBlur={handleOfferAmountBlur}
@@ -2014,30 +2018,30 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
 
                 <IconButton
-                  style={styles.adjustBtn}
+                  style={ts.adjustBtn}
                   icon={<Ionicons name="add" size={20} color={Colors.white} />}
                   onPress={() => adjustOffer(500)}
                   disabled={offerAmount >= OFFER_MAX}
                   accessibilityLabel="Increase offer by £500"
                 />
               </View>
-              <Text style={styles.offerRangeHint}>
+              <Text style={ts.offerRangeHint}>
                 Range: {formatPrice(OFFER_MIN)} – {formatPrice(OFFER_MAX)}
               </Text>
               {offerAmount >= OFFER_MAX && (
-                <Text style={styles.offerLimitHint}>You've reached the asking price</Text>
+                <Text style={ts.offerLimitHint}>You've reached the asking price</Text>
               )}
               {offerAmount <= OFFER_MIN && (
-                <Text style={styles.offerLimitHint}>
+                <Text style={ts.offerLimitHint}>
                   Minimum offer is {formatPrice(OFFER_MIN)} — 70% of the asking price
                 </Text>
               )}
             </View>
 
-            <View style={styles.offerBoxContainer}>
-              <Text style={styles.offerLabel}>MESSAGE TO SELLER · OPTIONAL</Text>
+            <View style={ts.offerBoxContainer}>
+              <Text style={ts.offerLabel}>MESSAGE TO SELLER · OPTIONAL</Text>
               <TextInput
-                style={styles.offerMessageInput}
+                style={ts.offerMessageInput}
                 value={offerMessage}
                 onChangeText={setOfferMessage}
                 placeholder="e.g. I can collect this weekend."
@@ -2047,11 +2051,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 textAlignVertical="top"
                 accessibilityLabel="Optional message to seller"
               />
-              <Text style={styles.offerMessageCount}>{offerMessage.length}/500</Text>
+              <Text style={ts.offerMessageCount}>{offerMessage.length}/500</Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
+              style={[ts.submitOfferBtn, isSubmittingOffer && { opacity: 0.7 }]}
               activeOpacity={0.8}
               onPress={handleSubmitOffer}
               disabled={isSubmittingOffer}
@@ -2059,25 +2063,25 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {isSubmittingOffer ? (
                 <ActivityIndicator size="small" color={Colors.white} />
               ) : (
-                <Text style={styles.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
+                <Text style={ts.submitOfferText}>{myOffer?.status === 'PENDING' ? 'Update Offer' : 'Submit Private Offer'}</Text>
               )}
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.successContainer}>
-            <View style={styles.successIconWrapper}>
+          <View style={ts.successContainer}>
+            <View style={ts.successIconWrapper}>
               <Ionicons name="checkmark" size={32} color={Colors.white} />
             </View>
-            <Text style={styles.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
-            <Text style={styles.successSubtitle}>
-              We have forwarded your offer of <Text style={styles.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
+            <Text style={ts.successTitle}>{myOffer?.status === 'PENDING' ? 'Offer Updated!' : 'Offer Sent!'}</Text>
+            <Text style={ts.successSubtitle}>
+              We have forwarded your offer of <Text style={ts.boldText}>{formatPrice(offerAmount)}</Text> to {listing.dealer}. They will review and respond to you shortly.
             </Text>
             <TouchableOpacity
-              style={styles.successCloseBtn}
+              style={ts.successCloseBtn}
               activeOpacity={0.8}
               onPress={closeOfferFlow}
             >
-              <Text style={styles.successCloseText}>Close</Text>
+              <Text style={ts.successCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -2120,9 +2124,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         {/* Custom header (with vrm/make/model subline) kept as content —
             BottomSheet's own title row only supports a single line of text. */}
-        <View style={styles.modalHeader}>
+        <View style={ts.modalHeader}>
           <View>
-            <Text style={styles.modalTitle}>HPI Check Report</Text>
+            <Text style={ts.modalTitle}>HPI Check Report</Text>
             {hpiData && (
               <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
                 {[
@@ -2134,7 +2138,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             )}
           </View>
-          <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
         </View>
 
         {hpiData && !isReportReady(hpiData) && (
@@ -2142,10 +2146,10 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
              listing now that publishing doesn't wait for the report. */
           <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>
             <Ionicons name="time-outline" size={40} color={Colors.warning} />
-            <Text style={[styles.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
+            <Text style={[ts.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
               Report being prepared
             </Text>
-            <Text style={[styles.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
+            <Text style={[ts.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
               Our team is compiling the vehicle history report for this car. It&apos;ll appear
               here as soon as it&apos;s ready.
             </Text>
@@ -2157,9 +2161,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {hpiError ? <ErrorBanner message={hpiError} /> : null}
 
             {/* Overall status */}
-            <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
+            <View style={[ts.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
               <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
-              <Text style={[styles.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
+              <Text style={[ts.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
                 {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
               </Text>
             </View>
@@ -2176,15 +2180,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 mileageAnomaly: 'Mileage Anomaly',
               };
               return (
-                <View key={key} style={styles.hpiCheckRow}>
+                <View key={key} style={ts.hpiCheckRow}>
                   <Ionicons
                     name={check.passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
                     color={check.passed ? Colors.success : Colors.error}
                   />
-                  <View style={styles.hpiCheckText}>
-                    <Text style={styles.hpiCheckLabel}>{labels[key] || key}</Text>
-                    <Text style={styles.hpiCheckDetail}>{check.detail}</Text>
+                  <View style={ts.hpiCheckText}>
+                    <Text style={ts.hpiCheckLabel}>{labels[key] || key}</Text>
+                    <Text style={ts.hpiCheckDetail}>{check.detail}</Text>
                   </View>
                 </View>
               );
@@ -2197,16 +2201,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               const entry = hpiData.report!.checks?.[def.key];
               const passed = entry?.passed !== false;
               return (
-                <View key={def.key} style={styles.hpiCheckRow}>
+                <View key={def.key} style={ts.hpiCheckRow}>
                   <Ionicons
                     name={passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
                     color={passed ? Colors.success : Colors.error}
                   />
-                  <View style={styles.hpiCheckText}>
-                    <Text style={styles.hpiCheckLabel}>{def.label}</Text>
+                  <View style={ts.hpiCheckText}>
+                    <Text style={ts.hpiCheckLabel}>{def.label}</Text>
                     {!passed && entry?.note ? (
-                      <Text style={styles.hpiCheckDetail}>{entry.note}</Text>
+                      <Text style={ts.hpiCheckDetail}>{entry.note}</Text>
                     ) : null}
                   </View>
                 </View>
@@ -2216,7 +2220,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {/* Uploaded PDF with no structured data behind it — the file is
                 the whole report, so there are no rows to show. */}
             {hpiData.format === 'ADMIN' && !hpiData.report && hpiData.hasPdf && (
-              <Text style={[styles.hpiCheckDetail, { marginTop: 4, marginBottom: 4, lineHeight: 18 }]}>
+              <Text style={[ts.hpiCheckDetail, { marginTop: 4, marginBottom: 4, lineHeight: 18 }]}>
                 The full vehicle history check is in the report document below.
               </Text>
             )}
@@ -2225,19 +2229,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 or the branded one rendered from the form data. */}
             {hpiData.format === 'ADMIN' && (
               <TouchableOpacity
-                style={styles.hpiViewFullBtn}
+                style={ts.hpiViewFullBtn}
                 activeOpacity={0.8}
                 onPress={handleOpenHpiPdf}
                 disabled={hpiPdfLoading}
               >
                 {hpiPdfLoading
                   ? <ActivityIndicator size="small" color={Colors.infoBlue} />
-                  : <Text style={styles.hpiViewFullText}>Open full report (PDF)</Text>}
+                  : <Text style={ts.hpiViewFullText}>Open full report (PDF)</Text>}
                 <Ionicons name="download-outline" size={14} color={Colors.infoBlue} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             )}
 
-            <Text style={[styles.hpiCheckDetail, { marginTop: 14, lineHeight: 16 }]}>
+            <Text style={[ts.hpiCheckDetail, { marginTop: 14, lineHeight: 16 }]}>
               CarMazium presents vehicle-history information from a supplied third-party check.
               CarMazium did not originate or independently verify the underlying data.
             </Text>
@@ -2255,73 +2259,73 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       >
         <>
             {/* Header */}
-            <View style={styles.chatHeader}>
-              <View style={styles.chatHeaderLeft}>
-                <View style={styles.sellerAvatarSmall}>
-                  <Text style={styles.sellerAvatarTextSmall}>
+            <View style={ts.chatHeader}>
+              <View style={ts.chatHeaderLeft}>
+                <View style={ts.sellerAvatarSmall}>
+                  <Text style={ts.sellerAvatarTextSmall}>
                     {getInitials(listing.dealer)}
                   </Text>
                 </View>
                 <View>
-                  <Text style={styles.chatDealerName}>{listing.dealer}</Text>
-                  <Text style={styles.chatOnlineStatus}>Active now</Text>
+                  <Text style={ts.chatDealerName}>{listing.dealer}</Text>
+                  <Text style={ts.chatOnlineStatus}>Active now</Text>
                 </View>
               </View>
-              <View style={styles.chatHeaderRight}>
-                <IconButton style={styles.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
-                <IconButton style={styles.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
+              <View style={ts.chatHeaderRight}>
+                <IconButton style={ts.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
+                <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
               </View>
             </View>
 
             {/* Message History list */}
             <ScrollView
-              style={styles.chatScroll}
-              contentContainerStyle={styles.chatScrollContent}
+              style={ts.chatScroll}
+              contentContainerStyle={ts.chatScrollContent}
               ref={(ref) => ref?.scrollToEnd({ animated: true })}
             >
               {chatMessages.map((msg) => (
                 <View
                   key={msg.id}
                   style={[
-                    styles.messageBubble,
-                    msg.isUser ? styles.userBubble : styles.dealerBubble,
+                    ts.messageBubble,
+                    msg.isUser ? ts.userBubble : ts.dealerBubble,
                   ]}
                 >
-                  <Text style={styles.messageText}>{msg.text}</Text>
+                  <Text style={ts.messageText}>{msg.text}</Text>
                 </View>
               ))}
 
               {isTyping && (
-                <View style={[styles.messageBubble, styles.dealerBubble, styles.typingBubble]}>
-                  <Text style={styles.typingText}>Dealer is typing...</Text>
+                <View style={[ts.messageBubble, ts.dealerBubble, ts.typingBubble]}>
+                  <Text style={ts.typingText}>Dealer is typing...</Text>
                 </View>
               )}
             </ScrollView>
 
             {/* Quick replies footer */}
-            <View style={styles.quickRepliesContainer}>
+            <View style={ts.quickRepliesContainer}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.quickRepliesContent}
+                contentContainerStyle={ts.quickRepliesContent}
               >
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={ts.quickReplyPill}
                   onPress={() => handleQuickReply("Is this vehicle still available?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Is this available?</Text>
+                  <Text style={ts.quickReplyPillText}>Is this available?</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={ts.quickReplyPill}
                   onPress={() => handleQuickReply("Can I book a test drive?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Book a test drive</Text>
+                  <Text style={ts.quickReplyPillText}>Book a test drive</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.quickReplyPill}
+                  style={ts.quickReplyPill}
                   onPress={() => handleQuickReply("What is the lowest price you would accept?")}
                 >
-                  <Text style={styles.quickReplyPillText}>Lowest price?</Text>
+                  <Text style={ts.quickReplyPillText}>Lowest price?</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
@@ -2335,23 +2339,23 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         animationType="fade"
         onRequestClose={() => setFullscreenVisible(false)}
       >
-        <View style={styles.fullscreenBackdrop}>
+        <View style={ts.fullscreenBackdrop}>
           {/* Close button */}
-          <IconButton style={[styles.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={[ts.fullscreenCloseBtn, { top: insets.top + 12 }]} icon={<Ionicons name="close" size={22} color={Colors.white} />} onPress={() => setFullscreenVisible(false)} accessibilityLabel="Close" />
 
           {/* Photo counter */}
-          <View style={[styles.fullscreenCounter, { top: insets.top + 14 }]}>
-            <Text style={styles.fullscreenCounterText}>
+          <View style={[ts.fullscreenCounter, { top: insets.top + 14 }]}>
+            <Text style={ts.fullscreenCounterText}>
               {fullscreenIndex + 1}/{totalImages}
             </Text>
           </View>
 
           {/* Zoomable image */}
           <GestureDetector gesture={combinedFullscreenGesture}>
-            <Animated.View style={[styles.fullscreenImageWrap, fullscreenAnimatedStyle]}>
+            <Animated.View style={[ts.fullscreenImageWrap, fullscreenAnimatedStyle]}>
               <Image
                 source={{ uri: images[fullscreenIndex] }}
-                style={styles.fullscreenImage}
+                style={ts.fullscreenImage}
                 contentFit="contain"
                 transition={200}
                 cachePolicy="memory-disk"
@@ -2364,6 +2368,93 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     </View>
   );
 };
+
+const lightVehicleDetailStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  detailsBlock: { backgroundColor: '#EEF5FB' },
+  buyerJourneyNote: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  extraSpecToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  specBadgeBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  featureChip: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  specCardContainer: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  historyBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  reviewsBlock: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  reviewCard: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  dealerDetailCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  sellerCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  financeCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  protectionCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  deliveryCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  modalHeader: { backgroundColor: '#FFFFFF', borderBottomColor: '#D5E1EC' },
+  modalBody: { backgroundColor: '#FFFFFF' },
+  offerBoxContainer: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  successContainer: { backgroundColor: '#FFFFFF' },
+  stickyCTAOuter: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
+  offerAdjusterContainer: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  offerAmountInputWrap: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  postcodeInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  offerMessageInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  calcResult: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  lastOfferTeaser: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  specRow: { borderBottomColor: '#D5E1EC' },
+  calcRow: { borderBottomColor: '#D5E1EC' },
+  hpiCheckRow: { borderBottomColor: '#D5E1EC' },
+  carTitle: { color: '#0F172A' },
+  priceText: { color: '#0F172A' },
+  specBadgeValue: { color: '#0F172A' },
+  sectionHeaderTitle: { color: '#0F172A' },
+  specRowValue: { color: '#0F172A' },
+  historyValue: { color: '#0F172A' },
+  reviewsTitle: { color: '#0F172A' },
+  reviewerName: { color: '#0F172A' },
+  sellerName: { color: '#0F172A' },
+  financeTitle: { color: '#0F172A' },
+  deliveryTitle: { color: '#0F172A' },
+  deliveryFeeValue: { color: '#0F172A' },
+  modalTitle: { color: '#0F172A' },
+  askingPriceValue: { color: '#0F172A' },
+  offerAmountText: { color: '#0F172A' },
+  offerAmountInput: { color: '#0F172A' },
+  successTitle: { color: '#0F172A' },
+  calcValue: { color: '#0F172A' },
+  calcResultValue: { color: '#0F172A' },
+  hpiReportTitle: { color: '#0F172A' },
+  lastOfferTeaserAmount: { color: '#0F172A' },
+  buyerJourneyText: { color: '#334155' },
+  locationText: { color: '#334155' },
+  aboutText: { color: '#334155' },
+  featureChipText: { color: '#334155' },
+  reviewComment: { color: '#334155' },
+  dealerDescription: { color: '#334155' },
+  protectionText: { color: '#334155' },
+  modalSubheading: { color: '#334155' },
+  offerAmountCurrency: { color: '#334155' },
+  hpiCheckText: { color: '#334155' },
+  lastOfferTeaserText: { color: '#334155' },
+  variantLabel: { color: '#64748B' },
+  financeDisclaimer: { color: '#64748B' },
+  colorLabel: { color: '#64748B' },
+  monthlyText: { color: '#64748B' },
+  specBadgeLabel: { color: '#64748B' },
+  specRowLabel: { color: '#64748B' },
+  historyLabel: { color: '#64748B' },
+  reviewDate: { color: '#64748B' },
+  dealerMetaText: { color: '#64748B' },
+  sellerSubtext: { color: '#64748B' },
+  financeSubtext: { color: '#64748B' },
+  deliverySubtitle: { color: '#64748B' },
+  deliveryFeeLabel: { color: '#64748B' },
+  deliveryFeeHint: { color: '#64748B' },
+  deliveryPendingHint: { color: '#64748B' },
+  successSubtitle: { color: '#64748B' },
+  calcLabel: { color: '#64748B' },
+  calcResultLabel: { color: '#64748B' },
+  calcResultSub: { color: '#64748B' },
+  hpiCheckDetail: { color: '#64748B' },
+  hpiReportSub: { color: '#64748B' },
+  offerLabel: { color: '#64748B' },
+  extraSpecToggleText: { color: '#0F172A' },
+});
 
 const styles = StyleSheet.create({
   container: {
