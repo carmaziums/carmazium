@@ -17,6 +17,12 @@ on:
       - 'carmazium app/carmazium app/src/screens/**/*.tsx'
       - 'carmazium app/carmazium app/src/components/**/*.tsx'
       - 'carmazium app/carmazium app/src/theme/**/*.ts'
+      - 'carmazium app/carmazium app/src/**/*.ts'
+      - 'carmazium app/carmazium app/App.tsx'
+      - 'carmazium app/carmazium app/app.json'
+      - 'carmazium app/carmazium app/package-lock.json'
+      - 'carmazium app/carmazium app/assets/**'
+      - 'scripts/test-mazium-native-visual-parity.test.mjs'
       - 'scripts/test-native-visual-parity-block9.test.mjs'
       - 'scripts/ci/android-qa-emulator-smoke.sh'
       - 'carmazium app/carmazium app/src/screens/main/DealerProfileScreen.tsx'
@@ -152,6 +158,7 @@ jobs:
           node ../../scripts/test-native-website-ui-parity.test.mjs
           node ../../scripts/test-native-visual-parity-block9.test.mjs
           node ../../scripts/test-native-visual-parity-block8.test.mjs
+          node ../../scripts/test-mazium-native-visual-parity.test.mjs
       - name: Typecheck QA app
         run: npm run typescript
       - name: Generate native Android project from managed Expo config
