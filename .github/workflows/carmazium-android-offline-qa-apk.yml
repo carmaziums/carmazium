@@ -22,6 +22,7 @@ on:
       - 'carmazium app/carmazium app/src/screens/main/DealerMyOffersScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/DealerPurchasesScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/NotificationsScreen.tsx'
+      - 'scripts/test-native-visual-parity-block9.test.mjs'
       - 'carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/LiveScreen.tsx'
