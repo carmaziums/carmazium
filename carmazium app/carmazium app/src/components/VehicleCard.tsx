@@ -24,6 +24,8 @@ import { ImageCarousel } from './ImageCarousel';
 import { ImageLightbox } from './ImageLightbox';
 import { GradeChip } from './GradeChip';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Elevation, Radius } from '../constants/spacing';
 import { useLocation } from '../context/LocationContext';
@@ -50,6 +52,8 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   width = CARD_WIDTH,
   compact = false,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightVehicleCardStyles) : styles;
   // Selector-subscribed, not `useWatchlistStore()`. Destructuring the whole
   // store subscribes this component to every field on it, so saving ANY
   // listing anywhere re-rendered EVERY card on screen. This is the app's
@@ -107,14 +111,14 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
     <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
-      style={[styles.card, { width }, animatedStyle]}
+      style={[ts.card, { width }, animatedStyle]}
       onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
     >
       {/* Image */}
-      <View style={[styles.imageContainer, { height: imageHeight }]}>
+      <View style={[ts.imageContainer, { height: imageHeight }]}>
         <ImageCarousel
           images={listing.images}
           width={width}
@@ -122,72 +126,72 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
           onPress={openLightbox}
         />
         {/* Gradient overlay on image */}
-        <View style={styles.imageGradient} />
+        <View style={ts.imageGradient} />
 
         {/* Top badges */}
-        <View style={styles.imageBadgeRow}>
+        <View style={ts.imageBadgeRow}>
           {listing.bannerLabel && (
-            <View style={styles.bannerBadge}>
-              <Text style={styles.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
+            <View style={ts.bannerBadge}>
+              <Text style={ts.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
             </View>
           )}
           {(listing.isFeatured || listing.badgeTier === 'PREMIUM') && (
-            <View style={styles.featuredBadge}>
-              <Text style={styles.featuredText}>⭐ FEATURED</Text>
+            <View style={ts.featuredBadge}>
+              <Text style={ts.featuredText}>⭐ FEATURED</Text>
             </View>
           )}
           {listing.isImported && (
-            <View style={styles.importedBadge}>
+            <View style={ts.importedBadge}>
               <Ionicons name="globe-outline" size={10} color="#111827" />
-              <Text style={styles.importedText}>IMPORTED</Text>
+              <Text style={ts.importedText}>IMPORTED</Text>
             </View>
           )}
           {/* Paid-tier indicator — this is NOT a verification signal, just which
               listing package the seller bought (mobile-ui-ux-audit.md §C5). */}
           {(listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM') && (
-            <View style={styles.verifiedBadge}>
+            <View style={ts.verifiedBadge}>
               <Ionicons name="shield-checkmark" size={10} color={Colors.infoBlueLight} />
-              <Text style={styles.verifiedText}>{listing.badgeTier}</Text>
+              <Text style={ts.verifiedText}>{listing.badgeTier}</Text>
             </View>
           )}
           {/* Real seller-verification chip — separate from the tier badge above,
               only shown when the seller has actually been verified. */}
           {listing.isSellerVerified === true && (
-            <View style={styles.verifiedBadge}>
+            <View style={ts.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={10} color={Colors.success} />
-              <Text style={styles.verifiedText}>VERIFIED</Text>
+              <Text style={ts.verifiedText}>VERIFIED</Text>
             </View>
           )}
           {listing.isNew && (
-            <View style={styles.newBadge}>
-              <Text style={styles.newText}>NEW</Text>
+            <View style={ts.newBadge}>
+              <Text style={ts.newText}>NEW</Text>
             </View>
           )}
           {listing.isDepartedSale && (
-            <View style={styles.estateBadge}>
-              <Text style={styles.estateText}>ESTATE</Text>
+            <View style={ts.estateBadge}>
+              <Text style={ts.estateText}>ESTATE</Text>
             </View>
           )}
         </View>
 
         {/* Save button */}
-        <IconButton style={styles.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        <IconButton style={ts.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
 
         {/* Price tag */}
-        <View style={styles.priceTag}>
-          <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+        <View style={ts.priceTag}>
+          <Text style={ts.priceText}>{formatPrice(listing.price)}</Text>
         </View>
       </View>
 
       {/* Card body */}
-      <View style={styles.body}>
+      <View style={ts.body}>
         {/* Make + Model */}
-        <View style={styles.titleRow}>
-          <View style={styles.titleLeft}>
-            <Text style={styles.make} numberOfLines={1}>
+        <View style={ts.titleRow}>
+          <View style={ts.titleLeft}>
+            <Text style={ts.make} numberOfLines={1}>
               {listing.make}
             </Text>
-            <Text style={styles.model} numberOfLines={1}>
+            <Text style={ts.model} numberOfLines={1}>
               {listing.model} {listing.variant}
             </Text>
           </View>
@@ -195,9 +199,9 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               replace it (Prompt 3: model always visible regardless of badges). */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {listing.rating != null && (
-              <View style={styles.ratingBadge}>
+              <View style={ts.ratingBadge}>
                 <Ionicons name="star" size={10} color={Colors.warning} />
-                <Text style={styles.ratingText}>{listing.rating}</Text>
+                <Text style={ts.ratingText}>{listing.rating}</Text>
               </View>
             )}
             <GradeChip grade={listing.exteriorGrade} />
@@ -205,7 +209,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {/* Spec row */}
-        <View style={styles.specRow}>
+        <View style={ts.specRow}>
           <SpecBadge icon="speedometer-outline" value={formatMileage(listing.mileage)} />
           <SpecBadge icon="calendar-outline" value={String(listing.year)} />
           <SpecBadge icon="settings-outline" value={`Gearbox: ${listing.transmission || 'Not specified'}`} />
@@ -213,20 +217,20 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {!compact && (
-          <View style={styles.footer}>
-            <View style={styles.locationRow}>
+          <View style={ts.footer}>
+            <View style={ts.locationRow}>
               <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
-              <Text style={styles.locationText} numberOfLines={1}>
+              <Text style={ts.locationText} numberOfLines={1}>
                 {listing.location}
               </Text>
               {distanceMiles != null && (
-                <View style={styles.distanceChip}>
-                  <Text style={styles.distanceChipText}>{distanceMiles} mi away</Text>
+                <View style={ts.distanceChip}>
+                  <Text style={ts.distanceChipText}>{distanceMiles} mi away</Text>
                 </View>
               )}
             </View>
-            <View style={styles.fuelRow}>
-              <Text style={styles.fuelText}>{listing.fuelType}</Text>
+            <View style={ts.fuelRow}>
+              <Text style={ts.fuelText}>{listing.fuelType}</Text>
             </View>
           </View>
         )}
@@ -243,6 +247,25 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
 };
 
 export const VehicleCard = React.memo(VehicleCardBase);
+
+const lightVehicleCardStyles = StyleSheet.create({
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  imageContainer: { backgroundColor: '#E5EEF7' },
+  body: { backgroundColor: '#FFFFFF' },
+  make: { color: '#0F172A' },
+  model: { color: '#526177' },
+  ratingText: { color: '#334155' },
+  specRow: { borderColor: '#D5E1EC' },
+  footer: { borderTopColor: '#D5E1EC' },
+  locationText: { color: '#526177' },
+  distanceChip: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  distanceChipText: { color: '#334155' },
+  fuelRow: { backgroundColor: '#FFFFFF' },
+  fuelText: { color: '#334155' },
+  separator: { backgroundColor: '#D5E1EC' },
+  priceText: { color: '#0F172A' },
+  priceTag: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+});
 
 const styles = StyleSheet.create({
   card: {
