@@ -20,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -223,6 +225,8 @@ const AnalyticsSkeleton: React.FC = () => (
 // ─── Main Component ─────────────────────────────────────────────────────────
 export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerAnalyticsScreenStyles) : styles;
   const [period, setPeriod] = useState<Period>('30D');
   const [subView, setSubView] = useState<SubView>('analytics');
 
@@ -298,32 +302,32 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     return (
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 12 }]}
+        contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 12 }]}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setSubView('analytics')} accessibilityLabel="Go back" />
-          <Text style={styles.headerTitle}>CONVERSION DEEP DIVE</Text>
+        <View style={ts.header}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => setSubView('analytics')} accessibilityLabel="Go back" />
+          <Text style={ts.headerTitle}>CONVERSION DEEP DIVE</Text>
           <View style={{ width: 38 }} />
         </View>
 
         {/* Circular gauge card */}
-        <View style={styles.convCard}>
+        <View style={ts.convCard}>
           <LinearGradient
             colors={[Colors.successAlpha06, 'rgba(34,197,94,0.01)']}
             style={StyleSheet.absoluteFillObject}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
-          <View style={styles.convCardInner}>
+          <View style={ts.convCardInner}>
             <CircularGauge value={loading ? 0 : Math.round(kpis?.leadConversionRate ?? 0)} size={90} />
-            <View style={styles.convCardText}>
-              <Text style={styles.convCardLabel}>LEAD → WON CONVERSION</Text>
-              <Text style={styles.convCardBig}>
+            <View style={ts.convCardText}>
+              <Text style={ts.convCardLabel}>LEAD → WON CONVERSION</Text>
+              <Text style={ts.convCardBig}>
                 {loading ? '–' : `${kpis?.leadConversionRate ?? 0}% of leads won`}
               </Text>
               {!loading && kpis && (
-                <Text style={styles.convCardSub}>
+                <Text style={ts.convCardSub}>
                   {kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs previous period
                 </Text>
               )}
@@ -332,46 +336,46 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
 
         {/* Lead pipeline */}
-        <Text style={styles.sectionLabel}>LEAD PIPELINE · {totalLeads} TOTAL</Text>
-        <View style={styles.funnelCard}>
+        <Text style={ts.sectionLabel}>LEAD PIPELINE · {totalLeads} TOTAL</Text>
+        <View style={ts.funnelCard}>
           {FUNNEL_STAGES.map((stage, i, arr) => {
             const count = lf?.[stage.key] ?? 0;
             const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 1000) / 10 : 0;
             return (
               <View key={stage.key}>
-                <View style={styles.funnelRow}>
-                  <View style={styles.funnelLeft}>
-                    <Text style={styles.funnelStep}>{stage.label}</Text>
-                    <Text style={styles.funnelSub}>{count} lead{count === 1 ? '' : 's'}</Text>
+                <View style={ts.funnelRow}>
+                  <View style={ts.funnelLeft}>
+                    <Text style={ts.funnelStep}>{stage.label}</Text>
+                    <Text style={ts.funnelSub}>{count} lead{count === 1 ? '' : 's'}</Text>
                   </View>
-                  <View style={[styles.funnelBadge, { backgroundColor: `${stage.color}22` }]}>
-                    <Text style={[styles.funnelPct, { color: stage.color }]}>{pct}%</Text>
+                  <View style={[ts.funnelBadge, { backgroundColor: `${stage.color}22` }]}>
+                    <Text style={[ts.funnelPct, { color: stage.color }]}>{pct}%</Text>
                   </View>
                 </View>
-                {i < arr.length - 1 && <View style={styles.funnelDivider} />}
+                {i < arr.length - 1 && <View style={ts.funnelDivider} />}
               </View>
             );
           })}
         </View>
 
         {/* Offer breakdown */}
-        <Text style={styles.sectionLabel}>OFFER BREAKDOWN · {totalOffers} TOTAL</Text>
-        <View style={styles.funnelCard}>
+        <Text style={ts.sectionLabel}>OFFER BREAKDOWN · {totalOffers} TOTAL</Text>
+        <View style={ts.funnelCard}>
           {OFFER_STAGES.map((stage, i, arr) => {
             const count = ob?.[stage.key] ?? 0;
             const pct = totalOffers > 0 ? Math.round((count / totalOffers) * 1000) / 10 : 0;
             return (
               <View key={stage.key}>
-                <View style={styles.funnelRow}>
-                  <View style={styles.funnelLeft}>
-                    <Text style={styles.funnelStep}>{stage.label}</Text>
-                    <Text style={styles.funnelSub}>{count} offer{count === 1 ? '' : 's'}</Text>
+                <View style={ts.funnelRow}>
+                  <View style={ts.funnelLeft}>
+                    <Text style={ts.funnelStep}>{stage.label}</Text>
+                    <Text style={ts.funnelSub}>{count} offer{count === 1 ? '' : 's'}</Text>
                   </View>
-                  <View style={[styles.funnelBadge, { backgroundColor: `${stage.color}22` }]}>
-                    <Text style={[styles.funnelPct, { color: stage.color }]}>{pct}%</Text>
+                  <View style={[ts.funnelBadge, { backgroundColor: `${stage.color}22` }]}>
+                    <Text style={[ts.funnelPct, { color: stage.color }]}>{pct}%</Text>
                   </View>
                 </View>
-                {i < arr.length - 1 && <View style={styles.funnelDivider} />}
+                {i < arr.length - 1 && <View style={ts.funnelDivider} />}
               </View>
             );
           })}
@@ -380,17 +384,17 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         {/* Offer performance */}
         {ob && (ob.avgAcceptedAmount > 0 || ob.avgTimeToRespond > 0) && (
           <>
-            <Text style={styles.sectionLabel}>OFFER PERFORMANCE</Text>
-            <View style={styles.benchCard}>
-              <View style={styles.benchRow}>
-                <Text style={[styles.benchLabel, { width: 170 }]}>Avg accepted offer</Text>
+            <Text style={ts.sectionLabel}>OFFER PERFORMANCE</Text>
+            <View style={ts.benchCard}>
+              <View style={ts.benchRow}>
+                <Text style={[ts.benchLabel, { width: 170 }]}>Avg accepted offer</Text>
                 <View style={{ flex: 1 }} />
                 <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.success }}>
                   {formatGBP(ob.avgAcceptedAmount)}
                 </Text>
               </View>
-              <View style={styles.benchRow}>
-                <Text style={[styles.benchLabel, { width: 170 }]}>Avg time to respond</Text>
+              <View style={ts.benchRow}>
+                <Text style={[ts.benchLabel, { width: 170 }]}>Avg time to respond</Text>
                 <View style={{ flex: 1 }} />
                 <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.infoBlue }}>
                   {ob.avgTimeToRespond < 1 ? '< 1h' : `${ob.avgTimeToRespond}h`}
@@ -416,7 +420,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 12 }]}
+      contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 12 }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -432,25 +436,25 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
       ) : null}
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerSub}>SALES · LAST {period}</Text>
-          <Text style={styles.headerTitleMain}>Analytics</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <View style={ts.headerCenter}>
+          <Text style={ts.headerSub}>SALES · LAST {period}</Text>
+          <Text style={ts.headerTitleMain}>Analytics</Text>
         </View>
         <HamburgerButton />
       </View>
 
       {/* Period pills */}
-      <View style={styles.pillRow}>
+      <View style={ts.pillRow}>
         {PERIODS.map((p) => (
           <TouchableOpacity
             key={p}
-            style={[styles.pill, period === p && styles.pillActive]}
+            style={[ts.pill, period === p && ts.pillActive]}
             onPress={() => switchPeriod(p)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.pillText, period === p && styles.pillTextActive]}>{p}</Text>
+            <Text style={[ts.pillText, period === p && ts.pillTextActive]}>{p}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -469,25 +473,25 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
       ) : (
         <>
           {/* Revenue BarChart card */}
-          <Animated.View style={[styles.revenueCard, { opacity: fadeAnim }]}>
+          <Animated.View style={[ts.revenueCard, { opacity: fadeAnim }]}>
             <LinearGradient
               colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)']}
               style={StyleSheet.absoluteFillObject}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
-            <View style={styles.revenueTop}>
+            <View style={ts.revenueTop}>
               <View>
-                <Text style={styles.revLabel}>REVENUE · {period}</Text>
-                <Text style={styles.revValue}>
+                <Text style={ts.revLabel}>REVENUE · {period}</Text>
+                <Text style={ts.revValue}>
                   {formatGBP(kpis?.totalRevenue ?? 0)}
                 </Text>
-                {kpis && renderTrend(kpis.totalRevenueTrend, styles.revChangeText, styles.revChange, 12)}
+                {kpis && renderTrend(kpis.totalRevenueTrend, ts.revChangeText, ts.revChange, 12)}
               </View>
             </View>
 
             {/* Gifted-charts BarChart */}
-            <View style={styles.chartArea}>
+            <View style={ts.chartArea}>
               {barData.length > 0 ? (
                 <BarChart
                   data={barData}
@@ -516,16 +520,16 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
           {/* Units Sold LineChart card */}
           {lineData.length > 1 && (
-            <Animated.View style={[styles.revenueCard, { opacity: fadeAnim, marginTop: 0 }]}>
-              <View style={styles.revenueTop}>
+            <Animated.View style={[ts.revenueCard, { opacity: fadeAnim, marginTop: 0 }]}>
+              <View style={ts.revenueTop}>
                 <View>
-                  <Text style={styles.revLabel}>UNITS SOLD TREND</Text>
-                  <Text style={[styles.revValue, { fontSize: FontSize['2xl'] }]}>
+                  <Text style={ts.revLabel}>UNITS SOLD TREND</Text>
+                  <Text style={[ts.revValue, { fontSize: FontSize['2xl'] }]}>
                     {kpis?.totalUnitsSold ?? 0}
                   </Text>
                 </View>
               </View>
-              <View style={styles.chartArea}>
+              <View style={ts.chartArea}>
                 <LineChart
                   data={lineData}
                   width={chartW - 8}
@@ -551,47 +555,47 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           )}
 
           {/* Stats grid */}
-          <Animated.View style={[styles.statsGrid, { opacity: fadeAnim }]}>
+          <Animated.View style={[ts.statsGrid, { opacity: fadeAnim }]}>
             {/* Cars Sold */}
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>CARS SOLD</Text>
-              <Text style={styles.statValue}>
+            <View style={ts.statCard}>
+              <Text style={ts.statLabel}>CARS SOLD</Text>
+              <Text style={ts.statValue}>
                 {String(kpis?.totalUnitsSold ?? 0)}
               </Text>
-              {kpis && renderTrend(kpis.totalUnitsSoldTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {kpis && renderTrend(kpis.totalUnitsSoldTrend, ts.statChangeGreen, ts.statChange, 11)}
             </View>
 
             {/* Avg Sell Time */}
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>AVG SELL TIME</Text>
-              <Text style={styles.statValue}>
+            <View style={ts.statCard}>
+              <Text style={ts.statLabel}>AVG SELL TIME</Text>
+              <Text style={ts.statValue}>
                 {`${kpis?.avgDaysToSell ?? 0}d`}
               </Text>
-              {kpis && renderTrend(kpis.avgDaysToSellTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {kpis && renderTrend(kpis.avgDaysToSellTrend, ts.statChangeGreen, ts.statChange, 11)}
             </View>
 
             {/* Avg Views per Listing */}
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>AVG VIEWS / LISTING</Text>
-              <Text style={styles.statValue}>
+            <View style={ts.statCard}>
+              <Text style={ts.statLabel}>AVG VIEWS / LISTING</Text>
+              <Text style={ts.statValue}>
                 {String(kpis?.avgViewsPerListing ?? 0)}
               </Text>
-              {kpis && renderTrend(kpis.avgViewsPerListingTrend, styles.statChangeGreen, styles.statChange, 11)}
+              {kpis && renderTrend(kpis.avgViewsPerListingTrend, ts.statChangeGreen, ts.statChange, 11)}
             </View>
 
             {/* Listings Live */}
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>LISTINGS LIVE</Text>
-              <Text style={styles.statValue}>
+            <View style={ts.statCard}>
+              <Text style={ts.statLabel}>LISTINGS LIVE</Text>
+              <Text style={ts.statValue}>
                 {String(analytics?.inventoryHealth.ACTIVE ?? 0)}
               </Text>
-              <View style={styles.statChange}>
+              <View style={ts.statChange}>
                 <Ionicons
                   name={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? 'alert-circle' : 'checkmark-circle'}
                   size={11}
                   color={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success}
                 />
-                <Text style={[styles.statChangeGreen, { color: (analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success }]}>
+                <Text style={[ts.statChangeGreen, { color: (analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success }]}>
                   {' '}{(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? `${analytics?.inventoryHealth.staleCount} stale 60d+` : 'All listings fresh'}
                 </Text>
               </View>
@@ -601,8 +605,8 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           {/* Lead Funnel BarChart */}
           {leadFunnelData.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>LEAD FUNNEL</Text>
-              <View style={[styles.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
+              <Text style={ts.sectionLabel}>LEAD FUNNEL</Text>
+              <View style={[ts.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
                 <BarChart
                   data={leadFunnelData}
                   width={chartW - 8}
@@ -624,8 +628,8 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           {/* Inventory Aging BarChart */}
           {agingData.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>INVENTORY AGING</Text>
-              <View style={[styles.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
+              <Text style={ts.sectionLabel}>INVENTORY AGING</Text>
+              <View style={[ts.monthCard, { flexDirection: 'column', alignItems: 'flex-start', paddingTop: 20 }]}>
                 <BarChart
                   data={agingData}
                   width={chartW - 8}
@@ -645,8 +649,8 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           )}
 
           {/* Top Performers */}
-          <Text style={styles.sectionLabel}>TOP PERFORMERS</Text>
-          <View style={styles.topSection}>
+          <Text style={ts.sectionLabel}>TOP PERFORMERS</Text>
+          <View style={ts.topSection}>
             {(analytics?.topVehicles ?? []).length === 0 ? (
               <View style={{ paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center' }}>
                 <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center' }}>
@@ -656,26 +660,26 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             ) : (
               (analytics?.topVehicles ?? []).slice(0, 5).map((car, i, arr) => (
                 <View key={car.id}>
-                  <View style={styles.perfRow}>
-                    <View style={[styles.rankBadge, i === 0 && styles.rankBadgeRed]}>
-                      <Text style={styles.rankText}>#{i + 1}</Text>
+                  <View style={ts.perfRow}>
+                    <View style={[ts.rankBadge, i === 0 && ts.rankBadgeRed]}>
+                      <Text style={ts.rankText}>#{i + 1}</Text>
                     </View>
                     {car.image ? (
-                      <Image source={{ uri: car.image }} style={styles.perfThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                      <Image source={{ uri: car.image }} style={ts.perfThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
                     ) : (
-                      <View style={[styles.perfThumb, { alignItems: 'center', justifyContent: 'center' }]}>
+                      <View style={[ts.perfThumb, { alignItems: 'center', justifyContent: 'center' }]}>
                         <Ionicons name="car-sport-outline" size={18} color={Colors.textMuted} />
                       </View>
                     )}
-                    <View style={styles.perfInfo}>
-                      <Text style={styles.perfTitle} numberOfLines={1}>{car.title}</Text>
-                      <Text style={styles.perfSub}>
+                    <View style={ts.perfInfo}>
+                      <Text style={ts.perfTitle} numberOfLines={1}>{car.title}</Text>
+                      <Text style={ts.perfSub}>
                         {car.daysListed}d listed · {car.views.toLocaleString('en-GB')} views · {car.offerCount} offer{car.offerCount === 1 ? '' : 's'}
                       </Text>
                     </View>
-                    <Text style={styles.perfPrice}>{formatGBP(car.price)}</Text>
+                    <Text style={ts.perfPrice}>{formatGBP(car.price)}</Text>
                   </View>
-                  {i < arr.length - 1 && <View style={styles.perfDivider} />}
+                  {i < arr.length - 1 && <View style={ts.perfDivider} />}
                 </View>
               ))
             )}
@@ -683,7 +687,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
 
           {/* Conversion deep dive CTA */}
           <TouchableOpacity
-            style={styles.convCTA}
+            style={ts.convCTA}
             onPress={() => setSubView('conversion')}
             activeOpacity={0.85}
           >
@@ -693,19 +697,19 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             />
-            <View style={styles.convCTALeft}>
-              <Text style={styles.convCTALabel}>LEAD CONVERSION RATE</Text>
-              <Text style={styles.convCTAValue}>
+            <View style={ts.convCTALeft}>
+              <Text style={ts.convCTALabel}>LEAD CONVERSION RATE</Text>
+              <Text style={ts.convCTAValue}>
                 {`${kpis?.leadConversionRate ?? 0}%`}
                 {kpis && (
-                  <Text style={styles.convCTABench}>
+                  <Text style={ts.convCTABench}>
                     {'  '}{kpis.leadConversionRateTrend > 0 ? '+' : ''}{kpis.leadConversionRateTrend}% vs prev period
                   </Text>
                 )}
               </Text>
             </View>
-            <View style={styles.convCTARight}>
-              <Text style={styles.convCTALink}>Deep dive</Text>
+            <View style={ts.convCTARight}>
+              <Text style={ts.convCTALink}>Deep dive</Text>
               <Ionicons name="chevron-forward" size={14} color={Colors.success} accessibilityElementsHidden importantForAccessibility="no" />
             </View>
           </TouchableOpacity>
@@ -718,7 +722,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background */}
@@ -733,6 +737,24 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
     </View>
   );
 };
+
+const lightDealerAnalyticsScreenStyles = StyleSheet.create({
+  header: { backgroundColor: '#EEF5FB' },
+  headerTitle: { color: '#0F172A' },
+  headerTitleMain: { color: '#0F172A' },
+  headerSub: { color: '#64748B' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  pill: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  pillText: { color: '#334155' },
+  revenueCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  revLabel: { color: '#64748B' },
+  revValue: { color: '#0F172A' },
+  statCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statLabel: { color: '#64748B' },
+  statValue: { color: '#0F172A' },
+  sectionLabel: { color: '#0F172A' },
+  chartArea: { backgroundColor: '#FFFFFF' },
+});
 
 const styles = StyleSheet.create({
   container: {
