@@ -93,6 +93,15 @@ test('shared header has 44dp targets and messages no longer doubles top safe-are
   assert.ok(profile.includes('keyboardDismissMode="on-drag"'));
 });
 
+test('dealer bottom label is Dashboard; site logo leads to public Home without changing roles',()=>{
+  assert.ok(tabs.includes("name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard'"));
+  assert.ok(tabs.includes('initialRouteName={dealerMode ? \'DealerHome\' : \'Home\'}'));
+  assert.ok(top.includes("navigation.navigate('Tabs', { screen: 'Home' })"));
+  assert.ok(top.includes('accessibilityRole="button"'));
+  assert.ok(top.includes('CarMazium logo, open public home page'));
+  assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'), 'real logo asset retained');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
