@@ -81,7 +81,10 @@ test('remaining buyer journeys do not show dark gradients or white controls in l
     'Messages icon is not white on a white card');
   const palette=app('theme/appearancePalette.ts');
   assert.ok(palette.includes('Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04'));
-  assert.ok(palette.includes('Colors.whiteAlpha06, Colors.whiteAlpha08'));
+  for(const alpha of ['Colors.whiteAlpha05','Colors.whiteAlpha06','Colors.whiteAlpha07',
+    'Colors.whiteAlpha08','Colors.whiteAlpha09','Colors.whiteAlpha10','Colors.whiteAlpha12']){
+    assert.ok(palette.includes(alpha),'neutral glass surface not converted in light mode: '+alpha);
+  }
   assert.ok(palette.includes('Colors.glassBorderStrong'));
   assert.ok(palette.includes('if (!action &&'), 'semantic status and CTA buttons retain their colours');
 });
