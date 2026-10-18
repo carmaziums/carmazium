@@ -23,7 +23,7 @@ export function assessFirstPartyMarketDemand(
         offers?: Array<{ updatedAt?: Date | string | null }> | null;
         auction?: {
             updatedAt?: Date | string | null;
-            winningBidAmount?: number | null;
+            winningBidAmount?: unknown;
         } | null;
     }>,
     now = new Date(),
