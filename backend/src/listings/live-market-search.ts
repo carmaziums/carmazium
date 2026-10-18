@@ -242,8 +242,8 @@ function fuelFamily(value?: string | null): string | null {
     if (!text) return null;
     if (/ELECTRIC/.test(text)) return 'ELECTRIC';
     if (/DIESEL/.test(text)) return 'DIESEL';
-    if (/PETROL|GASOLINE/.test(text)) return 'PETROL';
     if (/HYBRID/.test(text)) return 'HYBRID';
+    if (/PETROL|GASOLINE/.test(text)) return 'PETROL';
     return null;
 }
 
@@ -255,7 +255,7 @@ function gearboxFamily(value?: string | null): string | null {
     return null;
 }
 
-function compatibleDerivative(input: VehicleValuationInput, row: Record<string, unknown>, title: string): boolean {
+export function compatibleDerivative(input: VehicleValuationInput, row: Record<string, unknown>, title: string): boolean {
     const candidateVariant = typeof row.variant === 'string' ? row.variant : '';
     const candidate = [candidateVariant, title].join(' ');
     const targetEngine = engineDisplacement(input.variant ?? '');
