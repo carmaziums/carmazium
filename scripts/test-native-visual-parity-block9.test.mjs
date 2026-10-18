@@ -172,6 +172,29 @@ test('appearance override merges per style key and covers watchlist, messages an
   }
 });
 
+test('Customers CRM scrolls header, KPIs, pipeline and cards as one vertical surface',()=>{
+  // Samsung QA screenshot 18 Oct: previous fixed header and metrics consumed
+  // viewport height, leaving the lead list below the bottom tab bar.
+  assert.ok(crm.includes('const customerPageHeader = ('), 'heading must be a scroll header');
+  assert.ok(crm.includes('ListHeaderComponent={customerPageHeader}'), 'only one vertical FlatList owns the page');
+  assert.equal((crm.match(/<FlatList/g) || []).length, 1, 'avoid separate below-fold card scroller');
+  const fromHeader = crm.indexOf('const customerPageHeader = (');
+  const headerEnd = crm.indexOf('const currentCustomerRows', fromHeader);
+  const header = crm.slice(fromHeader, headerEnd);
+  for(const field of ['<WebsiteTopBar />','styles.crmPageHeader','styles.crmAutoBanner',
+    'styles.crmMetrics','styles.crmStagesScroll','styles.filterScroll']) {
+    assert.ok(header.includes(field),'missing scrollable CRM section: '+field);
+  }
+  assert.ok(crm.includes('getScrollableStageHeight(fontScale)'),'horizontal pipeline remains usable');
+  assert.ok(crm.includes("key={viewMode === 'board' ?"),'board/list navigation remains responsive');
+  assert.ok(crm.includes('renderLeadRow({ item })'),'memoized customer row retained');
+  assert.ok(crm.includes('ListEmptyComponent='),'empty, loading and error states retained');
+  assert.ok(crm.includes('paddingBottom: insets.bottom + 96'),'customer cards must clear the bottom tab');
+  assert.ok(crm.includes('onRefresh={() => { void fetchLeads(true); }}'),'pull to refresh retained');
+  assert.ok(crm.includes('setCreateModalVisible(true)'),'Add Customer still reachable');
+  assert.ok(crm.includes('navigation?.navigate(\'DealerOffers\')'),'offers route retained');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
