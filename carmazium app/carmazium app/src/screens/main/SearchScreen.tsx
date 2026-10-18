@@ -184,7 +184,7 @@ export const SearchScreen: React.FC = () => {
 
   // ── Filter modal state ──
   const [filterOpen, setFilterOpen] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(true);
   const [selectedMakes, setSelectedMakes] = useState<string[]>([]);
   const [makeQuery, setMakeQuery] = useState('');
   const [showAllMakes, setShowAllMakes] = useState(false);
@@ -1685,7 +1685,7 @@ const s = StyleSheet.create({
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, lineHeight: 16, color: Colors.paleGrey_cccccc },
+  quickChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.paleGrey_cccccc },
   quickChipTextActive: { color: Colors.white },
 
   sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 8, marginTop: 4, position: 'relative', zIndex: 10 },
