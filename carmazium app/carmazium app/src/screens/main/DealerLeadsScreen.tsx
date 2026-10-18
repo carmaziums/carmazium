@@ -24,6 +24,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -523,6 +525,8 @@ const BoardCard: React.FC<{
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerLeadsScreenStyles) : styles;
   const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageOffers = hasPermission('MANAGE_OFFERS');
@@ -809,10 +813,10 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   });
 
   const renderEmptyState = () => (
-    <View style={styles.emptyWrap}>
+    <View style={ts.emptyWrap}>
       <Ionicons name="people-outline" size={40} color={Colors.iconMuted} />
-      <Text style={styles.emptyTitle}>{activeFilter === 'All' ? 'No customer enquiries yet' : `No ${activeFilter.toLowerCase()} customer enquiries`}</Text>
-      <Text style={styles.emptySub}>Buyer enquiries on your listings will show up here.</Text>
+      <Text style={ts.emptyTitle}>{activeFilter === 'All' ? 'No customer enquiries yet' : `No ${activeFilter.toLowerCase()} customer enquiries`}</Text>
+      <Text style={ts.emptySub}>Buyer enquiries on your listings will show up here.</Text>
     </View>
   );
 
@@ -824,27 +828,27 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       <WebsiteTopBar />
       {/* Use the exact website dealer Customers hierarchy and labels.
           Existing MANAGE_CRM screen gate remains in navigation. */}
-      <View style={styles.crmPageHeader}>
-        <Text style={styles.headerTitle}>Customers</Text>
-        <Text style={styles.crmSubtitle}>Enquiries, offers and buyer follow-up</Text>
-        <View style={styles.crmHeaderActions}>
-          <TouchableOpacity style={styles.crmAddButton}
+      <View style={ts.crmPageHeader}>
+        <Text style={ts.headerTitle}>Customers</Text>
+        <Text style={ts.crmSubtitle}>Enquiries, offers and buyer follow-up</Text>
+        <View style={ts.crmHeaderActions}>
+          <TouchableOpacity style={ts.crmAddButton}
             onPress={() => setCreateModalVisible(true)}
             accessibilityRole="button" accessibilityLabel="Add Customer">
             <Ionicons name="add-circle-outline" size={19} color={Colors.white} />
-            <Text style={styles.crmAddButtonText}>Add Customer</Text>
+            <Text style={ts.crmAddButtonText}>Add Customer</Text>
           </TouchableOpacity>
           {canManageOffers && (
-            <TouchableOpacity style={styles.crmOffersButton}
+            <TouchableOpacity style={ts.crmOffersButton}
               onPress={() => navigation?.navigate('DealerOffers')}
               accessibilityRole="button" accessibilityLabel="Offers received">
-              <Text style={styles.crmOffersText}>Offers received</Text>
+              <Text style={ts.crmOffersText}>Offers received</Text>
               <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
             </TouchableOpacity>
           )}
-          <View style={styles.viewModeToggle}>
+          <View style={ts.viewModeToggle}>
             <TouchableOpacity
-              style={[styles.viewModeBtn, viewMode === 'board' && styles.viewModeBtnActive]}
+              style={[ts.viewModeBtn, viewMode === 'board' && ts.viewModeBtnActive]}
               onPress={() => setViewMode('board')} activeOpacity={0.75}
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
               accessibilityLabel="Pipeline board view">
@@ -852,7 +856,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.viewModeBtn, viewMode === 'list' && styles.viewModeBtnActive]}
+              style={[ts.viewModeBtn, viewMode === 'list' && ts.viewModeBtnActive]}
               onPress={() => setViewMode('list')} activeOpacity={0.75}
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
               accessibilityLabel="Customer list view">
@@ -862,51 +866,51 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           </View>
         </View>
       </View>
-      <View style={styles.crmAutoBanner}>
+      <View style={ts.crmAutoBanner}>
         <Ionicons name="sparkles-outline" size={19} color={Colors.success} />
-        <View style={styles.crmAutoText}>
-          <Text style={styles.crmAutoTitle}>Customer enquiries are automatic</Text>
-          <Text style={styles.crmAutoDescription}>
+        <View style={ts.crmAutoText}>
+          <Text style={ts.crmAutoTitle}>Customer enquiries are automatic</Text>
+          <Text style={ts.crmAutoDescription}>
             CarMazium retail messages and offers appear here automatically and stay linked to the vehicle.
             Add Customer is for phone calls, walk-ins and other off-platform enquiries.
           </Text>
         </View>
       </View>
       {!loading && (!loadError || leads.length > 0) && (
-      <View style={styles.crmMetrics}>
+      <View style={ts.crmMetrics}>
         {websiteSummary.map(metric => (
-          <View style={styles.crmMetricCard} key={metric.label}>
-            <Text style={[styles.crmMetricCount, { color: metric.color }]}>
+          <View style={ts.crmMetricCard} key={metric.label}>
+            <Text style={[ts.crmMetricCount, { color: metric.color }]}>
               {metric.count.toLocaleString('en-GB')}
             </Text>
-            <Text style={styles.crmMetricLabel}>{metric.label}</Text>
+            <Text style={ts.crmMetricLabel}>{metric.label}</Text>
           </View>
         ))}
       </View>
       )}
       {!!loadError && (
-        <View style={styles.crmErrorBanner}>
-          <Text style={styles.crmErrorText}>{loadError}</Text>
+        <View style={ts.crmErrorBanner}>
+          <Text style={ts.crmErrorText}>{loadError}</Text>
           <TouchableOpacity accessibilityRole="button"
             accessibilityLabel="Retry loading customers" onPress={() => { void fetchLeads(true); }}>
-            <Text style={styles.crmRetry}>Retry</Text>
+            <Text style={ts.crmRetry}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
       {viewMode === 'board' && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          style={[styles.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }]}
-          contentContainerStyle={styles.crmStagesList}>
+          style={[ts.crmStagesScroll, { maxHeight: getScrollableStageHeight(fontScale) }]}
+          contentContainerStyle={ts.crmStagesList}>
           {BOARD_STAGES.map(stage => {
             const selected = stage.key === mobileStage;
             return (
               <TouchableOpacity key={stage.key}
-                style={[styles.crmStageTab, { minHeight: Math.max(42, getScrollableStageHeight(fontScale) - 12) }, selected && styles.crmStageSelected]}
+                style={[ts.crmStageTab, { minHeight: Math.max(42, getScrollableStageHeight(fontScale) - 12) }, selected && ts.crmStageSelected]}
                 onPress={() => setMobileStage(stage.key)}
                 accessibilityRole="button"
                 accessibilityLabel={`${stage.label}, ${(leadsByStage[stage.key] || []).length} customers`}
                 accessibilityState={{ selected }}>
-                <Text style={[styles.crmStageText, selected && styles.crmStageSelectedText]}>
+                <Text style={[ts.crmStageText, selected && ts.crmStageSelectedText]}>
                   {stage.label} {(leadsByStage[stage.key] || []).length}
                 </Text>
               </TouchableOpacity>
@@ -916,18 +920,18 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
 
       {viewMode === 'list' && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ts.filterScroll} contentContainerStyle={ts.filterContent}>
            {FILTERS.map(f => (
               <TouchableOpacity
                  key={f.label}
-                 style={[styles.filterTab, activeFilter === f.label && styles.filterTabActive]}
+                 style={[ts.filterTab, activeFilter === f.label && ts.filterTabActive]}
                  onPress={() => setActiveFilter(f.label)}
                  activeOpacity={0.7}
               >
                  {(f.label === 'Hot' || f.label === 'Warm') && (
-                    <View style={[styles.filterDot, { backgroundColor: f.label === 'Hot' ? Colors.accent : Colors.warning }]} />
+                    <View style={[ts.filterDot, { backgroundColor: f.label === 'Hot' ? Colors.accent : Colors.warning }]} />
                  )}
-                 <Text style={[styles.filterTabText, activeFilter === f.label && styles.filterTabTextActive]}>
+                 <Text style={[ts.filterTabText, activeFilter === f.label && ts.filterTabTextActive]}>
                     {f.label} <Text style={{opacity: 0.7}}>{f.count}</Text>
                  </Text>
               </TouchableOpacity>
@@ -945,7 +949,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
   const showCustomerError = !!loadError && leads.length === 0;
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -958,7 +962,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
           tabs, and cards. The native bottom tab bar stays outside this list. */}
       <FlatList
         key={viewMode === 'board' ? `board-${mobileStage}` : 'list'}
-        style={styles.listScroll}
+        style={ts.listScroll}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 96 }}
         ListHeaderComponent={customerPageHeader}
         keyboardShouldPersistTaps="handled"
@@ -983,16 +987,16 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               ))}
             </View>
           ) : showCustomerError ? (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyTitle}>Customers unavailable</Text>
+            <View style={ts.emptyWrap}>
+              <Text style={ts.emptyTitle}>Customers unavailable</Text>
               <TouchableOpacity onPress={() => { void fetchLeads(true); }} accessibilityRole="button">
-                <Text style={styles.crmRetry}>Retry loading customers</Text>
+                <Text style={ts.crmRetry}>Retry loading customers</Text>
               </TouchableOpacity>
             </View>
           ) : viewMode === 'board' ? (
-            <View style={styles.crmBoardEmpty}>
+            <View style={ts.crmBoardEmpty}>
               <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
-              <Text style={styles.crmBoardEmptyText}>No customers in this stage</Text>
+              <Text style={ts.crmBoardEmptyText}>No customers in this stage</Text>
             </View>
           ) : renderEmptyState()
         }
@@ -1012,7 +1016,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             return (
               <TouchableOpacity
                 key={opt.key}
-                style={[styles.reassignRow, active && { borderColor: opt.color, backgroundColor: `${opt.color}14` }]}
+                style={[ts.reassignRow, active && { borderColor: opt.color, backgroundColor: `${opt.color}14` }]}
                 disabled={active || updatingId === reassignLeadId}
                 onPress={async () => {
                   if (reassignLeadId) await handleUpdateLeadStatus(reassignLeadId, opt.key);
@@ -1020,8 +1024,8 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 }}
                 activeOpacity={0.75}
               >
-                <View style={[styles.reassignDot, { backgroundColor: opt.color }]} />
-                <Text style={[styles.reassignRowText, active && { color: opt.color }]}>{opt.label}</Text>
+                <View style={[ts.reassignDot, { backgroundColor: opt.color }]} />
+                <Text style={[ts.reassignRowText, active && { color: opt.color }]}>{opt.label}</Text>
                 {active && <Ionicons name="checkmark" size={16} color={opt.color} />}
               </TouchableOpacity>
             );
@@ -1038,17 +1042,17 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
       >
         <>
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 8 }}>
-                <Text style={styles.createFieldLabel}>NAME *</Text>
+                <Text style={ts.createFieldLabel}>NAME *</Text>
                 <TextInput
-                  style={styles.createInput}
+                  style={ts.createInput}
                   value={newName}
                   onChangeText={setNewName}
                   placeholder="Buyer's name"
                   placeholderTextColor={Colors.iconMuted}
                 />
-                <Text style={styles.createFieldLabel}>EMAIL</Text>
+                <Text style={ts.createFieldLabel}>EMAIL</Text>
                 <TextInput
-                  style={styles.createInput}
+                  style={ts.createInput}
                   value={newEmail}
                   onChangeText={setNewEmail}
                   placeholder="buyer@example.com"
@@ -1056,18 +1060,18 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   autoCapitalize="none"
                   keyboardType="email-address"
                 />
-                <Text style={styles.createFieldLabel}>PHONE</Text>
+                <Text style={ts.createFieldLabel}>PHONE</Text>
                 <TextInput
-                  style={styles.createInput}
+                  style={ts.createInput}
                   value={newPhone}
                   onChangeText={setNewPhone}
                   placeholder="07…"
                   placeholderTextColor={Colors.iconMuted}
                   keyboardType="phone-pad"
                 />
-                <Text style={styles.createFieldLabel}>INTERESTED IN VEHICLE (OPTIONAL)</Text>
+                <Text style={ts.createFieldLabel}>INTERESTED IN VEHICLE (OPTIONAL)</Text>
                 <TextInput
-                  style={styles.createInput}
+                  style={ts.createInput}
                   value={newListingQuery}
                   onChangeText={setNewListingQuery}
                   placeholder="Search your listings..."
@@ -1079,31 +1083,31 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   <TouchableOpacity
                     accessibilityRole="button"
                     onPress={() => { setNewListingId(null); setNewListingQuery(''); }}
-                    style={styles.crmSelectedListing}>
-                    <Text style={styles.crmSelectedListingText}>
+                    style={ts.crmSelectedListing}>
+                    <Text style={ts.crmSelectedListingText}>
                       {customerListings.find(l => l.id === newListingId)?.title || 'Selected vehicle'} · Clear
                     </Text>
                   </TouchableOpacity>
                 )}
                 {!newListingId && newListingQuery.trim().length > 0 && (
-                  <View style={styles.crmListingOptions}>
+                  <View style={ts.crmListingOptions}>
                     {customerListings.filter(l =>
                       [l.title, l.make, l.vrm].some(value =>
                         value.toLowerCase().includes(newListingQuery.trim().toLowerCase()))
                     ).slice(0, 5).map(l => (
                       <TouchableOpacity key={l.id} accessibilityRole="button"
                         onPress={() => { setNewListingId(l.id); setNewListingQuery(''); }}
-                        style={styles.crmListingOption}>
-                        <Text style={styles.crmListingOptionText} numberOfLines={2}>
+                        style={ts.crmListingOption}>
+                        <Text style={ts.crmListingOptionText} numberOfLines={2}>
                           {l.title}{l.vrm ? ` · ${l.vrm}` : ''}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
-                <Text style={styles.createFieldLabel}>NOTES</Text>
+                <Text style={ts.createFieldLabel}>NOTES</Text>
                 <TextInput
-                  style={[styles.createInput, { minHeight: 70, textAlignVertical: 'top' }]}
+                  style={[ts.createInput, { minHeight: 70, textAlignVertical: 'top' }]}
                   value={newNotes}
                   onChangeText={setNewNotes}
                   placeholder="Requirements, follow-ups…"
@@ -1111,39 +1115,39 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   multiline
                 />
 
-                <Text style={styles.createFieldLabel}>SOURCE</Text>
+                <Text style={ts.createFieldLabel}>SOURCE</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                   {Object.entries(SOURCE_LABELS).map(([key, label]) => (
                     <TouchableOpacity
                       key={key}
-                      style={[styles.staffChip, newSource === key && styles.staffChipActive]}
+                      style={[ts.staffChip, newSource === key && ts.staffChipActive]}
                       onPress={() => setNewSource(key)}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.staffChipText, newSource === key && styles.staffChipTextActive]}>{label}</Text>
+                      <Text style={[ts.staffChipText, newSource === key && ts.staffChipTextActive]}>{label}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
 
                 {staffOptions.length > 0 && (
                   <>
-                    <Text style={styles.createFieldLabel}>ASSIGN TO</Text>
+                    <Text style={ts.createFieldLabel}>ASSIGN TO</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 8 }}>
                       <TouchableOpacity
-                        style={[styles.staffChip, !newAssignedToId && styles.staffChipActive]}
+                        style={[ts.staffChip, !newAssignedToId && ts.staffChipActive]}
                         onPress={() => setNewAssignedToId(null)}
                         activeOpacity={0.75}
                       >
-                        <Text style={[styles.staffChipText, !newAssignedToId && styles.staffChipTextActive]}>Unassigned</Text>
+                        <Text style={[ts.staffChipText, !newAssignedToId && ts.staffChipTextActive]}>Unassigned</Text>
                       </TouchableOpacity>
                       {staffOptions.map(opt => (
                         <TouchableOpacity
                           key={opt.userId}
-                          style={[styles.staffChip, newAssignedToId === opt.userId && styles.staffChipActive]}
+                          style={[ts.staffChip, newAssignedToId === opt.userId && ts.staffChipActive]}
                           onPress={() => setNewAssignedToId(opt.userId)}
                           activeOpacity={0.75}
                         >
-                          <Text style={[styles.staffChipText, newAssignedToId === opt.userId && styles.staffChipTextActive]}>{opt.name}</Text>
+                          <Text style={[ts.staffChipText, newAssignedToId === opt.userId && ts.staffChipTextActive]}>{opt.name}</Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -1158,6 +1162,20 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     </View>
   );
 };
+
+const lightDealerLeadsScreenStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  crmSubtitle: { color: '#64748B' },
+  crmAutoBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  crmAutoTitle: { color: '#0F172A' },
+  crmAutoDescription: { color: '#334155' },
+  crmMetricLabel: { color: '#64748B' },
+  crmStageTab: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  emptyWrap: { backgroundColor: '#FFFFFF' },
+  emptyTitle: { color: '#0F172A' },
+  crmBoardEmpty: { backgroundColor: '#FFFFFF' },
+  crmBoardEmptyText: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   // Website /dashboard/dealer/crm canonical mobile hierarchy.
