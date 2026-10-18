@@ -970,9 +970,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             <BoardCard lead={item} onPress={handleLeadPress}
               onMove={handleOpenReassign} onFollowUp={handleFollowUp} />
           </View>
-        ) : (
-          <LeadRow lead={item} onPress={handleLeadPress} />
-        )}
+        ) : renderLeadRow({ item })}
         refreshControl={
           <RefreshControl refreshing={refreshing}
             onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />
