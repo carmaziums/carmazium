@@ -737,7 +737,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             onChangeText={setSoldPriceInput}
             keyboardType="numeric"
             placeholder="0"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
             selectionColor={Colors.accent}
           />
         </View>
@@ -771,7 +771,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
@@ -942,14 +942,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>RESERVE PRICE (£) *</Text>
                 <View style={ts.dualPriceRow}>
                   <Text style={ts.dualCurrency}>£</Text>
-                  <TextInput style={ts.dualInput} value={auctionReserve} onChangeText={v => { setAuctionReserve(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                  <TextInput style={ts.dualInput} value={auctionReserve} onChangeText={v => { setAuctionReserve(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted} />
                 </View>
 
                 {/* Starting bid */}
                 <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>STARTING BID (£) *</Text>
                 <View style={ts.dualPriceRow}>
                   <Text style={ts.dualCurrency}>£</Text>
-                  <TextInput style={ts.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                  <TextInput style={ts.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted} />
                 </View>
                 {!!alsoAuctionListing?.price && (
                   <Text style={ts.dualFieldHint}>
@@ -961,14 +961,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>MIN INCREMENT (£)</Text>
                 <View style={ts.dualPriceRow}>
                   <Text style={ts.dualCurrency}>£</Text>
-                  <TextInput style={ts.dualInput} value={auctionIncrement} onChangeText={v => { setAuctionIncrement(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="100" placeholderTextColor={Colors.textMuted} />
+                  <TextInput style={ts.dualInput} value={auctionIncrement} onChangeText={v => { setAuctionIncrement(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="100" placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted} />
                 </View>
 
                 {/* BIN optional */}
                 <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>BUY IT NOW PRICE (£, optional)</Text>
                 <View style={ts.dualPriceRow}>
                   <Text style={ts.dualCurrency}>£</Text>
-                  <TextInput style={ts.dualInput} value={auctionBin} onChangeText={v => { setAuctionBin(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="Optional" placeholderTextColor={Colors.textMuted} />
+                  <TextInput style={ts.dualInput} value={auctionBin} onChangeText={v => { setAuctionBin(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="Optional" placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted} />
                 </View>
 
                 {auctionError && (
