@@ -222,7 +222,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Subtle gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
@@ -336,6 +336,7 @@ const lightNotificationsScreenStyles = StyleSheet.create({
   container: { backgroundColor: '#EEF5FB' },
   header: { backgroundColor: '#EEF5FB' },
   headerTitle: { color: '#0F172A' },
+  retryButtonText: { color: '#CC1820' },
   groupLabel: { color: '#526177' },
   groupCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   notifTitle: { color: '#0F172A' },
