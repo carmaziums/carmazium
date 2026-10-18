@@ -246,7 +246,7 @@ const ListingDetail: React.FC<{
             </View>
             <Text style={ts.detailTitle} numberOfLines={1}>{listing.title}</Text>
           </View>
-          <IconButton style={ts.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
                 ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
                 { text: 'Cancel', style: 'cancel' },
@@ -738,7 +738,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
         <IconButton
           style={ts.backBtn}
-          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={Colors.white} />}
+          icon={<Ionicons name={viewMode === 'list' ? 'grid-outline' : 'list-outline'} size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />}
           onPress={toggleViewMode}
           accessibilityLabel={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
         />
@@ -872,7 +872,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}

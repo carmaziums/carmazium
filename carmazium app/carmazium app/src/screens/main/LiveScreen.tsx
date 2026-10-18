@@ -291,7 +291,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' && !(dealerMode && !embeddedDealerHub) ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView

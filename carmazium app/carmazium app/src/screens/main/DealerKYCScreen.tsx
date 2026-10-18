@@ -508,7 +508,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   if (initialLoading) {
     return (
       <View style={ts.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
         <LinearGradient
           colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
@@ -517,7 +517,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
         />
         <View style={{ height: insets.top }} />
         <View style={ts.header}>
-          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
           <Text style={ts.headerTitle}>Business Verification</Text>
           <HamburgerButton />
         </View>
@@ -577,7 +577,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
 
       {/* Background gradient */}
       <LinearGradient
@@ -592,7 +592,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
       {/* Header */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>Business Verification</Text>
 

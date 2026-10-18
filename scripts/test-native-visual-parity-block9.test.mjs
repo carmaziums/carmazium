@@ -574,3 +574,24 @@ test('contractor/finance/admin role routing stays explicit and no unsafe accepta
     assert.ok(evidence.toLowerCase().includes(x.toLowerCase()),x);
   }
 });
+
+test('light pages keep Android status icons and white-surface back controls readable',()=>{
+  const base=(name)=>app('screens/main/'+name+'.tsx');
+  const systemInk="barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'}";
+  for(const page of [
+    'DealerInventoryScreen','DealerPurchasesScreen','DealerKYCScreen','DealerAnalyticsScreen',
+  ]) {
+    const source=base(page);
+    assert.ok(source.includes(systemInk),page+' needs dark Android status icons on pale light-mode background');
+  }
+  const live=base('LiveScreen');
+  assert.ok(live.includes("appearanceMode === 'light' && !(dealerMode && !embeddedDealerHub)"),
+    'retain light status-bar icons on the shared navy dealer header');
+  const auction=app('screens/vehicle/AuctionDetailScreen.tsx');
+  assert.ok(auction.includes(systemInk),'auction detail/error must style system icons for pale theme');
+  const backGlyph="color={appearanceMode === 'light' ? '#0F172A' : Colors.white}";
+  for(const page of ['DealerInventoryScreen','DealerPurchasesScreen','DealerKYCScreen','DealerAnalyticsScreen']){
+    assert.ok(base(page).includes(backGlyph),page+' icon-only controls must contrast white light-mode buttons');
+  }
+  assert.ok(auction.includes(backGlyph),'auction back button must contrast white header control');
+});

@@ -1085,7 +1085,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   if (loadError) {
     return (
       <View style={[ts.container, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
         <Ionicons name="hammer-outline" size={40} color={Colors.borderMuted} />
         <Text style={ts.muted}>{loadError}</Text>
         <TouchableOpacity style={ts.retryBtn} onPress={() => loadAuction()} activeOpacity={0.8}>
@@ -1109,7 +1109,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
 
       {/* Anti-snipe floating toast */}
       {antiSnipeToast && (
@@ -1121,7 +1121,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {/* Header */}
       <View style={[ts.header, { paddingTop: insets.top + 10 }]}>
-        <IconButton style={ts.iconBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.iconBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <View style={ts.headerCenter}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>

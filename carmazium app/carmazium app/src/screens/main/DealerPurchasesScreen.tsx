@@ -238,7 +238,7 @@ export const DealerPurchasesScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
 
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(167,139,250,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -251,7 +251,7 @@ export const DealerPurchasesScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>Purchases</Text>
 
