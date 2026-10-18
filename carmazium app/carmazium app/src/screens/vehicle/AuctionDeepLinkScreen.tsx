@@ -11,12 +11,16 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { auctionToListingParam, getAuction } from '../../lib/auctionApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AuctionDeepLink'>;
 
 export const AuctionDeepLinkScreen: React.FC<Props> = ({ navigation, route }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const { auctionId } = route.params;
   const [error, setError] = useState<string | null>(null);
 
@@ -43,25 +47,25 @@ export const AuctionDeepLinkScreen: React.FC<Props> = ({ navigation, route }) =>
   }, [auctionId, navigation]);
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
       {error ? (
-        <View style={styles.card}>
+        <View style={ts.card}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.title}>Auction unavailable</Text>
-          <Text style={styles.body}>{error}</Text>
+          <Text style={ts.title}>Auction unavailable</Text>
+          <Text style={ts.body}>{error}</Text>
           <TouchableOpacity
-            style={styles.button}
+            style={ts.button}
             onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] })}
             accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>BACK TO AUCTIONS</Text>
+            <Text style={ts.buttonText}>BACK TO AUCTIONS</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.loading}>
+        <View style={ts.loading}>
           <ActivityIndicator color={Colors.accent} />
-          <Text style={styles.body}>Opening auction…</Text>
+          <Text style={ts.body}>Opening auction…</Text>
         </View>
       )}
     </View>

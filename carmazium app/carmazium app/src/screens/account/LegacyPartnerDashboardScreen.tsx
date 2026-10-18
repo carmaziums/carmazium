@@ -19,6 +19,8 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -56,6 +58,8 @@ const applicantName = (item: LegacyPartnerItem) => {
 };
 
 export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const kind: LegacyPartnerKind =
@@ -303,27 +307,27 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[ts.container, ts.center, { paddingTop: insets.top }]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={Colors.accent} />
-        <Text style={styles.loadingText}>Loading {labels.title}…</Text>
+        <Text style={ts.loadingText}>Loading {labels.title}…</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
+      <View style={ts.header}>
         <View>
-          <Text style={styles.eyebrow}>{labels.eyebrow}</Text>
-          <Text style={styles.title}>{labels.title}</Text>
+          <Text style={ts.eyebrow}>{labels.eyebrow}</Text>
+          <Text style={ts.title}>{labels.title}</Text>
         </View>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[ts.content, { paddingBottom: insets.bottom + 120 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -336,7 +340,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
       >
         {error ? <ErrorBanner message={error} onRetry={() => void loadInitial()} /> : null}
 
-        <View style={styles.statsGrid}>
+        <View style={ts.statsGrid}>
           <StatCard label="Pending" value={stats?.pending ?? 0} icon="time-outline" />
           <StatCard
             label={labels.activeLabel}
@@ -351,16 +355,16 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
           />
         </View>
 
-        <View style={styles.sectionHeader}>
+        <View style={ts.sectionHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>
+            <Text style={ts.sectionTitle}>
               {kind === 'finance' ? 'Applications' : 'Quote requests'}
             </Text>
-            <Text style={styles.sectionSub}>
+            <Text style={ts.sectionSub}>
               Live records from the same partner API used by CarMazium web.
             </Text>
           </View>
-          <Text style={styles.countText}>{total}</Text>
+          <Text style={ts.countText}>{total}</Text>
         </View>
 
         {items.length === 0 ? (
@@ -385,7 +389,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
 
         {items.length < total ? (
           <TouchableOpacity
-            style={styles.loadMoreButton}
+            style={ts.loadMoreButton}
             onPress={loadMore}
             disabled={loadingMore}
             accessibilityRole="button"
@@ -393,31 +397,31 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             {loadingMore ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.loadMoreText}>LOAD MORE</Text>
+              <Text style={ts.loadMoreText}>LOAD MORE</Text>
             )}
           </TouchableOpacity>
         ) : null}
 
-        <View style={styles.sectionHeader}>
+        <View style={ts.sectionHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionTitle}>Partner settings</Text>
-            <Text style={styles.sectionSub}>Company and integration settings stay synced with web.</Text>
+            <Text style={ts.sectionTitle}>Partner settings</Text>
+            <Text style={ts.sectionSub}>Company and integration settings stay synced with web.</Text>
           </View>
         </View>
 
-        <View style={styles.settingsCard}>
-          <Text style={styles.fieldLabel}>COMPANY / TRADING NAME</Text>
+        <View style={ts.settingsCard}>
+          <Text style={ts.fieldLabel}>COMPANY / TRADING NAME</Text>
           <TextInput
-            style={styles.input}
+            style={ts.input}
             value={companyName}
             onChangeText={setCompanyName}
             placeholder="Company name"
             placeholderTextColor={Colors.textMuted}
           />
 
-          <Text style={styles.fieldLabel}>CALLBACK URL</Text>
+          <Text style={ts.fieldLabel}>CALLBACK URL</Text>
           <TextInput
-            style={styles.input}
+            style={ts.input}
             value={callbackUrl}
             onChangeText={setCallbackUrl}
             placeholder="https://your-api.example.com/webhook"
@@ -427,7 +431,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
           />
 
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={ts.primaryButton}
             onPress={saveSettings}
             disabled={savingSettings}
             accessibilityRole="button"
@@ -435,23 +439,23 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             {savingSettings ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.primaryButtonText}>SAVE PARTNER SETTINGS</Text>
+              <Text style={ts.primaryButtonText}>SAVE PARTNER SETTINGS</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.keyDivider} />
-          <Text style={styles.fieldLabel}>INTEGRATION KEY</Text>
-          <Text selectable style={styles.keyText}>
+          <View style={ts.keyDivider} />
+          <Text style={ts.fieldLabel}>INTEGRATION KEY</Text>
+          <Text selectable style={ts.keyText}>
             {revealedKey || settings?.apiKeyHint || 'No key generated'}
           </Text>
           {revealedKey ? (
-            <Text style={styles.keyWarning}>
+            <Text style={ts.keyWarning}>
               Copy this key now. The full value is not returned again after leaving this screen.
             </Text>
           ) : null}
 
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={ts.secondaryButton}
             onPress={regenerateKey}
             disabled={regeneratingKey || !settings?.isConfigured}
             accessibilityRole="button"
@@ -459,27 +463,27 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             {regeneratingKey ? (
               <ActivityIndicator color={Colors.textPrimary} />
             ) : (
-              <Text style={styles.secondaryButtonText}>REGENERATE INTEGRATION KEY</Text>
+              <Text style={ts.secondaryButtonText}>REGENERATE INTEGRATION KEY</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footerActions}>
+        <View style={ts.footerActions}>
           <TouchableOpacity
-            style={styles.footerButton}
+            style={ts.footerButton}
             onPress={() => navigation?.navigate('Messages')}
             accessibilityRole="button"
           >
             <Ionicons name="chatbubbles-outline" size={17} color={Colors.textPrimary} />
-            <Text style={styles.footerButtonText}>Messages</Text>
+            <Text style={ts.footerButtonText}>Messages</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.footerButton}
+            style={ts.footerButton}
             onPress={() => navigation?.navigate('Settings')}
             accessibilityRole="button"
           >
             <Ionicons name="settings-outline" size={17} color={Colors.textPrimary} />
-            <Text style={styles.footerButtonText}>Account Settings</Text>
+            <Text style={ts.footerButtonText}>Account Settings</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -490,20 +494,20 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
         animationType="fade"
         onRequestClose={() => setActionItem(null)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
+        <View style={ts.modalBackdrop}>
+          <View style={ts.modalCard}>
+            <Text style={ts.modalTitle}>
               {kind === 'finance' ? 'Approve finance application' : 'Provide insurance quote'}
             </Text>
-            <Text style={styles.modalSub}>
+            <Text style={ts.modalSub}>
               {actionItem ? applicantName(actionItem) : ''}
             </Text>
 
-            <Text style={styles.fieldLabel}>
+            <Text style={ts.fieldLabel}>
               {kind === 'finance' ? 'MONTHLY PAYMENT (£)' : 'ANNUAL PREMIUM (£)'}
             </Text>
             <TextInput
-              style={styles.input}
+              style={ts.input}
               value={amountDraft}
               onChangeText={setAmountDraft}
               keyboardType="decimal-pad"
@@ -513,9 +517,9 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
 
             {kind === 'insurance' ? (
               <>
-                <Text style={styles.fieldLabel}>COVERAGE TYPE</Text>
+                <Text style={ts.fieldLabel}>COVERAGE TYPE</Text>
                 <TextInput
-                  style={styles.input}
+                  style={ts.input}
                   value={coverageDraft}
                   onChangeText={setCoverageDraft}
                   placeholder="Comprehensive"
@@ -525,7 +529,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             ) : null}
 
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={ts.primaryButton}
               onPress={submitPrimaryAction}
               disabled={!!busyId}
               accessibilityRole="button"
@@ -533,18 +537,18 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
               {busyId ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.primaryButtonText}>
+                <Text style={ts.primaryButtonText}>
                   {kind === 'finance' ? 'APPROVE APPLICATION' : 'SEND QUOTE'}
                 </Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.modalCancel}
+              style={ts.modalCancel}
               onPress={() => setActionItem(null)}
               disabled={!!busyId}
               accessibilityRole="button"
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={ts.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -562,12 +566,12 @@ const StatCard = ({
   value: string | number;
   icon: string;
 }) => (
-  <View style={styles.statCard}>
+  <View style={ts.statCard}>
     <Ionicons name={icon as any} size={17} color={Colors.accent} />
-    <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+    <Text style={ts.statValue} numberOfLines={1} adjustsFontSizeToFit>
       {value}
     </Text>
-    <Text style={styles.statLabel}>{label}</Text>
+    <Text style={ts.statLabel}>{label}</Text>
   </View>
 );
 
@@ -591,29 +595,29 @@ const PartnerRecordCard = ({
   const pending = item.status === 'PENDING';
 
   return (
-    <View style={styles.recordCard}>
-      <View style={styles.recordTop}>
+    <View style={ts.recordCard}>
+      <View style={ts.recordTop}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.recordTitle}>{applicantName(item)}</Text>
-          <Text style={styles.recordSub}>{item.user?.email || 'No email shown'}</Text>
+          <Text style={ts.recordTitle}>{applicantName(item)}</Text>
+          <Text style={ts.recordSub}>{item.user?.email || 'No email shown'}</Text>
         </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{item.status}</Text>
+        <View style={ts.statusPill}>
+          <Text style={ts.statusText}>{item.status}</Text>
         </View>
       </View>
 
-      <Text style={styles.vehicleTitle}>{item.listing?.title || 'Vehicle unavailable'}</Text>
-      <Text style={styles.recordMeta}>
+      <Text style={ts.vehicleTitle}>{item.listing?.title || 'Vehicle unavailable'}</Text>
+      <Text style={ts.recordMeta}>
         {formatPartnerCurrency(item.listing?.price ?? 0)} · {formatDate(item.createdAt)}
       </Text>
 
       {kind === 'finance' ? (
-        <Text style={styles.recordMeta}>
+        <Text style={ts.recordMeta}>
           Deposit {formatPartnerCurrency(finance.depositAmount)} · {finance.termMonths} months
           {finance.monthlyPayment ? ` · ${formatPartnerCurrency(finance.monthlyPayment)}/mo` : ''}
         </Text>
       ) : (
-        <Text style={styles.recordMeta}>
+        <Text style={ts.recordMeta}>
           Age {insurance.driverAge} · NCB {insurance.ncbYears} yr
           {insurance.quotedPrice ? ` · ${formatPartnerCurrency(insurance.quotedPrice)}/yr` : ''}
           {insurance.coverageType ? ` · ${insurance.coverageType}` : ''}
@@ -621,9 +625,9 @@ const PartnerRecordCard = ({
       )}
 
       {pending ? (
-        <View style={styles.recordActions}>
+        <View style={ts.recordActions}>
           <TouchableOpacity
-            style={styles.recordPrimary}
+            style={ts.recordPrimary}
             onPress={onPrimary}
             disabled={busy}
             accessibilityRole="button"
@@ -631,23 +635,23 @@ const PartnerRecordCard = ({
             {busy ? (
               <ActivityIndicator size="small" color={Colors.white} />
             ) : (
-              <Text style={styles.recordPrimaryText}>
+              <Text style={ts.recordPrimaryText}>
                 {kind === 'finance' ? 'APPROVE' : 'PROVIDE QUOTE'}
               </Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.recordReject}
+            style={ts.recordReject}
             onPress={onReject}
             disabled={busy}
             accessibilityRole="button"
           >
-            <Text style={styles.recordRejectText}>REJECT</Text>
+            <Text style={ts.recordRejectText}>REJECT</Text>
           </TouchableOpacity>
         </View>
       ) : kind === 'finance' && item.status === 'APPROVED' ? (
         <TouchableOpacity
-          style={[styles.recordPrimary, { marginTop: 8 }]}
+          style={[ts.recordPrimary, { marginTop: 8 }]}
           onPress={onComplete}
           disabled={busy}
           accessibilityRole="button"
@@ -655,7 +659,7 @@ const PartnerRecordCard = ({
           {busy ? (
             <ActivityIndicator size="small" color={Colors.white} />
           ) : (
-            <Text style={styles.recordPrimaryText}>MARK COMPLETED</Text>
+            <Text style={ts.recordPrimaryText}>MARK COMPLETED</Text>
           )}
         </TouchableOpacity>
       ) : null}
