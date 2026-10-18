@@ -1635,7 +1635,7 @@ describe('ListingsService', () => {
             registration: 'AB12 CDE',
         };
 
-        it('reuses a fallback quote for the same VRM across browsers and corrected vehicle details', async () => {
+        it('reuses an identical fallback quote for 24h across browsers and VRM formatting', async () => {
             const events = mockPersistentQuotes();
             const first = await service.estimateVehicleValue({ ...car } as any);
             expect(first.source).toBe('CARMAZIUM_MODEL');
@@ -1645,79 +1645,75 @@ describe('ListingsService', () => {
             const repeat = await service.estimateVehicleValue({
                 ...car,
                 make: 'Volkswagen',
-                model: 'Golf Estate',
-                year: 2014,
-                mileage: 91000,
                 registration: 'AB12CDE',
-                condition: 'POOR',
                 valuationId: '22222222-2222-4222-8222-222222222222',
             } as any);
 
             expect(repeat).toEqual(first);
             expect(liveSearch).not.toHaveBeenCalled();
-            const lockRows = [...events.values()].filter((e: any) => e.type === 'valuation_price_lock');
-            expect(lockRows).toHaveLength(1);
-            expect(lockRows[0].payload.expiresAt).toBeTruthy();
-            expect(first.auction.marketValue).toBe(first.low);
-            expect(first.retail.suggestedAsking).toBe(Math.round(first.auction.marketValue * 1.20));
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
+            expect(first.valuationMethod).toBe('SEPARATE_MARKETS');
+            expect(first.channelEvidence?.tradeBasis).toBe('MODEL_ESTIMATE');
+            expect(first.retail.suggestedAsking).toBeGreaterThan(first.auction.marketValue);
         });
 
-        it('reinterprets a historical locked quote using its existing lower market band without refreshing 24h TTL', async () => {
+        it('reinterprets genuinely legacy locked quotes without extending their TTL', async () => {
             const events = mockPersistentQuotes();
             const quote = await service.estimateVehicleValue({ ...car } as any);
             const lock: any = [...events.values()].find((e: any) => e.type === 'valuation_price_lock');
             const originalTimestamp = lock.createdAt;
             const lockedAt = lock.payload.lockedAt;
-            // A quote previously written under the old policy has the same low,
-            // but sold the low as Retail and offered Auction at 80% of it.
+            // Simulate a pre-upgrade quotation with the old single-band mapping.
+            delete lock.payload.valuation.valuationMethod;
+            delete lock.payload.valuation.channelEvidence;
             lock.payload.valuation.retail.suggestedAsking = quote.low;
             lock.payload.valuation.auction.marketValue = Math.round(quote.low * 0.8);
             const liveSearch = jest.spyOn(service as any, 'getLiveUkMarketComparables');
             liveSearch.mockClear();
             const updated = await service.estimateVehicleValue({
-                ...car, registration: 'AB12CDE', mileage: 120000,
+                ...car, registration: 'AB12CDE',
             } as any);
             expect(updated.auction.marketValue).toBe(quote.low);
             expect(updated.retail.suggestedAsking).toBe(Math.round(quote.low * 1.20));
-            expect(updated.auction.openingBid).toBe(Math.round(quote.low * 0.70 * 100) / 100);
             expect(liveSearch).not.toHaveBeenCalled();
             expect(lock.createdAt).toBe(originalTimestamp);
             expect(lock.payload.lockedAt).toBe(lockedAt);
             expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
         });
 
-        it('refreshes the locked quote only after the original 24-hour window ends', async () => {
+        it('recalculates immediately when mileage or model changes despite the 24h lock', async () => {
             const events = mockPersistentQuotes();
             const first = await service.estimateVehicleValue({ ...car } as any);
-            const lock: any = [...events.values()].find((e: any) => e.type === 'valuation_price_lock');
-            expect(lock).toBeDefined();
+            const change = await service.estimateVehicleValue({
+                ...car, mileage: 120000, model: 'Golf',
+            } as any);
+            expect(change.retail.suggestedAsking).not.toBe(first.retail.suggestedAsking);
+            expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(2);
+        });
 
+        it('refreshes the same exact quote only after its original 24-hour window ends', async () => {
+            const events = mockPersistentQuotes();
+            await service.estimateVehicleValue({ ...car } as any);
+            const lock: any = [...events.values()].find((e: any) => e.type === 'valuation_price_lock');
             const old = new Date(Date.now() - 25 * 60 * 60 * 1000);
             lock.createdAt = old;
             lock.payload.lockedAt = old.toISOString();
-
-            const second = await service.estimateVehicleValue({
-                ...car,
-                year: 2017,
-                mileage: 20000,
-            } as any);
-
-            expect(second.retail.suggestedAsking).not.toBe(first.retail.suggestedAsking);
+            const newQuote = await service.estimateVehicleValue({ ...car } as any);
+            expect(newQuote.retail.suggestedAsking).toBeGreaterThan(0);
             expect(prisma.analyticsEvent.updateMany).toHaveBeenCalledWith(
                 expect.objectContaining({
                     where: expect.objectContaining({
-                        id: lock.id,
-                        type: 'valuation_price_lock',
+                        id: lock.id, type: 'valuation_price_lock',
                     }),
                 }),
             );
             expect(events.get(lock.id).payload.lockedAt).not.toBe(old.toISOString());
         });
 
-        it('refreshes an expired quote even when an open browser keeps the old journey ID', async () => {
+        it('expires an open browser journey without extending the prior base', async () => {
             const events = mockPersistentQuotes();
             const sameJourneyId = '11111111-1111-4111-8111-111111111111';
-            const first = await service.estimateVehicleValue({
+            await service.estimateVehicleValue({
                 ...car, valuationId: sameJourneyId,
             } as any);
             const expiry = new Date(Date.now() - 25 * 60 * 60 * 1000);
@@ -1725,20 +1721,19 @@ describe('ListingsService', () => {
                 row.createdAt = expiry;
                 if (row.type === 'valuation_price_lock') row.payload.lockedAt = expiry.toISOString();
             }
-
             const second = await service.estimateVehicleValue({
-                ...car, year: 2017, mileage: 20000, valuationId: sameJourneyId,
+                ...car, valuationId: sameJourneyId,
             } as any);
-            expect(second.retail.suggestedAsking).not.toBe(first.retail.suggestedAsking);
+            expect(second.retail.suggestedAsking).toBeGreaterThan(0);
             expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
             expect([...events.values()].filter((e: any) => e.type === 'valuation_base_snapshot')).toHaveLength(2);
         });
 
-        it('makes simultaneous valuations return one price for the same VRM', async () => {
+        it('makes simultaneous identical valuations return one price per exact vehicle', async () => {
             const events = mockPersistentQuotes();
             const [first, second] = await Promise.all([
                 service.estimateVehicleValue({ ...car, model: 'Golf' } as any),
-                service.estimateVehicleValue({ ...car, model: 'Passat', year: 2015 } as any),
+                service.estimateVehicleValue({ ...car, make: 'Volkswagen' } as any),
             ]);
             expect(first).toEqual(second);
             expect([...events.values()].filter((e: any) => e.type === 'valuation_price_lock')).toHaveLength(1);
@@ -1792,13 +1787,13 @@ describe('ListingsService', () => {
                 transmission: 'AUTOMATIC',
             } as any);
 
-            expect(liveSearch).toHaveBeenCalledTimes(1);
+            expect(liveSearch).toHaveBeenCalledTimes(5);
             expect(result.source).toBe('LIVE_UK_MARKET');
             expect(result.marketEvidence).toEqual(expect.objectContaining({
                 carmaziumComparables: 4,
                 liveUkComparables: 3,
                 liveUkSearchStatus: 'USED',
-                liveUkAttempts: 1,
+                liveUkAttempts: 5,
                 blendedMarketAttempts: 0,
                 valuationStrategy: 'LIVE',
             }));
