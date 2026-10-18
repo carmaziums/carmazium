@@ -620,7 +620,7 @@ export const DealerProfileScreen: React.FC = () => {
 
       {/* Background gradient glow matching the dashboard styling */}
       <LinearGradient
-        colors={[Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha04, Colors.infoBlueAlpha04, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
