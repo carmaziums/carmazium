@@ -6,6 +6,8 @@ import {
   StyleProp,
 } from 'react-native';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -27,27 +29,36 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   hasBorder = true,
   hasGlow = false,
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightGlassStyles) : styles;
   return (
     <View
       style={[
-        styles.wrapper,
+        ts.wrapper,
         { borderRadius },
-        hasBorder && styles.border,
-        hasGlow && styles.glow,
+        hasBorder && ts.border,
+        hasGlow && ts.glow,
         style,
       ]}
     >
       {/* Layer 1: Base dark fill */}
-      <View style={[StyleSheet.absoluteFillObject, styles.baseFill, { borderRadius }]} />
+      <View style={[StyleSheet.absoluteFillObject, ts.baseFill, { borderRadius }]} />
       {/* Layer 2: Light shimmer overlay — simulates frosted glass */}
-      <View style={[StyleSheet.absoluteFillObject, styles.shimmer, { borderRadius }]} />
+      <View style={[StyleSheet.absoluteFillObject, ts.shimmer, { borderRadius }]} />
       {/* Layer 3: Top highlight edge */}
-      <View style={[styles.topHighlight, { borderRadius }]} />
+      <View style={[ts.topHighlight, { borderRadius }]} />
 
-      <View style={[styles.content, { padding }]}>{children}</View>
+      <View style={[ts.content, { padding }]}>{children}</View>
     </View>
   );
 };
+
+const lightGlassStyles = StyleSheet.create({
+  border: {borderColor: '#D5E1EC'},
+  baseFill: {backgroundColor: '#FFFFFF'},
+  shimmer: {backgroundColor: 'rgba(255,255,255,0.02)'},
+  topHighlight: {backgroundColor: '#D5E1EC'},
+});
 
 const styles = StyleSheet.create({
   wrapper: {
