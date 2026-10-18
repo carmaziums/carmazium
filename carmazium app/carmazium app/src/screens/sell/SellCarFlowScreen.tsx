@@ -1117,9 +1117,12 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           const opt = NOT_OWNER_RELATIONSHIP_OPTIONS.find(o => o === l.notOwnerRelationship);
           if (opt) { setNotOwnerRelSelect(opt); } else { setNotOwnerRelSelect('Other'); setNotOwnerRelOther(String(l.notOwnerRelationship)); }
         }
-        // Editing an already-published listing implies the declaration was
-        // already made and accepted at initial publish time.
-        setDeclAcknowledged(true);
+        // Historic listings may pre-date the partner-distribution notice.
+        // Never infer a new acknowledgement merely from edit mode: require
+        // the seller to affirm the existing combined declaration in this edit
+        // session before an update can send partnerDistributionAccepted=true.
+        // This is NOT a new/separate marketing-consent checkbox.
+        setDeclAcknowledged(false);
         if (l.images?.length) {
           const nextExterior: string[] = [];
           const nextInterior: string[] = [];
