@@ -19,6 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { appearancePalette } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 
@@ -72,6 +74,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   fillHeight = false,
 }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const palette = appearancePalette(appearanceMode);
   const translateY = useSharedValue(0);
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
@@ -114,6 +118,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       <Animated.View
         style={[
           styles.sheet,
+          appearanceMode === 'light' && { backgroundColor: palette.card, borderColor: palette.border },
           fillHeight
             ? { height: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 }
             : { maxHeight: `${maxHeightPercent}%`, paddingBottom: Math.max(insets.bottom, 20) + 12 },
@@ -122,11 +127,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       >
         <GestureDetector gesture={dragGesture}>
           <View style={styles.dragArea}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, appearanceMode === 'light' && { backgroundColor: palette.muted }]} />
             {!!title && (
               <View style={styles.headerRow}>
-                <Text style={styles.title} numberOfLines={1}>{title}</Text>
-                <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.textPrimary} />} onPress={onClose} accessibilityLabel="Close" />
+                <Text style={[styles.title, appearanceMode === 'light' && { color: palette.text }]} numberOfLines={1}>{title}</Text>
+                <IconButton style={[styles.closeBtn, appearanceMode === 'light' && { backgroundColor: palette.elevated, borderColor: palette.border }]} icon={<Ionicons name="close" size={18} color={palette.text} />} onPress={onClose} accessibilityLabel="Close" />
               </View>
             )}
           </View>
