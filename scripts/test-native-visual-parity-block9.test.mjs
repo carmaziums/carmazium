@@ -158,7 +158,7 @@ test('shared header has 44dp targets and messages no longer doubles top safe-are
 });
 
 test('dealer bottom label is Dashboard; site logo leads to public Home without changing roles',()=>{
-  assert.ok(tabs.includes("name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard'"));
+  assert.ok(tabs.includes("name: 'DealerHome', icon: 'speedometer-outline', iconActive: 'speedometer', label: 'Dashboard'"));
   assert.ok(tabs.includes('initialRouteName={dealerMode ? \'DealerHome\' : \'Home\'}'));
   assert.ok(top.includes("navigation.navigate('Tabs', { screen: 'Home' })"));
   assert.ok(top.includes('accessibilityRole="button"'));
@@ -243,8 +243,8 @@ test('Customers CRM scrolls header, KPIs, pipeline and cards as one vertical sur
   const fromHeader = crm.indexOf('const customerPageHeader = (');
   const headerEnd = crm.indexOf('const currentCustomerRows', fromHeader);
   const header = crm.slice(fromHeader, headerEnd);
-  for(const field of ['<WebsiteTopBar />','styles.crmPageHeader','styles.crmAutoBanner',
-    'styles.crmMetrics','styles.crmStagesScroll','styles.filterScroll']) {
+  for(const field of ['<WebsiteTopBar />','ts.crmPageHeader','ts.crmAutoBanner',
+    'ts.crmMetrics','ts.crmStagesScroll','ts.filterScroll']) {
     assert.ok(header.includes(field),'missing scrollable CRM section: '+field);
   }
   assert.ok(crm.includes('getScrollableStageHeight(fontScale)'),'horizontal pipeline remains usable');
