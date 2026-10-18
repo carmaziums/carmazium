@@ -36,6 +36,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
+import { useLocation } from '../../context/LocationContext';
 import { ImageCarousel } from '../../components/ImageCarousel';
 import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
@@ -87,6 +88,8 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?: React.ReactNode }> = ({ embeddedDealerHub = false, embeddedHeader }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
+  const { latitude: originLatitude, longitude: originLongitude } = useLocation();
+  const origin = useMemo(() => originLatitude == null || originLongitude == null ? null : ({ latitude: originLatitude, longitude: originLongitude }), [originLatitude, originLongitude]);
   const { user: currentUser, accountRole, role } = useAuthStore();
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
   const { loading: accessLoading, hasPermission } = useDealerAccess(dealerMode);
@@ -148,9 +151,25 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
           fuelType: a.listing.fuelType as any,
           transmission: mapTransmission(a.listing.transmission),
           category: (a.listing.category as any) || 'Sports',
+          bodyTypeRaw: a.listing.bodyType ?? a.listing.category ?? null,
+          vehicleType: a.listing.vehicleType ?? null,
+          latitude: a.listing.latitude ?? null,
+          longitude: a.listing.longitude ?? null,
           condition: (a.listing.condition as any) || 'Used',
+          conditionRaw: a.listing.condition ?? null,
+          writeOffCategory: a.listing.writeOffCategory ?? null,
+          exteriorGrade: a.listing.exteriorGrade ?? null,
+          ulezCompliant: a.listing.ulezCompliant ?? null,
+          euroStandard: a.listing.euroStandard ?? null,
+          driveType: a.listing.driveType ?? null,
+          sellerType: seller ? (seller.dealerProfile ? 'DEALER' : 'PRIVATE') : null,
           colour: a.listing.colour || '',
-          bhp: a.listing.bhp || 0,
+          bhp: a.listing.bhp ?? null,
+          engineSize: a.listing.engineSize ?? null,
+          co2Emissions: a.listing.co2Emissions ?? null,
+          combinedMpg: a.listing.combinedMpg ?? null,
+          doors: a.listing.doors ?? null,
+          seats: a.listing.seats ?? null,
           zeroToSixty: a.listing.zeroToSixty || 0,
           topSpeed: a.listing.topSpeed || 0,
           location: a.listing.location || '',
@@ -161,7 +180,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
           isFeatured: a.listing.isFeatured === true,
           badgeTier: a.listing.badgeTier ?? null,
           isDepartedSale: a.listing.isDepartedSale ?? false,
-          isImported: a.listing.isImported ?? false,
+          isImported: a.listing.isImported ?? null,
           isNew: false,
           description: a.listing.description || '',
           features: Array.isArray(a.listing.features) ? a.listing.features : [],
@@ -238,24 +257,30 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
   const activeFilterCount = countActiveAuctionFilters(filters);
 
   const filteredActive = useMemo(() => {
-    const out = activeList.filter(
-      (a) => matchesQuery(a.make, a.model) && matchesAuctionFilters(a, filters, a.currentBid),
-    );
+    const out = activeList.filter(a =>
+      matchesQuery(a.make, a.model) &&
+      matchesAuctionFilters({
+        ...a, bodyType: a.bodyTypeRaw, condition: a.conditionRaw,
+      }, filters, a.totalBids > 0 ? a.currentBid : a.startingBid, origin));
     return out.sort(compareAuctions(filters.sortBy));
-  }, [activeList, q, filters]);
+  }, [activeList, q, filters, origin]);
 
-  const filteredUpcoming = useMemo(
-    () =>
-      upcomingList.filter(
-        (u) =>
-          matchesQuery(u.listing.make, u.listing.model) &&
-          // Upcoming lots have no bids yet, so bid bounds can't apply to them —
-          // passing currentBid here would filter every upcoming auction out the
-          // moment a minimum bid was set.
-          matchesAuctionFilters(u.listing as any, { ...filters, minBid: '', maxBid: '' }),
-      ),
-    [upcomingList, q, filters],
-  );
+  const filteredUpcoming = useMemo(() => {
+    const out = upcomingList.filter(u =>
+      matchesQuery(u.listing.make, u.listing.model) &&
+      matchesAuctionFilters({
+        ...u.listing,
+        sellerType: u.listing.seller
+          ? (u.listing.seller.dealerProfile ? 'DEALER' as const : 'PRIVATE' as const)
+          : null,
+      }, filters, Number(u.startingBid), origin));
+    return out.sort((a, b) => compareAuctions(filters.sortBy)(
+      { currentBid: Number(a.startingBid), endsAt: filters.sortBy === 'ending_soon' ? a.startTime : a.endTime,
+        createdAt: a.createdAt, mileage: a.listing.mileage, year: a.listing.year },
+      { currentBid: Number(b.startingBid), endsAt: filters.sortBy === 'ending_soon' ? b.startTime : b.endTime,
+        createdAt: b.createdAt, mileage: b.listing.mileage, year: b.listing.year },
+    ));
+  }, [upcomingList, q, filters, origin]);
 
   return (
     <View style={styles.container}>
