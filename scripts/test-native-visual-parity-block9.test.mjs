@@ -548,6 +548,19 @@ test('shared light palette remaps legacy pale text without recolouring branded C
     'light-mode selected Menu row must have dark red foreground');
 });
 
+test('vehicle facts and AI chat overlay use legible light surfaces and preserve filled-button foregrounds',()=>{
+  const facts=app('components/BuyerVehicleFacts.tsx');
+  const chat=app('components/GlobalAIChatBot.tsx');
+  assert.ok(facts.includes('mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightBuyerFactsStyles)'));
+  assert.ok(facts.includes("key: { color: '#526177' }"),'DVLA/MOT field names must be legible against light cards');
+  assert.ok(facts.includes("value: { color: '#0F172A' }"),'DVLA/MOT values must be dark on white');
+  assert.ok(chat.includes('mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightAiChatStyles)'));
+  assert.ok(chat.includes("chatBox: { backgroundColor: '#FFFFFF'"),'AI chat overlay must be light');
+  assert.ok(chat.includes("msgTextUser: { color: '#FFFFFF' }"),'preserve contrast inside red outgoing messages');
+  assert.ok(chat.includes("msgTextAI: { color: '#0F172A' }"),'AI replies on white need dark ink');
+  assert.ok(chat.includes("aiReportDetailsInput: { backgroundColor: '#F7FBFF'"),'AI report form must theme');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
