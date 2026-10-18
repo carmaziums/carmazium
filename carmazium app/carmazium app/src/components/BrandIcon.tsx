@@ -238,6 +238,19 @@ const ICON_MAP: Record<string, string> = {
   'timer-outline': 'Timer',
   'trending-up-outline': 'TrendingUp',
   'videocam-outline': 'Video',
+  // Verified literal icon names used throughout screen routes. Without these,
+  // BrandIcon falls back to HelpCircle and shows confusing question marks.
+  'open-outline': 'ExternalLink',
+  'navigate-outline': 'Navigation',
+  'flag-outline': 'Flag',
+  'arrow-forward-outline': 'ArrowRight',
+  'swap-vertical-outline': 'ArrowDownUp',
+  'sparkles-outline': 'Sparkles',
+  'mail-unread-outline': 'MailOpen',
+  'cloud-offline-outline': 'CloudOff',
+  'attach-outline': 'Paperclip',
+  'hand-left-outline': 'Hand',
+
 };
 
 interface IconProps {
