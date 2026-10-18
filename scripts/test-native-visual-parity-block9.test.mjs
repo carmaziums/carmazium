@@ -142,7 +142,7 @@ test('marketplace and dealer first-fold appearance styles switch without alterin
     assert.ok(source.includes(override), screen+' has dedicated semantic light styles');
     assert.ok(source.includes("appearanceMode === 'light'"),screen+' responds to selected appearance');
     assert.ok(source.includes("useAppearanceStore"),screen+' subscribes to appearance changes');
-    assert.ok(source.includes('...styles') || source.includes('...s'),screen+' retains original dark styles');
+    assert.ok(source.includes('mergeAppearanceStyles(styles,') || source.includes('mergeAppearanceStyles(s,'),screen+' preserves dark layout geometry while overriding colours');
   }
   const bottomSheet=app('components/BottomSheet.tsx');
   assert.ok(bottomSheet.includes("appearanceMode === 'light' && { backgroundColor: palette.card"));
@@ -150,6 +150,24 @@ test('marketplace and dealer first-fold appearance styles switch without alterin
   const settings=app('screens/main/SettingsScreen.tsx');
   assert.ok(settings.includes('lightSettingsStyles'));
   assert.ok(settings.includes('The dark appearance remains the fully tested default'));
+});
+
+test('appearance override merges per style key and covers watchlist, messages and dealer auction cards',()=>{
+  const helper=app('theme/appearancePalette.ts');
+  assert.ok(helper.includes('export function mergeAppearanceStyles'), 'shared geometry-safe theme helper');
+  assert.ok(helper.includes('...base[key], ...patch'), 'never replace a View style with only colour');
+  for(const screen of [
+    'screens/main/SavedScreen.tsx',
+    'screens/main/MessagesScreen.tsx',
+    'screens/main/DealerBuyBidScreen.tsx',
+    'screens/main/DealerAuctionBuyingSections.tsx',
+    'screens/buyer/BuyerDashboardScreen.tsx',
+    'components/filters/AuctionFilterSheet.tsx',
+  ]) {
+    const src=app(screen);
+    assert.ok(src.includes('mergeAppearanceStyles('),screen+' light appearance keeps native geometry');
+    assert.ok(src.includes('useAppearanceStore'),screen+' tracks saved choice');
+  }
 });
 
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
