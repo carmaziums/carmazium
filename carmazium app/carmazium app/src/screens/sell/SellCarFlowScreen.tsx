@@ -4229,24 +4229,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
         maxHeightPercent={92}
       >
         <ScrollView contentContainerStyle={{ padding: 18, paddingBottom: 24, gap: 14 }}>
-          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm }}>
+          <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontSize: FontSize.sm }}>
             {auctionRetailChoice?.title || [year, make, model].filter(Boolean).join(' ')}
           </Text>
-          <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.whiteAlpha05, gap: 5 }}>
-            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>
+          <View style={{ padding: 14, borderRadius: 12, backgroundColor: appearanceMode === 'light' ? '#F7FBFF' : Colors.whiteAlpha05, borderWidth: 1, borderColor: appearanceMode === 'light' ? '#D5E1EC' : Colors.whiteAlpha05, gap: 5 }}>
+            <Text style={{ color: appearanceMode === 'light' ? '#0F172A' : Colors.white, fontFamily: FontFamily.bold }}>
               Retail asking price: £{(Number(priceAsking) || 0).toLocaleString('en-GB')}
             </Text>
-            <Text style={{ color: Colors.textSecondary, fontFamily: FontFamily.medium }}>
+            <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontFamily: FontFamily.medium }}>
               Retail package: {badgeTier === 'PREMIUM' ? 'Premium £25' : badgeTier === 'STANDARD' ? 'Standard £10' : 'Basic £1'}
             </Text>
-            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs }}>
+            <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontSize: FontSize.xs }}>
               The Retail listing will require its normal payment and admin review.
             </Text>
           </View>
           <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.accentGreen + '12', borderWidth: 1, borderColor: Colors.accentGreen, gap: 9 }}>
             <Text style={{ color: Colors.accentGreen, fontFamily: FontFamily.bold }}>OPTION 1 · KEEP BOTH LISTINGS</Text>
-            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Keep Auction running and also list in Retail</Text>
-            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
+            <Text style={{ color: appearanceMode === 'light' ? '#0F172A' : Colors.white, fontFamily: FontFamily.bold }}>Keep Auction running and also list in Retail</Text>
+            <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
               Your existing Auction and its bids stay unchanged. We will open the same vehicle, price and Retail package so you can complete payment without uploading again.
             </Text>
             <TouchableOpacity onPress={() => resolveAuctionRetailChoice('KEEP_BOTH')} accessibilityRole="button"
@@ -4256,8 +4256,8 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           </View>
           <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.warningAlpha08, borderWidth: 1, borderColor: Colors.warningAlpha15, gap: 10 }}>
             <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold }}>OPTION 2 · REPLACE THE AUCTION</Text>
-            <Text style={{ color: Colors.white, fontFamily: FontFamily.bold }}>Switch to Retail only</Text>
-            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
+            <Text style={{ color: appearanceMode === 'light' ? '#0F172A' : Colors.white, fontFamily: FontFamily.bold }}>Switch to Retail only</Text>
+            <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>
               This will cancel the Auction and stop bidding. Select this only if you no longer want the vehicle in Auction. Existing winners or met reserves may block cancellation.
             </Text>
             {!auctionRetailConfirmCancel ? (
@@ -4268,11 +4268,11 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             ) : (
               <View style={{ gap: 9, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: Colors.error }}>
                 <Text style={{ color: Colors.error, fontFamily: FontFamily.bold }}>Confirm: cancel this Auction?</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs }}>
+                <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary, fontSize: FontSize.xs }}>
                   Once cancelled, the active bids will not continue.
                 </Text>
                 <TouchableOpacity onPress={() => setAuctionRetailConfirmCancel(false)} style={{ padding: 12, alignItems: 'center' }}>
-                  <Text style={{ color: Colors.white }}>Go Back</Text>
+                  <Text style={{ color: appearanceMode === 'light' ? '#0F172A' : Colors.white }}>Go Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => resolveAuctionRetailChoice('CONVERT')} accessibilityRole="button"
                   style={{ padding: 14, borderRadius: 9, backgroundColor: Colors.error, alignItems: 'center' }}>
@@ -4282,7 +4282,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             )}
           </View>
           <TouchableOpacity onPress={() => resolveAuctionRetailChoice(null)} style={{ padding: 14, alignItems: 'center' }}>
-            <Text style={{ color: Colors.textSecondary }}>Not Now — Keep Existing Auction</Text>
+            <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.textSecondary }}>Not Now — Keep Existing Auction</Text>
           </TouchableOpacity>
         </ScrollView>
       </BottomSheet>
