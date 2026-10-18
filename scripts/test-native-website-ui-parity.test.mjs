@@ -62,7 +62,7 @@ test('owner reference APK navigation contract: ten-item Menu, five buyer tabs an
   assert.ok(dealerMore.includes('Dealer Tools'));
   assert.ok(dealerMore.includes('hasPermission(tool.permission)'));
   assert.ok(!tabs.includes("if (isDrawerOpen) closeDrawer()"), 'dealer More is a separate screen, not a drawer toggle');
-  assert.ok(tabs.includes("name: 'DealerHome', icon: 'grid-outline', iconActive: 'grid', label: 'Dashboard'"));
+  assert.ok(tabs.includes("name: 'DealerHome', icon: 'speedometer-outline', iconActive: 'speedometer', label: 'Dashboard'"));
 });
 
 test('role switching and permissions retain secured routes and consumer deep links', () => {
