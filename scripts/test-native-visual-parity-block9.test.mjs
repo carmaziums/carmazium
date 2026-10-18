@@ -2,7 +2,7 @@
 // Issue #477 Block 9: source security/a11y checks, not device visual sign-off.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
@@ -20,6 +20,35 @@ const auction=app('screens/main/DealerBuyBidScreen.tsx');
 const top=app('components/WebsiteTopBar.tsx');
 const layout=app('lib/nativeLayoutParity.ts');
 const evidence=read('docs/native/website-native-visual-parity-block9-20261010.md');
+
+test('every native screen with styled surfaces subscribes to the saved appearance mode',()=>{
+  const screensRoot=resolve(root,'carmazium app/carmazium app/src/screens');
+  const walk=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(ent=>
+    ent.isDirectory() ? walk(resolve(dir,ent.name)) : ent.name.endsWith('.tsx') ? [resolve(dir,ent.name)] : []);
+  const files=walk(screensRoot);
+  assert.ok(files.length>=80,'audit all native screen routes rather than a few screenshots');
+  for (const file of files){
+    const src=readFileSync(file,'utf8');
+    if(!src.includes('StyleSheet.create(')) continue;
+    assert.ok(src.includes('useAppearanceStore'),
+      'missing appearance subscription: '+file.slice(screensRoot.length));
+    assert.ok(src.includes('adaptLegacyLightStyles(') ||
+      src.includes('mergeAppearanceStyles(') ||
+      src.includes('lightSettingsStyles'),
+      'missing native light surface mapping: '+file.slice(screensRoot.length));
+  }
+});
+
+test('Dashboard gauge is visually distinct from More grid and Menu selection is readable',()=>{
+  const iconMap=app('components/BrandIcon.tsx');
+  assert.ok(tabs.includes("name: 'DealerHome', icon: 'speedometer-outline', iconActive: 'speedometer'"));
+  assert.ok(tabs.includes("name: 'DealerMore', icon: 'apps-outline', iconActive: 'apps'"));
+  assert.ok(iconMap.includes("'speedometer-outline': 'Gauge'"));
+  assert.ok(drawer.includes("rowLabelActive: { color: '#7F1D1D' }"));
+  assert.ok(drawer.includes("rowActive: { backgroundColor: '#FCE8EA'"));
+  assert.ok(drawer.includes("item.id === 'dashboard' && activeTab === 'DealerHome'"));
+  assert.ok(!drawer.includes("item.tabName === activeTab);"), 'must not mark public Home active when dealer dashboard is open');
+});
 
 test('all three sensitive dealer bottom tabs have actual KYC + permission screen gates',()=>{
   for(const [name,component,screen,permission] of [
