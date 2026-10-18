@@ -90,6 +90,7 @@ export interface VehicleValuationResult {
         liveUkAttempts?: number;
         blendedMarketAttempts?: number;
         liveSources?: string[];
+        firecrawlVerifiedComparables?: number;
         valuationStrategy?: 'LIVE' | 'BLENDED' | 'FALLBACK';
         historicalQuotes?: HistoricalQuoteComparison;
     };
