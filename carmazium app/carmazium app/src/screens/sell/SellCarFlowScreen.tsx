@@ -4089,7 +4089,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -4098,7 +4098,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
       {/* Header */}
       <View style={[ts.header, { paddingTop: insets.top + 14 }]}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={handleBack} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={handleBack} accessibilityLabel="Go back" />
         <View style={ts.headerCenter}>
           <Text style={ts.headerSub}>SELL MY CAR</Text>
           <Text style={ts.headerTitle}>
@@ -4181,7 +4181,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <View style={[ts.bottomBar, { paddingBottom: insets.bottom || 20 }]}>
             {step > 1 && (
               <TouchableOpacity style={ts.backBtnSm} onPress={handleBack} activeOpacity={0.8}>
-                <Ionicons name="arrow-back" size={16} color={Colors.white} />
+                <Ionicons name="arrow-back" size={16} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />
                 <Text style={ts.backBtnSmText}>BACK</Text>
               </TouchableOpacity>
             )}
@@ -4303,6 +4303,7 @@ const lightSellFlowStyles = StyleSheet.create({
   yesnoTextActive: { color: '#7F1D1D' },
   methodChoice: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   methodChoiceSelected: { backgroundColor: '#FCE8EA', borderColor: '#CC1820' },
+  stepLabelActive: { color: '#0F172A' },
   optionalSectionToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   freshActionBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   dvlaField: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
