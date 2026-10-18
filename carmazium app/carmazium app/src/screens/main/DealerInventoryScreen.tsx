@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -136,6 +136,10 @@ const ListingDetail: React.FC<{
   canManageInventory: boolean;
 }> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light'
+    ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightInventoryStyles)
+    : styles;
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
 
@@ -219,10 +223,10 @@ const ListingDetail: React.FC<{
   const statusS = STATUS_STYLE[listing.status];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={ts.container}>
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -233,16 +237,16 @@ const ListingDetail: React.FC<{
         contentContainerStyle={{ paddingBottom: 120 }}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
-          <View style={styles.detailHeaderCenter}>
-            <View style={styles.listingLivePill}>
-              <View style={[styles.liveDot, { backgroundColor: statusS.bg }]} />
-              <Text style={styles.listingLiveLabel}>LISTING · {listing.status}</Text>
+        <View style={[ts.detailHeader, { paddingTop: insets.top + 14 }]}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
+          <View style={ts.detailHeaderCenter}>
+            <View style={ts.listingLivePill}>
+              <View style={[ts.liveDot, { backgroundColor: statusS.bg }]} />
+              <Text style={ts.listingLiveLabel}>LISTING · {listing.status}</Text>
             </View>
-            <Text style={styles.detailTitle} numberOfLines={1}>{listing.title}</Text>
+            <Text style={ts.detailTitle} numberOfLines={1}>{listing.title}</Text>
           </View>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="ellipsis-horizontal" size={20} color={Colors.white} />} onPress={() =>
               Alert.alert('Options', '', [
                 ...(canManageInventory ? [{ text: 'Edit listing', onPress: handleEditListing }] : []),
                 { text: 'Cancel', style: 'cancel' },
@@ -251,22 +255,22 @@ const ListingDetail: React.FC<{
         </View>
 
         {/* ── Image thumbnails ─────────────────────────────────────────────── */}
-        <View style={styles.thumbRow}>
+        <View style={ts.thumbRow}>
           {listing.images.map((uri, i) => (
             <TouchableOpacity
               key={i}
               style={[
-                styles.thumbWrap,
+                ts.thumbWrap,
                 { width: thumbW },
-                selectedImg === i && styles.thumbWrapActive,
+                selectedImg === i && ts.thumbWrapActive,
               ]}
               onPress={() => setSelectedImg(i)}
               activeOpacity={0.85}
             >
-              <Image source={{ uri }} style={[styles.thumbImg, { width: thumbW }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              <Image source={{ uri }} style={[ts.thumbImg, { width: thumbW }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               {i === 0 && (
-                <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>HERO</Text>
+                <View style={ts.heroBadge}>
+                  <Text style={ts.heroBadgeText}>HERO</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -274,86 +278,86 @@ const ListingDetail: React.FC<{
         </View>
 
         {/* ── Stat pills ───────────────────────────────────────────────────── */}
-        <View style={styles.statPillRow}>
-          <View style={styles.statPill}>
+        <View style={ts.statPillRow}>
+          <View style={ts.statPill}>
             <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.statPillVal}>{listing.views}</Text>
-            <Text style={styles.statPillLabel}>VIEWS</Text>
+            <Text style={ts.statPillVal}>{listing.views}</Text>
+            <Text style={ts.statPillLabel}>VIEWS</Text>
           </View>
-          <View style={[styles.statPill, styles.statPillMiddle]}>
+          <View style={[ts.statPill, ts.statPillMiddle]}>
             <Ionicons name="mail-outline" size={18} color={Colors.textSecondary} />
-            <Text style={styles.statPillVal}>{listing.leads}</Text>
-            <Text style={styles.statPillLabel}>LEADS</Text>
+            <Text style={ts.statPillVal}>{listing.leads}</Text>
+            <Text style={ts.statPillLabel}>LEADS</Text>
           </View>
-          <View style={styles.statPill}>
+          <View style={ts.statPill}>
             <Ionicons name="pricetag-outline" size={18} color={Colors.accent} />
-            <Text style={[styles.statPillVal, { color: Colors.accent }]}>{listing.offers}</Text>
-            <Text style={styles.statPillLabel}>OFFERS</Text>
+            <Text style={[ts.statPillVal, { color: Colors.accent }]}>{listing.offers}</Text>
+            <Text style={ts.statPillLabel}>OFFERS</Text>
           </View>
         </View>
 
         {/* ── Detail rows ─────────────────────────────────────────────────── */}
-        <View style={styles.detailCard}>
+        <View style={ts.detailCard}>
           {/* List price */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>List price</Text>
+          <View style={ts.detailRow}>
+            <Text style={ts.detailRowLabel}>List price</Text>
             <TouchableOpacity
-              style={styles.detailRowRight}
+              style={ts.detailRowRight}
               onPress={handleEditListing}
               activeOpacity={0.7}
               disabled={!canManageInventory}
             >
-              <Text style={styles.detailRowValue}>{listing.price}</Text>
+              <Text style={ts.detailRowValue}>{listing.price}</Text>
               {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={ts.detailDivider} />
 
           {/* Offers */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Offers</Text>
-            <View style={styles.detailRowRight}>
-              <Text style={styles.detailRowValue}>{listing.offersStatus}</Text>
+          <View style={ts.detailRow}>
+            <Text style={ts.detailRowLabel}>Offers</Text>
+            <View style={ts.detailRowRight}>
+              <Text style={ts.detailRowValue}>{listing.offersStatus}</Text>
             </View>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={ts.detailDivider} />
 
           {/* Visibility */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Listing status</Text>
-            <View style={styles.detailRowRight}>
-              <Text style={styles.detailRowValue}>{listing.visibility}</Text>
+          <View style={ts.detailRow}>
+            <Text style={ts.detailRowLabel}>Listing status</Text>
+            <View style={ts.detailRowRight}>
+              <Text style={ts.detailRowValue}>{listing.visibility}</Text>
             </View>
           </View>
-          <View style={styles.detailDivider} />
+          <View style={ts.detailDivider} />
 
           {/* Days listed */}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailRowLabel}>Days listed</Text>
-            <Text style={styles.detailRowValue}>{listing.daysListed} days</Text>
+          <View style={ts.detailRow}>
+            <Text style={ts.detailRowLabel}>Days listed</Text>
+            <Text style={ts.detailRowValue}>{listing.daysListed} days</Text>
           </View>
         </View>
       </ScrollView>
 
       {/* ── Bottom CTAs ─────────────────────────────────────────────────────── */}
-      <View style={[styles.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[ts.detailFooterWrap, { paddingBottom: insets.bottom + 16 }]}>
         {/* Put on Auction — only ACTIVE listings can be converted; the
             destination screen (SellerAuctionsScreen) re-validates eligibility
             itself, so this is a convenience shortcut, not the only gate. */}
         {canManageInventory && listing.status === 'LIVE' && (
           <TouchableOpacity
-            style={styles.putOnAuctionBtn}
+            style={ts.putOnAuctionBtn}
             activeOpacity={0.85}
             onPress={() => navigation?.navigate('SellerAuctions', { preselectListingId: listing.id })}
           >
             <MaterialCommunityIcons name="gavel" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.putOnAuctionBtnText}>PUT ON AUCTION</Text>
+            <Text style={ts.putOnAuctionBtnText}>PUT ON AUCTION</Text>
           </TouchableOpacity>
         )}
         {canManageInventory && (
-        <View style={styles.detailFooter}>
+        <View style={ts.detailFooter}>
         <TouchableOpacity
-          style={[styles.boostBtn, boosting && { opacity: 0.6 }]}
+          style={[ts.boostBtn, boosting && { opacity: 0.6 }]}
           activeOpacity={0.85}
           onPress={handleBoost}
           disabled={boosting}
@@ -363,18 +367,18 @@ const ListingDetail: React.FC<{
           ) : (
             <>
               <MaterialCommunityIcons name="rocket-launch-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-              <Text style={styles.boostBtnText}>BOOST</Text>
+              <Text style={ts.boostBtnText}>BOOST</Text>
             </>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.markSoldBtn, listing.status !== 'LIVE' && styles.markSoldBtnDim]}
+          style={[ts.markSoldBtn, listing.status !== 'LIVE' && ts.markSoldBtnDim]}
           activeOpacity={0.85}
           onPress={listing.status === 'LIVE' ? openMarkSold : undefined}
         >
           <Ionicons name="checkmark-circle-outline" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-          <Text style={styles.markSoldBtnText}>
+          <Text style={ts.markSoldBtnText}>
             {listing.status === 'LIVE' ? 'MARK SOLD' : STATUS_STYLE[listing.status].label}
           </Text>
         </TouchableOpacity>
@@ -391,9 +395,9 @@ const ListingDetail: React.FC<{
         onClose={() => setBoostCheckoutUrl(null)}
       />
       {boostToast && (
-        <View style={styles.boostToast} pointerEvents="none">
+        <View style={ts.boostToast} pointerEvents="none">
           <Ionicons name="checkmark-circle" size={16} color={Colors.white} />
-          <Text style={styles.boostToastText}>{boostToast}</Text>
+          <Text style={ts.boostToastText}>{boostToast}</Text>
         </View>
       )}
 
@@ -404,13 +408,13 @@ const ListingDetail: React.FC<{
         title="Mark as Sold"
         avoidKeyboard
       >
-        <View style={styles.markSoldModalBody}>
-          <Text style={styles.markSoldModalHint}>Confirm the price this vehicle sold for.</Text>
-          <Text style={styles.soldPriceLabel}>SALE PRICE</Text>
-          <View style={styles.soldPriceInputWrap}>
-            <Text style={styles.soldPriceCurrency}>£</Text>
+        <View style={ts.markSoldModalBody}>
+          <Text style={ts.markSoldModalHint}>Confirm the price this vehicle sold for.</Text>
+          <Text style={ts.soldPriceLabel}>SALE PRICE</Text>
+          <View style={ts.soldPriceInputWrap}>
+            <Text style={ts.soldPriceCurrency}>£</Text>
             <TextInput
-              style={styles.soldPriceInput}
+              style={ts.soldPriceInput}
               value={soldPriceInput}
               onChangeText={v => { setSoldPriceInput(v); setMarkSoldError(null); }}
               keyboardType="number-pad"
@@ -421,7 +425,7 @@ const ListingDetail: React.FC<{
           </View>
           {markSoldError && <ErrorBanner message={markSoldError} />}
           <TouchableOpacity
-            style={[styles.markSoldConfirmBtn, markSoldSubmitting && { opacity: 0.6 }]}
+            style={[ts.markSoldConfirmBtn, markSoldSubmitting && { opacity: 0.6 }]}
             activeOpacity={0.85}
             onPress={handleConfirmMarkSold}
             disabled={markSoldSubmitting}
@@ -429,7 +433,7 @@ const ListingDetail: React.FC<{
             {markSoldSubmitting ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.markSoldConfirmBtnText}>Confirm Sold</Text>
+              <Text style={ts.markSoldConfirmBtnText}>Confirm Sold</Text>
             )}
           </TouchableOpacity>
         </View>
