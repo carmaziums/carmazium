@@ -18,6 +18,8 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -105,6 +107,8 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
 
 export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles) : styles;
   const { user, role, accountRole, logout } = useAuthStore();
   const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -160,7 +164,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   const navTab = (tab: string) => navigation?.navigate('Tabs', { screen: tab });
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
@@ -170,18 +174,18 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
+      <View style={ts.header}>
         <Logo size="sm" />
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
-            {unreadMessages > 0 && <View style={styles.bellDot} />}
+        <View style={ts.headerRight}>
+          <TouchableOpacity style={ts.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
+            {unreadMessages > 0 && <View style={ts.bellDot} />}
             <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
           <HamburgerButton />
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView style={ts.scroll} contentContainerStyle={[ts.scrollContent, { paddingBottom: insets.bottom + 110 }]} showsVerticalScrollIndicator={false}>
 
         {error ? (
           <View style={{ marginBottom: 16 }}>
@@ -190,77 +194,77 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         ) : null}
 
         {/* ── Profile card ── */}
-        <View style={styles.profileCard}>
-          <View style={[styles.avatar, isDealer && styles.avatarDealer, isSeller && !isDealer && styles.avatarSeller]}>
-            <Text style={styles.avatarText}>{initials}</Text>
+        <View style={ts.profileCard}>
+          <View style={[ts.avatar, isDealer && ts.avatarDealer, isSeller && !isDealer && ts.avatarSeller]}>
+            <Text style={ts.avatarText}>{initials}</Text>
 
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName} numberOfLines={1}>{fullName}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
+          <View style={ts.profileInfo}>
+            <Text style={ts.profileName} numberOfLines={1}>{fullName}</Text>
+            <Text style={ts.profileEmail} numberOfLines={1}>{email}</Text>
           </View>
-          <View style={[styles.rolePill, isDealer ? styles.rolePillAmber : isSeller ? styles.rolePillBlue : styles.rolePillGreen]}>
-            <Text style={[styles.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
+          <View style={[ts.rolePill, isDealer ? ts.rolePillAmber : isSeller ? ts.rolePillBlue : ts.rolePillGreen]}>
+            <Text style={[ts.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
         </View>
 
         {/* Primary tasks should be visible before the crowded metrics grid. */}
-        <View style={styles.accountQuickActions}>
+        <View style={ts.accountQuickActions}>
           <TouchableOpacity
-            style={styles.accountQuickBuy}
+            style={ts.accountQuickBuy}
             onPress={() => navTab('Search')}
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
             <Ionicons name="car-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>Buy Cars</Text>
+            <Text style={ts.accountQuickText}>Buy Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.accountQuickManage}
+            style={ts.accountQuickManage}
             onPress={() => isDealerAccount ? nav('DealerInventory') : isSellerAccount ? nav('SellerListings') : nav('SellCarFlow')}
             accessibilityRole="button"
             accessibilityLabel={isSellerAccount ? 'Manage your vehicle listings' : 'Start selling a car'}
             activeOpacity={0.8}
           >
             <Ionicons name="pricetag-outline" size={19} color={Colors.white} />
-            <Text style={styles.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
+            <Text style={ts.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Overview stats strip ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>OVERVIEW</Text>
+        <View style={ts.sectionHeader}>
+          <Text style={ts.sectionLabel}>OVERVIEW</Text>
         </View>
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{seller.activeListings}</Text>}
-            <Text style={styles.statName}>Listings</Text>
+        <View style={ts.statsRow}>
+          <View style={ts.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={ts.statValue}>{seller.activeListings}</Text>}
+            <Text style={ts.statName}>Listings</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={styles.statValue}>{buyer.watchlistCount}</Text>}
-            <Text style={styles.statName}>Saved</Text>
+          <View style={ts.statDivider} />
+          <View style={ts.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={ts.statValue}>{buyer.watchlistCount}</Text>}
+            <Text style={ts.statName}>Saved</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={40} h={22} /> : <Text style={styles.statValue}>{seller.totalViews >= 1000 ? `${(seller.totalViews / 1000).toFixed(1)}k` : seller.totalViews}</Text>}
-            <Text style={styles.statName}>Views</Text>
+          <View style={ts.statDivider} />
+          <View style={ts.statCell}>
+            {loading ? <Skeleton w={40} h={22} /> : <Text style={ts.statValue}>{seller.totalViews >= 1000 ? `${(seller.totalViews / 1000).toFixed(1)}k` : seller.totalViews}</Text>}
+            <Text style={ts.statName}>Views</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            {loading ? <Skeleton w={32} h={22} /> : <Text style={[styles.statValue, unreadMessages > 0 && { color: Colors.accent }]}>{unreadMessages}</Text>}
-            <Text style={styles.statName}>Unread</Text>
+          <View style={ts.statDivider} />
+          <View style={ts.statCell}>
+            {loading ? <Skeleton w={32} h={22} /> : <Text style={[ts.statValue, unreadMessages > 0 && { color: Colors.accent }]}>{unreadMessages}</Text>}
+            <Text style={ts.statName}>Unread</Text>
           </View>
         </View>
 
         {/* ── 10-section tile grid ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>MY DASHBOARD</Text>
+        <View style={ts.sectionHeader}>
+          <Text style={ts.sectionLabel}>MY DASHBOARD</Text>
         </View>
-        <View style={styles.tileGrid}>
+        <View style={ts.tileGrid}>
 
           {/* Row 1: Inventory + Auctions */}
           <Tile
@@ -354,11 +358,11 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         </View>
 
         {/* ── Sign out ── */}
-        <TouchableOpacity style={styles.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>
-          <View style={styles.signOutIcon}>
+        <TouchableOpacity style={ts.signOutRow} activeOpacity={0.75} onPress={handleSignOut}>
+          <View style={ts.signOutIcon}>
             <Ionicons name="log-out-outline" size={17} color={Colors.accent} />
           </View>
-          <Text style={styles.signOutText}>Sign out</Text>
+          <Text style={ts.signOutText}>Sign out</Text>
           <Ionicons name="chevron-forward" size={14} color={Colors.accent} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
@@ -371,6 +375,26 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
 const CARD_BG = Colors.bgSecondary;
 const BORDER = Colors.whiteAlpha07;
+
+const lightUnifiedDashboardScreenStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  bellBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  profileCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  profileName: { color: '#0F172A' },
+  profileEmail: { color: '#64748B' },
+  rolePill: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  sectionLabel: { color: '#0F172A' },
+  accountQuickBuy: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  accountQuickManage: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  accountQuickText: { color: '#0F172A' },
+  statsRow: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statValue: { color: '#0F172A' },
+  statName: { color: '#64748B' },
+  tile: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  tileLabel: { color: '#0F172A' },
+  tileSublabel: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
