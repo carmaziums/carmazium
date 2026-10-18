@@ -8,6 +8,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { FontFamily } from '../../constants/typography';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
@@ -52,22 +53,28 @@ const timeLeft = (raw: string, now: number): string => {
 };
 
 function Thumbnail({ uri }: { uri?: string }) {
-  return <View style={styles.thumb}>
-    {uri ? <Image source={{ uri }} style={styles.image} contentFit="cover" cachePolicy="memory-disk" />
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  return <View style={ts.thumb}>
+    {uri ? <Image source={{ uri }} style={ts.image} contentFit="cover" cachePolicy="memory-disk" />
       : <Ionicons name="car-outline" size={25} color={Colors.textMuted} />}
   </View>;
 }
 
 function ErrorText({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return <View style={styles.error}>
-    <Text style={styles.errorText}>{message}</Text>
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
+  return <View style={ts.error}>
+    <Text style={ts.errorText}>{message}</Text>
     <TouchableOpacity onPress={onRetry} accessibilityRole="button">
-      <Text style={styles.retry}>Retry</Text>
+      <Text style={ts.retry}>Retry</Text>
     </TouchableOpacity>
   </View>;
 }
 
 export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -111,28 +118,28 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
     setView(next);
   };
   return (
-    <View style={[styles.root, header ? { paddingTop: 0 } : undefined]}>
+    <View style={[ts.root, header ? { paddingTop: 0 } : undefined]}>
       <FlatList
-        style={styles.list}
+        style={ts.list}
         ListHeaderComponent={<>
           {header}
-      <Text style={styles.title}>Shortlisted Auctions</Text>
-      <Text style={styles.subtitle}>
+      <Text style={ts.title}>Shortlisted Auctions</Text>
+      <Text style={ts.subtitle}>
         Save live vehicles and return to bid when you are ready.
       </Text>
-      <View style={styles.switchRow}>
+      <View style={ts.switchRow}>
         {(['live','all'] as const).map(next => (
           <TouchableOpacity key={next}
-            style={[styles.segment, view === next && styles.segmentOn]}
+            style={[ts.segment, view === next && ts.segmentOn]}
             accessibilityRole="button" accessibilityState={{ selected: view === next }}
             onPress={() => setFilter(next)}>
-            <Text style={[styles.segmentText, view === next && styles.segmentTextOn]}>
+            <Text style={[ts.segmentText, view === next && ts.segmentTextOn]}>
               {next === 'live' ? 'Live Only' : 'All Saved'}
             </Text>
           </TouchableOpacity>
         ))}
         {!error && !loading && (
-          <Text style={styles.total}>{total} saved</Text>
+          <Text style={ts.total}>{total} saved</Text>
         )}
       </View>
       {error && <ErrorText message={error} onRetry={() => void fetchSaved(true)} />}
@@ -140,7 +147,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
         ListHeaderComponentStyle={{ marginHorizontal: -20 }}
         data={error && !items.length ? [] : items}
         keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={ts.listContent}
         refreshControl={<RefreshControl refreshing={refreshing}
           onRefresh={() => void fetchSaved(true)} tintColor={Colors.accent}/>}
         renderItem={({ item }) => {
@@ -149,43 +156,43 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
             && new Date(a.endTime).getTime() > now;
           const state = live ? 'LIVE' : a?.status === 'SCHEDULED' ? 'UPCOMING' : a?.status || 'ENDED';
           return (
-            <TouchableOpacity style={styles.card}
+            <TouchableOpacity style={ts.card}
               accessibilityRole="button"
               accessibilityLabel={`Open auction for ${item.listing?.title || 'Vehicle'}`}
               onPress={() => a?.id && navigation?.navigate('AuctionDeepLink', { auctionId: a.id })}
               disabled={!a?.id}>
               <Thumbnail uri={item.listing?.images?.[0]}/>
-              <View style={styles.cardCopy}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
-                <Text style={[styles.status, live && { color: Colors.success }]}>{state}</Text>
-                {a && <Text style={styles.meta}>Opening bid {money(a.startingBid)}</Text>}
-                {a && <Text style={styles.meta}>
+              <View style={ts.cardCopy}>
+                <Text style={ts.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
+                <Text style={[ts.status, live && { color: Colors.success }]}>{state}</Text>
+                {a && <Text style={ts.meta}>Opening bid {money(a.startingBid)}</Text>}
+                {a && <Text style={ts.meta}>
                   {live ? 'Ends ' + timeLeft(a.endTime, now)
                     : a.status === 'SCHEDULED' ? 'Starts ' + timeLeft(a.startTime, now)
                     : 'Auction ' + a.status.toLowerCase()}
                 </Text>}
-                <Text style={styles.go}>{live ? 'Open Auction to Bid' : 'View Auction'}  ›</Text>
+                <Text style={ts.go}>{live ? 'Open Auction to Bid' : 'View Auction'}  ›</Text>
               </View>
             </TouchableOpacity>
           );
         }}
         ListEmptyComponent={
           loading ? <ActivityIndicator style={{ marginTop: 38 }} color={Colors.accent}/> :
-          !error ? <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No {view === 'live' ? 'live ' : ''}shortlisted auctions</Text>
-            <Text style={styles.subtitle}>Save auctions from Live Auctions to find them here.</Text>
+          !error ? <View style={ts.empty}>
+            <Text style={ts.emptyTitle}>No {view === 'live' ? 'live ' : ''}shortlisted auctions</Text>
+            <Text style={ts.subtitle}>Save auctions from Live Auctions to find them here.</Text>
           </View> : null
         }
         ListFooterComponent={!error && !loading && totalPages > 1 ? (
-          <View style={styles.pageRow}>
+          <View style={ts.pageRow}>
             <TouchableOpacity onPress={() => setPage(x=>Math.max(1,x-1))}
               disabled={page===1} accessibilityRole="button">
-              <Text style={styles.pageLink}>Previous</Text>
+              <Text style={ts.pageLink}>Previous</Text>
             </TouchableOpacity>
-            <Text style={styles.meta}>{page} / {totalPages}</Text>
+            <Text style={ts.meta}>{page} / {totalPages}</Text>
             <TouchableOpacity onPress={()=>setPage(x=>Math.min(totalPages,x+1))}
               disabled={page>=totalPages} accessibilityRole="button">
-              <Text style={styles.pageLink}>Next</Text>
+              <Text style={ts.pageLink}>Next</Text>
             </TouchableOpacity>
           </View>) : null
         }
@@ -195,6 +202,8 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
 }
 
 export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightDealerAuctionSectionStyles } : styles;
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -226,74 +235,96 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
     return () => clearInterval(id);
   }, [fetchBids]);
   const leading = positions.filter(x=>x.isLeading).length;
-  return <View style={[styles.root, header ? { paddingTop: 0 } : undefined]}>
+  return <View style={[ts.root, header ? { paddingTop: 0 } : undefined]}>
     <FlatList
       ListHeaderComponent={<>
         {header}
-    <Text style={styles.title}>My Auction Bids</Text>
-    <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
+    <Text style={ts.title}>My Auction Bids</Text>
+    <Text style={ts.subtitle}>One live position per vehicle you're currently bidding on</Text>
     {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
-    {!loading && (!error || positions.length > 0) && <View style={styles.metrics}>
+    {!loading && (!error || positions.length > 0) && <View style={ts.metrics}>
       {[{label:'Live Auction Positions',count:positions.length},
         {label:'Currently Leading',count:leading},
         {label:'Outbid / Action Needed',count:positions.length-leading}].map(x=>(
-        <View key={x.label} style={styles.metric}>
-          <Text style={styles.metricNumber}>{x.count}</Text>
-          <Text style={styles.metricLabel}>{x.label}</Text>
+        <View key={x.label} style={ts.metric}>
+          <Text style={ts.metricNumber}>{x.count}</Text>
+          <Text style={ts.metricLabel}>{x.label}</Text>
         </View>
       ))}
     </View>}
       </>}
       ListHeaderComponentStyle={{ marginHorizontal: -20 }}
-      style={styles.list}
+      style={ts.list}
       data={error && !positions.length ? [] : positions}
       keyExtractor={x => x.listingId}
-      contentContainerStyle={styles.listContent}
+      contentContainerStyle={ts.listContent}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void fetchBids(true)}
         tintColor={Colors.accent}/>}
       renderItem={({ item }) => (
-        <View style={styles.card}>
-          <View style={styles.bidHeader}>
+        <View style={ts.card}>
+          <View style={ts.bidHeader}>
             <Thumbnail uri={item.listing?.images?.[0]}/>
-            <View style={styles.cardCopy}>
-              <Text style={styles.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
-              <Text style={[styles.status,
+            <View style={ts.cardCopy}>
+              <Text style={ts.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
+              <Text style={[ts.status,
                 { color: item.isLeading ? Colors.success : Colors.warning }]}>
                 {item.isLeading ? 'CURRENTLY LEADING' : 'OUTBID / ACTION NEEDED'}
               </Text>
-              <Text style={styles.meta}>{timeLeft(item.endTime, now)}</Text>
+              <Text style={ts.meta}>{timeLeft(item.endTime, now)}</Text>
             </View>
           </View>
-          <View style={styles.bidMetrics}>
-            <Text style={styles.meta}>Your highest bid: {money(item.myHighestBid)}</Text>
-            <Text style={styles.meta}>Current highest: {money(item.currentHighestBid)}</Text>
-            <Text style={styles.meta}>{item.bidCount} bid{item.bidCount===1?'':'s'}</Text>
+          <View style={ts.bidMetrics}>
+            <Text style={ts.meta}>Your highest bid: {money(item.myHighestBid)}</Text>
+            <Text style={ts.meta}>Current highest: {money(item.currentHighestBid)}</Text>
+            <Text style={ts.meta}>{item.bidCount} bid{item.bidCount===1?'':'s'}</Text>
           </View>
-          <TouchableOpacity style={styles.mainAction}
+          <TouchableOpacity style={ts.mainAction}
             accessibilityRole="button"
             disabled={!item.auctionId}
             onPress={() => item.auctionId &&
               navigation?.navigate('AuctionDeepLink', { auctionId: item.auctionId })}>
-            <Text style={styles.mainActionText}>{item.isLeading ? 'View Live Auction' : 'Bid Again'}</Text>
+            <Text style={ts.mainActionText}>{item.isLeading ? 'View Live Auction' : 'Bid Again'}</Text>
           </TouchableOpacity>
         </View>
       )}
       ListEmptyComponent={
         loading ? <ActivityIndicator color={Colors.accent} style={{ marginTop: 38 }}/> :
-          !error ? <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No Current Auction Bids</Text>
-            <Text style={styles.subtitle}>Your live auction positions will appear here after you place a bid.</Text>
+          !error ? <View style={ts.empty}>
+            <Text style={ts.emptyTitle}>No Current Auction Bids</Text>
+            <Text style={ts.subtitle}>Your live auction positions will appear here after you place a bid.</Text>
           </View> : null
       }
       ListFooterComponent={
-        <TouchableOpacity style={styles.historyLink} accessibilityRole="button"
+        <TouchableOpacity style={ts.historyLink} accessibilityRole="button"
           onPress={() => navigation?.navigate('BuyerBids')}>
-          <Text style={styles.pageLink}>View all bid history and cancellation options ›</Text>
+          <Text style={ts.pageLink}>View all bid history and cancellation options ›</Text>
         </TouchableOpacity>
       }
     />
   </View>;
 }
+
+const lightDealerAuctionSectionStyles = StyleSheet.create({
+  root: {backgroundColor: '#EEF5FB'},
+  title: {color: '#0F172A'},
+  subtitle: {color: '#64748B'},
+  segment: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  segmentText: {color: '#334155'},
+  total: {color: '#64748B'},
+  error: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  errorText: {color: '#334155'},
+  thumb: {backgroundColor: '#F7FBFF', borderColor: '#D5E1EC'},
+  card: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  cardTitle: {color: '#0F172A'},
+  meta: {color: '#64748B'},
+  status: {color: '#334155'},
+  empty: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  emptyTitle: {color: '#0F172A'},
+  metric: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  metricNumber: {color: '#0F172A'},
+  metricLabel: {color: '#64748B'},
+  bidMetrics: {borderTopColor: '#D5E1EC'},
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bgPrimary, paddingTop: 8 },
