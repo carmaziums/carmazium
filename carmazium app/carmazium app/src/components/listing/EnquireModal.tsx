@@ -11,6 +11,8 @@ import {
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -72,6 +74,8 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
   sellerId,
   onSent,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightEnquireModalStyles) : styles;
   const prefill =
     `Hi — I'm interested in the ${listing.title ?? [listing.year, listing.make, listing.model].filter(Boolean).join(' ') ?? 'listing'}. ` +
     `Could you tell me a bit more about it and let me know when I could see it?`;
@@ -178,15 +182,15 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 4 }}
           >
-            <Text style={styles.subtitle} numberOfLines={2}>
+            <Text style={ts.subtitle} numberOfLines={2}>
               {listing.title ??
                 [listing.year, listing.make, listing.model].filter(Boolean).join(' ')}
             </Text>
 
             {/* Message */}
-            <Text style={styles.fieldLabel}>YOUR MESSAGE</Text>
+            <Text style={ts.fieldLabel}>YOUR MESSAGE</Text>
             <TextInput
-              style={styles.messageInput}
+              style={ts.messageInput}
               value={message}
               onChangeText={v => {
                 setMessage(v);
@@ -194,20 +198,20 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
               }}
               multiline
               placeholder="What would you like to ask the seller?"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
               selectionColor={Colors.accent}
               textAlignVertical="top"
             />
 
             {/* Contact preference */}
-            <Text style={styles.fieldLabel}>PREFERRED CONTACT</Text>
-            <View style={styles.contactRow}>
+            <Text style={ts.fieldLabel}>PREFERRED CONTACT</Text>
+            <View style={ts.contactRow}>
               {CONTACT_OPTIONS.map(opt => {
                 const selected = contact === opt.value;
                 return (
                   <TouchableOpacity
                     key={opt.value}
-                    style={[styles.contactOption, selected && styles.contactOptionSelected]}
+                    style={[ts.contactOption, selected && ts.contactOptionSelected]}
                     onPress={() => setContact(opt.value)}
                     activeOpacity={0.8}
                   >
@@ -218,7 +222,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                     />
                     <Text
                       style={[
-                        styles.contactOptionText,
+                        ts.contactOptionText,
                         selected && { color: Colors.accent },
                       ]}
                     >
@@ -230,9 +234,9 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
             </View>
 
             {/* Test drive date */}
-            <Text style={styles.fieldLabel}>TEST DRIVE (optional)</Text>
+            <Text style={ts.fieldLabel}>TEST DRIVE (optional)</Text>
             <TouchableOpacity
-              style={styles.dateBtn}
+              style={ts.dateBtn}
               activeOpacity={0.8}
               onPress={() => {
                 setPickerMode('date');
@@ -240,7 +244,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
               }}
             >
               <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
-              <Text style={styles.dateBtnText}>
+              <Text style={ts.dateBtnText}>
                 {testDriveDate ? fmtDate(testDriveDate) : 'Pick a date & time'}
               </Text>
               {testDriveDate && (
@@ -260,14 +264,14 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                 minimumDate={new Date()}
                 onChange={onDateChange}
                 themeVariant="dark"
-                style={Platform.OS === 'ios' ? styles.iosDatePicker : undefined}
+                style={Platform.OS === 'ios' ? ts.iosDatePicker : undefined}
               />
             )}
 
             {error && (
-              <View style={styles.errorBox}>
+              <View style={ts.errorBox}>
                 <Ionicons name="alert-circle-outline" size={12} color={Colors.error} />
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={ts.errorText}>{error}</Text>
               </View>
             )}
 
@@ -287,14 +291,25 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
               onPress={handleSkip}
               disabled={submitting}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.skipRow}
+              style={ts.skipRow}
             >
-              <Text style={styles.skipText}>Skip form &amp; open chat</Text>
+              <Text style={ts.skipText}>Skip form &amp; open chat</Text>
             </TouchableOpacity>
           </ScrollView>
     </BottomSheet>
   );
 };
+
+const lightEnquireModalStyles = StyleSheet.create({
+  subtitle: {color: '#334155'},
+  fieldLabel: {color: '#334155'},
+  messageInput: {backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC'},
+  contactOption: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  contactOptionText: {color: '#334155'},
+  dateBtn: {backgroundColor: '#EFF6FF', borderColor: '#93C5FD'},
+  dateBtnText: {color: '#1D4ED8'},
+  skipText: {color: '#526177'},
+});
 
 const styles = StyleSheet.create({
   subtitle: {
