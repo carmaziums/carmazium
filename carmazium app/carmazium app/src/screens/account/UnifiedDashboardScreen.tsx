@@ -105,7 +105,8 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
     )}
     {wide && <Ionicons name="chevron-forward" size={16} color={mode === 'light' ? '#64748B' : Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
   </TouchableOpacity>
-);
+  );
+};
 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
