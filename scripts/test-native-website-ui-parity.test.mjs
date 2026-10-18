@@ -84,7 +84,7 @@ test('native shared header follows actual website logo, notification, account an
   assert.ok(bar.includes('<Logo size="sm" width={logoWidth} />'));
   assert.ok(bar.includes("navigation.navigate('Notifications')"));
   assert.ok(bar.includes("navigation.navigate('Settings')"));
-  assert.ok(bar.includes('<HamburgerButton websiteStyle />'));
+  assert.ok(bar.includes('<HamburgerButton websiteStyle showLabel />'), 'approved visible Menu button rather than a question mark');
   assert.ok(bar.includes("backgroundColor: '#1E293B'"));
   assert.ok(!bar.includes("setRole("));
   for (const screen of [
