@@ -84,7 +84,7 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   );
 };
 
-export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embeddedDealerHub = false }) => {
+export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?: React.ReactNode }> = ({ embeddedDealerHub = false, embeddedHeader }) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { user: currentUser, accountRole, role } = useAuthStore();
@@ -263,7 +263,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: dealerMode ? 12 : insets.top + 16 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: embeddedHeader ? 0 : dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -274,6 +274,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }> = ({ embedded
           />
         }
       >
+        {/* Hub navigation scrolls with Live Auction search, filters and cards.
+            Bleed through the card gutter so the global top bar remains full width. */}
+        {embeddedHeader && <View style={{ marginHorizontal: -24, marginBottom: 12 }}>{embeddedHeader}</View>}
         {/* ─── Header ──────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View>
