@@ -1050,6 +1050,16 @@ const lightDealerKYCScreenStyles = StyleSheet.create({
   docFieldLabel: { color: '#334155' },
   docTapArea: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   docTapText: { color: '#334155' },
+  container: { backgroundColor: '#FFFFFF' },
+  statusBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  pendingContainer: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  paymentOutstandingContainer: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  pendingHeading: { color: '#0F172A' },
+  pendingBody: { color: '#64748B' },
+  pendingInfoText: { color: '#64748B' },
+  docUploadingText: { color: '#64748B' },
+  docUploadedText: { color: '#64748B' },
+  statusBannerText: { color: '#64748B' },
 });
 
 const styles = StyleSheet.create({
