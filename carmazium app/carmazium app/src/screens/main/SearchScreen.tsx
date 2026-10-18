@@ -20,6 +20,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -172,7 +173,7 @@ const DISTANCE_CHIPS = [10, 25, 50, 100, 200];
 export const SearchScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...s, ...lightRetailStyles } : s;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightRetailStyles) : s;
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
   const { postcode: userPostcode, latitude: userLat, longitude: userLng, setPostcode: saveUserPostcode } = useLocation();
