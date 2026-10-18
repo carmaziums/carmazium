@@ -13,6 +13,8 @@ import { useAuthStore } from '../store/authStore';
 import { sendAiChatMessage, reportAiResponse, AiChatMessage, type AiReportReason } from '../lib/aiApi';
 import { navigationRef } from '../lib/navigationRef';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../theme/appearancePalette';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
@@ -158,6 +160,8 @@ class ChatErrorBoundary extends React.Component<
 
 export const GlobalAIChatBot: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightAiChatStyles) : styles;
   const { height: windowHeight, width: windowWidth, fontScale } = useWindowDimensions();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUserId = useAuthStore((s) => s.user?.id || '');
@@ -535,66 +539,66 @@ export const GlobalAIChatBot: React.FC = () => {
         statusBarTranslucent
         onRequestClose={() => setIsOpen(false)}
       >
-        <Pressable style={styles.chatBackdrop} onPress={() => setIsOpen(false)}>
+        <Pressable style={ts.chatBackdrop} onPress={() => setIsOpen(false)}>
           <Pressable
-            style={[styles.chatBox, { bottom: dynamicBottom, height: dynamicHeight, width: chatWidth }]}
+            style={[ts.chatBox, { bottom: dynamicBottom, height: dynamicHeight, width: chatWidth }]}
             onPress={() => {}}
           >
             <ChatErrorBoundary onReset={() => setIsOpen(false)}>
 
               {/* Header */}
-              <LinearGradient colors={[Colors.bgBody, Colors.bgElevated]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chatHeader}>
-                <View style={styles.chatHeaderLeft}>
-                  <View style={styles.chatAvatar}>
-                    <Image source={MAZIUM_MASCOT} style={styles.chatAvatarImage} contentFit="contain" />
-                    <View style={styles.botAccentDot} />
+              <LinearGradient colors={[Colors.bgBody, Colors.bgElevated]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ts.chatHeader}>
+                <View style={ts.chatHeaderLeft}>
+                  <View style={ts.chatAvatar}>
+                    <Image source={MAZIUM_MASCOT} style={ts.chatAvatarImage} contentFit="contain" />
+                    <View style={ts.botAccentDot} />
                   </View>
                   <View>
-                    <Text style={styles.chatTitle} accessibilityRole="header">Mazium AI</Text>
-                    <Text style={styles.chatStatus}>Car-buying assistant</Text>
+                    <Text style={ts.chatTitle} accessibilityRole="header">Mazium AI</Text>
+                    <Text style={ts.chatStatus}>Car-buying assistant</Text>
                   </View>
                 </View>
-                <View style={styles.chatHeaderActions}>
+                <View style={ts.chatHeaderActions}>
                   <IconButton
-                    style={styles.closeBtn}
+                    style={ts.closeBtn}
                     icon={<Ionicons name="shield-checkmark-outline" size={18} color={Colors.textSecondary} />}
                     onPress={showAiPrivacyOptions}
                     accessibilityLabel="MaziuM AI privacy options"
                   />
-                  <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close MaziuM AI assistant" />
+                  <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setIsOpen(false)} accessibilityLabel="Close MaziuM AI assistant" />
                 </View>
               </LinearGradient>
 
               {/* Messages */}
-              <ScrollView ref={scrollRef} style={styles.chatScroll} contentContainerStyle={styles.chatScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <ScrollView ref={scrollRef} style={ts.chatScroll} contentContainerStyle={ts.chatScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
                 {hasAiConsent === false && (
-                  <View style={styles.aiConsentCard}>
-                    <View style={styles.aiConsentTitleRow}>
+                  <View style={ts.aiConsentCard}>
+                    <View style={ts.aiConsentTitleRow}>
                       <Ionicons name="shield-checkmark-outline" size={16} color={Colors.accent} />
-                      <Text style={styles.aiConsentTitle}>Before you use Mazium AI</Text>
+                      <Text style={ts.aiConsentTitle}>Before you use Mazium AI</Text>
                     </View>
-                    <Text style={styles.aiConsentText}>
+                    <Text style={ts.aiConsentText}>
                       Your message and recent Mazium chat context are sent to OpenAI to generate a response. AI can make mistakes, so verify important vehicle or finance information. Do not include passwords, payment credentials or unnecessary sensitive personal information.
                     </Text>
-                    <View style={styles.aiConsentActions}>
+                    <View style={ts.aiConsentActions}>
                       <TouchableOpacity
-                        style={styles.aiConsentPrimary}
+                        style={ts.aiConsentPrimary}
                         onPress={() => void acceptAiConsent()}
                         activeOpacity={0.8}
                         accessibilityRole="button"
                         accessibilityLabel="Accept MaziuM AI data sharing and continue"
                       >
-                        <Text style={styles.aiConsentPrimaryText}>I understand & continue</Text>
+                        <Text style={ts.aiConsentPrimaryText}>I understand & continue</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={styles.aiConsentSecondary}
+                        style={ts.aiConsentSecondary}
                         onPress={openAiPrivacy}
                         activeOpacity={0.8}
                         accessibilityRole="button"
                         accessibilityLabel="View MaziuM AI privacy policy"
                       >
-                        <Text style={styles.aiConsentSecondaryText}>Privacy</Text>
+                        <Text style={ts.aiConsentSecondaryText}>Privacy</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -602,15 +606,15 @@ export const GlobalAIChatBot: React.FC = () => {
 
                 {chatHistory.map((msg) => (
                   <View key={msg.id}>
-                    <View style={[styles.msgBubble, msg.isUser ? styles.msgUser : styles.msgAI]}>
-                      <Text style={[styles.msgText, msg.isUser ? styles.msgTextUser : styles.msgTextAI]}>
+                    <View style={[ts.msgBubble, msg.isUser ? ts.msgUser : ts.msgAI]}>
+                      <Text style={[ts.msgText, msg.isUser ? ts.msgTextUser : ts.msgTextAI]}>
                         {msg.text}
                       </Text>
                     </View>
 
                     {!msg.isUser && msg.reportable && (
                       <TouchableOpacity
-                        style={styles.aiReportButton}
+                        style={ts.aiReportButton}
                         onPress={() => openAiReport(msg)}
                         disabled={reportedResponseIds.has(msg.id)}
                         activeOpacity={0.7}
@@ -624,8 +628,8 @@ export const GlobalAIChatBot: React.FC = () => {
                         />
                         <Text
                           style={[
-                            styles.aiReportText,
-                            reportedResponseIds.has(msg.id) && styles.aiReportTextDone,
+                            ts.aiReportText,
+                            reportedResponseIds.has(msg.id) && ts.aiReportTextDone,
                           ]}
                         >
                           {reportedResponseIds.has(msg.id) ? 'Reported' : 'Report AI response'}
@@ -636,19 +640,19 @@ export const GlobalAIChatBot: React.FC = () => {
                     {/* Filter card — tapping navigates to Search with the AI-suggested filters */}
                     {!msg.isUser && msg.filterCard && (
                       <TouchableOpacity
-                        style={styles.filterCard}
+                        style={ts.filterCard}
                         activeOpacity={0.8}
                         onPress={() => applyFilterCard(msg.filterCard!.params)}
                         accessibilityRole="button"
                         accessibilityLabel={`Apply filters: ${msg.filterCard.label}`}
                         accessibilityHint="Opens Search with these suggested filters"
                       >
-                        <View style={styles.filterCardIcon}>
+                        <View style={ts.filterCardIcon}>
                           <Ionicons name="search-outline" size={13} color={Colors.accent} />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.filterCardLabel}>APPLY FILTERS</Text>
-                          <Text style={styles.filterCardTitle}>{msg.filterCard.label}</Text>
+                          <Text style={ts.filterCardLabel}>APPLY FILTERS</Text>
+                          <Text style={ts.filterCardTitle}>{msg.filterCard.label}</Text>
                         </View>
                         <Ionicons name="arrow-forward" size={13} color={Colors.accent} />
                       </TouchableOpacity>
@@ -659,7 +663,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 {/* Animated typing indicator */}
                 {isThinking && (
                   <View
-                    style={[styles.msgBubble, styles.msgAI]}
+                    style={[ts.msgBubble, ts.msgAI]}
                     accessibilityLiveRegion="polite"
                     accessibilityLabel="MaziuM is thinking"
                   >
@@ -669,13 +673,13 @@ export const GlobalAIChatBot: React.FC = () => {
               </ScrollView>
 
               {/* Website-equivalent persistent daily quick replies, horizontally scrollable. */}
-              <View style={styles.quickRepliesRail}>
+              <View style={ts.quickRepliesRail}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="always" contentContainerStyle={styles.quickPromptsWrap}>
+                  keyboardShouldPersistTaps="always" contentContainerStyle={ts.quickPromptsWrap}>
                   {quickReplies.map((q) => (
                     <TouchableOpacity
                       key={q.label}
-                      style={styles.quickPromptChip}
+                      style={ts.quickPromptChip}
                       onPress={() => void sendMessage(q.action)}
                       disabled={isThinking || hasAiConsent !== true}
                       activeOpacity={0.75}
@@ -683,16 +687,16 @@ export const GlobalAIChatBot: React.FC = () => {
                       accessibilityLabel={`Ask MaziuM: ${q.label}`}
                       accessibilityState={{ disabled: isThinking || hasAiConsent !== true }}
                     >
-                      <Text style={styles.quickPromptText}>{q.label}</Text>
+                      <Text style={ts.quickPromptText}>{q.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
 
               {/* Input row */}
-              <View style={styles.chatInputRow}>
+              <View style={ts.chatInputRow}>
                 <TextInput
-                  style={styles.chatInput}
+                  style={ts.chatInput}
                   placeholder="e.g. Show me BMWs under £20k..."
                   placeholderTextColor={Colors.iconMuted}
                   value={message}
@@ -704,17 +708,17 @@ export const GlobalAIChatBot: React.FC = () => {
                   accessibilityHint="Enter a question about cars"
                   accessibilityState={{ disabled: isThinking || hasAiConsent !== true }}
                 />
-                <IconButton style={[styles.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
+                <IconButton style={[ts.sendBtn, (isThinking || !message.trim()) && { opacity: 0.4 }]} icon={<Ionicons name="send" size={16} color={Colors.white} />} onPress={() => sendMessage(message)} disabled={isThinking || hasAiConsent !== true || !message.trim()} accessibilityLabel="Send message" />
               </View>
 
               {hasAiConsent === true && (
-                <View style={styles.aiPrivacyFooter}>
-                  <TouchableOpacity onPress={openAiPrivacy} style={styles.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="AI privacy">
-                    <Text style={styles.aiPrivacyFooterText}>AI privacy</Text>
+                <View style={ts.aiPrivacyFooter}>
+                  <TouchableOpacity onPress={openAiPrivacy} style={ts.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="AI privacy">
+                    <Text style={ts.aiPrivacyFooterText}>AI privacy</Text>
                   </TouchableOpacity>
-                  <Text style={styles.aiPrivacyFooterDot}>·</Text>
-                  <TouchableOpacity onPress={() => void withdrawAiConsent()} style={styles.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="Stop AI sharing">
-                    <Text style={styles.aiPrivacyFooterText}>Stop AI sharing</Text>
+                  <Text style={ts.aiPrivacyFooterDot}>·</Text>
+                  <TouchableOpacity onPress={() => void withdrawAiConsent()} style={ts.aiPrivacyFooterAction} accessibilityRole="button" accessibilityLabel="Stop AI sharing">
+                    <Text style={ts.aiPrivacyFooterText}>Stop AI sharing</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -732,15 +736,15 @@ export const GlobalAIChatBot: React.FC = () => {
         statusBarTranslucent
         onRequestClose={closeAiReport}
       >
-        <View style={styles.aiReportBackdrop}>
-          <View style={styles.aiReportCard}>
-            <View style={styles.aiReportHeader}>
+        <View style={ts.aiReportBackdrop}>
+          <View style={ts.aiReportCard}>
+            <View style={ts.aiReportHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.aiReportEyebrow}>MaziuM AI safety</Text>
-                <Text style={styles.aiReportTitle}>Report AI response</Text>
+                <Text style={ts.aiReportEyebrow}>MaziuM AI safety</Text>
+                <Text style={ts.aiReportTitle}>Report AI response</Text>
               </View>
               <IconButton
-                style={styles.aiReportClose}
+                style={ts.aiReportClose}
                 icon={<Ionicons name="close" size={20} color={Colors.white} />}
                 onPress={closeAiReport}
                 disabled={aiReporting}
@@ -748,20 +752,20 @@ export const GlobalAIChatBot: React.FC = () => {
               />
             </View>
 
-            <Text style={styles.aiReportHelp}>
+            <Text style={ts.aiReportHelp}>
               Tell CarMazium why this response needs review. The reported AI response and its related prompt will be sent to the moderation queue.
             </Text>
 
             {aiReportTarget && (
-              <View style={styles.aiReportPreview}>
-                <Text style={styles.aiReportPreviewText} numberOfLines={5}>
+              <View style={ts.aiReportPreview}>
+                <Text style={ts.aiReportPreviewText} numberOfLines={5}>
                   {aiReportTarget.text}
                 </Text>
               </View>
             )}
 
-            <Text style={styles.aiReportSectionLabel}>Reason</Text>
-            <View style={styles.aiReportReasonWrap}>
+            <Text style={ts.aiReportSectionLabel}>Reason</Text>
+            <View style={ts.aiReportReasonWrap}>
               {([
                 ['UNSAFE_OFFENSIVE', 'Unsafe or offensive'],
                 ['INACCURATE_MISLEADING', 'Inaccurate or misleading'],
@@ -772,14 +776,14 @@ export const GlobalAIChatBot: React.FC = () => {
                 return (
                   <TouchableOpacity
                     key={value}
-                    style={[styles.aiReportReasonChip, selected && styles.aiReportReasonChipSelected]}
+                    style={[ts.aiReportReasonChip, selected && ts.aiReportReasonChipSelected]}
                     onPress={() => setAiReportReason(value)}
                     activeOpacity={0.75}
                     accessibilityRole="radio"
                     accessibilityLabel={label}
                     accessibilityState={{ checked: selected }}
                   >
-                    <Text style={[styles.aiReportReasonText, selected && styles.aiReportReasonTextSelected]}>
+                    <Text style={[ts.aiReportReasonText, selected && ts.aiReportReasonTextSelected]}>
                       {label}
                     </Text>
                   </TouchableOpacity>
@@ -787,9 +791,9 @@ export const GlobalAIChatBot: React.FC = () => {
               })}
             </View>
 
-            <Text style={styles.aiReportSectionLabel}>Additional details (optional)</Text>
+            <Text style={ts.aiReportSectionLabel}>Additional details (optional)</Text>
             <TextInput
-              style={styles.aiReportDetailsInput}
+              style={ts.aiReportDetailsInput}
               value={aiReportDetails}
               onChangeText={(value) => setAiReportDetails(value.slice(0, 1000))}
               placeholder="What was wrong with this response?"
@@ -798,9 +802,9 @@ export const GlobalAIChatBot: React.FC = () => {
               maxLength={1000}
             />
 
-            <View style={styles.aiReportActions}>
+            <View style={ts.aiReportActions}>
               <TouchableOpacity
-                style={styles.aiReportCancel}
+                style={ts.aiReportCancel}
                 onPress={closeAiReport}
                 disabled={aiReporting}
                 activeOpacity={0.75}
@@ -808,12 +812,12 @@ export const GlobalAIChatBot: React.FC = () => {
                 accessibilityLabel="Cancel AI response report"
                 accessibilityState={{ disabled: aiReporting }}
               >
-                <Text style={styles.aiReportCancelText}>Cancel</Text>
+                <Text style={ts.aiReportCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  styles.aiReportSubmit,
-                  (!aiReportReason || aiReporting) && styles.aiReportSubmitDisabled,
+                  ts.aiReportSubmit,
+                  (!aiReportReason || aiReporting) && ts.aiReportSubmitDisabled,
                 ]}
                 onPress={() => void submitAiReport()}
                 disabled={!aiReportReason || aiReporting}
@@ -825,7 +829,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 {aiReporting
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <Ionicons name="flag-outline" size={15} color={Colors.white} />}
-                <Text style={styles.aiReportSubmitText}>Submit report</Text>
+                <Text style={ts.aiReportSubmitText}>Submit report</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -834,27 +838,27 @@ export const GlobalAIChatBot: React.FC = () => {
 
       {/* The same standalone 3D PNG used by the website. */}
       {!isOpen && (
-        <View style={[styles.container, { bottom: floatingBottom }]} pointerEvents="box-none">
+        <View style={[ts.container, { bottom: floatingBottom }]} pointerEvents="box-none">
           {isForeground && !isKeyboardVisible && activeRoute !== 'LiveAuctionDetailed' &&
             greetingState?.userId === authUserId && showGreeting && (
             <Animated.View
-              style={[styles.greetingBubble, {
+              style={[ts.greetingBubble, {
                 width: Math.min(260, windowWidth - 32),
                 opacity: greetingOpacity,
                 transform: [{ translateY: greetingOffsetY }],
               }]}
               accessibilityLabel="Mazium greeting. How can I help you today?"
             >
-              <View style={styles.greetingAvatar}>
-                <Image source={MAZIUM_MASCOT} style={styles.greetingAvatarImage} contentFit="contain" accessible={false} />
-                <View style={styles.greetingOnlineDot} />
+              <View style={ts.greetingAvatar}>
+                <Image source={MAZIUM_MASCOT} style={ts.greetingAvatarImage} contentFit="contain" accessible={false} />
+                <View style={ts.greetingOnlineDot} />
               </View>
-              <View style={styles.greetingCopy}>
-                <Text style={styles.greetingTitle}>Hi, I'm Mazium! 👋</Text>
-                <Text style={styles.greetingSubtitle}>How can I help you today?</Text>
+              <View style={ts.greetingCopy}>
+                <Text style={ts.greetingTitle}>Hi, I'm Mazium! 👋</Text>
+                <Text style={ts.greetingSubtitle}>How can I help you today?</Text>
               </View>
               <TouchableOpacity
-                style={styles.greetingClose}
+                style={ts.greetingClose}
                 onPress={dismissGreeting}
                 activeOpacity={0.7}
                 accessibilityRole="button"
@@ -863,13 +867,13 @@ export const GlobalAIChatBot: React.FC = () => {
               >
                 <Ionicons name="close" size={14} color={Colors.textMuted} />
               </TouchableOpacity>
-              <View style={styles.greetingArrow} pointerEvents="none" />
+              <View style={ts.greetingArrow} pointerEvents="none" />
             </Animated.View>
           )}
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => { setIsOpen(true); setShowGreeting(false); }}
-            style={styles.botButton}
+            style={ts.botButton}
             accessibilityRole="button"
             accessibilityLabel="Open MaziuM AI assistant"
             accessibilityHint="Opens the CarMazium car-buying assistant"
@@ -877,7 +881,7 @@ export const GlobalAIChatBot: React.FC = () => {
           >
             <Image
               source={MAZIUM_MASCOT}
-              style={styles.botImage}
+              style={ts.botImage}
               contentFit="contain"
               cachePolicy="memory-disk"
               accessible={false}
@@ -888,6 +892,45 @@ export const GlobalAIChatBot: React.FC = () => {
     </>
   );
 };
+
+const lightAiChatStyles = StyleSheet.create({
+  greetingBubble: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  greetingArrow: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  greetingTitle: { color: '#0F172A' },
+  greetingSubtitle: { color: '#526177' },
+  greetingOnlineDot: { borderColor: '#FFFFFF' },
+  chatBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  chatHeader: { borderBottomColor: '#D5E1EC' },
+  chatTitle: { color: '#0F172A' },
+  chatStatus: { color: '#526177' },
+  botAccentDot: { borderColor: '#FFFFFF' },
+  chatScroll: { backgroundColor: '#EEF5FB' },
+  msgAI: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  msgTextAI: { color: '#0F172A' },
+  msgTextUser: { color: '#FFFFFF' },
+  aiConsentCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  aiConsentTitle: { color: '#0F172A' },
+  aiConsentText: { color: '#334155' },
+  aiConsentSecondary: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  aiConsentSecondaryText: { color: '#334155' },
+  aiReportCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  aiReportTitle: { color: '#0F172A' },
+  aiReportHelp: { color: '#526177' },
+  aiReportPreview: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  aiReportPreviewText: { color: '#334155' },
+  aiReportDetailsInput: { backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC' },
+  aiReportReasonChip: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  aiReportReasonText: { color: '#334155' },
+  chatInputRow: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
+  chatInput: { backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC' },
+  aiPrivacyFooter: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
+  aiPrivacyFooterText: { color: '#526177' },
+  quickPromptChip: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  quickPromptText: { color: '#334155' },
+  filterCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  filterCardLabel: { color: '#526177' },
+  filterCardTitle: { color: '#0F172A' },
+});
 
 const styles = StyleSheet.create({
   container: { position: 'absolute', right: 16, zIndex: 9999, alignItems: 'flex-end' },
