@@ -481,9 +481,12 @@ export class ListingsService {
 
         await runMarketSearchAttempt('LIVE');
 
-        // Three scraped asking prices are not enough to stop searching (EW19CFY).
-        // Attempt additional markets before treating this evidence as reliable.
-        if (liveComparableMap.size < 5) {
+        // Keep the existing paid-search budget by default. Additional
+        // searches for three/four comparables need an explicit opt-in because
+        // each OpenAI web-search pass can incur costs. Weak evidence is still
+        // honestly labelled LOW confidence.
+        const enhancedSearchApproved = this.config.get<string>('VALUATION_ENHANCED_SEARCH') === 'true';
+        if (liveComparableMap.size < (enhancedSearchApproved ? 5 : 3)) {
             const remainingLiveAttempts = 5 - liveUkAttempts;
             if (remainingLiveAttempts > 0) {
                 await Promise.all(
