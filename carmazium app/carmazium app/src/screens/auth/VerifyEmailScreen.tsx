@@ -12,11 +12,15 @@ import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
 
 export const VerifyEmailScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { user, initializeAuth, logout } = useAuthStore();
   const [resending, setResending] = useState(false);
@@ -85,49 +89,49 @@ export const VerifyEmailScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
-      <Logo style={styles.logo} />
+    <View style={[ts.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
+      <Logo style={ts.logo} />
 
-      <View style={styles.iconWrap}>
+      <View style={ts.iconWrap}>
         <Ionicons name="mail" size={56} color={Colors.accent} />
       </View>
 
-      <Text style={styles.title}>Check your inbox</Text>
-      <Text style={styles.sub}>
+      <Text style={ts.title}>Check your inbox</Text>
+      <Text style={ts.sub}>
         We sent a verification link to{'\n'}
-        <Text style={styles.email}>{user?.email ?? 'your email'}</Text>
+        <Text style={ts.email}>{user?.email ?? 'your email'}</Text>
       </Text>
-      <Text style={styles.hint}>
+      <Text style={ts.hint}>
         Click the link in that email to activate your account, then come back here — the app will continue automatically.
       </Text>
 
       {checking && (
-        <View style={styles.checkingRow}>
+        <View style={ts.checkingRow}>
           <ActivityIndicator size="small" color={Colors.accent} />
-          <Text style={styles.checkingText}>Checking…</Text>
+          <Text style={ts.checkingText}>Checking…</Text>
         </View>
       )}
 
       {notVerifiedYet && !checking && (
-        <View style={styles.notVerifiedRow}>
+        <View style={ts.notVerifiedRow}>
           <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-          <Text style={styles.notVerifiedText}>
+          <Text style={ts.notVerifiedText}>
             Email not verified yet — click the link in your inbox first.
           </Text>
         </View>
       )}
 
       <TouchableOpacity
-        style={styles.primaryBtn}
+        style={ts.primaryBtn}
         onPress={handleCheckNow}
         disabled={checking}
         activeOpacity={0.8}
       >
-        <Text style={styles.primaryBtnText}>I've verified — continue</Text>
+        <Text style={ts.primaryBtnText}>I've verified — continue</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.secondaryBtn, (resending || cooldownSec > 0) && styles.secondaryBtnDisabled]}
+        style={[ts.secondaryBtn, (resending || cooldownSec > 0) && ts.secondaryBtnDisabled]}
         onPress={handleResend}
         disabled={resending || cooldownSec > 0}
         activeOpacity={0.8}
@@ -135,7 +139,7 @@ export const VerifyEmailScreen: React.FC = () => {
         {resending ? (
           <ActivityIndicator size="small" color={Colors.textSecondary} />
         ) : (
-          <Text style={styles.secondaryBtnText}>
+          <Text style={ts.secondaryBtnText}>
             {cooldownSec > 0
               ? `Resend in ${cooldownSec}s`
               : resent
@@ -145,9 +149,9 @@ export const VerifyEmailScreen: React.FC = () => {
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.backBtn} onPress={logout} activeOpacity={0.7}>
+      <TouchableOpacity style={ts.backBtn} onPress={logout} activeOpacity={0.7}>
         <Ionicons name="arrow-back" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
-        <Text style={styles.backBtnText}>Back to sign in</Text>
+        <Text style={ts.backBtnText}>Back to sign in</Text>
       </TouchableOpacity>
     </View>
   );

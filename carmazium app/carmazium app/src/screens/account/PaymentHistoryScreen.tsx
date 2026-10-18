@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -109,6 +111,8 @@ const FILTERS: { key: 'ALL' | TransactionStatus; label: string }[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,12 +150,12 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyWrap}>
+    <View style={ts.emptyWrap}>
       <Ionicons name="receipt-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>
+      <Text style={ts.emptyTitle}>
         {filter === 'ALL' ? 'No transactions yet' : `No ${STATUS_STYLE[filter as TransactionStatus]?.label.toLowerCase()} transactions`}
       </Text>
-      <Text style={styles.emptySub}>Your payments, deposits and fees will show up here.</Text>
+      <Text style={ts.emptySub}>Your payments, deposits and fees will show up here.</Text>
     </View>
   );
 
@@ -160,30 +164,30 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const thumbnail = t.listing?.images?.[0];
 
     return (
-      <View style={styles.txCard}>
+      <View style={ts.txCard}>
         {thumbnail ? (
-          <Image source={{ uri: thumbnail }} style={styles.txThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <Image source={{ uri: thumbnail }} style={ts.txThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
-          <View style={[styles.txThumb, styles.txIconWrap]}>
+          <View style={[ts.txThumb, ts.txIconWrap]}>
             <Ionicons name={TYPE_ICONS[t.type]} size={18} color={Colors.textSecondary} />
           </View>
         )}
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.txTitle} numberOfLines={1}>
+          <Text style={ts.txTitle} numberOfLines={1}>
             {t.listing?.title || t.description || TYPE_LABELS[t.type]}
           </Text>
-          <View style={styles.txMetaRow}>
-            <Text style={styles.txMeta}>{TYPE_LABELS[t.type]}</Text>
-            <Text style={styles.txMetaDot}>·</Text>
-            <Text style={styles.txMeta}>{formatDate(t.createdAt)}</Text>
+          <View style={ts.txMetaRow}>
+            <Text style={ts.txMeta}>{TYPE_LABELS[t.type]}</Text>
+            <Text style={ts.txMetaDot}>·</Text>
+            <Text style={ts.txMeta}>{formatDate(t.createdAt)}</Text>
           </View>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.txAmount, t.type === 'REFUND' && { color: Colors.success }]}>
+          <Text style={[ts.txAmount, t.type === 'REFUND' && { color: Colors.success }]}>
             {t.type === 'REFUND' ? '+' : ''}{formatPrice(t.amount)}
           </Text>
-          <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.statusPillText, { color: statusStyle.color }]}>{statusStyle.label}</Text>
+          <View style={[ts.statusPill, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[ts.statusPillText, { color: statusStyle.color }]}>{statusStyle.label}</Text>
           </View>
         </View>
       </View>
@@ -191,7 +195,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -202,34 +206,34 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Payment History</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Payment History</Text>
         <View style={{ width: 36 }} />
       </View>
 
       {!loading && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>TOTAL SPENT</Text>
-          <Text style={styles.summaryValue}>{formatPrice(totalSpent)}</Text>
-          <Text style={styles.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
+        <View style={ts.summaryCard}>
+          <Text style={ts.summaryLabel}>TOTAL SPENT</Text>
+          <Text style={ts.summaryValue}>{formatPrice(totalSpent)}</Text>
+          <Text style={ts.summarySub}>{transactions.length} transaction{transactions.length === 1 ? '' : 's'}</Text>
         </View>
       )}
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
+        contentContainerStyle={ts.filterRow}
         style={{ flexGrow: 0 }}
       >
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f.key}
-            style={[styles.filterChip, filter === f.key && styles.filterChipActive]}
+            style={[ts.filterChip, filter === f.key && ts.filterChipActive]}
             activeOpacity={0.8}
             onPress={() => setFilter(f.key)}
           >
-            <Text style={[styles.filterChipText, filter === f.key && styles.filterChipTextActive]}>{f.label}</Text>
+            <Text style={[ts.filterChipText, filter === f.key && ts.filterChipTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

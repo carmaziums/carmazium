@@ -22,6 +22,8 @@ import { getListingById } from '../../lib/listingsApi';
 import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -199,6 +201,8 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const role = useAuthStore((s) => s.role);
@@ -393,16 +397,16 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
     ));
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <MaterialCommunityIcons name="gavel" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No auction bids yet</Text>
-      <Text style={styles.emptySub}>Browse live auctions to start bidding</Text>
+      <Text style={ts.emptyTitle}>No auction bids yet</Text>
+      <Text style={ts.emptySub}>Browse live auctions to start bidding</Text>
       <TouchableOpacity
-        style={styles.emptyCtaBtn}
+        style={ts.emptyCtaBtn}
         activeOpacity={0.85}
         onPress={() => navigation?.navigate('Tabs', { screen: 'Live' })}
       >
-        <Text style={styles.emptyCtaBtnText}>VIEW LIVE AUCTIONS</Text>
+        <Text style={ts.emptyCtaBtnText}>VIEW LIVE AUCTIONS</Text>
       </TouchableOpacity>
     </View>
   );
@@ -435,50 +439,50 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       >
         <View
           style={[
-            styles.bidCard,
+            ts.bidCard,
             { borderLeftColor: isWon ? Colors.accentGreen : cfg.borderLeft },
             isNavigating && { opacity: 0.6 },
           ]}
         >
           {/* Left section */}
-          <View style={styles.bidLeft}>
-            <Text style={styles.bidTitle} numberOfLines={1}>
+          <View style={ts.bidLeft}>
+            <Text style={ts.bidTitle} numberOfLines={1}>
               {bid.listing?.title ?? 'Vehicle'}
             </Text>
-            <Text style={styles.bidAmount}>
+            <Text style={ts.bidAmount}>
               £{bid.amount.toLocaleString('en-GB')}
             </Text>
-            <Text style={styles.bidTime}>{timeAgo(bid.createdAt)}</Text>
+            <Text style={ts.bidTime}>{timeAgo(bid.createdAt)}</Text>
           </View>
 
           {/* Right section */}
-          <View style={styles.bidRight}>
+          <View style={ts.bidRight}>
             {/* Status chip — or WON chip */}
             {bid.isArchived ? (
-              <View style={[styles.statusChip, { backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10 }]}>
-                <Text style={[styles.statusChipText, { color: Colors.textMuted }]}>PREVIOUS</Text>
+              <View style={[ts.statusChip, { backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10 }]}>
+                <Text style={[ts.statusChipText, { color: Colors.textMuted }]}>PREVIOUS</Text>
               </View>
             ) : isWon ? (
-              <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
-                <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
+              <View style={[ts.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
+                <Text style={[ts.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
               </View>
             ) : bid.auctionStatus === 'ACTIVE' ? (
               // Web's dashboard/buyer/bids/page.tsx distinguishes Winning vs
               // Outbid on every active bid — mobile fetched bid.isWinning from
               // /bids/my but never rendered it, showing a generic "LIVE" chip
               // that couldn't tell a buyer whether they'd just been outbid.
-              <View style={[styles.statusChip, bid.isWinning
+              <View style={[ts.statusChip, bid.isWinning
                 ? { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }
                 : { backgroundColor: Colors.warningAlpha15, borderWidth: 1, borderColor: Colors.warningAlpha25 }]}
               >
-                <Text style={[styles.statusChipText, { color: bid.isWinning ? Colors.accentGreen : Colors.warning }]}>
+                <Text style={[ts.statusChipText, { color: bid.isWinning ? Colors.accentGreen : Colors.warning }]}>
                   {bid.isWinning ? '● WINNING' : 'OUTBID'}
                 </Text>
               </View>
             ) : (
               <View
                 style={[
-                  styles.statusChip,
+                  ts.statusChip,
                   {
                     backgroundColor: cfg.chipBg,
                     borderWidth: cfg.chipBorder ? 1 : 0,
@@ -486,7 +490,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                   },
                 ]}
               >
-                <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
+                <Text style={[ts.statusChipText, { color: cfg.chipText }]}>
                   {cfg.chipLabel}
                 </Text>
               </View>
@@ -497,7 +501,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               isNavigating ? (
                 <ActivityIndicator size="small" color={Colors.accent} />
               ) : (
-                <Text style={styles.viewText}>{isWon ? 'View result' : bid.auctionStatus === 'ENDED' ? 'View ended auction' : 'View auction'}</Text>
+                <Text style={ts.viewText}>{isWon ? 'View result' : bid.auctionStatus === 'ENDED' ? 'View ended auction' : 'View auction'}</Text>
               )
             )}
           </View>
@@ -507,30 +511,30 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             the server-gated phone action are shown. Chat unlocks after the
             authoritative auction buyerFeePaid flag is true. */}
         {isWon && (
-          <View style={styles.wonCtaRow}>
+          <View style={ts.wonCtaRow}>
             {!bid.buyerFeePaid ? (
               dealerAccessLoading ? (
-                <View style={[styles.wonCtaBtn, { flex: 1, justifyContent: 'center' }]}>
+                <View style={[ts.wonCtaBtn, { flex: 1, justifyContent: 'center' }]}>
                   <ActivityIndicator size="small" color={Colors.white} />
                 </View>
               ) : canPayAuctionFee ? (
                 <TouchableOpacity
-                  style={[styles.wonCtaBtn, { flex: 1 }]}
+                  style={[ts.wonCtaBtn, { flex: 1 }]}
                   activeOpacity={0.85}
                   onPress={handlePayFee}
                 >
                   <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                  <Text style={styles.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
+                  <Text style={ts.wonCtaBtnText}>PAY BUYER FEE · £125</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={[styles.wonCtaBtn, { flex: 1, opacity: 0.65 }]}>
+                <View style={[ts.wonCtaBtn, { flex: 1, opacity: 0.65 }]}>
                   <Ionicons name="lock-closed-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                  <Text style={styles.wonCtaBtnText}>OWNER / ADMIN / FINANCE TO PAY</Text>
+                  <Text style={ts.wonCtaBtnText}>OWNER / ADMIN / FINANCE TO PAY</Text>
                 </View>
               )
             ) : (
               <TouchableOpacity
-                style={[styles.wonChatBtn, { flex: 1 }]}
+                style={[ts.wonChatBtn, { flex: 1 }]}
                 activeOpacity={0.85}
                 onPress={() => handleChatWithSeller(bid)}
                 disabled={connectingChatId === bid.id}
@@ -540,7 +544,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                 ) : (
                   <>
                     <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
-                    <Text style={styles.wonChatBtnText}>CHAT WITH SELLER</Text>
+                    <Text style={ts.wonChatBtnText}>CHAT WITH SELLER</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -548,7 +552,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {/* Always show the call action. Before payment the backend deliberately
                 withholds the number and this button explains that it is locked. */}
             <TouchableOpacity
-              style={styles.wonCallBtn}
+              style={ts.wonCallBtn}
               activeOpacity={0.85}
               onPress={() => handleCallSeller(bid)}
               disabled={callingBidId === bid.id}
@@ -567,12 +571,12 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         {/* Cancel bid — 24h window, any own bid on a still-ACTIVE auction
             regardless of current ranking (matches the live auction screen). */}
         {canPlaceBid && isCancelable(bid) && (
-          <View style={styles.cancelRow}>
-            <Text style={styles.cancelRowHint}>
+          <View style={ts.cancelRow}>
+            <Text style={ts.cancelRowHint}>
               {formatCancelWindowRemaining(BID_CANCEL_WINDOW_MS - (Date.now() - new Date(bid.createdAt).getTime()))} left to cancel
             </Text>
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={ts.cancelBtn}
               activeOpacity={0.85}
               onPress={() => handleCancelBid(bid)}
               disabled={cancelingId === bid.id}
@@ -580,7 +584,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               {cancelingId === bid.id ? (
                 <ActivityIndicator size="small" color={Colors.accent} />
               ) : (
-                <Text style={styles.cancelBtnText}>CANCEL BID</Text>
+                <Text style={ts.cancelBtnText}>CANCEL BID</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -591,7 +595,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   // ── main render ────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Gradient backdrop */}
@@ -606,27 +610,27 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Auction Bids</Text>
+        <Text style={ts.headerTitle}>Auction Bids</Text>
 
         {totalCount > 0 ? (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
+          <View style={ts.countBadge}>
+            <Text style={ts.countBadgeText}>
               {totalCount > 99 ? '99+' : totalCount}
             </Text>
           </View>
         ) : (
-          <View style={styles.headerPlaceholder} />
+          <View style={ts.headerPlaceholder} />
         )}
       </View>
 
       {/* ── Content ── */}
       {loading || (bids.length === 0 && !error) ? (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -646,8 +650,8 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
         // FlatList so a long bid history virtualizes instead of mounting every
         // card at once (mobile-audit.md P3).
         <FlatList
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -664,23 +668,23 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
           ListFooterComponent={
             <>
               {totalPages > 1 && (
-                <View style={styles.paginationRow}>
+                <View style={ts.paginationRow}>
                   <TouchableOpacity
-                    style={[styles.pageBtn, page === 1 && styles.pageBtnDisabled]}
+                    style={[ts.pageBtn, page === 1 && ts.pageBtnDisabled]}
                     onPress={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.pageBtnText}>Previous</Text>
+                    <Text style={ts.pageBtnText}>Previous</Text>
                   </TouchableOpacity>
-                  <Text style={styles.pageIndicator}>Page {page} of {totalPages}</Text>
+                  <Text style={ts.pageIndicator}>Page {page} of {totalPages}</Text>
                   <TouchableOpacity
-                    style={[styles.pageBtn, page === totalPages && styles.pageBtnDisabled]}
+                    style={[ts.pageBtn, page === totalPages && ts.pageBtnDisabled]}
                     onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.pageBtnText}>Next</Text>
+                    <Text style={ts.pageBtnText}>Next</Text>
                   </TouchableOpacity>
                 </View>
               )}

@@ -22,6 +22,8 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -29,6 +31,8 @@ import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -79,7 +83,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient with top red glow */}
@@ -89,49 +93,49 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={ts.flex}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Logo in top left */}
-          <Logo size="sm" style={styles.logoAlign} />
+          <Logo size="sm" style={ts.logoAlign} />
 
           {/* Heading Section */}
-          <View style={styles.headerSection}>
-            <Text style={styles.titleText}>
-              Welcome <Text style={styles.titleRed}>back.</Text>
+          <View style={ts.headerSection}>
+            <Text style={ts.titleText}>
+              Welcome <Text style={ts.titleRed}>back.</Text>
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={ts.subtitleText}>
               Sign in to track bids, save listings, and get matched with cars before they go live.
             </Text>
           </View>
 
           {/* Form Fields */}
-          <View style={styles.formContainer}>
+          <View style={ts.formContainer}>
             {formError ? (
               <View style={{ marginBottom: 16 }}>
                 <ErrorBanner message={formError} />
               </View>
             ) : null}
             {/* Email Field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>EMAIL</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>EMAIL</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  emailFocused && styles.inputFocused,
+                  ts.inputWrapper,
+                  emailFocused && ts.inputFocused,
                 ]}
               >
                 <Ionicons
                   name="mail-outline"
                   size={20}
                   color={emailFocused ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={ts.input}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="your@email.com"
@@ -147,23 +151,23 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Password Field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>PASSWORD</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>PASSWORD</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  passwordFocused && styles.inputFocused,
+                  ts.inputWrapper,
+                  passwordFocused && ts.inputFocused,
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
                   color={passwordFocused ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
                   ref={passwordRef}
-                  style={styles.input}
+                  style={ts.input}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -174,27 +178,27 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
             {/* Supabase persists sessions using SecureStore and AsyncStorage. The old
                 Remember me checkbox was visual only, so never imply the
                 user can opt out of persistence by leaving it unticked. */}
-            <View style={styles.optionsRow}>
-              <Text style={styles.sessionNote}>You’ll stay signed in on this device until you sign out.</Text>
+            <View style={ts.optionsRow}>
+              <Text style={ts.sessionNote}>You’ll stay signed in on this device until you sign out.</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate('ForgotPassword')}
                 accessibilityRole="button"
                 accessibilityLabel="Reset your password"
               >
-                <Text style={styles.forgotText}>Forgot?</Text>
+                <Text style={ts.forgotText}>Forgot?</Text>
               </TouchableOpacity>
             </View>
 
             {/* Sign In CTA */}
-            <View style={styles.ctaWrapper}>
+            <View style={ts.ctaWrapper}>
               <PrimaryCTA
                 label="SIGN IN"
                 onPress={handleLogin}
@@ -205,16 +209,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Or continue with */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-              <View style={styles.dividerLine} />
+            <View style={ts.dividerRow}>
+              <View style={ts.dividerLine} />
+              <Text style={ts.dividerText}>OR CONTINUE WITH</Text>
+              <View style={ts.dividerLine} />
             </View>
 
             {/* Social Row */}
-            <View style={styles.socialRow}>
+            <View style={ts.socialRow}>
               <TouchableOpacity
-                style={[styles.socialBtn, isGoogleLoading && styles.socialBtnDisabled]}
+                style={[ts.socialBtn, isGoogleLoading && ts.socialBtnDisabled]}
                 activeOpacity={0.8}
                 onPress={() => handleOAuthLogin('google')}
                 disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -224,11 +228,11 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 ) : (
                   <GoogleIcon size={18} />
                 )}
-                <Text style={styles.socialBtnText}>GOOGLE</Text>
+                <Text style={ts.socialBtnText}>GOOGLE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.socialBtn, isAppleLoading && styles.socialBtnDisabled]}
+                style={[ts.socialBtn, isAppleLoading && ts.socialBtnDisabled]}
                 activeOpacity={0.8}
                 onPress={() => handleOAuthLogin('apple')}
                 disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -238,20 +242,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 ) : (
                   <AppleIcon size={18} color={Colors.white} />
                 )}
-                <Text style={styles.socialBtnText}>APPLE</Text>
+                <Text style={ts.socialBtnText}>APPLE</Text>
               </TouchableOpacity>
             </View>
 
             {/* Signup Link */}
-            <View style={styles.signupRow}>
-              <Text style={styles.signupText}>New here? </Text>
+            <View style={ts.signupRow}>
+              <Text style={ts.signupText}>New here? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-                <Text style={styles.signupLink}>Create an account</Text>
+                <Text style={ts.signupLink}>Create an account</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={ts.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>

@@ -14,6 +14,8 @@ import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { useAuthStore, AccountRole } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -52,6 +54,8 @@ const ACCOUNT_COPY: Record<
 };
 
 export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { user, accountRole } = useAuthStore();
 
@@ -65,61 +69,61 @@ export const AccountRoleHomeScreen: React.FC<{ navigation?: any }> = ({ navigati
   const copy = ACCOUNT_COPY[supportedRole];
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <Logo size="sm" />
         <HamburgerButton />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[ts.content, { paddingBottom: insets.bottom + 120 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <View style={styles.iconWrap}>
+        <View style={ts.hero}>
+          <View style={ts.iconWrap}>
             <Ionicons name={copy.icon as any} size={30} color={Colors.accent} />
           </View>
-          <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
-          <Text style={styles.title}>{copy.title}</Text>
-          <Text style={styles.name}>
+          <Text style={ts.eyebrow}>{copy.eyebrow}</Text>
+          <Text style={ts.title}>{copy.title}</Text>
+          <Text style={ts.name}>
             {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'CarMazium user'}
           </Text>
-          <Text style={styles.description}>{copy.description}</Text>
+          <Text style={ts.description}>{copy.description}</Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>One CarMazium account</Text>
-          <Text style={styles.cardBody}>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>One CarMazium account</Text>
+          <Text style={ts.cardBody}>
             Your identity, verification state and permissions come from the same CarMazium backend used by the website. Mobile no longer treats this account as a Buyer just because it has a business or platform role.
           </Text>
         </View>
 
-        <View style={styles.actions}>
+        <View style={ts.actions}>
           <TouchableOpacity
-            style={styles.primaryAction}
+            style={ts.primaryAction}
             onPress={() => navigation?.navigate('Settings')}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
             <Ionicons name="settings-outline" size={18} color={Colors.white} />
-            <Text style={styles.primaryActionText}>Account Settings</Text>
+            <Text style={ts.primaryActionText}>Account Settings</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryAction}
+            style={ts.secondaryAction}
             onPress={() => navigation?.navigate('Messages')}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
             <Ionicons name="chatbubbles-outline" size={18} color={Colors.textPrimary} />
-            <Text style={styles.secondaryActionText}>Messages</Text>
+            <Text style={ts.secondaryActionText}>Messages</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.note}>
+        <Text style={ts.note}>
           Your account, verification and permissions stay the same whether you use CarMazium on the web or in the app.
         </Text>
       </ScrollView>

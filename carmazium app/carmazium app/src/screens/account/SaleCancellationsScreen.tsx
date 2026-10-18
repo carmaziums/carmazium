@@ -19,6 +19,8 @@ import { IconButton } from '../../components/IconButton';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -47,6 +49,8 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<SaleCancellationRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +134,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, Colors.bgPrimary]}
@@ -138,23 +142,23 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
       />
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.backBtn}
+          style={ts.backBtn}
           icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />}
           onPress={() => navigation?.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Sale Cancellations</Text>
-          <Text style={styles.headerSub}>Buyer & seller protection</Text>
+          <Text style={ts.headerTitle}>Sale Cancellations</Text>
+          <Text style={ts.headerSub}>Buyer & seller protection</Text>
         </View>
-        <View style={styles.headerSpacer} />
+        <View style={ts.headerSpacer} />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        style={ts.scroll}
+        contentContainerStyle={ts.content}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -168,7 +172,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
         {error && <ErrorBanner message={error} onRetry={() => void load(false)} />}
 
         {loading ? (
-          <View style={styles.loading}>
+          <View style={ts.loading}>
             <ActivityIndicator color={Colors.accent} />
           </View>
         ) : requests.length === 0 ? (
@@ -182,41 +186,41 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
             const statusColor = STATUS_COLOR[request.status] || Colors.textMuted;
             const isBusy = busyId === request.id;
             return (
-              <View key={request.id} style={styles.card}>
-                <View style={styles.cardHeader}>
+              <View key={request.id} style={ts.card}>
+                <View style={ts.cardHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.vehicleTitle} numberOfLines={2}>
+                    <Text style={ts.vehicleTitle} numberOfLines={2}>
                       {request.listing?.title || 'Vehicle sale'}
                     </Text>
-                    <Text style={styles.meta}>
+                    <Text style={ts.meta}>
                       {request.requestedByRole === 'BUYER' ? 'Buyer requested' : 'Seller requested'}
                       {' · '}
                       {new Date(request.createdAt).toLocaleDateString('en-GB')}
                     </Text>
                   </View>
-                  <View style={[styles.statusChip, { borderColor: statusColor }]}>
-                    <Text style={[styles.statusText, { color: statusColor }]}>
+                  <View style={[ts.statusChip, { borderColor: statusColor }]}>
+                    <Text style={[ts.statusText, { color: statusColor }]}>
                       {STATUS_LABEL[request.status] || request.status}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.infoBox}>
-                  <Text style={styles.label}>REASON</Text>
-                  <Text style={styles.reason}>
+                <View style={ts.infoBox}>
+                  <Text style={ts.label}>REASON</Text>
+                  <Text style={ts.reason}>
                     {SALE_CANCELLATION_REASON_LABELS[request.reason]}
                   </Text>
-                  {!!request.details && <Text style={styles.details}>{request.details}</Text>}
+                  {!!request.details && <Text style={ts.details}>{request.details}</Text>}
                 </View>
 
                 {!!request.evidence.length && (
                   <View>
-                    <Text style={styles.label}>PRIVATE EVIDENCE</Text>
-                    <View style={styles.evidenceList}>
+                    <Text style={ts.label}>PRIVATE EVIDENCE</Text>
+                    <View style={ts.evidenceList}>
                       {request.evidence.map(item => (
                         <TouchableOpacity
                           key={item.id}
-                          style={styles.evidenceRow}
+                          style={ts.evidenceRow}
                           activeOpacity={0.75}
                           disabled={!item.url}
                           onPress={() => item.url && Linking.openURL(item.url)}
@@ -226,7 +230,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
                             size={15}
                             color={Colors.infoBlue}
                           />
-                          <Text style={styles.evidenceName} numberOfLines={1}>{item.fileName}</Text>
+                          <Text style={ts.evidenceName} numberOfLines={1}>{item.fileName}</Text>
                           <Ionicons name="open-outline" size={14} color={Colors.textMuted} />
                         </TouchableOpacity>
                       ))}
@@ -235,54 +239,54 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
                 )}
 
                 {!!request.linkedServiceJobs?.length && (
-                  <View style={styles.serviceWarning}>
+                  <View style={ts.serviceWarning}>
                     <Ionicons name="alert-circle-outline" size={15} color={Colors.warning} />
-                    <Text style={styles.serviceWarningText}>
+                    <Text style={ts.serviceWarningText}>
                       Linked TradeXchange work has progressed. CarMazium admin must review this cancellation separately from the provider job.
                     </Text>
                   </View>
                 )}
 
                 {!!request.counterpartResponseNote && (
-                  <Text style={styles.note}>Other party: {request.counterpartResponseNote}</Text>
+                  <Text style={ts.note}>Other party: {request.counterpartResponseNote}</Text>
                 )}
-                {!!request.adminNote && <Text style={styles.note}>CarMazium: {request.adminNote}</Text>}
+                {!!request.adminNote && <Text style={ts.note}>CarMazium: {request.adminNote}</Text>}
                 {request.buyerFeeRefunded && (
-                  <Text style={styles.refundText}>£125 auction buyer fee refunded.</Text>
+                  <Text style={ts.refundText}>£125 auction buyer fee refunded.</Text>
                 )}
                 {request.sellerBonusRecoveryRequired && (
-                  <Text style={styles.warningText}>Seller reward reconciliation is required.</Text>
+                  <Text style={ts.warningText}>Seller reward reconciliation is required.</Text>
                 )}
 
                 {(request.viewer?.canRespond || request.viewer?.canWithdraw) && (
-                  <View style={styles.actions}>
+                  <View style={ts.actions}>
                     {request.viewer?.canRespond && (
                       <>
                         <TouchableOpacity
-                          style={[styles.secondaryBtn, isBusy && { opacity: 0.5 }]}
+                          style={[ts.secondaryBtn, isBusy && { opacity: 0.5 }]}
                           onPress={() => respond(request, 'REJECT')}
                           disabled={isBusy}
                         >
-                          <Text style={styles.secondaryBtnText}>Decline</Text>
+                          <Text style={ts.secondaryBtnText}>Decline</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[styles.primaryBtn, isBusy && { opacity: 0.5 }]}
+                          style={[ts.primaryBtn, isBusy && { opacity: 0.5 }]}
                           onPress={() => respond(request, 'ACCEPT')}
                           disabled={isBusy}
                         >
                           {isBusy
                             ? <ActivityIndicator size="small" color={Colors.white} />
-                            : <Text style={styles.primaryBtnText}>Agree & Cancel</Text>}
+                            : <Text style={ts.primaryBtnText}>Agree & Cancel</Text>}
                         </TouchableOpacity>
                       </>
                     )}
                     {request.viewer?.canWithdraw && (
                       <TouchableOpacity
-                        style={[styles.withdrawBtn, isBusy && { opacity: 0.5 }]}
+                        style={[ts.withdrawBtn, isBusy && { opacity: 0.5 }]}
                         onPress={() => withdraw(request)}
                         disabled={isBusy}
                       >
-                        <Text style={styles.withdrawText}>Withdraw my request</Text>
+                        <Text style={ts.withdrawText}>Withdraw my request</Text>
                       </TouchableOpacity>
                     )}
                   </View>

@@ -20,6 +20,8 @@ import { apiClient } from '../../lib/apiClient';
 import { getListingById } from '../../lib/listingsApi';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -124,6 +126,8 @@ const STATUS_CFG: Record<TxStatus, {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -248,34 +252,34 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   const renderSkeletons = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
+      <View key={`sk-${i}`} style={ts.skeletonCard} />
     ));
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No purchases yet</Text>
-      <Text style={styles.emptySub}>Completed vehicle purchases will appear here</Text>
+      <Text style={ts.emptyTitle}>No purchases yet</Text>
+      <Text style={ts.emptySub}>Completed vehicle purchases will appear here</Text>
     </View>
   );
 
   const renderTotalsBar = () => (
-    <View style={styles.totalsCard}>
+    <View style={ts.totalsCard}>
       {/* Total Spent */}
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>TOTAL SPENT</Text>
-        <Text style={styles.totalValue}>
+      <View style={ts.totalCol}>
+        <Text style={ts.totalLabel}>TOTAL SPENT</Text>
+        <Text style={ts.totalValue}>
           £{totalSpent.toLocaleString('en-GB')}
         </Text>
       </View>
 
       {/* Divider */}
-      <View style={styles.totalDivider} />
+      <View style={ts.totalDivider} />
 
       {/* Vehicles Purchased */}
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>VEHICLES PURCHASED</Text>
-        <Text style={styles.totalValue}>{completedItems.length}</Text>
+      <View style={ts.totalCol}>
+        <Text style={ts.totalLabel}>VEHICLES PURCHASED</Text>
+        <Text style={ts.totalValue}>{completedItems.length}</Text>
       </View>
     </View>
   );
@@ -286,18 +290,18 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
     const cfg = STATUS_CFG[item.status] ?? STATUS_CFG.COMPLETED;
 
     return (
-      <View key={item.id} style={[styles.historyCard, isNavigating && { opacity: 0.6 }]}>
+      <View key={item.id} style={[ts.historyCard, isNavigating && { opacity: 0.6 }]}>
         <TouchableOpacity
-          style={styles.historyTopRow}
+          style={ts.historyTopRow}
           activeOpacity={0.75}
           onPress={() => handleViewVehicle(item)}
           disabled={isNavigating}
         >
           {/* Left: thumbnail or status icon */}
           {item.listing.image ? (
-            <Image source={{ uri: item.listing.image }} style={styles.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <Image source={{ uri: item.listing.image }} style={ts.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
-            <View style={[styles.iconCircle, { backgroundColor: cfg.iconBg, borderColor: cfg.iconBorder }]}>
+            <View style={[ts.iconCircle, { backgroundColor: cfg.iconBg, borderColor: cfg.iconBorder }]}>
               {isNavigating ? (
                 <ActivityIndicator size="small" color={cfg.color} />
               ) : (
@@ -307,29 +311,29 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           )}
 
           {/* Center text */}
-          <View style={styles.historyCenter}>
-            <Text style={styles.historyTitle} numberOfLines={1}>
+          <View style={ts.historyCenter}>
+            <Text style={ts.historyTitle} numberOfLines={1}>
               {item.listing?.title ?? 'Vehicle'}
             </Text>
-            <Text style={styles.historyDate}>
+            <Text style={ts.historyDate}>
               {TX_TYPE_LABEL[item.type] ?? item.type} · {formatDate(item.createdAt)}
             </Text>
           </View>
 
           {/* Right price + chip */}
-          <View style={styles.historyRight}>
-            <Text style={styles.historyPrice}>
+          <View style={ts.historyRight}>
+            <Text style={ts.historyPrice}>
               £{item.price.toLocaleString('en-GB')}
             </Text>
-            <View style={[styles.completedChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[styles.completedChipText, { color: cfg.color }]}>{item.status}</Text>
+            <View style={[ts.completedChip, { backgroundColor: cfg.chipBg }]}>
+              <Text style={[ts.completedChipText, { color: cfg.color }]}>{item.status}</Text>
             </View>
           </View>
         </TouchableOpacity>
 
         {/* Download Receipt */}
         <TouchableOpacity
-          style={[styles.receiptBtn, isDownloading && { opacity: 0.6 }]}
+          style={[ts.receiptBtn, isDownloading && { opacity: 0.6 }]}
           activeOpacity={0.75}
           onPress={() => handleDownloadReceipt(item)}
           disabled={isDownloading}
@@ -339,7 +343,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           ) : (
             <Ionicons name="download-outline" size={14} color={Colors.textSecondary} />
           )}
-          <Text style={styles.receiptBtnText}>
+          <Text style={ts.receiptBtnText}>
             {isDownloading ? 'Preparing receipt…' : 'Download Receipt'}
           </Text>
         </TouchableOpacity>
@@ -349,7 +353,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   // ── main render ────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Gradient backdrop */}
@@ -364,26 +368,26 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Purchase History</Text>
+        <Text style={ts.headerTitle}>Purchase History</Text>
 
         {history.length > 0 ? (
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>
+          <View style={ts.countBadge}>
+            <Text style={ts.countBadgeText}>
               {history.length > 99 ? '99+' : history.length}
             </Text>
           </View>
         ) : (
-          <View style={styles.headerPlaceholder} />
+          <View style={ts.headerPlaceholder} />
         )}
       </View>
 
       {/* ── Content ── */}
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -409,7 +413,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
         {!loading && page < totalPages && (
           <TouchableOpacity
-            style={[styles.loadMoreBtn, loadingMore && { opacity: 0.6 }]}
+            style={[ts.loadMoreBtn, loadingMore && { opacity: 0.6 }]}
             activeOpacity={0.75}
             onPress={handleLoadMore}
             disabled={loadingMore}
@@ -417,7 +421,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
             {loadingMore ? (
               <ActivityIndicator size="small" color={Colors.textSecondary} />
             ) : (
-              <Text style={styles.loadMoreBtnText}>Load more</Text>
+              <Text style={ts.loadMoreBtnText}>Load more</Text>
             )}
           </TouchableOpacity>
         )}

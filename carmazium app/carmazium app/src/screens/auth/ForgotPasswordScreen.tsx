@@ -18,6 +18,8 @@ import { Logo } from '../../components/Logo';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -25,6 +27,8 @@ import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const [email, setEmail] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,7 +56,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
@@ -61,62 +65,62 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={ts.flex}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Back button */}
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
           {/* Logo */}
-          <Logo size="sm" style={styles.logoAlign} />
+          <Logo size="sm" style={ts.logoAlign} />
 
           {/* Heading */}
-          <View style={styles.headerSection}>
-            <Text style={styles.titleText}>
-              Reset your <Text style={styles.titleAccent}>password.</Text>
+          <View style={ts.headerSection}>
+            <Text style={ts.titleText}>
+              Reset your <Text style={ts.titleAccent}>password.</Text>
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={ts.subtitleText}>
               Enter your email and we'll send you a reset link.
             </Text>
           </View>
 
           {/* Form */}
-          <View style={styles.formContainer}>
+          <View style={ts.formContainer}>
             {sent ? (
-              <View style={styles.successContainer}>
-                <View style={styles.successIconWrapper}>
+              <View style={ts.successContainer}>
+                <View style={ts.successIconWrapper}>
                   <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
                 </View>
-                <Text style={styles.successTitle}>Check your inbox</Text>
-                <Text style={styles.successBody}>
+                <Text style={ts.successTitle}>Check your inbox</Text>
+                <Text style={ts.successBody}>
                   We've sent a password reset link to{' '}
-                  <Text style={styles.successEmail}>{email.trim()}</Text>.
+                  <Text style={ts.successEmail}>{email.trim()}</Text>.
                   Check your spam folder if it doesn't arrive within a minute.
                 </Text>
               </View>
             ) : (
               <>
                 {/* Email Field */}
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>EMAIL</Text>
+                <View style={ts.fieldGroup}>
+                  <Text style={ts.fieldLabel}>EMAIL</Text>
                   <View
                     style={[
-                      styles.inputWrapper,
-                      emailFocused && styles.inputFocused,
-                      errorMessage ? styles.inputError : null,
+                      ts.inputWrapper,
+                      emailFocused && ts.inputFocused,
+                      errorMessage ? ts.inputError : null,
                     ]}
                   >
                     <Ionicons
                       name="mail-outline"
                       size={20}
                       color={emailFocused ? Colors.accent : Colors.textMuted}
-                      style={styles.inputIcon}
+                      style={ts.inputIcon}
                     />
                     <TextInput
-                      style={styles.input}
+                      style={ts.input}
                       value={email}
                       onChangeText={(text) => {
                         setEmail(text);
@@ -133,12 +137,12 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                     />
                   </View>
                   {errorMessage ? (
-                    <Text style={styles.errorText}>{errorMessage}</Text>
+                    <Text style={ts.errorText}>{errorMessage}</Text>
                   ) : null}
                 </View>
 
                 {/* CTA */}
-                <View style={styles.ctaWrapper}>
+                <View style={ts.ctaWrapper}>
                   <PrimaryCTA
                     label="SEND RESET LINK"
                     onPress={handleSendResetLink}
@@ -151,14 +155,14 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
             )}
 
             {/* Back to sign in */}
-            <View style={styles.backToSignInRow}>
+            <View style={ts.backToSignInRow}>
               <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.7}>
-                <Text style={styles.backToSignInText}>Back to sign in</Text>
+                <Text style={ts.backToSignInText}>Back to sign in</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={ts.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>

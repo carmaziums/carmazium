@@ -21,6 +21,8 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -28,6 +30,8 @@ import { IconButton } from '../../components/IconButton';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export const SignupScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -132,7 +136,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient with top glow */}
@@ -142,28 +146,28 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={ts.flex}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Back button with circle border */}
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
           {/* Header section */}
-          <View style={styles.headerSection}>
-            <Text style={styles.stepIndicator}>STEP 1 OF 3</Text>
-            <Text style={styles.titleText}>
-              Create your <Text style={styles.titleRed}>account.</Text>
+          <View style={ts.headerSection}>
+            <Text style={ts.stepIndicator}>STEP 1 OF 3</Text>
+            <Text style={ts.titleText}>
+              Create your <Text style={ts.titleRed}>account.</Text>
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={ts.subtitleText}>
               Auction listing is free. Retail listing is £1. Choose the account that matches how you will use CarMazium.
             </Text>
           </View>
 
           {/* Form Fields */}
-          <View style={styles.formContainer}>
+          <View style={ts.formContainer}>
             {formError ? (
               <View style={{ marginBottom: 16 }}>
                 <ErrorBanner message={formError} />
@@ -171,9 +175,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
             ) : null}
             {/* Account type (AUTH-005) — mobile previously hardcoded BUYER with
                 no way to register as a dealer at all. */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>I AM A</Text>
-              <View style={styles.roleRow}>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>I AM A</Text>
+              <View style={ts.roleRow}>
                 {([
                   { value: 'BUYER' as const, label: 'Buyer / Seller', hint: 'Buy and sell vehicles', icon: 'person-outline' as const },
                   { value: 'DEALER' as const, label: 'Partner Account', hint: 'Trade vehicles; bidding and services require approval', icon: 'business-outline' as const },
@@ -182,7 +186,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   return (
                     <TouchableOpacity
                       key={opt.value}
-                      style={[styles.roleCard, selected && styles.roleCardActive]}
+                      style={[ts.roleCard, selected && ts.roleCardActive]}
                       onPress={() => setRole(opt.value)}
                       activeOpacity={0.8}
                       accessibilityRole="radio"
@@ -194,36 +198,36 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                         size={18}
                         color={selected ? Colors.accent : Colors.textMuted}
                       />
-                      <Text style={[styles.roleCardLabel, selected && styles.roleCardLabelActive]}>{opt.label}</Text>
-                      <Text style={styles.roleCardHint}>{opt.hint}</Text>
+                      <Text style={[ts.roleCardLabel, selected && ts.roleCardLabelActive]}>{opt.label}</Text>
+                      <Text style={ts.roleCardHint}>{opt.hint}</Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
               {role === 'DEALER' && (
-                <Text style={styles.roleNote}>
+                <Text style={ts.roleNote}>
                   Complete business/KYC verification before dealer-auction bidding. Additional service capabilities may require separate approval.
                 </Text>
               )}
             </View>
 
             {/* Full Name */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>FULL NAME</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>FULL NAME</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  focusedField === 'name' && styles.inputFocused,
+                  ts.inputWrapper,
+                  focusedField === 'name' && ts.inputFocused,
                 ]}
               >
                 <Ionicons
                   name="person-outline"
                   size={20}
                   color={focusedField === 'name' ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
-                  style={styles.input}
+                  style={ts.input}
                   value={name}
                   onChangeText={setName}
                   placeholder="Alex Thompson"
@@ -238,23 +242,23 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Email Address */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>EMAIL ADDRESS</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  focusedField === 'email' && styles.inputFocused,
+                  ts.inputWrapper,
+                  focusedField === 'email' && ts.inputFocused,
                 ]}
               >
                 <Ionicons
                   name="mail-outline"
                   size={20}
                   color={focusedField === 'email' ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
                   ref={emailRef}
-                  style={styles.input}
+                  style={ts.input}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="your@email.com"
@@ -270,23 +274,23 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>PASSWORD</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>PASSWORD</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  focusedField === 'password' && styles.inputFocused,
+                  ts.inputWrapper,
+                  focusedField === 'password' && ts.inputFocused,
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
                   color={focusedField === 'password' ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
                   ref={passwordRef}
-                  style={styles.input}
+                  style={ts.input}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -297,18 +301,18 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
             {/* Password Strength Indicator */}
-            <View style={styles.strengthContainer}>
-              <View style={styles.strengthBars}>
+            <View style={ts.strengthContainer}>
+              <View style={ts.strengthBars}>
                 {[1, 2, 3, 4].map((bar) => (
                   <View
                     key={bar}
                     style={[
-                      styles.strengthBar,
+                      ts.strengthBar,
                       bar <= passwordStrength.activeBars && {
                         backgroundColor: passwordStrength.color,
                       },
@@ -317,31 +321,31 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 ))}
               </View>
               {passwordStrength.label ? (
-                <Text style={[styles.strengthText, { color: passwordStrength.color }]}>
+                <Text style={[ts.strengthText, { color: passwordStrength.color }]}>
                   {passwordStrength.label}
                 </Text>
               ) : null}
             </View>
 
             {/* Confirm Password */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
+            <View style={ts.fieldGroup}>
+              <Text style={ts.fieldLabel}>CONFIRM PASSWORD</Text>
               <View
                 style={[
-                  styles.inputWrapper,
-                  focusedField === 'confirmPassword' && styles.inputFocused,
-                  confirmPassword.length > 0 && !passwordsMatch && styles.inputError,
+                  ts.inputWrapper,
+                  focusedField === 'confirmPassword' && ts.inputFocused,
+                  confirmPassword.length > 0 && !passwordsMatch && ts.inputError,
                 ]}
               >
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
                   color={focusedField === 'confirmPassword' ? Colors.accent : Colors.textMuted}
-                  style={styles.inputIcon}
+                  style={ts.inputIcon}
                 />
                 <TextInput
                   ref={confirmPasswordRef}
-                  style={styles.input}
+                  style={ts.input}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="••••••••"
@@ -352,31 +356,31 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={handleSignup}
                 />
-                <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'} />
               </View>
               {confirmPassword.length > 0 && !passwordsMatch && (
-                <Text style={styles.fieldError}>Passwords do not match</Text>
+                <Text style={ts.fieldError}>Passwords do not match</Text>
               )}
             </View>
 
             {/* Terms checkbox */}
             <TouchableOpacity
-              style={styles.checkboxContainer}
+              style={ts.checkboxContainer}
               activeOpacity={0.8}
               onPress={() => setAgreeTerms(!agreeTerms)}
             >
-              <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
+              <View style={[ts.checkbox, agreeTerms && ts.checkboxChecked]}>
                 {agreeTerms && <Ionicons name="checkmark" size={12} color={Colors.white} />}
               </View>
-              <Text style={styles.checkboxLabel}>
+              <Text style={ts.checkboxLabel}>
                 I agree to the{' '}
-                <Text style={styles.boldText} onPress={() => navigation.navigate('Terms')}>Terms</Text> and{' '}
-                <Text style={styles.boldText} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>.
+                <Text style={ts.boldText} onPress={() => navigation.navigate('Terms')}>Terms</Text> and{' '}
+                <Text style={ts.boldText} onPress={() => navigation.navigate('PrivacyPolicy')}>Privacy Policy</Text>.
               </Text>
             </TouchableOpacity>
 
             {/* CTA Button */}
-            <View style={styles.ctaWrapper}>
+            <View style={ts.ctaWrapper}>
               <PrimaryCTA
                 label="CONTINUE"
                 onPress={handleSignup}
@@ -389,15 +393,15 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
             </View>
 
             {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-              <View style={styles.dividerLine} />
+            <View style={ts.dividerRow}>
+              <View style={ts.dividerLine} />
+              <Text style={ts.dividerText}>OR CONTINUE WITH</Text>
+              <View style={ts.dividerLine} />
             </View>
 
             {/* Google Sign-Up */}
             <TouchableOpacity
-              style={[styles.googleBtn, isGoogleLoading && styles.googleBtnDisabled]}
+              style={[ts.googleBtn, isGoogleLoading && ts.googleBtnDisabled]}
               activeOpacity={0.8}
               onPress={handleGoogleSignIn}
               disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -407,11 +411,11 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               ) : (
                 <GoogleIcon size={18} />
               )}
-              <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
+              <Text style={ts.googleBtnText}>CONTINUE WITH GOOGLE</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.googleBtn, isAppleLoading && styles.googleBtnDisabled]}
+              style={[ts.googleBtn, isAppleLoading && ts.googleBtnDisabled]}
               activeOpacity={0.8}
               onPress={handleAppleSignIn}
               disabled={isGoogleLoading || isAppleLoading || isLoading}
@@ -421,19 +425,19 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               ) : (
                 <AppleIcon size={18} color={Colors.white} />
               )}
-              <Text style={styles.googleBtnText}>CONTINUE WITH APPLE</Text>
+              <Text style={ts.googleBtnText}>CONTINUE WITH APPLE</Text>
             </TouchableOpacity>
 
             {/* Login Link */}
-            <View style={styles.loginRow}>
-              <Text style={styles.loginText}>Already have an account? </Text>
+            <View style={ts.loginRow}>
+              <Text style={ts.loginText}>Already have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.loginLink}>Sign in</Text>
+                <Text style={ts.loginLink}>Sign in</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={ts.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>

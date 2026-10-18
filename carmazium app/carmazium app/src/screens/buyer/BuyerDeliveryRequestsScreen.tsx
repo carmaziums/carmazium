@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -79,6 +81,8 @@ const STATUS_CFG: Record<
 export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<DeliveryRequest[]>([]);
   const [summaries, setSummaries] = useState<Record<string, ListingSummary>>({});
@@ -212,47 +216,47 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
     const isActioning = actionLoading === req.id;
 
     return (
-      <View style={[styles.card, { borderLeftColor: cfg.border }]}>
-        <View style={styles.cardTop}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
+      <View style={[ts.card, { borderLeftColor: cfg.border }]}>
+        <View style={ts.cardTop}>
+          <Text style={ts.cardTitle} numberOfLines={1}>
             {title}
           </Text>
-          <View style={[styles.chip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-            <Text style={[styles.chipText, { color: cfg.text }]}>{cfg.label}</Text>
+          <View style={[ts.chip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+            <Text style={[ts.chipText, { color: cfg.text }]}>{cfg.label}</Text>
           </View>
         </View>
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaCell}>
-            <Text style={styles.metaLabel}>DISTANCE</Text>
-            <Text style={styles.metaValue}>
+        <View style={ts.metaRow}>
+          <View style={ts.metaCell}>
+            <Text style={ts.metaLabel}>DISTANCE</Text>
+            <Text style={ts.metaValue}>
               {Math.round(req.distanceMiles)} mi
             </Text>
           </View>
-          <View style={styles.metaCell}>
-            <Text style={styles.metaLabel}>EST. COST</Text>
-            <Text style={styles.metaValue}>{fmtGbp(req.estimatedCostGbp)}</Text>
+          <View style={ts.metaCell}>
+            <Text style={ts.metaLabel}>EST. COST</Text>
+            <Text style={ts.metaValue}>{fmtGbp(req.estimatedCostGbp)}</Text>
           </View>
         </View>
 
-        <View style={styles.addressBlock}>
+        <View style={ts.addressBlock}>
           <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
-          <Text style={styles.addressText} numberOfLines={2}>
+          <Text style={ts.addressText} numberOfLines={2}>
             {[addr?.street, addr?.city, addr?.postcode].filter(Boolean).join(', ')}
           </Text>
         </View>
 
         {req.deliveryNotes ? (
-          <Text style={styles.notesText} numberOfLines={2}>
+          <Text style={ts.notesText} numberOfLines={2}>
             “{req.deliveryNotes}”
           </Text>
         ) : null}
 
         {(req.status === 'PENDING' || req.status === 'ACCEPTED') && (
-          <View style={styles.actionsRow}>
+          <View style={ts.actionsRow}>
             {req.status === 'PENDING' && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnDestructive]}
+                style={[ts.actionBtn, ts.actionBtnDestructive]}
                 activeOpacity={0.85}
                 onPress={() => onCancel(req)}
                 disabled={isActioning}
@@ -260,7 +264,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 {isActioning ? (
                   <ActivityIndicator size="small" color={Colors.paleRed_f87171} />
                 ) : (
-                  <Text style={[styles.actionBtnText, { color: Colors.paleRed_f87171 }]}>
+                  <Text style={[ts.actionBtnText, { color: Colors.paleRed_f87171 }]}>
                     Cancel request
                   </Text>
                 )}
@@ -268,7 +272,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
             )}
             {req.status === 'ACCEPTED' && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnPrimary]}
+                style={[ts.actionBtn, ts.actionBtnPrimary]}
                 activeOpacity={0.85}
                 onPress={() => onComplete(req)}
                 disabled={isActioning}
@@ -278,7 +282,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 ) : (
                   <>
                     <Ionicons name="checkmark" size={14} color={Colors.white} />
-                    <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                    <Text style={[ts.actionBtnText, { color: Colors.white }]}>
                       Mark complete
                     </Text>
                   </>
@@ -292,7 +296,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
   }, [summaries, actionLoading, onCancel, onComplete]);
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -302,15 +306,15 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
       />
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Delivery Requests</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Delivery Requests</Text>
         <View style={{ width: 38 }} />
       </View>
 
       {loading || requests.length === 0 ? (
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -339,7 +343,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
         // FlatList so a long delivery-request history virtualizes instead of
         // mounting every row at once (mobile-audit.md P3).
         <FlatList
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

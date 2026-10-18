@@ -17,12 +17,16 @@ import { Logo } from '../../components/Logo';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../components/IconButton';
 export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -75,7 +79,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
@@ -84,56 +88,56 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
         style={StyleSheet.absoluteFillObject}
       />
 
-      <KeyboardStickyView behavior="padding" style={styles.flex}>
+      <KeyboardStickyView behavior="padding" style={ts.flex}>
         <ScrollView
           contentContainerStyle={[
-            styles.scrollContent,
+            ts.scrollContent,
             { paddingTop: insets.top + (Platform.OS === 'ios' ? 20 : 24) },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Logo size="sm" style={styles.logoAlign} />
+          <Logo size="sm" style={ts.logoAlign} />
 
-          <View style={styles.headerSection}>
-            <Text style={styles.titleText}>
-              New <Text style={styles.titleAccent}>password.</Text>
+          <View style={ts.headerSection}>
+            <Text style={ts.titleText}>
+              New <Text style={ts.titleAccent}>password.</Text>
             </Text>
-            <Text style={styles.subtitleText}>
+            <Text style={ts.subtitleText}>
               Enter your new password below. Make it strong.
             </Text>
           </View>
 
-          <View style={styles.formContainer}>
+          <View style={ts.formContainer}>
             {succeeded ? (
-              <View style={styles.successContainer}>
-                <Ionicons name="checkmark-circle" size={48} color={Colors.success} style={styles.successIcon} />
-                <Text style={styles.successTitle}>Password updated!</Text>
-                <Text style={styles.successBody}>
+              <View style={ts.successContainer}>
+                <Ionicons name="checkmark-circle" size={48} color={Colors.success} style={ts.successIcon} />
+                <Text style={ts.successTitle}>Password updated!</Text>
+                <Text style={ts.successBody}>
                   Taking you back to sign in...
                 </Text>
                 <TouchableOpacity
-                  style={styles.signInBtn}
+                  style={ts.signInBtn}
                   onPress={() => navigation?.navigate('Login')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.signInBtnText}>Sign in</Text>
+                  <Text style={ts.signInBtnText}>Sign in</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
                 {/* New Password */}
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>NEW PASSWORD</Text>
-                  <View style={[styles.inputWrapper, newFocused && styles.inputFocused]}>
+                <View style={ts.fieldGroup}>
+                  <Text style={ts.fieldLabel}>NEW PASSWORD</Text>
+                  <View style={[ts.inputWrapper, newFocused && ts.inputFocused]}>
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
                       color={newFocused ? Colors.accent : Colors.textMuted}
-                      style={styles.inputIcon}
+                      style={ts.inputIcon}
                     />
                     <TextInput
-                      style={styles.input}
+                      style={ts.input}
                       value={newPassword}
                       onChangeText={(text) => {
                         setNewPassword(text);
@@ -147,23 +151,23 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setNewFocused(false)}
                       onSubmitEditing={() => confirmRef.current?.focus()}
                     />
-                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Hide password' : 'Show password'} />
+                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
                 {/* Confirm Password */}
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>CONFIRM PASSWORD</Text>
-                  <View style={[styles.inputWrapper, confirmFocused && styles.inputFocused]}>
+                <View style={ts.fieldGroup}>
+                  <Text style={ts.fieldLabel}>CONFIRM PASSWORD</Text>
+                  <View style={[ts.inputWrapper, confirmFocused && ts.inputFocused]}>
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
                       color={confirmFocused ? Colors.accent : Colors.textMuted}
-                      style={styles.inputIcon}
+                      style={ts.inputIcon}
                     />
                     <TextInput
                       ref={confirmRef}
-                      style={styles.input}
+                      style={ts.input}
                       value={confirmPassword}
                       onChangeText={(text) => {
                         setConfirmPassword(text);
@@ -177,15 +181,15 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                       onBlur={() => setConfirmFocused(false)}
                       onSubmitEditing={isFormValid ? handleSetPassword : undefined}
                     />
-                    <IconButton style={styles.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'} />
+                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
                 {validationError ? (
-                  <Text style={styles.validationError}>{validationError}</Text>
+                  <Text style={ts.validationError}>{validationError}</Text>
                 ) : null}
 
-                <View style={styles.ctaWrapper}>
+                <View style={ts.ctaWrapper}>
                   <PrimaryCTA
                     label="SET NEW PASSWORD"
                     onPress={handleSetPassword}
@@ -196,19 +200,19 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                 </View>
 
                 {submitError ? (
-                  <Text style={styles.submitError}>{submitError}</Text>
+                  <Text style={ts.submitError}>{submitError}</Text>
                 ) : null}
               </>
             )}
 
-            <View style={styles.backRow}>
+            <View style={ts.backRow}>
               <TouchableOpacity onPress={() => navigation?.navigate('Login')} activeOpacity={0.7}>
-                <Text style={styles.backLink}>Back to sign in</Text>
+                <Text style={ts.backLink}>Back to sign in</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bottomSpacer} />
+          <View style={ts.bottomSpacer} />
         </ScrollView>
       </KeyboardStickyView>
     </View>
