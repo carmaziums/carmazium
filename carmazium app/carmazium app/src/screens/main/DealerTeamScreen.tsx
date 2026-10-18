@@ -20,6 +20,8 @@ import { apiClient } from '../../lib/apiClient';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import {
@@ -220,6 +222,8 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
 
 export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerTeamScreenStyles) : styles;
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
@@ -450,7 +454,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
     return (
       <View style={{ marginTop: 26, gap: 12 }}>
         <View>
-          <Text style={styles.pendingSectionTitle}>TRADEXCHANGE TEAM ACCESS</Text>
+          <Text style={ts.pendingSectionTitle}>TRADEXCHANGE TEAM ACCESS</Text>
           <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 18 }}>
             Match the website controls: choose Delivery/Recovery or Inspection, then grant view, chat, bid, manage and complete rights. Payouts always stay with the Partner business.
           </Text>
@@ -462,13 +466,13 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           const draft = tradeDrafts[person.email] ?? blankTradeDraft(person.email);
           const hasService = draft.deliveryEnabled || draft.inspectionEnabled;
           return (
-            <View key={`trade-${person.id}`} style={[styles.pendingCard, { alignItems: 'stretch', flexDirection: 'column' }]}>
+            <View key={`trade-${person.id}`} style={[ts.pendingCard, { alignItems: 'stretch', flexDirection: 'column' }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pendingEmail} numberOfLines={1}>{person.name}</Text>
-                  <Text style={styles.pendingRole} numberOfLines={1}>{person.email}</Text>
+                  <Text style={ts.pendingEmail} numberOfLines={1}>{person.name}</Text>
+                  <Text style={ts.pendingRole} numberOfLines={1}>{person.email}</Text>
                 </View>
-                {person.pending ? <View style={styles.pendingBadge}><Text style={styles.pendingBadgeText}>PENDING</Text></View> : null}
+                {person.pending ? <View style={ts.pendingBadge}><Text style={ts.pendingBadgeText}>PENDING</Text></View> : null}
               </View>
               {renderTradeToggle(person.email, 'Delivery & Recovery', 'deliveryEnabled')}
               {renderTradeToggle(person.email, 'Vehicle Inspection', 'inspectionEnabled')}
@@ -478,7 +482,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
               {renderTradeToggle(person.email, 'Manage job', 'canManage', !hasService || !draft.canView)}
               {renderTradeToggle(person.email, 'Complete job', 'canComplete', !hasService || !draft.canView)}
               <TouchableOpacity
-                style={[styles.inviteBtn, { width: '100%', borderRadius: 12, minHeight: 42, marginTop: 4 }]}
+                style={[ts.inviteBtn, { width: '100%', borderRadius: 12, minHeight: 42, marginTop: 4 }]}
                 onPress={() => saveTradeAccess(person.email)}
                 disabled={tradeSaving === person.email}
                 accessibilityRole="button"
@@ -496,7 +500,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
   // ── Render empty state ──────────────────────────────────────────────────────
   const renderEmpty = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <EmptyState
         icon="people-outline"
         title="No team members yet"
@@ -510,19 +514,19 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   const renderPendingInvites = () => {
     if (pendingInvites.length === 0) return null;
     return (
-      <View style={styles.pendingSection}>
-        <Text style={styles.pendingSectionTitle}>PENDING INVITATIONS</Text>
+      <View style={ts.pendingSection}>
+        <Text style={ts.pendingSectionTitle}>PENDING INVITATIONS</Text>
         {pendingInvites.map((invite) => (
-          <View key={invite.id} style={styles.pendingCard}>
-            <View style={styles.pendingIconWrap}>
+          <View key={invite.id} style={ts.pendingCard}>
+            <View style={ts.pendingIconWrap}>
               <Ionicons name="mail-outline" size={16} color={Colors.textMuted} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.pendingEmail} numberOfLines={1}>{invite.email}</Text>
-              <Text style={styles.pendingRole}>{ROLE_LABELS[invite.role] ?? invite.role}</Text>
+              <Text style={ts.pendingEmail} numberOfLines={1}>{invite.email}</Text>
+              <Text style={ts.pendingRole}>{ROLE_LABELS[invite.role] ?? invite.role}</Text>
             </View>
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>AWAITING</Text>
+            <View style={ts.pendingBadge}>
+              <Text style={ts.pendingBadgeText}>AWAITING</Text>
             </View>
           </View>
         ))}
@@ -531,7 +535,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient */}
@@ -546,24 +550,24 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Team</Text>
+        <Text style={ts.headerTitle}>Team</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <IconButton style={styles.inviteBtn} icon={<Ionicons name="person-add-outline" size={18} color={Colors.white} />} onPress={() => setInviteModalVisible(true)} accessibilityLabel="Invite team member" />
+          <IconButton style={ts.inviteBtn} icon={<Ionicons name="person-add-outline" size={18} color={Colors.white} />} onPress={() => setInviteModalVisible(true)} accessibilityLabel="Invite team member" />
           <HamburgerButton />
         </View>
       </View>
 
       {/* Summary row */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLeft}>
-            <Text style={styles.summaryCount}>{staff.length}</Text> MEMBERS
+      <View style={ts.summaryRow}>
+        <View style={ts.summaryCard}>
+          <Text style={ts.summaryLeft}>
+            <Text style={ts.summaryCount}>{staff.length}</Text> MEMBERS
           </Text>
-          <Text style={styles.summaryRight}>MANAGE TEAM</Text>
+          <Text style={ts.summaryRight}>MANAGE TEAM</Text>
         </View>
       </View>
 
@@ -579,8 +583,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           data={staff}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
-            styles.listContent,
-            staff.length === 0 && styles.listContentEmpty,
+            ts.listContent,
+            staff.length === 0 && ts.listContentEmpty,
           ]}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={renderEmpty}
@@ -611,8 +615,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         avoidKeyboard
       >
         {/* Email field */}
-        <Text style={styles.fieldLabel}>EMAIL ADDRESS *</Text>
-        <View style={styles.emailInputWrap}>
+        <Text style={ts.fieldLabel}>EMAIL ADDRESS *</Text>
+        <View style={ts.emailInputWrap}>
           <Ionicons
             name="mail-outline"
             size={18}
@@ -620,7 +624,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
             style={{ marginRight: 10 }}
           />
           <TextInput
-            style={styles.emailInput}
+            style={ts.emailInput}
             value={inviteEmail}
             onChangeText={setInviteEmail}
             placeholder="colleague@dealership.co.uk"
@@ -632,8 +636,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         </View>
 
         {/* Role selector */}
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>ROLE *</Text>
-        <View style={styles.rolePillRow}>
+        <Text style={[ts.fieldLabel, { marginTop: 20 }]}>ROLE *</Text>
+        <View style={ts.rolePillRow}>
           <RolePill
             role="SALES_AGENT"
             label="Sales Agent"
@@ -669,7 +673,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
         {/* Cancel */}
         <TouchableOpacity
-          style={styles.cancelLink}
+          style={ts.cancelLink}
           onPress={() => {
             if (!inviteLoading) {
               setInviteModalVisible(false);
@@ -679,12 +683,26 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.cancelLinkText}>Cancel</Text>
+          <Text style={ts.cancelLinkText}>Cancel</Text>
         </TouchableOpacity>
       </BottomSheet>
     </View>
   );
 };
+
+const lightDealerTeamScreenStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  headerTitle: { color: '#0F172A' },
+  summaryCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  summaryCount: { color: '#0F172A' },
+  staffCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  staffName: { color: '#0F172A' },
+  staffEmail: { color: '#64748B' },
+  roleChip: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  avatar: { backgroundColor: '#E5EEF7' },
+});
 
 const styles = StyleSheet.create({
   container: {
