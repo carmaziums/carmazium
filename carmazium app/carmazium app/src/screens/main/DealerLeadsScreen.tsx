@@ -952,7 +952,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -1048,7 +1048,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={newName}
                   onChangeText={setNewName}
                   placeholder="Buyer's name"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.iconMuted}
                 />
                 <Text style={ts.createFieldLabel}>EMAIL</Text>
                 <TextInput
@@ -1056,7 +1056,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={newEmail}
                   onChangeText={setNewEmail}
                   placeholder="buyer@example.com"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.iconMuted}
                   autoCapitalize="none"
                   keyboardType="email-address"
                 />
@@ -1066,7 +1066,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={newPhone}
                   onChangeText={setNewPhone}
                   placeholder="07…"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.iconMuted}
                   keyboardType="phone-pad"
                 />
                 <Text style={ts.createFieldLabel}>INTERESTED IN VEHICLE (OPTIONAL)</Text>
@@ -1075,7 +1075,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={newListingQuery}
                   onChangeText={setNewListingQuery}
                   placeholder="Search your listings..."
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.iconMuted}
                   accessibilityLabel="Search your listings for this customer"
                   autoCorrect={false}
                 />
@@ -1111,7 +1111,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={newNotes}
                   onChangeText={setNewNotes}
                   placeholder="Requirements, follow-ups…"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.iconMuted}
                   multiline
                 />
 
