@@ -21,6 +21,26 @@ const top=app('components/WebsiteTopBar.tsx');
 const layout=app('lib/nativeLayoutParity.ts');
 const evidence=read('docs/native/website-native-visual-parity-block9-20261010.md');
 
+test('every literal native icon across screens and shared components has a real mapped glyph',()=>{
+  const srcRoot=resolve(root,'carmazium app/carmazium app/src');
+  const map=app('components/BrandIcon.tsx');
+  const keys=new Set([...map.matchAll(/^\\s*'([^']+)':\\s*'[A-Za-z0-9]+'/gm)].map(x=>x[1]));
+  const walk=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(entry=>
+    entry.isDirectory() ? walk(resolve(dir,entry.name)) :
+    entry.name.endsWith('.tsx') ? [resolve(dir,entry.name)] : []);
+  const missing=[];
+  for(const folder of ['screens','components']){
+    for(const file of walk(resolve(srcRoot,folder))){
+      const source=readFileSync(file,'utf8');
+      const regex=/<(?:Ionicons|MaterialCommunityIcons|FontAwesome)\\b[^>]{0,180}?\\bname=["']([a-z][a-z0-9-]*)["']/g;
+      for(const match of source.matchAll(regex)){
+        if(!keys.has(match[1])) missing.push(file.slice(srcRoot.length+1)+': '+match[1]);
+      }
+    }
+  }
+  assert.deepEqual(missing,[],'missing symbols display HelpCircle question marks');
+});
+
 test('every native screen with styled surfaces subscribes to the saved appearance mode',()=>{
   const screensRoot=resolve(root,'carmazium app/carmazium app/src/screens');
   const walk=(dir)=>readdirSync(dir,{withFileTypes:true}).flatMap(ent=>
