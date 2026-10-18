@@ -628,15 +628,10 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  return (
-    <View style={s.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
+  // Use the virtualized results list to scroll headers, chips, sort and cards
+  // together; a fixed header previously shrank the horizontal chip viewport.
+  const searchHeader = (
+    <>
       <WebsiteTopBar />
       {/* Match website Search title; result counts belong beside sorting,
           not as a changing page title that jumps between 0 and a number. */}
@@ -751,70 +746,83 @@ export const SearchScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {/* ── Results ── */}
-      {loading && listings.length === 0 ? (
-        <View style={s.skeletonList}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <View key={`sk-${i}`} style={s.skeletonCard}>
-              <Skeleton w={92} h={72} r={10} />
-              <View style={s.skeletonInfo}>
-                <Skeleton w={160} h={14} r={6} />
-                <Skeleton w={100} h={12} r={5} />
-                <Skeleton w={80} h={18} r={6} />
-              </View>
+    </>
+  );
+
+  return (
+    <View style={s.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Page controls and result cards share one scrolling surface. */}
+      <FlatList
+        style={s.resultsList}
+        data={listings}
+        keyExtractor={item => item.id}
+        contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
+        ListHeaderComponent={searchHeader}
+        ListHeaderComponentStyle={{ marginHorizontal: -24 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
+        }
+        renderItem={renderListingItem}
+        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
+        onEndReachedThreshold={0.4}
+        ListEmptyComponent={
+          loading && listings.length === 0 ? (
+            <View style={s.skeletonList}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <View key={`sk-${i}`} style={s.skeletonCard}>
+                  <Skeleton w={92} h={72} r={10} />
+                  <View style={s.skeletonInfo}>
+                    <Skeleton w={160} h={14} r={6} />
+                    <Skeleton w={100} h={12} r={5} />
+                    <Skeleton w={80} h={18} r={6} />
+                  </View>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-      ) : searchError && listings.length === 0 ? (
-        <EmptyState
-          icon="alert-circle-outline"
-          eyebrow="Connection error"
-          title="Unable to load vehicles"
-          subtitle={searchError}
-          ctaLabel="Try again"
-          onCtaPress={() => fetch(true)}
-        />
-      ) : listings.length === 0 ? (
-        // No-results is the most-hit dead end in the app and had no way out —
-        // the user had to work out for themselves that a filter was the cause.
-        // Deliberately NOT the accent treatment: this is informational, not an
-        // invitation, so the CTA stays quiet.
-        <EmptyState
-          icon="search-outline"
-          eyebrow="No results"
-          title="Nothing matched that search"
-          subtitle="Try a different make or model, or clear your filters to see everything."
-          ctaLabel="Clear filters"
-          onCtaPress={resetFilters}
-        />
-      ) : (
-        <FlatList
-          data={listings}
-          keyExtractor={item => item.id}
-          contentContainerStyle={[s.listContent, { paddingBottom: insets.bottom + 110 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.accent} colors={[Colors.accent]} />
-          }
-          renderItem={renderListingItem}
-          ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
-          onEndReached={() => { if (hasMore && !loadingMore) fetch(false); }}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            searchError ? (
-              <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
-                <Text style={s.endText}>Loading failed — tap to retry</Text>
-              </TouchableOpacity>
-            ) : loadingMore ? (
-              <View style={s.loadMoreWrap}>
-                <ActivityIndicator size="small" color={Colors.accent} />
-              </View>
-            ) : hasMore ? null : listings.length > 10 ? (
-              <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
-            ) : null
-          }
-        />
-      )}
+          ) : searchError && listings.length === 0 ? (
+            <EmptyState
+              icon="alert-circle-outline"
+              eyebrow="Connection error"
+              title="Unable to load vehicles"
+              subtitle={searchError}
+              ctaLabel="Try again"
+              onCtaPress={() => fetch(true)}
+            />
+          ) : (
+            <EmptyState
+              icon="search-outline"
+              eyebrow="No results"
+              title="Nothing matched that search"
+              subtitle="Try a different make or model, or clear your filters to see everything."
+              ctaLabel="Clear filters"
+              onCtaPress={resetFilters}
+            />
+          )
+        }
+        ListFooterComponent={
+          searchError && listings.length ? (
+            <TouchableOpacity onPress={() => fetch(false)} style={s.loadMoreWrap} accessibilityRole="button">
+              <Text style={s.endText}>Loading failed — tap to retry</Text>
+            </TouchableOpacity>
+          ) : loadingMore ? (
+            <View style={s.loadMoreWrap}>
+              <ActivityIndicator size="small" color={Colors.accent} />
+            </View>
+          ) : hasMore ? null : listings.length > 10 ? (
+            <Text style={s.endText}>All {total.toLocaleString('en-GB')} results shown</Text>
+          ) : null
+        }
+      />
 
       {/* Sort choices live in a native sheet instead of a narrow overlay. */}
       <BottomSheet visible={showSortMenu} onClose={() => setShowSortMenu(false)} title="Sort cars" maxHeightPercent={65}>
@@ -1673,7 +1681,7 @@ const s = StyleSheet.create({
   // (18px padding + up to ~20px line height at a large accessibility font
   // scale + 2px border), so 64 leaves real headroom instead of the 48 that
   // was already marginal at default scale.
-  quickScroll: { height: 64, marginBottom: 4 },
+  quickScroll: { height: 72, flexGrow: 0, flexShrink: 0, marginBottom: 6 },
   quickRow: { paddingHorizontal: 24, gap: 10, alignItems: 'center', flexDirection: 'row' },
   quickChip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: Radius.card, backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   quickChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
@@ -1696,6 +1704,7 @@ const s = StyleSheet.create({
   sortOptionActive: { backgroundColor: Colors.accentAlpha08 },
   sortOptionText: { fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
 
+  resultsList: { flex: 1 },
   listContent: { paddingHorizontal: 24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
   endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
