@@ -50,7 +50,7 @@ const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardT
   <Text style={ts.fieldLabel}>{label}</Text>
   <TextInput style={ts.fieldInput} value={value} onChangeText={onChangeText}
     accessibilityLabel={label} autoCorrect={false} placeholder={placeholder}
-    placeholderTextColor={Colors.textMuted} keyboardType={keyboardType || 'default'}/>
+    placeholderTextColor={mode === 'light' ? '#526177' : Colors.textMuted} keyboardType={keyboardType || 'default'}/>
 </View>;
 };
 
@@ -329,6 +329,9 @@ const lightValuationStyles = StyleSheet.create({
   sectionTitle: { color: '#0F172A' },
   hint: { color: '#526177' },
   fieldLabel: { color: '#334155' },
+  error: { color: '#B91C1C' },
+  eyebrow: { color: '#CC1820' },
+  resultLabel: { color: '#CC1820' },
   fieldInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
   guideNote: { color: '#526177' },
   guideResult: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
