@@ -44,15 +44,22 @@ if [[ -z "$pid" ]]; then
   exit 1
 fi
 
-# A running PID alone is NOT a usable screen. An Android launcher/system ANR
-# dialog can appear above a live CarMazium Activity (observed in QA run #105).
-# Fail closed if the CarMazium window does not actually own foreground focus.
-# Only the focused window line is stored, never a full dump of user/UI data.
+# A running PID alone is NOT a usable screen. A launcher/system ANR dialog
+# can appear above a live CarMazium Activity. Fail closed when another focused
+# window is reported. On Android 15, 'dumpsys window windows' can omit
+# mCurrentFocus even while the launched activity is visibly foreground.
+# In that specific case, verify ActivityTaskManager's top resumed activity
+# instead of incorrectly rejecting a working, visibly launched app.
 focus="$(adb shell dumpsys window windows 2>/dev/null | grep -m 1 -E 'mCurrentFocus=|mFocusedWindow=' | tr -d '\r' || true)"
-printf '%s\n' "$focus" > "$RESULTS/focused-window.txt"
-if [[ -z "$focus" || "$focus" != *"$APP_ID"* ]]; then
-  echo "::error::QA app process is alive but not the focused window; an Android system dialog or launcher may be covering it."
-  echo "::error::Expected foreground package $APP_ID. Focus details saved to the private emulator report."
+if [[ -z "$focus" ]]; then
+  focus="$(adb shell dumpsys window 2>/dev/null | grep -m 1 -E 'mCurrentFocus=|mFocusedWindow=' | tr -d '\r' || true)"
+fi
+resumed="$(adb shell dumpsys activity activities 2>/dev/null | grep -m 1 -E 'topResumedActivity=|mResumedActivity:|ResumedActivity:' | tr -d '\r' || true)"
+printf 'window: %s\nresumed: %s\n' "$focus" "$resumed" > "$RESULTS/focused-window.txt"
+if [[ -n "$focus" && "$focus" != *"$APP_ID"* ]] ||
+   [[ -z "$focus" && "$resumed" != *"$APP_ID"* ]]; then
+  echo "::error::QA app process is alive but Android does not report CarMazium as the foreground activity."
+  echo "::error::Expected foreground package $APP_ID. Window/activity details saved to the private emulator report."
   adb exec-out screencap -p > "$RESULTS/logged-out-launch.png" || true
   exit 1
 fi
