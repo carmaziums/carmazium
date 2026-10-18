@@ -16,6 +16,8 @@ import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 
 // Main screens
 import { HomeScreen } from '../screens/main/HomeScreen';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { appearancePalette } from '../theme/appearancePalette';
 import { SearchScreen } from '../screens/main/SearchScreen';
 import { LiveScreen } from '../screens/main/LiveScreen';
 import { SavedScreen } from '../screens/main/SavedScreen';
@@ -172,6 +174,8 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const palette = appearancePalette(appearanceMode);
   const { fontScale } = useWindowDimensions();
   const role = useAuthStore((s) => s.role);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -221,10 +225,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     <View
       style={[
         styles.tabBarOuter,
-        { paddingBottom: insets.bottom },
+        { paddingBottom: insets.bottom, backgroundColor: palette.tab, borderTopColor: palette.border },
       ]}
     >
-      <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass]} />
+      <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass, { backgroundColor: palette.tab }]} />
       <View style={styles.tabBarInner}>
         {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
@@ -252,7 +256,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   focused={isFocused}
                   iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
                   iconType={config.iconType}
-                  color={isFocused ? Colors.accent : Colors.tabInactive}
+                  color={isFocused ? Colors.accent : palette.muted}
                   size={config.iconType === 'material-community' ? 22 : 20}
                 />
               </View>
@@ -260,6 +264,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 style={[
                   styles.tabLabel,
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
+                  !isFocused && { color: palette.muted },
                 ]}
                 numberOfLines={2}
                 maxFontSizeMultiplier={2}
