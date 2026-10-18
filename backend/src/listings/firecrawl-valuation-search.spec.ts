@@ -47,6 +47,21 @@ describe('Optional Firecrawl valuation evidence', () => {
         expect(parseVerifiedAdvert(tesla, wrong, approved)).toBeNull();
     });
 
+    it('recognises low-mileage cars with explicitly labelled whole-vehicle prices', () => {
+        const car = {
+            make: 'Tesla', model: 'Model 3', year: 2024, mileage: 350,
+            fuelType: 'ELECTRIC', transmission: 'AUTOMATIC',
+        };
+        const hit = {
+            title: '2024 Tesla Model 3 Electric Automatic',
+            url: 'https://dealer.example/cars/model3',
+            markdown: '# 2024 Tesla Model 3 Electric Automatic\nPrice £20,950\nMileage: 350 miles\nAvailable as a complete vehicle for sale at the advertised cash price.',
+        };
+        expect(parseVerifiedAdvert(car, hit, approved)).toEqual(expect.objectContaining({
+            priceGBP: 20950, mileage: 350,
+        }));
+    });
+
     it('rejects ambiguous multi-price, missing-mileage and sold pages', () => {
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page + '\nPrice £11,000' }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page.replace('Mileage: 112,600 miles', 'Mileage: unknown') }, approved)).toBeNull();
