@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -93,7 +93,7 @@ const SERVICES: ServiceItem[] = [
 
 export const ServicesScreen: React.FC = () => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightServicesStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -232,6 +232,30 @@ export const ServicesScreen: React.FC = () => {
 };
 
 // ═══════════════════════════ STYLES ════════════════════════════════
+
+// Explicit colours complement the legacy adapter: introSub was not recognised as
+// a text token, and the adapter must never darken labels on red action buttons.
+const lightServicesStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#1E293B' },
+  headerTitle: { color: '#FFFFFF' },
+  backBtn: { backgroundColor: '#334155', borderColor: '#475569' },
+  introTitle: { color: '#0F172A' },
+  introSub: { color: '#334155' },
+  sectionHeading: { color: '#0F172A' },
+  postJobTitle: { color: '#FFFFFF' },
+  postJobHint: { color: '#FFFFFF' },
+  customerJobsCard: { backgroundColor: '#DBEAFE', borderColor: '#A9C8EF' },
+  partnerCard: { backgroundColor: '#FFFBEB', borderColor: '#E8D5A3' },
+  partnerTitle: { color: '#0F172A' },
+  partnerText: { color: '#334155' },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  cardTitle: { color: '#0F172A' },
+  cardDesc: { color: '#334155' },
+  cardWebHint: { color: '#526177' },
+  noteCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  noteText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
