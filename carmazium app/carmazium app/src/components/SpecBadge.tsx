@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
 import { FontFamily, FontSize } from '../constants/typography';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -17,22 +18,24 @@ export const SpecBadge: React.FC<SpecBadgeProps> = ({
   value,
   variant = 'default',
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const light = mode === 'light';
   const iconColor =
     variant === 'accent'
-      ? Colors.accent
+      ? (light ? '#CC1820' : Colors.accent)
       : variant === 'success'
-      ? Colors.success
-      : Colors.textMuted;
+      ? (light ? '#047857' : Colors.success)
+      : (light ? '#526177' : Colors.textMuted);
 
   const textColor =
     variant === 'accent'
       ? Colors.accent
       : variant === 'success'
       ? Colors.success
-      : Colors.textSecondary;
+      : (light ? '#334155' : Colors.textSecondary);
 
   return (
-    <View style={[styles.badge, variant === 'accent' && styles.badgeAccent]}>
+    <View style={[styles.badge, light && { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' }, variant === 'accent' && styles.badgeAccent]}>
       <Ionicons name={icon} size={11} color={iconColor} />
       <Text style={[styles.value, { color: textColor }]}>{value}</Text>
     </View>
