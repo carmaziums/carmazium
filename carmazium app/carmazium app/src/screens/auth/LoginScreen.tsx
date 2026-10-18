@@ -88,7 +88,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Background gradient with top red glow */}
       <LinearGradient
-        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -139,7 +139,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="your@email.com"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   returnKeyType="next"
@@ -171,7 +171,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onFocus={() => setPasswordFocused(true)}
