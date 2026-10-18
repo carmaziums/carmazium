@@ -10,6 +10,8 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import { ImageCarousel } from './ImageCarousel';
@@ -90,6 +92,8 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
   onPress,
   onBid,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLiveBidCardStyles) : styles;
   const countdown = useCountdown(auction.endsAt);
   const hasRealBids = auction.totalBids > 0;
   const displayBid = hasRealBids ? auction.currentBid : auction.startingBid;
@@ -97,12 +101,12 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={ts.card}
       onPress={onPress}
       activeOpacity={0.92}
     >
       {/* Car image */}
-      <View style={styles.imageWrapper}>
+      <View style={ts.imageWrapper}>
         <ImageCarousel
           images={auction.images}
           width={CARD_IMG_WIDTH}
@@ -110,19 +114,19 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
           onPress={onPress}
           showIndicator={false}
         />
-        <View style={styles.imageOverlay} pointerEvents="none" />
+        <View style={ts.imageOverlay} pointerEvents="none" />
 
         {/* Live / upcoming badge */}
-        <View style={[styles.liveBadge, !auction.isLive && styles.upcomingBadge]} pointerEvents="none">
-          {auction.isLive && <View style={styles.liveDot} />}
-          <Text style={styles.liveText}>{auction.isLive ? 'LIVE' : 'UPCOMING'}</Text>
+        <View style={[ts.liveBadge, !auction.isLive && ts.upcomingBadge]} pointerEvents="none">
+          {auction.isLive && <View style={ts.liveDot} />}
+          <Text style={ts.liveText}>{auction.isLive ? 'LIVE' : 'UPCOMING'}</Text>
         </View>
 
         {/* Viewers */}
         {auction.isLive && (
-          <View style={styles.viewersBadge} pointerEvents="none">
+          <View style={ts.viewersBadge} pointerEvents="none">
             <Ionicons name="eye-outline" size={11} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.viewersText}>{auction.viewers}</Text>
+            <Text style={ts.viewersText}>{auction.viewers}</Text>
           </View>
         )}
 
@@ -139,12 +143,12 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
       </View>
 
       {/* Content */}
-      <View style={styles.content}>
+      <View style={ts.content}>
         {/* Car title */}
-        <View style={styles.carTitle}>
-          <Text style={styles.makeText}>{auction.make}</Text>
+        <View style={ts.carTitle}>
+          <Text style={ts.makeText}>{auction.make}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.modelText}>
+            <Text style={ts.modelText}>
               {auction.model} {auction.variant}
             </Text>
             <GradeChip grade={auction.exteriorGrade} />
@@ -162,42 +166,42 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         />
 
         {/* Bid section */}
-        <View style={styles.bidSection}>
+        <View style={ts.bidSection}>
           <View>
-            <Text style={styles.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
-            <Text style={styles.bidAmount}>{formatPrice(displayBid)}</Text>
-            <View style={styles.bidMeta}>
+            <Text style={ts.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={ts.bidAmount}>{formatPrice(displayBid)}</Text>
+            <View style={ts.bidMeta}>
               <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.bidCount}>{auction.totalBids} bids</Text>
+              <Text style={ts.bidCount}>{auction.totalBids} bids</Text>
               {!hasRealBids && firstOfferFloor > 0 && (
-                <Text style={[styles.bidCount, { color: Colors.warning }]}>
+                <Text style={[ts.bidCount, { color: Colors.warning }]}>
                   First offer {formatPrice(firstOfferFloor)}
                 </Text>
               )}
               {/* Reserve status is never shown to buyers (Ground Rules: reserve
                   is enforced server-side, display-only shows "Buy it now"). */}
               {!!auction.buyItNowPrice && (
-                <View style={styles.binBadge}>
-                  <Text style={styles.binBadgeText}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                <View style={ts.binBadge}>
+                  <Text style={ts.binBadgeText}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
                 </View>
               )}
             </View>
           </View>
 
           {/* Countdown */}
-          <View style={styles.countdown}>
-            <Text style={styles.endsLabel}>
+          <View style={ts.countdown}>
+            <Text style={ts.endsLabel}>
               {auction.isLive ? 'ENDS IN' : 'STARTS IN'}
             </Text>
-            <View style={styles.timeRow}>
+            <View style={ts.timeRow}>
               {countdown.h > 0 && (
                 <>
                   <TimeBlock value={countdown.h} label="HRS" urgent={countdown.urgent} />
-                  <Text style={styles.timeSep}>:</Text>
+                  <Text style={ts.timeSep}>:</Text>
                 </>
               )}
               <TimeBlock value={countdown.m} label="MIN" urgent={countdown.urgent} />
-              <Text style={styles.timeSep}>:</Text>
+              <Text style={ts.timeSep}>:</Text>
               <TimeBlock value={countdown.s} label="SEC" urgent={countdown.urgent} />
             </View>
           </View>
@@ -205,15 +209,34 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
 
         {/* CTA */}
         {auction.isLive && (
-          <TouchableOpacity style={styles.bidBtn} onPress={onBid} activeOpacity={0.85}>
+          <TouchableOpacity style={ts.bidBtn} onPress={onBid} activeOpacity={0.85}>
             <Ionicons name="hammer-outline" size={15} color={Colors.white} />
-            <Text style={styles.bidBtnText}>Place Bid</Text>
+            <Text style={ts.bidBtnText}>Place Bid</Text>
           </TouchableOpacity>
         )}
       </View>
     </TouchableOpacity>
   );
 };
+
+const lightLiveBidCardStyles = StyleSheet.create({
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  content: { backgroundColor: '#FFFFFF' },
+  carTitle: { color: '#0F172A' },
+  makeText: { color: '#0F172A' },
+  modelText: { color: '#526177' },
+  bidSection: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  bidLabel: { color: '#526177' },
+  bidAmount: { color: '#0F172A' },
+  bidMeta: { color: '#526177' },
+  bidCount: { color: '#526177' },
+  countdown: { backgroundColor: '#F7FBFF' },
+  endsLabel: { color: '#526177' },
+  timeBlock: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  timeValue: { color: '#0F172A' },
+  timeLabel: { color: '#526177' },
+  timeSep: { color: '#526177' },
+});
 
 const styles = StyleSheet.create({
   card: {
