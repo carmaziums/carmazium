@@ -365,7 +365,7 @@ export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? { ...s, ...lightHomeStyles } : s;
-  const role = useAuthStore((s) => ts.role);
+  const role = useAuthStore((s) => s.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
