@@ -79,7 +79,10 @@ export class SimpleDmsReferralService {
       where: {
         id, status: 'ACTIVE', deletedAt: null,
         startTime: { lte: new Date() }, endTime: { gt: new Date() },
-        listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null } },
+        // A previously issued link must not bypass seller withdrawal or the
+        // same fail-closed partner eligibility gate as the inventory feed.
+        listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null,
+          partnerDistributionAcceptedAt: { not: null } } },
       },
       select: { id: true },
     });
