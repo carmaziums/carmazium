@@ -10,6 +10,7 @@ import {
 
 import { BottomSheet } from '@/components/BottomSheet';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
@@ -72,30 +73,38 @@ interface Props {
   availableMakes: string[];
 }
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {children}
-  </View>
-);
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
+  return (
+    <View style={ts.section}>
+      <Text style={ts.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+};
 
 const Pill: React.FC<{ label: string; selected: boolean; onPress: () => void }> = ({
   label,
   selected,
   onPress,
-}) => (
+}) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
+  return (
   <TouchableOpacity
-    style={[styles.pill, selected && styles.pillSelected]}
+    style={[ts.pill, selected && ts.pillSelected]}
     onPress={onPress}
     activeOpacity={0.8}
     accessibilityRole="button"
     accessibilityState={{ selected }}
   >
-    <Text style={[styles.pillText, selected && styles.pillTextSelected]} numberOfLines={2}>
+    <Text style={[ts.pillText, selected && ts.pillTextSelected]} numberOfLines={2}>
       {label}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 /**
  * Auction filter panel.
@@ -113,6 +122,8 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   availableMakes,
 }) => {
   const [draft, setDraft] = useState<AuctionFilterState>(value);
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [makeQuery, setMakeQuery] = useState('');
   const [showAllMakes, setShowAllMakes] = useState(false);
@@ -161,15 +172,15 @@ export const AuctionFilterSheet: React.FC<Props> = ({
       fillHeight
       maxHeightPercent={88}
     >
-      <View style={styles.container}>
+      <View style={ts.container}>
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <Section title="Sort by">
-            <View style={styles.pillWrap}>
+            <View style={ts.pillWrap}>
               {AUCTION_SORT_OPTIONS.map((o) => (
                 <Pill
                   key={o.value}
@@ -183,7 +194,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 
           <Section title="Make">
             <TextInput
-              style={styles.input}
+              style={ts.input}
               value={makeQuery}
               onChangeText={setMakeQuery}
               placeholder="Search all makes…"
@@ -191,23 +202,23 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               autoCorrect={false}
               accessibilityLabel="Search vehicle makes"
             />
-            <View style={[styles.pillWrap, { marginTop: 10 }]}>
+            <View style={[ts.pillWrap, { marginTop: 10 }]}>
               {visibleMakes.map(m => (
                 <Pill key={m} label={m} selected={draft.makes.includes(m)} onPress={() => toggle('makes', m)} />
               ))}
             </View>
             {!makeQuery.trim() && (
-              <TouchableOpacity style={styles.showAllMakes} onPress={() => setShowAllMakes(open => !open)} accessibilityRole="button">
-                <Text style={styles.resetText}>{showAllMakes ? 'Show fewer makes' : 'Show all makes'}</Text>
+              <TouchableOpacity style={ts.showAllMakes} onPress={() => setShowAllMakes(open => !open)} accessibilityRole="button">
+                <Text style={ts.resetText}>{showAllMakes ? 'Show fewer makes' : 'Show all makes'}</Text>
               </TouchableOpacity>
             )}
           </Section>
 
           <Section title="Model">
-            <TextInput style={styles.input} value={draft.model} onChangeText={t => set('model', t)}
+            <TextInput style={ts.input} value={draft.model} onChangeText={t => set('model', t)}
               placeholder="Search model" placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} />
             {modelOptions.length > 0 && (
-              <View style={[styles.pillWrap, { marginTop: 10 }]}>
+              <View style={[ts.pillWrap, { marginTop: 10 }]}>
                 {modelOptions.filter(m => !draft.model.trim() || m.toLowerCase().includes(draft.model.toLowerCase()))
                   .slice(0, 30).map(m => (
                     <Pill key={m} label={m} selected={draft.model === m} onPress={() => set('model', draft.model === m ? '' : m)} />
@@ -217,10 +228,10 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Variant / trim">
-            <TextInput style={styles.input} value={draft.variant} onChangeText={t => set('variant', t)}
+            <TextInput style={ts.input} value={draft.variant} onChangeText={t => set('variant', t)}
               placeholder="e.g. M Sport, GT Line" placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} />
             {variantOptions.length > 0 && (
-              <View style={[styles.pillWrap, { marginTop: 10 }]}>
+              <View style={[ts.pillWrap, { marginTop: 10 }]}>
                 {variantOptions.filter(v => !draft.variant || v.toLowerCase().includes(draft.variant.toLowerCase()))
                   .slice(0, 30).map(v => (
                     <Pill key={v} label={v} selected={draft.variant === v}
@@ -231,7 +242,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Body type">
-            <View style={styles.pillWrap}>
+            <View style={ts.pillWrap}>
               {BODY_TYPE_ICONS.map((b) => (
                 <Pill
                   key={b.value}
@@ -244,7 +255,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Fuel type">
-            <View style={styles.pillWrap}>
+            <View style={ts.pillWrap}>
               {FUEL_OPTIONS.map((f) => (
                 <Pill
                   key={f}
@@ -257,7 +268,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Transmission">
-            <View style={styles.pillWrap}>
+            <View style={ts.pillWrap}>
               {TRANSMISSION_OPTIONS.map((t) => (
                 <Pill
                   key={t}
@@ -270,9 +281,9 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <Section title="Current bid (£)">
-            <View style={styles.row}>
+            <View style={ts.row}>
               <TextInput
-                style={[styles.input, styles.inputHalf]}
+                style={[ts.input, ts.inputHalf]}
                 value={draft.minBid}
                 onChangeText={(t) => set('minBid', t)}
                 placeholder="Min"
@@ -280,7 +291,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 keyboardType="number-pad"
               />
               <TextInput
-                style={[styles.input, styles.inputHalf]}
+                style={[ts.input, ts.inputHalf]}
                 value={draft.maxBid}
                 onChangeText={(t) => set('maxBid', t)}
                 placeholder="Max"
@@ -291,29 +302,29 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           </Section>
 
           <TouchableOpacity
-            style={styles.moreToggle}
+            style={ts.moreToggle}
             onPress={() => setShowMoreFilters(v => !v)}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityState={{ expanded: showMoreFilters }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.moreTitle}>More auction filters {moreCount > 0 ? `(${moreCount} active)` : ''}</Text>
-              <Text style={styles.moreSubtitle}>Condition, features, emissions, dimensions, UK compliance and distance</Text>
+              <Text style={ts.moreTitle}>More auction filters {moreCount > 0 ? `(${moreCount} active)` : ''}</Text>
+              <Text style={ts.moreSubtitle}>Condition, features, emissions, dimensions, UK compliance and distance</Text>
             </View>
-            <Text style={styles.moreChevron}>{showMoreFilters ? '−' : '+'}</Text>
+            <Text style={ts.moreChevron}>{showMoreFilters ? '−' : '+'}</Text>
           </TouchableOpacity>
           {showMoreFilters && (
             <>
               <Section title="Colour">
-                <TextInput style={styles.input} value={draft.colour} onChangeText={t => set('colour', t)}
+                <TextInput style={ts.input} value={draft.colour} onChangeText={t => set('colour', t)}
                   placeholder="e.g. Black or Blue" placeholderTextColor={Colors.inputPlaceholder} />
               </Section>
               {NUMERIC_FILTERS.map(group => (
                 <Section key={group.title} title={group.title}>
-                  <View style={styles.row}>
+                  <View style={ts.row}>
                     {group.fields.map(field => (
-                      <TextInput key={field.key} style={[styles.input, styles.inputHalf]}
+                      <TextInput key={field.key} style={[ts.input, ts.inputHalf]}
                         value={draft[field.key]} onChangeText={t => set(field.key, t)}
                         placeholder={field.label} accessibilityLabel={group.title + ': ' + field.label}
                         placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
@@ -322,8 +333,8 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </Section>
               ))}
               <Section title="Exterior Grade (1–5)">
-                <Text style={styles.moreSubtitle}>Calculated from reported vehicle defects; Grade 1 is best.</Text>
-                <View style={[styles.pillWrap, { marginTop: 10 }]}>
+                <Text style={ts.moreSubtitle}>Calculated from reported vehicle defects; Grade 1 is best.</Text>
+                <View style={[ts.pillWrap, { marginTop: 10 }]}>
                   {EXTERIOR_GRADE_OPTIONS.map(grade => (
                     <Pill key={grade.value} label={`Grade ${grade.value} — ${grade.label}`}
                       selected={draft.exteriorGrades.includes(grade.value)}
@@ -334,7 +345,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="Seller-reported condition">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {CONDITIONS.map(value => (
                     <Pill key={value} label={value[0] + value.slice(1).toLowerCase()} selected={draft.conditions.includes(value)}
                       onPress={() => toggle('conditions', value)} />
@@ -342,8 +353,8 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="Insurance write-off status">
-                <Text style={styles.moreSubtitle}>Seller declarations are not necessarily independently HPI-verified.</Text>
-                <View style={[styles.pillWrap, { marginTop: 10 }]}>
+                <Text style={ts.moreSubtitle}>Seller declarations are not necessarily independently HPI-verified.</Text>
+                <View style={[ts.pillWrap, { marginTop: 10 }]}>
                   {WRITE_OFF_OPTIONS.map(([value, label]) => (
                     <Pill key={value} label={label} selected={draft.writeOffCategories.includes(value)}
                       onPress={() => toggle('writeOffCategories', value)} />
@@ -351,14 +362,14 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="ULEZ / CAZ compliance">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {([['', 'Any'], ['yes', 'Compliant'], ['no', 'Not compliant']] as const).map(([value, label]) => (
                     <Pill key={label} label={label} selected={draft.ulezCompliant === value} onPress={() => set('ulezCompliant', value)} />
                   ))}
                 </View>
               </Section>
               <Section title="Euro standard">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   <Pill label="Any" selected={!draft.euroStandard} onPress={() => set('euroStandard', '')} />
                   {EURO_OPTIONS.map(([value, label]) => (
                     <Pill key={value} label={label} selected={draft.euroStandard === value}
@@ -367,7 +378,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="Drivetrain">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {['FWD', 'RWD', 'AWD', '4WD'].map(drive => (
                     <Pill key={drive} label={drive} selected={draft.driveType === drive}
                       onPress={() => set('driveType', draft.driveType === drive ? '' : drive)} />
@@ -375,14 +386,14 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="Features / options">
-                <TextInput style={styles.input} value={featureQuery} onChangeText={setFeatureQuery}
+                <TextInput style={ts.input} value={featureQuery} onChangeText={setFeatureQuery}
                   placeholder="Search equipment" placeholderTextColor={Colors.inputPlaceholder} />
                 {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, entries]) => {
                   const options = entries.filter(x => x.toLowerCase().includes(featureQuery.trim().toLowerCase()));
                   return options.length ? (
                     <View key={group} style={{ marginTop: 12 }}>
-                      <Text style={styles.sectionTitle}>{group}</Text>
-                      <View style={styles.pillWrap}>
+                      <Text style={ts.sectionTitle}>{group}</Text>
+                      <View style={ts.pillWrap}>
                         {options.map(feature => (
                           <Pill key={feature} label={feature} selected={draft.features.includes(feature)}
                             onPress={() => toggle('features', feature)} />
@@ -393,49 +404,49 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 })}
               </Section>
               <Section title="Seller type">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {([['', 'All'], ['DEALER', 'Dealer'], ['PRIVATE', 'Private']] as const).map(([value, label]) => (
                     <Pill key={label} label={label} selected={draft.sellerType === value} onPress={() => set('sellerType', value)} />
                   ))}
                 </View>
               </Section>
               <Section title="Vehicle type">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {([['', 'All'], ['CAR', 'Car'], ['HGV', 'HGV'], ['MOTORCYCLE', 'Motorcycle']] as const).map(([value, label]) => (
                     <Pill key={label} label={label} selected={draft.vehicleType === value} onPress={() => set('vehicleType', value)} />
                   ))}
                 </View>
               </Section>
               <Section title="Import status">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   {([['', 'Any'], ['yes', 'Imported only'], ['no', 'Hide imported']] as const).map(([value, label]) => (
                     <Pill key={label} label={label} selected={draft.isImported === value} onPress={() => set('isImported', value)} />
                   ))}
                 </View>
               </Section>
               <Section title="Location">
-                <TextInput style={styles.input} value={draft.location} onChangeText={t => set('location', t)}
+                <TextInput style={ts.input} value={draft.location} onChangeText={t => set('location', t)}
                   placeholder="Town, city or county" placeholderTextColor={Colors.inputPlaceholder} />
               </Section>
               <Section title="Distance from postcode">
-                <Text style={styles.moreSubtitle}>
+                <Text style={ts.moreSubtitle}>
                   {hasDistanceOrigin ? `Using ${postcode}` : 'Enter a UK postcode to enable a distance search.'}
                 </Text>
                 {!hasDistanceOrigin && (
-                  <View style={[styles.row, { marginTop: 10 }]}>
-                    <TextInput style={[styles.input, styles.inputHalf]} value={postcodeInput} onChangeText={setPostcodeInput}
+                  <View style={[ts.row, { marginTop: 10 }]}>
+                    <TextInput style={[ts.input, ts.inputHalf]} value={postcodeInput} onChangeText={setPostcodeInput}
                       placeholder="UK postcode" placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="characters" />
-                    <TouchableOpacity style={styles.postcodeButton} disabled={savingPostcode || !postcodeInput.trim()}
+                    <TouchableOpacity style={ts.postcodeButton} disabled={savingPostcode || !postcodeInput.trim()}
                       accessibilityRole="button" onPress={async () => {
                         setSavingPostcode(true);
                         try { await setPostcode(postcodeInput.trim()); }
                         finally { setSavingPostcode(false); }
                       }}>
-                      <Text style={styles.applyText}>Save</Text>
+                      <Text style={ts.applyText}>Save</Text>
                     </TouchableOpacity>
                   </View>
                 )}
-                <View style={[styles.pillWrap, { marginTop: 10 }]}>
+                <View style={[ts.pillWrap, { marginTop: 10 }]}>
                   {([null, 10, 25, 50, 100, 200] as (number | null)[]).map(miles => (
                     <Pill key={String(miles)} label={miles == null ? 'Any distance' : `${miles} mi`}
                       selected={draft.maxDistanceMi === miles}
@@ -444,7 +455,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 </View>
               </Section>
               <Section title="Delivery">
-                <View style={styles.pillWrap}>
+                <View style={ts.pillWrap}>
                   <Pill label="Delivery available" selected={draft.deliveryAvailable}
                     onPress={() => set('deliveryAvailable', !draft.deliveryAvailable)} />
                 </View>
@@ -453,20 +464,20 @@ export const AuctionFilterSheet: React.FC<Props> = ({
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View style={ts.footer}>
           <TouchableOpacity
-            style={styles.resetBtn}
+            style={ts.resetBtn}
             onPress={() => setDraft({ ...INITIAL_AUCTION_FILTERS, sortBy: draft.sortBy })}
             activeOpacity={0.8}
             accessibilityRole="button"
           >
-            <Text style={styles.resetText}>
+            <Text style={ts.resetText}>
               {activeCount > 0 ? `Reset (${activeCount})` : 'Reset'}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.applyBtn}
+            style={ts.applyBtn}
             onPress={() => {
               onApply(draft);
               onClose();
@@ -474,7 +485,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
             activeOpacity={0.85}
             accessibilityRole="button"
           >
-            <Text style={styles.applyText}>
+            <Text style={ts.applyText}>
               Apply filters
             </Text>
           </TouchableOpacity>
@@ -483,6 +494,20 @@ export const AuctionFilterSheet: React.FC<Props> = ({
     </BottomSheet>
   );
 };
+
+const lightAuctionFilterStyles = StyleSheet.create({
+  moreToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  moreTitle: { color: '#0F172A' },
+  moreSubtitle: { color: '#64748B' },
+  moreChevron: { color: '#334155' },
+  sectionTitle: { color: '#0F172A' },
+  pill: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  pillText: { color: '#334155' },
+  input: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  footer: { borderTopColor: '#D5E1EC' },
+  resetBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  resetText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   container: {
