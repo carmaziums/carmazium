@@ -689,16 +689,9 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
       : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
         : 0);
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
+  // The header and every vehicle share a single, virtualized scroll surface.
+  const inventoryHeader = (
+    <>
       <WebsiteTopBar />
       {/* The same global web header stays visible while the stock-specific
           view picker and inventory count remain below it. */}
@@ -814,42 +807,58 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         </TouchableOpacity>
       </View>
 
-      {/* ── Listing cards ─────────────────────────────────────────────────── */}
-      {fetchError ? (
-        <View style={{ marginHorizontal: 16, marginTop: 20 }}>
-          <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
-        </View>
-      ) : loading && listings.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={76} r={18} />
-          ))}
-        </View>
-      ) : (
+    </>
+  );
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      {/* One virtualized list scrolls page controls and cards together. */}
       <FlatList
         key={viewMode}
         style={styles.listScroll}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={viewMode === 'grid' ? styles.gridContent : styles.stockListContent}
+        ListHeaderComponent={inventoryHeader}
+        ListHeaderComponentStyle={viewMode === 'grid' ? { marginHorizontal: -20 } : undefined}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchListings(true)} tintColor={Colors.accent} colors={[Colors.accent]} />}
-        data={filtered}
+        data={fetchError || (loading && listings.length === 0) ? [] : filtered}
         numColumns={viewMode === 'grid' ? 2 : 1}
         columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
         keyExtractor={(item) => item.id}
         renderItem={viewMode === 'grid' ? renderInventoryGrid : renderInventoryRow}
         ListEmptyComponent={
-          <View style={{ marginTop: 40 }}>
-            <EmptyState
-              icon="car-outline"
-              title="No vehicles found"
-              subtitle={inventoryQuery || activeFilter !== 'All'
-                ? 'Try adjusting your search or filters.'
-                : 'Add your first vehicle to start building your dealership inventory.'}
-            />
-          </View>
+          fetchError ? (
+            <View style={{ marginHorizontal: 16, marginTop: 20 }}>
+              <ErrorBanner message="Could not load inventory. Check your connection." onRetry={() => fetchListings()} />
+            </View>
+          ) : loading && listings.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 12 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} w={SCREEN_WIDTH - 32} h={76} r={18} />
+              ))}
+            </View>
+          ) : (
+            <View style={{ marginTop: 40 }}>
+              <EmptyState
+                icon="car-outline"
+                title="No vehicles found"
+                subtitle={inventoryQuery || activeFilter !== 'All'
+                  ? 'Try adjusting your search or filters.'
+                  : 'Add your first vehicle to start building your dealership inventory.'}
+              />
+            </View>
+          )
         }
       />
-      )}
 
       {/* Bulk CSV Import Modal */}
       {canManageInventory && (
