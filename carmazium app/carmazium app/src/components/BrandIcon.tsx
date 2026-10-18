@@ -43,6 +43,8 @@ const ICON_MAP: Record<string, string> = {
   'refresh': 'RefreshCw',
   'list-outline': 'List',
   'list': 'List',
+  'speedometer-outline': 'Gauge',
+  'speedometer': 'Gauge',
   'grid-outline': 'LayoutGrid',
   'grid': 'LayoutGrid',
   'send': 'Send',
