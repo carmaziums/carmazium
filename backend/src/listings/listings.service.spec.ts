@@ -1787,13 +1787,13 @@ describe('ListingsService', () => {
                 transmission: 'AUTOMATIC',
             } as any);
 
-            expect(liveSearch).toHaveBeenCalledTimes(5);
+            expect(liveSearch).toHaveBeenCalledTimes(1);
             expect(result.source).toBe('LIVE_UK_MARKET');
             expect(result.marketEvidence).toEqual(expect.objectContaining({
                 carmaziumComparables: 4,
                 liveUkComparables: 3,
                 liveUkSearchStatus: 'USED',
-                liveUkAttempts: 5,
+                liveUkAttempts: 1,
                 blendedMarketAttempts: 0,
                 valuationStrategy: 'LIVE',
             }));
