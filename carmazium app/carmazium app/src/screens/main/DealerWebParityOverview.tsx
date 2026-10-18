@@ -163,14 +163,14 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       <View style={ts.hero}>
         <View style={ts.heroHeading}>
           <View style={ts.heroIcon}>
-            <Ionicons name="business-outline" size={24} color={Colors.textPrimary} />
+            <Ionicons name="business-outline" size={24} color={appearanceMode === 'light' ? '#0F172A' : Colors.textPrimary} />
           </View>
           <View style={ts.heroCopy}>
             <Text style={ts.heroTitle}>DEALER COMMAND CENTRE</Text>
             <Text style={ts.heroSubtitle}>RUN YOUR DEALERSHIP FROM ONE PLACE, {userName}</Text>
             {summary?.isVerified === true && (
               <View style={ts.verifiedLine}>
-                <Ionicons name="shield-checkmark-outline" size={14} color={Colors.warning} />
+                <Ionicons name="shield-checkmark-outline" size={14} color={appearanceMode === 'light' ? '#92400E' : Colors.warning} />
                 <Text style={ts.verifiedText}>Verified Dealer</Text>
               </View>
             )}
@@ -328,6 +328,7 @@ const lightDealerOverviewStyles = StyleSheet.create({
   heroIcon: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
   heroTitle: { color: '#0F172A' },
   heroSubtitle: { color: '#526177' },
+  verifiedText: { color: '#92400E' },
   sectionTitle: { color: '#0F172A' },
   sectionHint: { color: '#526177' },
   rangePanel: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
