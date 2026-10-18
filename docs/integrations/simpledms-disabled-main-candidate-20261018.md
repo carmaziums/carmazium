@@ -1,6 +1,6 @@
 # SimpleDMS production source candidate — isolated review (18 October 2026)
 
-**Status: DRAFT, DO NOT MERGE OR DEPLOY AS A PARTNER LAUNCH.** This candidate ports the older partner API code and its existing test suite onto current CarMazium `main` without replacing current user, auction, pricing, payment, listing, DVLA or MOT code. There is no schema migration, customer data export, production credential creation or enabling operation in this PR.
+**Status: controlled pre-launch integration only; a fully tested merge of default-OFF route definitions is permitted as code preparation but NEVER constitutes approval to enable, issue credentials, or deploy partner data.** This candidate ports the older partner API code and its existing test suite onto current CarMazium `main` without replacing current user, auction, pricing, payment, listing, DVLA or MOT code. There is no schema migration, customer data export, production credential creation or enabling operation in this PR.
 
 ## Default deny design
 - Three explicit flags must be true to expose the partner routes: `PARTNER_API_ENABLED=true`, `PARTNER_API_SIMPLEDMS_ENABLED=true`, and the separate final written-release approval sentinel `PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED=true`. The last gate is never set by this PR and defaults to OFF. Even an accidentally existing partner key and the two earlier flags cannot expose the feed before the third gate is intentionally provisioned.
@@ -32,4 +32,12 @@
 - [ ] Confirm latest security deployment image and rollback, RLS/schema role risk controls, protected signing and access/revocation tests.
 - [ ] Final signature by each authorised director, mutually approved restricted secret handover, signed calendar acceptance for both live+historical, and bilateral written Pilot Launch Date. The 90-day free pilot starts only then.
 
-**Current decision: NO-GO.** This is an engineering preparation branch, not a launch authorisation. 
+**Current decision: NO-GO for SimpleDMS data sharing.** Code may be released with the independent final production approval flag unset, verified 404 responses and existing user service health. A merge does not authorise third-party disclosures, bypass seller eligibility, set any enabling variables or begin the pilot. 
+
+## Mandatory smoke check after a safe default-off main merge
+
+1. Verify the exact merged commit and successful production backend CI/Fly rolling deployment; preserve a rollback reference.
+2. Make an unauthenticated, **no-key** HTTP GET against `/partners/v1/simpledms/auctions?page=1&limit=1` and require **404 Not Found**, not a dataset. Repeat against a synthetic random detail UUID; never use a customer registration. Do not issue production credentials for these checks.
+3. Confirm `/health/live` succeeds and the ordinary site remains operational. There must be no optional `PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED=true` setting in production until the separate bilateral authorisation.
+4. Check no partner seller/photo data was exported. Confirm `partnerDistributionAcceptedAt` for legacy rows remains unchanged; no backfill.
+5. Keep the partner-production tracker open and record operational, data-protection, recovery and signature approvals before any future enablement.
