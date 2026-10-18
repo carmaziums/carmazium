@@ -12,6 +12,7 @@ const tabs=app('navigation/TabNavigator.tsx');
 const stack=app('navigation/MainStackNavigator.tsx');
 const gate=app('components/DealerGate.tsx');
 const drawer=app('components/GlobalDrawer.tsx');
+const dealerMore=app('screens/main/DealerMoreScreen.tsx');
 const profile=app('screens/main/SettingsScreen.tsx');
 const message=app('screens/main/MessagesScreen.tsx');
 const crm=app('screens/main/DealerLeadsScreen.tsx');
@@ -60,10 +61,11 @@ test('large-type tabs wrap rather than reducing to illegible 60 percent and deal
   assert.ok(tabs.includes('maxFontSizeMultiplier={2}'));
   assert.ok(!tabs.includes('minimumFontScale={0.6}'));
   assert.ok(!tabs.includes('adjustsFontSizeToFit'));
-  assert.ok(drawer.includes('getBottomTabBarHeight(fontScale, insets.bottom)'));
+  assert.ok(dealerMore.includes('getBottomTabBarHeight(fontScale, insets.bottom)'));
   assert.ok(layout.includes('getBottomTabItemHeight(fontScale) + 16 + Math.max(0, bottomInset)'));
   assert.ok(layout.includes('fontScale >= 1.6 ? 76 : fontScale >= 1.3 ? 64 : 48'));
   assert.ok(drawer.includes('dealerMode'));
+  assert.ok(tabs.includes('const GatedDealerMoreTab = withDealerGate(DealerMoreScreen)'));
   for(const route of ['Home','Search','Live','Saved','Profile','DealerHome','DealerMore']){
     assert.ok(tabs.includes(`<Tab.Screen name="${route}"`),route);
   }
