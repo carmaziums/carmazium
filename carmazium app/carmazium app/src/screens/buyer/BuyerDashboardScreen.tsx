@@ -20,6 +20,7 @@ import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
@@ -87,7 +88,7 @@ const KpiCard: React.FC<{
   fullWidth?: boolean;
 }> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
   return (
   <View style={[ts.kpiCard, fullWidth && ts.kpiCardFull]}>
     <View style={[ts.kpiGlow, { backgroundColor: tone }]} />
@@ -121,7 +122,7 @@ const ActivityRow: React.FC<{
   isLast?: boolean;
 }> = ({ icon, tone, title, subtitle, time, onPress, isLast }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
   return (
   <TouchableOpacity
     style={[ts.activityRow, !isLast && ts.activityRowBorder]}
@@ -147,7 +148,7 @@ const ActivityRow: React.FC<{
 export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightBuyerStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
   const { user } = useAuthStore();
 
   const [dash, setDash] = useState<BuyerDashData | null>(null);
