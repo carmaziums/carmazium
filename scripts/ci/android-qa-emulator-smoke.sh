@@ -44,6 +44,19 @@ if [[ -z "$pid" ]]; then
   exit 1
 fi
 
+# A running PID alone is NOT a usable screen. An Android launcher/system ANR
+# dialog can appear above a live CarMazium Activity (observed in QA run #105).
+# Fail closed if the CarMazium window does not actually own foreground focus.
+# Only the focused window line is stored, never a full dump of user/UI data.
+focus="$(adb shell dumpsys window windows 2>/dev/null | grep -m 1 -E 'mCurrentFocus=|mFocusedWindow=' | tr -d '\r' || true)"
+printf '%s\n' "$focus" > "$RESULTS/focused-window.txt"
+if [[ -z "$focus" || "$focus" != *"$APP_ID"* ]]; then
+  echo "::error::QA app process is alive but not the focused window; an Android system dialog or launcher may be covering it."
+  echo "::error::Expected foreground package $APP_ID. Focus details saved to the private emulator report."
+  adb exec-out screencap -p > "$RESULTS/logged-out-launch.png" || true
+  exit 1
+fi
+
 # Capture only the logged-out app launch screen. Artifacts remain private to
 # authorised repository collaborators; do not capture authenticated sessions.
 adb exec-out screencap -p > "$RESULTS/logged-out-launch.png"
@@ -66,7 +79,7 @@ sha256sum "$APK" > "$RESULTS/app-sha256.txt"
   echo '- Package: `uk.carmazium.qa`'
   echo '- ABI: x86_64 emulator; APK supports arm64 phones and x86_64 emulator'
   echo '- Installed: yes'
-  echo '- MainActivity cold launch: passed'
+  echo '- MainActivity cold launch and foreground focus: passed'
   echo '- Process alive after 25s: yes'
   echo '- Screenshot: saved in private `CarMazium-QA-Emulator-Report` artifact'
   echo '- No sign-in, payment, bid, chat or seller transaction attempted'
