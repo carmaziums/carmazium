@@ -102,6 +102,30 @@ test('dealer bottom label is Dashboard; site logo leads to public Home without c
   assert.ok(top.includes('<Logo size="sm" width={logoWidth} />'), 'real logo asset retained');
 });
 
+test('Auction Detail bidding starts compact and expands without changing payment safeguards',()=>{
+  const screen=app('screens/vehicle/AuctionDetailScreen.tsx');
+  assert.ok(screen.includes('const [bidPanelExpanded, setBidPanelExpanded] = useState(false)'));
+  assert.ok(screen.includes('accessibilityLabel={bidPanelExpanded ? \'Collapse bidding panel\' : \'Open bidding panel\'}'));
+  assert.ok(screen.includes('maxHeight: Math.max(230, Dimensions.get(\'window\').height * 0.55)'));
+  assert.ok(screen.includes('keyboardShouldPersistTaps="handled"'));
+  assert.ok(screen.includes('bidSubmissionInFlightRef.current'));
+  assert.ok(screen.includes('Confirm your auction bid'));
+  assert.ok(screen.includes('Pay £125 Fee'));
+});
+
+test('Settings heading scrolls with forms and appearance selection persists',()=>{
+  const settings=app('screens/main/SettingsScreen.tsx');
+  const appRoot=read('carmazium app/carmazium app/App.tsx');
+  const store=app('store/appearanceStore.ts');
+  assert.ok(settings.indexOf('<ScrollView') < settings.indexOf('<View style={styles.settingsPageHeader}>'));
+  assert.ok(settings.includes("(['dark', 'light'] as const).map"));
+  assert.ok(settings.includes('setAppearanceMode(choice)'));
+  assert.ok(store.includes("AsyncStorage.setItem(STORAGE_KEY, next)"));
+  assert.ok(appRoot.includes("dark: appearanceMode === 'dark'"));
+  assert.ok(appRoot.includes("appearancePalette(appearanceMode)"));
+  assert.ok(appRoot.includes("initializeAppearance()"));
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
