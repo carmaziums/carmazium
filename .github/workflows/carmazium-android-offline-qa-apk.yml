@@ -3,6 +3,8 @@ name: CarMazium Android standalone QA APK (no Expo credentials)
 # Builds a separate, read-only app for screenshot and navigation review.
 # This does NOT distribute to Google Play, update installed production apps,
 # or publish to the production Expo OTA channel.
+# CRITICAL: in a public repo, GitHub Actions artifacts are accessible to users
+# with public read access. Never upload the installable QA APK from a public repo.
 on:
   # Run a private installable QA artifact once when the workflow itself
   # changes in a same-repository PR. Does not publish customer downloads,
@@ -42,7 +44,8 @@ env:
 
 concurrency:
   group: carmazium-android-standalone-qa
-  cancel-in-progress: false
+  # Cancel superseded QA runs so an old unguarded build cannot publish a binary.
+  cancel-in-progress: true
 
 jobs:
   build-qa:
@@ -170,7 +173,8 @@ jobs:
             echo ''
             echo '**Do not use this build for real transactions, customer data, production bidding, Stripe payments, Play Store upload or daily use.** This QA build still reads from the current live backend and authorisation service.'
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Publish APK as private workflow artifact for reviewer
+      - name: Publish APK only when repository access is private
+        if: ${{ github.event.repository.private == true }}
         uses: actions/upload-artifact@v4
         with:
           name: CarMazium-Android-QA
@@ -180,6 +184,8 @@ jobs:
 
   emulator-smoke:
     name: Android 15 emulator — install, cold launch, screenshot
+    # Artifact handoff only occurs in private repositories; never expose QA APKs on public repos.
+    if: ${{ github.event.repository.private == true }}
     needs: build-qa
     runs-on: ubuntu-latest
     timeout-minutes: 45
