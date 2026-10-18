@@ -327,10 +327,10 @@ const lightValuationStyles = StyleSheet.create({
   description: { color: '#334155' },
   valuationCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   sectionTitle: { color: '#0F172A' },
-  hint: { color: '#64748B' },
+  hint: { color: '#526177' },
   fieldLabel: { color: '#334155' },
   fieldInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
-  guideNote: { color: '#64748B' },
+  guideNote: { color: '#526177' },
   guideResult: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   guideTitle: { color: '#334155' },
   guidePrice: { color: '#0F172A' },
@@ -340,12 +340,12 @@ const lightValuationStyles = StyleSheet.create({
   priceChoiceName: { color: '#0F172A' },
   benefit: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   benefitTitle: { color: '#0F172A' },
-  benefitDetail: { color: '#64748B' },
+  benefitDetail: { color: '#526177' },
   chooseTitle: { color: '#0F172A' },
   retailAction: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   retailTitle: { color: '#0F172A' },
   actionSub: { color: '#334155' },
-  footnote: { color: '#64748B' },
+  footnote: { color: '#526177' },
 });
 
 const styles=StyleSheet.create({
