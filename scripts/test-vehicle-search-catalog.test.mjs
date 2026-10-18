@@ -161,3 +161,41 @@ test('retail condition must not pretend independent pre-owned certification and 
   const native = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
   assert.match(native, /const queryEffectMounted = useRef\(false\)/);
 });
+
+test('native Retail search exposes the website filters in one readable scrolling page', () => {
+  const web = read('src/app/search/page.tsx');
+  const native = read('carmazium app/carmazium app/src/screens/main/SearchScreen.tsx');
+  for (const term of ['exteriorGrades', 'writeOffCategories', 'minCombinedMpg', 'maxZeroTo60Mph',
+    'maxDistanceMi', 'vehicleType', 'selectedFeatures', 'euroStandard', 'sellerType',
+    'transmissions', 'makeQuery', 'variantFilter']) {
+    assert.ok(web.includes(term === 'variantFilter' ? 'variant' : term === 'selectedFeatures' ? 'features' : term), 'web: ' + term);
+    assert.ok(native.includes(term), 'native: ' + term);
+  }
+  assert.match(native, /ListHeaderComponent=\{searchHeader\}/);
+  assert.match(native, /quickScroll: \{ height: 72, flexGrow: 0, flexShrink: 0/);
+  assert.match(native, /keyboardShouldPersistTaps="handled"/);
+  assert.match(native, /ListEmptyComponent=/);
+  assert.match(native, /!loading && !searchError && listings\.length > 0 && hasMore/);
+});
+
+test('auction filter catalogue matches the retail criteria and applies to live and upcoming vehicles', () => {
+  const model = read('carmazium app/carmazium app/src/components/filters/auctionFilters.ts');
+  const sheet = read('carmazium app/carmazium app/src/components/filters/AuctionFilterSheet.tsx');
+  const live = read('carmazium app/carmazium app/src/screens/main/LiveScreen.tsx');
+  for (const key of ['variant', 'colour', 'minMileage', 'maxMileage', 'minDoors', 'minSeats',
+    'minEngine', 'maxEngine', 'maxCo2', 'minCombinedMpg', 'maxZeroToSixty',
+    'driveType', 'minBhp', 'maxBhp', 'conditions', 'exteriorGrades',
+    'writeOffCategories', 'ulezCompliant', 'euroStandard', 'features', 'sellerType',
+    'vehicleType', 'isImported', 'maxDistanceMi', 'deliveryAvailable']) {
+    assert.ok(model.includes(key), 'auction model: ' + key);
+    assert.ok(sheet.includes(key), 'auction UI: ' + key);
+  }
+  for (const catalog of ['CAR_MAKES', 'getModelsForMake', 'VEHICLE_FEATURE_GROUPS', 'EXTERIOR_GRADE_OPTIONS']) {
+    assert.ok(sheet.includes(catalog), 'shared native catalogue: ' + catalog);
+  }
+  assert.ok(model.includes('if (!hasNumber(value)) return false'), 'missing measurements must not be zero');
+  assert.ok(model.includes('if (!origin || !hasNumber(lat) || !hasNumber(lon)) return false'), 'distance without coordinates is not a match');
+  assert.ok(live.includes('a.totalBids > 0 ? a.currentBid : a.startingBid'), 'live unbid lots filter by opening bid');
+  assert.ok(live.includes('filters, Number(u.startingBid), origin'), 'scheduled lots honour bid filters');
+  assert.ok(live.includes('compareAuctions(filters.sortBy)'), 'both auction lists support chosen sorting');
+});
