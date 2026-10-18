@@ -26,7 +26,7 @@ export const WebsiteTopBar: React.FC = () => {
   const { width: windowWidth } = useWindowDimensions();
   // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
   // except where a narrow device needs room for three 44dp action targets.
-  const logoWidth = Math.min(160, Math.max(110, windowWidth - 202));
+  const logoWidth = Math.min(160, Math.max(92, windowWidth - 252));
   const user = useAuthStore(s => s.user);
   const role = useAuthStore(s => s.accountRole);
   const initial = (user?.firstName?.trim()?.charAt(0)
@@ -46,16 +46,16 @@ export const WebsiteTopBar: React.FC = () => {
       </TouchableOpacity>
       <View style={styles.actions}>
         <TouchableOpacity
-          style={[styles.notificationButton, appearanceMode === 'light' && { backgroundColor: palette.input, borderColor: palette.border }]}
+          style={styles.notificationButton}
           onPress={() => navigation.navigate('Notifications')}
           accessibilityRole="button"
           accessibilityLabel="Notifications"
           activeOpacity={0.75}
         >
-          <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
+          <Ionicons name="notifications-outline" size={20} color={Colors.white} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.accountButton, appearanceMode === 'light' && { backgroundColor: palette.input, borderColor: palette.border }]}
+          style={styles.accountButton}
           onPress={() => navigation.navigate('Settings')}
           accessibilityRole="button"
           accessibilityLabel="Account settings"
@@ -63,9 +63,9 @@ export const WebsiteTopBar: React.FC = () => {
           activeOpacity={0.75}
         >
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
-          <Ionicons name="chevron-down" size={15} color={palette.secondary} />
+          <Ionicons name="chevron-down" size={15} color={Colors.white} />
         </TouchableOpacity>
-        <HamburgerButton websiteStyle />
+        <HamburgerButton websiteStyle showLabel />
       </View>
     </View>
   );
