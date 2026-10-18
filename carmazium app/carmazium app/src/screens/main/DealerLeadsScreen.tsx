@@ -401,47 +401,51 @@ const LeadDetail: React.FC<{
 
 // ─── Lead row — hoisted + memoized so FlatList only re-renders the row whose
 // own props changed (mobile-audit.md P3/P4). ──
-const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.memo(({ lead, onPress }) => (
-  <TouchableOpacity style={styles.leadCard} onPress={() => onPress(lead.id)} activeOpacity={0.7}>
-     <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{lead.initials}</Text>
+const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.memo(({ lead, onPress }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles) : styles;
+  return (
+  <TouchableOpacity style={ts.leadCard} onPress={() => onPress(lead.id)} activeOpacity={0.7}>
+     <View style={ts.avatar}>
+        <Text style={ts.avatarText}>{lead.initials}</Text>
      </View>
-     <View style={styles.leadInfo}>
-        <View style={styles.leadNameRow}>
-           <Text style={styles.leadName}>{lead.name}</Text>
-           <Text style={styles.leadTime}>{lead.time}</Text>
+     <View style={ts.leadInfo}>
+        <View style={ts.leadNameRow}>
+           <Text style={ts.leadName}>{lead.name}</Text>
+           <Text style={ts.leadTime}>{lead.time}</Text>
         </View>
-        <Text style={styles.leadVehicle} numberOfLines={1}>{lead.vehicle}</Text>
+        <Text style={ts.leadVehicle} numberOfLines={1}>{lead.vehicle}</Text>
 
-        <View style={styles.leadMetaRow}>
-           {lead.tag === 'HOT' && <View style={styles.tagHot}><Text style={styles.tagHotText}>HOT</Text></View>}
-           {lead.tag === 'WARM' && <View style={styles.tagWarm}><Text style={styles.tagWarmText}>WARM</Text></View>}
-           {lead.tag === 'COLD' && <View style={styles.tagCold}><Text style={styles.tagColdText}>{lead.status}</Text></View>}
+        <View style={ts.leadMetaRow}>
+           {lead.tag === 'HOT' && <View style={ts.tagHot}><Text style={ts.tagHotText}>HOT</Text></View>}
+           {lead.tag === 'WARM' && <View style={ts.tagWarm}><Text style={ts.tagWarmText}>WARM</Text></View>}
+           {lead.tag === 'COLD' && <View style={ts.tagCold}><Text style={ts.tagColdText}>{lead.status}</Text></View>}
 
            {formatPrice(lead.listingPrice) && (
-              <View style={styles.tagPrice}>
+              <View style={ts.tagPrice}>
                  <Ionicons name="pricetag-outline" size={10} color={Colors.accent} style={{marginRight: 4}}/>
-                 <Text style={styles.tagPriceText}>{formatPrice(lead.listingPrice)}</Text>
+                 <Text style={ts.tagPriceText}>{formatPrice(lead.listingPrice)}</Text>
               </View>
            )}
            {lead.assignedToName && (
-              <View style={styles.tagCold}>
-                 <Text style={styles.tagColdText}>→ {lead.assignedToName}</Text>
+              <View style={ts.tagCold}>
+                 <Text style={ts.tagColdText}>→ {lead.assignedToName}</Text>
               </View>
            )}
 
-           <Text style={styles.leadMessage} numberOfLines={1}>
+           <Text style={ts.leadMessage} numberOfLines={1}>
               {lead.notes || (lead.source ? (SOURCE_LABELS[lead.source] || lead.source) : `Status: ${lead.status}`)}
            </Text>
         </View>
      </View>
      {lead.unreadCount ? (
-        <View style={styles.unreadBadge}>
-           <Text style={styles.unreadBadgeText}>{lead.unreadCount}</Text>
+        <View style={ts.unreadBadge}>
+           <Text style={ts.unreadBadgeText}>{lead.unreadCount}</Text>
         </View>
      ) : null}
   </TouchableOpacity>
-));
+  );
+});
 
 // Website CRM card: buyer, source, interested listing, direct contact,
  // latest activity, follow-up state and phase move action. Mobile uses tap
@@ -452,20 +456,23 @@ const BoardCard: React.FC<{
   onPress: (id: string) => void;
   onMove: (id: string) => void;
   onFollowUp: (id: string, current: string | null | undefined) => void;
-}> = React.memo(({ lead, onPress, onMove, onFollowUp }) => (
+}> = React.memo(({ lead, onPress, onMove, onFollowUp }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles) : styles;
+  return (
   <AnimatedTouchable entering={FadeIn.duration(200)}
-    style={styles.websiteLeadCard} onPress={() => onPress(lead.id)} activeOpacity={0.85}
+    style={ts.websiteLeadCard} onPress={() => onPress(lead.id)} activeOpacity={0.85}
     accessibilityRole="button" accessibilityLabel={`Open customer ${lead.name}`}>
-    <View style={styles.websiteLeadCardHead}>
-      <View style={styles.boardAvatar}><Ionicons name="person-outline" size={17} color={Colors.textSecondary} /></View>
-      <View style={styles.websiteLeadCardIdentity}>
-        <Text style={styles.boardCardName} numberOfLines={2}>{lead.name}</Text>
-        <Text style={styles.websiteLeadSource} numberOfLines={2}>
+    <View style={ts.websiteLeadCardHead}>
+      <View style={ts.boardAvatar}><Ionicons name="person-outline" size={17} color={Colors.textSecondary} /></View>
+      <View style={ts.websiteLeadCardIdentity}>
+        <Text style={ts.boardCardName} numberOfLines={2}>{lead.name}</Text>
+        <Text style={ts.websiteLeadSource} numberOfLines={2}>
           {lead.source ? SOURCE_LABELS[lead.source] || lead.source : 'Unknown source'}
         </Text>
       </View>
       <TouchableOpacity
-        style={styles.boardMoveBtn}
+        style={ts.boardMoveBtn}
         accessibilityRole="button"
         accessibilityLabel={`Change pipeline stage for ${lead.name}`}
         onPress={() => onMove(lead.id)}
@@ -474,35 +481,35 @@ const BoardCard: React.FC<{
       </TouchableOpacity>
     </View>
     {lead.vehicle !== 'General enquiry' && (
-      <View style={styles.websiteInterestTile}>
-        <Text style={styles.websiteInterestLabel}>INTERESTED IN</Text>
-        <Text style={styles.boardCardVehicle} numberOfLines={2}>{lead.vehicle}</Text>
+      <View style={ts.websiteInterestTile}>
+        <Text style={ts.websiteInterestLabel}>INTERESTED IN</Text>
+        <Text style={ts.boardCardVehicle} numberOfLines={2}>{lead.vehicle}</Text>
       </View>
     )}
-    <View style={styles.websiteContactLine}>
+    <View style={ts.websiteContactLine}>
       {lead.email && (
         <TouchableOpacity
-          style={styles.websiteContactChip}
+          style={ts.websiteContactChip}
           accessibilityRole="button" accessibilityLabel={`Email ${lead.name}`}
           onPress={() => { void Linking.openURL(`mailto:${lead.email}`); }}>
           <Ionicons name="mail-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.email}</Text>
+          <Text style={ts.websiteContactText} numberOfLines={1}>{lead.email}</Text>
         </TouchableOpacity>
       )}
       {lead.phone && (
-        <TouchableOpacity style={styles.websiteContactChip}
+        <TouchableOpacity style={ts.websiteContactChip}
           accessibilityRole="button" accessibilityLabel={`Call ${lead.name}`}
           onPress={() => { void Linking.openURL(`tel:${lead.phone}`); }}>
           <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.websiteContactText} numberOfLines={1}>{lead.phone}</Text>
+          <Text style={ts.websiteContactText} numberOfLines={1}>{lead.phone}</Text>
         </TouchableOpacity>
       )}
     </View>
-    <View style={styles.websiteLeadCardFoot}>
-      <Text style={styles.websiteActivity}>
+    <View style={ts.websiteLeadCardFoot}>
+      <Text style={ts.websiteActivity}>
         {lead.lastActivityAt ? formatTimeAgo(lead.lastActivityAt) : lead.time} ago
       </Text>
-      <TouchableOpacity style={[styles.websiteFollowUp, isFollowUpOverdue(lead) && styles.websiteFollowUpDue]}
+      <TouchableOpacity style={[ts.websiteFollowUp, isFollowUpOverdue(lead) && ts.websiteFollowUpDue]}
         onPress={() => onFollowUp(lead.id, lead.nextFollowUpAt)}
         accessibilityRole="button"
         accessibilityLabel={lead.nextFollowUpAt
@@ -510,21 +517,22 @@ const BoardCard: React.FC<{
           : 'Schedule follow-up for tomorrow'}>
         <Ionicons name="time-outline" size={14}
           color={isFollowUpOverdue(lead) ? Colors.error : Colors.textSecondary} />
-        <Text style={[styles.websiteFollowText, isFollowUpOverdue(lead) && { color: Colors.error }]}>
+        <Text style={[ts.websiteFollowText, isFollowUpOverdue(lead) && { color: Colors.error }]}>
           {lead.nextFollowUpAt ? isFollowUpOverdue(lead) ? 'Overdue' : 'Reminder' : 'Follow up'}
         </Text>
       </TouchableOpacity>
     </View>
-    <View style={styles.websitePhaseFooter}>
-      <Text style={styles.websitePhaseLabel}>PHASE STATUS</Text>
-      <TouchableOpacity style={styles.websitePhaseButton} onPress={() => onMove(lead.id)}
+    <View style={ts.websitePhaseFooter}>
+      <Text style={ts.websitePhaseLabel}>PHASE STATUS</Text>
+      <TouchableOpacity style={ts.websitePhaseButton} onPress={() => onMove(lead.id)}
         accessibilityRole="button" accessibilityLabel="Change phase status">
-        <Text style={styles.websitePhaseText}>{BOARD_STAGES.find(x => x.key === lead.status)?.label || lead.status}</Text>
+        <Text style={ts.websitePhaseText}>{BOARD_STAGES.find(x => x.key === lead.status)?.label || lead.status}</Text>
         <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
       </TouchableOpacity>
     </View>
   </AnimatedTouchable>
-));
+  );
+});
 
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
@@ -1202,6 +1210,13 @@ const lightDealerLeadsScreenStyles = StyleSheet.create({
   leadTime: { color: '#64748B' },
   boardCardVehicle: { color: '#64748B' },
   filterTabText: { color: '#64748B' },
+  avatar: { backgroundColor: '#E5EEF7' },
+  leadMessage: { color: '#64748B' },
+  boardAvatar: { backgroundColor: '#E5EEF7' },
+  websitePhaseButton: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  websiteLeadSource: { color: '#64748B' },
+  tagColdText: { color: '#334155' },
+  tagPriceText: { color: '#334155' },
 });
 
 const styles = StyleSheet.create({
