@@ -47,7 +47,7 @@ test('one hub opens existing Saved, Messages, Notifications, and REAL Support th
   assert.ok(settings.includes("navigation.navigate('Notifications')"));
   assert.ok(settings.includes('getOrCreateSupportRoom()'));
   assert.ok(settings.includes("navigation.navigate('ChatScreen', { threadId: room.id })"));
-  assert.ok(drawer.includes('getOrCreateSupportRoom()'), 'reuses drawer backend');
+  assert.ok(settings.includes('getOrCreateSupportRoom()'), 'support remains reachable from Settings, without duplicating the public Menu');
   assert.ok(nav.includes('ChatScreen: { threadId: string }'));
 });
 
