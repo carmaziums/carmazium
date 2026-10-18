@@ -13,6 +13,7 @@ const web=read('src/app/dashboard/dealer/auctions/page.tsx');
 const routes=read('src/config/dealerRouteConfig.ts');
 const tab=app('navigation/TabNavigator.tsx');
 const hub=app('screens/main/DealerBuyBidScreen.tsx');
+const inventory=app('screens/main/DealerInventoryScreen.tsx');
 const other=app('screens/main/DealerAuctionBuyingSections.tsx');
 const live=app('screens/main/LiveScreen.tsx');
 const seller=app('screens/seller/SellerAuctionsScreen.tsx');
@@ -52,8 +53,8 @@ test('seller creation and won workflow reuse existing native authorised route/st
 });
 
 test('native Live keeps all existing auction cards, filters, buyer preview and permissions',()=>{
-  assert.ok(hub.includes('<LiveScreen embeddedDealerHub />'));
-  assert.ok(live.includes("export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean }>"));
+  assert.ok(hub.includes('<LiveScreen embeddedDealerHub embeddedHeader='));
+  assert.ok(live.includes('embeddedHeader?: React.ReactNode'));
   assert.ok(live.includes('{dealerMode && !embeddedDealerHub && <WebsiteTopBar />}'));
   assert.ok(live.includes("hasPermission('MANAGE_INVENTORY')"));
   assert.ok(live.includes("hasPermission('PLACE_BID')"));
@@ -71,7 +72,7 @@ test('auction shortlist is dealer-specific not retail Saved, with exact API and 
   assert.ok(other.includes("useState<'live' | 'all'>('live')"));
   assert.ok(other.includes('setTotalPages'));
   assert.ok(other.includes('AuctionDeepLink'));
-  assert.ok(hub.includes('<DealerAuctionShortlist navigation={navigation} />'));
+  assert.ok(hub.includes('<DealerAuctionShortlist navigation={navigation} header={hubHeader} />'));
   assert.ok(!hub.includes("navigation?.navigate('Saved')"),'dealer auction shortlist must not become retail Saved Cars');
 });
 
@@ -97,4 +98,23 @@ test('prior dealer and consumer tabs plus provenance/limits remain intact',()=>{
     'revert','synthetic']){
     assert.ok(doc.toLowerCase().includes(x.toLowerCase()),x);
   }
+});
+
+test('dealer stock and auction hubs have one vertically scrolling content surface',()=>{
+  assert.ok(inventory.includes('ListHeaderComponent={inventoryHeader}'),
+    'stock page heading, search and filters must scroll with inventory');
+  assert.ok(inventory.includes('keyboardShouldPersistTaps="handled"'));
+  assert.ok(inventory.includes("key={viewMode}"), 'grid/list switching remains intact');
+  assert.ok(hub.includes('ListHeaderComponent={myAuctionHeader}'),
+    'my auctions hub and cards must use the same vertical FlatList');
+  assert.ok(hub.includes('<LiveScreen embeddedDealerHub embeddedHeader='),
+    'Live Auctions hub must be inside live vertical scroll');
+  assert.ok(live.includes('embeddedHeader && <View'),
+    'Live Auctions embeds the dealer heading in its own ScrollView');
+  assert.ok(hub.includes('header={hubHeader}'));
+  assert.ok(other.includes('ListHeaderComponentStyle={{ marginHorizontal: -20 }}'),
+    'Shortlisted and My Bids must scroll with their headings and filters');
+  assert.ok(hub.includes('Auction and buying navigation'),
+    'horizontal navigation remains accessible');
+  assert.ok(!hub.includes('<View style={styles.heading}>\n      </View>'));
 });
