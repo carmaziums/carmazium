@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -316,7 +316,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         <View style={ts.cardTopRow}>
           <Text style={ts.listingTitle} numberOfLines={1}>{listingTitle}</Text>
           <View style={[ts.statusChip, { backgroundColor: cfg.chipBg }]}>
-            <Text style={[ts.statusChipText, { color: cfg.chipText }]}>
+            <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (offer.status === 'ACCEPTED' ? lightReadableText.success : offer.status === 'PENDING' ? lightReadableText.warning : offer.status === 'COUNTERED' ? lightReadableText.accent : lightReadableText.muted) : cfg.chipText }]}>
               {cfg.chipLabel}
             </Text>
           </View>
@@ -341,7 +341,7 @@ export const DealerMyOffersScreen: React.FC = () => {
                 <Text
                   style={[
                     ts.counterDiff,
-                    { color: counterDiff > 0 ? Colors.accent : Colors.success },
+                    { color: counterDiff > 0 ? (appearanceMode === 'light' ? lightReadableText.error : Colors.accent) : (appearanceMode === 'light' ? lightReadableText.success : Colors.success) },
                   ]}
                 >
                   {counterDiff > 0 ? `+${formatPrice(counterDiff)}` : formatPrice(counterDiff)}{' '}
@@ -460,7 +460,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         )}
       </View>
     );
-  }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller]);
+  }, [actionLoading, handleWithdraw, handleCounterRespond, handleMessageSeller, appearanceMode]);
 
   // ─────────────── main render ───────────────────────
 
