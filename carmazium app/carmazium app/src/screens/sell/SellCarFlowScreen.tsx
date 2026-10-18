@@ -238,9 +238,15 @@ const { width: SW } = Dimensions.get('window');
 
 // ─── Small helper components ──────────────────────────────────────────────────
 
-const SL = ({ label, required }: { label: string; required?: boolean }) => (
-  <Text style={s.sectionLabel}>{label}{required ? ' *' : ''}</Text>
-);
+function useSellFieldStyles() {
+  const mode = useAppearanceStore(state => state.mode);
+  return mode === 'light' ? mergeAppearanceStyles(s, lightSellFlowStyles) : s;
+}
+
+const SL = ({ label, required }: { label: string; required?: boolean }) => {
+  const ts = useSellFieldStyles();
+  return <Text style={ts.sectionLabel}>{label}{required ? ' *' : ''}</Text>;
+};
 
 function FieldInput({
   label, value, onChange, placeholder, keyboardType, multiline, required, hint, error
@@ -249,12 +255,13 @@ function FieldInput({
   placeholder?: string; keyboardType?: any; multiline?: boolean;
   required?: boolean; hint?: string; error?: string;
 }) {
+  const ts = useSellFieldStyles();
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
-      {hint ? <Text style={s.fieldHint}>{hint}</Text> : null}
+      {hint ? <Text style={ts.fieldHint}>{hint}</Text> : null}
       <TextInput
-        style={[s.input, multiline && { height: 100, textAlignVertical: 'top', paddingTop: 12 }, error ? { borderColor: Colors.error } : null]}
+        style={[ts.input, multiline && { height: 100, textAlignVertical: 'top', paddingTop: 12 }, error ? { borderColor: Colors.error } : null]}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
@@ -263,7 +270,7 @@ function FieldInput({
         multiline={multiline}
         autoCorrect={false}
       />
-      {error ? <Text style={s.inlineError}>{error}</Text> : null}
+      {error ? <Text style={ts.inlineError}>{error}</Text> : null}
     </View>
   );
 }
@@ -283,6 +290,7 @@ function PickerField({
   options: string[]; placeholder?: string; required?: boolean;
   hint?: string; error?: string; disabled?: boolean;
 }) {
+  const ts = useSellFieldStyles();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -305,23 +313,23 @@ function PickerField({
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
-      {hint ? <Text style={s.fieldHint}>{hint}</Text> : null}
+      {hint ? <Text style={ts.fieldHint}>{hint}</Text> : null}
       <TouchableOpacity
-        style={[s.input, s.pickerFieldInput, error ? { borderColor: Colors.error } : null, disabled && { opacity: 0.5 }]}
+        style={[ts.input, ts.pickerFieldInput, error ? { borderColor: Colors.error } : null, disabled && { opacity: 0.5 }]}
         onPress={openSheet}
         activeOpacity={0.7}
         disabled={disabled}
       >
-        <Text style={value ? s.pickerFieldValue : s.pickerFieldPlaceholder} numberOfLines={1}>
+        <Text style={value ? ts.pickerFieldValue : ts.pickerFieldPlaceholder} numberOfLines={1}>
           {value || placeholder}
         </Text>
         <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
       </TouchableOpacity>
-      {error ? <Text style={s.inlineError}>{error}</Text> : null}
+      {error ? <Text style={ts.inlineError}>{error}</Text> : null}
 
       <BottomSheet visible={open} onClose={() => setOpen(false)} title={label.replace(' *', '')} avoidKeyboard>
         <TextInput
-          style={s.pickerSearchInput}
+          style={ts.pickerSearchInput}
           value={query}
           onChangeText={setQuery}
           placeholder={options.length ? 'Search or type your own…' : 'Type it in…'}
@@ -331,19 +339,19 @@ function PickerField({
         />
         <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
           {!!query.trim() && !exactMatch && (
-            <TouchableOpacity style={s.pickerOptionRow} onPress={() => select(query.trim())} activeOpacity={0.7}>
+            <TouchableOpacity style={ts.pickerOptionRow} onPress={() => select(query.trim())} activeOpacity={0.7}>
               <Ionicons name="add-circle-outline" size={16} color={Colors.accent} />
-              <Text style={[s.pickerOptionText, { color: Colors.accent }]}>Use "{query.trim()}"</Text>
+              <Text style={[ts.pickerOptionText, { color: Colors.accent }]}>Use "{query.trim()}"</Text>
             </TouchableOpacity>
           )}
           {filtered.map(opt => (
-            <TouchableOpacity key={opt} style={s.pickerOptionRow} onPress={() => select(opt)} activeOpacity={0.7}>
-              <Text style={s.pickerOptionText}>{opt}</Text>
+            <TouchableOpacity key={opt} style={ts.pickerOptionRow} onPress={() => select(opt)} activeOpacity={0.7}>
+              <Text style={ts.pickerOptionText}>{opt}</Text>
               {value === opt && <Ionicons name="checkmark" size={16} color={Colors.accent} />}
             </TouchableOpacity>
           ))}
           {!filtered.length && !query.trim() && (
-            <Text style={s.pickerEmptyText}>No preset list for this — type your own above.</Text>
+            <Text style={ts.pickerEmptyText}>No preset list for this — type your own above.</Text>
           )}
         </ScrollView>
       </BottomSheet>
@@ -357,6 +365,7 @@ function PillRow<T extends string>({
   label: string; options: { v: T; l: string }[]; value: T | '';
   onSelect: (v: T) => void; required?: boolean; error?: string;
 }) {
+  const ts = useSellFieldStyles();
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
@@ -364,15 +373,15 @@ function PillRow<T extends string>({
         {options.map(o => (
           <TouchableOpacity
             key={o.v}
-            style={[s.pill, value === o.v && s.pillActive]}
+            style={[ts.pill, value === o.v && ts.pillActive]}
             onPress={() => onSelect(o.v)}
             activeOpacity={0.7}
           >
-            <Text style={[s.pillText, value === o.v && s.pillTextActive]}>{o.l}</Text>
+            <Text style={[ts.pillText, value === o.v && ts.pillTextActive]}>{o.l}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {error ? <Text style={s.inlineError}>{error}</Text> : null}
+      {error ? <Text style={ts.inlineError}>{error}</Text> : null}
     </View>
   );
 }
@@ -383,6 +392,7 @@ function YesNoRow({
   label: string; value: boolean | null;
   onChange: (v: boolean) => void; required?: boolean; error?: string;
 }) {
+  const ts = useSellFieldStyles();
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
@@ -390,24 +400,25 @@ function YesNoRow({
         {[true, false].map(b => (
           <TouchableOpacity
             key={String(b)}
-            style={[s.yesno, value === b && s.yesnoActive]}
+            style={[ts.yesno, value === b && ts.yesnoActive]}
             onPress={() => onChange(b)}
             activeOpacity={0.7}
           >
-            <Text style={[s.yesnoText, value === b && s.yesnoTextActive]}>{b ? 'Yes' : 'No'}</Text>
+            <Text style={[ts.yesnoText, value === b && ts.yesnoTextActive]}>{b ? 'Yes' : 'No'}</Text>
           </TouchableOpacity>
         ))}
       </View>
-      {error ? <Text style={s.inlineError}>{error}</Text> : null}
+      {error ? <Text style={ts.inlineError}>{error}</Text> : null}
     </View>
   );
 }
 
 function DVLAField({ label, value }: { label: string; value: string }) {
+  const ts = useSellFieldStyles();
   return (
-    <View style={s.dvlaField}>
-      <Text style={s.dvlaFieldLabel}>{label}</Text>
-      <Text style={s.dvlaFieldValue}>{value || '—'}</Text>
+    <View style={ts.dvlaField}>
+      <Text style={ts.dvlaFieldLabel}>{label}</Text>
+      <Text style={ts.dvlaFieldValue}>{value || '—'}</Text>
     </View>
   );
 }
@@ -416,13 +427,14 @@ function SectionBox({ title, children, accent, action, onLayout }: {
   title: string; children: React.ReactNode; accent?: string; action?: React.ReactNode;
   onLayout?: (event: any) => void;
 }) {
+  const ts = useSellFieldStyles();
   return (
-    <View style={s.sectionBox} onLayout={onLayout}>
-      <View style={[s.sectionBoxHeader, accent ? { borderLeftColor: accent } : {}]}>
-        <Text style={s.sectionBoxTitle}>{title}</Text>
+    <View style={ts.sectionBox} onLayout={onLayout}>
+      <View style={[ts.sectionBoxHeader, accent ? { borderLeftColor: accent } : {}]}>
+        <Text style={ts.sectionBoxTitle}>{title}</Text>
         {action && <View style={{ marginLeft: 'auto' }}>{action}</View>}
       </View>
-      <View style={s.sectionBoxBody}>{children}</View>
+      <View style={ts.sectionBoxBody}>{children}</View>
     </View>
   );
 }
@@ -439,6 +451,7 @@ function Damage3DMapper({
   onPhoto: (zoneId: string, uri: string) => void;
   bodyTypeLabel?: string;
 }) {
+  const ts = useSellFieldStyles();
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
@@ -467,7 +480,7 @@ function Damage3DMapper({
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabel}</Text>
-            <Text style={[s.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
+            <Text style={[ts.fieldHint, { marginTop: 3 }]}>Automatically calculated from {records.length} reported defect{records.length === 1 ? '' : 's'}.</Text>
           </View>
           <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: FontSize.lg }}>{grade}</Text>
         </View>
@@ -490,7 +503,7 @@ function Damage3DMapper({
         {DAMAGE_ZONE_SECTIONS.map(section => (
           <View key={section} style={{ marginBottom: 14 }}>
             <SL label={section.toUpperCase()} />
-            <View style={s.zoneChipRow}>
+            <View style={ts.zoneChipRow}>
               {DAMAGE_ZONES_3D.filter(z => z.section === section).map(zone => {
                 const isMarked = markedLabels.includes(zone.label);
                 // Selected (currently being marked, form not yet confirmed)
@@ -501,11 +514,11 @@ function Damage3DMapper({
                 return (
                   <TouchableOpacity
                     key={zone.id}
-                    style={[s.pill, (isMarked || isSelected) && s.pillActive]}
+                    style={[ts.pill, (isMarked || isSelected) && ts.pillActive]}
                     onPress={() => setAddingZone(zone.label)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[s.pillText, (isMarked || isSelected) && s.pillTextActive]}>{zone.label}</Text>
+                    <Text style={[ts.pillText, (isMarked || isSelected) && ts.pillTextActive]}>{zone.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -518,14 +531,14 @@ function Damage3DMapper({
           <SL label="OTHER DAMAGE AREA" />
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
-              style={[s.input, { flex: 1 }]}
+              style={[ts.input, { flex: 1 }]}
               value={customZoneText}
               onChangeText={setCustomZoneText}
               placeholder="e.g. Interior — Driver Seat, Engine Bay..."
               placeholderTextColor={Colors.iconMuted}
             />
             <TouchableOpacity
-              style={[s.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
+              style={[ts.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
               disabled={!customZoneText.trim()}
               onPress={() => {
                 setAddingZone(customZoneText.trim());
@@ -533,44 +546,44 @@ function Damage3DMapper({
               }}
               activeOpacity={0.7}
             >
-              <Text style={s.pillText}>Mark</Text>
+              <Text style={ts.pillText}>Mark</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.zoneHint}>Not in the list above? Type any area and press Mark to describe the damage.</Text>
+          <Text style={ts.zoneHint}>Not in the list above? Type any area and press Mark to describe the damage.</Text>
         </View>
       </View>
 
       {/* Inline add form */}
       {addingZone && (
-        <View style={s.dmgForm}>
-          <Text style={s.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
+        <View style={ts.dmgForm}>
+          <Text style={ts.dmgFormTitle}>Mark damage: <Text style={{ color: Colors.accent }}>{addingZone}</Text></Text>
           <SL label="DAMAGE TYPE" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 12 }}>
             {DAMAGE_TYPES.map(t => (
               <TouchableOpacity
                 key={t}
-                style={[s.pill, dmgType === t && s.pillActive]}
+                style={[ts.pill, dmgType === t && ts.pillActive]}
                 onPress={() => setDmgType(t as DamageEntry['type'])}
                 activeOpacity={0.7}
               >
-                <Text style={[s.pillText, dmgType === t && s.pillTextActive]}>{t}</Text>
+                <Text style={[ts.pillText, dmgType === t && ts.pillTextActive]}>{t}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
           <SL label="DESCRIPTION (optional)" />
           <TextInput
-            style={[s.input, { marginBottom: 12 }]}
+            style={[ts.input, { marginBottom: 12 }]}
             value={dmgDesc}
             onChangeText={setDmgDesc}
             placeholder="e.g. Small scratch on lower section"
             placeholderTextColor={Colors.borderMuted}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity style={[s.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
-              <Text style={s.pillText}>CANCEL</Text>
+            <TouchableOpacity style={[ts.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
+              <Text style={ts.pillText}>CANCEL</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.pill, s.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
-              <Text style={s.pillTextActive}>MARK DAMAGE</Text>
+            <TouchableOpacity style={[ts.pill, ts.pillActive, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} onPress={confirmAdd} activeOpacity={0.8}>
+              <Text style={ts.pillTextActive}>MARK DAMAGE</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -581,10 +594,10 @@ function Damage3DMapper({
         <View style={{ marginTop: 16 }}>
           <SL label={`DAMAGE RECORDS (${records.length})`} />
           {records.map(r => (
-            <View key={r.id} style={s.dmgRecord}>
+            <View key={r.id} style={ts.dmgRecord}>
               <View style={{ flex: 1 }}>
-                <Text style={s.dmgRecordZone}>{r.zone}</Text>
-                <Text style={s.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
+                <Text style={ts.dmgRecordZone}>{r.zone}</Text>
+                <Text style={ts.dmgRecordMeta}>{r.type}{r.description ? ` · ${r.description}` : ''}</Text>
               </View>
               <IconButton
                 icon={<Ionicons name="trash-outline" size={16} color={Colors.accent} />}
@@ -2509,17 +2522,17 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
 
   function renderStepGuidance() {
     return (
-      <View style={{ padding: 14, borderRadius: 12, backgroundColor: Colors.infoBlueAlpha08, borderWidth: 1, borderColor: Colors.infoBlueAlpha20, marginBottom: 14, gap: 7 }}>
+      <View style={{ padding: 14, borderRadius: 12, backgroundColor: appearanceMode === 'light' ? '#DBEAFE' : Colors.infoBlueAlpha08, borderWidth: 1, borderColor: appearanceMode === 'light' ? '#93C5FD' : Colors.infoBlueAlpha20, marginBottom: 14, gap: 7 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
-          <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>
+          <Text style={{ color: appearanceMode === 'light' ? '#0F172A' : Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>
             Your guide · {STEP_LABELS[step - 1]}
           </Text>
         </View>
-        <Text style={{ color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
+        <Text style={{ color: appearanceMode === 'light' ? '#334155' : Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
           What to do: {stepGuidance.what}
         </Text>
-        <Text style={{ color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
+        <Text style={{ color: appearanceMode === 'light' ? '#526177' : Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 19 }}>
           Why we ask: {stepGuidance.why}
         </Text>
       </View>
@@ -4283,7 +4296,13 @@ const lightSellFlowStyles = StyleSheet.create({
   container: { backgroundColor: '#EEF5FB' },
   backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   sectionBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC', borderWidth: 1 },
+  sectionBoxHeader: { backgroundColor: '#F7FBFF', borderBottomColor: '#D5E1EC' },
+  pillActive: { backgroundColor: '#FCE8EA', borderColor: '#CC1820' },
+  pillTextActive: { color: '#7F1D1D' },
+  yesnoActive: { backgroundColor: '#FCE8EA', borderColor: '#CC1820' },
+  yesnoTextActive: { color: '#7F1D1D' },
   methodChoice: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  methodChoiceSelected: { backgroundColor: '#FCE8EA', borderColor: '#CC1820' },
   optionalSectionToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   freshActionBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   dvlaField: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
