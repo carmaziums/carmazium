@@ -100,7 +100,7 @@ test('native home listing cards preserve owner-approved photo-and-facts layout a
   const home = app('screens/main/HomeScreen.tsx');
   assert.doesNotMatch(home, /<ImageCarousel\\b/, 'nested image carousels in home rails reproduce oversized stray pictures');
   assert.match(home, /useWindowDimensions\\(\\)/, 'cards must fit narrow Android widths and rotation');
-  assert.match(home, /style=\\{\\[s\\.listingCard, \\{ width: Math\\.max\\(220, Math\\.min\\(284, windowWidth - 48\\)\\) \\}\\]\\}/);
+  assert.match(home, /style=\\{\\[cs\\.listingCard, \\{ width: Math\\.max\\(220, Math\\.min\\(284, windowWidth - 48\\)\\) \\}\\]\\}/);
   assert.match(home, /<Image source=\\{\\{ uri: listing\\.images\\[0\\] \\}\\}/, 'retail rail uses one leading photo');
   assert.match(home, /<Image source=\\{\\{ uri: images\\[0\\] \\}\\}/, 'auction rail uses one leading photo');
   for (const essential of ['homeVehicleTitle(listing.make, listing.model)', 'listing.year',
@@ -114,6 +114,14 @@ test('native home listing cards preserve owner-approved photo-and-facts layout a
   assert.ok(home.includes("rawCategory === 'S' || rawCategory === 'N'"), 'write-off badge must follow known S/N records');
   assert.match(home, /bidOverlay: \\{ flexDirection:/, 'auction bid and countdown must stay below photos, not as an overlay');
   assert.match(home, /featuredIds = new Set\\(featuredListings\\.map/, 'do not repeat featured cars in Latest');
+  assert.equal((home.match(/const cs = useHomeCardStyles\\(\\);/g) ?? []).length, 3,
+    'live, upcoming and retail cards must subscribe to light/dark appearance');
+  assert.ok(home.includes('mergeAppearanceStyles(s, lightHomeStyles)'), 'light changes only colours and must preserve card layout');
+  for (const style of ['auctionCard', 'listingCard', 'cardBody', 'cardSpecs',
+    'cardTitle', 'cardPrice', 'bidOverlay', 'overlayLabel', 'overlayVal',
+    'homeBadgeText', 'retailFact']) {
+    assert.ok(home.includes(style + ': {'), 'missing named home card style: ' + style);
+  }
   assert.ok(home.includes('const lightHomeStyles'), 'retain the newer native light appearance work');
   assert.ok(home.includes('style={ts.container}'), 'light/dark switching remains connected');
 });
