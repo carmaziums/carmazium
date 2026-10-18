@@ -67,7 +67,7 @@ function ErrorText({ message, onRetry }: { message: string; onRetry: () => void 
   </View>;
 }
 
-export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
+export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -111,7 +111,11 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
     setView(next);
   };
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, header && { paddingTop: 0 }]}>
+      <FlatList
+        style={styles.list}
+        ListHeaderComponent={<>
+          {header}
       <Text style={styles.title}>Shortlisted Auctions</Text>
       <Text style={styles.subtitle}>
         Save live vehicles and return to bid when you are ready.
@@ -132,7 +136,8 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
         )}
       </View>
       {error && <ErrorText message={error} onRetry={() => void fetchSaved(true)} />}
-      <FlatList
+        </>}
+        ListHeaderComponentStyle={{ marginHorizontal: -20 }}
         data={error && !items.length ? [] : items}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
@@ -189,7 +194,7 @@ export function DealerAuctionShortlist({ navigation }: { navigation?: Nav }) {
   );
 }
 
-export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
+export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -221,7 +226,10 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
     return () => clearInterval(id);
   }, [fetchBids]);
   const leading = positions.filter(x=>x.isLeading).length;
-  return <View style={styles.root}>
+  return <View style={[styles.root, header && { paddingTop: 0 }]}>
+    <FlatList
+      ListHeaderComponent={<>
+        {header}
     <Text style={styles.title}>My Auction Bids</Text>
     <Text style={styles.subtitle}>One live position per vehicle you're currently bidding on</Text>
     {error && <ErrorText message={error} onRetry={() => void fetchBids(true)} />}
@@ -235,7 +243,8 @@ export function DealerActiveBidPositions({ navigation }: { navigation?: Nav }) {
         </View>
       ))}
     </View>}
-    <FlatList
+      </>}
+      ListHeaderComponentStyle={{ marginHorizontal: -20 }}
       style={styles.list}
       data={error && !positions.length ? [] : positions}
       keyExtractor={x => x.listingId}
