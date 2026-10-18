@@ -11,6 +11,7 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
@@ -75,7 +76,7 @@ interface Props {
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
   return (
     <View style={ts.section}>
       <Text style={ts.sectionTitle}>{title}</Text>
@@ -90,7 +91,7 @@ const Pill: React.FC<{ label: string; selected: boolean; onPress: () => void }> 
   onPress,
 }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
   return (
   <TouchableOpacity
     style={[ts.pill, selected && ts.pillSelected]}
@@ -123,7 +124,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 }) => {
   const [draft, setDraft] = useState<AuctionFilterState>(value);
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightAuctionFilterStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [makeQuery, setMakeQuery] = useState('');
   const [showAllMakes, setShowAllMakes] = useState(false);
