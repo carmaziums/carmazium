@@ -491,7 +491,12 @@ export class ListingsService {
         if (usableLiveComparables.length > 0) {
             calculatedBase = calculateVehicleValuation(
                 baseValuationInput,
-                usableLiveComparables,
+                [
+                    ...usableLiveComparables,
+                    // Genuine platform auction outcomes can inform the trade
+                    // channel even when retail is backed by fresh live adverts.
+                    ...comparables.filter(row => row.kind === 'AUCTION_RESULT'),
+                ],
             );
             calculatedBase.source = 'LIVE_UK_MARKET';
             calculatedBase.explanation =
@@ -676,9 +681,8 @@ export class ListingsService {
     }
 
     /**
-     * A normalized UK registration is the primary vehicle identity.
-     * Model, year, mileage and formatting can be corrected without defeating
-     * the 24-hour quote lock. Vehicles without a VRM use a specification key.
+     * A normalized registration is one component of vehicle identity.
+     * Mileage and derivative must also match for a frozen 24-hour quote.
      */
     private valuationPriceLockId(dto: VehicleValuationDto): string {
         const vrm = (dto.registration ?? '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
