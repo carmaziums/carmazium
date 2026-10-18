@@ -474,7 +474,7 @@ test('team cards and seller offer forms respond to light appearance',()=>{
   for (const source of [role,staff]) {
     assert.ok(source.includes('useAppearanceStore(state => state.mode)'),'nested dealer team component must subscribe to theme');
     assert.ok(source.includes('mergeAppearanceStyles(styles, lightDealerTeamScreenStyles)'),'nested staff theme must preserve layout');
-    assert.ok(source.includes('style={ts.' )||source.includes('style={[ts.'),'nested staff components must use themed style');
+    assert.ok(/\bts\.(?:rolePill|rolePillText|staffCard|staffName)\b/.test(source),'nested staff components must use themed style even with multiline arrays');
   }
   assert.ok(role.includes("backgroundColor: mode === 'light' ? '#FFFFFF'"),'unselected role chips must not blend into light mode');
   assert.ok(!seller.includes('placeholderTextColor={Colors.textMuted}'),'offer input placeholders cannot keep pale dark token');
