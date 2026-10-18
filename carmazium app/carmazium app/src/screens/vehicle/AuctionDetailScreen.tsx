@@ -26,6 +26,7 @@ import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { useAuthStore } from '../../store/authStore';
 import {
   getAuction, placeBid,
@@ -194,7 +195,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const listingObj = listing as any;
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...s, ...lightAuctionDetailStyles } : s;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightAuctionDetailStyles) : s;
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
   const androidKeyboardHeight = useKeyboardHeight();
