@@ -65,12 +65,22 @@ describe('SimpleDmsReferralService security and attribution', () => {
     expect(url.searchParams.get('partner_ref')).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
     expect(prisma.auction.findFirst.mock.calls[0][0].where).toMatchObject({
       status: 'ACTIVE', deletedAt: null,
-      listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null } },
+      listing: { is: { type: 'AUCTION', status: 'ACTIVE', deletedAt: null, partnerDistributionAcceptedAt: { not: null } } },
     });
     await expect(visitValid(service, 'https://evil.example')).rejects.toThrow(NotFoundException);
     expect(prisma.analyticsEvent.create.mock.calls[0][0].data).toEqual({
       type: 'partner_simpledms_redirect', payload: { auctionId: AUCTION },
     });
+  });
+
+  it('revocation or legacy NULL acknowledgement denies existing signed redirect before any analytics event', async () => {
+    const {service, prisma} = harness();
+    prisma.auction.findFirst.mockResolvedValue(null); // withdrawn, unacknowledged or otherwise ineligible
+    await expect(visitValid(service)).rejects.toThrow(NotFoundException);
+    expect(prisma.auction.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.auction.findFirst.mock.calls[0][0].where.listing.is.partnerDistributionAcceptedAt)
+      .toEqual({ not: null });
+    expect(prisma.analyticsEvent.create).not.toHaveBeenCalled();
   });
 
   it('rejects unsigned, tampered and expired publicly guessed referral URLs', async () => {
