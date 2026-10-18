@@ -27,6 +27,18 @@ on:
       - 'carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/LiveScreen.tsx'
       - 'carmazium app/carmazium app/src/screens/main/HomeScreen.tsx'
+      - 'carmazium app/carmazium app/src/theme/appearancePalette.ts'
+      - 'carmazium app/carmazium app/src/components/VehicleCard.tsx'
+      - 'carmazium app/carmazium app/src/components/HorizontalVehicleCard.tsx'
+      - 'carmazium app/carmazium app/src/components/LiveBidCard.tsx'
+      - 'carmazium app/carmazium app/src/components/GlassCard.tsx'
+      - 'carmazium app/carmazium app/src/components/ui/Card.tsx'
+      - 'carmazium app/carmazium app/src/components/LocationPromptSheet.tsx'
+      - 'carmazium app/carmazium app/src/components/ProfileCompletionPromptSheet.tsx'
+      - 'carmazium app/carmazium app/src/components/StripeCheckoutModal.tsx'
+      - 'carmazium app/carmazium app/src/components/listing/EnquireModal.tsx'
+      - 'carmazium app/carmazium app/src/components/BulkImportModal.tsx'
+      - 'carmazium app/carmazium app/src/components/ImportListingModal.tsx'
   workflow_dispatch:
 
 permissions:
