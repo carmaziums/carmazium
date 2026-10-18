@@ -740,7 +740,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                       }}
                       keyboardType="number-pad"
                       placeholder="0"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
                       returnKeyType="done"
                       onSubmitEditing={() => handleCounterBack(offer)}
                       autoFocus
@@ -826,7 +826,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={deliveryStreet}
                   onChangeText={setDeliveryStreet}
                   placeholder="Street address"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
                 />
                 <View style={ts.deliveryFormRow}>
                   <TextInput
@@ -834,14 +834,14 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                     value={deliveryCity}
                     onChangeText={setDeliveryCity}
                     placeholder="City"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
                   />
                   <TextInput
                     style={[ts.deliveryFormInput, ts.deliveryFormInputHalf]}
                     value={deliveryPostcode}
                     onChangeText={v => setDeliveryPostcode(v.toUpperCase())}
                     placeholder="Postcode"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
                     autoCapitalize="characters"
                   />
                 </View>
@@ -850,7 +850,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                   value={deliveryNotes}
                   onChangeText={setDeliveryNotes}
                   placeholder="Delivery notes (optional)"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
                   multiline
                 />
                 {offer.listing?.deliveryMaxMiles != null && (
@@ -921,7 +921,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
       )}
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
