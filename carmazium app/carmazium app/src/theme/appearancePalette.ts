@@ -82,7 +82,7 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
     Colors.bgCard, Colors.bgCardHi, Colors.bgElevated, Colors.inputBg,
     // Legacy "glass" cards rely on a near-white alpha over navy; on light pages
     // that alpha is virtually invisible. Convert neutral glass surfaces into cards.
-    Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04,
+    Colors.glassBg, Colors.whiteAlpha02, Colors.whiteAlpha03, Colors.whiteAlpha04,
     Colors.whiteAlpha05, Colors.whiteAlpha06, Colors.whiteAlpha07,
     Colors.whiteAlpha08, Colors.whiteAlpha09, Colors.whiteAlpha10,
     Colors.whiteAlpha12,
@@ -120,15 +120,47 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
     if (!action && typeof value.borderTopColor === 'string' && neutralBorders.has(value.borderTopColor)) {
       changes.borderTopColor = light.border;
     }
-    const textLike = /(?:title|label|text|heading|subtitle|subtext|body|desc|hint|value|amount|meta|date|name|copy|price|caption|placeholder)/.test(id);
+    const textLike = /(?:title|label|text|heading|subtitle|subtext|body|desc|hint|value|amount|meta|date|name|copy|price|caption|placeholder|eyebrow|detail|paragraph|message)/.test(id);
+    const legacyPaleText = new Set<string>([
+      Colors.lightGrey, Colors.paleBlue_c0c0cb, Colors.paleBlue_d0d0da,
+      Colors.paleBlue_e2e2ea, Colors.paleGrey_c0c0c8, Colors.paleGrey_cccccc,
+      Colors.lightBlue_9ca3af, Colors.lightBlue_a0a0b0,
+    ]);
+    const legacyPlaceholder = new Set<string>([
+      Colors.textDisabled, Colors.inputPlaceholder, Colors.borderMuted,
+    ]);
+    // Do not convert foreground white on brand/CTA/selected chip fills:
+    // only plain typography and muted secondary text are safe to remap.
     if (textLike && !action) {
-      if (value.color === Colors.textPrimary || value.color === Colors.white) {
+      if (value.color === Colors.textPrimary || value.color === Colors.white ||
+          value.color === Colors.paleNearWhite_e0e0e0 || value.color === Colors.paleNearWhite_e4e4e7) {
         changes.color = light.text;
       } else if (value.color === Colors.textSecondary) {
         changes.color = light.secondary;
-      } else if (value.color === Colors.textMuted || value.color === Colors.textFaint || value.color === Colors.iconMuted) {
+      } else if (value.color === Colors.textMuted || value.color === Colors.textFaint ||
+                 value.color === Colors.iconMuted || legacyPaleText.has(value.color) ||
+                 legacyPlaceholder.has(value.color)) {
         changes.color = light.muted;
+      } else if (value.color === Colors.paleBlue_93c5fd || value.color === Colors.infoBlueLight) {
+        changes.color = lightReadableText.info;
+      } else if (value.color === Colors.accent || value.color === Colors.accentDeep) {
+        changes.color = lightReadableText.accent;
+      } else if (value.color === Colors.warning || value.color === Colors.warningLight) {
+        changes.color = lightReadableText.warning;
+      } else if (value.color === Colors.success || value.color === Colors.successLight) {
+        changes.color = lightReadableText.success;
+      } else if (value.color === Colors.error || value.color === Colors.errorLight) {
+        changes.color = lightReadableText.error;
       }
+    }
+    // Text on warning/info callout cards also needs a readable foreground.
+    // Do not include filled buttons, selected chips or brand CTA labels.
+    const semanticCopy = /(?:warning|error|success|info)(?:text|label|hint|desc)$/.test(id);
+    if (semanticCopy && !/(?:btn|button|cta|badge|chip|pill|active|selected)/.test(id)) {
+      if (value.color === Colors.warning || value.color === Colors.warningLight) changes.color = lightReadableText.warning;
+      if (value.color === Colors.error || value.color === Colors.errorLight) changes.color = lightReadableText.error;
+      if (value.color === Colors.success || value.color === Colors.successLight) changes.color = lightReadableText.success;
+      if (value.color === Colors.info || value.color === Colors.infoLight) changes.color = lightReadableText.info;
     }
     if (Object.keys(changes).length) patch[name as keyof T] = changes;
   }
