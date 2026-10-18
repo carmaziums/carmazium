@@ -111,7 +111,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
     setView(next);
   };
   return (
-    <View style={[styles.root, header && { paddingTop: 0 }]}>
+    <View style={[styles.root, header ? { paddingTop: 0 } : undefined]}>
       <FlatList
         style={styles.list}
         ListHeaderComponent={<>
@@ -226,7 +226,7 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
     return () => clearInterval(id);
   }, [fetchBids]);
   const leading = positions.filter(x=>x.isLeading).length;
-  return <View style={[styles.root, header && { paddingTop: 0 }]}>
+  return <View style={[styles.root, header ? { paddingTop: 0 } : undefined]}>
     <FlatList
       ListHeaderComponent={<>
         {header}
