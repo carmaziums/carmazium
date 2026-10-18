@@ -16,6 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -136,6 +138,8 @@ const STATUS_CONFIG: Record<
 
 export const DealerMyOffersScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightMyOffersStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -269,22 +273,22 @@ export const DealerMyOffersScreen: React.FC = () => {
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonCard} />
+      <View key={`sk-${i}`} style={ts.skeletonCard} />
     ));
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
-      <Text style={styles.emptyTitle}>No offers sent yet</Text>
-      <Text style={styles.emptySub}>
+      <Text style={ts.emptyTitle}>No offers sent yet</Text>
+      <Text style={ts.emptySub}>
         Offers your dealership makes on listings will appear here
       </Text>
       <TouchableOpacity
-        style={styles.emptyCtaBtn}
+        style={ts.emptyCtaBtn}
         activeOpacity={0.85}
         onPress={() => navigation.navigate('Search')}
       >
-        <Text style={styles.emptyCtaBtnText}>Browse cars</Text>
+        <Text style={ts.emptyCtaBtnText}>Browse cars</Text>
       </TouchableOpacity>
     </View>
   );
@@ -303,40 +307,40 @@ export const DealerMyOffersScreen: React.FC = () => {
     return (
       <View
         style={[
-          styles.offerCard,
+          ts.offerCard,
           { borderLeftColor: cfg.leftBorder },
           isActioning && { opacity: 0.5 },
         ]}
       >
         {/* Status chip */}
-        <View style={styles.cardTopRow}>
-          <Text style={styles.listingTitle} numberOfLines={1}>{listingTitle}</Text>
-          <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
-            <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
+        <View style={ts.cardTopRow}>
+          <Text style={ts.listingTitle} numberOfLines={1}>{listingTitle}</Text>
+          <View style={[ts.statusChip, { backgroundColor: cfg.chipBg }]}>
+            <Text style={[ts.statusChipText, { color: cfg.chipText }]}>
               {cfg.chipLabel}
             </Text>
           </View>
         </View>
 
         {/* Your offer */}
-        <View style={styles.offerAmountSection}>
-          <Text style={styles.offerLabel}>YOUR OFFER</Text>
-          <Text style={styles.offerAmount}>{formatPrice(offer.amount)}</Text>
+        <View style={ts.offerAmountSection}>
+          <Text style={ts.offerLabel}>YOUR OFFER</Text>
+          <Text style={ts.offerAmount}>{formatPrice(offer.amount)}</Text>
         </View>
 
         {/* Counter-offer section */}
         {isCountered && displayCounterAmount != null && (
-          <View style={styles.counterSection}>
-            <View style={styles.counterHeader}>
+          <View style={ts.counterSection}>
+            <View style={ts.counterHeader}>
               <Ionicons name="pricetag-outline" size={13} color={Colors.warning} />
-              <Text style={styles.counterLabel}>SELLER’S COUNTER</Text>
+              <Text style={ts.counterLabel}>SELLER’S COUNTER</Text>
             </View>
-            <View style={styles.counterAmountRow}>
-              <Text style={styles.counterAmount}>{formatPrice(displayCounterAmount)}</Text>
+            <View style={ts.counterAmountRow}>
+              <Text style={ts.counterAmount}>{formatPrice(displayCounterAmount)}</Text>
               {counterDiff != null && (
                 <Text
                   style={[
-                    styles.counterDiff,
+                    ts.counterDiff,
                     { color: counterDiff > 0 ? Colors.accent : Colors.success },
                   ]}
                 >
@@ -371,18 +375,18 @@ export const DealerMyOffersScreen: React.FC = () => {
         )}
 
         {/* Time */}
-        <Text style={styles.timeText}>{timeAgo(offer.createdAt)}</Text>
+        <Text style={ts.timeText}>{timeAgo(offer.createdAt)}</Text>
 
         {/* Actions: PENDING — withdraw */}
         {offer.status === 'PENDING' && (
-          <View style={styles.actionsRow}>
+          <View style={ts.actionsRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnWithdraw]}
+              style={[ts.actionBtn, ts.actionBtnWithdraw]}
               activeOpacity={0.75}
               onPress={() => handleWithdraw(offer)}
               disabled={isActioning}
             >
-              <Text style={styles.actionBtnWithdrawText}>Withdraw</Text>
+              <Text style={ts.actionBtnWithdrawText}>Withdraw</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -390,29 +394,29 @@ export const DealerMyOffersScreen: React.FC = () => {
         {/* Actions: ACCEPTED — no in-app payment; contact the seller directly */}
         {offer.status === 'ACCEPTED' && (
           <>
-            <Text style={styles.acceptedStatusText}>
+            <Text style={ts.acceptedStatusText}>
               Your offer of {formatPrice(offer.amount)} was accepted! Contact the seller to
               complete the purchase.
             </Text>
-            <View style={styles.actionsRow}>
+            <View style={ts.actionsRow}>
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnAcceptCounter, { flex: 1 }]}
+                style={[ts.actionBtn, ts.actionBtnAcceptCounter, { flex: 1 }]}
                 activeOpacity={0.75}
                 onPress={() => handleMessageSeller(offer)}
                 disabled={isActioning}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={14} color={Colors.white} style={{ marginRight: 6 }} />
-                <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+                <Text style={[ts.actionBtnText, { color: Colors.white }]}>
                   Message Seller
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnDeclineCounter, { flex: 1 }]}
+                style={[ts.actionBtn, ts.actionBtnDeclineCounter, { flex: 1 }]}
                 activeOpacity={0.75}
                 onPress={() => setCancelOffer(offer)}
                 disabled={isActioning}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Cancel Sale</Text>
+                <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Cancel Sale</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -420,24 +424,24 @@ export const DealerMyOffersScreen: React.FC = () => {
 
         {/* Actions: COUNTERED — decline / accept counter */}
         {isCountered && (
-          <View style={styles.actionsRow}>
+          <View style={ts.actionsRow}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDeclineCounter]}
+              style={[ts.actionBtn, ts.actionBtnDeclineCounter]}
               activeOpacity={0.75}
               onPress={() => handleCounterRespond(offer, 'REJECTED')}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>
+              <Text style={[ts.actionBtnText, { color: Colors.accent }]}>
                 Decline Counter
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAcceptCounter]}
+              style={[ts.actionBtn, ts.actionBtnAcceptCounter]}
               activeOpacity={0.75}
               onPress={() => handleCounterRespond(offer, 'ACCEPTED')}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>
+              <Text style={[ts.actionBtnText, { color: Colors.white }]}>
                 Accept Counter
               </Text>
             </TouchableOpacity>
@@ -448,7 +452,7 @@ export const DealerMyOffersScreen: React.FC = () => {
             it, which left the card ending on bare "Xh ago" text with no
             visual weight (matches the same gap fixed on BuyerOffersScreen). */}
         {(offer.status === 'REJECTED' || offer.status === 'WITHDRAWN' || offer.status === 'CANCELLED') && (
-          <Text style={styles.closedStatusText}>
+          <Text style={ts.closedStatusText}>
             {offer.status === 'REJECTED'
               ? 'This offer was declined by the seller.'
               : 'You withdrew this offer.'}
@@ -461,7 +465,7 @@ export const DealerMyOffersScreen: React.FC = () => {
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       {cancelOffer && (
         <SaleCancellationSheet
           visible={cancelOffer != null}
@@ -483,15 +487,15 @@ export const DealerMyOffersScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>My Offers</Text>
+        <Text style={ts.headerTitle}>My Offers</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {counteredPending > 0 && (
-            <View style={styles.counterBadge}>
-              <Text style={styles.counterBadgeText}>
+            <View style={ts.counterBadge}>
+              <Text style={ts.counterBadgeText}>
                 {counteredPending > 99 ? '99+' : counteredPending}
               </Text>
             </View>
@@ -502,7 +506,7 @@ export const DealerMyOffersScreen: React.FC = () => {
 
       {/* ── Content ── */}
       {loading ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={ts.scroll} contentContainerStyle={ts.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeleton()}
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -510,13 +514,13 @@ export const DealerMyOffersScreen: React.FC = () => {
         // Virtualized — a dealership's sent-offer history can grow large over
         // time, so we only mount rows near the viewport.
         <FlatList
-          style={styles.scroll}
+          style={ts.scroll}
           data={offers}
           keyExtractor={(o) => o.id}
           renderItem={renderOfferCard}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
-          contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[ts.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -525,6 +529,31 @@ export const DealerMyOffersScreen: React.FC = () => {
 };
 
 // ═══════════════════════════ STYLES ════════════════════════════════
+
+const lightMyOffersStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  offerCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  skeletonCard: { backgroundColor: '#FFFFFF' },
+  emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statusChip: { backgroundColor: '#FFFFFF' },
+  counterSection: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  headerTitle: { color: '#0F172A' },
+  emptyTitle: { color: '#0F172A' },
+  listingTitle: { color: '#0F172A' },
+  offerAmount: { color: '#0F172A' },
+  counterAmount: { color: '#0F172A' },
+  emptySub: { color: '#64748B' },
+  offerLabel: { color: '#64748B' },
+  counterLabel: { color: '#64748B' },
+  counterDiff: { color: '#64748B' },
+  timeText: { color: '#64748B' },
+  acceptedStatusText: { color: '#64748B' },
+  closedStatusText: { color: '#64748B' },
+  scrollContent: { backgroundColor: '#EEF5FB' },
+  actionBtn: { borderColor: '#D5E1EC' },
+});
 
 const styles = StyleSheet.create({
   container: {
