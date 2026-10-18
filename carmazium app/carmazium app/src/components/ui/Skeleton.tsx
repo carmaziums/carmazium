@@ -6,9 +6,11 @@ interface SkeletonProps {
   w: number;
   h: number;
   r?: number;
+  /** Optional semantic tint for light-theme placeholders. */
+  color?: string;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({ w, h, r = 14 }) => {
+export const Skeleton: React.FC<SkeletonProps> = ({ w, h, r = 14, color = Colors.bgTertiary }) => {
   const opacity = useSharedValue(0.35);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({ w, h, r = 14 }) => {
           width: w,
           height: h,
           borderRadius: r,
-          backgroundColor: Colors.bgTertiary,
+          backgroundColor: color,
         },
         animatedStyle,
       ]}

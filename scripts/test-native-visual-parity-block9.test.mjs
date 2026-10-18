@@ -595,3 +595,23 @@ test('light pages keep Android status icons and white-surface back controls read
   }
   assert.ok(auction.includes(backGlyph),'auction back button must contrast white header control');
 });
+
+test('auction loading and seller-contact rows respect selected native appearance',()=>{
+  const source=app('screens/vehicle/AuctionDetailScreen.tsx');
+  const contact=source.slice(source.indexOf('const ContactRow:'),source.indexOf('const AuctionDetailSkeleton:'));
+  const loading=source.slice(source.indexOf('const AuctionDetailSkeleton:'),source.indexOf('// ─── Screen'));
+  for(const code of [contact,loading]) {
+    assert.ok(code.includes("const appearanceMode = useAppearanceStore(state => state.mode)"),'child must subscribe to appearance changes');
+    assert.ok(code.includes("mergeAppearanceStyles(s, lightAuctionDetailStyles)"),'child must receive pale page styles');
+  }
+  assert.ok(contact.includes('style={ts.contactLabel}'),'seller-contact labels must use themed typography');
+  assert.ok(contact.includes('ts.contactValueLocked'),'locked seller-contact state must be legible');
+  assert.ok(source.includes("contactValueLocked: { color: '#526177' }"));
+  assert.ok(source.includes("contactActionText: { color: '#B91C1C' }"),'contact action links must contrast light cards');
+  assert.ok(loading.includes("skeletonTone = appearanceMode === 'light'"),'loading placeholders need light appearance tint');
+  assert.ok(loading.includes("barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'}"));
+  assert.ok(loading.includes('<Skeleton color={skeletonTone}'),'loading blocks must receive theme tint');
+  const baseSkeleton=app('components/ui/Skeleton.tsx');
+  assert.ok(baseSkeleton.includes('color = Colors.bgTertiary'),'other consumers must retain original dark loading default');
+  assert.ok(baseSkeleton.includes('backgroundColor: color'),'loading tint forwarded');
+});

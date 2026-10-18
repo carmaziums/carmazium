@@ -131,62 +131,71 @@ const ContactRow: React.FC<{
   value: string | null;
   actionLabel?: string;
   onAction?: () => void;
-}> = ({ icon, label, value, actionLabel, onAction }) => (
-  <View style={s.contactRow}>
+}> = ({ icon, label, value, actionLabel, onAction }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightAuctionDetailStyles) : s;
+  return (
+  <View style={ts.contactRow}>
     <Ionicons
       name={value ? (icon as any) : ('lock-closed-outline' as any)}
       size={14}
-      color={value ? Colors.textMuted : Colors.textDisabled}
+      color={appearanceMode === 'light' ? '#526177' : value ? Colors.textMuted : Colors.textDisabled}
     />
     <View style={{ flex: 1, minWidth: 0 }}>
-      <Text style={s.contactLabel}>{label}</Text>
-      <Text style={value ? s.contactValue : s.contactValueLocked} numberOfLines={1}>
+      <Text style={ts.contactLabel}>{label}</Text>
+      <Text style={value ? ts.contactValue : ts.contactValueLocked} numberOfLines={1}>
         {value ?? 'Locked'}
       </Text>
     </View>
     {value && actionLabel && onAction ? (
       <TouchableOpacity
-        style={s.contactAction}
+        style={ts.contactAction}
         onPress={onAction}
         activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel={`${actionLabel} seller`}
       >
-        <Text style={s.contactActionText}>{actionLabel}</Text>
+        <Text style={ts.contactActionText}>{actionLabel}</Text>
       </TouchableOpacity>
     ) : null}
   </View>
-);
+  );
+};
 
-const AuctionDetailSkeleton: React.FC = () => (
-  <View style={s.container}>
-    <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+const AuctionDetailSkeleton: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightAuctionDetailStyles) : s;
+  const skeletonTone = appearanceMode === 'light' ? '#C7D7E6' : Colors.bgTertiary;
+  return (
+  <View style={ts.container}>
+    <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
     {/* Hero image skeleton */}
-    <View style={[s.heroWrap, { marginHorizontal: 0, borderRadius: 0, marginBottom: 0, height: 240 }]}>
-      <Skeleton w={SW} h={240} r={0} />
+    <View style={[ts.heroWrap, { marginHorizontal: 0, borderRadius: 0, marginBottom: 0, height: 240 }]}>
+      <Skeleton color={skeletonTone} w={SW} h={240} r={0} />
     </View>
     <View style={{ paddingHorizontal: 14, paddingTop: 16, gap: 12 }}>
       {/* Title skeletons */}
-      <Skeleton w={200} h={28} r={8} />
-      <Skeleton w={140} h={20} r={8} />
+      <Skeleton color={skeletonTone} w={200} h={28} r={8} />
+      <Skeleton color={skeletonTone} w={140} h={20} r={8} />
       {/* Bid row skeletons */}
       <View style={{ gap: 10, marginTop: 8 }}>
         {[0, 1, 2].map(i => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Skeleton w={30} h={30} r={15} />
+            <Skeleton color={skeletonTone} w={30} h={30} r={15} />
             <View style={{ gap: 6 }}>
-              <Skeleton w={80} h={14} r={6} />
-              <Skeleton w={60} h={12} r={6} />
+              <Skeleton color={skeletonTone} w={80} h={14} r={6} />
+              <Skeleton color={skeletonTone} w={60} h={12} r={6} />
             </View>
             <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              <Skeleton w={70} h={18} r={6} />
+              <Skeleton color={skeletonTone} w={70} h={18} r={6} />
             </View>
           </View>
         ))}
       </View>
     </View>
   </View>
-);
+  );
+};
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -2397,6 +2406,8 @@ const lightAuctionDetailStyles = StyleSheet.create({
   muted: { color: '#526177' },
   contactLabel: { color: '#526177' },
   contactValue: { color: '#0F172A' },
+  contactValueLocked: { color: '#526177' },
+  contactActionText: { color: '#B91C1C' },
   sellerContactLockedNote: { color: '#526177' },
   tabs: { backgroundColor: '#F7FBFF' },
   tabText: { color: '#526177' },
