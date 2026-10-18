@@ -353,7 +353,7 @@ export const MessagesScreen: React.FC = () => {
 
 const lightMessagesStyles = StyleSheet.create({
   container: {backgroundColor: '#EEF5FB'},
-  unreadTag: {color: '#64748B'},
+  unreadTag: {color: '#526177'},
   title: {color: '#0F172A'},
   searchIconBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   searchBar: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
@@ -362,9 +362,9 @@ const lightMessagesStyles = StyleSheet.create({
   tabLabel: {color: '#334155'},
   threadCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
   dealerName: {color: '#0F172A'},
-  timeText: {color: '#64748B'},
+  timeText: {color: '#526177'},
   carModelText: {color: '#334155'},
-  lastMessageText: {color: '#64748B'},
+  lastMessageText: {color: '#526177'},
   skeletonRow: {backgroundColor: '#FFFFFF'},
   skeletonList: {backgroundColor: '#EEF5FB'},
 });
