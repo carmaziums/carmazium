@@ -256,6 +256,7 @@ function FieldInput({
   required?: boolean; hint?: string; error?: string;
 }) {
   const ts = useSellFieldStyles();
+  const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.borderMuted;
   return (
     <View style={{ marginBottom: 16 }}>
       <SL label={label} required={required} />
@@ -265,7 +266,7 @@ function FieldInput({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Colors.borderMuted}
+        placeholderTextColor={placeholderColor}
         keyboardType={keyboardType}
         multiline={multiline}
         autoCorrect={false}
@@ -291,6 +292,7 @@ function PickerField({
   hint?: string; error?: string; disabled?: boolean;
 }) {
   const ts = useSellFieldStyles();
+  const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.borderMuted;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -333,7 +335,7 @@ function PickerField({
           value={query}
           onChangeText={setQuery}
           placeholder={options.length ? 'Search or type your own…' : 'Type it in…'}
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={placeholderColor}
           autoCorrect={false}
           autoFocus
         />
@@ -452,6 +454,8 @@ function Damage3DMapper({
   bodyTypeLabel?: string;
 }) {
   const ts = useSellFieldStyles();
+  const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.borderMuted;
+  const isLight = useAppearanceStore(state => state.mode) === 'light';
   const [addingZone, setAddingZone] = useState<string | null>(null);
   const [dmgType, setDmgType] = useState<DamageEntry['type']>('SCRATCH');
   const [dmgDesc, setDmgDesc] = useState('');
@@ -476,7 +480,7 @@ function Damage3DMapper({
 
   return (
     <View>
-      <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderMuted, backgroundColor: Colors.darkBlue_2a2a35 }}>
+      <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isLight ? '#D5E1EC' : Colors.borderMuted, backgroundColor: isLight ? '#FFFFFF' : Colors.darkBlue_2a2a35 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={{ color: Colors.white, fontFamily: FontFamily.bold, fontSize: FontSize.sm }}>Grade {grade} — {gradeLabel}</Text>
@@ -535,7 +539,7 @@ function Damage3DMapper({
               value={customZoneText}
               onChangeText={setCustomZoneText}
               placeholder="e.g. Interior — Driver Seat, Engine Bay..."
-              placeholderTextColor={Colors.iconMuted}
+              placeholderTextColor={placeholderColor}
             />
             <TouchableOpacity
               style={[ts.pill, { justifyContent: 'center', paddingHorizontal: 18 }, !customZoneText.trim() && { opacity: 0.5 }]}
@@ -576,7 +580,7 @@ function Damage3DMapper({
             value={dmgDesc}
             onChangeText={setDmgDesc}
             placeholder="e.g. Small scratch on lower section"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={placeholderColor}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={[ts.pill, { flex: 1, justifyContent: 'center', paddingVertical: 12 }]} onPress={() => setAddingZone(null)} activeOpacity={0.8}>
@@ -618,6 +622,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightSellFlowStyles) : s;
+  const placeholderColor = appearanceMode === 'light' ? '#64748B' : Colors.borderMuted;
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [step, setStep] = useState<Step>(1);
   const [showDvlaDetails, setShowDvlaDetails] = useState(false);
@@ -2836,7 +2841,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 onChangeText={v => { setMileage(v); if (touched.mileage) setTouched(prev => ({ ...prev, mileage: true })); }}
                 onBlur={fieldTouched('mileage')}
                 placeholder="e.g. 45000"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={placeholderColor}
                 keyboardType="number-pad"
                 autoCorrect={false}
               />
@@ -2891,7 +2896,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={v => { setTitle(v); if (touched.title) setTouched(prev => ({ ...prev, title: true })); }}
               onBlur={fieldTouched('title')}
               placeholder="e.g. BMW M4 Competition 2021"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={placeholderColor}
               autoCorrect={false}
             />
             {fieldError('title') ? <Text style={ts.inlineError}>{fieldError('title')}</Text> : null}
@@ -2919,7 +2924,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={description}
               onChangeText={setDescription}
               placeholder="Describe your vehicle for potential buyers..."
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={placeholderColor}
               multiline
             />
             <Text style={ts.fieldHint}>Dealers: MaziuM also adds your saved business introduction, general location and any warranty or finance terms. To add missing details, open Settings → Business profile. Save your listing draft before leaving this form. Please review all generated descriptions before publishing.</Text>
@@ -2982,7 +2987,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <TextInput
             style={[ts.input, { marginBottom: 12 }]}
             placeholder="Search vehicle equipment"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={placeholderColor}
             value={featureSearch}
             onChangeText={setFeatureSearch}
             autoCorrect={false}
@@ -3010,7 +3015,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           <TextInput
             style={[ts.input, { marginTop: 12 }]}
             placeholder="Additional features (comma separated)"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={placeholderColor}
             onSubmitEditing={e => {
               const extras = e.nativeEvent.text.split(',').map(x => x.trim()).filter(Boolean);
               setFeatures(p => [...new Set([...p, ...extras])]);
@@ -3096,7 +3101,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={departedRelOther}
                   onChangeText={v => { setDepartedRelOther(v); setTouched(prev => ({ ...prev, departedRelationship: true })); }}
                   placeholder="Please specify your relationship"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={placeholderColor}
                 />
               )}
               {fieldError('departedRelationship') ? <Text style={ts.inlineError}>{fieldError('departedRelationship')}</Text> : null}
@@ -3176,7 +3181,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     value={notOwnerRelOther}
                     onChangeText={v => { setNotOwnerRelOther(v); setTouched(prev => ({ ...prev, notOwnerRelationship: true })); }}
                     placeholder="Describe your relationship"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={placeholderColor}
                     autoCorrect={false}
                   />
                 )}
@@ -3385,7 +3390,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               onChangeText={setVideoInput}
               onSubmitEditing={handleAddVideoUrl}
               placeholder="Paste a YouTube, Instagram or Facebook URL"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={placeholderColor}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
@@ -3535,7 +3540,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                     onChangeText={v => { setPriceMin(v); if (touched.priceMin) setTouched(prev => ({ ...prev, priceMin: true })); }}
                     onBlur={fieldTouched('priceMin')}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={placeholderColor}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -3555,7 +3560,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   onChangeText={v => { setPriceAsking(v); if (touched.priceAsking) setTouched(prev => ({ ...prev, priceAsking: true })); }}
                   onBlur={fieldTouched('priceAsking')}
                   placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={placeholderColor}
                   keyboardType="number-pad"
                 />
               </View>
@@ -3614,7 +3619,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               value={BANNER_LABELS.includes(bannerLabel) ? '' : bannerLabel}
               onChangeText={setBannerLabel}
               placeholder="Or type your own label…"
-              placeholderTextColor={Colors.borderMuted}
+              placeholderTextColor={placeholderColor}
               maxLength={40}
               autoCorrect={false}
             />
@@ -3647,7 +3652,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryMaxMiles}
                   onChangeText={setDeliveryMaxMiles}
                   placeholder="e.g. 50"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={placeholderColor}
                   keyboardType="number-pad"
                   autoCorrect={false}
                 />
@@ -3660,7 +3665,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                   value={deliveryPricePerMile}
                   onChangeText={setDeliveryPricePerMile}
                   placeholder="e.g. 2.00"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={placeholderColor}
                   keyboardType="decimal-pad"
                   autoCorrect={false}
                 />
