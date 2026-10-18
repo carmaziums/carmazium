@@ -20,6 +20,8 @@ import { convertAndCompress } from '../../lib/storageHelper';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -168,6 +170,8 @@ const KycSkeleton: React.FC = () => (
 
 export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
   const reverifyRequested = route?.params?.reverify === true;
   const [businessType, setBusinessType] = useState<BusinessType>(
     route?.params?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED',
@@ -486,7 +490,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   // ── Loading state ───────────────────────────────────────────────────────────
   if (initialLoading) {
     return (
-      <View style={styles.container}>
+      <View style={ts.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <LinearGradient
           colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -495,9 +499,9 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
           end={{ x: 1, y: 0.5 }}
         />
         <View style={{ height: insets.top }} />
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-          <Text style={styles.headerTitle}>Business Verification</Text>
+        <View style={ts.header}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <Text style={ts.headerTitle}>Business Verification</Text>
           <HamburgerButton />
         </View>
         <KycSkeleton />
@@ -555,7 +559,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
   const bannerConfig = getBannerConfig();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient */}
@@ -570,10 +574,10 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Business Verification</Text>
+        <Text style={ts.headerTitle}>Business Verification</Text>
 
         <HamburgerButton />
       </View>
@@ -582,14 +586,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       {isPaymentOutstanding ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { flexGrow: 1, justifyContent: 'center' }]}
+          contentContainerStyle={[ts.scrollContent, { flexGrow: 1, justifyContent: 'center' }]}
         >
-          <View style={styles.paymentOutstandingContainer}>
-            <View style={styles.paymentOutstandingIconCircle}>
+          <View style={ts.paymentOutstandingContainer}>
+            <View style={ts.paymentOutstandingIconCircle}>
               <Ionicons name="lock-closed-outline" size={36} color={Colors.accent} />
             </View>
-            <Text style={styles.pendingHeading}>Almost there — payment needed</Text>
-            <Text style={styles.pendingBody}>
+            <Text style={ts.pendingHeading}>Almost there — payment needed</Text>
+            <Text style={ts.pendingBody}>
               Your details are saved — just complete the £1 verification payment. It looks like
               your last attempt didn't go through (card declined, or the checkout page was closed
               before it finished). No need to re-enter anything.
@@ -613,13 +617,13 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       ) : isPending && !editingExisting ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={ts.scrollContent}
         >
           {/* Status banner */}
           {bannerConfig && (
             <View
               style={[
-                styles.statusBanner,
+                ts.statusBanner,
                 { backgroundColor: bannerConfig.bg, borderColor: bannerConfig.border },
               ]}
             >
@@ -629,7 +633,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 color={bannerConfig.text}
                 style={{ marginRight: 10 }}
               />
-              <Text style={[styles.statusBannerText, { color: bannerConfig.text }]}>
+              <Text style={[ts.statusBannerText, { color: bannerConfig.text }]}>
                 {bannerConfig.message}
               </Text>
             </View>
@@ -646,14 +650,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
         <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={ts.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             {/* STATUS BANNER (approved / rejected) */}
             {bannerConfig && (
               <View
                 style={[
-                  styles.statusBanner,
+                  ts.statusBanner,
                   { backgroundColor: bannerConfig.bg, borderColor: bannerConfig.border },
                 ]}
               >
@@ -663,21 +667,21 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   color={bannerConfig.text}
                   style={{ marginRight: 10 }}
                 />
-                <Text style={[styles.statusBannerText, { color: bannerConfig.text }]}>
+                <Text style={[ts.statusBannerText, { color: bannerConfig.text }]}>
                   {bannerConfig.message}
                 </Text>
               </View>
             )}
 
             {isApproved && reverifyRequested ? (
-              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoIconWrap}>
+              <View style={[ts.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={ts.infoCardHeader}>
+                  <View style={ts.infoIconWrap}>
                     <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoCardTitle}>Re-verify legal business type</Text>
-                    <Text style={styles.infoCardDesc}>
+                    <Text style={ts.infoCardTitle}>Re-verify legal business type</Text>
+                    <Text style={ts.infoCardDesc}>
                       Your account stays verified until you submit a different legal business type.
                       After submission, verification becomes Pending while CarMazium reviews the new identity.
                       Your existing £1 verification payment is retained.
@@ -688,14 +692,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             ) : null}
 
             {editingExisting && isPending ? (
-              <View style={[styles.infoCard, { borderColor: Colors.warningAlpha25 }]}>
-                <View style={styles.infoCardHeader}>
-                  <View style={styles.infoIconWrap}>
+              <View style={[ts.infoCard, { borderColor: Colors.warningAlpha25 }]}>
+                <View style={ts.infoCardHeader}>
+                  <View style={ts.infoIconWrap}>
                     <Ionicons name="create-outline" size={20} color={Colors.warning} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.infoCardTitle}>Editing application under review</Text>
-                    <Text style={styles.infoCardDesc}>
+                    <Text style={ts.infoCardTitle}>Editing application under review</Text>
+                    <Text style={ts.infoCardDesc}>
                       Submit the corrected legal business type to restart review. Your £1 payment remains valid.
                     </Text>
                   </View>
@@ -704,24 +708,24 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             ) : null}
 
             {/* INFO CARD */}
-            <View style={styles.infoCard}>
+            <View style={ts.infoCard}>
               <LinearGradient
                 colors={[Colors.infoBlueAlpha08, 'rgba(59,130,246,0.02)']}
                 style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
-              <View style={styles.infoCardHeader}>
-                <View style={styles.infoIconWrap}>
+              <View style={ts.infoCardHeader}>
+                <View style={ts.infoIconWrap}>
                   <Ionicons name="shield-outline" size={20} color={Colors.infoBlue} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoCardTitle}>Business KYC Verification</Text>
-                  <Text style={styles.infoCardDesc}>
+                  <Text style={ts.infoCardTitle}>Business KYC Verification</Text>
+                  <Text style={ts.infoCardDesc}>
                     Complete this form to get your dealership verified. Approval unlocks full
                     platform features.
                   </Text>
-                  <Text style={styles.infoCardAmber}>
+                  <Text style={ts.infoCardAmber}>
                     A £1 card payment is required to confirm your application.
                   </Text>
                 </View>
@@ -730,7 +734,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
             {/* ── BUSINESS TYPE ─────────────────────────────────────────── */}
             <SectionLabel title="BUSINESS TYPE" />
-            <View style={styles.businessTypeRow}>
+            <View style={ts.businessTypeRow}>
               {([
                 { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
                 { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
@@ -739,7 +743,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    style={[ts.businessTypeCard, selected && ts.businessTypeCardSelected]}
                     onPress={() => {
                       setBusinessType(option.value);
                       setFieldErrors({});
@@ -756,21 +760,21 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
                   >
-                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
-                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    <View style={[ts.businessTypeRadio, selected && ts.businessTypeRadioSelected]}>
+                      {selected ? <View style={ts.businessTypeRadioDot} /> : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>
+                      <Text style={[ts.businessTypeTitle, selected && ts.businessTypeTitleSelected]}>
                         {option.title}
                       </Text>
-                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                      <Text style={ts.businessTypeHint}>{option.hint}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
             {isSoleTrader ? (
-              <Text style={styles.businessTypeHelp}>
+              <Text style={ts.businessTypeHelp}>
                 Sole traders are verified using the owner&apos;s photo ID and proof of address. Companies House details are not required.
               </Text>
             ) : null}
@@ -889,24 +893,24 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   { field: 'directorIdProof', label: 'Director ID / Passport Photo', type: 'image' as const },
                 ]
             ).map(({ field, label, type }) => (
-              <View key={field} style={styles.docField}>
-                <Text style={styles.docFieldLabel}>{label.toUpperCase()}</Text>
+              <View key={field} style={ts.docField}>
+                <Text style={ts.docFieldLabel}>{label.toUpperCase()}</Text>
                 {docUploading[field] ? (
-                  <View style={styles.docUploadingRow}>
+                  <View style={ts.docUploadingRow}>
                     <ActivityIndicator color={Colors.accent} size="small" />
-                    <Text style={styles.docUploadingText}>Uploading…</Text>
+                    <Text style={ts.docUploadingText}>Uploading…</Text>
                   </View>
                 ) : docUrls[field] ? (
-                  <View style={styles.docUploadedRow}>
+                  <View style={ts.docUploadedRow}>
                     <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-                    <Text style={styles.docUploadedText} numberOfLines={1}>Uploaded</Text>
+                    <Text style={ts.docUploadedText} numberOfLines={1}>Uploaded</Text>
                     <TouchableOpacity onPress={() => handleDocumentCapture(field, type)} activeOpacity={0.7}>
-                      <Text style={styles.docReplaceLink}>Replace</Text>
+                      <Text style={ts.docReplaceLink}>Replace</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <TouchableOpacity
-                    style={styles.docTapArea}
+                    style={ts.docTapArea}
                     onPress={() => handleDocumentCapture(field, type)}
                     activeOpacity={0.7}
                   >
@@ -915,7 +919,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                       size={16}
                       color={Colors.textMuted}
                     />
-                    <Text style={styles.docTapText}>
+                    <Text style={ts.docTapText}>
                       Tap to upload {type === 'pdf' ? 'PDF or image' : 'photo'}
                     </Text>
                   </TouchableOpacity>
@@ -927,14 +931,14 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             <SectionLabel title="VERIFICATION FEE" />
 
             {alreadyPaid ? (
-              <View style={[styles.paymentInfoBox, styles.paymentInfoBoxPaid]}>
+              <View style={[ts.paymentInfoBox, ts.paymentInfoBoxPaid]}>
                 <Ionicons
                   name="checkmark-circle"
                   size={16}
                   color={Colors.success}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 />
-                <Text style={[styles.paymentInfoText, { color: Colors.success }]}>
+                <Text style={[ts.paymentInfoText, { color: Colors.success }]}>
                   Verification fee paid
                   {paidAt
                     ? ` on ${new Date(paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -943,13 +947,13 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 </Text>
               </View>
             ) : (
-              <View style={styles.paymentInfoBox}>
+              <View style={ts.paymentInfoBox}>
                 <Ionicons name="information-circle-outline"
                   size={16}
                   color={Colors.warning}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 accessibilityElementsHidden importantForAccessibility="no" />
-                <Text style={styles.paymentInfoText}>
+                <Text style={ts.paymentInfoText}>
                   A non-refundable £1.00 card payment is required to confirm your application — charged once per dealer account via secure Stripe checkout after you submit below.
                 </Text>
               </View>
@@ -969,7 +973,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
             )}
 
             {/* ── SUBMIT ──────────────────────────────────────────────────── */}
-            <View style={styles.submitWrapper}>
+            <View style={ts.submitWrapper}>
               {isApproved && !reverifyRequested ? (
                 <PrimaryCTA
                   label="APPLICATION APPROVED"
@@ -1028,6 +1032,25 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
     </View>
   );
 };
+
+const lightDealerKYCScreenStyles = StyleSheet.create({
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  headerTitle: { color: '#0F172A' },
+  infoCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  infoCardTitle: { color: '#0F172A' },
+  infoCardDesc: { color: '#334155' },
+  businessTypeCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  businessTypeTitle: { color: '#0F172A' },
+  businessTypeHint: { color: '#64748B' },
+  businessTypeHelp: { color: '#334155' },
+  paymentInfoBox: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  paymentInfoText: { color: '#334155' },
+  sectionEyebrow: { color: '#64748B' },
+  docFieldLabel: { color: '#334155' },
+  docTapArea: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  docTapText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   container: {
