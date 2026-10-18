@@ -53,6 +53,35 @@ test('Dashboard gauge is visually distinct from More grid and Menu selection is 
     'dealer Dashboard should only highlight Dashboard in the public Menu');
 });
 
+test('shared listing, auction, import, checkout and enquiry components follow appearance',()=>{
+  for (const p of [
+    'components/VehicleCard.tsx',
+    'components/HorizontalVehicleCard.tsx',
+    'components/LiveBidCard.tsx',
+    'components/GlassCard.tsx',
+    'components/BulkImportModal.tsx',
+    'components/ImportListingModal.tsx',
+    'components/LocationPromptSheet.tsx',
+    'components/ProfileCompletionPromptSheet.tsx',
+    'components/StripeCheckoutModal.tsx',
+    'components/listing/EnquireModal.tsx',
+  ]) {
+    const source=app(p);
+    assert.ok(source.includes('useAppearanceStore'),p+' must subscribe to appearance');
+    assert.ok(source.includes('mergeAppearanceStyles'),p+' must merge colours without losing layout');
+  }
+  for(const p of ['components/ui/Card.tsx','components/IconButton.tsx',
+      'components/SpecBadge.tsx','components/AuctionCardBadges.tsx']) {
+    assert.ok(app(p).includes('useAppearanceStore'),p+' must theme shared cards/buttons');
+  }
+  const dealer=app('screens/main/DealerWebParityOverview.tsx');
+  assert.ok(dealer.includes("verifiedText: { color: '#92400E' }"),
+    'gold dealer label must stay readable on white');
+  const theme=app('theme/appearancePalette.ts');
+  assert.ok(theme.includes('adaptLegacyLightStyles'),'all legacy screens have neutral theme migration');
+  assert.ok(theme.includes('mergeAppearanceStyles(base, patch)'),'legacy light colours preserve geometry');
+});
+
 test('all three sensitive dealer bottom tabs have actual KYC + permission screen gates',()=>{
   for(const [name,component,screen,permission] of [
     ['DealerStock','GatedDealerStockTab','DealerInventoryScreen','VIEW_INVENTORY'],
