@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useStripe } from '@stripe/stripe-react-native';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { haptics } from '../lib/haptics';
 import { previewImport, importFromUrl, type ScrapedListingPreview } from '../lib/listingsApi';
@@ -81,6 +83,8 @@ const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string 
 
 export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(st, lightImportListingStyles) : st;
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [step, setStep] = useState<Step>(1);
@@ -237,8 +241,8 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={st.container}>
+      <StatusBar barStyle={appearanceMode === 'light' ? "dark-content" : "light-content"} translucent backgroundColor="transparent" />
+      <View style={ts.container}>
         <LinearGradient
           colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
@@ -248,11 +252,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
         <View style={{ height: insets.top }} />
 
         {/* Header */}
-        <View style={st.header}>
-          <IconButton style={st.closeBtn} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
+        <View style={ts.header}>
+          <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={18} color={appearanceMode === 'light' ? "#0F172A" : Colors.white} />} onPress={onClose} accessibilityLabel="Close" />
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={st.headerTitle}>Import a Listing</Text>
-            <Text style={st.headerSub}>
+            <Text style={ts.headerTitle}>Import a Listing</Text>
+            <Text style={ts.headerSub}>
               {step === 1 ? 'Paste a link from AutoTrader, CarGurus or CarWow'
                 : step === 2 ? 'Review and confirm listing details'
                 : 'Choose your listing plan'}
@@ -262,16 +266,16 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
         </View>
 
         {/* Step dots */}
-        <View style={st.stepRow}>
+        <View style={ts.stepRow}>
           {([1, 2, 3] as Step[]).map(n => (
             <React.Fragment key={n}>
-              <View style={[st.stepDot, step >= n && st.stepDotActive]}>
+              <View style={[ts.stepDot, step >= n && ts.stepDotActive]}>
                 {step > n
                   ? <Ionicons name="checkmark" size={10} color={Colors.white} />
-                  : <Text style={[st.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
+                  : <Text style={[ts.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
                 }
               </View>
-              {n < 3 && <View style={[st.stepLine, step > n && st.stepLineActive]} />}
+              {n < 3 && <View style={[ts.stepLine, step > n && ts.stepLineActive]} />}
             </React.Fragment>
           ))}
         </View>
@@ -280,24 +284,24 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
           {/* ── STEP 1 — URL Input ── */}
           {step === 1 && (
             <ScrollView
-              contentContainerStyle={[st.body, { paddingBottom: insets.bottom + 32 }]}
+              contentContainerStyle={[ts.body, { paddingBottom: insets.bottom + 32 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
               {/* Platform badges */}
-              <View style={st.platformRow}>
+              <View style={ts.platformRow}>
                 {Object.entries(PLATFORM_STYLES).map(([key, ps]) => (
-                  <View key={key} style={[st.platformChip, { backgroundColor: ps.bg }]}>
-                    <Text style={[st.platformChipText, { color: ps.text }]}>{ps.label}</Text>
+                  <View key={key} style={[ts.platformChip, { backgroundColor: ps.bg }]}>
+                    <Text style={[ts.platformChipText, { color: ps.text }]}>{ps.label}</Text>
                   </View>
                 ))}
               </View>
 
               {/* URL input */}
-              <View style={st.urlInputRow}>
+              <View style={ts.urlInputRow}>
                 <Ionicons name="link-outline" size={16} color={Colors.iconMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={st.urlInput}
+                  style={ts.urlInput}
                   value={url}
                   onChangeText={v => { setUrl(v); setFetchError(null); }}
                   placeholder="https://www.autotrader.co.uk/car-details/..."
@@ -314,14 +318,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               </View>
 
               {fetchError && (
-                <View style={st.errorBox}>
+                <View style={ts.errorBox}>
                   <Ionicons name="alert-circle-outline" size={13} color={Colors.error} />
-                  <Text style={st.errorText}>{fetchError}</Text>
+                  <Text style={ts.errorText}>{fetchError}</Text>
                 </View>
               )}
 
               <TouchableOpacity
-                style={[st.primaryBtn, (fetching || !url.trim()) && { opacity: 0.5 }]}
+                style={[ts.primaryBtn, (fetching || !url.trim()) && { opacity: 0.5 }]}
                 onPress={handleFetch}
                 disabled={fetching || !url.trim()}
                 activeOpacity={0.85}
@@ -331,7 +335,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 ) : (
                   <>
                     <Ionicons name="search-outline" size={16} color={Colors.white} />
-                    <Text style={st.primaryBtnText}>Fetch Details</Text>
+                    <Text style={ts.primaryBtnText}>Fetch Details</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -341,14 +345,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
           {/* ── STEP 2 — Preview & Edit ── */}
           {step === 2 && preview && (
             <ScrollView
-              contentContainerStyle={[st.body, { paddingBottom: insets.bottom + 32 }]}
+              contentContainerStyle={[ts.body, { paddingBottom: insets.bottom + 32 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
               {/* Platform badge */}
               {preview.platform && PLATFORM_STYLES[preview.platform] && (
-                <View style={[st.platformChip, { backgroundColor: PLATFORM_STYLES[preview.platform].bg, alignSelf: 'flex-start', marginBottom: 12 }]}>
-                  <Text style={[st.platformChipText, { color: PLATFORM_STYLES[preview.platform].text }]}>
+                <View style={[ts.platformChip, { backgroundColor: PLATFORM_STYLES[preview.platform].bg, alignSelf: 'flex-start', marginBottom: 12 }]}>
+                  <Text style={[ts.platformChipText, { color: PLATFORM_STYLES[preview.platform].text }]}>
                     Imported from {PLATFORM_STYLES[preview.platform].label}
                   </Text>
                 </View>
@@ -361,7 +365,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                     <Image
                       key={`img-${i}`}
                       source={{ uri: img }}
-                      style={st.previewThumb}
+                      style={ts.previewThumb}
                       contentFit="cover"
                       transition={200}
                       cachePolicy="memory-disk"
@@ -373,12 +377,12 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               {/* Read-only spec chips */}
               {specChips.length > 0 && (
                 <View style={{ marginBottom: 20 }}>
-                  <Text style={st.sectionLabel}>SCRAPED SPECS</Text>
-                  <View style={st.specChipGrid}>
+                  <Text style={ts.sectionLabel}>SCRAPED SPECS</Text>
+                  <View style={ts.specChipGrid}>
                     {specChips.map(({ label, value }) => (
-                      <View key={label} style={st.specChip}>
-                        <Text style={st.specChipLabel}>{label}</Text>
-                        <Text style={st.specChipValue}>{value}</Text>
+                      <View key={label} style={ts.specChip}>
+                        <Text style={ts.specChipLabel}>{label}</Text>
+                        <Text style={ts.specChipValue}>{value}</Text>
                       </View>
                     ))}
                   </View>
@@ -386,11 +390,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               )}
 
               {/* Editable fields */}
-              <Text style={st.sectionLabel}>CONFIRM DETAILS</Text>
+              <Text style={ts.sectionLabel}>CONFIRM DETAILS</Text>
 
-              <Text style={st.fieldLabel}>TITLE</Text>
+              <Text style={ts.fieldLabel}>TITLE</Text>
               <TextInput
-                style={st.fieldInput}
+                style={ts.fieldInput}
                 value={editTitle}
                 onChangeText={v => { setEditTitle(v); setSaveError(null); }}
                 placeholder="e.g. BMW M4 Competition 2021"
@@ -398,11 +402,11 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 autoCorrect={false}
               />
 
-              <Text style={st.fieldLabel}>ASKING PRICE (£) *</Text>
-              <View style={st.priceRow}>
-                <Text style={st.priceCurrency}>£</Text>
+              <Text style={ts.fieldLabel}>ASKING PRICE (£) *</Text>
+              <View style={ts.priceRow}>
+                <Text style={ts.priceCurrency}>£</Text>
                 <TextInput
-                  style={[st.fieldInput, { flex: 1, marginBottom: 0 }]}
+                  style={[ts.fieldInput, { flex: 1, marginBottom: 0 }]}
                   value={editPrice}
                   onChangeText={v => { setEditPrice(v); setSaveError(null); }}
                   placeholder="0"
@@ -411,9 +415,9 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 />
               </View>
 
-              <Text style={[st.fieldLabel, { marginTop: 14 }]}>REGISTRATION (VRM) *</Text>
+              <Text style={[ts.fieldLabel, { marginTop: 14 }]}>REGISTRATION (VRM) *</Text>
               <TextInput
-                style={st.fieldInput}
+                style={ts.fieldInput}
                 value={editVrm}
                 onChangeText={v => { setEditVrm(v.toUpperCase()); setSaveError(null); }}
                 placeholder="e.g. AB12 CDE"
@@ -423,14 +427,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               />
 
               {saveError && (
-                <View style={st.errorBox}>
+                <View style={ts.errorBox}>
                   <Ionicons name="alert-circle-outline" size={13} color={Colors.error} />
-                  <Text style={st.errorText}>{saveError}</Text>
+                  <Text style={ts.errorText}>{saveError}</Text>
                 </View>
               )}
 
               <TouchableOpacity
-                style={[st.primaryBtn, saving && { opacity: 0.6 }]}
+                style={[ts.primaryBtn, saving && { opacity: 0.6 }]}
                 onPress={handleSave}
                 disabled={saving}
                 activeOpacity={0.85}
@@ -439,14 +443,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
                   <>
-                    <Text style={st.primaryBtnText}>Save as Draft</Text>
+                    <Text style={ts.primaryBtnText}>Save as Draft</Text>
                     <Ionicons name="arrow-forward" size={15} color={Colors.white} />
                   </>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setStep(1)} style={st.backLink}>
-                <Text style={st.backLinkText}>← Change URL</Text>
+              <TouchableOpacity onPress={() => setStep(1)} style={ts.backLink}>
+                <Text style={ts.backLinkText}>← Change URL</Text>
               </TouchableOpacity>
             </ScrollView>
           )}
@@ -454,16 +458,16 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
           {/* ── STEP 3 — Plan selection ── */}
           {step === 3 && (
             <ScrollView
-              contentContainerStyle={[st.body, { paddingBottom: insets.bottom + 32 }]}
+              contentContainerStyle={[ts.body, { paddingBottom: insets.bottom + 32 }]}
               showsVerticalScrollIndicator={false}
             >
               {/* Success header */}
-              <View style={st.successHeader}>
-                <View style={st.successIcon}>
+              <View style={ts.successHeader}>
+                <View style={ts.successIcon}>
                   <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
                 </View>
-                <Text style={st.successTitle}>Listing saved as draft</Text>
-                <Text style={st.successSub}>Choose a plan to make it live, or do it later from My Listings.</Text>
+                <Text style={ts.successTitle}>Listing saved as draft</Text>
+                <Text style={ts.successSub}>Choose a plan to make it live, or do it later from My Listings.</Text>
               </View>
 
               {/* Plan cards */}
@@ -472,26 +476,26 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 return (
                   <TouchableOpacity
                     key={plan.tier}
-                    style={[st.planCard, selected && { borderColor: plan.accent, backgroundColor: `${plan.accent}10` }]}
+                    style={[ts.planCard, selected && { borderColor: plan.accent, backgroundColor: `${plan.accent}10` }]}
                     onPress={() => setSelectedTier(plan.tier)}
                     activeOpacity={0.8}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <View style={[st.planRadio, selected && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
+                      <View style={[ts.planRadio, selected && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
                         {selected && <Ionicons name="checkmark" size={11} color={Colors.white} />}
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={[st.planLabel, { color: plan.accent }]}>{plan.label}</Text>
-                        <Text style={st.planSub}>{plan.sub}</Text>
+                        <Text style={[ts.planLabel, { color: plan.accent }]}>{plan.label}</Text>
+                        <Text style={ts.planSub}>{plan.sub}</Text>
                       </View>
-                      <Text style={[st.planPrice, { color: plan.accent }]}>£{plan.price}</Text>
+                      <Text style={[ts.planPrice, { color: plan.accent }]}>£{plan.price}</Text>
                     </View>
                     {selected && (
                       <View style={{ marginTop: 10, marginLeft: 40, gap: 3 }}>
                         {plan.features.map(f => (
                           <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
-                            <Text style={st.planFeatureText}>{f}</Text>
+                            <Text style={ts.planFeatureText}>{f}</Text>
                           </View>
                         ))}
                       </View>
@@ -502,7 +506,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
               {/* Activate */}
               <TouchableOpacity
-                style={[st.primaryBtn, activating && { opacity: 0.6 }]}
+                style={[ts.primaryBtn, activating && { opacity: 0.6 }]}
                 onPress={handleActivate}
                 disabled={activating}
                 activeOpacity={0.85}
@@ -510,14 +514,14 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 {activating ? (
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
-                  <Text style={st.primaryBtnText}>
+                  <Text style={ts.primaryBtnText}>
                     Activate for £{PLANS.find(p => p.tier === selectedTier)?.price}
                   </Text>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={onClose} style={st.backLink}>
-                <Text style={st.backLinkText}>Do it later — listing saved in My Listings</Text>
+              <TouchableOpacity onPress={onClose} style={ts.backLink}>
+                <Text style={ts.backLinkText}>Do it later — listing saved in My Listings</Text>
               </TouchableOpacity>
             </ScrollView>
           )}
@@ -528,6 +532,34 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+const lightImportListingStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  header: {backgroundColor: '#EEF5FB', borderBottomColor: '#D5E1EC'},
+  closeBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  headerTitle: {color: '#0F172A'},
+  headerSub: {color: '#526177'},
+  stepDot: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  stepDotText: {color: '#526177'},
+  stepLine: {backgroundColor: '#D5E1EC'},
+  urlInputRow: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  urlInput: {color: '#0F172A'},
+  specChip: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  specChipLabel: {color: '#526177'},
+  specChipValue: {color: '#0F172A'},
+  sectionLabel: {color: '#0F172A'},
+  fieldLabel: {color: '#334155'},
+  fieldInput: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC', color: '#0F172A'},
+  priceRow: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  priceCurrency: {color: '#334155'},
+  successTitle: {color: '#0F172A'},
+  successSub: {color: '#526177'},
+  planCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  planSub: {color: '#526177'},
+  planFeatureText: {color: '#334155'},
+  backLinkText: {color: '#526177'},
+  errorText: {color: '#7F1D1D'},
+});
 
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
