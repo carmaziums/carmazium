@@ -205,13 +205,13 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
 
 const lightCounterLedgerStyles = StyleSheet.create({
   container: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
-  headerLabel: { color: '#64748B' },
+  headerLabel: { color: '#526177' },
   rowLabel: { color: '#334155' },
   rowAmount: { color: '#0F172A' },
-  rowTimestamp: { color: '#64748B' },
+  rowTimestamp: { color: '#526177' },
   connector: { backgroundColor: '#D5E1EC' },
   expiryChip: { borderColor: '#D5E1EC' },
-  expiryChipText: { color: '#64748B' },
+  expiryChipText: { color: '#526177' },
 });
 
 const styles = StyleSheet.create({
