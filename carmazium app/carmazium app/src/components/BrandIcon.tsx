@@ -151,7 +151,6 @@ const ICON_MAP: Record<string, string> = {
   'trending-up': 'TrendingUp',
   'trending-down': 'TrendingDown',
   'bar-chart-outline': 'BarChart2',
-  'speedometer-outline': 'Gauge',
   'gas-station-outline': 'Fuel',
 
   // Location
