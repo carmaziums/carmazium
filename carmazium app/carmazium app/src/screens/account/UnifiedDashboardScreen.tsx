@@ -167,7 +167,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
         style={StyleSheet.absoluteFillObject}
       />
