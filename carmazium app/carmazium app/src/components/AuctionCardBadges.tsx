@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
 import { FontFamily, FontSize } from '../constants/typography';
 import { formatTransmission } from '../lib/transmission';
 
@@ -19,12 +20,18 @@ interface ChipsProps {
   deliveryAvailable?: boolean | null;
 }
 
-const Chip: React.FC<{ icon: any; label: string; accent?: boolean }> = ({ icon, label, accent }) => (
-  <View style={[styles.chip, accent && styles.chipAccent]}>
-    <Ionicons name={icon} size={9} color={accent ? Colors.accentGreen : Colors.textMuted} />
-    <Text style={[styles.chipText, accent && styles.chipTextAccent]} numberOfLines={1}>{label}</Text>
-  </View>
-);
+const Chip: React.FC<{ icon: any; label: string; accent?: boolean }> = ({ icon, label, accent }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const light = mode === 'light';
+  return (
+    <View style={[styles.chip, light && { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' }, accent && styles.chipAccent]}>
+      <Ionicons name={icon} size={9}
+        color={accent ? (light ? '#047857' : Colors.accentGreen) : (light ? '#526177' : Colors.textMuted)} />
+      <Text style={[styles.chipText, light && { color: '#334155' }, accent && styles.chipTextAccent,
+        accent && light && { color: '#047857' }]} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+};
 
 // Meta chip row — year / mileage / fuel / gearbox / body type / location / delivery.
 export const AuctionCardChips: React.FC<ChipsProps> = ({
