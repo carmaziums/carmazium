@@ -72,6 +72,7 @@ import {
 } from './vehicle-valuation';
 import {
     searchLiveUkVehicleMarket,
+    compatibleDerivative,
     LiveUkMarketSearchResult,
 } from './live-market-search';
 import {
@@ -283,6 +284,8 @@ export class ListingsService {
                     status: true,
                     winningBidAmount: true,
                     updatedAt: true,
+                    sellerFundsConfirmedAt: true,
+                    buyerRefusedAt: true,
                 },
             },
             offers: {
@@ -340,6 +343,11 @@ export class ListingsService {
         const comparables: VehicleValuationComparable[] = [];
 
         for (const row of rows) {
+            if (!compatibleDerivative(
+                specificationInput,
+                { variant: row.variant, fuelType: row.fuelType, transmission: row.transmission },
+                `${row.make} ${row.model} ${row.variant ?? ''}`,
+            )) continue;
             const common = {
                 year: row.year,
                 mileage: row.mileage,
@@ -362,7 +370,13 @@ export class ListingsService {
                 isImported: row.isImported,
             };
 
-            if (row.type === 'AUCTION' && row.auction?.winningBidAmount != null) {
+            // A winning bid (particularly under reserve/provisional) is not
+            // evidence of a completed trade. Require seller confirmation and
+            // no buyer refusal before using it as a dealer auction result.
+            if (row.type === 'AUCTION'
+                && row.auction?.winningBidAmount != null
+                && row.auction.sellerFundsConfirmedAt != null
+                && row.auction.buyerRefusedAt == null) {
                 comparables.push({
                     ...common,
                     price: Number(row.auction.winningBidAmount),
