@@ -481,6 +481,22 @@ test('team cards and seller offer forms respond to light appearance',()=>{
   assert.ok(seller.includes("placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}"));
 });
 
+test('chat messages theme at row level and keep white text on outgoing red bubbles',()=>{
+  const chat = app('screens/main/ChatScreen.tsx');
+  const start = chat.indexOf('const MessageBubble: React.FC<MessageBubbleProps>');
+  const end = chat.indexOf('export const ChatScreen: React.FC',start);
+  assert.ok(start>=0 && end>start,'locate independently memoized message bubble');
+  const bubble=chat.slice(start,end);
+  assert.ok(bubble.includes('useAppearanceStore(state => state.mode)'),
+    'MessageBubble must subscribe to mode; parent-only styles do not theme FlatList rows');
+  assert.ok(bubble.includes("adaptLegacyLightStyles(styles)"),
+    'incoming bubbles must become light readable surfaces');
+  assert.ok(!bubble.includes('style={styles.'),
+    'nested message rows must not bypass chosen appearance');
+  assert.ok(bubble.includes("isOwn || appearanceMode !== 'light' ? Colors.white : '#0F172A'"),
+    'outgoing red chat bubbles retain white text while received white bubbles use navy');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
