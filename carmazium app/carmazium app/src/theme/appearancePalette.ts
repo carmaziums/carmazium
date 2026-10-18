@@ -78,11 +78,16 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
   const patch: Partial<Record<keyof T, object>> = {};
   const rootBackgrounds = new Set<string>([Colors.bgPrimary, Colors.bgBody]);
   const lightCards = new Set<string>([
-    Colors.bgSecondary, Colors.bgTertiary, Colors.bgCardSolid, Colors.bgSurface,
+    Colors.bgSecondary, Colors.bgTertiary, Colors.bgCardSolid, Colors.bgSurface, Colors.bgSurfaceHi,
     Colors.bgCard, Colors.bgCardHi, Colors.bgElevated, Colors.inputBg,
+    // Legacy "glass" cards rely on a near-white alpha over navy; on light pages
+    // that alpha is virtually invisible. Convert neutral glass surfaces into cards.
+    Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04,
+    Colors.whiteAlpha06, Colors.whiteAlpha08,
   ]);
-  const neutralBorders = new Set<string>([Colors.border, Colors.borderHi,
-    Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.inputBorder]);
+  const neutralBorders = new Set<string>([Colors.border, Colors.borderHi, Colors.borderStrong,
+    Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.glassBorderStrong,
+    Colors.inputBorder]);
   for (const [name, raw] of Object.entries(base)) {
     if (!raw || typeof raw !== 'object') continue;
     const value = raw as Record<string, unknown>;
