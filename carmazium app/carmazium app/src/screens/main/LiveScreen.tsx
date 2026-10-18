@@ -19,6 +19,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -89,7 +90,7 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?: React.ReactNode }> = ({ embeddedDealerHub = false, embeddedHeader }) => {
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightLiveStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLiveStyles) : styles;
   const navigation = useNavigation<NavProp>();
   const { latitude: originLatitude, longitude: originLongitude } = useLocation();
   const origin = useMemo(() => originLatitude == null || originLongitude == null ? null : ({ latitude: originLatitude, longitude: originLongitude }), [originLatitude, originLongitude]);
