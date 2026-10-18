@@ -25,7 +25,7 @@ test('website Stock identity, main actions and search match without a fixed foot
     assert.ok(web.includes(action), action);
   }
   assert.ok(native.includes('{canManageInventory && ('));
-  assert.ok(native.includes('style={styles.stockHeaderActions}'));
+  assert.ok(native.includes('style={ts.stockHeaderActions}'));
   assert.ok(!native.includes('style={[styles.addListingWrap'), 'no fixed Add Listing footer');
   assert.ok(native.includes('onPress={toggleViewMode}'), 'preserve list/grid preference');
 });
@@ -72,8 +72,8 @@ test('web-style mobile KPI tiles show real price, status, views and HOT LEADS', 
   }
   assert.ok(native.includes('listing.leads.toLocaleString'), 'real server count, not hardcoded web 0');
   assert.ok(native.includes('listing.views.toLocaleString'));
-  assert.ok(native.includes('styles.websiteStockCard'));
-  assert.ok(native.includes('styles.stockMetrics'));
+  assert.ok(native.includes('ts.websiteStockCard'));
+  assert.ok(native.includes('ts.stockMetrics'));
   assert.ok(native.includes('listing.rejectionReason'));
   assert.ok(!native.includes("label: 'Market Value Plus'"), 'do not pretend unverified valuations are a fact');
 });
