@@ -67,9 +67,16 @@ function useCountdown(targetIso: string) {
   return str;
 }
 
+/** Each home card responds to appearance preference without re-rendering all rails. */
+function useHomeCardStyles() {
+  const mode = useAppearanceStore(state => state.mode);
+  return useMemo(() => mode === 'light' ? mergeAppearanceStyles(s, lightHomeStyles) : s, [mode]);
+}
+
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   const timeLeft = useCountdown(auction.endTime);
   const l = auction.listing as any;
@@ -80,43 +87,43 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
   const firstOfferFloor = getAuctionFirstOfferFloor(startingBid, Number(auction.reservePrice ?? 0));
 
   return (
-    <TouchableOpacity style={[s.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
+    <TouchableOpacity style={[cs.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
       onPress={onPress} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+      <View style={cs.cardImgWrap}>
         {images.length > 0
-          ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
-          : <View style={s.cardImgEmpty} />}
-        <View style={s.livePill} pointerEvents="none">
-          <View style={s.liveDot} />
-          <Text style={s.livePillText}>LIVE</Text>
+          ? <Image source={{ uri: images[0] }} style={cs.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+          : <View style={cs.cardImgEmpty} />}
+        <View style={cs.livePill} pointerEvents="none">
+          <View style={cs.liveDot} />
+          <Text style={cs.livePillText}>LIVE</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
       </View>
-      <View style={s.cardBody}>
-        <View style={s.bidOverlay}>
+      <View style={cs.cardBody}>
+        <View style={cs.bidOverlay}>
           <View style={{ flex: 1 }}>
-            <Text style={s.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-            <Text style={s.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
+            <Text style={cs.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+            <Text style={cs.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
             {bids === 0 && firstOfferFloor > 0 && (
-              <Text style={[s.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
+              <Text style={[cs.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
                 FIRST OFFER {formatPrice(firstOfferFloor)}
               </Text>
             )}
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={s.overlayLabel}>ENDS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
+            <Text style={cs.overlayLabel}>ENDS IN</Text>
+            <Text style={[cs.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
           </View>
         </View>
-        <Text style={s.cardSpecs}>
+        <Text style={cs.cardSpecs}>
           {l?.year} · {mapTransmission(l?.transmission)}
           {l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
+          <Text style={[cs.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -126,8 +133,8 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
           location={l?.location}
           deliveryAvailable={l?.deliveryAvailable}
         />
-        <View style={s.homeCardCta}>
-          <Text style={s.homeCardCtaLabel}>{bids} bid{bids !== 1 ? 's' : ''} · View auction</Text>
+        <View style={cs.homeCardCta}>
+          <Text style={cs.homeCardCtaLabel}>{bids} bid{bids !== 1 ? 's' : ''} · View auction</Text>
           <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
         </View>
       </View>
@@ -138,6 +145,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   const startsIn = useCountdown(auction.startTime);
   const l = auction.listing as any;
@@ -145,37 +153,37 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
   const startingBid = Number(auction.startingBid ?? 0);
 
   return (
-    <TouchableOpacity style={[s.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
+    <TouchableOpacity style={[cs.auctionCard, { width: Math.max(220, Math.min(292, windowWidth - 48)) }]}
       onPress={onPress} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+      <View style={cs.cardImgWrap}>
         {images.length > 0
-          ? <Image source={{ uri: images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
-          : <View style={s.cardImgEmpty} />}
-        <View style={[s.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
+          ? <Image source={{ uri: images[0] }} style={cs.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+          : <View style={cs.cardImgEmpty} />}
+        <View style={[cs.livePill, { backgroundColor: 'rgba(59,130,246,0.9)' }]} pointerEvents="none">
           <Ionicons name="calendar-outline" size={9} color={Colors.white} />
-          <Text style={s.livePillText}>UPCOMING</Text>
+          <Text style={cs.livePillText}>UPCOMING</Text>
         </View>
         <View style={{ position: 'absolute', top: 34, left: 10, right: 10 }} pointerEvents="none">
           <AuctionCardTrustBadges badgeTier={l?.badgeTier} isFeatured={l?.isFeatured} isDepartedSale={l?.isDepartedSale} isImported={l?.isImported} />
         </View>
         <WishlistHeart listing={auctionToListingParam(auction)} />
       </View>
-      <View style={s.cardBody}>
-        <View style={s.bidOverlay}>
+      <View style={cs.cardBody}>
+        <View style={cs.bidOverlay}>
           <View style={{ flex: 1 }}>
-            <Text style={s.overlayLabel}>STARTING BID</Text>
-            <Text style={s.overlayVal}>{formatPrice(startingBid)}</Text>
+            <Text style={cs.overlayLabel}>STARTING BID</Text>
+            <Text style={cs.overlayVal}>{formatPrice(startingBid)}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={s.overlayLabel}>STARTS IN</Text>
-            <Text style={[s.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
+            <Text style={cs.overlayLabel}>STARTS IN</Text>
+            <Text style={[cs.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
           </View>
         </View>
-        <Text style={s.cardSpecs}>
+        <Text style={cs.cardSpecs}>
           {l?.year}{l?.mileage ? ` · ${Number(l.mileage).toLocaleString('en-GB')} mi` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
+          <Text style={[cs.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(l?.make, l?.model)}</Text>
           <GradeChip grade={l?.exteriorGrade} />
         </View>
         <AuctionCardChips
@@ -190,7 +198,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
         {!!auction.buyItNowPrice && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
             <Ionicons name="flash-outline" size={11} color={Colors.textSecondary} />
-            <Text style={s.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
+            <Text style={cs.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
           </View>
         )}
       </View>
@@ -207,6 +215,7 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void }>(({
   listing, onPress
 }) => {
+  const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   // The card owns its own saved state rather than receiving `saved`/`onToggle`
   // from HomeScreen. Passing it down meant HomeScreen had to subscribe to the
@@ -233,21 +242,21 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
   return (
     <>
     <AnimatedTouchable entering={FadeIn.duration(220)}
-      style={[s.listingCard, { width: Math.max(220, Math.min(284, windowWidth - 48)) }]}
+      style={[cs.listingCard, { width: Math.max(220, Math.min(284, windowWidth - 48)) }]}
       onPress={() => onPress(listing.id)} activeOpacity={0.9}>
-      <View style={s.cardImgWrap}>
+      <View style={cs.cardImgWrap}>
         {listing.images?.length
           ? <TouchableOpacity onPress={() => openLightbox(0)} activeOpacity={0.9}
               accessibilityRole="button" accessibilityLabel="View vehicle photo gallery">
-              <Image source={{ uri: listing.images[0] }} style={s.cardImg} contentFit="cover" cachePolicy="memory-disk" />
+              <Image source={{ uri: listing.images[0] }} style={cs.cardImg} contentFit="cover" cachePolicy="memory-disk" />
             </TouchableOpacity>
-          : <View style={s.cardImgEmpty} />
+          : <View style={cs.cardImgEmpty} />
         }
         {listing.isFeatured && (
-          <View style={s.featuredBadge} pointerEvents="none"><Text style={s.featuredBadgeText}>FEATURED</Text></View>
+          <View style={cs.featuredBadge} pointerEvents="none"><Text style={cs.featuredBadgeText}>FEATURED</Text></View>
         )}
         <TouchableOpacity
-          style={s.heartBtn}
+          style={cs.heartBtn}
           onPress={() => toggle(listing)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
@@ -256,34 +265,34 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
           <Ionicons name={saved ? 'heart' : 'heart-outline'} size={15} color={saved ? Colors.accent : Colors.white} />
         </TouchableOpacity>
       </View>
-      <View style={s.cardBody}>
-        <Text style={s.cardSpecs}>
+      <View style={cs.cardBody}>
+        <Text style={cs.cardSpecs}>
           {listing.year} · {String(listing.fuelType || '').replace(/_/g, ' ').toUpperCase()} · {Number(listing.mileage || 0).toLocaleString('en-GB')} MI
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Text style={[s.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(listing.make, listing.model)}</Text>
+          <Text style={[cs.cardTitle, { marginBottom: 0, flexShrink: 1 }]} numberOfLines={2}>{homeVehicleTitle(listing.make, listing.model)}</Text>
           <GradeChip grade={listing.exteriorGrade} />
         </View>
-        <Text style={s.cardPrice}>{formatPrice(listing.price)}</Text>
+        <Text style={cs.cardPrice}>{formatPrice(listing.price)}</Text>
         {(!!writeOffBadge || listing.isSellerVerified === true || hpiIncludedByTier) && (
-          <View style={s.homeBadgesRow}>
-            {!!writeOffBadge && <View style={[s.homeBadge, s.homeCategoryBadge]}>
-              <Text style={s.homeBadgeText}>{writeOffBadge}</Text>
+          <View style={cs.homeBadgesRow}>
+            {!!writeOffBadge && <View style={[cs.homeBadge, s.homeCategoryBadge]}>
+              <Text style={cs.homeBadgeText}>{writeOffBadge}</Text>
             </View>}
-            {listing.isSellerVerified === true && <View style={[s.homeBadge, s.homeVerifiedBadge]}>
-              <Text style={s.homeBadgeText}>Verified seller</Text>
+            {listing.isSellerVerified === true && <View style={[cs.homeBadge, s.homeVerifiedBadge]}>
+              <Text style={cs.homeBadgeText}>Verified seller</Text>
             </View>}
-            {hpiIncludedByTier && <View style={[s.homeBadge, s.homeHpiBadge]}>
-              <Text style={s.homeBadgeText}>HPI Included</Text>
+            {hpiIncludedByTier && <View style={[cs.homeBadge, s.homeHpiBadge]}>
+              <Text style={cs.homeBadgeText}>HPI Included</Text>
             </View>}
           </View>
         )}
-        <View style={s.retailFactRow}>
-          {!!listing.transmission && <Text style={s.retailFact}>{mapTransmission(listing.transmission)}</Text>}
-          {!!listing.location && <Text style={s.retailFact} numberOfLines={1}>{listing.location}</Text>}
+        <View style={cs.retailFactRow}>
+          {!!listing.transmission && <Text style={cs.retailFact}>{mapTransmission(listing.transmission)}</Text>}
+          {!!listing.location && <Text style={cs.retailFact} numberOfLines={1}>{listing.location}</Text>}
         </View>
-        <View style={s.homeCardCta}>
-          <Text style={s.homeCardCtaLabel}>View Details</Text>
+        <View style={cs.homeCardCta}>
+          <Text style={cs.homeCardCtaLabel}>View Details</Text>
           <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
         </View>
       </View>
@@ -925,6 +934,22 @@ export const HomeScreen: React.FC = () => {
 
 // Keep red CTA and live-bid overlays unchanged; theme only standard surfaces.
 const lightHomeStyles = StyleSheet.create({
+  // Match the website light palette on the isolated memoized vehicle cards.
+  // Keep the brand-red actions, LIVE state and image overlays unchanged.
+  auctionCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  listingCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  cardBody: { backgroundColor: '#FFFFFF' },
+  cardImgWrap: { backgroundColor: '#F7FBFF' },
+  cardImgEmpty: { backgroundColor: '#F7FBFF' },
+  cardSpecs: { color: '#64748B' },
+  cardTitle: { color: '#0F172A' },
+  cardPrice: { color: '#0F172A' },
+  cardMeta: { color: '#334155' },
+  bidOverlay: { backgroundColor: '#F7FBFF', borderTopColor: '#D5E1EC' },
+  overlayLabel: { color: '#64748B' },
+  overlayVal: { color: '#0F172A' },
+  retailFact: { color: '#334155' },
+  homeBadgeText: { color: '#0F172A' },
   container: { backgroundColor: '#EEF5FB' },
   greetingLine: { color: '#0F172A' },
   greetingDetail: { color: '#334155' },
