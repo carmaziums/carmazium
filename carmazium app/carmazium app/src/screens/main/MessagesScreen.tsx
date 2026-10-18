@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -86,6 +87,8 @@ interface ThreadRowProps {
 // actually changed, instead of recreating this JSX inline in renderItem on
 // every parent re-render (mobile-audit.md P3/P4).
 const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnline }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightMessagesStyles } : styles;
   const isUnread = room.unreadCount > 0;
   const displayName = getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
@@ -99,49 +102,49 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
   return (
     <TouchableOpacity
       style={[
-        styles.threadCard,
-        styles.threadCardSpacing,
-        isUnread && styles.threadCardUnread,
+        ts.threadCard,
+        ts.threadCardSpacing,
+        isUnread && ts.threadCardUnread,
       ]}
       onPress={() => onPress(room.id)}
       activeOpacity={0.85}
     >
       {/* Left avatar with badge */}
-      <View style={styles.avatarContainer}>
-        <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
-          <Text style={styles.avatarText}>{initials}</Text>
+      <View style={ts.avatarContainer}>
+        <View style={[ts.avatar, { backgroundColor: getAvatarBg(initials) }]}>
+          <Text style={ts.avatarText}>{initials}</Text>
         </View>
         {/* Presence (DASH-023). Only ever shown when we positively know the
             partner is online — absence means "unknown or offline", never a
             claim either way. */}
         {isOnline && (
-          <View style={styles.onlineDot} accessibilityLabel="Online" />
+          <View style={ts.onlineDot} accessibilityLabel="Online" />
         )}
       </View>
 
       {/* Middle texts */}
-      <View style={styles.metaContainer}>
-        <View style={styles.metaTitleRow}>
-          <Text style={[styles.dealerName, isUnread && styles.textBold]} numberOfLines={1}>
+      <View style={ts.metaContainer}>
+        <View style={ts.metaTitleRow}>
+          <Text style={[ts.dealerName, isUnread && ts.textBold]} numberOfLines={1}>
             {displayName}
           </Text>
-          <Text style={styles.timeText}>{formatMessageTime(room.lastMessage?.createdAt)}</Text>
+          <Text style={ts.timeText}>{formatMessageTime(room.lastMessage?.createdAt)}</Text>
         </View>
 
-        <Text style={styles.carModelText} numberOfLines={1}>
+        <Text style={ts.carModelText} numberOfLines={1}>
           {room.listing?.title || 'General Inquiry'}
         </Text>
 
         {hasOfferCounter ? (
-          <View style={styles.offerTagRow}>
+          <View style={ts.offerTagRow}>
             <Ionicons name="pricetag" size={12} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={styles.offerTagText}>{lastMsgContent}</Text>
+            <Text style={ts.offerTagText}>{lastMsgContent}</Text>
           </View>
         ) : (
           <Text
             style={[
-              styles.lastMessageText,
-              isUnread && styles.lastMessageTextUnread
+              ts.lastMessageText,
+              isUnread && ts.lastMessageTextUnread
             ]}
             numberOfLines={1}
           >
@@ -152,21 +155,21 @@ const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnlin
 
       {/* Right indicators */}
       {isUnread && (
-        <View style={styles.unreadBadge}>
-          <Text style={styles.unreadBadgeText}>{room.unreadCount}</Text>
+        <View style={ts.unreadBadge}>
+          <Text style={ts.unreadBadgeText}>{room.unreadCount}</Text>
         </View>
       )}
     </TouchableOpacity>
   );
 });
 
-const renderSkeletonRows = () => (
-  <View style={styles.skeletonList}>
+const renderSkeletonRows = (ts: typeof styles) => (
+  <View style={ts.skeletonList}>
     {Array.from({ length: 5 }).map((_, i) => (
-      <View key={`sk-${i}`} style={[styles.threadCard, styles.threadCardSpacing, styles.skeletonRow]}>
+      <View key={`sk-${i}`} style={[ts.threadCard, ts.threadCardSpacing, ts.skeletonRow]}>
         <Skeleton w={48} h={48} r={14} />
-        <View style={styles.skeletonMeta}>
-          <View style={styles.skeletonTitleRow}>
+        <View style={ts.skeletonMeta}>
+          <View style={ts.skeletonTitleRow}>
             <Skeleton w={140} h={14} r={6} />
             <Skeleton w={36} h={10} r={5} />
           </View>
@@ -180,6 +183,8 @@ const renderSkeletonRows = () => (
 
 export const MessagesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? { ...styles, ...lightMessagesStyles } : styles;
   const navigation = useNavigation<NavProp>();
   const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
@@ -237,7 +242,7 @@ export const MessagesScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Top red-blue glow backdrop */}
@@ -249,7 +254,7 @@ export const MessagesScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
-      {isLoading && rooms.length === 0 ? renderSkeletonRows() : null}
+      {isLoading && rooms.length === 0 ? renderSkeletonRows(ts) : null}
     <FlatList
         data={isLoading && rooms.length === 0 ? [] : filteredRooms}
         keyExtractor={(room) => room.id}
@@ -261,22 +266,22 @@ export const MessagesScreen: React.FC = () => {
         ListHeaderComponent={
           <>
             {/* Header navigation bar */}
-            <View style={styles.header}>
+            <View style={ts.header}>
               <View>
-                <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-                <Text style={styles.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
-                <Text style={styles.title}>Messages</Text>
+                <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+                <Text style={ts.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
+                <Text style={ts.title}>Messages</Text>
               </View>
 
-              <IconButton style={styles.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
+              <IconButton style={ts.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
             </View>
 
             {/* Website-style search is always visible and usable. */}
-              <View style={styles.searchWrapper}>
-                <View style={styles.searchBar}>
+              <View style={ts.searchWrapper}>
+                <View style={ts.searchBar}>
                   <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
                   <TextInput
-                    style={styles.searchInput}
+                    style={ts.searchInput}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholder="Search messages..."
@@ -290,28 +295,28 @@ export const MessagesScreen: React.FC = () => {
               </View>
 
             {/* Tab Pills */}
-            <View style={styles.tabsRow}>
+            <View style={ts.tabsRow}>
               <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'all' && styles.tabPillActive]}
+                style={[ts.tabPill, activeTab === 'all' && ts.tabPillActive]}
                 onPress={() => setActiveTab('all')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.tabLabel, activeTab === 'all' && styles.tabLabelActive]}>
-                  All <Text style={styles.tabCount}>{getTabCount('all')}</Text>
+                <Text style={[ts.tabLabel, activeTab === 'all' && ts.tabLabelActive]}>
+                  All <Text style={ts.tabCount}>{getTabCount('all')}</Text>
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.tabPill, activeTab === 'vehicle' && styles.tabPillActive]}
+                style={[ts.tabPill, activeTab === 'vehicle' && ts.tabPillActive]}
                 onPress={() => setActiveTab('vehicle')}
                 activeOpacity={0.8}
               >
-                <View style={styles.tabPillContent}>
+                <View style={ts.tabPillContent}>
                   {rooms.some((r) => Boolean(r.listing) && r.unreadCount > 0) && (
-                    <View style={styles.tabDot} />
+                    <View style={ts.tabDot} />
                   )}
-                  <Text style={[styles.tabLabel, activeTab === 'vehicle' && styles.tabLabelActive]}>
-                    Vehicle chats <Text style={styles.tabCount}>{getTabCount('vehicle')}</Text>
+                  <Text style={[ts.tabLabel, activeTab === 'vehicle' && ts.tabLabelActive]}>
+                    Vehicle chats <Text style={ts.tabCount}>{getTabCount('vehicle')}</Text>
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -336,7 +341,7 @@ export const MessagesScreen: React.FC = () => {
             colors={[Colors.accent]}
           />
         }
-        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[ts.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
@@ -344,6 +349,24 @@ export const MessagesScreen: React.FC = () => {
     </View>
   );
 };
+
+const lightMessagesStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  unreadTag: {color: '#64748B'},
+  title: {color: '#0F172A'},
+  searchIconBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  searchBar: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  searchInput: {color: '#0F172A'},
+  tabPill: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  tabLabel: {color: '#334155'},
+  threadCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  dealerName: {color: '#0F172A'},
+  timeText: {color: '#64748B'},
+  carModelText: {color: '#334155'},
+  lastMessageText: {color: '#64748B'},
+  skeletonRow: {backgroundColor: '#FFFFFF'},
+  skeletonList: {backgroundColor: '#EEF5FB'},
+});
 
 const styles = StyleSheet.create({
   container: {
