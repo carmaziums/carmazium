@@ -2,6 +2,7 @@ import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
 import { assessFirstPartyMarketDemand, applyFirstPartyDemandAdjustment } from './valuation-demand';
+import { searchFirecrawlValuationMarket } from './firecrawl-valuation-search';
 import { hasOtherActiveRetailRegistration } from './retail-uniqueness';
 import { geoBounds, haversineMiles } from './search-geo';
 import {
@@ -431,6 +432,7 @@ export class ListingsService {
         const liveSourceDomains = new Set<string>();
         let liveUkAttempts = 0;
         let blendedMarketAttempts = 0;
+        let firecrawlVerifiedComparables = 0;
 
         const mergeLiveMarketResult = (result: LiveUkMarketSearchResult | null) => {
             if (!result) return;
@@ -481,6 +483,28 @@ export class ListingsService {
 
         await runMarketSearchAttempt('LIVE');
 
+        // Firecrawl is strictly opt-in: off by default; requires a server-only
+        // API key, an approved-domain list and a positive credit check inside
+        // the adapter. Never send customer registration or user details.
+        if (
+            liveComparableMap.size < 5
+            && this.config.get<string>('VALUATION_FIRECRAWL_SEARCH_ENABLED') === 'true'
+        ) {
+            const apiKey = this.config.get<string>('FIRECRAWL_API_KEY') || '';
+            const approvedDomains = (this.config.get<string>('VALUATION_FIRECRAWL_APPROVED_DOMAINS') || '')
+                .split(',').map(domain => domain.trim()).filter(Boolean);
+            if (apiKey && approvedDomains.length > 0) {
+                const before = liveComparableMap.size;
+                const extra = await searchFirecrawlValuationMarket(specificationInput, {
+                    apiKey, approvedDomains,
+                    maxResults: 4,
+                    timeoutMs: 12_000,
+                });
+                if (extra.comparables.length > 0) mergeLiveMarketResult(extra);
+                firecrawlVerifiedComparables = liveComparableMap.size - before;
+            }
+        }
+
         // Keep the existing paid-search budget by default. Additional
         // searches for three/four comparables need an explicit opt-in because
         // each OpenAI web-search pass can incur costs. Weak evidence is still
@@ -530,6 +554,7 @@ export class ListingsService {
                 liveUkAttempts,
                 blendedMarketAttempts: 0,
                 liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'LIVE',
             };
         } else {
@@ -573,6 +598,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'BLENDED',
                 };
             } else if (usableLiveComparables.length > 0) {
@@ -597,6 +623,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'LIVE',
                 };
             } else {
@@ -617,6 +644,7 @@ export class ListingsService {
                     liveUkAttempts,
                     blendedMarketAttempts,
                     liveSources: [...liveSourceDomains].sort(),
+                firecrawlVerifiedComparables,
                     valuationStrategy: 'FALLBACK',
                 };
                 // Read historical *quoted* figures only as a diagnostic benchmark.
