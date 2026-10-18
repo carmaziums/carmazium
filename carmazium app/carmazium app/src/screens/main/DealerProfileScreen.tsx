@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -87,7 +88,7 @@ const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' 
 export const DealerProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightDealerProfileStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerProfileStyles) : styles;
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
   const { access, hasPermission } = useDealerAccess(true);
