@@ -6,6 +6,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 
@@ -44,6 +46,8 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const updateUser = useAuthStore((s) => s.updateUser);
 
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightProfileCompletionStyles) : styles;
   const [dismissed, setDismissed] = useState(dismissedThisSession);
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
@@ -115,12 +119,12 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
 
   return (
     <BottomSheet visible onClose={handleDismiss} title="Complete your profile" avoidKeyboard>
-      <View style={styles.body}>
-        <View style={styles.iconWrap}>
+      <View style={ts.body}>
+        <View style={ts.iconWrap}>
           <Ionicons name="person-outline" size={20} color={Colors.accent} />
         </View>
 
-        <Text style={styles.blurb}>
+        <Text style={ts.blurb}>
           {needsPhone && needsName
             ? 'Add your name and a contact number so buyers and sellers know who they are dealing with.'
             : needsPhone
@@ -130,9 +134,9 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
 
         {needsName && (
           <>
-            <Text style={styles.label}>First name</Text>
+            <Text style={ts.label}>First name</Text>
             <TextInput
-              style={styles.input}
+              style={ts.input}
               value={firstName}
               onChangeText={setFirstName}
               placeholder="e.g. Alex"
@@ -142,9 +146,9 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
               editable={!saving}
             />
 
-            <Text style={styles.label}>Last name</Text>
+            <Text style={ts.label}>Last name</Text>
             <TextInput
-              style={styles.input}
+              style={ts.input}
               value={lastName}
               onChangeText={setLastName}
               placeholder="e.g. Thompson"
@@ -158,9 +162,9 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
 
         {needsPhone && (
           <>
-            <Text style={styles.label}>Phone number</Text>
+            <Text style={ts.label}>Phone number</Text>
             <TextInput
-              style={styles.input}
+              style={ts.input}
               value={phone}
               onChangeText={setPhone}
               placeholder="e.g. 07700 900000"
@@ -172,26 +176,33 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
           </>
         )}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={ts.error}>{error}</Text> : null}
 
         <TouchableOpacity
-          style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+          style={[ts.saveBtn, saving && { opacity: 0.6 }]}
           onPress={handleSave}
           disabled={saving}
           activeOpacity={0.85}
         >
           {saving
             ? <ActivityIndicator size="small" color={Colors.white} />
-            : <Text style={styles.saveBtnText}>SAVE</Text>}
+            : <Text style={ts.saveBtnText}>SAVE</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.laterBtn} onPress={handleDismiss} disabled={saving} activeOpacity={0.7}>
-          <Text style={styles.laterText}>Not now</Text>
+        <TouchableOpacity style={ts.laterBtn} onPress={handleDismiss} disabled={saving} activeOpacity={0.7}>
+          <Text style={ts.laterText}>Not now</Text>
         </TouchableOpacity>
       </View>
     </BottomSheet>
   );
 };
+
+const lightProfileCompletionStyles = StyleSheet.create({
+  blurb: {color: '#334155'},
+  label: {color: '#334155'},
+  input: {backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC'},
+  laterText: {color: '#526177'},
+});
 
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingBottom: 24 },
