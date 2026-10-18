@@ -22,6 +22,8 @@ import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -144,6 +146,8 @@ const STATUS_CONFIG: Record<
 
 export const DealerOffersScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightReceivedOffersStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -362,7 +366,7 @@ export const DealerOffersScreen: React.FC = () => {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <EmptyState
         icon="pricetag-outline"
         title="No offers yet"
@@ -393,43 +397,43 @@ export const DealerOffersScreen: React.FC = () => {
     const sellerCounterLocked = (offer.counterAttemptsSeller ?? 0) >= 5;
 
     return (
-      <View style={[styles.offerCard, { borderLeftColor: cfg.leftBorder }]}>
+      <View style={[ts.offerCard, { borderLeftColor: cfg.leftBorder }]}>
         {/* Top row */}
-        <View style={styles.cardTopRow}>
+        <View style={ts.cardTopRow}>
           {/* Buyer avatar */}
           <LinearGradient
             colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
-            style={styles.buyerAvatar}
+            style={ts.buyerAvatar}
           >
-            <Text style={styles.buyerInitials}>{initials}</Text>
+            <Text style={ts.buyerInitials}>{initials}</Text>
           </LinearGradient>
 
           {/* Name + chip */}
-          <View style={styles.cardTopCenter}>
-            <Text style={styles.buyerName} numberOfLines={1}>{name}</Text>
-            <View style={[styles.statusChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[styles.statusChipText, { color: cfg.chipText }]}>
+          <View style={ts.cardTopCenter}>
+            <Text style={ts.buyerName} numberOfLines={1}>{name}</Text>
+            <View style={[ts.statusChip, { backgroundColor: cfg.chipBg }]}>
+              <Text style={[ts.statusChipText, { color: cfg.chipText }]}>
                 {cfg.chipLabel}
               </Text>
             </View>
           </View>
 
           {/* Time */}
-          <Text style={styles.timeAgo}>{timeAgo(offer.createdAt)}</Text>
+          <Text style={ts.timeAgo}>{timeAgo(offer.createdAt)}</Text>
         </View>
 
         {/* Amount row */}
-        <View style={styles.amountRow}>
-          <Text style={styles.offerAmount}>{formatPrice(offer.amount)}</Text>
+        <View style={ts.amountRow}>
+          <Text style={ts.offerAmount}>{formatPrice(offer.amount)}</Text>
           {diff != null && (
-            <Text style={[styles.diffText, { color: diff >= 0 ? Colors.success : Colors.accent }]}>
+            <Text style={[ts.diffText, { color: diff >= 0 ? Colors.success : Colors.accent }]}>
               {diff >= 0 ? `+${formatPrice(diff)}` : formatPrice(diff)} vs asking
             </Text>
           )}
         </View>
 
         {/* Listing name */}
-        <Text style={styles.listingName} numberOfLines={1}>{listingTitle}</Text>
+        <Text style={ts.listingName} numberOfLines={1}>{listingTitle}</Text>
 
         {/* Negotiation history — visible whenever any counter has occurred */}
         {(offer.sellerCounterAmount != null ||
@@ -456,17 +460,17 @@ export const DealerOffersScreen: React.FC = () => {
         {/* Counter state label */}
         {isCountered && (
           buyerCounteredBack ? (
-            <View style={styles.buyerCounteredChip}>
+            <View style={ts.buyerCounteredChip}>
               <Ionicons name="swap-horizontal-outline" size={12} color={Colors.warning} />
-              <Text style={styles.buyerCounteredText}>
+              <Text style={ts.buyerCounteredText}>
                 BUYER COUNTERED
                 {offer.buyerCounterAmount != null ? ` — ${formatPrice(offer.buyerCounterAmount)}` : ''}
               </Text>
             </View>
           ) : (
-            <View style={styles.counterSentChip}>
+            <View style={ts.counterSentChip}>
               <Ionicons name="time-outline" size={12} color={Colors.infoBlue} />
-              <Text style={styles.counterSentText}>
+              <Text style={ts.counterSentText}>
                 Counter sent{displayedSellerCounter != null ? ` · ${formatPrice(displayedSellerCounter)}` : ''} — awaiting buyer response
               </Text>
             </View>
@@ -477,39 +481,39 @@ export const DealerOffersScreen: React.FC = () => {
         {showActions && (
           <>
           {sellerCounterLocked && (
-            <View style={styles.counterLockedBanner}>
+            <View style={ts.counterLockedBanner}>
               <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
-              <Text style={styles.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
+              <Text style={ts.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
             </View>
           )}
-          <View style={[styles.actionsRow, { opacity: isActioning ? 0.5 : 1 }]}>
+          <View style={[ts.actionsRow, { opacity: isActioning ? 0.5 : 1 }]}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDecline]}
+              style={[ts.actionBtn, ts.actionBtnDecline]}
               activeOpacity={0.75}
               onPress={() => handleDecline(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Decline</Text>
+              <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Decline</Text>
             </TouchableOpacity>
 
             {!sellerCounterLocked && (
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnCounter]}
+                style={[ts.actionBtn, ts.actionBtnCounter]}
                 activeOpacity={0.75}
                 onPress={() => openCounterModal(offer)}
                 disabled={isActioning}
               >
-                <Text style={[styles.actionBtnText, { color: Colors.warning }]}>Counter</Text>
+                <Text style={[ts.actionBtnText, { color: Colors.warning }]}>Counter</Text>
               </TouchableOpacity>
             )}
 
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnAccept]}
+              style={[ts.actionBtn, ts.actionBtnAccept]}
               activeOpacity={0.75}
               onPress={() => handleAccept(offer)}
               disabled={isActioning}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Accept</Text>
+              <Text style={[ts.actionBtnText, { color: Colors.white }]}>Accept</Text>
             </TouchableOpacity>
           </View>
           </>
@@ -522,15 +526,15 @@ export const DealerOffersScreen: React.FC = () => {
             accepted offer) already sold it, the backend correctly rejects a
             second sale, but the buttons shouldn't have been offered at all. */}
         {offer.status === 'ACCEPTED' && offer.listing?.status === 'SOLD' && (
-          <View style={styles.soldNoticeBanner}>
+          <View style={ts.soldNoticeBanner}>
             <Ionicons name="checkmark-circle" size={13} color={Colors.accentGreen} />
-            <Text style={styles.soldNoticeText}>Vehicle already sold</Text>
+            <Text style={ts.soldNoticeText}>Vehicle already sold</Text>
           </View>
         )}
         {offer.status === 'ACCEPTED' && offer.listing?.status !== 'SOLD' && (
-          <View style={[styles.actionsRow, { flexWrap: 'wrap' }]}>
+          <View style={[ts.actionsRow, { flexWrap: 'wrap' }]}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnMessage]}
+              style={[ts.actionBtn, ts.actionBtnMessage]}
               activeOpacity={0.75}
               onPress={() => handleMessageBuyer(offer)}
               disabled={messagingBuyerId === offer.id}
@@ -538,29 +542,29 @@ export const DealerOffersScreen: React.FC = () => {
               {messagingBuyerId === offer.id ? (
                 <ActivityIndicator size="small" color={Colors.infoBlue} />
               ) : (
-                <Text style={[styles.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
+                <Text style={[ts.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnMarkSold]}
+              style={[ts.actionBtn, ts.actionBtnMarkSold]}
               activeOpacity={0.75}
               onPress={() => openSaleModal(offer)}
             >
-              <Text style={[styles.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
+              <Text style={[ts.actionBtnText, { color: Colors.white }]}>Mark as Sold</Text>
             </TouchableOpacity>
 
           </View>
         )}
         {offer.status === 'ACCEPTED' && (
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnDecline, { marginTop: 4 }]}
+            style={[ts.actionBtn, ts.actionBtnDecline, { marginTop: 4 }]}
             activeOpacity={0.75}
             onPress={() => setCancelOffer(offer)}
             disabled={isActioning}
           >
             <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
-            <Text style={[styles.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
+            <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -578,7 +582,7 @@ export const DealerOffersScreen: React.FC = () => {
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       {cancelOffer && (
         <SaleCancellationSheet
           visible={cancelOffer != null}
@@ -600,15 +604,15 @@ export const DealerOffersScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Offers Received</Text>
+        <Text style={ts.headerTitle}>Offers Received</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {pendingCount > 0 && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+            <View style={ts.pendingBadge}>
+              <Text style={ts.pendingBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
             </View>
           )}
           <HamburgerButton />
@@ -621,7 +625,7 @@ export const DealerOffersScreen: React.FC = () => {
           <ErrorBanner message="Could not load offers. Check your connection." onRetry={handleRetry} />
         </View>
       ) : loading ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={ts.scroll} contentContainerStyle={ts.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeleton()}
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -629,14 +633,14 @@ export const DealerOffersScreen: React.FC = () => {
         // Virtualized — an active dealership can accumulate hundreds of offers
         // over time, so we only mount rows near the viewport.
         <FlatList
-          style={styles.scroll}
+          style={ts.scroll}
           data={offers}
           keyExtractor={(o) => o.id}
           renderItem={renderOfferCard}
           ListHeaderComponent={<ReceivedDeliveryRequestsPanel contextLabel="your inventory" />}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 40 }} />}
-          contentContainerStyle={[styles.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[ts.scrollContent, offers.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -661,15 +665,15 @@ export const DealerOffersScreen: React.FC = () => {
             own sheet style doesn't provide */}
         <View style={{ gap: 14 }}>
           {counterModalOffer && (
-            <Text style={styles.modalSubtitle}>
+            <Text style={ts.modalSubtitle}>
               Buyer offered {formatPrice(counterModalOffer.amount)} on{' '}
               {counterModalOffer.listing?.title ?? 'your listing'}
             </Text>
           )}
 
-          <Text style={styles.inputLabel}>Your counter amount (£)</Text>
+          <Text style={ts.inputLabel}>Your counter amount (£)</Text>
           <TextInput
-            style={styles.counterInput}
+            style={ts.counterInput}
             value={counterAmount}
             onChangeText={setCounterAmount}
             keyboardType="numeric"
@@ -678,20 +682,20 @@ export const DealerOffersScreen: React.FC = () => {
             selectionColor={Colors.accent}
           />
 
-          <View style={styles.modalActions}>
+          <View style={ts.modalActions}>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnCancel]}
+              style={[ts.modalBtn, ts.modalBtnCancel]}
               activeOpacity={0.75}
               onPress={() => setCounterModalOffer(null)}
             >
-              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              <Text style={ts.modalBtnCancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnConfirm]}
+              style={[ts.modalBtn, ts.modalBtnConfirm]}
               activeOpacity={0.75}
               onPress={submitCounter}
             >
-              <Text style={styles.modalBtnConfirmText}>Send Counter</Text>
+              <Text style={ts.modalBtnConfirmText}>Send Counter</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -707,15 +711,15 @@ export const DealerOffersScreen: React.FC = () => {
       >
         <View style={{ gap: 14 }}>
           {saleModalOffer && (
-            <Text style={styles.modalSubtitle}>
+            <Text style={ts.modalSubtitle}>
               Confirm the price {getBuyerName(saleModalOffer.buyer)} paid for{' '}
               {saleModalOffer.listing?.title ?? 'this listing'}.
             </Text>
           )}
 
-          <Text style={styles.inputLabel}>Sale price (£)</Text>
+          <Text style={ts.inputLabel}>Sale price (£)</Text>
           <TextInput
-            style={styles.counterInput}
+            style={ts.counterInput}
             value={saleSoldPrice}
             onChangeText={v => { setSaleSoldPrice(v); setSaleError(null); }}
             keyboardType="numeric"
@@ -726,17 +730,17 @@ export const DealerOffersScreen: React.FC = () => {
 
           {saleError && <ErrorBanner message={saleError} />}
 
-          <View style={styles.modalActions}>
+          <View style={ts.modalActions}>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnCancel]}
+              style={[ts.modalBtn, ts.modalBtnCancel]}
               activeOpacity={0.75}
               onPress={() => setSaleModalOffer(null)}
               disabled={saleSubmitting}
             >
-              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              <Text style={ts.modalBtnCancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, styles.modalBtnConfirmSale, saleSubmitting && { opacity: 0.6 }]}
+              style={[ts.modalBtn, ts.modalBtnConfirmSale, saleSubmitting && { opacity: 0.6 }]}
               activeOpacity={0.75}
               onPress={handleConfirmSale}
               disabled={saleSubmitting}
@@ -744,7 +748,7 @@ export const DealerOffersScreen: React.FC = () => {
               {saleSubmitting ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.modalBtnConfirmSaleText}>Confirm Sold</Text>
+                <Text style={ts.modalBtnConfirmSaleText}>Confirm Sold</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -752,9 +756,9 @@ export const DealerOffersScreen: React.FC = () => {
       </BottomSheet>
 
       {toast && (
-        <View style={styles.toastBanner} pointerEvents="none">
+        <View style={ts.toastBanner} pointerEvents="none">
           <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
-          <Text style={styles.toastBannerText}>{toast}</Text>
+          <Text style={ts.toastBannerText}>{toast}</Text>
         </View>
       )}
     </View>
@@ -762,6 +766,35 @@ export const DealerOffersScreen: React.FC = () => {
 };
 
 // ═══════════════════════════ STYLES ════════════════════════════════
+
+const lightReceivedOffersStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  offerCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  skeletonCard: { backgroundColor: '#FFFFFF' },
+  emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  counterLockedBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  soldNoticeBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  buyerAvatar: { backgroundColor: '#F7FBFF' },
+  headerTitle: { color: '#0F172A' },
+  emptyTitle: { color: '#0F172A' },
+  buyerName: { color: '#0F172A' },
+  offerAmount: { color: '#0F172A' },
+  listingName: { color: '#0F172A' },
+  emptySub: { color: '#64748B' },
+  timeAgo: { color: '#64748B' },
+  diffText: { color: '#64748B' },
+  counterLockedText: { color: '#64748B' },
+  soldNoticeText: { color: '#64748B' },
+  scrollContent: { backgroundColor: '#EEF5FB' },
+  inputLabel: { color: '#64748B' },
+  counterInput: { backgroundColor: '#F7FBFF', color: '#0F172A', borderColor: '#D5E1EC' },
+  amountRow: { backgroundColor: '#FFFFFF' },
+  modalSubtitle: { color: '#64748B' },
+  toastBanner: { backgroundColor: '#F7FBFF' },
+  actionBtn: { borderColor: '#D5E1EC' },
+});
 
 const styles = StyleSheet.create({
   container: {
