@@ -44,6 +44,16 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─── Types ──────────────────────────────────────────────────────────────────
 type StatusTag = 'LIVE' | 'DRAFT' | 'REVIEW' | 'SALE_PENDING' | 'REJECTED' | 'SOLD' | 'OTHER';
 type FilterTab = 'All' | 'Live' | 'Under Review' | 'Rejected' | 'Draft' | 'Sold' | 'Sale pending' | 'Other';
+type InventorySort = 'newest' | 'oldest' | 'price-high' | 'price-low' | 'mileage-low' | 'mileage-high' | 'most-viewed';
+const SORT_OPTIONS: { value: InventorySort; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'price-low', label: 'Price: low to high' },
+  { value: 'price-high', label: 'Price: high to low' },
+  { value: 'mileage-low', label: 'Mileage: low to high' },
+  { value: 'mileage-high', label: 'Mileage: high to low' },
+  { value: 'most-viewed', label: 'Most viewed' },
+];
 
 interface Listing {
   id: string;
@@ -56,6 +66,7 @@ interface Listing {
   price: string;
   rawPrice: number;
   daysListed: number;
+  createdAt: number | null;
   views: number;
   leads: number;
   offers: number;
@@ -79,6 +90,7 @@ const mapApiListing = (l: any): Listing => ({
   price: l.price ? `£${Number(l.price).toLocaleString('en-GB')}` : '–',
   rawPrice: l.price ? Number(l.price) : 0,
   daysListed: l.createdAt ? Math.floor((Date.now() - new Date(l.createdAt).getTime()) / 86400000) : 0,
+  createdAt: l.createdAt && Number.isFinite(Date.parse(l.createdAt)) ? Date.parse(l.createdAt) : null,
   views: l.viewCount ?? 0,
   // Were hardcoded 0 — GET /listings/my now includes a real _count on
   // offers/leads (backend previously only used the offers relation for
@@ -571,7 +583,8 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const [fetchError, setFetchError] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [inventoryQuery, setInventoryQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'price-high' | 'price-low'>('newest');
+  const [sortOrder, setSortOrder] = useState<InventorySort>('newest');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   // Persist the dealer's list/grid preference across sessions (SE8-style
   // affordance, mobile-ui-ux-audit.md §C9).
@@ -684,10 +697,21 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
   const filtered = listings
     .filter(l => !chosenStatus || l.status === chosenStatus)
     .filter(l => !q || [l.title, l.registration, l.make, l.transmission, l.price, l.visibility].some(field => field.toLowerCase().includes(q)))
-    .sort((a, b) => sortOrder === 'price-low'
-      ? a.rawPrice - b.rawPrice
-      : sortOrder === 'price-high' ? b.rawPrice - a.rawPrice
-        : 0);
+    .sort((a, b) => {
+      if (sortOrder === 'price-low') return a.rawPrice - b.rawPrice;
+      if (sortOrder === 'price-high') return b.rawPrice - a.rawPrice;
+      if (sortOrder === 'most-viewed') return b.views - a.views;
+      if (sortOrder === 'mileage-low' || sortOrder === 'mileage-high') {
+        // Unknown mileage is always last rather than misleadingly treated as zero.
+        if (a.mileage === null) return b.mileage === null ? 0 : 1;
+        if (b.mileage === null) return -1;
+        return sortOrder === 'mileage-low' ? a.mileage - b.mileage : b.mileage - a.mileage;
+      }
+      // Missing/invalid dates sort after known timestamps in either direction.
+      if (a.createdAt === null) return b.createdAt === null ? 0 : 1;
+      if (b.createdAt === null) return -1;
+      return sortOrder === 'oldest' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
+    });
 
   // The header and every vehicle share a single, virtualized scroll surface.
   const inventoryHeader = (
@@ -793,19 +817,43 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         </TouchableOpacity>
       </ScrollView>
 
-      {/* ── Sort row ─────────────────────────────────────────────────────── */}
+      {/* ── Sort dropdown: select any order explicitly, not by cycling. ── */}
       <View style={styles.sortRow}>
         <Text style={styles.sortLabel}>{filtered.length} {filtered.length === 1 ? 'vehicle' : 'vehicles'} shown</Text>
         <TouchableOpacity
           style={styles.sortAction}
           accessibilityRole="button"
-          accessibilityLabel="Change inventory sorting"
-          onPress={() => setSortOrder(prev => prev === 'newest' ? 'price-high' : prev === 'price-high' ? 'price-low' : 'newest')}
+          accessibilityLabel={`Sort inventory, ${SORT_OPTIONS.find(option => option.value === sortOrder)?.label}`}
+          accessibilityState={{ expanded: sortMenuOpen }}
+          onPress={() => setSortMenuOpen(open => !open)}
         >
           <Ionicons name="swap-vertical-outline" size={17} color={Colors.accent} />
-          <Text style={styles.sortActionText}>{sortOrder === 'newest' ? 'Newest' : sortOrder === 'price-high' ? 'Price: high to low' : 'Price: low to high'}</Text>
+          <Text style={styles.sortActionText} numberOfLines={2}>
+            {SORT_OPTIONS.find(option => option.value === sortOrder)?.label}
+          </Text>
+          <Ionicons name={sortMenuOpen ? 'chevron-up' : 'chevron-down'} size={15} color={Colors.accent} />
         </TouchableOpacity>
       </View>
+      {sortMenuOpen && (
+        <View style={styles.sortDropdown} accessibilityLabel="Inventory sort options">
+          {SORT_OPTIONS.map(option => (
+            <TouchableOpacity
+              key={option.value}
+              style={[styles.sortOption, sortOrder === option.value && styles.sortOptionSelected]}
+              accessibilityRole="button"
+              accessibilityLabel={option.label}
+              accessibilityState={{ selected: sortOrder === option.value }}
+              onPress={() => {
+                setSortOrder(option.value);
+                setSortMenuOpen(false);
+              }}
+            >
+              <Text style={[styles.sortOptionText, sortOrder === option.value && styles.sortOptionTextSelected]}>{option.label}</Text>
+              {sortOrder === option.value && <Ionicons name="checkmark" size={17} color={Colors.accent} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
     </>
   );
@@ -1016,8 +1064,19 @@ const styles = StyleSheet.create({
 
   inventorySearchWrap: { marginHorizontal: 20, marginBottom: 12, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderHi, backgroundColor: Colors.bgSecondary },
   inventorySearchInput: { flex: 1, paddingVertical: 12, fontFamily: FontFamily.medium, fontSize: FontSize.sm, color: Colors.white },
-  sortAction: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, minHeight: 40 },
-  sortActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent },
+  sortAction: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, minHeight: 44, maxWidth: '65%' },
+  sortActionText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent, flexShrink: 1 },
+  sortDropdown: {
+    marginHorizontal: 20, marginBottom: 14, padding: 5, borderRadius: 14,
+    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.borderSubtle,
+  },
+  sortOption: {
+    minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, borderRadius: 10,
+  },
+  sortOptionSelected: { backgroundColor: Colors.accentAlpha12 },
+  sortOptionText: { color: Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.sm },
+  sortOptionTextSelected: { color: Colors.accent, fontFamily: FontFamily.bold },
   // Filter tabs
   filterBar: {
     marginBottom: 0,
