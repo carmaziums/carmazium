@@ -18,8 +18,12 @@ test('Android and iOS bundle the precise website mascot bytes and 128px source i
 test('native trigger and chat header both use the same bundled mascot as the website', () => {
   assert.match(web, /src="\/assets\/images\/mazium-bot-3d\.png"/);
   assert.match(native, /const MAZIUM_MASCOT = require\('\.\.\/\.\.\/assets\/images\/mazium-bot-3d\.png'\)/);
-  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{styles\.chatAvatarImage\} contentFit="contain"/);
-  assert.match(native, /source=\{MAZIUM_MASCOT\}[\s\S]*?style=\{styles\.botImage\}/);
+  // Mascot surfaces must keep using the approved asset AND resolve the selected
+  // light/dark appearance palette. Checking the old `styles` reference would
+  // reject the theme-aware `ts` styles and silently block parity CI.
+  assert.match(native, /const ts = appearanceMode === 'light' \? mergeAppearanceStyles\(adaptLegacyLightStyles\(styles\), lightAiChatStyles\) : styles;/);
+  assert.match(native, /<Image source=\{MAZIUM_MASCOT\} style=\{ts\.chatAvatarImage\} contentFit="contain"/);
+  assert.match(native, /source=\{MAZIUM_MASCOT\}[\s\S]*?style=\{ts\.botImage\}/);
   assert.doesNotMatch(native, /images\.unsplash\.com|mockFace|mockSmileRow|botButtonInactive/);
 });
 
