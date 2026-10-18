@@ -16,6 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Spacing, Radius } from '../../constants/spacing';
@@ -69,6 +71,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
   const accountRole = useAuthStore((s) => s.accountRole);
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightNotificationsScreenStyles) : styles;
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,10 +143,10 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   const renderSkeleton = () =>
     Array.from({ length: 5 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonRow}>
+      <View key={`sk-${i}`} style={ts.skeletonRow}>
         <Skeleton w={44} h={44} r={13} />
-        <View style={styles.skeletonContent}>
-          <View style={styles.skeletonTitleRow}>
+        <View style={ts.skeletonContent}>
+          <View style={ts.skeletonTitleRow}>
             <Skeleton w={160} h={13} r={6} />
             <Skeleton w={30} h={10} r={5} />
           </View>
@@ -165,33 +169,33 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
     return (
       <TouchableOpacity
         key={n.id}
-        style={[styles.notifRow, !isLast && styles.notifRowBorder]}
+        style={[ts.notifRow, !isLast && ts.notifRowBorder]}
         activeOpacity={0.75}
         onPress={() => handleTap(n)}
       >
         {/* Unread indicator */}
-        {!n.isRead && <View style={styles.unreadDot} />}
+        {!n.isRead && <View style={ts.unreadDot} />}
 
         {/* Notification icon */}
-        <View style={[styles.notifIconWrap, { backgroundColor: bg }]}>
+        <View style={[ts.notifIconWrap, { backgroundColor: bg }]}>
           <Ionicons name={icon as any} size={18} color={color} />
         </View>
 
         {/* Text content */}
-        <View style={styles.notifContent}>
-          <View style={styles.notifTopRow}>
+        <View style={ts.notifContent}>
+          <View style={ts.notifTopRow}>
             <Text
               style={[
-                styles.notifTitle,
-                !n.isRead && styles.notifTitleUnread,
+                ts.notifTitle,
+                !n.isRead && ts.notifTitleUnread,
               ]}
               numberOfLines={1}
             >
               {n.title}
             </Text>
-            <Text style={styles.notifTime}>{notifTimeAgo(n.createdAt)}</Text>
+            <Text style={ts.notifTime}>{notifTimeAgo(n.createdAt)}</Text>
           </View>
-          <Text style={styles.notifMessage} numberOfLines={2}>
+          <Text style={ts.notifMessage} numberOfLines={2}>
             {n.message}
           </Text>
         </View>
@@ -200,9 +204,9 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   }, [handleTap]);
 
   const renderGroup = useCallback(({ item: group }: { item: (typeof groups)[number] }) => (
-    <View style={styles.group}>
-      <Text style={styles.groupLabel}>{group.label}</Text>
-      <View style={styles.groupCard}>
+    <View style={ts.group}>
+      <Text style={ts.groupLabel}>{group.label}</Text>
+      <View style={ts.groupCard}>
         {group.items.map((n, idx) =>
           renderRow(n, idx === group.items.length - 1),
         )}
@@ -213,7 +217,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   // ── main render ──────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Subtle gradient */}
@@ -228,14 +232,14 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       <WebsiteTopBar />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={ts.headerCenter}>
+          <Text style={ts.headerTitle}>Notifications</Text>
           {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>
+            <View style={ts.unreadBadge}>
+              <Text style={ts.unreadBadgeText}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </Text>
             </View>
@@ -244,8 +248,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
         <TouchableOpacity
           style={[
-            styles.markAllBtn,
-            (markingAll || unreadCount === 0) && styles.markAllBtnDisabled,
+            ts.markAllBtn,
+            (markingAll || unreadCount === 0) && ts.markAllBtnDisabled,
           ]}
           activeOpacity={0.7}
           onPress={handleMarkAll}
@@ -256,7 +260,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
           ) : (
             <Text
               style={[
-                styles.markAllText,
+                ts.markAllText,
                 unreadCount === 0 && { opacity: 0.35 },
               ]}
             >
@@ -268,11 +272,11 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* Preserve the last known notifications and offer retry after a network error. */}
       {!!loadError && (
-        <View style={styles.retryBanner}>
+        <View style={ts.retryBanner}>
           <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
-          <Text style={styles.retryText}>{loadError}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
-            <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={ts.retryText}>{loadError}</Text>
+          <TouchableOpacity style={ts.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
+            <Text style={ts.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -280,8 +284,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       {/* ── Content ── */}
       {loading || notifications.length === 0 ? (
         <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -302,8 +306,8 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
         // before) so the screen virtualizes instead of mounting every group at
         // once regardless of scroll position (mobile-audit.md P3).
         <FlatList
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -327,6 +331,24 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 };
 
 // ═══════════════════════════ STYLES ═══════════════════════════════════════════
+
+const lightNotificationsScreenStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  headerTitle: { color: '#0F172A' },
+  groupLabel: { color: '#64748B' },
+  groupCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  notifTitle: { color: '#0F172A' },
+  notifTitleUnread: { color: '#0F172A' },
+  notifMessage: { color: '#334155' },
+  notifTime: { color: '#64748B' },
+  notifRowBorder: { borderBottomColor: '#D5E1EC' },
+  retryBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  retryText: { color: '#334155' },
+  skeletonRow: { backgroundColor: '#FFFFFF' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  markAllText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   container: {
