@@ -27,7 +27,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -1078,7 +1078,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
           <View style={ts.cardRight}>
             <View style={[ts.statusChip, { backgroundColor: cfg.chipBg }]}>
-              <Text style={[ts.statusChipText, { color: provisionalPending(item) ? Colors.warning : cfg.chipText }]}>{provisionalPending(item) ? 'PROVISIONALLY SOLD' : cfg.label}</Text>
+              <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (provisionalPending(item) || item.status === 'SCHEDULED' ? lightReadableText.warning : item.status === 'ACTIVE' ? lightReadableText.success : lightReadableText.muted) : (provisionalPending(item) ? Colors.warning : cfg.chipText) }]}>{provisionalPending(item) ? 'PROVISIONALLY SOLD' : cfg.label}</Text>
             </View>
             {isLoadingNav ? (
               <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
@@ -1153,7 +1153,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 onChangeText={v => { setEditReserve(v); setEditError(null); }}
                 keyboardType="number-pad"
                 placeholder="0"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
               />
             </View>
 
@@ -1167,7 +1167,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 editable={false}
                 selectTextOnFocus={false}
                 placeholder="0"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
               />
             </View>
 
@@ -1181,7 +1181,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 onChangeText={v => { setEditMinIncrement(v); setEditError(null); }}
                 keyboardType="number-pad"
                 placeholder="100"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
               />
             </View>
 
@@ -1413,7 +1413,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </View>
           <View style={ts.cardRight}>
             <View style={[ts.statusChip, { backgroundColor: Colors.successAlpha15 }]}>
-              <Text style={[ts.statusChipText, { color: Colors.success }]}>WON</Text>
+              <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? lightReadableText.success : Colors.success }]}>WON</Text>
             </View>
             {isLoadingNav ? (
               <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
@@ -1580,7 +1580,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             onChangeText={v => { setRetailPrice(v); setRetailError(null); }}
             keyboardType="number-pad"
             placeholder="0"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
             autoFocus
           />
         </View>
@@ -1651,7 +1651,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             onChangeText={setDigestTagInput}
             onSubmitEditing={addDigestTag}
             placeholder="Add a tag..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
             maxLength={30}
             editable={digestTags.length < 10}
             returnKeyType="done"
@@ -1989,7 +1989,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     onChangeText={v => { setNewReservePrice(v); setCreateError(null); }}
                     keyboardType="number-pad"
                     placeholder="0"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
                   />
                 </View>
                 {selectedMarketValue > 0 ? (
@@ -2022,7 +2022,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     editable={false}
                     selectTextOnFocus={false}
                     placeholder="Set market value first"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
                   />
                 </View>
               </View>
@@ -2039,7 +2039,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     onChangeText={v => { setNewMinIncrement(v); setCreateError(null); }}
                     keyboardType="number-pad"
                     placeholder="100"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
                   />
                 </View>
               </View>
@@ -2058,7 +2058,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     onChangeText={v => { setNewBuyItNowPrice(v); setCreateError(null); }}
                     keyboardType="number-pad"
                     placeholder="Optional"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={appearanceMode === 'light' ? lightReadableText.muted : Colors.textMuted}
                   />
                 </View>
               </View>
