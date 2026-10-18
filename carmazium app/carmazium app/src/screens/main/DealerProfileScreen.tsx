@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -85,6 +86,8 @@ const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' 
 
 export const DealerProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightDealerProfileStyles } : styles;
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
   const { access, hasPermission } = useDealerAccess(true);
@@ -193,87 +196,87 @@ export const DealerProfileScreen: React.FC = () => {
 
   const renderTodayView = () => {
     return (
-      <View style={styles.tabContent}>
+      <View style={ts.tabContent}>
         {/* INVENTORY SNAPSHOT */}
-        <View style={styles.card}>
-          <View style={styles.snapshotHeader}>
-            <Text style={styles.cardTitle}>INVENTORY SNAPSHOT</Text>
-            <Text style={styles.cardRightText}>{totalInventory} total</Text>
+        <View style={ts.card}>
+          <View style={ts.snapshotHeader}>
+            <Text style={ts.cardTitle}>INVENTORY SNAPSHOT</Text>
+            <Text style={ts.cardRightText}>{totalInventory} total</Text>
           </View>
 
           {/* Segmented bar */}
-          <View style={styles.segmentBar}>
+          <View style={ts.segmentBar}>
             {totalInventory > 0 ? (
               <>
-                <View style={[styles.segment, { flex: liveCount, backgroundColor: Colors.success }]} />
-                <View style={[styles.segment, { flex: pendingCount, backgroundColor: Colors.warning }]} />
-                <View style={[styles.segment, { flex: soldCount, backgroundColor: Colors.error }]} />
+                <View style={[ts.segment, { flex: liveCount, backgroundColor: Colors.success }]} />
+                <View style={[ts.segment, { flex: pendingCount, backgroundColor: Colors.warning }]} />
+                <View style={[ts.segment, { flex: soldCount, backgroundColor: Colors.error }]} />
               </>
             ) : (
-              <View style={[styles.segment, { flex: 1, backgroundColor: Colors.whiteAlpha06 }]} />
+              <View style={[ts.segment, { flex: 1, backgroundColor: Colors.whiteAlpha06 }]} />
             )}
           </View>
 
           {/* Legend */}
-          <View style={styles.legendRow}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.success }]} />
-              <Text style={styles.legendText}>{liveCount} Live</Text>
+          <View style={ts.legendRow}>
+            <View style={ts.legendItem}>
+              <View style={[ts.legendDot, { backgroundColor: Colors.success }]} />
+              <Text style={ts.legendText}>{liveCount} Live</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.warning }]} />
-              <Text style={styles.legendText}>{pendingCount} Pending</Text>
+            <View style={ts.legendItem}>
+              <View style={[ts.legendDot, { backgroundColor: Colors.warning }]} />
+              <Text style={ts.legendText}>{pendingCount} Pending</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.error }]} />
-              <Text style={styles.legendText}>{soldCount} Sold</Text>
+            <View style={ts.legendItem}>
+              <View style={[ts.legendDot, { backgroundColor: Colors.error }]} />
+              <Text style={ts.legendText}>{soldCount} Sold</Text>
             </View>
           </View>
         </View>
 
         {/* TOP LISTINGS • 7D */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>TOP LISTINGS • 7D</Text>
+        <View style={ts.sectionContainer}>
+          <View style={ts.sectionHeaderRow}>
+            <Text style={ts.sectionTitle}>TOP LISTINGS • 7D</Text>
             <TouchableOpacity onPress={() => navigation.navigate('DealerInventory')}>
-              <Text style={styles.sectionActionText}>See all</Text>
+              <Text style={ts.sectionActionText}>See all</Text>
             </TouchableOpacity>
           </View>
 
           {topListings.length > 0 ? (
-            <View style={styles.listingsList}>
+            <View style={ts.listingsList}>
               {topListings.map((vehicle, index) => (
                 <React.Fragment key={vehicle.id}>
-                  <View style={styles.listingRow}>
-                    <View style={index === 0 ? styles.rankBadgeRed : styles.rankBadgeGray}>
-                      <Text style={styles.rankBadgeText}>{index + 1}</Text>
+                  <View style={ts.listingRow}>
+                    <View style={index === 0 ? ts.rankBadgeRed : ts.rankBadgeGray}>
+                      <Text style={ts.rankBadgeText}>{index + 1}</Text>
                     </View>
                     <Image
                       source={vehicle.image ? { uri: vehicle.image } : undefined}
-                      style={styles.listingThumb}
+                      style={ts.listingThumb}
                       contentFit="cover"
                       transition={200}
                       cachePolicy="memory-disk"
                       alt={vehicle.title}
                     />
-                    <View style={styles.listingInfo}>
-                      <Text style={styles.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
-                      <View style={styles.listingMeta}>
+                    <View style={ts.listingInfo}>
+                      <Text style={ts.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
+                      <View style={ts.listingMeta}>
                         <Ionicons name="eye-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.metaText}>{vehicle.views}</Text>
+                        <Text style={ts.metaText}>{vehicle.views}</Text>
                         <Ionicons name="pricetag-outline" size={13} color={Colors.textSecondary} style={{ marginLeft: 10 }} />
-                        <Text style={styles.metaText}>{vehicle.offerCount}</Text>
+                        <Text style={ts.metaText}>{vehicle.offerCount}</Text>
                       </View>
                     </View>
-                    <Text style={styles.listingPrice}>{formatGBP(vehicle.price)}</Text>
+                    <Text style={ts.listingPrice}>{formatGBP(vehicle.price)}</Text>
                   </View>
-                  {index < topListings.length - 1 && <View style={styles.listDivider} />}
+                  {index < topListings.length - 1 && <View style={ts.listDivider} />}
                 </React.Fragment>
               ))}
             </View>
           ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyCardText}>
+            <View style={ts.emptyCard}>
+              <Text style={ts.emptyCardText}>
                 {loading ? 'Loading your listings…' : 'No listings yet — add your first vehicle to see it ranked here.'}
               </Text>
             </View>
@@ -281,24 +284,24 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* NEEDS ATTENTION */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>NEEDS ATTENTION</Text>
+        <View style={ts.sectionContainer}>
+          <Text style={ts.sectionTitle}>NEEDS ATTENTION</Text>
 
-          <View style={styles.attentionList}>
+          <View style={ts.attentionList}>
             {/* Leads */}
             {canManageCrm && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerLeads')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.errorAlpha08, borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.errorAlpha08, borderColor: 'rgba(239, 68, 68, 0.15)' }]}>
                 <Ionicons name="chatbubble-ellipses" size={18} color={Colors.error} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
-                <Text style={styles.attentionSub}>Tap to view your CRM pipeline</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
+                <Text style={ts.attentionSub}>Tap to view your CRM pipeline</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -309,16 +312,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageOffers && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerOffers')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
                 <Ionicons name="pricetag" size={18} color={Colors.warning} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Direct offers</Text>
-                <Text style={styles.attentionSub}>Review and respond to buyer offers</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Direct offers</Text>
+                <Text style={ts.attentionSub}>Review and respond to buyer offers</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -329,16 +332,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageOffers && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerMyOffers')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
                 <Ionicons name="send-outline" size={18} color={Colors.infoBlueLight} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>My offers</Text>
-                <Text style={styles.attentionSub}>Track offers your dealership has sent</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>My offers</Text>
+                <Text style={ts.attentionSub}>Track offers your dealership has sent</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -349,16 +352,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canViewPurchases && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerPurchases')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
                 <Ionicons name="receipt-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Purchases</Text>
-                <Text style={styles.attentionSub}>Vehicles bought by your dealership</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Purchases</Text>
+                <Text style={ts.attentionSub}>Vehicles bought by your dealership</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -367,32 +370,32 @@ export const DealerProfileScreen: React.FC = () => {
             )}
             {/* Earnings */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerEarnings')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
                 <Ionicons name="cash-outline" size={18} color={Colors.success} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Earnings</Text>
-                <Text style={styles.attentionSub}>Revenue, sales registry and receipts</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Earnings</Text>
+                <Text style={ts.attentionSub}>Revenue, sales registry and receipts</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Live auctions (watch) */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
                 <Ionicons name="time" size={18} color={Colors.infoBlue} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Live auctions</Text>
-                <Text style={styles.attentionSub}>Track your dealership's auctions in real time</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Live auctions</Text>
+                <Text style={ts.attentionSub}>Track your dealership's auctions in real time</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -403,16 +406,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageInventory && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('SellerAuctions')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.accentAlpha08, borderColor: Colors.accentAlpha15 }]}>
                 <Ionicons name="hammer-outline" size={18} color={Colors.accent} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Manage auctions</Text>
-                <Text style={styles.attentionSub}>Schedule, edit or put a listing up for auction</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Manage auctions</Text>
+                <Text style={ts.attentionSub}>Schedule, edit or put a listing up for auction</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -421,16 +424,16 @@ export const DealerProfileScreen: React.FC = () => {
             )}
             {/* Finance applications */}
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerFinance')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: Colors.infoBlueAlpha08, borderColor: Colors.infoBlueAlpha15 }]}>
                 <Ionicons name="card-outline" size={18} color={Colors.infoBlue} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Finance applications</Text>
-                <Text style={styles.attentionSub}>Track vehicle finance you've applied for</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Finance applications</Text>
+                <Text style={ts.attentionSub}>Track vehicle finance you've applied for</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -439,16 +442,16 @@ export const DealerProfileScreen: React.FC = () => {
             {canManageTeam && (
 
             <TouchableOpacity
-              style={styles.attentionRow}
+              style={ts.attentionRow}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('DealerTeam')}
             >
-              <View style={[styles.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
+              <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
                 <Ionicons name="people-outline" size={18} color={Colors.palePurple_a78bfa} />
               </View>
-              <View style={styles.attentionTextCol}>
-                <Text style={styles.attentionTitle}>Team</Text>
-                <Text style={styles.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
+              <View style={ts.attentionTextCol}>
+                <Text style={ts.attentionTitle}>Team</Text>
+                <Text style={ts.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
@@ -458,8 +461,8 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* SWITCH BUTTON (buyer/seller) */}
-        <TouchableOpacity style={styles.switchProfileBtn} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
+        <TouchableOpacity style={ts.switchProfileBtn} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
+          <Text style={ts.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
@@ -467,13 +470,13 @@ export const DealerProfileScreen: React.FC = () => {
 
   const renderFunnelBar = (label: string, value: string, percentage: number, color: string) => {
     return (
-      <View style={styles.funnelItem} key={label}>
-        <View style={styles.funnelLabelRow}>
-          <Text style={styles.funnelLabel}>{label}</Text>
-          <Text style={styles.funnelVal}>{value}</Text>
+      <View style={ts.funnelItem} key={label}>
+        <View style={ts.funnelLabelRow}>
+          <Text style={ts.funnelLabel}>{label}</Text>
+          <Text style={ts.funnelVal}>{value}</Text>
         </View>
-        <View style={styles.funnelTrack}>
-          <View style={[styles.funnelFill, { width: `${Math.max(0, Math.min(1, percentage)) * 100}%`, backgroundColor: color }]} />
+        <View style={ts.funnelTrack}>
+          <View style={[ts.funnelFill, { width: `${Math.max(0, Math.min(1, percentage)) * 100}%`, backgroundColor: color }]} />
         </View>
       </View>
     );
@@ -482,71 +485,71 @@ export const DealerProfileScreen: React.FC = () => {
   const renderThisWeekView = () => {
     const kpis = analytics?.kpis;
     return (
-      <View style={styles.tabContent}>
+      <View style={ts.tabContent}>
         {/* REVENUE SALES CARD */}
-        <View style={styles.salesCard}>
+        <View style={ts.salesCard}>
           <LinearGradient
             colors={[Colors.accentAlpha12, 'rgba(59, 130, 246, 0.02)']}
             style={StyleSheet.absoluteFillObject}
           />
-          <Text style={styles.salesLabel}>SALES VALUE • LAST 7 DAYS</Text>
-          <Text style={styles.salesValue}>{formatGBP(kpis?.totalRevenue ?? 0)}</Text>
-          <View style={styles.sparklineIllustration}>
-            <View style={styles.sparklineDotActive} />
-            <View style={styles.sparklineLine} />
+          <Text style={ts.salesLabel}>SALES VALUE • LAST 7 DAYS</Text>
+          <Text style={ts.salesValue}>{formatGBP(kpis?.totalRevenue ?? 0)}</Text>
+          <View style={ts.sparklineIllustration}>
+            <View style={ts.sparklineDotActive} />
+            <View style={ts.sparklineLine} />
           </View>
         </View>
 
         {/* METRICS GRID */}
-        <View style={styles.metricsGrid}>
+        <View style={ts.metricsGrid}>
           {/* Live listings */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>LIVE LISTINGS</Text>
+          <View style={ts.metricCard}>
+            <View style={ts.metricHeader}>
+              <Text style={ts.metricTitle}>LIVE LISTINGS</Text>
               <Ionicons name="cube-outline" size={14} color={Colors.accent} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{liveCount}</Text>
+            <View style={ts.metricValRow}>
+              <Text style={ts.metricNumber}>{liveCount}</Text>
             </View>
           </View>
 
           {/* Units sold */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>UNITS SOLD</Text>
+          <View style={ts.metricCard}>
+            <View style={ts.metricHeader}>
+              <Text style={ts.metricTitle}>UNITS SOLD</Text>
               <Ionicons name="checkmark-done-outline" size={14} color={Colors.accent} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.totalUnitsSold ?? 0}</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.totalUnitsSoldTrend ?? 0)]}>
+            <View style={ts.metricValRow}>
+              <Text style={ts.metricNumber}>{kpis?.totalUnitsSold ?? 0}</Text>
+              <Text style={[ts.metricChangeGreen, trendStyle(kpis?.totalUnitsSoldTrend ?? 0)]}>
                 {trendLabel(kpis?.totalUnitsSoldTrend ?? 0)}
               </Text>
             </View>
           </View>
 
           {/* Avg days to sell */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>AVG DAYS TO SELL</Text>
+          <View style={ts.metricCard}>
+            <View style={ts.metricHeader}>
+              <Text style={ts.metricTitle}>AVG DAYS TO SELL</Text>
               <Ionicons name="time-outline" size={14} color={Colors.warning} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.avgDaysToSellTrend ?? 0)]}>
+            <View style={ts.metricValRow}>
+              <Text style={ts.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
+              <Text style={[ts.metricChangeGreen, trendStyle(kpis?.avgDaysToSellTrend ?? 0)]}>
                 {trendLabel(kpis?.avgDaysToSellTrend ?? 0)}
               </Text>
             </View>
           </View>
 
           {/* Conversion */}
-          <View style={styles.metricCard}>
-            <View style={styles.metricHeader}>
-              <Text style={styles.metricTitle}>OFFER CONVERSION</Text>
+          <View style={ts.metricCard}>
+            <View style={ts.metricHeader}>
+              <Text style={ts.metricTitle}>OFFER CONVERSION</Text>
               <Ionicons name="bar-chart-outline" size={14} color={Colors.success} />
             </View>
-            <View style={styles.metricValRow}>
-              <Text style={styles.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
-              <Text style={[styles.metricChangeGreen, trendStyle(kpis?.offerConversionRateTrend ?? 0)]}>
+            <View style={ts.metricValRow}>
+              <Text style={ts.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
+              <Text style={[ts.metricChangeGreen, trendStyle(kpis?.offerConversionRateTrend ?? 0)]}>
                 {trendLabel(kpis?.offerConversionRateTrend ?? 0)}
               </Text>
             </View>
@@ -554,13 +557,13 @@ export const DealerProfileScreen: React.FC = () => {
         </View>
 
         {/* LEAD FUNNEL */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.funnelHeaderRow}>
-            <Text style={styles.sectionTitle}>LEAD FUNNEL</Text>
-            <Text style={styles.funnelRightText}>All time</Text>
+        <View style={ts.sectionContainer}>
+          <View style={ts.funnelHeaderRow}>
+            <Text style={ts.sectionTitle}>LEAD FUNNEL</Text>
+            <Text style={ts.funnelRightText}>All time</Text>
           </View>
 
-          <View style={styles.funnelCard}>
+          <View style={ts.funnelCard}>
             {funnelStages.map((stage) =>
               renderFunnelBar(stage.label, String(stage.value), stage.value / funnelMax, stage.color)
             )}
@@ -570,18 +573,18 @@ export const DealerProfileScreen: React.FC = () => {
         {/* ADD LISTING BUTTON */}
         {canManageInventory && (
           <TouchableOpacity
-            style={styles.addListingCTA}
+            style={ts.addListingCTA}
             activeOpacity={0.8}
             onPress={() => navigation.navigate('SellCarFlow')}
           >
             <Ionicons name="add" size={20} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.addListingCTAText}>ADD LISTING</Text>
+            <Text style={ts.addListingCTAText}>ADD LISTING</Text>
           </TouchableOpacity>
         )}
 
         {/* SWITCH BUTTON (buyer/seller) */}
-        <TouchableOpacity style={[styles.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
-          <Text style={styles.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
+        <TouchableOpacity style={[ts.switchProfileBtn, { marginTop: 12 }]} onPress={handleViewBuyerProfile} activeOpacity={0.8}>
+          <Text style={ts.switchProfileText}>PREVIEW BUYER DASHBOARD</Text>
         </TouchableOpacity>
       </View>
     );
@@ -611,7 +614,7 @@ export const DealerProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background gradient glow matching the dashboard styling */}
@@ -624,7 +627,7 @@ export const DealerProfileScreen: React.FC = () => {
 
       <WebsiteTopBar />
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: 12 }]}
+        contentContainerStyle={[ts.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -640,14 +643,14 @@ export const DealerProfileScreen: React.FC = () => {
 
         {showPhoneBanner && (
           <TouchableOpacity
-            style={styles.phoneBanner}
+            style={ts.phoneBanner}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Settings' as any)}
           >
             <Ionicons name="call-outline" size={18} color={Colors.warning} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.phoneBannerTitle}>Add a contact phone</Text>
-              <Text style={styles.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
+              <Text style={ts.phoneBannerTitle}>Add a contact phone</Text>
+              <Text style={ts.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
             </View>
             <TouchableOpacity
               onPress={(e) => { e.stopPropagation(); setPhoneBannerDismissed(true); }}
@@ -674,59 +677,59 @@ export const DealerProfileScreen: React.FC = () => {
         {/* Preserve the pre-existing inventory/lead/sales insights, but put
             them behind a secondary disclosure as on-site Home has one clear
             first-fold hierarchy rather than competing Today/Week dashboards. */}
-        <View style={styles.extraInsights}>
+        <View style={ts.extraInsights}>
           <TouchableOpacity
-            style={styles.extraInsightsToggle}
+            style={ts.extraInsightsToggle}
             onPress={() => setAdvancedExpanded(expanded => !expanded)}
             accessibilityRole="button"
             accessibilityState={{ expanded: advancedExpanded }}
             accessibilityLabel="Additional dealer insights"
           >
             <View style={{ flex: 1 }}>
-              <Text style={styles.extraInsightsTitle}>Additional insights</Text>
-              <Text style={styles.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
+              <Text style={ts.extraInsightsTitle}>Additional insights</Text>
+              <Text style={ts.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
             </View>
             <Ionicons name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
               size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
           {advancedExpanded && (
-            <View style={styles.extraInsightsBody}>
+            <View style={ts.extraInsightsBody}>
               {error && <ErrorBanner message={error} onRetry={() => loadData()} />}
           {/* TODAY / THIS WEEK SUB-TABS SELECTOR */}
-          <View style={styles.tabToggleRow}>
+          <View style={ts.tabToggleRow}>
             <TouchableOpacity
-              style={[styles.tabToggleBtn, activeSubTab === 'today' && styles.tabToggleBtnActive]}
+              style={[ts.tabToggleBtn, activeSubTab === 'today' && ts.tabToggleBtnActive]}
               onPress={() => {
                 setActiveSubTab('today');
                 showToast('Today dashboard loaded', 'info');
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabToggleText, activeSubTab === 'today' && styles.tabToggleTextActive]}>
+              <Text style={[ts.tabToggleText, activeSubTab === 'today' && ts.tabToggleTextActive]}>
                 TODAY
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tabToggleBtn, activeSubTab === 'this_week' && styles.tabToggleBtnActive]}
+              style={[ts.tabToggleBtn, activeSubTab === 'this_week' && ts.tabToggleBtnActive]}
               onPress={() => {
                 setActiveSubTab('this_week');
                 showToast('Weekly performance loaded', 'info');
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabToggleText, activeSubTab === 'this_week' && styles.tabToggleTextActive]}>
+              <Text style={[ts.tabToggleText, activeSubTab === 'this_week' && ts.tabToggleTextActive]}>
                 THIS WEEK
               </Text>
             </TouchableOpacity>
           </View>
   
           {loading && !stats && !analytics ? (
-            <View style={styles.loadingWrap}>
+            <View style={ts.loadingWrap}>
               <ActivityIndicator size="small" color={Colors.accent} />
-              <Text style={styles.loadingText}>Loading your dashboard…</Text>
+              <Text style={ts.loadingText}>Loading your dashboard…</Text>
             </View>
           ) : error && !stats && !analytics ? (
-            <Text style={styles.loadingText}>Insights are unavailable. Try again.</Text>
+            <Text style={ts.loadingText}>Insights are unavailable. Try again.</Text>
           ) : (
             activeSubTab === 'today' ? renderTodayView() : renderThisWeekView()
           )}
@@ -740,6 +743,46 @@ export const DealerProfileScreen: React.FC = () => {
     </View>
   );
 };
+
+const lightDealerProfileStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  extraInsightsToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  extraInsightsTitle: { color: '#0F172A' },
+  extraInsightsSub: { color: '#64748B' },
+  headerTodayTitle: { color: '#0F172A' },
+  headerWeekTitle: { color: '#0F172A' },
+  dealerSub: { color: '#64748B' },
+  bellBtnCircle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  phoneBannerTitle: { color: '#0F172A' },
+  phoneBannerSub: { color: '#334155' },
+  tabToggleRow: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  tabToggleText: { color: '#334155' },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  cardTitle: { color: '#0F172A' },
+  cardRightText: { color: '#64748B' },
+  segmentBar: { backgroundColor: '#F7FBFF' },
+  legendText: { color: '#334155' },
+  sectionTitle: { color: '#0F172A' },
+  emptyCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  emptyCardText: { color: '#64748B' },
+  listingRow: { backgroundColor: '#FFFFFF' },
+  listingTitle: { color: '#0F172A' },
+  listingMeta: { color: '#64748B' },
+  listingPrice: { color: '#0F172A' },
+  listDivider: { backgroundColor: '#D5E1EC' },
+  attentionTitle: { color: '#0F172A' },
+  attentionSub: { color: '#64748B' },
+  salesCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  salesLabel: { color: '#64748B' },
+  salesValue: { color: '#0F172A' },
+  metricCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  metricTitle: { color: '#64748B' },
+  metricNumber: { color: '#0F172A' },
+  funnelCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  funnelLabel: { color: '#334155' },
+  funnelVal: { color: '#0F172A' },
+  switchProfileText: { color: '#0F172A' },
+});
 
 const styles = StyleSheet.create({
   container: {
