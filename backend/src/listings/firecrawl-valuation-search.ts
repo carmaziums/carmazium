@@ -51,8 +51,11 @@ export function parseVerifiedAdvert(
     const plain = markdown.replace(/\*\*/g, '').replace(/\u00a0/g, ' ');
     const title = plain.match(/^#\s+([^\n]{5,180})/m)?.[1]?.trim() || hit.title || '';
     if (!title.toUpperCase().includes(input.make.toUpperCase())) return null;
-    const modelWords = input.model.toUpperCase().split(/[\s-]+/).filter(x => x.length > 1);
-    if (!modelWords.every(word => title.toUpperCase().includes(word))) return null;
+    // Keep numeric and one-character model designators: Model 3 must not
+    // match Model X, and BMW 3 Series must not match BMW 5 Series.
+    const modelTokens = input.model.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    const titleTokens = new Set(title.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean));
+    if (!modelTokens.every(word => titleTokens.has(word))) return null;
     if (/^\s*(?:status\s*:\s*)?(?:sold|reserved|deposit taken|not available|out of stock)\s*$/im.test(plain)) return null;
     if (/\b(?:cat [abns]|salvage|non.?runner|spares or repairs)\b/i.test(title)) return null;
     const year = Number(title.match(/\b(?:19|20)\d{2}\b/)?.[0]);
