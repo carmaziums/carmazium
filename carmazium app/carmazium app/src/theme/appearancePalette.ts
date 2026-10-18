@@ -94,11 +94,20 @@ export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T
     const changes: Record<string, string> = {};
     const id = name.toLowerCase();
     const bg = value.backgroundColor;
-    const action = /(?:primary|danger|success|error|warning|active|selected|brand|accent|submit|publish|confirm|cancel|red|green|blue|badge|status|trophy|avatar|photo|overlay|image)/.test(id);
+    const action = /(?:primary|danger|success|error|warning|active|selected|brand|accent|submit|publish|confirm|cancel|red|green|blue|badge|status|trophy|avatar|photo|overlay|image|btn|button|cta|fab)/.test(id);
     if (!action && typeof bg === 'string' && rootBackgrounds.has(bg)) {
       changes.backgroundColor = light.background;
     } else if (!action && typeof bg === 'string' && lightCards.has(bg)) {
       changes.backgroundColor = /input|field|search|picker/.test(id) ? light.elevated : light.card;
+    }
+    // Back/icon buttons frequently contain an inline WHITE icon rather than a
+    // Text style. Keep their neutral glass surface dark so the icon stays legible
+    // even when a page switches to a pale background. Custom light-screen icon
+    // overrides remain authoritative where supplied by the owning screen.
+    if (/^(?:back|close|icon|bell|menu)(?:btn|button)/.test(id)
+        && typeof bg === 'string'
+        && (lightCards.has(bg) || bg === Colors.whiteAlpha05)) {
+      changes.backgroundColor = light.header;
     }
     if (!action && typeof value.borderColor === 'string' && neutralBorders.has(value.borderColor)) {
       changes.borderColor = light.border;
