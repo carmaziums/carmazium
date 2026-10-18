@@ -115,7 +115,7 @@ export function VehicleValuationCard({
                                     : "Dealer guide is a model estimate; insufficient observed auction results."
                                 : `Retail guide derived from ${valuation.channelEvidence?.retailComparableCount ?? 0} comparable market prices.`}
                         </p>
-                    )
+                    )}
                 </div>
 
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
