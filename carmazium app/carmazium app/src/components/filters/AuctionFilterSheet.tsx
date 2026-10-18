@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.size12,
     color: Colors.textSecondary,
-    lineHeight: 18,
   },
   pillTextSelected: {
     color: Colors.accent,
