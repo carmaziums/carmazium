@@ -493,7 +493,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
       <View style={ts.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <LinearGradient
-          colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+          colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0.5 }}
@@ -564,7 +564,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
 
       {/* Background gradient */}
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
