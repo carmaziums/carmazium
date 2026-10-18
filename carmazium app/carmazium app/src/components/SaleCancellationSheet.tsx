@@ -13,6 +13,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from './BottomSheet';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import {
@@ -55,6 +57,8 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
   onClose,
   onCreated,
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightSaleCancellationStyles) : styles;
   const [reason, setReason] = useState<SaleCancellationReason>('MUTUAL_AGREEMENT');
   const [details, setDetails] = useState('');
   const [evidence, setEvidence] = useState<MobileCancellationEvidence[]>([]);
@@ -175,39 +179,39 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
       fillHeight
     >
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
+        style={ts.scroll}
+        contentContainerStyle={ts.content}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.warningCard}>
+        <View style={ts.warningCard}>
           <Ionicons name="warning-outline" size={18} color={Colors.warning} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.warningTitle}>{vehicleTitle}</Text>
-            <Text style={styles.warningText}>
+            <Text style={ts.warningTitle}>{vehicleTitle}</Text>
+            <Text style={ts.warningText}>
               This creates a formal cancellation request. The sale is not silently removed. The other party normally has to agree, and sensitive cases go to CarMazium review.
             </Text>
           </View>
         </View>
 
-        <Text style={styles.label}>WHY ARE YOU CANCELLING?</Text>
-        <View style={styles.reasonList}>
+        <Text style={ts.label}>WHY ARE YOU CANCELLING?</Text>
+        <View style={ts.reasonList}>
           {REASONS.map(value => {
             const selected = value === reason;
             return (
               <TouchableOpacity
                 key={value}
-                style={[styles.reasonRow, selected && styles.reasonRowSelected]}
+                style={[ts.reasonRow, selected && ts.reasonRowSelected]}
                 activeOpacity={0.75}
                 onPress={() => {
                   setReason(value);
                   setError(null);
                 }}
               >
-                <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected && <View style={styles.radioDot} />}
+                <View style={[ts.radio, selected && ts.radioSelected]}>
+                  {selected && <View style={ts.radioDot} />}
                 </View>
-                <Text style={[styles.reasonText, selected && styles.reasonTextSelected]}>
+                <Text style={[ts.reasonText, selected && ts.reasonTextSelected]}>
                   {SALE_CANCELLATION_REASON_LABELS[value]}
                 </Text>
               </TouchableOpacity>
@@ -215,9 +219,9 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
           })}
         </View>
 
-        <Text style={styles.label}>EXPLAIN WHAT HAPPENED</Text>
+        <Text style={ts.label}>EXPLAIN WHAT HAPPENED</Text>
         <TextInput
-          style={styles.detailsInput}
+          style={ts.detailsInput}
           value={details}
           onChangeText={setDetails}
           multiline
@@ -227,47 +231,47 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
           placeholderTextColor={Colors.textMuted}
         />
 
-        <View style={[styles.evidenceCard, evidenceRequired && styles.evidenceCardRequired]}>
-          <View style={styles.evidenceHeader}>
+        <View style={[ts.evidenceCard, evidenceRequired && ts.evidenceCardRequired]}>
+          <View style={ts.evidenceHeader}>
             <Ionicons
               name={evidenceRequired ? 'alert-circle-outline' : 'attach-outline'}
               size={18}
               color={evidenceRequired ? Colors.warning : Colors.infoBlue}
             />
             <View style={{ flex: 1 }}>
-              <Text style={styles.evidenceTitle}>
+              <Text style={ts.evidenceTitle}>
                 Evidence {evidenceRequired ? 'required' : 'optional'}
               </Text>
-              <Text style={styles.evidenceSub}>
+              <Text style={ts.evidenceSub}>
                 Up to 5 photos, screenshots or short videos. Maximum 25 MB per file. Evidence is stored privately.
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.pickButton}
+            style={ts.pickButton}
             activeOpacity={0.8}
             onPress={pickEvidence}
             disabled={submitting || evidence.length >= MAX_EVIDENCE_FILES}
           >
             <Ionicons name="cloud-upload-outline" size={15} color={Colors.textPrimary} />
-            <Text style={styles.pickButtonText}>
+            <Text style={ts.pickButtonText}>
               {evidence.length >= MAX_EVIDENCE_FILES ? '5 files attached' : 'Choose evidence'}
             </Text>
           </TouchableOpacity>
 
           {evidence.length > 0 && (
-            <View style={styles.evidenceList}>
+            <View style={ts.evidenceList}>
               {evidence.map((file, index) => (
-                <View key={`${file.uri}-${index}`} style={styles.evidenceRow}>
+                <View key={`${file.uri}-${index}`} style={ts.evidenceRow}>
                   <Ionicons
                     name={file.type.startsWith('video/') ? 'videocam-outline' : 'image-outline'}
                     size={15}
                     color={Colors.textSecondary}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-                    <Text style={styles.fileMeta}>
+                    <Text style={ts.fileName} numberOfLines={1}>{file.name}</Text>
+                    <Text style={ts.fileMeta}>
                       {file.size ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : 'Evidence file'}
                     </Text>
                   </View>
@@ -280,32 +284,32 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
                   </TouchableOpacity>
                 </View>
               ))}
-              <Text style={styles.totalEvidenceText}>
+              <Text style={ts.totalEvidenceText}>
                 {evidence.length}/5 files · {pickedSizeMb.toFixed(1)} MB selected
               </Text>
             </View>
           )}
         </View>
 
-        <View style={styles.policyCard}>
-          <Text style={styles.policyText}>
+        <View style={ts.policyCard}>
+          <Text style={ts.policyText}>
             Auction fee refunds depend on the cancellation reason and review outcome. Buyer evidence alone does not automatically refund the £125 fee. Submitted handovers, seller-reward activity and progressed TradeXchange work require admin review.
           </Text>
         </View>
 
-        {!!error && <Text style={styles.errorText}>{error}</Text>}
+        {!!error && <Text style={ts.errorText}>{error}</Text>}
 
-        <View style={styles.actions}>
+        <View style={ts.actions}>
           <TouchableOpacity
-            style={styles.keepButton}
+            style={ts.keepButton}
             activeOpacity={0.8}
             onPress={close}
             disabled={submitting}
           >
-            <Text style={styles.keepButtonText}>Keep Sale</Text>
+            <Text style={ts.keepButtonText}>Keep Sale</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.submitButton, submitting && { opacity: 0.6 }]}
+            style={[ts.submitButton, submitting && { opacity: 0.6 }]}
             activeOpacity={0.8}
             onPress={submit}
             disabled={submitting}
@@ -313,7 +317,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
             {submitting ? (
               <ActivityIndicator color={Colors.white} size="small" />
             ) : (
-              <Text style={styles.submitButtonText}>Request Cancellation</Text>
+              <Text style={ts.submitButtonText}>Request Cancellation</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -323,6 +327,25 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
     </BottomSheet>
   );
 };
+
+const lightSaleCancellationStyles = StyleSheet.create({
+  warningCard: { backgroundColor: '#FFF7ED', borderColor: '#F3D3B8' },
+  warningText: { color: '#334155' },
+  warningTitle: { color: '#0F172A' },
+  label: { color: '#334155' },
+  reasonRow: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  reasonText: { color: '#0F172A' },
+  detailsInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
+  evidenceCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  evidenceTitle: { color: '#0F172A' },
+  evidenceSub: { color: '#64748B' },
+  fileName: { color: '#0F172A' },
+  fileMeta: { color: '#64748B' },
+  policyCard: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  policyText: { color: '#334155' },
+  keepButton: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  keepButtonText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
