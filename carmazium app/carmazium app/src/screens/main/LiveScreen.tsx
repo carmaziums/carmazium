@@ -262,7 +262,10 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
       matchesAuctionFilters({
         ...a, bodyType: a.bodyTypeRaw, condition: a.conditionRaw,
       }, filters, a.totalBids > 0 ? a.currentBid : a.startingBid, origin));
-    return out.sort(compareAuctions(filters.sortBy));
+    return out.sort((a, b) => compareAuctions(filters.sortBy)(
+      { ...a, currentBid: a.totalBids > 0 ? a.currentBid : a.startingBid },
+      { ...b, currentBid: b.totalBids > 0 ? b.currentBid : b.startingBid },
+    ));
   }, [activeList, q, filters, origin]);
 
   const filteredUpcoming = useMemo(() => {
