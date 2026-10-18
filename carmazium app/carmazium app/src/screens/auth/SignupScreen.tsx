@@ -141,7 +141,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Background gradient with top glow */}
       <LinearGradient
-        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -231,7 +231,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   value={name}
                   onChangeText={setName}
                   placeholder="Alex Thompson"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   autoCapitalize="words"
                   returnKeyType="next"
                   onFocus={() => setFocusedField('name')}
@@ -262,7 +262,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="your@email.com"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   returnKeyType="next"
@@ -294,7 +294,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   secureTextEntry={!showPassword}
                   returnKeyType="next"
                   onFocus={() => setFocusedField('password')}
@@ -349,7 +349,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.inputPlaceholder}
+                  placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.inputPlaceholder}
                   secureTextEntry={!showConfirmPassword}
                   returnKeyType="done"
                   onFocus={() => setFocusedField('confirmPassword')}
