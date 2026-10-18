@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -172,6 +172,10 @@ const LeadDetail: React.FC<{
   navigation?: any;
 }> = ({ lead, onBack, onUpdateStatus, onSaveNotes, onReassign, staffOptions, busy, navigation }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light'
+    ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles)
+    : styles;
   const [notesDraft, setNotesDraft] = useState(lead.notes);
   const [messagingBusy, setMessagingBusy] = useState(false);
 
@@ -199,10 +203,10 @@ const LeadDetail: React.FC<{
   const hasListing = lead.vehicle !== 'General enquiry';
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={ts.container}>
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
@@ -210,82 +214,82 @@ const LeadDetail: React.FC<{
 
       <KeyboardStickyView style={{ flex: 1 }} behavior="padding">
         {/* Header */}
-        <View style={[styles.detailHeader, { paddingTop: insets.top + 14 }]}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
-          <View style={styles.detailHeaderCenter}>
-            <View style={styles.detailAvatarWrap}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{lead.initials}</Text>
+        <View style={[ts.detailHeader, { paddingTop: insets.top + 14 }]}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={onBack} accessibilityLabel="Go back" />
+          <View style={ts.detailHeaderCenter}>
+            <View style={ts.detailAvatarWrap}>
+              <View style={ts.avatar}>
+                <Text style={ts.avatarText}>{lead.initials}</Text>
               </View>
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.detailName}>{lead.name}</Text>
+                  <Text style={ts.detailName}>{lead.name}</Text>
                   {lead.tag === 'HOT' && (
-                    <View style={styles.tagHotInline}>
-                      <Text style={styles.tagHotTextInline}>HOT</Text>
+                    <View style={ts.tagHotInline}>
+                      <Text style={ts.tagHotTextInline}>HOT</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.detailVehicle} numberOfLines={1}>{lead.vehicle}</Text>
+                <Text style={ts.detailVehicle} numberOfLines={1}>{lead.vehicle}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <ScrollView style={styles.chatScroll} contentContainerStyle={styles.chatContent}>
+        <ScrollView style={ts.chatScroll} contentContainerStyle={ts.chatContent}>
           {/* Listing card */}
           {hasListing && (
-            <View style={styles.listingCard}>
+            <View style={ts.listingCard}>
               {lead.listingImage ? (
-                <Image source={{ uri: lead.listingImage }} style={styles.listingThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                <Image source={{ uri: lead.listingImage }} style={ts.listingThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               ) : (
-                <View style={[styles.listingThumb, styles.listingThumbFallback]}>
+                <View style={[ts.listingThumb, ts.listingThumbFallback]}>
                   <Ionicons name="car-sport-outline" size={20} color={Colors.iconMuted} />
                 </View>
               )}
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.listingTitle} numberOfLines={1}>{lead.vehicle}</Text>
+                <Text style={ts.listingTitle} numberOfLines={1}>{lead.vehicle}</Text>
                 {formatPrice(lead.listingPrice) && (
-                  <Text style={styles.listingPrice}>{formatPrice(lead.listingPrice)}</Text>
+                  <Text style={ts.listingPrice}>{formatPrice(lead.listingPrice)}</Text>
                 )}
               </View>
             </View>
           )}
 
           {/* Meta row — source & time */}
-          <View style={styles.metaRow}>
-            <View style={styles.metaChip}>
+          <View style={ts.metaRow}>
+            <View style={ts.metaChip}>
               <Ionicons name="radio-outline" size={12} color={Colors.textSecondary} />
-              <Text style={styles.metaChipText}>{sourceLabel}</Text>
+              <Text style={ts.metaChipText}>{sourceLabel}</Text>
             </View>
-            <View style={styles.metaChip}>
+            <View style={ts.metaChip}>
               <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
-              <Text style={styles.metaChipText}>{lead.time} ago</Text>
+              <Text style={ts.metaChipText}>{lead.time} ago</Text>
             </View>
           </View>
 
           {/* Assigned To */}
           {staffOptions.length > 0 && (
             <>
-              <Text style={styles.sectionLabel}>ASSIGNED TO</Text>
+              <Text style={ts.sectionLabel}>ASSIGNED TO</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 24 }}>
                 <TouchableOpacity
-                  style={[styles.staffChip, !lead.assignedToId && styles.staffChipActive]}
+                  style={[ts.staffChip, !lead.assignedToId && ts.staffChipActive]}
                   onPress={() => onReassign(lead.id, null)}
                   disabled={busy}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.staffChipText, !lead.assignedToId && styles.staffChipTextActive]}>Unassigned</Text>
+                  <Text style={[ts.staffChipText, !lead.assignedToId && ts.staffChipTextActive]}>Unassigned</Text>
                 </TouchableOpacity>
                 {staffOptions.map(opt => (
                   <TouchableOpacity
                     key={opt.userId}
-                    style={[styles.staffChip, lead.assignedToId === opt.userId && styles.staffChipActive]}
+                    style={[ts.staffChip, lead.assignedToId === opt.userId && ts.staffChipActive]}
                     onPress={() => onReassign(lead.id, opt.userId)}
                     disabled={busy}
                     activeOpacity={0.75}
                   >
-                    <Text style={[styles.staffChipText, lead.assignedToId === opt.userId && styles.staffChipTextActive]}>{opt.name}</Text>
+                    <Text style={[ts.staffChipText, lead.assignedToId === opt.userId && ts.staffChipTextActive]}>{opt.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -293,35 +297,35 @@ const LeadDetail: React.FC<{
           )}
 
           {/* Contact card */}
-          <Text style={styles.sectionLabel}>CONTACT</Text>
-          <View style={styles.contactCard}>
+          <Text style={ts.sectionLabel}>CONTACT</Text>
+          <View style={ts.contactCard}>
             {lead.phone ? (
-              <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`tel:${lead.phone}`)} activeOpacity={0.7}>
-                <View style={[styles.contactIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
+              <TouchableOpacity style={ts.contactRow} onPress={() => Linking.openURL(`tel:${lead.phone}`)} activeOpacity={0.7}>
+                <View style={[ts.contactIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
                   <Ionicons name="call-outline" size={15} color={Colors.success} />
                 </View>
-                <Text style={styles.contactText}>{lead.phone}</Text>
+                <Text style={ts.contactText}>{lead.phone}</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             ) : null}
             {lead.email ? (
-              <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`mailto:${lead.email}`)} activeOpacity={0.7}>
-                <View style={[styles.contactIconWrap, { backgroundColor: Colors.infoBlueAlpha12 }]}>
+              <TouchableOpacity style={ts.contactRow} onPress={() => Linking.openURL(`mailto:${lead.email}`)} activeOpacity={0.7}>
+                <View style={[ts.contactIconWrap, { backgroundColor: Colors.infoBlueAlpha12 }]}>
                   <Ionicons name="mail-outline" size={15} color={Colors.infoBlue} />
                 </View>
-                <Text style={styles.contactText} numberOfLines={1}>{lead.email}</Text>
+                <Text style={ts.contactText} numberOfLines={1}>{lead.email}</Text>
                 <Ionicons name="chevron-forward" size={14} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
               </TouchableOpacity>
             ) : null}
             {!lead.phone && !lead.email && (
-              <Text style={styles.emptyMutedText}>No contact details on file for this lead.</Text>
+              <Text style={ts.emptyMutedText}>No contact details on file for this lead.</Text>
             )}
           </View>
 
           {/* Message Lead CTA */}
           {lead.buyerId ? (
             <TouchableOpacity
-              style={[styles.messageCTA, messagingBusy && { opacity: 0.6 }]}
+              style={[ts.messageCTA, messagingBusy && { opacity: 0.6 }]}
               onPress={handleMessageLead}
               disabled={messagingBusy}
               activeOpacity={0.8}
@@ -331,16 +335,16 @@ const LeadDetail: React.FC<{
               ) : (
                 <>
                   <Ionicons name="chatbubble-ellipses-outline" size={15} color={Colors.white} />
-                  <Text style={styles.messageCTAText}>Message Customer</Text>
+                  <Text style={ts.messageCTAText}>Message Customer</Text>
                 </>
               )}
             </TouchableOpacity>
           ) : null}
 
           {/* Notes */}
-          <Text style={styles.sectionLabel}>NOTES</Text>
+          <Text style={ts.sectionLabel}>NOTES</Text>
           <TextInput
-            style={styles.notesInput}
+            style={ts.notesInput}
             multiline
             placeholder="Add notes — call outcomes, requirements, follow-ups…"
             placeholderTextColor={Colors.iconMuted}
@@ -350,7 +354,7 @@ const LeadDetail: React.FC<{
           />
           {notesChanged && (
             <TouchableOpacity
-              style={[styles.saveNotesBtn, busy && { opacity: 0.6 }]}
+              style={[ts.saveNotesBtn, busy && { opacity: 0.6 }]}
               onPress={() => onSaveNotes(lead.id, notesDraft.trim())}
               disabled={busy}
               activeOpacity={0.8}
@@ -358,7 +362,7 @@ const LeadDetail: React.FC<{
               {busy ? <ActivityIndicator size="small" color={Colors.white} /> : (
                 <>
                   <Ionicons name="checkmark" size={14} color={Colors.white} />
-                  <Text style={styles.saveNotesBtnText}>Save Notes</Text>
+                  <Text style={ts.saveNotesBtnText}>Save Notes</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -368,8 +372,8 @@ const LeadDetail: React.FC<{
         </ScrollView>
 
         {/* Status pipeline footer */}
-        <View style={[styles.statusBarWrap, { paddingBottom: Math.max(insets.bottom + 12, 12) }]}>
-          <Text style={styles.statusBarLabel}>UPDATE STATUS</Text>
+        <View style={[ts.statusBarWrap, { paddingBottom: Math.max(insets.bottom + 12, 12) }]}>
+          <Text style={ts.statusBarLabel}>UPDATE STATUS</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
             {STATUS_OPTIONS.map(opt => {
               const active = lead.status === opt.key;
@@ -377,14 +381,14 @@ const LeadDetail: React.FC<{
                 <TouchableOpacity
                   key={opt.key}
                   style={[
-                    styles.statusChip,
+                    ts.statusChip,
                     active && { backgroundColor: `${opt.color}26`, borderColor: opt.color },
                   ]}
                   onPress={() => onUpdateStatus(lead.id, opt.key)}
                   disabled={busy || active}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.statusChipText, active && { color: opt.color }]}>{opt.label}</Text>
+                  <Text style={[ts.statusChipText, active && { color: opt.color }]}>{opt.label}</Text>
                 </TouchableOpacity>
               );
             })}
