@@ -77,9 +77,9 @@ export function parseVerifiedAdvert(
     const price = singleNumber(prices);
     // A single GBP amount may be a deposit or a monthly payment. Require
     // it to appear as a sale/cash/asking/vehicle price on the advert page.
-    const labelledPrice = /(?:cash|asking|vehicle|advertised|sale)\s+price|(?:^|\n)\s*price\s*:/i.test(plain);
+    const labelledPrice = /(?:cash|asking|vehicle|advertised|sale)\s+price|(?:^|\n)\s*price\s*:?\s*£/i.test(plain);
     if (!labelledPrice) return null;
-    const mileageTokens = [...plain.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d{4,6})\s*(?:miles|mi\b)/gi)]
+    const mileageTokens = [...plain.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d{1,7})\s*(?:miles|mi\b)/gi)]
         .map(m => Number(m[1].replace(/,/g, '')))
         .filter(n => n >= 0 && n <= 1_500_000);
     const mileage = singleNumber(mileageTokens);
