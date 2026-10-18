@@ -17,6 +17,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import {FontFamily, FontSize } from '../constants/typography';
 import { apiClient } from '../lib/apiClient';
 
@@ -106,6 +108,8 @@ function parseRows(raw: string): CsvRow[] {
 
 export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(st, lightBulkImportStyles) : st;
 
   const [status, setStatus] = useState<ImportStatus>('idle');
   const [rows, setRows] = useState<CsvRow[]>([]);
@@ -253,10 +257,10 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
       statusBarTranslucent
       onRequestClose={() => { if (status !== 'importing') { reset(); onClose(); } }}
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={st.container}>
+      <StatusBar barStyle={appearanceMode === 'light' ? "dark-content" : "light-content"} translucent backgroundColor="transparent" />
+      <View style={ts.container}>
         <LinearGradient
-          colors={[Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={appearanceMode === 'light' ? ['#EEF5FB', '#EEF5FB', '#EEF5FB'] : [Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.4 }}
           style={StyleSheet.absoluteFillObject}
@@ -264,35 +268,35 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
         <View style={{ height: insets.top }} />
 
         {/* Header */}
-        <View style={st.header}>
-          <IconButton style={st.closeBtn} icon={<Ionicons name="close" size={18} color={status === 'importing' ? Colors.textMuted : Colors.white} />} onPress={() => { if (status !== 'importing') { reset(); onClose(); } }} disabled={status === 'importing'} accessibilityLabel="Close" />
+        <View style={ts.header}>
+          <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={18} color={status === 'importing' ? Colors.textMuted : Colors.white} />} onPress={() => { if (status !== 'importing') { reset(); onClose(); } }} disabled={status === 'importing'} accessibilityLabel="Close" />
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={st.headerTitle}>Bulk Import</Text>
-            <Text style={st.headerSub}>Import listings from a CSV file</Text>
+            <Text style={ts.headerTitle}>Bulk Import</Text>
+            <Text style={ts.headerSub}>Import listings from a CSV file</Text>
           </View>
           <View style={{ width: 38 }} />
         </View>
 
-        <ScrollView contentContainerStyle={[st.body, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[ts.body, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
 
           {/* ── IDLE: file pick + template ── */}
           {status === 'idle' && (
             <>
               {/* Format guide */}
-              <View style={st.formatCard}>
-                <Text style={st.formatTitle}>CSV FORMAT</Text>
-                <Text style={st.formatCode}>vrm,price,mileage,images</Text>
-                <Text style={st.formatCode}>AB12CDE,15000,45000,https://…|https://…</Text>
-                <Text style={st.formatHint}>
+              <View style={ts.formatCard}>
+                <Text style={ts.formatTitle}>CSV FORMAT</Text>
+                <Text style={ts.formatCode}>vrm,price,mileage,images</Text>
+                <Text style={ts.formatCode}>AB12CDE,15000,45000,https://…|https://…</Text>
+                <Text style={ts.formatHint}>
                   • First row is the header (skipped){'\n'}
-                  • Images: separate multiple URLs with a pipe character <Text style={st.formatCode}>|</Text>{'\n'}
+                  • Images: separate multiple URLs with a pipe character <Text style={ts.formatCode}>|</Text>{'\n'}
                   • Price and mileage must be numbers
                 </Text>
               </View>
 
               {/* Template button */}
               <TouchableOpacity
-                style={[st.outlineBtn, sharingTemplate && { opacity: 0.6 }]}
+                style={[ts.outlineBtn, sharingTemplate && { opacity: 0.6 }]}
                 onPress={handleShareTemplate}
                 disabled={sharingTemplate}
                 activeOpacity={0.8}
@@ -302,49 +306,49 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
                 ) : (
                   <>
                     <Ionicons name="download-outline" size={16} color={Colors.warning} />
-                    <Text style={st.outlineBtnText}>Download CSV Template</Text>
+                    <Text style={ts.outlineBtnText}>Download CSV Template</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               {/* File pick button */}
-              <TouchableOpacity style={st.primaryBtn} onPress={handlePickFile} activeOpacity={0.85}>
+              <TouchableOpacity style={ts.primaryBtn} onPress={handlePickFile} activeOpacity={0.85}>
                 <Ionicons name="document-text-outline" size={16} color={Colors.white} />
-                <Text style={st.primaryBtnText}>Pick CSV File</Text>
+                <Text style={ts.primaryBtnText}>Pick CSV File</Text>
               </TouchableOpacity>
             </>
           )}
 
           {/* ── PARSING ── */}
           {status === 'parsing' && (
-            <View style={st.centeredBlock}>
+            <View style={ts.centeredBlock}>
               <ActivityIndicator size="large" color={Colors.accent} />
-              <Text style={st.statusText}>Reading file…</Text>
+              <Text style={ts.statusText}>Reading file…</Text>
             </View>
           )}
 
           {/* ── IMPORTING ── */}
           {status === 'importing' && (
-            <View style={st.progressBlock}>
-              <Text style={st.progressLabel}>
+            <View style={ts.progressBlock}>
+              <Text style={ts.progressLabel}>
                 Importing {current} of {rows.length} vehicles
               </Text>
 
               {/* Progress bar */}
-              <View style={st.progressTrack}>
-                <View style={[st.progressFill, { width: `${progressPct}%` as any }]} />
+              <View style={ts.progressTrack}>
+                <View style={[ts.progressFill, { width: `${progressPct}%` as any }]} />
               </View>
-              <Text style={st.progressPct}>{progressPct}%</Text>
+              <Text style={ts.progressPct}>{progressPct}%</Text>
 
-              <Text style={st.progressHint}>
+              <Text style={ts.progressHint}>
                 Please keep the app open. Listings are created one at a time.
               </Text>
 
               {/* Live error count */}
               {errorRows.length > 0 && (
-                <View style={st.liveErrorRow}>
+                <View style={ts.liveErrorRow}>
                   <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
-                  <Text style={st.liveErrorText}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed so far</Text>
+                  <Text style={ts.liveErrorText}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed so far</Text>
                 </View>
               )}
             </View>
@@ -354,33 +358,33 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
           {status === 'complete' && (
             <>
               {/* Success count */}
-              <View style={st.completeCard}>
-                <View style={st.completeIcon}>
+              <View style={ts.completeCard}>
+                <View style={ts.completeIcon}>
                   <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
                 </View>
-                <Text style={st.completeTitle}>{importedCount} listing{importedCount !== 1 ? 's' : ''} imported</Text>
-                <Text style={st.completeSub}>All imported listings are saved as drafts. Review and publish them from My Listings.</Text>
+                <Text style={ts.completeTitle}>{importedCount} listing{importedCount !== 1 ? 's' : ''} imported</Text>
+                <Text style={ts.completeSub}>All imported listings are saved as drafts. Review and publish them from My Listings.</Text>
               </View>
 
               {/* Error summary */}
               {errorRows.length > 0 && (
-                <View style={st.errorSummary}>
+                <View style={ts.errorSummary}>
                   <TouchableOpacity
-                    style={st.errorSummaryHeader}
+                    style={ts.errorSummaryHeader}
                     onPress={() => setErrorsExpanded(v => !v)}
                     activeOpacity={0.75}
                   >
                     <Ionicons name="alert-circle-outline" size={15} color={Colors.warning} />
-                    <Text style={st.errorSummaryTitle}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed</Text>
+                    <Text style={ts.errorSummaryTitle}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed</Text>
                     <Ionicons name={errorsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textMuted} style={{ marginLeft: 'auto' }} />
                   </TouchableOpacity>
 
                   {errorsExpanded && (
-                    <View style={st.errorList}>
+                    <View style={ts.errorList}>
                       {errorRows.map((e, i) => (
-                        <View key={`err-${i}`} style={[st.errorItem, i < errorRows.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 }]}>
-                          <Text style={st.errorVrm}>{e.vrm}</Text>
-                          <Text style={st.errorMsg} numberOfLines={2}>{e.error}</Text>
+                        <View key={`err-${i}`} style={[ts.errorItem, i < errorRows.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.whiteAlpha05 }]}>
+                          <Text style={ts.errorVrm}>{e.vrm}</Text>
+                          <Text style={ts.errorMsg} numberOfLines={2}>{e.error}</Text>
                         </View>
                       ))}
                     </View>
@@ -390,16 +394,16 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 
               {/* Done */}
               <TouchableOpacity
-                style={st.primaryBtn}
+                style={ts.primaryBtn}
                 onPress={() => { reset(); onComplete(); }}
                 activeOpacity={0.85}
               >
-                <Text style={st.primaryBtnText}>Done</Text>
+                <Text style={ts.primaryBtnText}>Done</Text>
               </TouchableOpacity>
 
               {/* Import another */}
-              <TouchableOpacity onPress={reset} style={st.backLink}>
-                <Text style={st.backLinkText}>Import another file</Text>
+              <TouchableOpacity onPress={reset} style={ts.backLink}>
+                <Text style={ts.backLinkText}>Import another file</Text>
               </TouchableOpacity>
             </>
           )}
@@ -410,6 +414,32 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+const lightBulkImportStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  header: {backgroundColor: '#EEF5FB', borderBottomColor: '#D5E1EC'},
+  closeBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  headerTitle: {color: '#0F172A'},
+  headerSub: {color: '#526177'},
+  formatCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  formatTitle: {color: '#0F172A'},
+  formatCode: {color: '#334155'},
+  formatHint: {color: '#526177'},
+  outlineBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  backLinkText: {color: '#526177'},
+  statusText: {color: '#334155'},
+  progressBlock: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  progressLabel: {color: '#334155'},
+  progressTrack: {backgroundColor: '#D5E1EC'},
+  progressPct: {color: '#0F172A'},
+  progressHint: {color: '#526177'},
+  completeCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  completeTitle: {color: '#0F172A'},
+  completeSub: {color: '#526177'},
+  errorSummary: {backgroundColor: '#FFF7ED', borderColor: '#F3D3B8'},
+  errorMsg: {color: '#334155'},
+  errorVrm: {color: '#0F172A'},
+});
 
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
