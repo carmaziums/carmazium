@@ -1,0 +1,47 @@
+name: SimpleDMS Default-Off Production Smoke
+
+# After an existing production backend deploy completes, verify the public
+# health route and that unauthenticated partner paths remain hidden. No secrets.
+on:
+  workflow_run:
+    workflows: ["Backend CI and Fly Deploy"]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simpledms-default-off-production-smoke
+  cancel-in-progress: false
+
+jobs:
+  verify-disabled:
+    name: Verify healthy API and no unauthorised SimpleDMS disclosure
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      API_ORIGIN: https://carmazium-hjoh9w.fly.dev
+    steps:
+      - name: Require liveness and no-key partner rejection (no customer data)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4; do
+            health="$(curl --silent --show-error --max-time 12 --output /dev/null --write-out '%{http_code}' "$API_ORIGIN/health/live" || true)"
+            if [[ "$health" == "200" ]]; then break; fi
+            if [[ "$attempt" == "4" ]]; then
+              echo "ERROR: production API liveness unavailable; status=$health"
+              exit 1
+            fi
+            sleep 7
+          done
+          for path in             "/partners/v1/simpledms/auctions?page=1\&limit=1"             "/partners/v1/simpledms/auctions/11111111-1111-4111-8111-111111111111"             "/partners/referrals/simpledms/go/11111111-1111-4111-8111-111111111111"; do
+            code="$(curl --silent --show-error --max-time 12 --output /dev/null --write-out '%{http_code}' "$API_ORIGIN$path" || true)"
+            if [[ "$code" != "404" ]]; then
+              echo "ERROR: denied partner route returned HTTP $code (expected 404)"
+              exit 1
+            fi
+          done
+          echo "PASS: API live, partner feed/detail/referrals fail closed with no credentials."
