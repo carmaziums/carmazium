@@ -9,7 +9,8 @@ const light = {
   input: '#E5EEF7',
   text: '#0F172A',
   secondary: '#334155',
-  muted: '#64748B',
+  // 5.72:1 on page blue (#EEF5FB), 5.37:1 on input blue (#E5EEF7).
+  muted: '#526177',
   border: '#D5E1EC',
   // Shared logo asset uses white lettering; keep navy header until a dark-letter logo variant is verified.
   header: '#1E293B',
