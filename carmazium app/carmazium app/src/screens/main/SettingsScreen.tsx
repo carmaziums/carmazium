@@ -599,7 +599,7 @@ export const SettingsScreen: React.FC = () => {
   };
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
-      <StatusBar barStyle={appearanceMode === 'dark' ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={appearanceMode === 'light' ? [palette.background, palette.background, palette.background] : [Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
