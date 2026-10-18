@@ -94,3 +94,26 @@ test('buyer home uses the current website sale-first proposition and brand heade
   assert.ok(home.includes("navigation.navigate('SellLanding')"));
   assert.ok(!home.includes('<Text style={s.greetingLine}>Find your next</Text>'));
 });
+
+
+test('native home listing cards preserve owner-approved photo-and-facts layout across newer UI work', () => {
+  const home = app('screens/main/HomeScreen.tsx');
+  assert.doesNotMatch(home, /<ImageCarousel\\b/, 'nested image carousels in home rails reproduce oversized stray pictures');
+  assert.match(home, /useWindowDimensions\\(\\)/, 'cards must fit narrow Android widths and rotation');
+  assert.match(home, /style=\\{\\[s\\.listingCard, \\{ width: Math\\.max\\(220, Math\\.min\\(284, windowWidth - 48\\)\\) \\}\\]\\}/);
+  assert.match(home, /<Image source=\\{\\{ uri: listing\\.images\\[0\\] \\}\\}/, 'retail rail uses one leading photo');
+  assert.match(home, /<Image source=\\{\\{ uri: images\\[0\\] \\}\\}/, 'auction rail uses one leading photo');
+  for (const essential of ['homeVehicleTitle(listing.make, listing.model)', 'listing.year',
+    'listing.fuelType', 'listing.mileage', 'formatPrice(listing.price)',
+    'GradeChip grade={listing.exteriorGrade}', 'mapTransmission(listing.transmission)',
+    'listing.location', 'View Details', 'View auction']) {
+    assert.ok(home.includes(essential), 'missing core buyer-facing fact or CTA: ' + essential);
+  }
+  assert.ok(home.includes('listing.isSellerVerified === true'), 'verification badge must require an explicit verified seller');
+  assert.ok(home.includes("listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM'"), 'HPI Included must follow evidence tier');
+  assert.ok(home.includes("rawCategory === 'S' || rawCategory === 'N'"), 'write-off badge must follow known S/N records');
+  assert.match(home, /bidOverlay: \\{ flexDirection:/, 'auction bid and countdown must stay below photos, not as an overlay');
+  assert.match(home, /featuredIds = new Set\\(featuredListings\\.map/, 'do not repeat featured cars in Latest');
+  assert.ok(home.includes('const lightHomeStyles'), 'retain the newer native light appearance work');
+  assert.ok(home.includes('style={ts.container}'), 'light/dark switching remains connected');
+});
