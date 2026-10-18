@@ -408,6 +408,16 @@ test('Trader Verification light sheet retains readable text, error notice and in
     'Trader Verification step heading must not be clipped to one line');
 });
 
+test('legacy light palette preserves white CTA contrast and backs with white inline icons',()=>{
+  const palette=app('theme/appearancePalette.ts');
+  assert.ok(palette.includes('btn|button|cta|fab'),
+    'light mode cannot turn a red-button white label navy');
+  assert.ok(palette.includes("changes.backgroundColor = light.header"),
+    'dark-on-light inline icon controls need a contrasting button background');
+  assert.ok(palette.includes("lightCards.has(bg) || bg === Colors.whiteAlpha05"),
+    'only former neutral glass surfaces should acquire a dark icon backdrop');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
