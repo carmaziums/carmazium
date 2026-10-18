@@ -126,6 +126,32 @@ test('Settings heading scrolls with forms and appearance selection persists',()=
   assert.ok(appRoot.includes("initializeAppearance()"));
 });
 
+test('marketplace and dealer first-fold appearance styles switch without altering dark defaults',()=>{
+  const config=read('carmazium app/carmazium app/app.json');
+  assert.ok(config.includes('"userInterfaceStyle": "automatic"'));
+  for(const [screen,override] of [
+    ['screens/main/HomeScreen.tsx','lightHomeStyles'],
+    ['screens/main/SearchScreen.tsx','lightRetailStyles'],
+    ['screens/main/LiveScreen.tsx','lightLiveStyles'],
+    ['screens/main/DealerInventoryScreen.tsx','lightInventoryStyles'],
+    ['screens/main/DealerProfileScreen.tsx','lightDealerProfileStyles'],
+    ['screens/main/DealerWebParityOverview.tsx','lightDealerOverviewStyles'],
+    ['screens/vehicle/AuctionDetailScreen.tsx','lightAuctionDetailStyles'],
+  ]) {
+    const source=app(screen);
+    assert.ok(source.includes(override), screen+' has dedicated semantic light styles');
+    assert.ok(source.includes("appearanceMode === 'light'"),screen+' responds to selected appearance');
+    assert.ok(source.includes("useAppearanceStore"),screen+' subscribes to appearance changes');
+    assert.ok(source.includes('...styles') || source.includes('...s'),screen+' retains original dark styles');
+  }
+  const bottomSheet=app('components/BottomSheet.tsx');
+  assert.ok(bottomSheet.includes("appearanceMode === 'light' && { backgroundColor: palette.card"));
+  assert.ok(bottomSheet.includes("color={palette.text}"));
+  const settings=app('screens/main/SettingsScreen.tsx');
+  assert.ok(settings.includes('lightSettingsStyles'));
+  assert.ok(settings.includes('The dark appearance remains the fully tested default'));
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
