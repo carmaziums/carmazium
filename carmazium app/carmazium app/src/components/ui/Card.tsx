@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
 import { Colors } from '@/constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { Elevation, Radius } from '@/constants/spacing';
 
 export type CardVariant =
@@ -61,9 +62,16 @@ export const Card = React.memo<CardProps>(
     children,
     ...rest
   }) => {
+    const mode = useAppearanceStore(state => state.mode);
+    const themedVariant = mode === 'light'
+      ? {
+          backgroundColor: variant === 'outline' ? 'transparent' : '#FFFFFF',
+          borderColor: '#D5E1EC',
+        }
+      : variantStyles[variant];
     const surface = [
       styles.base,
-      variantStyles[variant],
+      themedVariant,
       padded && styles.padded,
       clip && styles.clip,
       active && styles.active,
@@ -87,7 +95,7 @@ export const Card = React.memo<CardProps>(
       return (
         <View
           {...rest}
-          style={[styles.shadowHost, variantStyles[variant], Elevation.card, style]}
+          style={[styles.shadowHost, themedVariant, Elevation.card, style]}
         >
           <View style={[styles.base, styles.clip, styles.transparent, padded && styles.padded, active && styles.active]}>
             {children}
