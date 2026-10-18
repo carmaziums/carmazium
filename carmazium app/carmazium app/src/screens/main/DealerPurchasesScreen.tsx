@@ -22,7 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -226,13 +226,13 @@ export const DealerPurchasesScreen: React.FC = () => {
 
           {/* Status pipeline chip */}
           <View style={[ts.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-            <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-            <Text style={[ts.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+            <Ionicons name={cfg.icon} size={13} color={appearanceMode === 'light' ? (item.status === 'CHECKS_COMPLETE' ? lightReadableText.success : item.status === 'AWAITING_CONFIRMATION' ? lightReadableText.warning : lightReadableText.info) : cfg.color} />
+            <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (item.status === 'CHECKS_COMPLETE' ? lightReadableText.success : item.status === 'AWAITING_CONFIRMATION' ? lightReadableText.warning : lightReadableText.info) : cfg.color }]}>{cfg.label}</Text>
           </View>
         </View>
       </TouchableOpacity>
     );
-  }, []);
+  }, [appearanceMode]);
 
   // ─────────────── main render ───────────────────────
 
@@ -353,8 +353,8 @@ export const DealerPurchasesScreen: React.FC = () => {
                 const cfg = STATUS_CONFIG[summaryItem.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
                 return (
                   <View style={[ts.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
-                    <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-                    <Text style={[ts.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+                    <Ionicons name={cfg.icon} size={13} color={appearanceMode === 'light' ? (summaryItem.status === 'CHECKS_COMPLETE' ? lightReadableText.success : summaryItem.status === 'AWAITING_CONFIRMATION' ? lightReadableText.warning : lightReadableText.info) : cfg.color} />
+                    <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (summaryItem.status === 'CHECKS_COMPLETE' ? lightReadableText.success : summaryItem.status === 'AWAITING_CONFIRMATION' ? lightReadableText.warning : lightReadableText.info) : cfg.color }]}>{cfg.label}</Text>
                   </View>
                 );
               })()}
