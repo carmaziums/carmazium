@@ -417,7 +417,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={[Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
         locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
