@@ -55,29 +55,34 @@ const FormField: React.FC<FormFieldProps> = ({
   keyboardType = 'default',
   multiline = false,
   error,
-}) => (
+}) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const light = appearanceMode === 'light';
+  return (
   <View style={formFieldStyles.wrap}>
-    <Text style={formFieldStyles.label}>
+    <Text style={[formFieldStyles.label, light && { color: '#334155' }]}>
       {label.toUpperCase()}
       {optional ? ' (OPTIONAL)' : ' *'}
     </Text>
     <TextInput
       style={[
         formFieldStyles.input,
+        light && { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
         multiline ? formFieldStyles.inputMultiline : formFieldStyles.inputSingleLine,
         error ? { borderColor: Colors.error } : null,
       ]}
       value={value}
       onChangeText={onChange}
       placeholder={placeholder}
-      placeholderTextColor={Colors.textMuted}
+      placeholderTextColor={light ? '#64748B' : Colors.textMuted}
       keyboardType={keyboardType}
       multiline={multiline}
       autoCapitalize="none"
     />
     {error ? <Text style={formFieldStyles.errorText}>{error}</Text> : null}
   </View>
-);
+  );
+};
 
 const formFieldStyles = StyleSheet.create({
   wrap: {
@@ -120,51 +125,63 @@ const formFieldStyles = StyleSheet.create({
 
 // ─── Section eyebrow label ────────────────────────────────────────────────────
 
-const SectionLabel: React.FC<{ title: string }> = ({ title }) => (
-  <Text style={styles.sectionEyebrow}>{title}</Text>
-);
+const SectionLabel: React.FC<{ title: string }> = ({ title }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
+  return (
+  <Text style={ts.sectionEyebrow}>{title}</Text>
+  );
+};
 
 // ─── Pending state view ───────────────────────────────────────────────────────
 
-const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => (
-  <View style={styles.pendingContainer}>
-    <View style={styles.pendingIconCircle}>
+const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
+  return (
+  <View style={ts.pendingContainer}>
+    <View style={ts.pendingIconCircle}>
       <Ionicons name="shield-outline" size={36} color={Colors.warning} />
     </View>
-    <Text style={styles.pendingHeading}>Verification in progress</Text>
-    <Text style={styles.pendingBody}>
+    <Text style={ts.pendingHeading}>Verification in progress</Text>
+    <Text style={ts.pendingBody}>
       Your documents are under review. We'll notify you once verified.
     </Text>
-    <View style={styles.pendingInfoRow}>
+    <View style={ts.pendingInfoRow}>
       <Ionicons name="time-outline" size={14} color={Colors.warning} />
-      <Text style={styles.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
+      <Text style={ts.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
     </View>
     {onEdit ? (
       <PrimaryCTA label="CHANGE BUSINESS TYPE" onPress={onEdit} style={{ width: '100%', marginTop: 20 }} />
     ) : null}
   </View>
-);
+  );
+};
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
-const KycSkeleton: React.FC = () => (
+const KycSkeleton: React.FC = () => {
+  const mode = useAppearanceStore(state => state.mode);
+  const skeletonBg = mode === 'light' ? '#E5EEF7' : Colors.bgTertiary;
+  return (
   <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
     {/* status + info card area */}
-    <View style={{ marginBottom: 20, height: 60, borderRadius: 14, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
-    <View style={{ marginBottom: 28, height: 80, borderRadius: 14, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+    <View style={{ marginBottom: 20, height: 60, borderRadius: 14, backgroundColor: skeletonBg, opacity: 0.5 }} />
+    <View style={{ marginBottom: 28, height: 80, borderRadius: 14, backgroundColor: skeletonBg, opacity: 0.5 }} />
     {/* section label */}
-    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: Colors.bgTertiary, opacity: 0.5, marginBottom: 16 }} />
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: skeletonBg, opacity: 0.5, marginBottom: 16 }} />
     {/* fields */}
     {[52, 52, 52, 80].map((h, i) => (
-      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: skeletonBg, opacity: 0.5 }} />
     ))}
     {/* section label */}
-    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: Colors.bgTertiary, opacity: 0.5, marginBottom: 16 }} />
+    <View style={{ width: '40%', height: 12, borderRadius: 6, backgroundColor: skeletonBg, opacity: 0.5, marginBottom: 16 }} />
     {[52, 52].map((h, i) => (
-      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: Colors.bgTertiary, opacity: 0.5 }} />
+      <View key={i} style={{ marginBottom: 16, height: h, borderRadius: 12, backgroundColor: skeletonBg, opacity: 0.5 }} />
     ))}
   </View>
-);
+  );
+};
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
