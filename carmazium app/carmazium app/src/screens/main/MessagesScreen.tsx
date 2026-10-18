@@ -19,6 +19,7 @@ import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -88,7 +89,7 @@ interface ThreadRowProps {
 // every parent re-render (mobile-audit.md P3/P4).
 const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnline }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightMessagesStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightMessagesStyles) : styles;
   const isUnread = room.unreadCount > 0;
   const displayName = getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
@@ -184,7 +185,7 @@ const renderSkeletonRows = (ts: typeof styles) => (
 export const MessagesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? { ...styles, ...lightMessagesStyles } : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightMessagesStyles) : styles;
   const navigation = useNavigation<NavProp>();
   const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
