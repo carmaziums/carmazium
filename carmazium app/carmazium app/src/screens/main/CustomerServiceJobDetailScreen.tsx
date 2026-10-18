@@ -571,7 +571,10 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   );
 };
 
-const Info = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+const Info = ({ icon, label, value }: { icon: string; label: string; value: string }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  return (
   <View style={ts.infoRow}>
     <Ionicons name={icon} size={16} color={Colors.textMuted} />
     <View style={{ flex: 1 }}>
@@ -579,7 +582,8 @@ const Info = ({ icon, label, value }: { icon: string; label: string; value: stri
       <Text style={ts.infoValue}>{value}</Text>
     </View>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
