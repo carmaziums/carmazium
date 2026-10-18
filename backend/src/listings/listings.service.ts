@@ -1,6 +1,7 @@
 import { buildFeatureConditions } from './feature-search';
 import { buildGradeSearchWhere } from './grade-search';
 import { summariseHistoricalQuotes, ArchivedValuationObservation, QUOTE_HISTORY_MONTHS } from './valuation-quote-history';
+import { assessFirstPartyMarketDemand, applyFirstPartyDemandAdjustment } from './valuation-demand';
 import { hasOtherActiveRetailRegistration } from './retail-uniqueness';
 import { geoBounds, haversineMiles } from './search-geo';
 import {
@@ -335,6 +336,7 @@ export class ListingsService {
             });
         }
 
+        const demandAssessment = assessFirstPartyMarketDemand(rows);
         const comparables: VehicleValuationComparable[] = [];
 
         for (const row of rows) {
@@ -465,7 +467,9 @@ export class ListingsService {
 
         await runMarketSearchAttempt('LIVE');
 
-        if (liveComparableMap.size < 3) {
+        // Three scraped asking prices are not enough to stop searching (EW19CFY).
+        // Attempt additional markets before treating this evidence as reliable.
+        if (liveComparableMap.size < 5) {
             const remainingLiveAttempts = 5 - liveUkAttempts;
             if (remainingLiveAttempts > 0) {
                 await Promise.all(
@@ -610,7 +614,10 @@ export class ListingsService {
         // A concurrent duplicate request can finish a different live search.
         // The valuationId is also the AnalyticsEvent primary key, so exactly one
         // base wins. Losers read the winning snapshot and return that same base.
-        const stableBase = await this.freezeValuationBase(dto, calculatedBase);
+        const stableBase = await this.freezeValuationBase(
+            dto,
+            applyFirstPartyDemandAdjustment(calculatedBase, demandAssessment),
+        );
 
         return this.freezeCustomerQuote(dto,
             applyVehicleSpecificationAdjustments(stableBase, specificationInput),
@@ -684,7 +691,7 @@ export class ListingsService {
             dto.model.trim().toUpperCase(),
             dto.year,
             dto.mileage,
-            (dto.variant ?? '').trim().toUpperCase().replace(/\\s+/g, ' '),
+            (dto.variant ?? '').trim().toUpperCase().replace(/\s+/g, ' '),
             (dto.fuelType ?? '').trim().toUpperCase(),
             (dto.transmission ?? '').trim().toUpperCase(),
         ].join('|');
