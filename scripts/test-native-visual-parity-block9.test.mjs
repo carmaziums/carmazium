@@ -41,6 +41,31 @@ test('every native screen with styled surfaces subscribes to the saved appearanc
   }
 });
 
+test('remaining buyer journeys do not show dark gradients or white controls in light mode',()=>{
+  for(const file of [
+    'auth/PostSignupOnboardingScreen.tsx',
+    'buyer/BuyerBidsScreen.tsx',
+    'buyer/BuyerDeliveryRequestsScreen.tsx',
+  ]) {
+    const source=app('screens/'+file);
+    assert.ok(source.includes("colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB']"),
+      file+' must not overlay the light palette with a dark native gradient');
+    assert.ok(source.includes("barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'}"),
+      file+' uses readable status bar controls on a light background');
+  }
+  const delivery=app('screens/buyer/BuyerDeliveryRequestsScreen.tsx');
+  assert.ok(delivery.includes("appearanceMode === 'light' ? '#0F172A' : Colors.white"),
+    'back arrow must remain visible on the light card');
+  const account=app('screens/account/AccountRoleHomeScreen.tsx');
+  assert.ok(account.includes("appearanceMode === 'light' ? '#0F172A' : Colors.textPrimary"),
+    'Messages icon is not white on a white card');
+  const palette=app('theme/appearancePalette.ts');
+  assert.ok(palette.includes('Colors.glassBg, Colors.whiteAlpha03, Colors.whiteAlpha04'));
+  assert.ok(palette.includes('Colors.whiteAlpha06, Colors.whiteAlpha08'));
+  assert.ok(palette.includes('Colors.glassBorderStrong'));
+  assert.ok(palette.includes('if (!action &&'), 'semantic status and CTA buttons retain their colours');
+});
+
 test('Dashboard gauge is visually distinct from More grid and Menu selection is readable',()=>{
   const iconMap=app('components/BrandIcon.tsx');
   assert.ok(tabs.includes("name: 'DealerHome', icon: 'speedometer-outline', iconActive: 'speedometer'"));
