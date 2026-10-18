@@ -31,7 +31,15 @@ export const WebsiteTopBar: React.FC = () => {
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
-      <Logo size="sm" width={logoWidth} />
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
+        activeOpacity={0.75}
+        accessibilityRole="button"
+        accessibilityLabel="CarMazium logo, open public home page"
+        accessibilityHint="Opens the CarMazium marketplace homepage"
+      >
+        <Logo size="sm" width={logoWidth} />
+      </TouchableOpacity>
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.notificationButton}
