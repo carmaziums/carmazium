@@ -184,7 +184,7 @@ const lightDeliveryRequestStyles = StyleSheet.create({
   headerText: { color: '#0F172A' },
   row: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
   rowTitle: { color: '#0F172A' },
-  rowSub: { color: '#64748B' },
+  rowSub: { color: '#526177' },
   notes: { color: '#334155' },
   btn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
 });
