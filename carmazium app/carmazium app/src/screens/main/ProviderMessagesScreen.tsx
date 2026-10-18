@@ -18,6 +18,8 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { useChat } from '../../context/ChatContext';
 import { ChatRoom } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { IconButton } from '../../components/IconButton';
@@ -51,6 +53,8 @@ const serviceLabel = (room: ChatRoom) => {
 };
 
 export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { rooms, refreshRooms, markAsRead, isLoading } = useChat();
   const [search, setSearch] = useState('');
@@ -116,37 +120,37 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        style={[styles.card, unread && styles.cardUnread]}
+        style={[ts.card, unread && ts.cardUnread]}
         activeOpacity={0.8}
         onPress={() => void openRoom(room)}
       >
-        <View style={styles.rowBetween}>
-          <View style={styles.serviceChip}>
-            <Text style={styles.serviceChipText}>{serviceLabel(room)}</Text>
+        <View style={ts.rowBetween}>
+          <View style={ts.serviceChip}>
+            <Text style={ts.serviceChipText}>{serviceLabel(room)}</Text>
           </View>
-          <Text style={styles.time}>{formatMessageTime(room.lastMessage?.createdAt || room.updatedAt)}</Text>
+          <Text style={ts.time}>{formatMessageTime(room.lastMessage?.createdAt || room.updatedAt)}</Text>
         </View>
 
-        <View style={styles.titleRow}>
+        <View style={ts.titleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.customerName, unread && styles.unreadText]} numberOfLines={1}>
+            <Text style={[ts.customerName, unread && ts.unreadText]} numberOfLines={1}>
               {otherPartyName(room)}
             </Text>
-            <Text style={styles.jobTitle} numberOfLines={1}>{job.title}</Text>
+            <Text style={ts.jobTitle} numberOfLines={1}>{job.title}</Text>
           </View>
           {unread && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>{room.unreadCount}</Text>
+            <View style={ts.unreadBadge}>
+              <Text style={ts.unreadBadgeText}>{room.unreadCount}</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>JOB {job.status.replace(/_/g, ' ')}</Text>
-          {job.payment?.status ? <Text style={styles.paymentLabel}>PAYMENT {job.payment.status}</Text> : null}
+        <View style={ts.statusRow}>
+          <Text style={ts.statusLabel}>JOB {job.status.replace(/_/g, ' ')}</Text>
+          {job.payment?.status ? <Text style={ts.paymentLabel}>PAYMENT {job.payment.status}</Text> : null}
         </View>
 
-        <Text style={[styles.lastMessage, unread && styles.unreadText]} numberOfLines={2}>
+        <Text style={[ts.lastMessage, unread && ts.unreadText]} numberOfLines={2}>
           {lastMessage}
         </Text>
       </TouchableOpacity>
@@ -154,35 +158,35 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ alignItems: 'center' }}>
-          <Text style={styles.headerTitle}>Provider Messages</Text>
-          <Text style={styles.headerMeta}>{unreadCount} unread</Text>
+          <Text style={ts.headerTitle}>Provider Messages</Text>
+          <Text style={ts.headerMeta}>{unreadCount} unread</Text>
         </View>
         <HamburgerButton />
       </View>
 
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>SERVICE JOB CHAT</Text>
-        <Text style={styles.title}>Customer conversations</Text>
-        <Text style={styles.sub}>
+      <View style={ts.hero}>
+        <Text style={ts.eyebrow}>SERVICE JOB CHAT</Text>
+        <Text style={ts.title}>Customer conversations</Text>
+        <Text style={ts.sub}>
           Delivery, Recovery and Inspection conversations tied to your Partner jobs. Other CarMazium messages stay in the main Messages screen.
         </Text>
       </View>
 
-      <View style={styles.searchWrap}>
+      <View style={ts.searchWrap}>
         <Ionicons name="search-outline" size={17} color={Colors.textMuted} />
         <TextInput
-          style={styles.searchInput}
+          style={ts.searchInput}
           value={search}
           onChangeText={setSearch}
           placeholder="Search job, customer or message"
@@ -197,16 +201,16 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       {isLoading && rooms.length === 0 ? (
-        <View style={styles.center}>
+        <View style={ts.center}>
           <ActivityIndicator color={Colors.accent} />
-          <Text style={styles.muted}>Loading service conversations…</Text>
+          <Text style={ts.muted}>Loading service conversations…</Text>
         </View>
       ) : (
         <FlatList
           data={providerRooms}
           keyExtractor={(room) => room.id}
           renderItem={renderRoom}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={ts.list}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -215,12 +219,12 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
+            <View style={ts.empty}>
               <Ionicons name="chatbubbles-outline" size={36} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>
+              <Text style={ts.emptyTitle}>
                 {search ? 'No matching service conversations' : 'No service-job messages yet'}
               </Text>
-              <Text style={styles.emptyText}>
+              <Text style={ts.emptyText}>
                 {search
                   ? 'Try another customer, job title or message search.'
                   : 'A service-job conversation appears here after an assigned paid job unlocks customer contact and chat.'}

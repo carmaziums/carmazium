@@ -24,6 +24,8 @@ import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -205,6 +207,8 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { triggerListingFeePayment } = useListingFeePayment();
 
@@ -584,16 +588,16 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // ─── render helpers ───────────────────────────────────────────
 
   const renderSkeletonRows = () => (
-    <View style={styles.skeletonList}>
+    <View style={ts.skeletonList}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <View key={`sk-${i}`} style={styles.skeletonRow}>
+        <View key={`sk-${i}`} style={ts.skeletonRow}>
           <Skeleton w={64} h={56} r={10} />
-          <View style={styles.skeletonInfo}>
+          <View style={ts.skeletonInfo}>
             <Skeleton w={140} h={14} r={6} />
             <Skeleton w={80} h={16} r={6} />
             <Skeleton w={60} h={12} r={5} />
           </View>
-          <View style={styles.skeletonRight}>
+          <View style={ts.skeletonRight}>
             <Skeleton w={48} h={20} r={10} />
             <Skeleton w={28} h={28} r={8} />
           </View>
@@ -618,25 +622,25 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const thumb = item.images?.[0];
 
     return (
-      <View style={[styles.card, { borderLeftColor: cfg.leftBorder }]}>
+      <View style={[ts.card, { borderLeftColor: cfg.leftBorder }]}>
         {/* Thumbnail */}
-        <View style={styles.thumb}>
+        <View style={ts.thumb}>
           {thumb ? (
-            <Image source={{ uri: thumb }} style={styles.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <Image source={{ uri: thumb }} style={ts.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
-            <View style={styles.thumbPlaceholder}>
+            <View style={ts.thumbPlaceholder}>
               <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
             </View>
           )}
         </View>
 
         {/* Info */}
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{getTitle(item)}</Text>
-          <Text style={styles.cardPrice}>{formatPrice(item.price)}</Text>
-          <Text style={styles.cardViews}>Views: {item.viewCount ?? 0}</Text>
+        <View style={ts.cardInfo}>
+          <Text style={ts.cardTitle} numberOfLines={1}>{getTitle(item)}</Text>
+          <Text style={ts.cardPrice}>{formatPrice(item.price)}</Text>
+          <Text style={ts.cardViews}>Views: {item.viewCount ?? 0}</Text>
           {item.createdAt && (
-            <Text style={styles.cardListedDate}>
+            <Text style={ts.cardListedDate}>
               Listed on {new Date(item.createdAt).toLocaleDateString('en-GB')}
             </Text>
           )}
@@ -651,20 +655,20 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
 
         {/* Right */}
-        <View style={styles.cardRight}>
-          <View style={[styles.statusChip, { backgroundColor: cfg.chipBg, borderColor: cfg.chipBorder }]}>
-            <Text style={[styles.statusChipText, { color: cfg.chipText }]}>{cfg.label}</Text>
+        <View style={ts.cardRight}>
+          <View style={[ts.statusChip, { backgroundColor: cfg.chipBg, borderColor: cfg.chipBorder }]}>
+            <Text style={[ts.statusChipText, { color: cfg.chipText }]}>{cfg.label}</Text>
           </View>
           <TouchableOpacity
-            style={styles.menuBtn}
+            style={ts.menuBtn}
             activeOpacity={0.7}
             onPress={() => setActionMenuListing(item)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.dotWrap}>
-              <View style={styles.dot} />
-              <View style={styles.dot} />
-              <View style={styles.dot} />
+            <View style={ts.dotWrap}>
+              <View style={ts.dot} />
+              <View style={ts.dot} />
+              <View style={ts.dot} />
             </View>
           </TouchableOpacity>
         </View>
@@ -687,25 +691,25 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {actions.map(action => (
           <TouchableOpacity
             key={action.key}
-            style={styles.sheetRow}
+            style={ts.sheetRow}
             activeOpacity={0.75}
             onPress={() => handleAction(action.key, actionMenuListing)}
           >
-            <View style={[styles.sheetIconWrap, { backgroundColor: action.toneBg }]}>
+            <View style={[ts.sheetIconWrap, { backgroundColor: action.toneBg }]}>
               <Ionicons name={action.icon} size={18} color={action.tone} />
             </View>
-            <Text style={[styles.sheetRowLabel, action.isDestructive && { color: Colors.error }]}>
+            <Text style={[ts.sheetRowLabel, action.isDestructive && { color: Colors.error }]}>
               {action.label}
             </Text>
           </TouchableOpacity>
         ))}
 
         <TouchableOpacity
-          style={[styles.sheetRow, { borderBottomWidth: 0 }]}
+          style={[ts.sheetRow, { borderBottomWidth: 0 }]}
           activeOpacity={0.75}
           onPress={() => setActionMenuListing(null)}
         >
-          <Text style={[styles.sheetRowLabel, { color: Colors.error }]}>Cancel</Text>
+          <Text style={[ts.sheetRowLabel, { color: Colors.error }]}>Cancel</Text>
         </TouchableOpacity>
       </BottomSheet>
     );
@@ -723,12 +727,12 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         avoidKeyboard
         maxHeightPercent={60}
       >
-        <Text style={styles.soldSubtitle}>Enter the final sale price for this vehicle.</Text>
+        <Text style={ts.soldSubtitle}>Enter the final sale price for this vehicle.</Text>
 
-        <View style={styles.soldInputWrap}>
-          <Text style={styles.soldCurrencySymbol}>£</Text>
+        <View style={ts.soldInputWrap}>
+          <Text style={ts.soldCurrencySymbol}>£</Text>
           <TextInput
-            style={styles.soldInput}
+            style={ts.soldInput}
             value={soldPriceInput}
             onChangeText={setSoldPriceInput}
             keyboardType="numeric"
@@ -739,7 +743,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         </View>
 
         <TouchableOpacity
-          style={[styles.soldConfirmBtn, actionLoading && { opacity: 0.6 }]}
+          style={[ts.soldConfirmBtn, actionLoading && { opacity: 0.6 }]}
           activeOpacity={0.8}
           onPress={handleConfirmSold}
           disabled={actionLoading}
@@ -747,15 +751,15 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           {actionLoading ? (
             <ActivityIndicator color={Colors.white} size="small" />
           ) : (
-            <Text style={styles.soldConfirmBtnText}>Confirm Sale</Text>
+            <Text style={ts.soldConfirmBtnText}>Confirm Sale</Text>
           )}
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.soldCancelBtn}
+          style={ts.soldCancelBtn}
           activeOpacity={0.75}
           onPress={() => setSellPriceModal(null)}
         >
-          <Text style={styles.soldCancelBtnText}>Cancel</Text>
+          <Text style={ts.soldCancelBtnText}>Cancel</Text>
         </TouchableOpacity>
       </BottomSheet>
     );
@@ -764,7 +768,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // ─── main render ──────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -776,15 +780,15 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.headerBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.headerBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>My Listings</Text>
+        <Text style={ts.headerTitle}>My Listings</Text>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <IconButton style={styles.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={Colors.warning} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
-          <IconButton style={styles.headerBtn} icon={<Ionicons name="link-outline" size={18} color={Colors.infoBlueLight} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
-          <IconButton style={styles.headerBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={Colors.warning} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="link-outline" size={18} color={Colors.infoBlueLight} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
           <HamburgerButton />
         </View>
       </View>
@@ -793,8 +797,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContent}
-        style={styles.tabsRow}
+        contentContainerStyle={ts.tabsContent}
+        style={ts.tabsRow}
       >
         {TABS.map(tab => {
           const isActive = tab === activeTab;
@@ -802,14 +806,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           return (
             <TouchableOpacity
               key={tab}
-              style={[styles.tab, isActive && styles.tabActive]}
+              style={[ts.tab, isActive && ts.tabActive]}
               activeOpacity={0.75}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab}</Text>
+              <Text style={[ts.tabLabel, isActive && ts.tabLabelActive]}>{tab}</Text>
               {count > 0 && (
-                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                <View style={[ts.tabBadge, isActive && ts.tabBadgeActive]}>
+                  <Text style={[ts.tabBadgeText, isActive && ts.tabBadgeTextActive]}>
                     {count}
                   </Text>
                 </View>
@@ -835,8 +839,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           keyExtractor={item => item.id}
           renderItem={renderCard}
           contentContainerStyle={[
-            styles.listContent,
-            displayed.length === 0 && styles.listContentEmpty,
+            ts.listContent,
+            displayed.length === 0 && ts.listContentEmpty,
           ]}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           ListEmptyComponent={fetchError ? null : renderEmpty}
@@ -858,7 +862,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* Global action loading overlay */}
       {actionLoading && !sellPriceModal && (
-        <View style={styles.actionLoadingOverlay}>
+        <View style={ts.actionLoadingOverlay}>
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
       )}
@@ -873,9 +877,9 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       />
 
       {boostToast && (
-        <View style={styles.boostToast} pointerEvents="none">
+        <View style={ts.boostToast} pointerEvents="none">
           <Ionicons name="flash" size={14} color={Colors.warning} />
-          <Text style={styles.boostToastText}>{boostToast}</Text>
+          <Text style={ts.boostToastText}>{boostToast}</Text>
         </View>
       )}
 
@@ -903,21 +907,21 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       >
         <View>
               {alsoAuctionListing && (
-                <Text style={styles.dualModalSub} numberOfLines={1}>
+                <Text style={ts.dualModalSub} numberOfLines={1}>
                   {getTitle(alsoAuctionListing)} · stays on sale simultaneously
                 </Text>
               )}
 
               <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 16 }}>
                 {/* Start time */}
-                <Text style={styles.dualFieldLabel}>START TIME</Text>
+                <Text style={ts.dualFieldLabel}>START TIME</Text>
                 <TouchableOpacity
-                  style={styles.datePickerBtn}
+                  style={ts.datePickerBtn}
                   onPress={() => { setAuctionPickerMode('date'); setShowAuctionDatePicker(true); }}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
-                  <Text style={styles.datePickerBtnText}>
+                  <Text style={ts.datePickerBtnText}>
                     {auctionStartDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </Text>
                   <Ionicons name="chevron-down" size={13} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
@@ -935,42 +939,42 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 )}
 
                 {/* Reserve */}
-                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>RESERVE PRICE (£) *</Text>
-                <View style={styles.dualPriceRow}>
-                  <Text style={styles.dualCurrency}>£</Text>
-                  <TextInput style={styles.dualInput} value={auctionReserve} onChangeText={v => { setAuctionReserve(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>RESERVE PRICE (£) *</Text>
+                <View style={ts.dualPriceRow}>
+                  <Text style={ts.dualCurrency}>£</Text>
+                  <TextInput style={ts.dualInput} value={auctionReserve} onChangeText={v => { setAuctionReserve(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
                 </View>
 
                 {/* Starting bid */}
-                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>STARTING BID (£) *</Text>
-                <View style={styles.dualPriceRow}>
-                  <Text style={styles.dualCurrency}>£</Text>
-                  <TextInput style={styles.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
+                <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>STARTING BID (£) *</Text>
+                <View style={ts.dualPriceRow}>
+                  <Text style={ts.dualCurrency}>£</Text>
+                  <TextInput style={ts.dualInput} value={auctionStartingBid} onChangeText={v => { setAuctionStartingBid(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="0" placeholderTextColor={Colors.textMuted} />
                 </View>
                 {!!alsoAuctionListing?.price && (
-                  <Text style={styles.dualFieldHint}>
+                  <Text style={ts.dualFieldHint}>
                     Max £{(Number(alsoAuctionListing.price) * 0.7).toLocaleString(undefined, { maximumFractionDigits: 0 })} (30% below £{Number(alsoAuctionListing.price).toLocaleString()} asking)
                   </Text>
                 )}
 
                 {/* Min increment */}
-                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>MIN INCREMENT (£)</Text>
-                <View style={styles.dualPriceRow}>
-                  <Text style={styles.dualCurrency}>£</Text>
-                  <TextInput style={styles.dualInput} value={auctionIncrement} onChangeText={v => { setAuctionIncrement(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="100" placeholderTextColor={Colors.textMuted} />
+                <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>MIN INCREMENT (£)</Text>
+                <View style={ts.dualPriceRow}>
+                  <Text style={ts.dualCurrency}>£</Text>
+                  <TextInput style={ts.dualInput} value={auctionIncrement} onChangeText={v => { setAuctionIncrement(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="100" placeholderTextColor={Colors.textMuted} />
                 </View>
 
                 {/* BIN optional */}
-                <Text style={[styles.dualFieldLabel, { marginTop: 14 }]}>BUY IT NOW PRICE (£, optional)</Text>
-                <View style={styles.dualPriceRow}>
-                  <Text style={styles.dualCurrency}>£</Text>
-                  <TextInput style={styles.dualInput} value={auctionBin} onChangeText={v => { setAuctionBin(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="Optional" placeholderTextColor={Colors.textMuted} />
+                <Text style={[ts.dualFieldLabel, { marginTop: 14 }]}>BUY IT NOW PRICE (£, optional)</Text>
+                <View style={ts.dualPriceRow}>
+                  <Text style={ts.dualCurrency}>£</Text>
+                  <TextInput style={ts.dualInput} value={auctionBin} onChangeText={v => { setAuctionBin(v); setAuctionError(null); }} keyboardType="number-pad" placeholder="Optional" placeholderTextColor={Colors.textMuted} />
                 </View>
 
                 {auctionError && (
-                  <View style={styles.dualErrorBox}>
+                  <View style={ts.dualErrorBox}>
                     <Ionicons name="alert-circle-outline" size={12} color={Colors.error} />
-                    <Text style={styles.dualErrorText}>{auctionError}</Text>
+                    <Text style={ts.dualErrorText}>{auctionError}</Text>
                   </View>
                 )}
 
@@ -980,13 +984,13 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.dualSubmitBtn, auctionSubmitting && { opacity: 0.6 }]}
+                  style={[ts.dualSubmitBtn, auctionSubmitting && { opacity: 0.6 }]}
                   onPress={handleAlsoAuctionSubmit}
                   disabled={auctionSubmitting}
                   activeOpacity={0.85}
                 >
                   {auctionSubmitting ? <ActivityIndicator color={Colors.white} size="small" /> : (
-                    <Text style={styles.dualSubmitText}>Create Auction</Text>
+                    <Text style={ts.dualSubmitText}>Create Auction</Text>
                   )}
                 </TouchableOpacity>
                 <View style={{ height: 20 }} />

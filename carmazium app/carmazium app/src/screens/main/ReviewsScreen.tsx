@@ -13,6 +13,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -45,11 +47,13 @@ const TRUST_BADGES: TrustBadge[] = [
 ];
 
 export const ReviewsScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -60,38 +64,38 @@ export const ReviewsScreen: React.FC = () => {
 
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Trust & Reviews</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Trust & Reviews</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.introTitle}>Buying and selling with confidence</Text>
-        <Text style={styles.introSub}>
+        <Text style={ts.introTitle}>Buying and selling with confidence</Text>
+        <Text style={ts.introSub}>
           Carmazium is built around verified sellers, secure payments, and transparent history checks —
           here's what that means in practice.
         </Text>
 
-        <View style={styles.badgeGrid}>
+        <View style={ts.badgeGrid}>
           {TRUST_BADGES.map((b) => (
-            <View key={b.title} style={styles.badgeCard}>
-              <View style={styles.badgeIconWrap}>
+            <View key={b.title} style={ts.badgeCard}>
+              <View style={ts.badgeIconWrap}>
                 <Ionicons name={b.icon} size={20} color={Colors.accent} />
               </View>
-              <Text style={styles.badgeTitle}>{b.title}</Text>
-              <Text style={styles.badgeSub}>{b.sub}</Text>
+              <Text style={ts.badgeTitle}>{b.title}</Text>
+              <Text style={ts.badgeSub}>{b.sub}</Text>
             </View>
           ))}
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Where reviews come from</Text>
-          <Text style={styles.bodyText}>
+        <View style={ts.sectionCard}>
+          <Text style={ts.sectionTitle}>Where reviews come from</Text>
+          <Text style={ts.bodyText}>
             After a sale completes, buyers can leave a rating and comment for the seller they dealt with.
             Those reviews — real ones, tied to a real transaction — show up on that seller's public profile,
             alongside their reliability score, response rate, and sales history.
@@ -99,13 +103,13 @@ export const ReviewsScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity
-          style={styles.cta}
+          style={ts.cta}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.ctaTitle}>See a seller's reviews</Text>
-            <Text style={styles.ctaSub}>Open any listing and tap through to the seller's profile</Text>
+            <Text style={ts.ctaTitle}>See a seller's reviews</Text>
+            <Text style={ts.ctaSub}>Open any listing and tap through to the seller's profile</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.white} />
         </TouchableOpacity>

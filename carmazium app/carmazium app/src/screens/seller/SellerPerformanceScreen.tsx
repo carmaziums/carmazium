@@ -16,6 +16,8 @@ import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -105,6 +107,8 @@ const PerformanceSkeleton: React.FC = () => (
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<SellerPerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -143,7 +147,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
   const hasViewsTrend = viewsData.length > 1;
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -154,9 +158,9 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Performance</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Performance</Text>
         <HamburgerButton />
       </View>
 
@@ -191,42 +195,42 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
         ) : (
           <View style={{ paddingHorizontal: 20 }}>
             {/* ── KPI grid ── */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
+            <View style={ts.statsGrid}>
+              <View style={ts.statCard}>
+                <View style={[ts.statIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
                   <Ionicons name="cash-outline" size={16} color={Colors.success} />
                 </View>
-                <Text style={styles.statValue}>{formatCurrency(data!.totalRevenue)}</Text>
-                <Text style={styles.statLabel}>TOTAL REVENUE</Text>
+                <Text style={ts.statValue}>{formatCurrency(data!.totalRevenue)}</Text>
+                <Text style={ts.statLabel}>TOTAL REVENUE</Text>
               </View>
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: Colors.infoBlueAlpha12 }]}>
+              <View style={ts.statCard}>
+                <View style={[ts.statIconWrap, { backgroundColor: Colors.infoBlueAlpha12 }]}>
                   <Ionicons name="eye-outline" size={16} color={Colors.infoBlue} />
                 </View>
-                <Text style={styles.statValue}>{data!.totalViews.toLocaleString('en-GB')}</Text>
-                <Text style={styles.statLabel}>TOTAL VIEWS</Text>
+                <Text style={ts.statValue}>{data!.totalViews.toLocaleString('en-GB')}</Text>
+                <Text style={ts.statLabel}>TOTAL VIEWS</Text>
               </View>
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: Colors.warningAlpha12 }]}>
+              <View style={ts.statCard}>
+                <View style={[ts.statIconWrap, { backgroundColor: Colors.warningAlpha12 }]}>
                   <Ionicons name="car-sport-outline" size={16} color={Colors.warning} />
                 </View>
-                <Text style={styles.statValue}>{String(data!.totalListings)}</Text>
-                <Text style={styles.statLabel}>LISTINGS</Text>
+                <Text style={ts.statValue}>{String(data!.totalListings)}</Text>
+                <Text style={ts.statLabel}>LISTINGS</Text>
               </View>
-              <View style={styles.statCard}>
-                <View style={[styles.statIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
+              <View style={ts.statCard}>
+                <View style={[ts.statIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
                   <Ionicons name="trending-up-outline" size={16} color={Colors.accent} />
                 </View>
-                <Text style={styles.statValue}>{data!.conversionRate.toFixed(1)}%</Text>
-                <Text style={styles.statLabel}>CONVERSION</Text>
+                <Text style={ts.statValue}>{data!.conversionRate.toFixed(1)}%</Text>
+                <Text style={ts.statLabel}>CONVERSION</Text>
               </View>
             </View>
 
             {/* ── Revenue trend LineChart ── */}
             {hasRevenueTrend && (
               <>
-                <Text style={styles.sectionLabel}>REVENUE TREND</Text>
-                <View style={styles.chartCard}>
+                <Text style={ts.sectionLabel}>REVENUE TREND</Text>
+                <View style={ts.chartCard}>
                   <LineChart
                     data={revenueData}
                     width={CHART_W}
@@ -254,8 +258,8 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
             {/* ── Views over time BarChart ── */}
             {hasViewsTrend && (
               <>
-                <Text style={styles.sectionLabel}>VIEWS OVER TIME</Text>
-                <View style={styles.chartCard}>
+                <Text style={ts.sectionLabel}>VIEWS OVER TIME</Text>
+                <View style={ts.chartCard}>
                   <BarChart
                     data={viewsData}
                     width={CHART_W}
@@ -276,14 +280,14 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
             )}
 
             {/* ── Conversion KPI tile (no chart needed per plan) ── */}
-            <Text style={styles.sectionLabel}>CONVERSION RATE</Text>
-            <View style={styles.convCard}>
-              <View style={[styles.convIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
+            <Text style={ts.sectionLabel}>CONVERSION RATE</Text>
+            <View style={ts.convCard}>
+              <View style={[ts.convIconWrap, { backgroundColor: Colors.accentAlpha12 }]}>
                 <Ionicons name="analytics-outline" size={22} color={Colors.accent} />
               </View>
               <View style={{ flex: 1, marginLeft: 16 }}>
-                <Text style={styles.convValue}>{data!.conversionRate.toFixed(1)}%</Text>
-                <Text style={styles.convLabel}>of listing views convert to an enquiry or offer</Text>
+                <Text style={ts.convValue}>{data!.conversionRate.toFixed(1)}%</Text>
+                <Text style={ts.convLabel}>of listing views convert to an enquiry or offer</Text>
               </View>
             </View>
 

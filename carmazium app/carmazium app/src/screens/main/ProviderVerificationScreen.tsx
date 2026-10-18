@@ -17,6 +17,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { SERVICE_LABELS, getMyCapabilities } from '../../lib/servicesApi';
@@ -41,6 +43,8 @@ const stateColor = (state?: string) => {
 };
 
 export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const { capabilityId } = route.params;
   const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<CapabilityVerificationDetail | null>(null);
@@ -168,41 +172,41 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Provider verification</Text>
-        <View style={styles.headerButton} />
+      <View style={ts.header}>
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Provider verification</Text>
+        <View style={ts.headerButton} />
       </View>
 
-      {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
-          <Text style={styles.sub}>Complete every required business evidence item before CarMazium approval.</Text>
+      {loading ? <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View> : (
+        <ScrollView contentContainerStyle={ts.content}>
+          <Text style={ts.title}>{serviceType ? SERVICE_LABELS[serviceType] : 'Service application'}</Text>
+          <Text style={ts.sub}>Complete every required business evidence item before CarMazium approval.</Text>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={ts.error}>{error}</Text> : null}
 
           {detail ? (
             <>
-              <View style={styles.summaryCard}>
+              <View style={ts.summaryCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>VERIFICATION STATUS</Text>
-                  <Text style={[styles.summaryStatus, { color: stateColor(detail.verification.verificationStatus) }]}>
+                  <Text style={ts.label}>VERIFICATION STATUS</Text>
+                  <Text style={[ts.summaryStatus, { color: stateColor(detail.verification.verificationStatus) }]}>
                     {detail.verification.verificationStatus.replace(/_/g, ' ')}
                   </Text>
                   {detail.verification.verificationExpiresAt ? (
-                    <Text style={styles.cardText}>Expires {new Date(detail.verification.verificationExpiresAt).toLocaleDateString('en-GB')}</Text>
+                    <Text style={ts.cardText}>Expires {new Date(detail.verification.verificationExpiresAt).toLocaleDateString('en-GB')}</Text>
                   ) : null}
                 </View>
                 <Ionicons name="shield-checkmark-outline" size={30} color={stateColor(detail.verification.verificationStatus)} />
               </View>
 
-              <Text style={styles.sectionTitle}>Requirements</Text>
+              <Text style={ts.sectionTitle}>Requirements</Text>
               {detail.verification.requirements.map((req) => (
                 <TouchableOpacity
                   key={req.type}
-                  style={[styles.requirement, evidenceType === req.type && styles.requirementSelected]}
+                  style={[ts.requirement, evidenceType === req.type && ts.requirementSelected]}
                   onPress={() => setEvidenceType(req.type)}
                   activeOpacity={0.8}
                 >
@@ -212,75 +216,75 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                     color={stateColor(req.state)}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{req.title}</Text>
-                    <Text style={styles.cardText}>{req.description}</Text>
-                    <Text style={[styles.stateText, { color: stateColor(req.state) }]}>{req.state}</Text>
+                    <Text style={ts.cardTitle}>{req.title}</Text>
+                    <Text style={ts.cardText}>{req.description}</Text>
+                    <Text style={[ts.stateText, { color: stateColor(req.state) }]}>{req.state}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
 
-              <View style={styles.warningCard}>
+              <View style={ts.warningCard}>
                 <Ionicons name="business-outline" size={18} color={Colors.warning} />
-                <Text style={styles.warningText}>
+                <Text style={ts.warningText}>
                   Upload business, insurance, qualification or regulatory evidence only. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
                 </Text>
               </View>
 
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Upload evidence</Text>
-                <Text style={styles.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
+              <View style={ts.card}>
+                <Text style={ts.sectionTitle}>Upload evidence</Text>
+                <Text style={ts.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
 
-                <TouchableOpacity style={styles.fileButton} onPress={pickFile}>
+                <TouchableOpacity style={ts.fileButton} onPress={pickFile}>
                   <Ionicons name="attach-outline" size={17} color={Colors.white} />
-                  <Text style={styles.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
+                  <Text style={ts.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
                 </TouchableOpacity>
 
-                <TextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={styles.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={ts.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={ts.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={ts.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
                 <TextInput
-                  style={styles.input}
+                  style={ts.input}
                   value={expiresAt}
                   onChangeText={setExpiresAt}
                   placeholder={selectedRequirement?.expiryRequired ? 'Expiry YYYY-MM-DD (required)' : 'Expiry YYYY-MM-DD (optional)'}
                   placeholderTextColor={Colors.textMuted}
                   autoCapitalize="none"
                 />
-                <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
-                  {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="cloud-upload-outline" size={17} color={Colors.white} /><Text style={styles.primaryText}>UPLOAD FOR REVIEW</Text></>}
+                <TouchableOpacity style={[ts.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
+                  {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="cloud-upload-outline" size={17} color={Colors.white} /><Text style={ts.primaryText}>UPLOAD FOR REVIEW</Text></>}
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
+              <Text style={ts.sectionTitle}>Evidence history ({detail.attachments.length})</Text>
               {detail.attachments.length === 0 ? (
-                <View style={styles.empty}><Text style={styles.cardText}>No verification evidence uploaded yet.</Text></View>
+                <View style={ts.empty}><Text style={ts.cardText}>No verification evidence uploaded yet.</Text></View>
               ) : detail.attachments.map((entry) => (
-                <View key={entry.id} style={styles.card}>
-                  <View style={styles.row}>
+                <View key={entry.id} style={ts.card}>
+                  <View style={ts.row}>
                     <Ionicons name="document-text-outline" size={20} color={Colors.accent} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>{entry.label || 'Verification evidence'}</Text>
-                      <Text style={styles.cardText}>
+                      <Text style={ts.cardTitle}>{entry.label || 'Verification evidence'}</Text>
+                      <Text style={ts.cardText}>
                         {entry.evidenceIssuer || 'Issuer not supplied'}
                         {entry.evidenceReference ? ` · ${entry.evidenceReference}` : ''}
                       </Text>
-                      <Text style={styles.cardText}>
+                      <Text style={ts.cardText}>
                         Uploaded {new Date(entry.createdAt).toLocaleDateString('en-GB')}
                         {entry.evidenceExpiresAt ? ` · Expires ${new Date(entry.evidenceExpiresAt).toLocaleDateString('en-GB')}` : ''}
                       </Text>
                     </View>
-                    <Text style={[styles.stateText, { color: stateColor(entry.evidenceStatus ?? undefined) }]}>{entry.evidenceStatus || 'PENDING'}</Text>
+                    <Text style={[ts.stateText, { color: stateColor(entry.evidenceStatus ?? undefined) }]}>{entry.evidenceStatus || 'PENDING'}</Text>
                   </View>
-                  {entry.evidenceReviewNote ? <Text style={styles.cardText}>{entry.evidenceReviewNote}</Text> : null}
-                  <View style={styles.actions}>
+                  {entry.evidenceReviewNote ? <Text style={ts.cardText}>{entry.evidenceReviewNote}</Text> : null}
+                  <View style={ts.actions}>
                     {entry.url ? (
-                      <TouchableOpacity style={styles.actionButton} onPress={() => Linking.openURL(entry.url!)}>
-                        <Text style={styles.actionText}>OPEN EVIDENCE</Text>
+                      <TouchableOpacity style={ts.actionButton} onPress={() => Linking.openURL(entry.url!)}>
+                        <Text style={ts.actionText}>OPEN EVIDENCE</Text>
                       </TouchableOpacity>
                     ) : null}
                     {entry.evidenceStatus === 'PENDING' ? (
-                      <TouchableOpacity style={[styles.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
-                        <Text style={[styles.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
+                      <TouchableOpacity style={[ts.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
+                        <Text style={[ts.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>

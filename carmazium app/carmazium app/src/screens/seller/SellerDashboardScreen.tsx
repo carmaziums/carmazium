@@ -21,6 +21,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
@@ -181,6 +183,8 @@ const QUICK_ACTIONS = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
 
   const [stats, setStats] = useState<ListingStats>({ activeListings: 0, totalViews: 0, offersReceived: 0, savedCount: 0, soldListings: 0, totalRevenue: 0 });
@@ -284,7 +288,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
   // ─────────────────── render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
@@ -297,34 +301,34 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerEyebrow}>MY LISTING</Text>
-          <Text style={styles.headerTitle}>Selling</Text>
+      <View style={ts.header}>
+        <View style={ts.headerLeft}>
+          <Text style={ts.headerEyebrow}>MY LISTING</Text>
+          <Text style={ts.headerTitle}>Selling</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={styles.periodToggle}>
+          <View style={ts.periodToggle}>
             {(['7d', '30d'] as const).map(p => (
               <TouchableOpacity
                 key={p}
-                style={[styles.periodToggleBtn, period === p && styles.periodToggleBtnActive]}
+                style={[ts.periodToggleBtn, period === p && ts.periodToggleBtnActive]}
                 onPress={() => setPeriod(p)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.periodToggleText, period === p && styles.periodToggleTextActive]}>
+                <Text style={[ts.periodToggleText, period === p && ts.periodToggleTextActive]}>
                   {p.toUpperCase()}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-          <IconButton style={styles.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+          <IconButton style={ts.bellBtn} icon={<Ionicons name="notifications-outline" size={18} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
           <HamburgerButton />
         </View>
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -344,9 +348,9 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
         {/* ── 1. Hero listing card ── */}
         {heroListing ? (
-          <View style={styles.heroCard}>
+          <View style={ts.heroCard}>
             {/* Image area */}
-            <View style={styles.heroImageArea}>
+            <View style={ts.heroImageArea}>
               {heroListing.images?.[0] ? (
                 <Image
                   source={{ uri: heroListing.images[0] }}
@@ -354,97 +358,97 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.heroImagePlaceholder} />
+                <View style={ts.heroImagePlaceholder} />
               )}
 
               {/* LIVE / DRAFT badge */}
-              <View style={[styles.heroBadge, { backgroundColor: heroStatusCfg.bg, borderColor: heroStatusCfg.border }]}>
-                <Text style={[styles.heroBadgeText, { color: heroStatusCfg.text }]}>
+              <View style={[ts.heroBadge, { backgroundColor: heroStatusCfg.bg, borderColor: heroStatusCfg.border }]}>
+                <Text style={[ts.heroBadgeText, { color: heroStatusCfg.text }]}>
                   {heroStatusCfg.label}
                 </Text>
               </View>
 
               {/* Edit pill */}
-              <IconButton style={styles.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
+              <IconButton style={ts.heroEditBtn} icon={<Ionicons name="pencil-outline" size={15} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Edit" />
 
               {/* Days listed pill */}
-              <View style={styles.heroDaysPill}>
-                <Text style={styles.heroDaysPillText}>{getDaysListed(heroListing.createdAt)}</Text>
+              <View style={ts.heroDaysPill}>
+                <Text style={ts.heroDaysPillText}>{getDaysListed(heroListing.createdAt)}</Text>
               </View>
             </View>
 
             {/* Card body */}
-            <View style={styles.heroBody}>
-              <View style={styles.heroBodyLeft}>
-                <Text style={styles.heroTitle} numberOfLines={1}>{getListingTitle(heroListing)}</Text>
-                <Text style={styles.heroSpecs} numberOfLines={1}>
+            <View style={ts.heroBody}>
+              <View style={ts.heroBodyLeft}>
+                <Text style={ts.heroTitle} numberOfLines={1}>{getListingTitle(heroListing)}</Text>
+                <Text style={ts.heroSpecs} numberOfLines={1}>
                   {[heroListing.year, heroListing.make, heroListing.model].filter(Boolean).join(' · ')}
                 </Text>
               </View>
-              <Text style={styles.heroPrice}>{formatPrice(heroListing.price)}</Text>
+              <Text style={ts.heroPrice}>{formatPrice(heroListing.price)}</Text>
             </View>
           </View>
         ) : null}
 
         {/* ── 2. Stats row ── */}
         {loading ? (
-          <View style={styles.statsRow}>
+          <View style={ts.statsRow}>
             <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
             <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
             <Skeleton w={(SCREEN_WIDTH - 48 - 24) / 3} h={90} r={16} />
           </View>
         ) : (
-          <View style={styles.statsRow}>
+          <View style={ts.statsRow}>
             {/* Views */}
-            <View style={[styles.statCard, styles.statCardViews]}>
+            <View style={[ts.statCard, ts.statCardViews]}>
               <Ionicons name="eye-outline" size={15} color={Colors.textMuted} />
-              <Text style={styles.statValue}>
+              <Text style={ts.statValue}>
                 {stats.totalViews.toLocaleString('en-GB')}
               </Text>
-              <Text style={styles.statLabel}>VIEWS</Text>
-              <Text style={[styles.statDelta, { color: Colors.textMuted }]}>total</Text>
+              <Text style={ts.statLabel}>VIEWS</Text>
+              <Text style={[ts.statDelta, { color: Colors.textMuted }]}>total</Text>
             </View>
 
             {/* Saves */}
-            <View style={[styles.statCard, styles.statCardSaves]}>
+            <View style={[ts.statCard, ts.statCardSaves]}>
               <Ionicons name="heart-outline" size={15} color={Colors.accent} />
-              <Text style={styles.statValue}>
+              <Text style={ts.statValue}>
                 {stats.savedCount.toLocaleString('en-GB')}
               </Text>
-              <Text style={styles.statLabel}>SAVES</Text>
-              <Text style={[styles.statDelta, { color: Colors.textMuted }]}>watching</Text>
+              <Text style={ts.statLabel}>SAVES</Text>
+              <Text style={[ts.statDelta, { color: Colors.textMuted }]}>watching</Text>
             </View>
 
             {/* Offers */}
-            <View style={[styles.statCard, styles.statCardOffers]}>
+            <View style={[ts.statCard, ts.statCardOffers]}>
               <Ionicons name="pricetag-outline" size={15} color={Colors.warning} />
-              <Text style={[styles.statValue, { color: Colors.warning }]}>
+              <Text style={[ts.statValue, { color: Colors.warning }]}>
                 {stats.offersReceived}
               </Text>
-              <Text style={[styles.statLabel, { color: Colors.warning }]}>OFFERS</Text>
-              <Text style={[styles.statDelta, { color: Colors.warning }]}>received</Text>
+              <Text style={[ts.statLabel, { color: Colors.warning }]}>OFFERS</Text>
+              <Text style={[ts.statDelta, { color: Colors.warning }]}>received</Text>
             </View>
           </View>
         )}
 
         {/* ── 2b. Sold / Revenue — matches web's Sold and Revenue stat cards ── */}
         {!loading && (
-          <View style={[styles.statsRow, { marginTop: 12 }]}>
-            <View style={[styles.statCard, styles.statCardSold]}>
+          <View style={[ts.statsRow, { marginTop: 12 }]}>
+            <View style={[ts.statCard, ts.statCardSold]}>
               <Ionicons name="trending-up-outline" size={15} color={Colors.success} />
-              <Text style={[styles.statValue, { color: Colors.success }]}>
+              <Text style={[ts.statValue, { color: Colors.success }]}>
                 {stats.soldListings}
               </Text>
-              <Text style={[styles.statLabel, { color: Colors.success }]}>SOLD</Text>
-              <Text style={[styles.statDelta, { color: Colors.success }]}>all time</Text>
+              <Text style={[ts.statLabel, { color: Colors.success }]}>SOLD</Text>
+              <Text style={[ts.statDelta, { color: Colors.success }]}>all time</Text>
             </View>
-            <View style={[styles.statCard, styles.statCardRevenue]}>
+            <View style={[ts.statCard, ts.statCardRevenue]}>
               <Ionicons name="cash-outline" size={15} color={Colors.accentGreen} />
-              <Text style={[styles.statValue, { color: Colors.accentGreen }]}>
+              <Text style={[ts.statValue, { color: Colors.accentGreen }]}>
                 {formatPrice(stats.totalRevenue)}
               </Text>
-              <Text style={[styles.statLabel, { color: Colors.accentGreen }]}>REVENUE</Text>
-              <Text style={[styles.statDelta, { color: Colors.accentGreen }]}>all time</Text>
+              <Text style={[ts.statLabel, { color: Colors.accentGreen }]}>REVENUE</Text>
+              <Text style={[ts.statDelta, { color: Colors.accentGreen }]}>all time</Text>
             </View>
           </View>
         )}
@@ -488,31 +492,31 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
         {/* ── 4. Create listing CTA ── */}
         <TouchableOpacity
-          style={styles.ctaButton}
+          style={ts.ctaButton}
           activeOpacity={0.85}
           onPress={() => navigation?.navigate('SellCarFlow')}
         >
           <Ionicons name="add" size={20} color={Colors.white} />
-          <Text style={styles.ctaButtonText}>CREATE NEW LISTING</Text>
+          <Text style={ts.ctaButtonText}>CREATE NEW LISTING</Text>
         </TouchableOpacity>
 
         {/* ── 4. Latest offers ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Latest offers</Text>
+        <View style={ts.section}>
+          <View style={ts.sectionHeaderRow}>
+            <Text style={ts.sectionTitle}>Latest offers</Text>
             <TouchableOpacity activeOpacity={0.75} onPress={() => navigation?.navigate('SellerOffers')}>
-              <Text style={styles.sectionSeeAll}>See all</Text>
+              <Text style={ts.sectionSeeAll}>See all</Text>
             </TouchableOpacity>
           </View>
 
           {recentOffers.length === 0 ? (
-            <View style={styles.offersEmpty}>
+            <View style={ts.offersEmpty}>
               <Ionicons name="mail-outline" size={28} color={Colors.textMuted} />
-              <Text style={styles.offersEmptyTitle}>No offers yet</Text>
-              <Text style={styles.offersEmptySub}>Buyers can make offers on your listings</Text>
+              <Text style={ts.offersEmptyTitle}>No offers yet</Text>
+              <Text style={ts.offersEmptySub}>Buyers can make offers on your listings</Text>
             </View>
           ) : (
-            <View style={styles.offersCard}>
+            <View style={ts.offersCard}>
               {recentOffers.map((offer, idx) => {
                 const buyerName = [offer.buyer?.firstName, offer.buyer?.lastName].filter(Boolean).join(' ') || 'Buyer';
                 const listingTitle = offer.listing?.title || 'Your listing';
@@ -524,29 +528,29 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                 return (
                   <TouchableOpacity
                     key={offer.id}
-                    style={[styles.offerRow, !isLast && styles.offerRowBorder]}
+                    style={[ts.offerRow, !isLast && ts.offerRowBorder]}
                     activeOpacity={0.75}
                     onPress={() => navigation?.navigate('SellerOffers')}
                   >
-                    <View style={[styles.offerAvatar, { backgroundColor: isPending ? Colors.warningAlpha15 : Colors.whiteAlpha06 }]}>
-                      <Text style={[styles.offerAvatarText, { color: isPending ? Colors.warning : Colors.textSecondary }]}>
+                    <View style={[ts.offerAvatar, { backgroundColor: isPending ? Colors.warningAlpha15 : Colors.whiteAlpha06 }]}>
+                      <Text style={[ts.offerAvatarText, { color: isPending ? Colors.warning : Colors.textSecondary }]}>
                         {buyerName.charAt(0).toUpperCase()}
                       </Text>
                     </View>
-                    <View style={styles.offerInfo}>
-                      <Text style={styles.offerBuyer} numberOfLines={1}>{buyerName}</Text>
-                      <Text style={styles.offerListing} numberOfLines={1}>{listingTitle}</Text>
+                    <View style={ts.offerInfo}>
+                      <Text style={ts.offerBuyer} numberOfLines={1}>{buyerName}</Text>
+                      <Text style={ts.offerListing} numberOfLines={1}>{listingTitle}</Text>
                     </View>
-                    <View style={styles.offerAmountCol}>
-                      <Text style={styles.offerAmount}>£{offer.amount.toLocaleString('en-GB')}</Text>
+                    <View style={ts.offerAmountCol}>
+                      <Text style={ts.offerAmount}>£{offer.amount.toLocaleString('en-GB')}</Text>
                       {offerVsAsking != null && (
-                        <Text style={[styles.offerDiff, { color: offerVsAsking >= 0 ? Colors.success : Colors.accent }]}>
+                        <Text style={[ts.offerDiff, { color: offerVsAsking >= 0 ? Colors.success : Colors.accent }]}>
                           {offerVsAsking >= 0 ? '+' : ''}£{Math.abs(offerVsAsking).toLocaleString('en-GB')}
                         </Text>
                       )}
                       {isPending && (
-                        <View style={styles.pendingChip}>
-                          <Text style={styles.pendingChipText}>PENDING</Text>
+                        <View style={ts.pendingChip}>
+                          <Text style={ts.pendingChipText}>PENDING</Text>
                         </View>
                       )}
                     </View>
@@ -558,26 +562,26 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
 
         {/* ── 5. Quick actions 2×2 grid ── */}
-        <View style={styles.section}>
-          <View style={styles.quickGrid}>
+        <View style={ts.section}>
+          <View style={ts.quickGrid}>
             {QUICK_ACTIONS.map((action) => (
               <TouchableOpacity
                 key={action.key}
-                style={styles.quickTile}
+                style={ts.quickTile}
                 activeOpacity={0.75}
                 onPress={() => handleQuickAction(action.key)}
               >
-                <View style={[styles.quickIconWrap, { backgroundColor: action.toneBg }]}>
+                <View style={[ts.quickIconWrap, { backgroundColor: action.toneBg }]}>
                   <Ionicons name={action.icon as any} size={16} color={action.tone} />
                 </View>
-                <Text style={styles.quickLabel}>{action.label}</Text>
-                <Text style={styles.quickSub}>{action.sub}</Text>
+                <Text style={ts.quickLabel}>{action.label}</Text>
+                <Text style={ts.quickSub}>{action.sub}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={ts.section}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation?.navigate('SaleCancellations')}
@@ -601,30 +605,30 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         </View>
 
         {/* ── 6. My Listings ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitleMuted}>MY LISTINGS</Text>
+        <View style={ts.section}>
+          <View style={ts.sectionHeaderRow}>
+            <Text style={ts.sectionTitleMuted}>MY LISTINGS</Text>
           </View>
 
           {loading ? (
             <>
-              <View style={styles.listingCardSkeleton} />
-              <View style={styles.listingCardSkeleton} />
-              <View style={styles.listingCardSkeleton} />
+              <View style={ts.listingCardSkeleton} />
+              <View style={ts.listingCardSkeleton} />
+              <View style={ts.listingCardSkeleton} />
             </>
           ) : listings.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={ts.emptyState}>
               <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No listings yet</Text>
-              <Text style={styles.emptySubText}>
+              <Text style={ts.emptyTitle}>No listings yet</Text>
+              <Text style={ts.emptySubText}>
                 List your first vehicle and reach thousands of serious buyers
               </Text>
               <TouchableOpacity
-                style={styles.emptyCtaBtn}
+                style={ts.emptyCtaBtn}
                 activeOpacity={0.85}
                 onPress={() => navigation?.navigate('SellCarFlow')}
               >
-                <Text style={styles.emptyCtaBtnText}>Create your first listing</Text>
+                <Text style={ts.emptyCtaBtnText}>Create your first listing</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -637,39 +641,39 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               return (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.listingCard}
+                  style={ts.listingCard}
                   activeOpacity={0.8}
                   onPress={() => navigation?.navigate('VehicleDetail', { listing: carListing })}
                 >
-                  <View style={styles.listingThumbContainer}>
+                  <View style={ts.listingThumbContainer}>
                     {thumb ? (
                       <Image
                         source={{ uri: thumb }}
-                        style={styles.listingThumb}
+                        style={ts.listingThumb}
                         resizeMode="cover"
                       />
                     ) : (
-                      <View style={styles.listingThumbPlaceholder}>
+                      <View style={ts.listingThumbPlaceholder}>
                         <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
                       </View>
                     )}
                   </View>
 
-                  <View style={styles.listingInfo}>
-                    <Text style={styles.listingTitle} numberOfLines={1}>
+                  <View style={ts.listingInfo}>
+                    <Text style={ts.listingTitle} numberOfLines={1}>
                       {getListingTitle(item)}
                     </Text>
-                    <Text style={styles.listingPrice}>{formatPrice(item.price)}</Text>
+                    <Text style={ts.listingPrice}>{formatPrice(item.price)}</Text>
                     {item.viewCount != null && (
-                      <View style={styles.listingMetaItem}>
+                      <View style={ts.listingMetaItem}>
                         <Ionicons name="eye-outline" size={12} color={Colors.textMuted} />
-                        <Text style={styles.listingMetaText}>{item.viewCount} views</Text>
+                        <Text style={ts.listingMetaText}>{item.viewCount} views</Text>
                       </View>
                     )}
                   </View>
 
-                  <View style={[styles.statusChip, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
-                    <Text style={[styles.statusChipText, { color: statusCfg.text }]}>
+                  <View style={[ts.statusChip, { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }]}>
+                    <Text style={[ts.statusChipText, { color: statusCfg.text }]}>
                       {statusCfg.label}
                     </Text>
                   </View>

@@ -25,6 +25,8 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { useDrawer } from '../../context/DrawerContext';
 
 import { IconButton } from '../../components/IconButton';
@@ -111,6 +113,8 @@ const ListingRow: React.FC<{
 });
 
 export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
   const [listings, setListings] = useState<any[]>([]);
@@ -240,26 +244,26 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const keyExtractor = useCallback((item: any, idx: number) => item.id ?? String(idx), []);
 
   const renderTabBar = () => (
-     <View style={[styles.mockTabBar, { paddingBottom: insets.bottom || 12 }]}>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Home')} activeOpacity={0.8}>
+     <View style={[ts.mockTabBar, { paddingBottom: insets.bottom || 12 }]}>
+         <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Home')} activeOpacity={0.8}>
             <Ionicons name="home-outline" size={24} color={Colors.textSecondary} />
-            <Text style={styles.tabLabel}>HOME</Text>
+            <Text style={ts.tabLabel}>HOME</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Search')} activeOpacity={0.8}>
+         <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Search')} activeOpacity={0.8}>
             <Ionicons name="search-outline" size={24} color={Colors.textSecondary} />
-            <Text style={styles.tabLabel}>SEARCH</Text>
+            <Text style={ts.tabLabel}>SEARCH</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Live')} activeOpacity={0.8}>
+         <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Live')} activeOpacity={0.8}>
             <MaterialCommunityIcons name="gavel" size={24} color={Colors.textSecondary} />
-            <Text style={styles.tabLabel}>LIVE</Text>
+            <Text style={ts.tabLabel}>LIVE</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={() => navTab('Saved')} activeOpacity={0.8}>
+         <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Saved')} activeOpacity={0.8}>
             <Ionicons name="heart-outline" size={24} color={Colors.textSecondary} />
-            <Text style={styles.tabLabel}>SAVED</Text>
+            <Text style={ts.tabLabel}>SAVED</Text>
          </TouchableOpacity>
-         <TouchableOpacity style={styles.tabItem} onPress={openDrawer} activeOpacity={0.8}>
+         <TouchableOpacity style={ts.tabItem} onPress={openDrawer} activeOpacity={0.8}>
             <Ionicons name="person" size={24} color={Colors.accent} />
-            <Text style={[styles.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
+            <Text style={[ts.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
          </TouchableOpacity>
       </View>
   );
@@ -269,9 +273,9 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     if (isLoading) {
       return (
         <View style={{ flex: 1 }}>
-          <View style={[styles.scrollContent, { paddingTop: insets.top + 14, flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
+          <View style={[ts.scrollContent, { paddingTop: insets.top + 14, flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
             <ActivityIndicator size="large" color={Colors.accent} />
-            <Text style={styles.loadingText}>Loading your listings…</Text>
+            <Text style={ts.loadingText}>Loading your listings…</Text>
           </View>
           {renderTabBar()}
         </View>
@@ -282,7 +286,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     if (loadError && listings.length === 0) {
       return (
         <View style={{ flex: 1 }}>
-          <View style={[styles.scrollContent, { paddingTop: insets.top + 24 }]}>
+          <View style={[ts.scrollContent, { paddingTop: insets.top + 24 }]}>
             <ErrorBanner message={loadError} onRetry={() => loadListings()} />
           </View>
           {renderTabBar()}
@@ -294,26 +298,26 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
     if (listings.length === 0) {
       return (
         <View style={{ flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
-            <View style={styles.header}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 14 }]}>
+            <View style={ts.header}>
               <View>
-                <Text style={styles.headerSub}>MY LISTINGS</Text>
-                <Text style={styles.headerTitle}>Selling</Text>
+                <Text style={ts.headerSub}>MY LISTINGS</Text>
+                <Text style={ts.headerTitle}>Selling</Text>
               </View>
-              <IconButton style={styles.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+              <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
             </View>
 
-            <View style={styles.emptyState}>
+            <View style={ts.emptyState}>
               <Ionicons name="car-outline" size={56} color={Colors.textMuted} style={{ marginBottom: 16 }} />
-              <Text style={styles.emptyTitle}>No listings yet</Text>
-              <Text style={styles.emptySubtitle}>Sell your car on Carmazium and reach thousands of verified buyers.</Text>
+              <Text style={ts.emptyTitle}>No listings yet</Text>
+              <Text style={ts.emptySubtitle}>Sell your car on Carmazium and reach thousands of verified buyers.</Text>
               <TouchableOpacity
-                style={styles.emptyCtaBtn}
+                style={ts.emptyCtaBtn}
                 onPress={() => navigation?.navigate('SellCarFlow')}
                 activeOpacity={0.85}
               >
                 <Ionicons name="add" size={18} color={Colors.white} style={{ marginRight: 8 }} />
-                <Text style={styles.emptyCtaText}>LIST YOUR CAR</Text>
+                <Text style={ts.emptyCtaText}>LIST YOUR CAR</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -330,7 +334,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
       <View style={{ flex: 1 }}>
         <FlatList
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}
+          contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 14 }]}
           data={listings}
           keyExtractor={keyExtractor}
           renderItem={renderListingRow}
@@ -338,46 +342,46 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
             <>
               {loadError && <ErrorBanner message={loadError} onRetry={() => loadListings({ silent: true })} />}
               {/* Header */}
-              <View style={styles.header}>
+              <View style={ts.header}>
                 <View>
-                  <Text style={styles.headerSub}>MY LISTINGS</Text>
-                  <Text style={styles.headerTitle}>Selling</Text>
+                  <Text style={ts.headerSub}>MY LISTINGS</Text>
+                  <Text style={ts.headerTitle}>Selling</Text>
                 </View>
-                <IconButton style={styles.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+                <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
               </View>
 
               {/* Stats KPI bar from real API */}
-              <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                  <Ionicons name="car-outline" size={18} color={Colors.textSecondary} style={styles.statIcon} />
-                  <Text style={styles.statValue}>{stats?.activeListings ?? listings.filter((l) => l.status === 'ACTIVE').length}</Text>
-                  <Text style={styles.statLabel}>ACTIVE</Text>
-                  <Text style={styles.statChange}>{listings.length} total</Text>
+              <View style={ts.statsRow}>
+                <View style={ts.statCard}>
+                  <Ionicons name="car-outline" size={18} color={Colors.textSecondary} style={ts.statIcon} />
+                  <Text style={ts.statValue}>{stats?.activeListings ?? listings.filter((l) => l.status === 'ACTIVE').length}</Text>
+                  <Text style={ts.statLabel}>ACTIVE</Text>
+                  <Text style={ts.statChange}>{listings.length} total</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} style={styles.statIcon} />
-                  <Text style={styles.statValue}>{stats?.totalViews ?? primaryListing?.viewCount ?? 0}</Text>
-                  <Text style={styles.statLabel}>VIEWS</Text>
-                  <Text style={styles.statChange}>all listings</Text>
+                <View style={ts.statCard}>
+                  <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} style={ts.statIcon} />
+                  <Text style={ts.statValue}>{stats?.totalViews ?? primaryListing?.viewCount ?? 0}</Text>
+                  <Text style={ts.statLabel}>VIEWS</Text>
+                  <Text style={ts.statChange}>all listings</Text>
                 </View>
-                <TouchableOpacity style={styles.statCardOffers} activeOpacity={0.8} onPress={() => navigation?.navigate('SellerOffers')}>
+                <TouchableOpacity style={ts.statCardOffers} activeOpacity={0.8} onPress={() => navigation?.navigate('SellerOffers')}>
                   <LinearGradient
                     colors={[Colors.warningAlpha10, 'rgba(245,158,11,0.02)']}
                     style={StyleSheet.absoluteFillObject}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   />
-                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} style={styles.statIcon} />
-                  <Text style={styles.statValue}>{stats?.offersReceived ?? 0}</Text>
-                  <Text style={styles.statLabelOffers}>OFFERS</Text>
-                  <Text style={styles.statChangeOffers}>tap to view</Text>
+                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} style={ts.statIcon} />
+                  <Text style={ts.statValue}>{stats?.offersReceived ?? 0}</Text>
+                  <Text style={ts.statLabelOffers}>OFFERS</Text>
+                  <Text style={ts.statChangeOffers}>tap to view</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Listings */}
-              <View style={styles.sectionHeaderWrap}>
-                <Text style={styles.sectionTitle}>YOUR LISTINGS</Text>
-                <Text style={styles.seeAllText}>{listings.length} listing{listings.length !== 1 ? 's' : ''}</Text>
+              <View style={ts.sectionHeaderWrap}>
+                <Text style={ts.sectionTitle}>YOUR LISTINGS</Text>
+                <Text style={ts.seeAllText}>{listings.length} listing{listings.length !== 1 ? 's' : ''}</Text>
               </View>
             </>
           }
@@ -385,42 +389,42 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
             <>
               {/* Live banner for primary active listing */}
               {isActive && (
-                <View style={styles.liveBanner}>
+                <View style={ts.liveBanner}>
                   <LinearGradient
                     colors={[Colors.whiteAlpha05, Colors.accent]}
                     style={StyleSheet.absoluteFillObject}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   />
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>LIVE</Text>
+                  <View style={ts.livePill}>
+                    <View style={ts.liveDot} />
+                    <Text style={ts.liveText}>LIVE</Text>
                   </View>
-                  <IconButton style={styles.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
+                  <IconButton style={ts.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
                 </View>
               )}
 
               {/* Action Grid */}
-              <View style={styles.actionGrid}>
-                <TouchableOpacity style={styles.actionCard} onPress={handleBoostListing} disabled={actionBusy} activeOpacity={0.8}>
-                  <Ionicons name="flash-outline" size={20} color={Colors.warning} style={styles.actionIcon} />
-                  <Text style={styles.actionTitle}>Boost listing</Text>
-                  <Text style={styles.actionSub}>Get more views</Text>
+              <View style={ts.actionGrid}>
+                <TouchableOpacity style={ts.actionCard} onPress={handleBoostListing} disabled={actionBusy} activeOpacity={0.8}>
+                  <Ionicons name="flash-outline" size={20} color={Colors.warning} style={ts.actionIcon} />
+                  <Text style={ts.actionTitle}>Boost listing</Text>
+                  <Text style={ts.actionSub}>Get more views</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={handleShareListing} activeOpacity={0.8}>
-                  <Ionicons name="share-social-outline" size={20} color={Colors.lightTeal_38bdf8} style={styles.actionIcon} />
-                  <Text style={styles.actionTitle}>Share listing</Text>
-                  <Text style={styles.actionSub}>Share with friends</Text>
+                <TouchableOpacity style={ts.actionCard} onPress={handleShareListing} activeOpacity={0.8}>
+                  <Ionicons name="share-social-outline" size={20} color={Colors.lightTeal_38bdf8} style={ts.actionIcon} />
+                  <Text style={ts.actionTitle}>Share listing</Text>
+                  <Text style={ts.actionSub}>Share with friends</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={handleViewInsights} disabled={actionBusy} activeOpacity={0.8}>
-                  <Ionicons name="bar-chart-outline" size={20} color={Colors.palePurple_a78bfa} style={styles.actionIcon} />
-                  <Text style={styles.actionTitle}>View insights</Text>
-                  <Text style={styles.actionSub}>Views & performance</Text>
+                <TouchableOpacity style={ts.actionCard} onPress={handleViewInsights} disabled={actionBusy} activeOpacity={0.8}>
+                  <Ionicons name="bar-chart-outline" size={20} color={Colors.palePurple_a78bfa} style={ts.actionIcon} />
+                  <Text style={ts.actionTitle}>View insights</Text>
+                  <Text style={ts.actionSub}>Views & performance</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={() => navigation?.navigate('SellCarFlow')} activeOpacity={0.8}>
-                  <Ionicons name="add-circle-outline" size={20} color={Colors.accentGreen} style={styles.actionIcon} />
-                  <Text style={styles.actionTitle}>New listing</Text>
-                  <Text style={styles.actionSub}>List another car</Text>
+                <TouchableOpacity style={ts.actionCard} onPress={() => navigation?.navigate('SellCarFlow')} activeOpacity={0.8}>
+                  <Ionicons name="add-circle-outline" size={20} color={Colors.accentGreen} style={ts.actionIcon} />
+                  <Text style={ts.actionTitle}>New listing</Text>
+                  <Text style={ts.actionSub}>List another car</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -433,7 +437,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -454,15 +458,15 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
       {/* Small transient toast for boost success */}
       {toast && (
-        <View style={styles.toast} pointerEvents="none">
+        <View style={ts.toast} pointerEvents="none">
           <Ionicons name="flash" size={14} color={Colors.warning} />
-          <Text style={styles.toastText}>{toast}</Text>
+          <Text style={ts.toastText}>{toast}</Text>
         </View>
       )}
 
       {/* Floating Center Plus Button */}
       <TouchableOpacity 
-        style={[styles.floatingPlusBtn, { bottom: (insets.bottom || 12) + 70 }]}
+        style={[ts.floatingPlusBtn, { bottom: (insets.bottom || 12) + 70 }]}
         onPress={() => navigation?.navigate('SellCarFlow')}
         activeOpacity={0.8}
        accessibilityLabel="Add listing" accessibilityRole="button">

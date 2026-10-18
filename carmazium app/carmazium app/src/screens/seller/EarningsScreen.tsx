@@ -19,6 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -103,6 +105,8 @@ const getBuyerName = (buyer?: SaleRecord['buyer']): string => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
 
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -209,14 +213,14 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonRowWrap}>
+      <View key={`sk-${i}`} style={ts.skeletonRowWrap}>
         <Skeleton w={36} h={36} r={18} />
-        <View style={styles.skeletonRowContent}>
+        <View style={ts.skeletonRowContent}>
           <Skeleton w={140} h={14} r={6} />
           <Skeleton w={80} h={12} r={5} />
           <Skeleton w={60} h={10} r={5} />
         </View>
-        <View style={styles.skeletonRowRight}>
+        <View style={ts.skeletonRowRight}>
           <Skeleton w={70} h={16} r={6} />
           <Skeleton w={50} h={10} r={5} />
         </View>
@@ -236,26 +240,26 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
     const buyerName = getBuyerName(sale.buyer);
 
     return (
-      <View key={sale.id} style={styles.saleRow}>
+      <View key={sale.id} style={ts.saleRow}>
         {/* Trophy icon circle */}
-        <View style={styles.trophyCircle}>
+        <View style={ts.trophyCircle}>
           <Ionicons name="ribbon" size={18} color={Colors.success} />
         </View>
 
         {/* Details */}
-        <View style={styles.saleDetails}>
-          <Text style={styles.saleTitle} numberOfLines={1}>{title}</Text>
-          <Text style={styles.saleBuyer} numberOfLines={1}>{buyerName}</Text>
-          <Text style={styles.saleDate}>{formatDate(sale.createdAt)}</Text>
+        <View style={ts.saleDetails}>
+          <Text style={ts.saleTitle} numberOfLines={1}>{title}</Text>
+          <Text style={ts.saleBuyer} numberOfLines={1}>{buyerName}</Text>
+          <Text style={ts.saleDate}>{formatDate(sale.createdAt)}</Text>
         </View>
 
         {/* Revenue — CarMazium doesn't take a cut of classified sales (web's
             earnings page is explicit: net proceeds are "After 0% Fee"), so
             what a seller receives is the sold price itself, not a discounted
             "net" figure. */}
-        <View style={styles.saleRevenue}>
-          <Text style={styles.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
-          <Text style={styles.netAmount}>you received</Text>
+        <View style={ts.saleRevenue}>
+          <Text style={ts.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
+          <Text style={ts.netAmount}>you received</Text>
         </View>
       </View>
     );
@@ -264,7 +268,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -277,20 +281,20 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Earnings</Text>
+        <Text style={ts.headerTitle}>Earnings</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
-            style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
+            style={[ts.exportBtn, exporting && { opacity: 0.5 }]}
             activeOpacity={0.75}
             onPress={handleExport}
             disabled={exporting}
           >
             <Ionicons name="download-outline" size={15} color={Colors.success} />
-            <Text style={styles.exportBtnText}>
+            <Text style={ts.exportBtnText}>
               {exporting ? 'Exporting…' : 'Export'}
             </Text>
           </TouchableOpacity>
@@ -299,8 +303,8 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -318,29 +322,29 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         ) : null}
 
         {/* ── Summary card ── */}
-        <View style={styles.summaryCard}>
+        <View style={ts.summaryCard}>
           {/* Left: total revenue */}
-          <View style={styles.summaryCol}>
-            <Text style={styles.summaryLabel}>TOTAL REVENUE</Text>
+          <View style={ts.summaryCol}>
+            <Text style={ts.summaryLabel}>TOTAL REVENUE</Text>
             {loading ? (
               <Skeleton w={120} h={36} r={6} />
             ) : (
-              <Text style={styles.summaryRevenue}>
+              <Text style={ts.summaryRevenue}>
                 {formatPrice(totalRevenue)}
               </Text>
             )}
           </View>
 
           {/* Divider */}
-          <View style={styles.summaryDivider} />
+          <View style={ts.summaryDivider} />
 
           {/* Right: total sales */}
-          <View style={[styles.summaryCol, styles.summaryColRight]}>
-            <Text style={styles.summaryLabel}>TOTAL SALES</Text>
+          <View style={[ts.summaryCol, ts.summaryColRight]}>
+            <Text style={ts.summaryLabel}>TOTAL SALES</Text>
             {loading ? (
               <Skeleton w={48} h={32} r={6} />
             ) : (
-              <Text style={styles.summarySalesCount}>{totalSales}</Text>
+              <Text style={ts.summarySalesCount}>{totalSales}</Text>
             )}
           </View>
         </View>
@@ -353,31 +357,31 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             auctions whose handover proof an admin has approved appear here, so
             this is money actually received, not money expected. ── */}
         {!loading && auctionSales.length > 0 && (
-          <View style={styles.bonusCard}>
-            <View style={styles.bonusHeader}>
+          <View style={ts.bonusCard}>
+            <View style={ts.bonusHeader}>
               <Ionicons name="trophy-outline" size={16} color={Colors.success} />
-              <Text style={styles.bonusTitle}>AUCTION BONUSES</Text>
-              <Text style={styles.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
+              <Text style={ts.bonusTitle}>AUCTION BONUSES</Text>
+              <Text style={ts.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
             </View>
-            <Text style={styles.bonusBlurb}>
+            <Text style={ts.bonusBlurb}>
               {auctionSales.length} auction{auctionSales.length === 1 ? '' : 's'} paid out at £100 each.
             </Text>
             {auctionSales.slice(0, 5).map((a) => (
-              <View key={a.id} style={styles.bonusRow}>
+              <View key={a.id} style={ts.bonusRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.bonusRowTitle} numberOfLines={1}>
+                  <Text style={ts.bonusRowTitle} numberOfLines={1}>
                     {a.listing?.title || a.listing?.vrm || 'Vehicle'}
                   </Text>
-                  <Text style={styles.bonusRowMeta}>
+                  <Text style={ts.bonusRowMeta}>
                     {formatDate(a.sellerBonusReleasedAt ?? a.createdAt)}
                     {a.winningBidAmount ? ` · won at ${formatPrice(a.winningBidAmount)}` : ''}
                   </Text>
                 </View>
-                <Text style={styles.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
+                <Text style={ts.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
               </View>
             ))}
             {auctionSales.length > 5 && (
-              <Text style={styles.bonusMore}>
+              <Text style={ts.bonusMore}>
                 +{auctionSales.length - 5} more
               </Text>
             )}
@@ -388,23 +392,23 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             entry point reachable by sellers (only DealerEarningsScreen
             linked to it). ── */}
         <TouchableOpacity
-          style={styles.receiptsRow}
+          style={ts.receiptsRow}
           activeOpacity={0.8}
           onPress={() => navigation?.navigate('PaymentHistory')}
         >
-          <View style={styles.receiptsIconWrap}>
+          <View style={ts.receiptsIconWrap}>
             <Ionicons name="receipt-outline" size={17} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.receiptsTitle}>Payment receipts</Text>
-            <Text style={styles.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
+            <Text style={ts.receiptsTitle}>Payment receipts</Text>
+            <Text style={ts.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
         </TouchableOpacity>
 
         {/* ── Sale history ── */}
-        <View style={styles.historySection}>
-          <Text style={styles.sectionHeader}>SALE HISTORY</Text>
+        <View style={ts.historySection}>
+          <Text style={ts.sectionHeader}>SALE HISTORY</Text>
 
           {loading ? (
             renderSkeleton()
@@ -416,16 +420,16 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         </View>
 
         {/* ── Stripe Connect / Payouts ── */}
-        <View style={styles.payoutsSection}>
-          <Text style={styles.sectionHeader}>PAYOUTS</Text>
-          <View style={styles.payoutsCard}>
-            <View style={styles.payoutsCardHeader}>
-              <View style={styles.payoutsIconCircle}>
+        <View style={ts.payoutsSection}>
+          <Text style={ts.sectionHeader}>PAYOUTS</Text>
+          <View style={ts.payoutsCard}>
+            <View style={ts.payoutsCardHeader}>
+              <View style={ts.payoutsIconCircle}>
                 <Ionicons name="card-outline" size={18} color={Colors.success} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.payoutsCardTitle}>Set up bank payouts</Text>
-                <Text style={styles.payoutsCardSub}>Connect your bank account via Stripe to receive proceeds from your sales.</Text>
+                <Text style={ts.payoutsCardTitle}>Set up bank payouts</Text>
+                <Text style={ts.payoutsCardSub}>Connect your bank account via Stripe to receive proceeds from your sales.</Text>
               </View>
             </View>
             {connectError ? (
@@ -434,13 +438,13 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             <TouchableOpacity
               onPress={handleStripeConnect}
               disabled={connectLoading}
-              style={[styles.connectButton, connectLoading && { opacity: 0.6 }]}
+              style={[ts.connectButton, connectLoading && { opacity: 0.6 }]}
               activeOpacity={0.85}
             >
               {connectLoading ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.connectButtonText}>Set up Payouts with Stripe</Text>
+                <Text style={ts.connectButtonText}>Set up Payouts with Stripe</Text>
               )}
             </TouchableOpacity>
           </View>

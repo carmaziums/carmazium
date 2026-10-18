@@ -12,6 +12,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -111,11 +113,13 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 };
 
 export const TermsScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -126,34 +130,34 @@ export const TermsScreen: React.FC = () => {
 
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.backBtn}
+          style={ts.backBtn}
           icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
-        <Text style={styles.headerTitle}>Terms & Conditions</Text>
+        <Text style={ts.headerTitle}>Terms & Conditions</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lastUpdated}>Last Updated: 13 August 2026</Text>
-        <Text style={styles.companyLine}>Company no. 17053307 · England &amp; Wales</Text>
+        <Text style={ts.lastUpdated}>Last Updated: 13 August 2026</Text>
+        <Text style={ts.companyLine}>Company no. 17053307 · England &amp; Wales</Text>
 
         {TERMS_SECTIONS.map((section) => (
-          <View key={section.num} style={styles.sectionCard}>
-            <View style={styles.sectionHead}>
-              <View style={styles.sectionNum}>
-                <Text style={styles.sectionNumText}>{section.num}</Text>
+          <View key={section.num} style={ts.sectionCard}>
+            <View style={ts.sectionHead}>
+              <View style={ts.sectionNum}>
+                <Text style={ts.sectionNumText}>{section.num}</Text>
               </View>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={ts.sectionTitle}>{section.title}</Text>
             </View>
-            <View style={styles.sectionBody}>
+            <View style={ts.sectionBody}>
               {section.blocks.map((block, i) => (
                 <BlockRenderer key={i} block={block} />
               ))}

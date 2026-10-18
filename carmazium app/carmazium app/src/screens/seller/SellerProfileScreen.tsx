@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
@@ -114,6 +116,8 @@ const Stars: React.FC<{ rating: number; size?: number }> = ({ rating, size = 13 
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const sellerId: string | undefined = route?.params?.sellerId;
 
@@ -173,7 +177,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerFill]}>
+      <View style={[ts.container, ts.centerFill]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <ActivityIndicator color={Colors.accent} />
       </View>
@@ -182,13 +186,13 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   if (notFound || !profile) {
     return (
-      <View style={[styles.container, styles.centerFill]}>
+      <View style={[ts.container, ts.centerFill]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <View style={{ height: insets.top }} />
-        <IconButton style={[styles.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={[ts.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Ionicons name="person-circle-outline" size={48} color={Colors.textMuted} />
-        <Text style={styles.emptyTitle}>Seller not found</Text>
-        <Text style={styles.emptySub}>This profile may have been removed.</Text>
+        <Text style={ts.emptyTitle}>Seller not found</Text>
+        <Text style={ts.emptySub}>This profile may have been removed.</Text>
       </View>
     );
   }
@@ -197,7 +201,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   const isDealer = user.role === 'DEALER';
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -208,9 +212,9 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
       <View style={{ height: insets.top }} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Seller Profile</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Seller Profile</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -219,80 +223,80 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
         showsVerticalScrollIndicator={false}
       >
         {/* Hero card */}
-        <View style={styles.heroCard}>
+        <View style={ts.heroCard}>
           {user.profileImage ? (
-            <Image source={{ uri: user.profileImage }} style={styles.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
+            <Image source={{ uri: user.profileImage }} style={ts.avatarImg} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
-            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(user)}</Text>
+            <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]} style={ts.avatar}>
+              <Text style={ts.avatarText}>{getInitials(user)}</Text>
             </LinearGradient>
           )}
-          <View style={styles.heroNameRow}>
-            <Text style={styles.heroName}>{getName(user)}</Text>
+          <View style={ts.heroNameRow}>
+            <Text style={ts.heroName}>{getName(user)}</Text>
             {isDealer && <Ionicons name="checkmark-circle" size={16} color={Colors.infoBlue} style={{ marginLeft: 6 }} />}
           </View>
-          <Text style={styles.heroSub}>
+          <Text style={ts.heroSub}>
             {isDealer ? 'Verified Dealer' : 'Private Seller'} · Member since {memberSince(user.createdAt)}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 }}>
             <Stars rating={averageRating} />
-            <Text style={styles.ratingText}>
+            <Text style={ts.ratingText}>
               {averageRating.toFixed(1)} ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
             </Text>
           </View>
           {contactPhone?.phoneAvailable && contactPhone.phone && (
             <TouchableOpacity
-              style={styles.phoneRow}
+              style={ts.phoneRow}
               activeOpacity={0.75}
               onPress={() => Linking.openURL(`tel:${contactPhone.phone}`)}
               accessibilityLabel={`Call ${contactPhone.phone}`}
             >
               <Ionicons name="call" size={13} color={Colors.success} />
-              <Text style={styles.phoneText}>{contactPhone.phone}</Text>
+              <Text style={ts.phoneText}>{contactPhone.phone}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Stats grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.totalSales}</Text>
-            <Text style={styles.statLabel}>TOTAL SALES</Text>
+        <View style={ts.statsGrid}>
+          <View style={ts.statCard}>
+            <Text style={ts.statValue}>{stats.totalSales}</Text>
+            <Text style={ts.statLabel}>TOTAL SALES</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.totalListings}</Text>
-            <Text style={styles.statLabel}>LISTINGS</Text>
+          <View style={ts.statCard}>
+            <Text style={ts.statValue}>{stats.totalListings}</Text>
+            <Text style={ts.statLabel}>LISTINGS</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.responseRate)}%</Text>
-            <Text style={styles.statLabel}>RESPONSE RATE</Text>
+          <View style={ts.statCard}>
+            <Text style={ts.statValue}>{Math.round(stats.responseRate)}%</Text>
+            <Text style={ts.statLabel}>RESPONSE RATE</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{Math.round(stats.reliabilityScore)}</Text>
-            <Text style={styles.statLabel}>RELIABILITY</Text>
+          <View style={ts.statCard}>
+            <Text style={ts.statValue}>{Math.round(stats.reliabilityScore)}</Text>
+            <Text style={ts.statLabel}>RELIABILITY</Text>
           </View>
         </View>
 
         {/* Listings */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>LISTINGS</Text>
+        <View style={ts.sectionHeaderRow}>
+          <Text style={ts.sectionTitle}>LISTINGS</Text>
         </View>
         {listings.length === 0 ? (
-          <Text style={styles.sectionEmptyText}>No active listings right now.</Text>
+          <Text style={ts.sectionEmptyText}>No active listings right now.</Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
             {listings.map((l) => (
-              <TouchableOpacity key={l.id} style={styles.listingCard} activeOpacity={0.85} onPress={() => openListing(l)}>
+              <TouchableOpacity key={l.id} style={ts.listingCard} activeOpacity={0.85} onPress={() => openListing(l)}>
                 <Image
                   source={{ uri: l.images?.[0] || 'https://placehold.co/400x260/16161b/5C5C6B?text=No+Image' }}
-                  style={styles.listingImg}
+                  style={ts.listingImg}
                   contentFit="cover"
                   transition={200}
                   cachePolicy="memory-disk"
                 />
                 <View style={{ padding: 10 }}>
-                  <Text style={styles.listingTitle} numberOfLines={1}>{l.title}</Text>
-                  <Text style={styles.listingPrice}>{formatPrice(l.price)}</Text>
+                  <Text style={ts.listingTitle} numberOfLines={1}>{l.title}</Text>
+                  <Text style={ts.listingPrice}>{formatPrice(l.price)}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -300,26 +304,26 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
         )}
 
         {/* Reviews */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>REVIEWS</Text>
+        <View style={ts.sectionHeaderRow}>
+          <Text style={ts.sectionTitle}>REVIEWS</Text>
         </View>
         {reviews.length === 0 ? (
-          <Text style={[styles.sectionEmptyText, { paddingHorizontal: 20 }]}>No reviews yet.</Text>
+          <Text style={[ts.sectionEmptyText, { paddingHorizontal: 20 }]}>No reviews yet.</Text>
         ) : (
           <View style={{ paddingHorizontal: 20 }}>
             {reviews.map((r) => (
-              <View key={r.id} style={styles.reviewCard}>
-                <View style={styles.reviewTopRow}>
-                  <LinearGradient colors={[Colors.textDisabled, Colors.darkBlue_26262e]} style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>{getInitials(r.reviewer)}</Text>
+              <View key={r.id} style={ts.reviewCard}>
+                <View style={ts.reviewTopRow}>
+                  <LinearGradient colors={[Colors.textDisabled, Colors.darkBlue_26262e]} style={ts.reviewAvatar}>
+                    <Text style={ts.reviewAvatarText}>{getInitials(r.reviewer)}</Text>
                   </LinearGradient>
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.reviewerName} numberOfLines={1}>{getName(r.reviewer)}</Text>
+                    <Text style={ts.reviewerName} numberOfLines={1}>{getName(r.reviewer)}</Text>
                     <Stars rating={r.rating} size={11} />
                   </View>
-                  <Text style={styles.reviewTime}>{timeAgo(r.createdAt)}</Text>
+                  <Text style={ts.reviewTime}>{timeAgo(r.createdAt)}</Text>
                 </View>
-                {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+                {r.comment ? <Text style={ts.reviewComment}>{r.comment}</Text> : null}
               </View>
             ))}
           </View>

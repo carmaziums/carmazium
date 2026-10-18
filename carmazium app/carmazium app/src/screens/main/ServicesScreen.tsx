@@ -15,6 +15,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -90,6 +92,8 @@ const SERVICES: ServiceItem[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const ServicesScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -106,7 +110,7 @@ export const ServicesScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, Colors.bgPrimary, Colors.bgPrimary]}
@@ -118,25 +122,25 @@ export const ServicesScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>TradeXchange Services</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>TradeXchange Services</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.eyebrow}>TRADEXCHANGE</Text>
-        <Text style={styles.introTitle}>Post work or compete for it</Text>
-        <Text style={styles.introSub}>
+        <Text style={ts.eyebrow}>TRADEXCHANGE</Text>
+        <Text style={ts.introTitle}>Post work or compete for it</Text>
+        <Text style={ts.introSub}>
           Book vehicle delivery or inspection, request finance or warranty options,
           and manage your jobs with approved service partners.
         </Text>
         <TouchableOpacity
-          style={styles.postJobButton}
+          style={ts.postJobButton}
           activeOpacity={0.8}
           onPress={() => void continueOnWeb('/services/jobs/new')}
           accessibilityRole="button"
@@ -145,8 +149,8 @@ export const ServicesScreen: React.FC = () => {
         >
           <Ionicons name="add-circle-outline" size={22} color={Colors.white} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
-            <Text style={styles.postJobHint}>Continue on CarMazium website</Text>
+            <Text style={ts.postJobTitle}>Post a delivery or inspection job</Text>
+            <Text style={ts.postJobHint}>Continue on CarMazium website</Text>
           </View>
           <Ionicons name="arrow-forward" size={20} color={Colors.white} />
         </TouchableOpacity>
@@ -154,16 +158,16 @@ export const ServicesScreen: React.FC = () => {
         <View style={{ height: 8 }} />
 
         <TouchableOpacity
-          style={styles.customerJobsCard}
+          style={ts.customerJobsCard}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('CustomerServiceJobs')}
         >
-          <View style={styles.customerJobsIcon}>
+          <View style={ts.customerJobsIcon}>
             <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.partnerTitle}>My service jobs</Text>
-            <Text style={styles.partnerText}>
+            <Text style={ts.partnerTitle}>My service jobs</Text>
+            <Text style={ts.partnerText}>
               Track delivery and inspection requests, compare quotes, pay providers and manage completed work.
             </Text>
           </View>
@@ -171,52 +175,52 @@ export const ServicesScreen: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.partnerCard}
+          style={ts.partnerCard}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('PartnerDashboard')}
         >
-          <View style={styles.partnerIcon}>
+          <View style={ts.partnerIcon}>
             <Ionicons name="business-outline" size={22} color={Colors.warning} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.partnerTitle}>Provide services with CarMazium</Text>
-            <Text style={styles.partnerText}>
+            <Text style={ts.partnerTitle}>Provide services with CarMazium</Text>
+            <Text style={ts.partnerText}>
               Use one Partner Account for Delivery & Recovery, Inspections, Vehicle Finance and Warranty services.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
         </TouchableOpacity>
 
-        <Text style={styles.sectionHeading}>Choose a service</Text>
+        <Text style={ts.sectionHeading}>Choose a service</Text>
         {SERVICES.map((service) => (
           <TouchableOpacity
             key={service.title}
-            style={styles.card}
+            style={ts.card}
             activeOpacity={0.8}
             onPress={() => void continueOnWeb(service.path)}
             accessibilityRole="button"
             accessibilityLabel={`${service.cta} on the CarMazium website`}
             accessibilityHint="Opens the service form on CarMazium website"
           >
-            <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
+            <View style={[ts.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
               <Ionicons name={service.icon} size={22} color={service.color} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardKind}>{service.kind}</Text>
-              <Text style={styles.cardTitle}>{service.title}</Text>
-              <Text style={styles.cardDesc}>{service.desc}</Text>
-              <View style={styles.cardAction}>
-                <Text style={styles.cardActionText}>{service.cta}</Text>
+              <Text style={ts.cardKind}>{service.kind}</Text>
+              <Text style={ts.cardTitle}>{service.title}</Text>
+              <Text style={ts.cardDesc}>{service.desc}</Text>
+              <View style={ts.cardAction}>
+                <Text style={ts.cardActionText}>{service.cta}</Text>
                 <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
               </View>
-              <Text style={styles.cardWebHint}>Continues on website</Text>
+              <Text style={ts.cardWebHint}>Continues on website</Text>
             </View>
           </TouchableOpacity>
         ))}
 
-        <View style={styles.noteCard}>
+        <View style={ts.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
-          <Text style={styles.noteText}>
+          <Text style={ts.noteText}>
             Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Finance and warranty are matched enquiries handled directly with providers. CarMazium does not make lending decisions or guarantee approval.
           </Text>
         </View>

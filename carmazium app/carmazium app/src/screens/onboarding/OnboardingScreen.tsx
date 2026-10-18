@@ -17,6 +17,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -127,6 +129,8 @@ const SlideItem: React.FC<{
 });
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new RNAnimated.Value(0)).current;
@@ -168,12 +172,12 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Skip Button (Static on top right) */}
-      <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
-        <Text style={styles.skipText}>SKIP</Text>
+      <TouchableOpacity style={ts.skipBtn} onPress={handleSkip} activeOpacity={0.7}>
+        <Text style={ts.skipText}>SKIP</Text>
       </TouchableOpacity>
 
       {/* Horizontal Page Slider */}
@@ -200,9 +204,9 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
       />
 
       {/* Bottom Controls (Indicators + Full width Chamfer Button) */}
-      <View style={styles.controls}>
+      <View style={ts.controls}>
         {/* Dot Indicators */}
-        <View style={styles.dotsContainer}>
+        <View style={ts.dotsContainer}>
           {SLIDES.map((_, i) => {
             const dotWidth = scrollX.interpolate({
               inputRange: [
@@ -234,7 +238,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
               >
                 <RNAnimated.View
                   style={[
-                    styles.dot,
+                    ts.dot,
                     {
                       width: dotWidth,
                       opacity: dotOpacity,
@@ -250,16 +254,16 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
         {/* Custom Diagonal Cut Full-Width Button */}
         <TouchableOpacity
           activeOpacity={0.9}
-          style={styles.ctaButton}
+          style={ts.ctaButton}
           onPress={handlePressCTA}
         >
-          <View style={styles.ctaContent}>
-            <Text style={styles.ctaText}>{SLIDES[activeIndex].buttonLabel}</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={styles.ctaIcon} />
+          <View style={ts.ctaContent}>
+            <Text style={ts.ctaText}>{SLIDES[activeIndex].buttonLabel}</Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.white} style={ts.ctaIcon} />
           </View>
           
           {/* Visual Chamfer diagonal cut on bottom right corner */}
-          <View style={styles.chamferCut} />
+          <View style={ts.chamferCut} />
         </TouchableOpacity>
       </View>
     </View>
