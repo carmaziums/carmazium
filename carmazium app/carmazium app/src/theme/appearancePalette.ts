@@ -11,7 +11,8 @@ const light = {
   secondary: '#334155',
   muted: '#64748B',
   border: '#D5E1EC',
-  header: '#FFFFFF',
+  // Shared logo asset uses white lettering; keep navy header until a dark-letter logo variant is verified.
+  header: '#1E293B',
   tab: '#FFFFFF',
 };
 const dark = {
