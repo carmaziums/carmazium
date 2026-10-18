@@ -738,6 +738,8 @@ const mobileDealerHook = read('carmazium app/carmazium app/src/hooks/useDealerAc
 const mobileDealerGate = read('carmazium app/carmazium app/src/components/DealerGate.tsx');
 const mobileDealerNavigator = read('carmazium app/carmazium app/src/navigation/MainStackNavigator.tsx');
 const mobileDealerDrawer = read('carmazium app/carmazium app/src/components/GlobalDrawer.tsx');
+const mobileDealerMore = read('carmazium app/carmazium app/src/screens/main/DealerMoreScreen.tsx');
+const mobileTabsNavigation = read('carmazium app/carmazium app/src/navigation/TabNavigator.tsx');
 const mobileDealerInventory = read('carmazium app/carmazium app/src/screens/main/DealerInventoryScreen.tsx');
 const mobileDealerCustomers = read('carmazium app/carmazium app/src/screens/main/DealerLeadsScreen.tsx');
 const mobileDealerOffers = read('carmazium app/carmazium app/src/screens/main/DealerOffersScreen.tsx');
@@ -772,13 +774,17 @@ if (
   !mobileDealerGate.includes('access?.isVerified === true') ||
   !mobileDealerNavigator.includes("withDealerGate(DealerTeamScreen, 'MANAGE_TEAM')") ||
   !mobileDealerNavigator.includes("withDealerGate(DealerKYCScreen, 'MANAGE_KYC', true)") ||
-  !mobileDealerDrawer.includes('visibleDealerItems') ||
-  !mobileDealerDrawer.includes("requiredPermission: 'MANAGE_OFFERS'") ||
+  // The reviewed ten-item public Menu is not a dealer permissions panel.
+  // Additional dealership tools live in a separately permission-gated More tab.
+  !mobileTabsNavigation.includes('withDealerGate(DealerMoreScreen)') ||
+  !mobileTabsNavigation.includes("withDealerGate(DealerInventoryScreen, 'VIEW_INVENTORY')") ||
+  !mobileDealerMore.includes('allowedTools = EXTRA_DEALER_TOOLS.filter(tool => hasPermission(tool.permission))') ||
+  !mobileDealerMore.includes("permission: 'MANAGE_OFFERS'") ||
   !mobileDealerInventory.includes("hasPermission('MANAGE_INVENTORY')")
 ) {
   fail('Native dealer UI is not bound to the backend dealership permission contract');
 } else {
-  ok('Native dealer routes, drawer and inventory controls consume dealership permissions');
+  ok('Native dealer routes, dedicated Tools tab and inventory controls consume dealership permissions');
 }
 
 // Block 10 revalidation — company and sole-trader KYC must remain one
@@ -983,12 +989,14 @@ if (
   !webDealerRoutes.includes('label: "Partner Account"') ||
   !webDealerRoutes.includes('label: "Service Jobs"') ||
   !webDealerRoutes.includes('label: "Service Enquiries"') ||
-  !mobileDealerDrawer.includes("label: 'Stock'") ||
-  !mobileDealerDrawer.includes("label: 'Customers'") ||
-  !mobileDealerDrawer.includes("label: 'Offers'") ||
-  !mobileDealerDrawer.includes("label: 'My Retail Offers'") ||
-  !mobileDealerDrawer.includes("label: 'Saved Cars'") ||
-  !mobileDealerDrawer.includes("label: 'Finance'") ||
+  // The approved public Menu is deliberately simplified; dealer-specific
+  // destinations are visible in dedicated tabs / RBAC-gated Tools instead.
+  !mobileTabsNavigation.includes("label: 'Stock'") ||
+  !mobileTabsNavigation.includes("label: 'Customers'") ||
+  !mobileDealerMore.includes("title: 'Incoming Offers'") ||
+  !mobileDealerMore.includes("title: 'My Offers'") ||
+  !mobileTabsNavigation.includes("label: 'SAVED'") ||
+  !mobileDealerDrawer.includes("label: 'User Dashboard'") ||
   !mobileDealerCustomers.includes('>Customers</Text>') ||
   !mobileDealerOffers.includes('>Offers Received</Text>') ||
   !mobilePartnerDashboard.includes('>Service Jobs</Text>') ||
@@ -1052,7 +1060,11 @@ if (
   !mobileMainNavigator.includes('ProviderCapabilities') ||
   !mobileMainNavigator.includes('ProviderVerification') ||
   !mobileMainNavigator.includes('ProviderMatching') ||
-  !mobileGlobalDrawer.includes("stackScreen: 'PartnerDashboard'")
+  // Contractor/finance role dashboards are reached through the approved
+  // User Dashboard tab rather than adding another public Menu item.
+  !mobileTabsNavigation.includes("return <PartnerDashboardScreen {...props} />") ||
+  !mobileTabsNavigation.includes("return <LegacyPartnerDashboardScreen {...props} />") ||
+  !mobileDealerDrawer.includes("tabName: 'Profile'")
 ) {
   fail('Native Partner dashboard/capability foundation can drift from web TradeXchange provider contracts');
 } else {
