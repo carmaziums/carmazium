@@ -130,7 +130,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             <View style={[styles.handle, appearanceMode === 'light' && { backgroundColor: palette.muted }]} />
             {!!title && (
               <View style={styles.headerRow}>
-                <Text style={[styles.title, appearanceMode === 'light' && { color: palette.text }]} numberOfLines={1}>{title}</Text>
+                <Text style={[styles.title, appearanceMode === 'light' && { color: palette.text }]} numberOfLines={2} ellipsizeMode="tail">{title}</Text>
                 <IconButton style={[styles.closeBtn, appearanceMode === 'light' && { backgroundColor: palette.elevated, borderColor: palette.border }]} icon={<Ionicons name="close" size={18} color={palette.text} />} onPress={onClose} accessibilityLabel="Close" />
               </View>
             )}
@@ -213,6 +213,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     color: Colors.textPrimary,
     flex: 1,
+    flexShrink: 1,
+    lineHeight: 24,
   },
   closeBtn: {
     width: 32,
