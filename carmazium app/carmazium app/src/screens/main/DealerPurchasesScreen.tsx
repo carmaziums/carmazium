@@ -21,6 +21,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -113,6 +115,8 @@ const STATUS_CONFIG: Record<
 
 export const DealerPurchasesScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightPurchasesStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
@@ -165,7 +169,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const renderEmptyState = () => (
-    <View style={styles.emptyState}>
+    <View style={ts.emptyState}>
       <EmptyState
         icon="receipt-outline"
         title="No purchases yet"
@@ -175,15 +179,15 @@ export const DealerPurchasesScreen: React.FC = () => {
   );
 
   const renderTotalsBar = () => (
-    <View style={styles.totalsCard}>
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>TOTAL SPENT</Text>
-        <Text style={styles.totalValue}>{formatPrice(totalSpent)}</Text>
+    <View style={ts.totalsCard}>
+      <View style={ts.totalCol}>
+        <Text style={ts.totalLabel}>TOTAL SPENT</Text>
+        <Text style={ts.totalValue}>{formatPrice(totalSpent)}</Text>
       </View>
-      <View style={styles.totalDivider} />
-      <View style={styles.totalCol}>
-        <Text style={styles.totalLabel}>VEHICLES PURCHASED</Text>
-        <Text style={styles.totalValue}>{purchases.length}</Text>
+      <View style={ts.totalDivider} />
+      <View style={ts.totalCol}>
+        <Text style={ts.totalLabel}>VEHICLES PURCHASED</Text>
+        <Text style={ts.totalValue}>{purchases.length}</Text>
       </View>
     </View>
   );
@@ -196,34 +200,34 @@ export const DealerPurchasesScreen: React.FC = () => {
         activeOpacity={0.8}
         onPress={() => setSummaryItem(item)}
       >
-        <View style={styles.purchaseCard}>
-          <View style={styles.cardTopRow}>
+        <View style={ts.purchaseCard}>
+          <View style={ts.cardTopRow}>
             {/* Thumbnail */}
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={styles.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={item.vehicleTitle} />
+              <Image source={{ uri: item.imageUrl }} style={ts.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={item.vehicleTitle} />
             ) : (
-              <View style={[styles.thumb, styles.thumbPlaceholder]}>
+              <View style={[ts.thumb, ts.thumbPlaceholder]}>
                 <Ionicons name="car-outline" size={20} color={Colors.textMuted} />
               </View>
             )}
 
             {/* Center text */}
-            <View style={styles.cardCenter}>
-              <Text style={styles.vehicleTitle} numberOfLines={1}>{item.vehicleTitle}</Text>
+            <View style={ts.cardCenter}>
+              <Text style={ts.vehicleTitle} numberOfLines={1}>{item.vehicleTitle}</Text>
               {!!item.vehicleSubtitle && (
-                <Text style={styles.vehicleSubtitle} numberOfLines={1}>{item.vehicleSubtitle}</Text>
+                <Text style={ts.vehicleSubtitle} numberOfLines={1}>{item.vehicleSubtitle}</Text>
               )}
-              <Text style={styles.purchaseDate}>Purchased {formatDate(item.purchaseDate)}</Text>
+              <Text style={ts.purchaseDate}>Purchased {formatDate(item.purchaseDate)}</Text>
             </View>
 
             {/* Price */}
-            <Text style={styles.purchasePrice}>{formatPrice(item.purchasePrice)}</Text>
+            <Text style={ts.purchasePrice}>{formatPrice(item.purchasePrice)}</Text>
           </View>
 
           {/* Status pipeline chip */}
-          <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <View style={[ts.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
             <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-            <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+            <Text style={[ts.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -233,7 +237,7 @@ export const DealerPurchasesScreen: React.FC = () => {
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
@@ -246,15 +250,15 @@ export const DealerPurchasesScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Purchases</Text>
+        <Text style={ts.headerTitle}>Purchases</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {purchases.length > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>
+            <View style={ts.countBadge}>
+              <Text style={ts.countBadgeText}>
                 {purchases.length > 99 ? '99+' : purchases.length}
               </Text>
             </View>
@@ -269,7 +273,7 @@ export const DealerPurchasesScreen: React.FC = () => {
           <ErrorBanner message="Could not load purchases. Check your connection." onRetry={() => fetchData()} />
         </View>
       ) : loading ? (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={ts.scroll} contentContainerStyle={ts.scrollContent} showsVerticalScrollIndicator={false}>
           {renderSkeletons()}
           <View style={{ height: 110 }} />
         </ScrollView>
@@ -277,14 +281,14 @@ export const DealerPurchasesScreen: React.FC = () => {
         // Virtualized — a dealership's purchase history grows over its
         // lifetime, so we only mount rows near the viewport.
         <FlatList
-          style={styles.scroll}
+          style={ts.scroll}
           data={purchases}
           keyExtractor={(item) => item.id}
           renderItem={renderPurchaseCard}
           ListHeaderComponent={purchases.length > 0 ? renderTotalsBar : null}
           ListEmptyComponent={renderEmptyState}
           ListFooterComponent={<View style={{ height: 110 }} />}
-          contentContainerStyle={[styles.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[ts.scrollContent, purchases.length === 0 && { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -316,83 +320,83 @@ export const DealerPurchasesScreen: React.FC = () => {
             // gap replicates the old modalSheet wrapper's spacing, which BottomSheet's
             // own sheet style doesn't provide
             <View style={{ gap: 12 }}>
-              <View style={styles.modalTopRow}>
+              <View style={ts.modalTopRow}>
                 {summaryItem.imageUrl ? (
-                  <Image source={{ uri: summaryItem.imageUrl }} style={styles.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
+                  <Image source={{ uri: summaryItem.imageUrl }} style={ts.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
                 ) : (
-                  <View style={[styles.modalThumb, styles.thumbPlaceholder]}>
+                  <View style={[ts.modalThumb, ts.thumbPlaceholder]}>
                     <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalVehicleTitle} numberOfLines={1}>{summaryItem.vehicleTitle}</Text>
+                  <Text style={ts.modalVehicleTitle} numberOfLines={1}>{summaryItem.vehicleTitle}</Text>
                   {!!summaryItem.vehicleSubtitle && (
-                    <Text style={styles.modalVehicleSubtitle} numberOfLines={1}>{summaryItem.vehicleSubtitle}</Text>
+                    <Text style={ts.modalVehicleSubtitle} numberOfLines={1}>{summaryItem.vehicleSubtitle}</Text>
                   )}
                 </View>
               </View>
 
-              <View style={styles.modalDivider} />
+              <View style={ts.modalDivider} />
 
               {/* Price + date */}
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE PRICE</Text>
-                <Text style={styles.modalValue}>{formatPrice(summaryItem.purchasePrice)}</Text>
+              <View style={ts.modalRow}>
+                <Text style={ts.modalLabel}>PURCHASE PRICE</Text>
+                <Text style={ts.modalValue}>{formatPrice(summaryItem.purchasePrice)}</Text>
               </View>
-              <View style={styles.modalRow}>
-                <Text style={styles.modalLabel}>PURCHASE DATE</Text>
-                <Text style={styles.modalValueSecondary}>{formatDate(summaryItem.purchaseDate)}</Text>
+              <View style={ts.modalRow}>
+                <Text style={ts.modalLabel}>PURCHASE DATE</Text>
+                <Text style={ts.modalValueSecondary}>{formatDate(summaryItem.purchaseDate)}</Text>
               </View>
 
               {/* Status */}
               {(() => {
                 const cfg = STATUS_CONFIG[summaryItem.status] ?? STATUS_CONFIG.AWAITING_CONFIRMATION;
                 return (
-                  <View style={[styles.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
+                  <View style={[ts.statusChip, { backgroundColor: cfg.bg, borderColor: cfg.border, alignSelf: 'flex-start' }]}>
                     <Ionicons name={cfg.icon} size={13} color={cfg.color} />
-                    <Text style={[styles.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
+                    <Text style={[ts.statusChipText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                 );
               })()}
 
-              <View style={styles.modalDivider} />
+              <View style={ts.modalDivider} />
 
               {/* Seller details */}
-              <Text style={styles.sellerSectionLabel}>SELLER DETAILS</Text>
-              <View style={styles.sellerRow}>
-                <View style={styles.sellerAvatar}>
-                  <Text style={styles.sellerInitial}>
+              <Text style={ts.sellerSectionLabel}>SELLER DETAILS</Text>
+              <View style={ts.sellerRow}>
+                <View style={ts.sellerAvatar}>
+                  <Text style={ts.sellerInitial}>
                     {summaryItem.sellerName?.charAt(0)?.toUpperCase() ?? 'S'}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sellerName} numberOfLines={1}>
+                  <Text style={ts.sellerName} numberOfLines={1}>
                     {summaryItem.sellerName ?? 'Private Seller'}
                   </Text>
                   {!!summaryItem.sellerEmail && (
-                    <Text style={styles.sellerSub} numberOfLines={1}>{summaryItem.sellerEmail}</Text>
+                    <Text style={ts.sellerSub} numberOfLines={1}>{summaryItem.sellerEmail}</Text>
                   )}
                 </View>
               </View>
 
-              <View style={styles.sellerActionsRow}>
+              <View style={ts.sellerActionsRow}>
                 <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerEmail && styles.sellerActionBtnDisabled]}
+                  style={[ts.sellerActionBtn, !summaryItem.sellerEmail && ts.sellerActionBtnDisabled]}
                   activeOpacity={0.75}
                   disabled={!summaryItem.sellerEmail}
                   onPress={() => handleEmailSeller(summaryItem)}
                 >
                   <Ionicons name="mail-outline" size={15} color={summaryItem.sellerEmail ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
+                  <Text style={[ts.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.sellerActionBtn, !summaryItem.sellerPhone && styles.sellerActionBtnDisabled]}
+                  style={[ts.sellerActionBtn, !summaryItem.sellerPhone && ts.sellerActionBtnDisabled]}
                   activeOpacity={0.75}
                   disabled={!summaryItem.sellerPhone}
                   onPress={() => handleCallSeller(summaryItem)}
                 >
                   <Ionicons name="call-outline" size={15} color={summaryItem.sellerPhone ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[styles.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
+                  <Text style={[ts.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
                 </TouchableOpacity>
               </View>
 
@@ -419,11 +423,11 @@ export const DealerPurchasesScreen: React.FC = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalCloseBtn}
+                style={ts.modalCloseBtn}
                 activeOpacity={0.75}
                 onPress={() => setSummaryItem(null)}
               >
-                <Text style={styles.modalCloseBtnText}>Close</Text>
+                <Text style={ts.modalCloseBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -433,6 +437,36 @@ export const DealerPurchasesScreen: React.FC = () => {
 };
 
 // ═══════════════════════════ STYLES ════════════════════════════════
+
+const lightPurchasesStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  header: { backgroundColor: '#EEF5FB' },
+  backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  totalsCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  purchaseCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  skeletonCard: { backgroundColor: '#FFFFFF' },
+  emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  modalTopRow: { backgroundColor: '#F7FBFF', borderBottomColor: '#D5E1EC' },
+  modalRow: { backgroundColor: '#F7FBFF' },
+  headerTitle: { color: '#0F172A' },
+  emptyTitle: { color: '#0F172A' },
+  vehicleTitle: { color: '#0F172A' },
+  purchasePrice: { color: '#0F172A' },
+  totalValue: { color: '#0F172A' },
+  modalVehicleTitle: { color: '#0F172A' },
+  modalValue: { color: '#0F172A' },
+  sellerName: { color: '#0F172A' },
+  emptySub: { color: '#64748B' },
+  vehicleSubtitle: { color: '#64748B' },
+  purchaseDate: { color: '#64748B' },
+  totalLabel: { color: '#64748B' },
+  modalVehicleSubtitle: { color: '#64748B' },
+  modalLabel: { color: '#64748B' },
+  modalValueSecondary: { color: '#64748B' },
+  sellerSub: { color: '#64748B' },
+  scrollContent: { backgroundColor: '#EEF5FB' },
+  sellerRow: { backgroundColor: '#F7FBFF' },
+});
 
 const styles = StyleSheet.create({
   container: {
