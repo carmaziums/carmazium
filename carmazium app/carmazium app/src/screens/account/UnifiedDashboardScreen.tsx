@@ -47,6 +47,7 @@ function getInitials(firstName: string | null, lastName: string | null, email: s
 // ─────────────────────── skeleton ──────────────────────────────
 
 const Skeleton: React.FC<{ w?: number | string; h: number; r?: number }> = ({ w = '100%', h, r = 6 }) => {
+  const mode = useAppearanceStore(state => state.mode);
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     const p = Animated.loop(Animated.sequence([
@@ -56,7 +57,7 @@ const Skeleton: React.FC<{ w?: number | string; h: number; r?: number }> = ({ w 
     p.start();
     return () => p.stop();
   }, [opacity]);
-  return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: Colors.whiteAlpha05, opacity }} />;
+  return <Animated.View style={{ width: w as any, height: h, borderRadius: r, backgroundColor: mode === 'light' ? '#E5EEF7' : Colors.whiteAlpha05, opacity }} />;
 };
 
 // ─────────────────────── tile component ──────────────────────────
@@ -72,34 +73,37 @@ interface TileProps {
   wide?: boolean;
 }
 
-const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, badge, sublabel, onPress, wide }) => (
+const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, badge, sublabel, onPress, wide }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles) : styles;
+  return (
   <TouchableOpacity
-    style={[styles.tile, wide && styles.tileWide]}
+    style={[ts.tile, wide && ts.tileWide]}
     activeOpacity={0.75}
     onPress={onPress}
   >
-    <View style={[styles.tileIconWrap, { backgroundColor: `${accentColor}18` }]}>
+    <View style={[ts.tileIconWrap, { backgroundColor: `${accentColor}18` }]}>
       {iconLib === 'mci'
         ? <MaterialCommunityIcons name={icon} size={20} color={accentColor} />
         : <Ionicons name={icon as any} size={20} color={accentColor} />}
       {badge != null && badge > 0 && (
-        <View style={[styles.tileBadge, { backgroundColor: accentColor }]}>
-          <Text style={styles.tileBadgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
+        <View style={[ts.tileBadge, { backgroundColor: accentColor }]}>
+          <Text style={ts.tileBadgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
         </View>
       )}
     </View>
     {wide ? (
-      <View style={styles.tileTextWrap}>
-        <Text style={styles.tileLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.tileSublabel}>{sublabel}</Text> : null}
+      <View style={ts.tileTextWrap}>
+        <Text style={ts.tileLabel}>{label}</Text>
+        {sublabel ? <Text style={ts.tileSublabel}>{sublabel}</Text> : null}
       </View>
     ) : (
       <>
-        <Text style={styles.tileLabel}>{label}</Text>
-        {sublabel ? <Text style={styles.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
+        <Text style={ts.tileLabel}>{label}</Text>
+        {sublabel ? <Text style={ts.tileSublabel} numberOfLines={1}>{sublabel}</Text> : null}
       </>
     )}
-    {wide && <Ionicons name="chevron-forward" size={16} color={Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
+    {wide && <Ionicons name="chevron-forward" size={16} color={mode === 'light' ? '#64748B' : Colors.borderMuted} accessibilityElementsHidden importantForAccessibility="no" />}
   </TouchableOpacity>
 );
 
