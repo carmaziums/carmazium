@@ -499,7 +499,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 const lightAuctionFilterStyles = StyleSheet.create({
   moreToggle: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   moreTitle: { color: '#0F172A' },
-  moreSubtitle: { color: '#64748B' },
+  moreSubtitle: { color: '#526177' },
   moreChevron: { color: '#334155' },
   sectionTitle: { color: '#0F172A' },
   pill: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
