@@ -160,8 +160,8 @@ const norm = (v: unknown): string =>
 
 const numOrNull = (v: string): number | null => {
   if (!v.trim()) return null;
-  const clean = v.trim().replace(/[£,\\s]/g, '');
-  if (!/^\\d+(?:\\.\\d+)?$/.test(clean)) return Number.NaN;
+  const clean = v.trim().replace(/[£,\s]/g, '');
+  if (!/^\d+(?:\.\d+)?$/.test(clean)) return Number.NaN;
   const n = Number(clean);
   return Number.isFinite(n) ? n : Number.NaN;
 };
