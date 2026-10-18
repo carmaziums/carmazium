@@ -394,6 +394,7 @@ const lightUnifiedDashboardScreenStyles = StyleSheet.create({
   tile: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   tileLabel: { color: '#0F172A' },
   tileSublabel: { color: '#64748B' },
+  statDivider: { backgroundColor: '#F7FBFF' },
 });
 
 const styles = StyleSheet.create({
