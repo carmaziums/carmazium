@@ -55,12 +55,13 @@ test('staff cannot reach owner-only dealership identity and verification control
   assert.ok(profile.includes('handleDeleteAccount'));
 });
 
-test('large-type tabs wrap rather than reducing to illegible 60 percent and dealer More height stays aligned',()=>{
+test('approved one-line bottom labels avoid Samsung word splitting while retaining scaled hit areas',()=>{
   assert.ok(tabs.includes('getBottomTabItemHeight(fontScale)'));
-  assert.ok(tabs.includes('numberOfLines={2}'));
-  assert.ok(tabs.includes('maxFontSizeMultiplier={2}'));
+  assert.ok(tabs.includes('numberOfLines={1}'));
+  assert.ok(tabs.includes('adjustsFontSizeToFit'));
+  assert.ok(tabs.includes('minimumFontScale={0.72}'));
+  assert.ok(tabs.includes('maxFontSizeMultiplier={1.3}'));
   assert.ok(!tabs.includes('minimumFontScale={0.6}'));
-  assert.ok(!tabs.includes('adjustsFontSizeToFit'));
   assert.ok(dealerMore.includes('getBottomTabBarHeight(fontScale, insets.bottom)'));
   assert.ok(layout.includes('getBottomTabItemHeight(fontScale) + 16 + Math.max(0, bottomInset)'));
   assert.ok(layout.includes('fontScale >= 1.6 ? 76 : fontScale >= 1.3 ? 64 : 48'));
