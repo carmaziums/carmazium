@@ -3897,7 +3897,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     const minNum = parseFloat(priceMin.replace(/[^0-9.]/g, '')) || 0;
 
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 140 }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: appearanceMode === 'light' ? '#EEF5FB' : Colors.bgPrimary }} showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scroll, { paddingBottom: 140 }]}>
         {renderStepGuidance()}
         <Text style={ts.reviewHeading}>Review Your Listing</Text>
 
@@ -4078,7 +4078,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.3 }}
       />
