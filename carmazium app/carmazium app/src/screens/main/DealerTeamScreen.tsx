@@ -702,6 +702,21 @@ const lightDealerTeamScreenStyles = StyleSheet.create({
   staffEmail: { color: '#64748B' },
   roleChip: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
   avatar: { backgroundColor: '#E5EEF7' },
+  pendingCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  emailInputWrap: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  rolePill: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  cancelLink: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  pendingIconWrap: { backgroundColor: '#F7FBFF' },
+  pendingSectionTitle: { color: '#0F172A' },
+  pendingEmail: { color: '#0F172A' },
+  emptyTitle: { color: '#0F172A' },
+  emptySub: { color: '#64748B' },
+  fieldLabel: { color: '#0F172A' },
+  emailInput: { color: '#0F172A' },
+  rolePillText: { color: '#0F172A' },
+  pendingRole: { color: '#64748B' },
+  pendingBadgeText: { color: '#64748B' },
 });
 
 const styles = StyleSheet.create({
