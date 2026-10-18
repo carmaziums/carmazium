@@ -19,6 +19,8 @@ import { GlobalDrawer } from './src/components/GlobalDrawer';
 import { LocationPromptSheet } from './src/components/LocationPromptSheet';
 import { ProfileCompletionPromptSheet } from './src/components/ProfileCompletionPromptSheet';
 import { Colors } from './src/constants/colors';
+import { useAppearanceStore } from './src/store/appearanceStore';
+import { appearancePalette } from './src/theme/appearancePalette';
 import { ChatProvider } from './src/context/ChatContext';
 import { LocationProvider } from './src/context/LocationContext';
 import { useAuthStore } from './src/store/authStore';
@@ -40,6 +42,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const initializeAppearance = useAppearanceStore(state => state.initialize);
+  const palette = appearancePalette(appearanceMode);
+  useEffect(() => { void initializeAppearance(); }, [initializeAppearance]);
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const subscribeToAuthChanges = useAuthStore.getState().subscribeToAuthChanges;
   const reinitializeAuth = useAuthStore.getState().initializeAuth;
@@ -329,13 +335,13 @@ export default function App() {
         // the ad-hoc listener above, which only understood Supabase tokens.
         linking={linking}
         theme={{
-          dark: true,
+          dark: appearanceMode === 'dark',
           colors: {
             primary: Colors.accent,
-            background: Colors.bgPrimary,
-            card: Colors.bgSecondary,
-            text: Colors.textPrimary,
-            border: Colors.glassBorder,
+            background: palette.background,
+            card: palette.elevated,
+            text: palette.text,
+            border: palette.border,
             notification: Colors.accent,
           },
           fonts: {
@@ -373,7 +379,7 @@ export default function App() {
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
         </DrawerProvider>
-        <StatusBar style="light" />
+        <StatusBar style={appearanceMode === 'dark' ? 'light' : 'dark'} />
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>
