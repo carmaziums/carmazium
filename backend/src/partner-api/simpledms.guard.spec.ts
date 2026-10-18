@@ -22,6 +22,7 @@ describe('SimpleDmsGuard', () => {
   const enabled = {
     PARTNER_API_ENABLED: 'true',
     PARTNER_API_SIMPLEDMS_ENABLED: 'true',
+    PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED: 'true',
     PARTNER_API_SIMPLEDMS_KEY_SHA256: HASH,
   };
 
@@ -33,6 +34,14 @@ describe('SimpleDmsGuard', () => {
   it('fails closed when this partner is disabled', () => {
     const { guard, context } = harness({ ...enabled, PARTNER_API_SIMPLEDMS_ENABLED: 'false' }, KEY);
     expect(() => guard.canActivate(context)).toThrow(NotFoundException);
+  });
+
+  it('does not expose production data before final signed release approval even if other flags and key are set', () => {
+    const { guard, context } = harness({ ...enabled, PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED: 'false' }, KEY);
+    expect(() => guard.canActivate(context)).toThrow(NotFoundException);
+    const missing = { ...enabled } as Record<string, string>;
+    delete missing.PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED;
+    expect(() => harness(missing, KEY).guard.canActivate(context)).toThrow(NotFoundException);
   });
 
   it('refuses to start with no valid stored digest', () => {
