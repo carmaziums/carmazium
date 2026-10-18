@@ -816,16 +816,11 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
     </View>
   );
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.5 }}
-      />
-
+  // Customer summary, actions and pipeline navigation belong INSIDE the list's
+  // scrolling header. Previously fixed above the FlatList, they consumed the
+  // whole Samsung viewport and left the customer cards effectively unscrollable.
+  const customerPageHeader = (
+    <>
       <WebsiteTopBar />
       {/* Use the exact website dealer Customers hierarchy and labels.
           Existing MANAGE_CRM screen gate remains in navigation. */}
@@ -940,51 +935,70 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
         </ScrollView>
       )}
 
-      {loading && leads.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
-          ))}
-        </View>
-      ) : loadError && leads.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyTitle}>Customers unavailable</Text>
-          <TouchableOpacity onPress={() => { void fetchLeads(); }} accessibilityRole="button">
-            <Text style={styles.crmRetry}>Retry loading customers</Text>
-          </TouchableOpacity>
-        </View>
-      ) : viewMode === 'board' ? (
-        <FlatList
-          key={mobileStage}
-          style={styles.listScroll}
-          contentContainerStyle={styles.crmBoardCards}
-          data={leadsByStage[mobileStage] || []}
-          keyExtractor={lead => lead.id}
-          renderItem={({ item }) => (
+    </>
+  );
+
+  const currentCustomerRows = viewMode === 'board'
+    ? (leadsByStage[mobileStage] || [])
+    : filteredLeads;
+  const showCustomerSkeletons = loading && leads.length === 0;
+  const showCustomerError = !!loadError && leads.length === 0;
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.5 }}
+      />
+
+      {/* One vertical scrolling surface: title, actions, banner, KPIs, stage
+          tabs, and cards. The native bottom tab bar stays outside this list. */}
+      <FlatList
+        key={viewMode === 'board' ? `board-${mobileStage}` : 'list'}
+        style={styles.listScroll}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + 96 }}
+        ListHeaderComponent={customerPageHeader}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator
+        data={showCustomerSkeletons || showCustomerError ? [] : currentCustomerRows}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => viewMode === 'board' ? (
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
             <BoardCard lead={item} onPress={handleLeadPress}
               onMove={handleOpenReassign} onFollowUp={handleFollowUp} />
-          )}
-          refreshControl={<RefreshControl refreshing={refreshing}
-            onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />}
-          ListEmptyComponent={
+          </View>
+        ) : (
+          <LeadRow lead={item} onPress={handleLeadPress} />
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing}
+            onRefresh={() => { void fetchLeads(true); }} tintColor={Colors.accent} />
+        }
+        ListEmptyComponent={
+          showCustomerSkeletons ? (
+            <View style={{ paddingHorizontal: 16, paddingTop: 8, gap: 10 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} w={SCREEN_WIDTH - 32} h={84} r={20} />
+              ))}
+            </View>
+          ) : showCustomerError ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>Customers unavailable</Text>
+              <TouchableOpacity onPress={() => { void fetchLeads(true); }} accessibilityRole="button">
+                <Text style={styles.crmRetry}>Retry loading customers</Text>
+              </TouchableOpacity>
+            </View>
+          ) : viewMode === 'board' ? (
             <View style={styles.crmBoardEmpty}>
               <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
-              <Text style={styles.crmBoardEmptyText}>Empty</Text>
+              <Text style={styles.crmBoardEmptyText}>No customers in this stage</Text>
             </View>
-          }
-        />
-      ) : filteredLeads.length === 0 ? (
-        renderEmptyState()
-      ) : (
-      <FlatList
-        style={styles.listScroll}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20, paddingHorizontal: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchLeads(true)} tintColor={Colors.accent} />}
-        data={filteredLeads}
-        keyExtractor={(item) => item.id}
-        renderItem={renderLeadRow}
+          ) : renderEmptyState()
+        }
       />
-      )}
 
       {/* Board-view stage reassignment sheet — same STATUS_OPTIONS the list-view
           lead detail's status footer uses, triggered from a board card's move
