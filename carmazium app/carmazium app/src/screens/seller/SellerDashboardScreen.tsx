@@ -291,7 +291,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
