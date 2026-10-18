@@ -122,7 +122,7 @@ export const TermsScreen: React.FC = () => {
     <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
-        colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
