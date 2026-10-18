@@ -112,7 +112,23 @@ export async function searchFirecrawlValuationMarket(
         Math.round(input.mileage / 1000) + '000 miles', 'UK used car for sale',
     ].filter(Boolean).join(' ').slice(0, 320);
     try {
-        const res = await (options.fetchImpl ?? fetch)('https://api.firecrawl.dev/v2/search', {
+        const http = options.fetchImpl ?? fetch;
+        // Fail closed on exhausted/unknown credit balance. GET does not
+        // initiate a search or charge a scrape. Reserve a conservative buffer
+        // for search + the maximum number of page extracts.
+        const balanceResponse = await http('https://api.firecrawl.dev/v2/team/credit-usage', {
+            method: 'GET',
+            headers: { Authorization: 'Bearer ' + options.apiKey },
+            signal: AbortSignal.timeout(timeout),
+        });
+        if (!balanceResponse.ok) return empty();
+        const balance = await balanceResponse.json() as {
+            success?: boolean; data?: { remainingCredits?: number };
+        };
+        if (balance.success !== true || !Number.isFinite(balance.data?.remainingCredits)
+            || Number(balance.data?.remainingCredits) < Math.max(20, limit * 4)) return empty();
+
+        const res = await http('https://api.firecrawl.dev/v2/search', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + options.apiKey, 'Content-Type': 'application/json' },
             body: JSON.stringify({
