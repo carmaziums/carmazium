@@ -18,7 +18,7 @@ describe('observed first-party demand', () => {
     });
 
     it('does not count old or merely marked-sold stock as a recent transaction', () => {
-        const rows = Array.from({ length: 10 }, () => ({ status: 'ACTIVE' }));
+        const rows: Array<{ status: string; sale?: { createdAt: string } }> = Array.from({ length: 10 }, () => ({ status: 'ACTIVE' }));
         rows.push(...Array.from({ length: 10 }, () => ({
             status: 'SOLD',
             sale: { createdAt: '2025-10-17T12:00:00Z' },
