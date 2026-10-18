@@ -123,22 +123,24 @@ interface RolePillProps {
 }
 
 const RolePill: React.FC<RolePillProps> = ({ label, selected, onSelect, colorKey }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerTeamScreenStyles) : styles;
   const c = getRoleColor(colorKey);
   return (
     <TouchableOpacity
       style={[
-        styles.rolePill,
+        ts.rolePill,
         selected
           ? { backgroundColor: c.bg, borderColor: c.border }
-          : { backgroundColor: Colors.whiteAlpha03, borderColor: Colors.whiteAlpha08 },
+          : { backgroundColor: mode === 'light' ? '#FFFFFF' : Colors.whiteAlpha03, borderColor: mode === 'light' ? '#D5E1EC' : Colors.whiteAlpha08 },
       ]}
       onPress={onSelect}
       activeOpacity={0.75}
     >
       <Text
         style={[
-          styles.rolePillText,
-          { color: selected ? c.text : Colors.iconMuted },
+          ts.rolePillText,
+          { color: selected ? c.text : mode === 'light' ? '#334155' : Colors.iconMuted },
         ]}
       >
         {label}
@@ -160,39 +162,41 @@ interface StaffCardProps {
 // parent re-render (mobile-audit.md P3/P4). onRemove takes the id rather than
 // closing over `member` so its identity stays stable across rows.
 const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRemove }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerTeamScreenStyles) : styles;
   const role = getRoleColor(member.role);
   const initials = getInitials(member);
   const displayName = getDisplayName(member);
 
   return (
-    <View style={styles.staffCard}>
+    <View style={ts.staffCard}>
       {/* Avatar */}
       <LinearGradient
         colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
-        style={styles.avatar}
+        style={ts.avatar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <Text style={styles.avatarText}>{initials}</Text>
+        <Text style={ts.avatarText}>{initials}</Text>
       </LinearGradient>
 
       {/* Info */}
-      <View style={styles.staffInfo}>
-        <Text style={styles.staffName} numberOfLines={1}>
+      <View style={ts.staffInfo}>
+        <Text style={ts.staffName} numberOfLines={1}>
           {displayName}
         </Text>
         {member.user.firstName || member.user.lastName ? (
-          <Text style={styles.staffEmail} numberOfLines={1}>
+          <Text style={ts.staffEmail} numberOfLines={1}>
             {member.user.email}
           </Text>
         ) : null}
         <View
           style={[
-            styles.roleChip,
+            ts.roleChip,
             { backgroundColor: role.bg, borderColor: role.border },
           ]}
         >
-          <Text style={[styles.roleChipText, { color: role.text }]}>
+          <Text style={[ts.roleChipText, { color: role.text }]}>
             {ROLE_LABELS[member.role] ?? member.role}
           </Text>
         </View>
@@ -200,7 +204,7 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
 
       {/* Remove */}
       <TouchableOpacity
-        style={styles.removeBtn}
+        style={ts.removeBtn}
         onPress={() => onRemove(member.id)}
         activeOpacity={0.7}
         disabled={removing}
