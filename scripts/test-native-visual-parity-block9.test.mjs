@@ -234,6 +234,43 @@ test('18 October Samsung light-mode screenshots: critical surfaces and approved 
   assert.ok(sellerAuctions.includes('contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 8, paddingBottom: insets.bottom + 85'),'auction wizard scrolls above Samsung system bar');
 });
 
+test('AA contrast in light-mode text and statuses across every pale background',()=>{
+  const palette = app('theme/appearancePalette.ts');
+  const colors = [
+    ["muted", "#526177"],
+    ["accent", "#CC1820"],
+    ["success", "#047857"],
+    ["warning", "#92400E"],
+    ["info", "#1D4ED8"],
+    ["error", "#B91C1C"],
+  ];
+  const backgrounds = ["#FFFFFF","#EEF5FB","#F7FBFF","#E5EEF7"];
+  const luminance = hex => {
+    const rgb = hex.slice(1).match(/../g).map(x => parseInt(x,16)/255)
+      .map(x => x <= 0.04045 ? x/12.92 : ((x+0.055)/1.055)**2.4);
+    return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+  };
+  for(const [name, fg] of colors){
+    assert.ok(palette.includes(name+": '"+fg+"'"),'theme must define verified '+name);
+    for(const bg of backgrounds){
+      const a=luminance(fg), b=luminance(bg);
+      const ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+      assert.ok(ratio >= 4.5, name+' text must pass AA on '+bg+': '+ratio.toFixed(2));
+    }
+  }
+  for(const path of [
+    'screens/main/DealerPurchasesScreen.tsx',
+    'screens/main/DealerOffersScreen.tsx',
+    'screens/main/DealerMyOffersScreen.tsx',
+    'screens/seller/SellerAuctionsScreen.tsx',
+  ]) {
+    const source = app(path);
+    assert.ok(source.includes("lightReadableText"),path+' status labels must use dark contrast-aware shades');
+  }
+  const valuation=app('screens/sell/SellLandingScreen.tsx');
+  assert.ok(valuation.includes("mode === 'light' ? '#526177' : Colors.textMuted"),'text-input placeholders must not stay pale on white');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
