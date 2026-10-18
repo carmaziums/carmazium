@@ -663,11 +663,14 @@ export function calculateVehicleValuation(
         );
     }
 
+    // Confidence must only count comparable rows that were usable, not
+    // rows with absent mileage or invalid prices.
+    const acceptedEvidence = comparables.filter(row => normalizeComparable(input, row) != null);
     const evidence = {
-        completedSales: comparables.filter((row) => row.kind === 'SALE').length,
-        acceptedOffers: comparables.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
-        auctionResults: comparables.filter((row) => row.kind === 'AUCTION_RESULT').length,
-        activeAsks: comparables.filter((row) => row.kind === 'ACTIVE_ASK').length,
+        completedSales: acceptedEvidence.filter((row) => row.kind === 'SALE').length,
+        acceptedOffers: acceptedEvidence.filter((row) => row.kind === 'ACCEPTED_OFFER').length,
+        auctionResults: acceptedEvidence.filter((row) => row.kind === 'AUCTION_RESULT').length,
+        activeAsks: acceptedEvidence.filter((row) => row.kind === 'ACTIVE_ASK').length,
     };
 
     const strongEvidence = evidence.completedSales + evidence.acceptedOffers + evidence.auctionResults;
