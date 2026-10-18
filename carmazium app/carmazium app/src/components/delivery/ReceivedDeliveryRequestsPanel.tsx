@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import {
   acceptDeliveryRequest,
@@ -34,6 +36,8 @@ const fmtGbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`;
 export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
   contextLabel = 'your listing',
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDeliveryRequestStyles) : styles;
   const [rows, setRows] = useState<DeliveryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -113,10 +117,10 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
   if (loading || rows.length === 0) return null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
+    <View style={ts.container}>
+      <View style={ts.headerRow}>
         <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
-        <Text style={styles.headerText}>
+        <Text style={ts.headerText}>
           {rows.length} delivery request{rows.length === 1 ? '' : 's'} awaiting your response
         </Text>
       </View>
@@ -125,35 +129,35 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
         const isActioning = actionLoading === req.id;
         const addr = req.deliveryAddress;
         return (
-          <View key={req.id} style={styles.row}>
-            <View style={styles.rowTop}>
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowTitle} numberOfLines={1}>
+          <View key={req.id} style={ts.row}>
+            <View style={ts.rowTop}>
+              <View style={ts.rowInfo}>
+                <Text style={ts.rowTitle} numberOfLines={1}>
                   {Math.round(req.distanceMiles)} mi · {fmtGbp(req.estimatedCostGbp)} est.
                 </Text>
-                <Text style={styles.rowSub} numberOfLines={1}>
+                <Text style={ts.rowSub} numberOfLines={1}>
                   {[addr?.street, addr?.city, addr?.postcode].filter(Boolean).join(', ')}
                 </Text>
               </View>
             </View>
 
             {req.deliveryNotes ? (
-              <Text style={styles.notes} numberOfLines={2}>
+              <Text style={ts.notes} numberOfLines={2}>
                 “{req.deliveryNotes}”
               </Text>
             ) : null}
 
-            <View style={styles.actions}>
+            <View style={ts.actions}>
               <TouchableOpacity
-                style={[styles.btn, styles.btnDecline]}
+                style={[ts.btn, ts.btnDecline]}
                 activeOpacity={0.85}
                 onPress={() => onDecline(req)}
                 disabled={isActioning}
               >
-                <Text style={[styles.btnText, { color: Colors.paleRed_f87171 }]}>Decline</Text>
+                <Text style={[ts.btnText, { color: Colors.paleRed_f87171 }]}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.btn, styles.btnAccept]}
+                style={[ts.btn, ts.btnAccept]}
                 activeOpacity={0.85}
                 onPress={() => onAccept(req)}
                 disabled={isActioning}
@@ -163,7 +167,7 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
                 ) : (
                   <>
                     <Ionicons name="checkmark" size={13} color={Colors.white} />
-                    <Text style={[styles.btnText, { color: Colors.white }]}>Accept</Text>
+                    <Text style={[ts.btnText, { color: Colors.white }]}>Accept</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -174,6 +178,16 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
     </View>
   );
 };
+
+const lightDeliveryRequestStyles = StyleSheet.create({
+  container: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  headerText: { color: '#0F172A' },
+  row: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  rowTitle: { color: '#0F172A' },
+  rowSub: { color: '#64748B' },
+  notes: { color: '#334155' },
+  btn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+});
 
 const styles = StyleSheet.create({
   container: {
