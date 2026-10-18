@@ -438,6 +438,34 @@ test('legacy light palette preserves white CTA contrast and backs with white inl
     'only former neutral glass surfaces should acquire a dark icon backdrop');
 });
 
+test('light appearance reaches nested KYC, CRM, dashboard and upload field components',()=>{
+  const kyc=app('screens/main/DealerKYCScreen.tsx');
+  const crm=app('screens/main/DealerLeadsScreen.tsx');
+  const account=app('screens/account/UnifiedDashboardScreen.tsx');
+  const upload=app('screens/sell/SellCarFlowScreen.tsx');
+  assert.ok(kyc.includes("light && { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' }"),'KYC inline fields must be readable');
+  assert.ok(kyc.includes("placeholderTextColor={light ? '#64748B' : Colors.textMuted}"));
+  assert.ok(kyc.includes('style={ts.pendingContainer}'),'pending KYC state should theme');
+  assert.ok(kyc.includes('style={ts.sectionEyebrow}'),'nested KYC section heading should theme');
+  assert.ok(kyc.includes("skeletonBg = mode === 'light'"),'KYC skeleton must not remain navy');
+  for(const name of ['const LeadRow: React.FC','const BoardCard: React.FC']) {
+    const start=crm.indexOf(name);
+    const end=crm.indexOf('});',start);
+    assert.ok(start>=0 && end>start, 'missing CRM component '+name);
+    const body=crm.slice(start,end);
+    assert.ok(body.includes('useAppearanceStore(state => state.mode)'),name+' must subscribe to theme');
+    assert.ok(body.includes('mergeAppearanceStyles('),name+' must apply its theme');
+    assert.ok(body.includes('style={ts.'),name+' must render themed styles');
+  }
+  assert.ok(account.includes('const Tile: React.FC')&&account.includes('style={[ts.tile'),'Unified Dashboard tiles need theme');
+  assert.ok(account.includes("backgroundColor: mode === 'light' ? '#E5EEF7'"),'Dashboard skeleton colours must theme');
+  assert.ok(upload.includes("const placeholderColor = appearanceMode === 'light' ? '#64748B' : Colors.borderMuted"),
+    'main guided upload fields need legible placeholders');
+  assert.ok(upload.includes("const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.borderMuted"),
+    'helper input sheets need legible placeholders');
+  assert.ok(!upload.includes('placeholderTextColor={Colors.borderMuted}'),'no unreadable fixed dim upload placeholder');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
