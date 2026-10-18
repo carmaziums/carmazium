@@ -204,7 +204,7 @@ export const DealerFinanceScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       <LinearGradient
-        colors={['rgba(74,222,128,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
+        colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(74,222,128,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.6 }}
         style={StyleSheet.absoluteFillObject}
