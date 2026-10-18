@@ -170,6 +170,8 @@ export interface CarListing {
   markedForExport?: boolean | null;
   numberOfKeys?: number | null;
   driveType?: string | null;
+  vehicleType?: string | null;
+  sellerType?: 'DEALER' | 'PRIVATE' | null;
   motStatus?: string | null;
   motExpiry?: string | null;
   taxStatus?: string | null;
