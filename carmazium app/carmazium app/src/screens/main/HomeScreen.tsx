@@ -20,6 +20,7 @@ import { useWatchlistStore } from '../../store/watchlistStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -362,7 +363,9 @@ const BODY_TYPES = [
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-  const role = useAuthStore((s) => s.role);
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...s, ...lightHomeStyles } : s;
+  const role = useAuthStore((s) => ts.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
   // entire Home screen, every rail included, whenever any listing was saved.
@@ -521,13 +524,13 @@ export const HomeScreen: React.FC = () => {
   const recentGrid = latestListings.slice(4, 8);
 
   return (
-    <View style={s.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={s.topGlow} />
+      <View style={ts.topGlow} />
       <WebsiteTopBar />
 
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingTop: 12 }]}
+        contentContainerStyle={[ts.scroll, { paddingTop: 12 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -541,61 +544,61 @@ export const HomeScreen: React.FC = () => {
         {/* Website's current hero: lead with how to sell, not a separate
             native-only 'Find your next car' experience. Both journeys remain
             visible immediately below. */}
-        <View style={s.greeting}>
-          <Text style={s.greetingLine}>Sell your car</Text>
-          <Text style={s.greetingAccent}>your way.</Text>
-          <Text style={s.greetingOffer}>Auction FREE · Retail £1</Text>
-          <Text style={s.greetingDetail}>
+        <View style={ts.greeting}>
+          <Text style={ts.greetingLine}>Sell your car</Text>
+          <Text style={ts.greetingAccent}>your way.</Text>
+          <Text style={ts.greetingOffer}>Auction FREE · Retail £1</Text>
+          <Text style={ts.greetingDetail}>
             Let verified dealers bid for free, or advertise your car for £1.
             A successful auction sale with approved handover earns a £100 reward.
           </Text>
         </View>
 
         {/* Two familiar website journeys, visible without scrolling past the feeds. */}
-        <View style={s.primaryJourneyRow}>
+        <View style={ts.primaryJourneyRow}>
           <TouchableOpacity
-            style={s.buyJourneyBtn}
+            style={ts.buyJourneyBtn}
             onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
           >
             <Ionicons name="car-outline" size={20} color={Colors.textPrimary} />
-            <Text style={s.buyJourneyText}>Buy Cars</Text>
+            <Text style={ts.buyJourneyText}>Buy Cars</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={s.sellJourneyBtn}
+            style={ts.sellJourneyBtn}
             onPress={() => navigation.navigate('SellLanding')}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Start selling your car"
           >
             <Ionicons name="pricetag-outline" size={20} color={Colors.white} />
-            <Text style={s.sellJourneyText}>Sell a Car</Text>
+            <Text style={ts.sellJourneyText}>Sell a Car</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.white} />
           </TouchableOpacity>
         </View>
 
         {/* Stats bar */}
         {!isLoading && (liveAuctions.length > 0 || latestListings.length > 0) && (
-          <View style={s.statsBar}>
+          <View style={ts.statsBar}>
             {liveAuctions.length > 0 && (
-              <View style={s.statChip}>
-                <View style={s.liveDot} />
-                <Text style={s.statChipText}>{liveAuctions.length} Live now</Text>
+              <View style={ts.statChip}>
+                <View style={ts.liveDot} />
+                <Text style={ts.statChipText}>{liveAuctions.length} Live now</Text>
               </View>
             )}
             {upcomingAuctions.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
+              <View style={[ts.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
                 <Ionicons name="calendar-outline" size={10} color={Colors.infoBlueLight} />
-                <Text style={[s.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
+                <Text style={[ts.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
               </View>
             )}
             {latestListings.length > 0 && (
-              <View style={[s.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
+              <View style={[ts.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
                 <Ionicons name="pricetag-outline" size={10} color={Colors.accentGreen} />
-                <Text style={[s.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
+                <Text style={[ts.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
               </View>
             )}
           </View>
@@ -604,10 +607,10 @@ export const HomeScreen: React.FC = () => {
         {/* Search bar — was a TouchableOpacity with no query state at all
             (tapping anywhere just navigated to Search); now a real input
             that runs AI search inline, matching web's HomeClient.tsx. */}
-        <View style={s.searchBar}>
+        <View style={ts.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
           <TextInput
-            style={s.searchInput}
+            style={ts.searchInput}
             value={aiQuery}
             onChangeText={(t) => { setAiQuery(t); if (aiResult) setAiResult(null); if (aiError) setAiError(null); }}
             placeholder="Search make, model, budget..."
@@ -616,33 +619,33 @@ export const HomeScreen: React.FC = () => {
             onSubmitEditing={handleAiSearch}
             accessibilityLabel="Search cars using MaziuM AI"
           />
-          <TouchableOpacity style={s.aiChip} onPress={handleAiSearch} disabled={aiLoading}
+          <TouchableOpacity style={ts.aiChip} onPress={handleAiSearch} disabled={aiLoading}
             accessibilityRole="button" accessibilityLabel="AI Search" activeOpacity={0.8}>
             {aiLoading
               ? <ActivityIndicator size="small" color={Colors.white} />
               : <>
                   <Ionicons name="sparkles" size={10} color={Colors.white} />
-                  <Text style={s.aiChipText}>AI</Text>
+                  <Text style={ts.aiChipText}>AI</Text>
                 </>}
           </TouchableOpacity>
         </View>
 
         {aiError && (
-          <View style={s.aiResultCard}>
-            <Text style={s.aiResultError}>{aiError}</Text>
+          <View style={ts.aiResultCard}>
+            <Text style={ts.aiResultError}>{aiError}</Text>
           </View>
         )}
 
         {aiResult && (
-          <View style={s.aiResultCard}>
-            <View style={s.aiResultHeader}>
+          <View style={ts.aiResultCard}>
+            <View style={ts.aiResultHeader}>
               <Ionicons name="sparkles" size={13} color={Colors.warning} />
-              <Text style={s.aiResultLabel}>MAZIUM AI</Text>
+              <Text style={ts.aiResultLabel}>MAZIUM AI</Text>
             </View>
-            <Text style={s.aiResultText}>{aiResult.text}</Text>
+            <Text style={ts.aiResultText}>{aiResult.text}</Text>
             {Object.keys(aiResult.filterCard?.params ?? {}).length > 0 && (
-              <TouchableOpacity style={s.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
-                <Text style={s.aiResultBtnText}>VIEW MATCHING CARS</Text>
+              <TouchableOpacity style={ts.aiResultBtn} onPress={viewAiResults} activeOpacity={0.85}>
+                <Text style={ts.aiResultBtnText}>VIEW MATCHING CARS</Text>
                 <Ionicons name="arrow-forward" size={14} color={Colors.white} />
               </TouchableOpacity>
             )}
@@ -653,7 +656,7 @@ export const HomeScreen: React.FC = () => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.quickChipsRow}
+          contentContainerStyle={ts.quickChipsRow}
         >
           {[
             { label: 'Live Auctions', icon: 'hammer-outline', color: Colors.accent, screen: 'Live', params: undefined },
@@ -664,7 +667,7 @@ export const HomeScreen: React.FC = () => {
           ].map((chip) => (
             <TouchableOpacity
               key={chip.label}
-              style={[s.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
+              style={[ts.quickChip, { borderColor: `${chip.color}40`, backgroundColor: `${chip.color}0D` }]}
               onPress={() => {
                 const params = chip.params ? { ...chip.params, _t: Date.now() } : undefined;
                 navigation.navigate(chip.screen as any, params as any);
@@ -672,7 +675,7 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Ionicons name={chip.icon as any} size={13} color={chip.color} />
-              <Text style={[s.quickChipText, { color: chip.color }]}>{chip.label}</Text>
+              <Text style={[ts.quickChipText, { color: chip.color }]}>{chip.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -742,18 +745,18 @@ export const HomeScreen: React.FC = () => {
 
         {/* ── BROWSE BY BODY TYPE ── */}
         <Section title="BROWSE BY TYPE">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ts.hScroll}>
             {BODY_TYPES.map(bt => (
               <TouchableOpacity
                 key={bt.bodyType}
-                style={s.bodyTypeCard}
+                style={ts.bodyTypeCard}
                 onPress={() => navigation.navigate('Search' as any, { bodyType: bt.bodyType, _t: Date.now() })}
                 activeOpacity={0.8}
               >
-                <View style={[s.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
+                <View style={[ts.bodyTypeIconWrap, { backgroundColor: `${bt.color}18` }]}>
                   <Ionicons name={bt.icon as any} size={22} color={bt.color} />
                 </View>
-                <Text style={s.bodyTypeLabel}>{bt.label}</Text>
+                <Text style={ts.bodyTypeLabel}>{bt.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -766,7 +769,7 @@ export const HomeScreen: React.FC = () => {
             badge={!isLoading && recentGrid.length > 0 ? `${recentGrid.length} new` : undefined}
             onSeeAll={() => navigation.navigate('Search' as any)}
           >
-            <View style={s.recentGrid}>
+            <View style={ts.recentGrid}>
               {isLoading ? (
                 <>
                   <Skeleton w={SW - 48} h={126} />
@@ -776,20 +779,20 @@ export const HomeScreen: React.FC = () => {
               ) : recentGrid.map(l => (
                 <TouchableOpacity
                   key={l.id}
-                  style={s.recentCard}
+                  style={ts.recentCard}
                   onPress={() => goToListing(l)}
                   activeOpacity={0.85}
                 >
-                  <View style={s.recentImgWrap}>
+                  <View style={ts.recentImgWrap}>
                     {l.images?.[0]
-                      ? <Image source={{ uri: l.images[0] }} style={s.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                      : <View style={[s.recentImg, { backgroundColor: Colors.bgTertiary }]} />
+                      ? <Image source={{ uri: l.images[0] }} style={ts.recentImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                      : <View style={[ts.recentImg, { backgroundColor: Colors.bgTertiary }]} />
                     }
                   </View>
-                  <View style={s.recentBody}>
-                    <Text style={s.recentSpecs}>{l.year} · {Number(l.mileage || 0).toLocaleString('en-GB')} mi</Text>
-                    <Text style={s.recentTitle} numberOfLines={1}>{l.make} {l.model}</Text>
-                    <Text style={s.recentPrice}>{formatPrice(l.price)}</Text>
+                  <View style={ts.recentBody}>
+                    <Text style={ts.recentSpecs}>{l.year} · {Number(l.mileage || 0).toLocaleString('en-GB')} mi</Text>
+                    <Text style={ts.recentTitle} numberOfLines={1}>{l.make} {l.model}</Text>
+                    <Text style={ts.recentPrice}>{formatPrice(l.price)}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -803,15 +806,15 @@ export const HomeScreen: React.FC = () => {
             restyled so only the highest-value action (free listing) gets the
             hero treatment; auction/dealer below are now quiet utility rows. */}
         <TouchableOpacity
-          style={s.sellCta}
+          style={ts.sellCta}
           onPress={() => navigation.navigate('SellLanding')}
           activeOpacity={0.9}
         >
-          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={s.sellCtaWatermark} />
-          <Text style={s.sellCtaTitle}>Sell your car</Text>
-          <Text style={s.sellCtaHint}>List in minutes · Get offers from buyers</Text>
-          <View style={s.sellCtaBtn}>
-            <Text style={s.sellCtaBtnText}>Start listing</Text>
+          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={ts.sellCtaWatermark} />
+          <Text style={ts.sellCtaTitle}>Sell your car</Text>
+          <Text style={ts.sellCtaHint}>List in minutes · Get offers from buyers</Text>
+          <View style={ts.sellCtaBtn}>
+            <Text style={ts.sellCtaBtnText}>Start listing</Text>
             <Ionicons name="arrow-forward" size={14} color={Colors.white} />
           </View>
         </TouchableOpacity>
@@ -826,18 +829,18 @@ export const HomeScreen: React.FC = () => {
             ? { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle }
             : undefined;
           return (
-            <View style={s.secondaryRows}>
+            <View style={ts.secondaryRows}>
               {showAuctionRow && (
                 <TouchableOpacity
-                  style={[s.utilityRow, dividerStyle]}
+                  style={[ts.utilityRow, dividerStyle]}
                   onPress={() => navigation.navigate('Tabs', { screen: 'Live' })}
                   activeOpacity={0.7}
                 >
-                  <View style={s.utilityRowIconWrap}>
+                  <View style={ts.utilityRowIconWrap}>
                     <Ionicons name="hammer-outline" size={16} color={Colors.accent} />
-                    <View style={s.auctionLiveDot} />
+                    <View style={ts.auctionLiveDot} />
                   </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>
+                  <Text style={ts.utilityRowText} numberOfLines={1}>
                     {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
                   </Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
@@ -849,14 +852,14 @@ export const HomeScreen: React.FC = () => {
                   mobile had no equivalent entry point anywhere on the home screen. */}
               {showDealerRow && (
                 <TouchableOpacity
-                  style={s.utilityRow}
+                  style={ts.utilityRow}
                   onPress={() => navigation.navigate('DealerOnboarding' as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={s.utilityRowIconWrap}>
+                  <View style={ts.utilityRowIconWrap}>
                     <Ionicons name="business-outline" size={16} color={Colors.infoBlueLight} />
                   </View>
-                  <Text style={s.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
+                  <Text style={ts.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
                   <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               )}
@@ -871,6 +874,31 @@ export const HomeScreen: React.FC = () => {
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+
+// Keep red CTA and live-bid overlays unchanged; theme only standard surfaces.
+const lightHomeStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  greetingLine: { color: '#0F172A' },
+  greetingDetail: { color: '#334155' },
+  buyJourneyBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  buyJourneyText: { color: '#0F172A' },
+  searchBar: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  searchInput: { color: '#0F172A' },
+  sectionTitle: { color: '#0F172A' },
+  aiResultText: { color: '#334155' },
+  sellCtaTitle: { color: '#0F172A' },
+  sellCtaHint: { color: '#334155' },
+  secondaryRows: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  utilityRowText: { color: '#0F172A' },
+  utilityRowIconWrap: { backgroundColor: '#E5EEF7' },
+  iconBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  bodyTypeCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  bodyTypeLabel: { color: '#0F172A' },
+  recentCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  recentSpecs: { color: '#64748B' },
+  recentTitle: { color: '#0F172A' },
+  recentPrice: { color: '#0F172A' },
+});
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
