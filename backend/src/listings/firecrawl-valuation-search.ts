@@ -1,7 +1,7 @@
 import type { VehicleValuationInput } from './vehicle-valuation';
 import { sanitizeLiveUkComparables, type LiveUkMarketSearchResult } from './live-market-search';
 
-type WebHit = { title?: string; url?: string; markdown?: string };
+type WebHit = { title?: string; url?: string; markdown?: string; metadata?: { sourceURL?: string; statusCode?: number } };
 type FetchLike = typeof fetch;
 
 export interface FirecrawlValuationOptions {
@@ -48,6 +48,10 @@ export function parseVerifiedAdvert(
     const url = allowedUrl(hit.url ?? '', canonicalDomains(approvedDomains));
     const markdown = hit.markdown?.slice(0, 18000) ?? '';
     if (!url || markdown.length < 65) return null;
+    // Firecrawl can follow a redirect. The final source must still be within
+    // a domain the owner has approved for automated valuation data reuse.
+    if (hit.metadata?.sourceURL && !allowedUrl(hit.metadata.sourceURL, canonicalDomains(approvedDomains))) return null;
+    if (hit.metadata?.statusCode != null && hit.metadata.statusCode !== 200) return null;
     const plain = markdown.replace(/\*\*/g, '').replace(/\u00a0/g, ' ');
     const title = plain.match(/^#\s+([^\n]{5,180})/m)?.[1]?.trim() || hit.title || '';
     if (!title.toUpperCase().includes(input.make.toUpperCase())) return null;
@@ -56,6 +60,12 @@ export function parseVerifiedAdvert(
     const modelTokens = input.model.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
     const titleTokens = new Set(title.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean));
     if (!modelTokens.every(word => titleTokens.has(word))) return null;
+    // Search result titles are untrusted: the actual fetched page must also
+    // establish the vehicle identity before we read any price.
+    const textHead = plain.slice(0, 2000).toUpperCase();
+    if (!textHead.includes(input.make.toUpperCase())
+        || !modelTokens.every(word => new Set(textHead.split(/[^A-Z0-9]+/).filter(Boolean)).has(word))
+        || !textHead.includes(String(input.year))) return null;
     if (/^\s*(?:status\s*:\s*)?(?:sold|reserved|deposit taken|not available|out of stock)\s*$/im.test(plain)) return null;
     if (/\b(?:cat [abns]|salvage|non.?runner|spares or repairs)\b/i.test(title)) return null;
     const year = Number(title.match(/\b(?:19|20)\d{2}\b/)?.[0]);
@@ -65,6 +75,11 @@ export function parseVerifiedAdvert(
         .map(m => Number(m[1].replace(/,/g, '')))
         .filter(n => n >= 750 && n <= 500000);
     const price = singleNumber(prices);
+    // A single GBP amount may be a deposit or a monthly payment. Require
+    // it to appear as a sale/cash/asking/vehicle price on the advert page.
+    const labelledPrice = /(?:cash|asking|vehicle|advertised|sale)s+price|(?:^|
+)s*prices*:/i.test(plain);
+    if (!labelledPrice) return null;
     const mileageTokens = [...plain.matchAll(/\b(\d{1,3}(?:,\d{3})+|\d{4,6})\s*(?:miles|mi\b)/gi)]
         .map(m => Number(m[1].replace(/,/g, '')))
         .filter(n => n >= 0 && n <= 1_500_000);
