@@ -174,6 +174,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   initials,
   onRetry,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const parsedSpecial = parseSpecialMessage(msg.content);
   const showSeenIndicator = isOwn && !msg.deliveryStatus && msg.isRead && isLastOwnMessage;
 
@@ -182,15 +184,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       disabled={msg.deliveryStatus !== 'failed'}
       onPress={() => onRetry(msg)}
       activeOpacity={0.7}
-      style={styles.deliveryStateRow}
+      style={ts.deliveryStateRow}
       accessibilityRole="button"
       accessibilityLabel={msg.deliveryStatus === 'failed' ? 'Message not sent. Retry message' : 'Message sending'}
       accessibilityState={{ disabled: msg.deliveryStatus !== 'failed', busy: msg.deliveryStatus !== 'failed' }}
     >
       <Text
         style={[
-          styles.deliveryStateText,
-          msg.deliveryStatus === 'failed' && styles.deliveryStateFailed,
+          ts.deliveryStateText,
+          msg.deliveryStatus === 'failed' && ts.deliveryStateFailed,
         ]}
       >
         {msg.deliveryStatus === 'failed' ? 'Not sent · Tap to retry' : 'Sending…'}
@@ -200,33 +202,33 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
   if (msg.attachmentPath) {
     return (
-      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
+      <View style={isOwn ? ts.userBubbleWrapper : ts.dealerBubbleWrapper}>
+        <View style={isOwn ? ts.bubbleStackRight : ts.bubbleStackLeft}>
           <View
             style={[
-              styles.photoMessageBubble,
-              isOwn ? styles.bubbleUser : styles.bubbleDealer,
-              msg.deliveryStatus === 'failed' && styles.bubbleFailed,
+              ts.photoMessageBubble,
+              isOwn ? ts.bubbleUser : ts.bubbleDealer,
+              msg.deliveryStatus === 'failed' && ts.bubbleFailed,
             ]}
           >
             {msg.attachmentUrl ? (
               <Image
                 source={{ uri: msg.attachmentUrl }}
-                style={styles.chatPhoto}
+                style={ts.chatPhoto}
                 contentFit="cover"
                 transition={150}
               />
             ) : (
-              <View style={styles.chatPhotoUnavailable}>
+              <View style={ts.chatPhotoUnavailable}>
                 <Ionicons name="image-outline" size={28} color={Colors.textMuted} />
-                <Text style={styles.chatPhotoUnavailableText}>
+                <Text style={ts.chatPhotoUnavailableText}>
                   Private photo unavailable. Reopen the conversation to refresh access.
                 </Text>
               </View>
             )}
-            {!!msg.content && <Text style={[styles.bubbleText, styles.photoCaption]}>{msg.content}</Text>}
-            <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
-              <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+            {!!msg.content && <Text style={[ts.bubbleText, ts.photoCaption]}>{msg.content}</Text>}
+            <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
+              <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
                 {formatMessageTime(msg.createdAt)}
               </Text>
               {isOwn && !msg.deliveryStatus && (
@@ -234,7 +236,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                   size={14}
                   color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
-                  style={styles.readTick}
+                  style={ts.readTick}
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
                 />
@@ -243,11 +245,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           </View>
           {deliveryState}
           {showSeenIndicator && (
-            <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
-              <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
-                <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+            <View style={ts.seenRow} accessible accessibilityLabel="Message seen">
+              <View style={[ts.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+                <Text style={ts.seenAvatarText}>{initials.slice(0, 1)}</Text>
               </View>
-              <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+              <Text style={ts.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
             </View>
           )}
         </View>
@@ -257,16 +259,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
   if (parsedSpecial?.type === 'offer') {
     return (
-      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.offerMessageBubble}>
-          <View style={styles.offerTagHeader}>
+      <View style={isOwn ? ts.userBubbleWrapper : ts.dealerBubbleWrapper}>
+        <View style={ts.offerMessageBubble}>
+          <View style={ts.offerTagHeader}>
             <Ionicons name="pricetag" size={12} color={Colors.white} />
-            <Text style={styles.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
-            <Text style={styles.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+            <Text style={ts.offerTagTitle}>{isOwn ? 'YOUR OFFER' : 'OFFER'}</Text>
+            <Text style={ts.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
-          <Text style={styles.offerText}>{msg.content}</Text>
+          <Text style={ts.offerText}>{msg.content}</Text>
           <Text
-            style={styles.timeTextRight}
+            style={ts.timeTextRight}
             accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
           >
             {formatMessageTime(msg.createdAt)}
@@ -280,15 +282,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
   if (parsedSpecial?.type === 'counter') {
     return (
-      <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-        <View style={styles.counterMessageCard}>
-          <View style={styles.counterHeader}>
+      <View style={isOwn ? ts.userBubbleWrapper : ts.dealerBubbleWrapper}>
+        <View style={ts.counterMessageCard}>
+          <View style={ts.counterHeader}>
             <Ionicons name="pricetag" size={12} color={Colors.lightGrey} />
-            <Text style={styles.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
-            <Text style={styles.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
+            <Text style={ts.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
+            <Text style={ts.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
           <Text
-            style={isOwn ? styles.timeTextRight : styles.timeTextLeft}
+            style={isOwn ? ts.timeTextRight : ts.timeTextLeft}
             accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
           >
             {formatMessageTime(msg.createdAt)}
@@ -301,18 +303,18 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   }
 
   return (
-    <View style={isOwn ? styles.userBubbleWrapper : styles.dealerBubbleWrapper}>
-      <View style={isOwn ? styles.bubbleStackRight : styles.bubbleStackLeft}>
+    <View style={isOwn ? ts.userBubbleWrapper : ts.dealerBubbleWrapper}>
+      <View style={isOwn ? ts.bubbleStackRight : ts.bubbleStackLeft}>
         <View
           style={[
-            styles.bubble,
-            isOwn ? styles.bubbleUser : styles.bubbleDealer,
-            msg.deliveryStatus === 'failed' && styles.bubbleFailed,
+            ts.bubble,
+            isOwn ? ts.bubbleUser : ts.bubbleDealer,
+            msg.deliveryStatus === 'failed' && ts.bubbleFailed,
           ]}
         >
-          <Text style={styles.bubbleText}>{msg.content}</Text>
-          <View style={[styles.msgFooter, isOwn ? styles.msgFooterRight : styles.msgFooterLeft]}>
-            <Text style={isOwn ? styles.timeTextRightInline : styles.timeTextLeftInline}>
+          <Text style={ts.bubbleText}>{msg.content}</Text>
+          <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
+            <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
             </Text>
             {isOwn && !msg.deliveryStatus && (
@@ -320,7 +322,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
                 color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
-                style={styles.readTick}
+                style={ts.readTick}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               />
@@ -331,11 +333,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         {deliveryState}
 
         {showSeenIndicator && (
-          <View style={styles.seenRow} accessible accessibilityLabel="Message seen">
-            <View style={[styles.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
-              <Text style={styles.seenAvatarText}>{initials.slice(0, 1)}</Text>
+          <View style={ts.seenRow} accessible accessibilityLabel="Message seen">
+            <View style={[ts.seenAvatar, { backgroundColor: getAvatarBg(initials) }]}>
+              <Text style={ts.seenAvatarText}>{initials.slice(0, 1)}</Text>
             </View>
-            <Text style={styles.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
+            <Text style={ts.seenText}>Seen {formatMessageTime(msg.updatedAt)}</Text>
           </View>
         )}
       </View>
