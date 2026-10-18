@@ -30,6 +30,19 @@ describe('Optional Firecrawl valuation evidence', () => {
         expect(parseVerifiedAdvert(vehicle, { ...row, url: 'http://dealer.example/cars/abc' }, approved)).toBeNull();
     });
 
+    it('requires numeric model identifiers, not just model family names', () => {
+        const tesla = {
+            make: 'Tesla', model: 'Model 3', year: 2022, mileage: 20000,
+            fuelType: 'ELECTRIC', transmission: 'AUTOMATIC',
+        };
+        const wrong = {
+            title: '2022 Tesla Model X Electric Automatic',
+            url: 'https://dealer.example/cars/tesla',
+            markdown: '# 2022 Tesla Model X Electric Automatic\nPrice £25,000\nMileage: 20,000 miles\nAvailable with long-range equipment.',
+        };
+        expect(parseVerifiedAdvert(tesla, wrong, approved)).toBeNull();
+    });
+
     it('rejects ambiguous multi-price, missing-mileage and sold pages', () => {
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page + '\nPrice £11,000' }, approved)).toBeNull();
         expect(parseVerifiedAdvert(vehicle, { ...row, markdown: page.replace('Mileage: 112,600 miles', 'Mileage: unknown') }, approved)).toBeNull();
