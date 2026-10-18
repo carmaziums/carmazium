@@ -22,6 +22,8 @@ import { CarListing } from '../../data/listings';
 import { searchListings } from '../../lib/listingsApi';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -91,6 +93,8 @@ const getCapsuleTitle = (car: CarListing) => {
 };
 
 export const CompareScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
@@ -231,7 +235,7 @@ export const CompareScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Background glow gradient */}
@@ -243,15 +247,15 @@ export const CompareScreen: React.FC = () => {
       />
 
       {/* Dynamic Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={[ts.header, { paddingTop: insets.top + 16 }]}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>
+        <View style={ts.headerTitleContainer}>
+          <Text style={ts.headerTitle}>
             {isThreeCars ? 'COMPARE · 3 CARS' : 'Side by side'}
           </Text>
           {!isThreeCars && (
-            <Text style={styles.headerTag}>
+            <Text style={ts.headerTag}>
               {activeCarsCount} OF 3 COMPARED
             </Text>
           )}
@@ -264,23 +268,23 @@ export const CompareScreen: React.FC = () => {
       </View>
 
       <ScrollView 
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Highlight winners switch container (Only for 3-cars view) */}
         {isThreeCars && (
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleLeft}>
+          <View style={ts.toggleContainer}>
+            <View style={ts.toggleLeft}>
               <Ionicons name="flash" size={15} color={Colors.accent} style={{ marginRight: 8 }} />
-              <Text style={styles.toggleLabel}>Highlight winners</Text>
+              <Text style={ts.toggleLabel}>Highlight winners</Text>
             </View>
             <TouchableOpacity 
-              style={[styles.toggleSwitch, highlightWinners ? styles.toggleSwitchActive : styles.toggleSwitchInactive]}
+              style={[ts.toggleSwitch, highlightWinners ? ts.toggleSwitchActive : ts.toggleSwitchInactive]}
               onPress={() => setHighlightWinners(!highlightWinners)}
               activeOpacity={0.8}
             >
-              <View style={[styles.toggleThumb, highlightWinners ? styles.toggleThumbActive : styles.toggleThumbInactive]} />
+              <View style={[ts.toggleThumb, highlightWinners ? ts.toggleThumbActive : ts.toggleThumbInactive]} />
             </TouchableOpacity>
           </View>
         )}
@@ -288,84 +292,84 @@ export const CompareScreen: React.FC = () => {
         {/* Car Previews Section */}
         {!isThreeCars ? (
           /* 2-CAR VIEW PREVIEWS */
-          <View style={styles.cardsRow}>
+          <View style={ts.cardsRow}>
             {/* Card A */}
-            <View style={styles.cardCol}>
+            <View style={ts.cardCol}>
               {carA ? (
-                <View style={[styles.carCard, styles.carCardA]}>
-                  <Image source={{ uri: carA.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={[styles.badgeIndicator, styles.badgeA]}>
-                    <Text style={styles.badgeIndicatorText}>A</Text>
+                <View style={[ts.carCard, ts.carCardA]}>
+                  <Image source={{ uri: carA.images[0] }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                  <View style={[ts.badgeIndicator, ts.badgeA]}>
+                    <Text style={ts.badgeIndicatorText}>A</Text>
                   </View>
-                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
+                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
 
-                  <View style={styles.carCardMeta}>
-                    <Text style={styles.carModel} numberOfLines={2}>{carA.make} {carA.model}</Text>
-                    <Text style={styles.carPrice}>£{carA.price.toLocaleString('en-GB')}</Text>
-                    <Text style={styles.carSub}>{carA.year} • {getMileageText(carA)} mi</Text>
+                  <View style={ts.carCardMeta}>
+                    <Text style={ts.carModel} numberOfLines={2}>{carA.make} {carA.model}</Text>
+                    <Text style={ts.carPrice}>£{carA.price.toLocaleString('en-GB')}</Text>
+                    <Text style={ts.carSub}>{carA.year} • {getMileageText(carA)} mi</Text>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={styles.emptyCard}
+                  style={ts.emptyCard}
                   onPress={() => handleOpenSelect(0)}
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
                   <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
-                  <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle A'}</Text>
+                  <Text style={ts.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle A'}</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Card B */}
-            <View style={styles.cardCol}>
+            <View style={ts.cardCol}>
               {carB ? (
-                <View style={[styles.carCard, styles.carCardB]}>
-                  <Image source={{ uri: carB.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={[styles.badgeIndicator, styles.badgeB]}>
-                    <Text style={styles.badgeIndicatorText}>B</Text>
+                <View style={[ts.carCard, ts.carCardB]}>
+                  <Image source={{ uri: carB.images[0] }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                  <View style={[ts.badgeIndicator, ts.badgeB]}>
+                    <Text style={ts.badgeIndicatorText}>B</Text>
                   </View>
-                  <IconButton style={styles.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
+                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
 
-                  <View style={styles.carCardMeta}>
-                    <Text style={styles.carModel} numberOfLines={2}>{carB.make} {carB.model}</Text>
-                    <Text style={styles.carPrice}>£{carB.price.toLocaleString('en-GB')}</Text>
-                    <Text style={styles.carSub}>{carB.year} • {getMileageText(carB)} mi</Text>
+                  <View style={ts.carCardMeta}>
+                    <Text style={ts.carModel} numberOfLines={2}>{carB.make} {carB.model}</Text>
+                    <Text style={ts.carPrice}>£{carB.price.toLocaleString('en-GB')}</Text>
+                    <Text style={ts.carSub}>{carB.year} • {getMileageText(carB)} mi</Text>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={styles.emptyCard}
+                  style={ts.emptyCard}
                   onPress={() => handleOpenSelect(1)}
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
                   <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
-                  <Text style={styles.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle B'}</Text>
+                  <Text style={ts.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle B'}</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
         ) : (
           /* 3-CAR VIEW PREVIEWS (Horizontal capsule headers) */
-          <View style={styles.capsuleRow}>
+          <View style={ts.capsuleRow}>
             {[carA, carB, carC].map((car, idx) => {
               if (!car) return null;
               const char = idx === 0 ? 'A' : idx === 1 ? 'B' : 'C';
               return (
                 <TouchableOpacity 
                   key={car.id} 
-                  style={styles.capsuleCard}
+                  style={ts.capsuleCard}
                   onPress={() => handleOpenSelect(idx)}
                   activeOpacity={0.8}
                 >
-                  <Image source={{ uri: car.images[0] }} style={styles.capsuleImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                  <View style={styles.capsuleBadge}>
-                    <Text style={styles.capsuleBadgeText}>{char}</Text>
+                  <Image source={{ uri: car.images[0] }} style={ts.capsuleImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                  <View style={ts.capsuleBadge}>
+                    <Text style={ts.capsuleBadgeText}>{char}</Text>
                   </View>
-                  <View style={styles.capsuleMeta}>
-                    <Text style={styles.capsuleTitle} numberOfLines={1}>
+                  <View style={ts.capsuleMeta}>
+                    <Text style={ts.capsuleTitle} numberOfLines={1}>
                       {getCapsuleTitle(car)}
                     </Text>
                   </View>
@@ -381,23 +385,23 @@ export const CompareScreen: React.FC = () => {
           const yearWinner = carA.year >= carB.year ? 'A' : 'B';
           const yearWinnerCar = yearWinner === 'A' ? carA : carB;
           return (
-            <View style={styles.highlightsRow}>
-              <View style={[styles.highBox, styles.highBoxA]}>
-                <View style={priceWinner === 'A' ? styles.highBadgeA : styles.highBadgeB}>
-                  <Text style={styles.highBadgeText}>{priceWinner} WINS</Text>
+            <View style={ts.highlightsRow}>
+              <View style={[ts.highBox, ts.highBoxA]}>
+                <View style={priceWinner === 'A' ? ts.highBadgeA : ts.highBadgeB}>
+                  <Text style={ts.highBadgeText}>{priceWinner} WINS</Text>
                 </View>
-                <Text style={styles.highTitle}>Lower price</Text>
-                <Text style={styles.highValueA}>
+                <Text style={ts.highTitle}>Lower price</Text>
+                <Text style={ts.highValueA}>
                   £{(Math.abs(carA.price - carB.price) / 1000).toFixed(1)}k cheaper
                 </Text>
               </View>
 
-              <View style={[styles.highBox, styles.highBoxB]}>
-                <View style={yearWinner === 'A' ? styles.highBadgeA : styles.highBadgeB}>
-                  <Text style={styles.highBadgeText}>{yearWinner} WINS</Text>
+              <View style={[ts.highBox, ts.highBoxB]}>
+                <View style={yearWinner === 'A' ? ts.highBadgeA : ts.highBadgeB}>
+                  <Text style={ts.highBadgeText}>{yearWinner} WINS</Text>
                 </View>
-                <Text style={styles.highTitle}>Newer plate</Text>
-                <Text style={styles.highValueB}>
+                <Text style={ts.highTitle}>Newer plate</Text>
+                <Text style={ts.highValueB}>
                   {yearWinnerCar.year} • {yearWinnerCar.location || `${(yearWinnerCar.mileage / 1000).toFixed(1)}k mi`}
                 </Text>
               </View>
@@ -408,13 +412,13 @@ export const CompareScreen: React.FC = () => {
         {/* Specs Table container — data-driven from SPEC_ROWS so every row
             renders through the same path (see mobile-audit.md-style note
             above SPEC_ROWS for why this replaced 8 hand-duplicated blocks) */}
-        <View style={styles.specsTable}>
+        <View style={ts.specsTable}>
           {/* Header Row — always shown so column labels stay visible when scrolling */}
-          <View style={styles.tableHeaderRow}>
-            <Text style={styles.tableHeaderLabel}></Text>
-            <Text style={[styles.tableHeaderCol, styles.textRed]}>A</Text>
-            <Text style={[styles.tableHeaderCol, styles.textBlue]}>B</Text>
-            {isThreeCars && <Text style={[styles.tableHeaderCol, styles.textMagenta]}>C</Text>}
+          <View style={ts.tableHeaderRow}>
+            <Text style={ts.tableHeaderLabel}></Text>
+            <Text style={[ts.tableHeaderCol, ts.textRed]}>A</Text>
+            <Text style={[ts.tableHeaderCol, ts.textBlue]}>B</Text>
+            {isThreeCars && <Text style={[ts.tableHeaderCol, ts.textMagenta]}>C</Text>}
           </View>
 
           {SPEC_ROWS.map((row, rowIndex) => {
@@ -422,32 +426,32 @@ export const CompareScreen: React.FC = () => {
             return (
               <View
                 key={row.label}
-                style={[styles.tableRow, rowIndex === SPEC_ROWS.length - 1 && { borderBottomWidth: 0 }]}
+                style={[ts.tableRow, rowIndex === SPEC_ROWS.length - 1 && { borderBottomWidth: 0 }]}
               >
-                <Text style={styles.rowLabel}>{row.label}</Text>
+                <Text style={ts.rowLabel}>{row.label}</Text>
                 {compareCars.map((car, idx) => {
                   const isWinner = highlightWinners && bestIdx === idx;
                   if (!car) {
                     return isThreeCars ? (
-                      <View key={idx} style={styles.cellCol}>
-                        <Text style={styles.rowVal}>-</Text>
+                      <View key={idx} style={ts.cellCol}>
+                        <Text style={ts.rowVal}>-</Text>
                       </View>
                     ) : (
-                      <Text key={idx} style={styles.rowVal}>-</Text>
+                      <Text key={idx} style={ts.rowVal}>-</Text>
                     );
                   }
                   const value = row.getValue(car);
                   if (isThreeCars) {
                     return (
-                      <View key={idx} style={styles.cellCol}>
-                        <View style={[styles.cellValBox, isWinner && styles.cellValBoxWinner]}>
-                          <Text style={[styles.rowValThreeCol, isWinner && styles.rowValWinner]}>{value}</Text>
+                      <View key={idx} style={ts.cellCol}>
+                        <View style={[ts.cellValBox, isWinner && ts.cellValBoxWinner]}>
+                          <Text style={[ts.rowValThreeCol, isWinner && ts.rowValWinner]}>{value}</Text>
                         </View>
                       </View>
                     );
                   }
                   return (
-                    <Text key={idx} style={[styles.rowVal, isWinner && styles.textGreen]}>
+                    <Text key={idx} style={[ts.rowVal, isWinner && ts.textGreen]}>
                       {value}{isWinner ? ' ✔' : ''}
                     </Text>
                   );
@@ -459,14 +463,14 @@ export const CompareScreen: React.FC = () => {
 
         {/* 2-Car Verdict Card (Hidden in 3-car view) */}
         {!isThreeCars && carA && carB && (
-          <View style={styles.verdictCard}>
-            <View style={styles.verdictHeader}>
-              <View style={styles.verdictIconBg}>
+          <View style={ts.verdictCard}>
+            <View style={ts.verdictHeader}>
+              <View style={ts.verdictIconBg}>
                 <Ionicons name="document-text" size={16} color={Colors.white} />
               </View>
-              <Text style={styles.verdictTitle}>MARCUS' VERDICT</Text>
+              <Text style={ts.verdictTitle}>MARCUS' VERDICT</Text>
             </View>
-            <Text style={styles.verdictBody}>
+            <Text style={ts.verdictBody}>
               {getVerdictText()}
             </Text>
           </View>
@@ -475,12 +479,12 @@ export const CompareScreen: React.FC = () => {
         {/* Add a third car button (Hidden when 3 cars compared) */}
         {!isThreeCars && (
           <TouchableOpacity 
-            style={styles.addThirdBtn}
+            style={ts.addThirdBtn}
             onPress={() => handleOpenSelect(2)}
             activeOpacity={0.7}
           >
             <Ionicons name="add" size={16} color={Colors.white} style={{ marginRight: 6 }} />
-            <Text style={styles.addThirdText}>Add a third car to compare</Text>
+            <Text style={ts.addThirdText}>Add a third car to compare</Text>
           </TouchableOpacity>
         )}
 
@@ -489,21 +493,21 @@ export const CompareScreen: React.FC = () => {
 
       {/* Sticky Bottom View CTAs (Only in 2-cars layout) */}
       {!isThreeCars && carA && carB && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
+        <View style={[ts.footer, { paddingBottom: insets.bottom + 14 }]}>
           <TouchableOpacity 
-            style={[styles.footerBtn, styles.footerBtnDark]}
+            style={[ts.footerBtn, ts.footerBtnDark]}
             onPress={() => navigation.navigate('VehicleDetail', { listing: carA })}
             activeOpacity={0.75}
           >
-            <Text style={styles.footerBtnText}>VIEW A</Text>
+            <Text style={ts.footerBtnText}>VIEW A</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.footerBtn, styles.footerBtnRed]}
+            style={[ts.footerBtn, ts.footerBtnRed]}
             onPress={() => navigation.navigate('VehicleDetail', { listing: carB })}
             activeOpacity={0.75}
           >
-            <Text style={styles.footerBtnText}>VIEW B</Text>
+            <Text style={ts.footerBtnText}>VIEW B</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -516,10 +520,10 @@ export const CompareScreen: React.FC = () => {
         maxHeightPercent={75}
         avoidKeyboard
       >
-        <View style={styles.pickerSearchWrap}>
+        <View style={ts.pickerSearchWrap}>
           <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
           <TextInput
-            style={styles.pickerSearchInput}
+            style={ts.pickerSearchInput}
             value={pickerQuery}
             onChangeText={setPickerQuery}
             placeholder="Search make, model, or keyword..."
@@ -529,9 +533,9 @@ export const CompareScreen: React.FC = () => {
           />
           {pickerSearching && <ActivityIndicator size="small" color={Colors.accent} />}
         </View>
-        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+        <ScrollView style={ts.modalBody} showsVerticalScrollIndicator={false}>
           {(pickerResults ?? listings).length === 0 && (
-            <Text style={styles.selectCarDetails}>
+            <Text style={ts.selectCarDetails}>
               {pickerQuery.trim() ? 'No matching listings found.' : 'No listings available right now.'}
             </Text>
           )}
@@ -541,22 +545,22 @@ export const CompareScreen: React.FC = () => {
               <TouchableOpacity
                 key={car.id}
                 style={[
-                  styles.carSelectRow,
-                  isAlreadySelected && styles.carSelectRowDisabled,
+                  ts.carSelectRow,
+                  isAlreadySelected && ts.carSelectRowDisabled,
                 ]}
                 onPress={() => handleSelectCar(car)}
                 disabled={isAlreadySelected}
                 activeOpacity={0.7}
               >
-                <Image source={{ uri: car.images[0] }} style={styles.selectCarThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-                <View style={styles.selectCarMeta}>
-                  <Text style={styles.selectCarName}>{car.make} {car.model}</Text>
-                  <Text style={styles.selectCarDetails}>
+                <Image source={{ uri: car.images[0] }} style={ts.selectCarThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                <View style={ts.selectCarMeta}>
+                  <Text style={ts.selectCarName}>{car.make} {car.model}</Text>
+                  <Text style={ts.selectCarDetails}>
                     £{car.price.toLocaleString('en-GB')} • {car.year} • {Math.round(car.mileage / 1000)}k mi
                   </Text>
                 </View>
                 {isAlreadySelected ? (
-                  <Text style={styles.selectedLabelText}>Compared</Text>
+                  <Text style={ts.selectedLabelText}>Compared</Text>
                 ) : (
                   <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
                 )}

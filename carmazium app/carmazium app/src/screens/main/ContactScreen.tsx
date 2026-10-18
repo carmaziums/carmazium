@@ -14,6 +14,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -47,11 +49,13 @@ const CONTACT_ROWS = [
 ];
 
 export const ContactScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -63,31 +67,31 @@ export const ContactScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Contact</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Contact</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.heroTitle}>Get in touch</Text>
-        <Text style={styles.heroDesc}>
+        <Text style={ts.heroTitle}>Get in touch</Text>
+        <Text style={ts.heroDesc}>
           Have a question about buying, selling, or your account? Reach us directly below.
         </Text>
 
         {CONTACT_ROWS.map((row) => (
-          <TouchableOpacity key={row.title} style={styles.card} activeOpacity={0.8} onPress={row.action} accessibilityRole="button" accessibilityLabel={row.title + ": " + row.lines.join(", ")}>
-            <View style={styles.cardIconWrap}>
+          <TouchableOpacity key={row.title} style={ts.card} activeOpacity={0.8} onPress={row.action} accessibilityRole="button" accessibilityLabel={row.title + ": " + row.lines.join(", ")}>
+            <View style={ts.cardIconWrap}>
               <Ionicons name={row.icon} size={20} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{row.title}</Text>
+              <Text style={ts.cardTitle}>{row.title}</Text>
               {row.lines.map((line) => (
-                <Text key={line} style={styles.cardLine}>{line}</Text>
+                <Text key={line} style={ts.cardLine}>{line}</Text>
               ))}
             </View>
             <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />

@@ -20,6 +20,8 @@ import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { IconButton } from '../../components/IconButton';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -42,6 +44,8 @@ const extractToken = (raw: string): string => {
 };
 
 export const AcceptInviteScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { initializeAuth } = useAuthStore();
@@ -92,7 +96,7 @@ export const AcceptInviteScreen: React.FC = () => {
   }, [routeToken, acceptToken]);
 
   return (
-    <KeyboardStickyView style={styles.container} behavior="padding">
+    <KeyboardStickyView style={ts.container} behavior="padding">
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -100,29 +104,29 @@ export const AcceptInviteScreen: React.FC = () => {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.5 }}
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerSubRed}>DEALER TEAM</Text>
-            <Text style={styles.headerTitle}>Accept invitation</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 14 }]}>
+        <View style={ts.header}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+          <View style={ts.headerCenter}>
+            <Text style={ts.headerSubRed}>DEALER TEAM</Text>
+            <Text style={ts.headerTitle}>Accept invitation</Text>
           </View>
           <View style={{ width: 38 }} />
         </View>
 
         {successMessage ? (
-          <View style={styles.successWrap}>
-            <View style={styles.successIconWrap}>
+          <View style={ts.successWrap}>
+            <View style={ts.successIconWrap}>
               <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
             </View>
-            <Text style={styles.successText}>{successMessage}</Text>
+            <Text style={ts.successText}>{successMessage}</Text>
             <View style={{ marginTop: 24, width: '100%' }}>
               <Button label="GO TO DASHBOARD" onPress={() => navigation.navigate('SellerDashboard')} size="lg" fullWidth />
             </View>
           </View>
         ) : (
           <>
-            <Text style={styles.subtitle}>
+            <Text style={ts.subtitle}>
               Paste the invite link — or just the code — from the email a dealership sent you.
             </Text>
 
@@ -132,12 +136,12 @@ export const AcceptInviteScreen: React.FC = () => {
               </View>
             ) : null}
 
-            <View style={styles.formGroup}>
-              <Text style={styles.inputLabel}>INVITE LINK OR CODE</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="link-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+            <View style={ts.formGroup}>
+              <Text style={ts.inputLabel}>INVITE LINK OR CODE</Text>
+              <View style={ts.inputWrap}>
+                <Ionicons name="link-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
                 <TextInput
-                  style={styles.textInput}
+                  style={ts.textInput}
                   value={input}
                   onChangeText={(v) => { setInput(v); if (error) setError(null); }}
                   placeholder="Paste here"
@@ -149,7 +153,7 @@ export const AcceptInviteScreen: React.FC = () => {
               </View>
             </View>
 
-            <View style={styles.bottomCTA}>
+            <View style={ts.bottomCTA}>
               <Button
                 label="ACCEPT INVITATION"
                 onPress={handleAccept}

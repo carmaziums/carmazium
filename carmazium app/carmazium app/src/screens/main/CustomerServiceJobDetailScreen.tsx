@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -44,6 +46,8 @@ const providerName = (quote?: ServiceQuote | null) =>
   || 'Service provider';
 
 export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
   const [job, setJob] = useState<ServiceJob | null>(null);
@@ -218,7 +222,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 
   if (loading && !job) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[ts.container, ts.center, { paddingTop: insets.top }]}>
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -226,23 +230,23 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 
   if (!job) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[ts.container, { paddingTop: insets.top }]}>
+        <View style={ts.header}>
           <IconButton
-            style={styles.headerButton}
+            style={ts.headerButton}
             icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
-          <Text style={styles.headerTitle}>Service Job</Text>
+          <Text style={ts.headerTitle}>Service Job</Text>
           <View style={{ width: 38 }} />
         </View>
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Job unavailable</Text>
-          <Text style={styles.bodyText}>{error || 'This service job could not be loaded.'}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load()}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.emptyTitle}>Job unavailable</Text>
+          <Text style={ts.bodyText}>{error || 'This service job could not be loaded.'}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load()}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -276,21 +280,21 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Service Job</Text>
-          <Text style={styles.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
+          <Text style={ts.headerTitle}>Service Job</Text>
+          <Text style={ts.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
         </View>
-        <TouchableOpacity style={styles.refreshButton} onPress={() => void load()}>
+        <TouchableOpacity style={ts.refreshButton} onPress={() => void load()}>
           {loading
             ? <ActivityIndicator size="small" color={Colors.textSecondary} />
             : <Ionicons name="refresh-outline" size={18} color={Colors.textSecondary} />}
@@ -298,33 +302,33 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={ts.content}
         showsVerticalScrollIndicator={false}
       >
         {flash ? (
-          <View style={[styles.notice, styles.noticeOk]}>
+          <View style={[ts.notice, ts.noticeOk]}>
             <Ionicons name="checkmark-circle-outline" size={17} color={Colors.accentGreen} />
-            <Text style={styles.noticeText}>{flash}</Text>
+            <Text style={ts.noticeText}>{flash}</Text>
           </View>
         ) : null}
         {error ? (
-          <View style={[styles.notice, styles.noticeError]}>
+          <View style={[ts.notice, ts.noticeError]}>
             <Ionicons name="alert-circle-outline" size={17} color={Colors.accent} />
-            <Text style={styles.noticeText}>{error}</Text>
+            <Text style={ts.noticeText}>{error}</Text>
           </View>
         ) : null}
 
-        <View style={styles.nextStepCard}>
+        <View style={ts.nextStepCard}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.sectionLabel}>WHAT HAPPENS NEXT</Text>
-            <Text style={styles.bodyText}>{nextStep}</Text>
+            <Text style={ts.sectionLabel}>WHAT HAPPENS NEXT</Text>
+            <Text style={ts.bodyText}>{nextStep}</Text>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.titleRow}>
-            <View style={styles.serviceIcon}>
+        <View style={ts.card}>
+          <View style={ts.titleRow}>
+            <View style={ts.serviceIcon}>
               <Ionicons
                 name={isInspection ? 'search-outline' : 'car-outline'}
                 size={22}
@@ -332,8 +336,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{job.title}</Text>
-              <Text style={styles.status}>{statusText(job.status)}</Text>
+              <Text style={ts.title}>{job.title}</Text>
+              <Text style={ts.status}>{statusText(job.status)}</Text>
             </View>
           </View>
 
@@ -353,89 +357,89 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               value={[vehicle.registration, vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' · ') || 'Vehicle'}
             />
           ) : null}
-          {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
+          {job.description ? <Text style={ts.description}>{job.description}</Text> : null}
         </View>
 
         {isInspection && job.inspectionOutcome ? (
           <View style={[
-            styles.card,
-            job.inspectionOutcome === 'FAULTS_FOUND' ? styles.warningCard : styles.successCard,
+            ts.card,
+            job.inspectionOutcome === 'FAULTS_FOUND' ? ts.warningCard : ts.successCard,
           ]}>
-            <Text style={styles.sectionLabel}>INSPECTION RESULT</Text>
+            <Text style={ts.sectionLabel}>INSPECTION RESULT</Text>
           {!!job.sourceAuctionId && (
             <TouchableOpacity
-              style={styles.auctionLink}
+              style={ts.auctionLink}
               onPress={() => navigation.navigate('AuctionDeepLink', { auctionId: job.sourceAuctionId! })}
               accessibilityRole="button"
               accessibilityLabel="Open linked vehicle auction"
             >
-              <Text style={styles.auctionLinkText}>View linked auction</Text>
+              <Text style={ts.auctionLinkText}>View linked auction</Text>
               <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
             </TouchableOpacity>
           )}
-            <View style={styles.resultRow}>
+            <View style={ts.resultRow}>
               <Ionicons
                 name={job.inspectionOutcome === 'FAULTS_FOUND' ? 'warning-outline' : 'checkmark-circle-outline'}
                 size={22}
                 color={job.inspectionOutcome === 'FAULTS_FOUND' ? Colors.warning : Colors.accentGreen}
               />
-              <Text style={styles.resultTitle}>
+              <Text style={ts.resultTitle}>
                 {job.inspectionOutcome === 'FAULTS_FOUND'
                   ? 'Faults found'
                   : 'No refusal-triggering faults found'}
               </Text>
             </View>
             {job.inspectionSummary ? (
-              <Text style={styles.bodyText}>{job.inspectionSummary}</Text>
+              <Text style={ts.bodyText}>{job.inspectionSummary}</Text>
             ) : null}
             {canRefuse ? (
               <TouchableOpacity
-                style={[styles.dangerButton, busy === 'refuse' && styles.disabled]}
+                style={[ts.dangerButton, busy === 'refuse' && ts.disabled]}
                 onPress={refuseVehicle}
                 disabled={busy === 'refuse'}
               >
                 {busy === 'refuse'
                   ? <ActivityIndicator size="small" color={Colors.white} />
                   : <Ionicons name="close-circle-outline" size={17} color={Colors.white} />}
-                <Text style={styles.dangerText}>REFUSE VEHICLE & REFUND £125</Text>
+                <Text style={ts.dangerText}>REFUSE VEHICLE & REFUND £125</Text>
               </TouchableOpacity>
             ) : null}
           </View>
         ) : null}
 
         {job.status === 'OPEN' ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>PROVIDER QUOTES ({activeQuotes.length})</Text>
+          <View style={ts.card}>
+            <Text style={ts.sectionLabel}>PROVIDER QUOTES ({activeQuotes.length})</Text>
             {activeQuotes.length === 0 ? (
               <>
-                <Text style={styles.bodyText}>No quotes yet.</Text>
-                <Text style={styles.muted}>
+                <Text style={ts.bodyText}>No quotes yet.</Text>
+                <Text style={ts.muted}>
                   {job.eligibleProviderCount != null
                     ? `${job.eligibleProviderCount} verified provider${job.eligibleProviderCount === 1 ? '' : 's'} currently match this request.`
                     : 'Matching verified providers can quote while the job remains open.'}
                 </Text>
               </>
             ) : activeQuotes.map((quote, index) => (
-              <View key={quote.id} style={styles.quoteCard}>
+              <View key={quote.id} style={ts.quoteCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.providerName}>{providerName(quote)}</Text>
-                  <Text style={styles.muted}>
+                  <Text style={ts.providerName}>{providerName(quote)}</Text>
+                  <Text style={ts.muted}>
                     {quote.contractor
                       ? `${quote.contractor.rating.toFixed(1)} rating · ${quote.contractor.totalReviews} reviews`
                       : index === 0 ? 'Lowest current quote' : 'Service provider'}
                   </Text>
-                  {quote.message ? <Text style={styles.quoteMessage}>{quote.message}</Text> : null}
+                  {quote.message ? <Text style={ts.quoteMessage}>{quote.message}</Text> : null}
                 </View>
-                <View style={styles.quoteRight}>
-                  <Text style={styles.quotePrice}>{formatPence(quote.amountPence)}</Text>
+                <View style={ts.quoteRight}>
+                  <Text style={ts.quotePrice}>{formatPence(quote.amountPence)}</Text>
                   <TouchableOpacity
-                    style={[styles.primaryButton, busy === quote.id && styles.disabled]}
+                    style={[ts.primaryButton, busy === quote.id && ts.disabled]}
                     onPress={() => void openCheckout(quote)}
                     disabled={busy === quote.id}
                   >
                     {busy === quote.id
                       ? <ActivityIndicator size="small" color={Colors.white} />
-                      : <Text style={styles.primaryText}>ACCEPT & PAY</Text>}
+                      : <Text style={ts.primaryText}>ACCEPT & PAY</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -444,30 +448,30 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         ) : null}
 
         {job.status === 'ACCEPTED' && accepted ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>PAYMENT REQUIRED</Text>
-            <Text style={styles.providerName}>{providerName(accepted)}</Text>
-            <Text style={styles.quotePrice}>{formatPence(accepted.amountPence)}</Text>
-            <Text style={styles.bodyText}>
+          <View style={ts.card}>
+            <Text style={ts.sectionLabel}>PAYMENT REQUIRED</Text>
+            <Text style={ts.providerName}>{providerName(accepted)}</Text>
+            <Text style={ts.quotePrice}>{formatPence(accepted.amountPence)}</Text>
+            <Text style={ts.bodyText}>
               Your provider is reserved. Complete secure checkout to confirm the job.
             </Text>
             <TouchableOpacity
-              style={[styles.primaryButton, busy === accepted.id && styles.disabled]}
+              style={[ts.primaryButton, busy === accepted.id && ts.disabled]}
               onPress={() => void openCheckout(accepted)}
               disabled={busy === accepted.id}
             >
               {busy === accepted.id
                 ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={styles.primaryText}>PAY SECURELY</Text>}
+                : <Text style={ts.primaryText}>PAY SECURELY</Text>}
             </TouchableOpacity>
           </View>
         ) : null}
 
         {job.agreedAmountPence != null ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>SERVICE PAYMENT</Text>
-            <Text style={styles.bigPrice}>{formatPence(job.agreedAmountPence)}</Text>
-            <Text style={styles.bodyText}>
+          <View style={ts.card}>
+            <Text style={ts.sectionLabel}>SERVICE PAYMENT</Text>
+            <Text style={ts.bigPrice}>{formatPence(job.agreedAmountPence)}</Text>
+            <Text style={ts.bodyText}>
               {job.payment?.status === 'RELEASED'
                 ? 'Provider payment released.'
                 : job.payment?.status === 'PAID'
@@ -480,36 +484,36 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         ) : null}
 
         {job.contractor && paidState ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>YOUR PROVIDER</Text>
-            <Text style={styles.providerName}>
+          <View style={ts.card}>
+            <Text style={ts.sectionLabel}>YOUR PROVIDER</Text>
+            <Text style={ts.providerName}>
               {job.contractor.businessName
                 || [job.contractor.user.firstName, job.contractor.user.lastName].filter(Boolean).join(' ')
                 || 'Verified provider'}
             </Text>
-            <Text style={styles.muted}>
+            <Text style={ts.muted}>
               {job.contractor.rating.toFixed(1)} rating · {job.contractor.totalReviews} reviews
             </Text>
-            <View style={styles.actionRow}>
+            <View style={ts.actionRow}>
               {job.contractor.phone || job.contractor.user.phone ? (
                 <TouchableOpacity
-                  style={styles.secondaryButton}
+                  style={ts.secondaryButton}
                   onPress={() => void Linking.openURL(`tel:${job.contractor?.phone || job.contractor?.user.phone}`)}
                 >
                   <Ionicons name="call-outline" size={16} color={Colors.accent} />
-                  <Text style={styles.secondaryText}>CALL</Text>
+                  <Text style={ts.secondaryText}>CALL</Text>
                 </TouchableOpacity>
               ) : null}
               {canMessageProvider ? (
                 <TouchableOpacity
-                  style={styles.secondaryButton}
+                  style={ts.secondaryButton}
                   onPress={() => void openChat()}
                   disabled={busy === 'chat'}
                 >
                   {busy === 'chat'
                     ? <ActivityIndicator size="small" color={Colors.accent} />
                     : <Ionicons name="chatbubble-outline" size={16} color={Colors.accent} />}
-                  <Text style={styles.secondaryText}>MESSAGE</Text>
+                  <Text style={ts.secondaryText}>MESSAGE</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -517,47 +521,47 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         ) : null}
 
         {job.status === 'COMPLETED' ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>CONFIRM SERVICE</Text>
-            <Text style={styles.bodyText}>
+          <View style={ts.card}>
+            <Text style={ts.sectionLabel}>CONFIRM SERVICE</Text>
+            <Text style={ts.bodyText}>
               The provider marked this {isInspection ? 'inspection' : 'delivery'} complete.
               Confirm only when you are satisfied. Confirming authorises provider payout; raise a dispute if the work is incomplete or incorrect.
             </Text>
             <TouchableOpacity
-              style={[styles.primaryButton, busy === 'confirm' && styles.disabled]}
+              style={[ts.primaryButton, busy === 'confirm' && ts.disabled]}
               disabled={busy === 'confirm'}
               onPress={confirmJob}
             >
               {busy === 'confirm'
                 ? <ActivityIndicator size="small" color={Colors.white} />
-                : <Text style={styles.primaryText}>CONFIRM COMPLETION</Text>}
+                : <Text style={ts.primaryText}>CONFIRM COMPLETION</Text>}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={ts.secondaryButton}
               onPress={disputeJob}
               disabled={busy === 'dispute'}
             >
               <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-              <Text style={[styles.secondaryText, { color: Colors.warning }]}>RAISE DISPUTE</Text>
+              <Text style={[ts.secondaryText, { color: Colors.warning }]}>RAISE DISPUTE</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {job.status === 'OPEN' ? (
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={ts.cancelButton}
             onPress={cancelJob}
             disabled={busy === 'cancel'}
           >
             <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
-            <Text style={styles.cancelText}>Cancel service request</Text>
+            <Text style={ts.cancelText}>Cancel service request</Text>
           </TouchableOpacity>
         ) : null}
 
         {job.status === 'DISPUTED' ? (
-          <View style={[styles.notice, styles.noticeWarning]}>
+          <View style={[ts.notice, ts.noticeWarning]}>
             <Ionicons name="shield-outline" size={17} color={Colors.warning} />
-            <Text style={styles.noticeText}>This job is frozen while CarMazium reviews the dispute.</Text>
+            <Text style={ts.noticeText}>This job is frozen while CarMazium reviews the dispute.</Text>
           </View>
         ) : null}
 
@@ -568,11 +572,11 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 };
 
 const Info = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
-  <View style={styles.infoRow}>
+  <View style={ts.infoRow}>
     <Ionicons name={icon} size={16} color={Colors.textMuted} />
     <View style={{ flex: 1 }}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={ts.infoLabel}>{label}</Text>
+      <Text style={ts.infoValue}>{value}</Text>
     </View>
   </View>
 );

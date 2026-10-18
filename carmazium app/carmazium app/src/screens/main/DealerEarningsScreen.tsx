@@ -19,6 +19,8 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -106,6 +108,8 @@ const getBuyerName = (buyer?: SaleRecord['buyer']): string => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
 
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -197,14 +201,14 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const renderSkeleton = () =>
     Array.from({ length: 3 }).map((_, i) => (
-      <View key={`sk-${i}`} style={styles.skeletonRowWrap}>
+      <View key={`sk-${i}`} style={ts.skeletonRowWrap}>
         <Skeleton w={36} h={36} r={18} />
-        <View style={styles.skeletonRowContent}>
+        <View style={ts.skeletonRowContent}>
           <Skeleton w={140} h={14} r={6} />
           <Skeleton w={80} h={12} r={5} />
           <Skeleton w={60} h={10} r={5} />
         </View>
-        <View style={styles.skeletonRowRight}>
+        <View style={ts.skeletonRowRight}>
           <Skeleton w={70} h={16} r={6} />
           <Skeleton w={50} h={10} r={5} />
         </View>
@@ -224,20 +228,20 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     const buyerName = getBuyerName(sale.buyer);
 
     return (
-      <View key={sale.id} style={styles.saleRow}>
-        <View style={styles.trophyCircle}>
+      <View key={sale.id} style={ts.saleRow}>
+        <View style={ts.trophyCircle}>
           <Ionicons name="car-sport" size={17} color={Colors.success} />
         </View>
 
-        <View style={styles.saleDetails}>
-          <Text style={styles.saleTitle} numberOfLines={1}>{title}</Text>
-          <Text style={styles.saleBuyer} numberOfLines={1}>{buyerName}</Text>
-          <Text style={styles.saleDate}>{formatDate(sale.createdAt)}</Text>
+        <View style={ts.saleDetails}>
+          <Text style={ts.saleTitle} numberOfLines={1}>{title}</Text>
+          <Text style={ts.saleBuyer} numberOfLines={1}>{buyerName}</Text>
+          <Text style={ts.saleDate}>{formatDate(sale.createdAt)}</Text>
         </View>
 
-        <View style={styles.saleRevenue}>
-          <Text style={styles.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
-          <Text style={styles.netAmount}>closing price</Text>
+        <View style={ts.saleRevenue}>
+          <Text style={ts.soldPrice}>{formatPrice(sale.soldPrice)}</Text>
+          <Text style={ts.netAmount}>closing price</Text>
         </View>
       </View>
     );
@@ -246,7 +250,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
   // ─────────────── main render ───────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -258,20 +262,20 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
-        <Text style={styles.headerTitle}>Dealership Earnings</Text>
+        <Text style={ts.headerTitle}>Dealership Earnings</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <TouchableOpacity
-          style={[styles.exportBtn, exporting && { opacity: 0.5 }]}
+          style={[ts.exportBtn, exporting && { opacity: 0.5 }]}
           activeOpacity={0.75}
           onPress={handleExport}
           disabled={exporting}
         >
           <Ionicons name="download-outline" size={15} color={Colors.success} />
-          <Text style={styles.exportBtnText}>
+          <Text style={ts.exportBtnText}>
             {exporting ? 'Exporting…' : 'Export'}
           </Text>
         </TouchableOpacity>
@@ -280,8 +284,8 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -299,23 +303,23 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         ) : null}
 
         {/* ── Summary — 3 KPIs, matching web's dealer earnings stat row ── */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>TOTAL REVENUE</Text>
+        <View style={ts.summaryRow}>
+          <View style={ts.summaryCard}>
+            <Text style={ts.summaryLabel}>TOTAL REVENUE</Text>
             {loading ? <Skeleton w={90} h={26} r={6} /> : (
-              <Text style={styles.summaryValue}>{formatPrice(totalRevenue)}</Text>
+              <Text style={ts.summaryValue}>{formatPrice(totalRevenue)}</Text>
             )}
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>UNITS SOLD</Text>
+          <View style={ts.summaryCard}>
+            <Text style={ts.summaryLabel}>UNITS SOLD</Text>
             {loading ? <Skeleton w={36} h={26} r={6} /> : (
-              <Text style={styles.summaryValue}>{totalSales}</Text>
+              <Text style={ts.summaryValue}>{totalSales}</Text>
             )}
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>AVG. UNIT MARGIN</Text>
+          <View style={ts.summaryCard}>
+            <Text style={ts.summaryLabel}>AVG. UNIT MARGIN</Text>
             {loading ? <Skeleton w={70} h={26} r={6} /> : (
-              <Text style={styles.summaryValue}>{formatPrice(avgUnitMargin)}</Text>
+              <Text style={ts.summaryValue}>{formatPrice(avgUnitMargin)}</Text>
             )}
           </View>
         </View>
@@ -328,31 +332,31 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             auctions whose handover proof an admin has approved appear here, so
             this is money actually received, not money expected. ── */}
         {!loading && auctionSales.length > 0 && (
-          <View style={styles.bonusCard}>
-            <View style={styles.bonusHeader}>
+          <View style={ts.bonusCard}>
+            <View style={ts.bonusHeader}>
               <Ionicons name="trophy-outline" size={16} color={Colors.success} />
-              <Text style={styles.bonusTitle}>AUCTION BONUSES</Text>
-              <Text style={styles.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
+              <Text style={ts.bonusTitle}>AUCTION BONUSES</Text>
+              <Text style={ts.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
             </View>
-            <Text style={styles.bonusBlurb}>
+            <Text style={ts.bonusBlurb}>
               {auctionSales.length} auction{auctionSales.length === 1 ? '' : 's'} paid out at £100 each.
             </Text>
             {auctionSales.slice(0, 5).map((a) => (
-              <View key={a.id} style={styles.bonusRow}>
+              <View key={a.id} style={ts.bonusRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.bonusRowTitle} numberOfLines={1}>
+                  <Text style={ts.bonusRowTitle} numberOfLines={1}>
                     {a.listing?.title || a.listing?.vrm || 'Vehicle'}
                   </Text>
-                  <Text style={styles.bonusRowMeta}>
+                  <Text style={ts.bonusRowMeta}>
                     {formatDate(a.sellerBonusReleasedAt ?? a.createdAt)}
                     {a.winningBidAmount ? ` · won at ${formatPrice(a.winningBidAmount)}` : ''}
                   </Text>
                 </View>
-                <Text style={styles.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
+                <Text style={ts.bonusRowAmount}>+{formatPrice(a.sellerBonus)}</Text>
               </View>
             ))}
             {auctionSales.length > 5 && (
-              <Text style={styles.bonusMore}>
+              <Text style={ts.bonusMore}>
                 +{auctionSales.length - 5} more
               </Text>
             )}
@@ -363,23 +367,23 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             than re-implementing it inline (web's tab switch, mobile's push
             navigation instead) ── */}
         <TouchableOpacity
-          style={styles.receiptsRow}
+          style={ts.receiptsRow}
           activeOpacity={0.8}
           onPress={() => navigation?.navigate('PaymentHistory')}
         >
-          <View style={styles.receiptsIconWrap}>
+          <View style={ts.receiptsIconWrap}>
             <Ionicons name="receipt-outline" size={17} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.receiptsTitle}>Payment receipts</Text>
-            <Text style={styles.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
+            <Text style={ts.receiptsTitle}>Payment receipts</Text>
+            <Text style={ts.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
         </TouchableOpacity>
 
         {/* ── Sales registry ── */}
-        <View style={styles.historySection}>
-          <Text style={styles.sectionHeader}>SALES REGISTRY</Text>
+        <View style={ts.historySection}>
+          <Text style={ts.sectionHeader}>SALES REGISTRY</Text>
 
           {loading ? (
             renderSkeleton()

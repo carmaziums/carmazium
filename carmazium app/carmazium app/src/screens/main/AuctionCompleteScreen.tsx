@@ -18,6 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
@@ -73,6 +75,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   navigation,
   route,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const confettiRef = useRef<any>(null);
@@ -364,7 +368,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   // ── Fee paid — confirmation screen ───────────────────────────────
   if (paid) {
     return (
-      <View style={styles.container}>
+      <View style={ts.container}>
         {cancelOpen && (
           <SaleCancellationSheet
             visible
@@ -382,14 +386,14 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         />
         <ScrollView
           contentContainerStyle={[
-            styles.scrollContent,
+            ts.scrollContent,
             { paddingTop: insets.top + 20, paddingBottom: 60 },
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
+          <View style={ts.header}>
             <View style={{ width: 38 }} />
-            <View style={styles.headerCenter}>
+            <View style={ts.headerCenter}>
               {/* This read "PURCHASE COMPLETE / Handover confirmed", which the
                   YOUR JOURNEY list directly below contradicts — it shows
                   "Handover to be booked" and "Handover confirmed" as still
@@ -397,26 +401,26 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                   (`submitHandoverProof` is seller-only,
                   `SellerAuctionsScreen.tsx:309`). What has actually happened at
                   this point is the buyer fee clearing, nothing more (AUC-038). */}
-              <Text style={styles.headerLabelGreen}>PAYMENT COMPLETE</Text>
-              <Text style={styles.headerTitle}>Buyer fee paid</Text>
+              <Text style={ts.headerLabelGreen}>PAYMENT COMPLETE</Text>
+              <Text style={ts.headerTitle}>Buyer fee paid</Text>
             </View>
             <View style={{ width: 38 }} />
           </View>
 
           {/* Car Card */}
-          <View style={styles.carCard}>
+          <View style={ts.carCard}>
             {listingImage ? (
-              <Image source={{ uri: listingImage }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              <Image source={{ uri: listingImage }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
-              <View style={[styles.carImg, styles.carImgPlaceholder]}>
+              <View style={[ts.carImg, ts.carImgPlaceholder]}>
                 <Ionicons name="car-outline" size={20} color={Colors.iconMuted} />
               </View>
             )}
-            <View style={styles.carInfo}>
-              <Text style={styles.carTitle} numberOfLines={2}>{listingTitle}</Text>
-              <View style={styles.carStatusRow}>
+            <View style={ts.carInfo}>
+              <Text style={ts.carTitle} numberOfLines={2}>{listingTitle}</Text>
+              <View style={ts.carStatusRow}>
                 <Ionicons name="checkmark-circle-outline" size={14} color={Colors.accentGreen} />
-                <Text style={styles.carStatusText}>Fee paid · Handover to be arranged</Text>
+                <Text style={ts.carStatusText}>Fee paid · Handover to be arranged</Text>
               </View>
             </View>
           </View>
@@ -424,19 +428,19 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
           {/* ── Seller review ── */}
           {sellerProfileId && (
-            <View style={styles.reviewBox}>
-              <Text style={styles.reviewTitle}>Rate your seller</Text>
-              <Text style={styles.reviewSub}>How was your experience?</Text>
+            <View style={ts.reviewBox}>
+              <Text style={ts.reviewTitle}>Rate your seller</Text>
+              <Text style={ts.reviewSub}>How was your experience?</Text>
 
               {reviewDone ? (
-                <View style={styles.reviewDoneRow}>
+                <View style={ts.reviewDoneRow}>
                   <Ionicons name="checkmark-circle" size={20} color={Colors.accentGreen} />
-                  <Text style={styles.reviewDoneText}>Review submitted — thank you!</Text>
+                  <Text style={ts.reviewDoneText}>Review submitted — thank you!</Text>
                 </View>
               ) : (
                 <>
                   {/* Stars */}
-                  <View style={styles.starsRow}>
+                  <View style={ts.starsRow}>
                     {[1, 2, 3, 4, 5].map((star) => (
                       <IconButton key={star} icon={<Ionicons name={star <= reviewRating ? 'star' : 'star-outline'} size={32} color={star <= reviewRating ? Colors.warning : 'rgba(255,255,255,0.25)'} />} onPress={() => setReviewRating(star)} accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`} />
                     ))}
@@ -445,7 +449,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                   {/* Comment */}
                   {reviewRating > 0 && (
                     <TextInput
-                      style={styles.reviewInput}
+                      style={ts.reviewInput}
                       placeholder="Add a comment (optional, min 10 chars)…"
                       placeholderTextColor={Colors.textMuted}
                       value={reviewComment}
@@ -458,8 +462,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
                   <TouchableOpacity
                     style={[
-                      styles.reviewBtn,
-                      (reviewRating === 0 || submittingReview) && styles.reviewBtnDisabled,
+                      ts.reviewBtn,
+                      (reviewRating === 0 || submittingReview) && ts.reviewBtnDisabled,
                     ]}
                     activeOpacity={0.85}
                     onPress={handleSubmitReview}
@@ -468,7 +472,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                     {submittingReview ? (
                       <ActivityIndicator size="small" color={Colors.white} />
                     ) : (
-                      <Text style={styles.reviewBtnText}>SUBMIT REVIEW</Text>
+                      <Text style={ts.reviewBtnText}>SUBMIT REVIEW</Text>
                     )}
                   </TouchableOpacity>
                 </>
@@ -496,11 +500,11 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.doneBtn}
+            style={ts.doneBtn}
             activeOpacity={0.8}
             onPress={() => navigation?.navigate('Tabs')}
           >
-            <Text style={styles.doneBtnText}>BACK TO HOME</Text>
+            <Text style={ts.doneBtnText}>BACK TO HOME</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -509,7 +513,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
   // ── Main screen — pay buyer fee ───────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       {cancelOpen && (
         <SaleCancellationSheet
           visible
@@ -541,32 +545,32 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          styles.scrollContent,
+          ts.scrollContent,
           { paddingTop: insets.top + 14, paddingBottom: 140 },
         ]}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-          <Text style={styles.headerLabelGreen}>AUCTION COMPLETE</Text>
+        <View style={ts.header}>
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <Text style={ts.headerLabelGreen}>AUCTION COMPLETE</Text>
           <View style={{ width: 38 }} />
         </View>
 
         {/* Hero */}
-        <View style={styles.heroWrap}>
-          <View style={styles.trophyWrap}>
-            <View style={styles.trophyGlow} />
+        <View style={ts.heroWrap}>
+          <View style={ts.trophyWrap}>
+            <View style={ts.trophyGlow} />
             <Ionicons name="trophy-outline" size={42} color={Colors.accentGreen} />
           </View>
-          <Text style={styles.heroSubGreen}>YOU WON THE AUCTION</Text>
-          <Text style={styles.heroTitle} numberOfLines={2}>{listingTitle}</Text>
+          <Text style={ts.heroSubGreen}>YOU WON THE AUCTION</Text>
+          <Text style={ts.heroTitle} numberOfLines={2}>{listingTitle}</Text>
         </View>
 
         {/* Hammer Price — animated count-up */}
-        <View style={styles.hammerBox}>
-          <Text style={styles.hammerLabel}>HAMMER PRICE</Text>
-          <Text style={styles.hammerPrice}>{fmt(displayPrice)}</Text>
-          <Text style={styles.hammerMeta}>
+        <View style={ts.hammerBox}>
+          <Text style={ts.hammerLabel}>HAMMER PRICE</Text>
+          <Text style={ts.hammerPrice}>{fmt(displayPrice)}</Text>
+          <Text style={ts.hammerMeta}>
             {[bidCount != null && `${bidCount} bid${bidCount !== 1 ? 's' : ''}`, lotNumber && `LOT ${lotNumber}`]
               .filter(Boolean)
               .join(' · ')}
@@ -578,8 +582,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             true, so every urgency comparison must be explicit about the null
             case rather than relying on the bare `<`. */}
         {timeLeft !== null && (
-          <View style={[styles.timerBox, timeLeft < 3600 && styles.timerBoxUrgent]}>
-            <View style={styles.timerLeft}>
+          <View style={[ts.timerBox, timeLeft < 3600 && ts.timerBoxUrgent]}>
+            <View style={ts.timerLeft}>
               <Ionicons
                 name="time-outline"
                 size={20}
@@ -587,63 +591,63 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                 style={{ marginRight: 10 }}
               />
               <View>
-                <Text style={[styles.timerTitle, timeLeft < 3600 && styles.timerTitleUrgent]}>
+                <Text style={[ts.timerTitle, timeLeft < 3600 && ts.timerTitleUrgent]}>
                   Complete payment within
                 </Text>
-                <Text style={[styles.timerValue, timeLeft < 3600 && styles.timerValueUrgent]}>
+                <Text style={[ts.timerValue, timeLeft < 3600 && ts.timerValueUrgent]}>
                   {formatCountdown(timeLeft)}
                 </Text>
               </View>
             </View>
-            <View style={styles.timerRight}>
-              <Text style={styles.timerRightText}>or the lot</Text>
-              <Text style={styles.timerRightText}>may be cancelled</Text>
+            <View style={ts.timerRight}>
+              <Text style={ts.timerRightText}>or the lot</Text>
+              <Text style={ts.timerRightText}>may be cancelled</Text>
             </View>
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>ORDER SUMMARY</Text>
+        <Text style={ts.sectionLabel}>ORDER SUMMARY</Text>
 
         {/* Summary */}
-        <View style={styles.summaryBox}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Hammer price</Text>
-            <Text style={styles.summaryValue}>{fmt(hammerPrice)}</Text>
+        <View style={ts.summaryBox}>
+          <View style={ts.summaryRow}>
+            <Text style={ts.summaryLabel}>Hammer price</Text>
+            <Text style={ts.summaryValue}>{fmt(hammerPrice)}</Text>
           </View>
-          <View style={[styles.summaryRow, { marginBottom: 20 }]}>
+          <View style={[ts.summaryRow, { marginBottom: 20 }]}>
             <View>
-              <Text style={styles.summaryLabel}>Buyer fee</Text>
-              <Text style={styles.summaryLabelNote}>
+              <Text style={ts.summaryLabel}>Buyer fee</Text>
+              <Text style={ts.summaryLabelNote}>
                 £100 released to seller + £25 platform fee
               </Text>
             </View>
-            <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
+            <Text style={ts.summaryValue}>{fmt(buyerFee)}</Text>
           </View>
 
-          <View style={styles.summaryDivider} />
+          <View style={ts.summaryDivider} />
 
-          <View style={styles.summaryTotalRow}>
-            <Text style={styles.summaryTotalLabel}>FEE DUE NOW</Text>
-            <Text style={styles.summaryTotalValue}>{fmt(buyerFee)}</Text>
+          <View style={ts.summaryTotalRow}>
+            <Text style={ts.summaryTotalLabel}>FEE DUE NOW</Text>
+            <Text style={ts.summaryTotalValue}>{fmt(buyerFee)}</Text>
           </View>
-          <Text style={styles.summaryTotalNote}>
+          <Text style={ts.summaryTotalNote}>
             The hammer price of {fmt(hammerPrice)} is settled directly with the seller at handover.
           </Text>
         </View>
 
         {/* Stripe badge */}
-        <View style={styles.paymentNote}>
+        <View style={ts.paymentNote}>
           <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
-          <Text style={styles.paymentNoteText}>
+          <Text style={ts.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
         </View>
       </ScrollView>
 
       {/* Floating CTA */}
-      <View style={[styles.floatingBottom, { paddingBottom: insets.bottom || 20 }]}>
+      <View style={[ts.floatingBottom, { paddingBottom: insets.bottom || 20 }]}>
         <TouchableOpacity
-          style={[styles.payBtn, (paying || dealerAccessLoading || !canPayAuctionFee) && styles.payBtnDisabled]}
+          style={[ts.payBtn, (paying || dealerAccessLoading || !canPayAuctionFee) && ts.payBtnDisabled]}
           onPress={handlePayFee}
           activeOpacity={0.85}
           disabled={paying || dealerAccessLoading || !canPayAuctionFee || timeLeft === 0}
@@ -659,7 +663,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           ) : (
             <Ionicons name="lock-closed-outline" size={18} color={Colors.white} style={{ marginRight: 12 }} />
           )}
-          <Text style={styles.payBtnText}>
+          <Text style={ts.payBtnText}>
             {dealerAccessLoading
               ? 'CHECKING PAYMENT PERMISSION…'
               : !canPayAuctionFee
@@ -680,7 +684,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             Need to cancel this win? Request cancellation
           </Text>
         </TouchableOpacity>
-        <Text style={styles.footerNote}>
+        <Text style={ts.footerNote}>
           {canPayAuctionFee
             ? 'Buyer fee is paid securely via Stripe. Handover-proof denial normally refunds £100 and retains the £25 platform fee. A qualifying CarMazium inspection refusal or approved seller/vehicle-fault cancellation refunds the full £125.'
             : 'This win belongs to the dealership. Fee payment is restricted to the Owner, Admin or Finance Manager.'}

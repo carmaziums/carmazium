@@ -22,12 +22,16 @@ import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 
 import { IconButton } from '../../components/IconButton';
 
 type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
 
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
@@ -150,16 +154,16 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   if (reactivating) {
     return (
-      <View style={[styles.container, styles.reactivatingWrap]}>
+      <View style={[ts.container, ts.reactivatingWrap]}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
         <ActivityIndicator size="large" color={Colors.accent} />
-        <Text style={styles.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
+        <Text style={ts.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
       </View>
     );
   }
 
   return (
-    <KeyboardStickyView style={styles.container} behavior="padding">
+    <KeyboardStickyView style={ts.container} behavior="padding">
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -168,37 +172,37 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
         end={{ x: 1, y: 0.5 }}
       />
       <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 14 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[ts.scrollContent, { paddingTop: insets.top + 14 }]}>
 
           {/* Header */}
-          <View style={styles.header}>
-            <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerSubRed}>DEALER PRO</Text>
-              <Text style={styles.headerTitle}>Set up your dealership</Text>
+          <View style={ts.header}>
+            <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+            <View style={ts.headerCenter}>
+              <Text style={ts.headerSubRed}>DEALER PRO</Text>
+              <Text style={ts.headerTitle}>Set up your dealership</Text>
             </View>
             <View style={{ width: 38 }} />
           </View>
 
           {/* Stepper — Business (this screen) → Verify (DealerKYCScreen next) */}
-          <View style={styles.stepperWrap}>
-            <View style={styles.stepperItem}>
-              <View style={[styles.stepperCircle, styles.stepperCircleActive]}>
-                 <Text style={[styles.stepperNum, styles.stepperNumActive]}>1</Text>
+          <View style={ts.stepperWrap}>
+            <View style={ts.stepperItem}>
+              <View style={[ts.stepperCircle, ts.stepperCircleActive]}>
+                 <Text style={[ts.stepperNum, ts.stepperNumActive]}>1</Text>
               </View>
-              <Text style={[styles.stepperLabel, styles.stepperLabelActive]}>Business</Text>
+              <Text style={[ts.stepperLabel, ts.stepperLabelActive]}>Business</Text>
             </View>
-            <View style={styles.stepperLine} />
+            <View style={ts.stepperLine} />
 
-            <View style={styles.stepperItem}>
-              <View style={styles.stepperCircle}>
-                 <Text style={styles.stepperNum}>2</Text>
+            <View style={ts.stepperItem}>
+              <View style={ts.stepperCircle}>
+                 <Text style={ts.stepperNum}>2</Text>
               </View>
-              <Text style={styles.stepperLabel}>Verify</Text>
+              <Text style={ts.stepperLabel}>Verify</Text>
             </View>
           </View>
 
-          <Text style={styles.sectionLabel}>BUSINESS DETAILS</Text>
+          <Text style={ts.sectionLabel}>BUSINESS DETAILS</Text>
 
           {submitError ? (
             <View style={{ marginBottom: 16 }}>
@@ -208,9 +212,9 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
           {/* Business type comes first so sole traders never get forced into
               Companies House fields that do not apply to them. */}
-          <View style={styles.businessTypeWrap}>
-            <Text style={styles.inputLabel}>BUSINESS TYPE</Text>
-            <View style={styles.businessTypeRow}>
+          <View style={ts.businessTypeWrap}>
+            <Text style={ts.inputLabel}>BUSINESS TYPE</Text>
+            <View style={ts.businessTypeRow}>
               {([
                 { value: 'PRIVATE_LIMITED' as BusinessType, title: 'REGISTERED COMPANY', hint: 'Registered at Companies House' },
                 { value: 'SOLE_PROPRIETORSHIP' as BusinessType, title: 'SOLE TRADER', hint: 'Trading as an individual' },
@@ -219,7 +223,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                 return (
                   <TouchableOpacity
                     key={option.value}
-                    style={[styles.businessTypeCard, selected && styles.businessTypeCardSelected]}
+                    style={[ts.businessTypeCard, selected && ts.businessTypeCardSelected]}
                     onPress={() => {
                       setBusinessType(option.value);
                       setFieldErrors({});
@@ -231,134 +235,134 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
                   >
-                    <View style={[styles.businessTypeRadio, selected && styles.businessTypeRadioSelected]}>
-                      {selected ? <View style={styles.businessTypeRadioDot} /> : null}
+                    <View style={[ts.businessTypeRadio, selected && ts.businessTypeRadioSelected]}>
+                      {selected ? <View style={ts.businessTypeRadioDot} /> : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.businessTypeTitle, selected && styles.businessTypeTitleSelected]}>{option.title}</Text>
-                      <Text style={styles.businessTypeHint}>{option.hint}</Text>
+                      <Text style={[ts.businessTypeTitle, selected && ts.businessTypeTitleSelected]}>{option.title}</Text>
+                      <Text style={ts.businessTypeHint}>{option.hint}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
             {businessType === 'SOLE_PROPRIETORSHIP' ? (
-              <Text style={styles.businessTypeHelp}>
+              <Text style={ts.businessTypeHelp}>
                 No Companies House or VAT details are required. We will verify you using your identity and proof of address.
               </Text>
             ) : null}
           </View>
 
           {/* Form Inputs */}
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+          <View style={ts.formGroup}>
+             <Text style={ts.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
+             <View style={ts.inputWrap}>
+                <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
                 <TextInput
-                  style={styles.textInput}
+                  style={ts.textInput}
                   value={tradingName}
                   onChangeText={v => { setTradingName(v); if (fieldErrors.tradingName) setFieldErrors(prev => ({ ...prev, tradingName: undefined })); }}
                   placeholder="e.g. Knightsbridge Motors Ltd"
                   placeholderTextColor={Colors.iconMuted}
                 />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
              </View>
-             {fieldErrors.tradingName ? <Text style={styles.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
+             {fieldErrors.tradingName ? <Text style={ts.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
           </View>
 
           {businessType === 'PRIVATE_LIMITED' ? (
             <>
-            <View style={styles.formGroup}>
-               <Text style={styles.inputLabel}>COMPANIES HOUSE REG</Text>
-               <View style={styles.inputWrap}>
-                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                  <TextInput style={styles.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+            <View style={ts.formGroup}>
+               <Text style={ts.inputLabel}>COMPANIES HOUSE REG</Text>
+               <View style={ts.inputWrap}>
+                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                  <TextInput style={ts.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
                </View>
             </View>
   
-            <View style={styles.formGroup}>
-               <Text style={styles.inputLabel}>VAT NUMBER</Text>
-               <View style={styles.inputWrap}>
-                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
+            <View style={ts.formGroup}>
+               <Text style={ts.inputLabel}>VAT NUMBER</Text>
+               <View style={ts.inputWrap}>
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
                   <TextInput
-                    style={styles.textInput}
+                    style={ts.textInput}
                     value={vatNumber}
                     onChangeText={v => { setVatNumber(v); if (fieldErrors.vatNumber) setFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                     placeholder="e.g. GB 123 456 789"
                     placeholderTextColor={Colors.iconMuted}
                   />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
                </View>
-               {fieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
+               {fieldErrors.vatNumber ? <Text style={ts.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
             </View>
             </>
           ) : null}
 
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>BUSINESS ADDRESS</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="location-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput style={styles.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+          <View style={ts.formGroup}>
+             <Text style={ts.inputLabel}>BUSINESS ADDRESS</Text>
+             <View style={ts.inputWrap}>
+                <Ionicons name="location-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                <TextInput style={ts.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={Colors.iconMuted} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
              </View>
           </View>
 
-          <View style={styles.formGroup}>
-             <Text style={styles.inputLabel}>BUSINESS PHONE</Text>
-             <View style={styles.inputWrap}>
-                <Ionicons name="call-outline" size={18} color={Colors.iconMuted} style={styles.inputIcon} />
-                <TextInput style={styles.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={styles.inputIconRight} />
+          <View style={ts.formGroup}>
+             <Text style={ts.inputLabel}>BUSINESS PHONE</Text>
+             <View style={ts.inputWrap}>
+                <Ionicons name="call-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                <TextInput style={ts.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={Colors.iconMuted} />
+                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
              </View>
           </View>
 
-          <Text style={styles.sectionLabel}>OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES</Text>
+          <Text style={ts.sectionLabel}>OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES</Text>
           <Text style={{ color: Colors.textSecondary, marginBottom: 14, fontSize: 12, lineHeight: 18 }}>
             MaziuM can add these dealer details to vehicle descriptions. You can skip this section and complete it later under Settings → Business Profile.
           </Text>
-          <View style={styles.formGroup}>
-            <Text style={styles.inputLabel}>ABOUT YOUR BUSINESS</Text>
-            <TextInput style={[styles.textInput, { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 }]}
+          <View style={ts.formGroup}>
+            <Text style={ts.inputLabel}>ABOUT YOUR BUSINESS</Text>
+            <TextInput style={[ts.textInput, { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 }]}
               multiline maxLength={2000} value={introduction} onChangeText={setIntroduction}
               placeholder="Introduce your dealership and how you help buyers."
               placeholderTextColor={Colors.iconMuted} />
           </View>
-          <View style={styles.formGroup}>
+          <View style={ts.formGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.inputLabel}>WE OFFER A WARRANTY</Text>
+              <Text style={ts.inputLabel}>WE OFFER A WARRANTY</Text>
               <Switch value={warrantyOffered} onValueChange={setWarrantyOffered}
                 accessibilityLabel="Warranty offered" />
             </View>
             {warrantyOffered && (
-              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
+              <TextInput style={[ts.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
                 multiline maxLength={1000} value={warrantyDetails} onChangeText={setWarrantyDetails}
                 placeholder="Enter duration, covered components, limits and exclusions."
                 placeholderTextColor={Colors.iconMuted} />
             )}
           </View>
-          <View style={styles.formGroup}>
+          <View style={ts.formGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={styles.inputLabel}>WE OFFER OR ARRANGE FINANCE</Text>
+              <Text style={ts.inputLabel}>WE OFFER OR ARRANGE FINANCE</Text>
               <Switch value={financeOffered} onValueChange={setFinanceOffered}
                 accessibilityLabel="Finance offered" />
             </View>
             {financeOffered && (
-              <TextInput style={[styles.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
+              <TextInput style={[ts.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
                 multiline maxLength={1000} value={financeDetails} onChangeText={setFinanceDetails}
                 placeholder="Finance provider or arrangement, subject to status and lender approval."
                 placeholderTextColor={Colors.iconMuted} />
             )}
           </View>
 
-          <View style={styles.signInRow}>
-             <Text style={styles.signInText}>Already have a dealer account? <Text style={styles.signInLink}>Sign in</Text></Text>
+          <View style={ts.signInRow}>
+             <Text style={ts.signInText}>Already have a dealer account? <Text style={ts.signInLink}>Sign in</Text></Text>
           </View>
 
         </ScrollView>
 
         {/* Continue CTA */}
-        <View style={[styles.bottomCTA, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={[ts.bottomCTA, { paddingBottom: insets.bottom + 12 }]}>
           <Button
             label="CONTINUE"
             onPress={handleContinue}

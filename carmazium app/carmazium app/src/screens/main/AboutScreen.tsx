@@ -13,6 +13,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -49,11 +51,13 @@ const WHY_BULLETS = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const AboutScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -65,25 +69,25 @@ export const AboutScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>About</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>About</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Hero intro ── */}
-        <View style={styles.heroSection}>
-          <View style={styles.logoMark}>
+        <View style={ts.heroSection}>
+          <View style={ts.logoMark}>
             <Ionicons name="car-sport-outline" size={32} color={Colors.accent} />
           </View>
-          <Text style={styles.heroTitle}>CARMAZIUM</Text>
-          <Text style={styles.heroTagline}>Premium Automotive Marketplace</Text>
-          <Text style={styles.heroDesc}>
+          <Text style={ts.heroTitle}>CARMAZIUM</Text>
+          <Text style={ts.heroTagline}>Premium Automotive Marketplace</Text>
+          <Text style={ts.heroDesc}>
             Carmazium is the UK's premium automotive marketplace — connecting buyers
             with curated, verified vehicle listings and live auction experiences.
           </Text>
@@ -93,40 +97,40 @@ export const AboutScreen: React.FC = () => {
             was previously the only place these numbers appeared. Static copy
             on both platforms, not sourced from an API — there's no public
             stats endpoint on the backend for this. ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCell}>
-            <Text style={styles.statValue}>50,000+</Text>
-            <Text style={styles.statLabel}>Users</Text>
+        <View style={ts.statsRow}>
+          <View style={ts.statCell}>
+            <Text style={ts.statValue}>50,000+</Text>
+            <Text style={ts.statLabel}>Users</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statCell}>
-            <Text style={styles.statValue}>£200M+</Text>
-            <Text style={styles.statLabel}>Traded</Text>
+          <View style={ts.statDivider} />
+          <View style={ts.statCell}>
+            <Text style={ts.statValue}>£200M+</Text>
+            <Text style={ts.statLabel}>Traded</Text>
           </View>
         </View>
 
         {/* ── Why Carmazium ── */}
-        <Text style={styles.sectionTitle}>Why Carmazium</Text>
+        <Text style={ts.sectionTitle}>Why Carmazium</Text>
 
         {WHY_BULLETS.map((item) => (
-          <View key={item.title} style={styles.bulletCard}>
-            <View style={styles.bulletIconWrap}>
+          <View key={item.title} style={ts.bulletCard}>
+            <View style={ts.bulletIconWrap}>
               <Ionicons name={item.icon as any} size={20} color={Colors.accent} />
             </View>
-            <View style={styles.bulletText}>
-              <Text style={styles.bulletTitle}>{item.title}</Text>
-              <Text style={styles.bulletDesc}>{item.desc}</Text>
+            <View style={ts.bulletText}>
+              <Text style={ts.bulletTitle}>{item.title}</Text>
+              <Text style={ts.bulletDesc}>{item.desc}</Text>
             </View>
           </View>
         ))}
 
         {/* ── Footer brand ── */}
-        <View style={styles.footerBrand}>
-          <Text style={styles.footerWordmark}>CARMAZIUM</Text>
-          <Text style={styles.footerTaglineText}>
+        <View style={ts.footerBrand}>
+          <Text style={ts.footerWordmark}>CARMAZIUM</Text>
+          <Text style={ts.footerTaglineText}>
             Buy smarter. Sell faster. Drive premium.
           </Text>
-          <Text style={styles.footerVersion}>
+          <Text style={ts.footerVersion}>
             Built in the UK &bull; Est. 2024
           </Text>
         </View>

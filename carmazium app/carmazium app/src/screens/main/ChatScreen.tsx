@@ -44,6 +44,8 @@ import {
 } from '../../lib/chatApi';
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -342,6 +344,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 });
 
 export const ChatScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
@@ -714,9 +718,9 @@ export const ChatScreen: React.FC = () => {
         !item.deliveryStatus &&
         room?.context !== 'SUPPORT' &&
         item.sender.role !== 'ADMIN' && (
-          <View style={styles.messageSafetyRow}>
+          <View style={ts.messageSafetyRow}>
             {reportedMessageIds.has(item.id) ? (
-              <Text style={styles.messageReportedText}>Reported</Text>
+              <Text style={ts.messageReportedText}>Reported</Text>
             ) : (
               <TouchableOpacity
                 onPress={() => openReport(item)}
@@ -724,7 +728,7 @@ export const ChatScreen: React.FC = () => {
                 accessibilityRole="button"
                 accessibilityLabel="Report this message"
               >
-                <Text style={styles.messageReportText}>Report</Text>
+                <Text style={ts.messageReportText}>Report</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -742,19 +746,19 @@ export const ChatScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={ts.errorContainer}>
         <ActivityIndicator size="large" color={Colors.accent} accessibilityLabel="Loading conversation" />
-        <Text style={[styles.errorText, { marginTop: 12 }]} accessibilityLiveRegion="polite">Loading conversation...</Text>
+        <Text style={[ts.errorText, { marginTop: 12 }]} accessibilityLiveRegion="polite">Loading conversation...</Text>
       </View>
     );
   }
 
   if (!room) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Conversation not found</Text>
+      <View style={ts.errorContainer}>
+        <Text style={ts.errorText}>Conversation not found</Text>
         <TouchableOpacity
-          style={styles.backBtnText}
+          style={ts.backBtnText}
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
           accessibilityLabel="Go back"
@@ -996,31 +1000,31 @@ export const ChatScreen: React.FC = () => {
   // render since Platform.OS never changes at runtime.
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
   const screenWrapperProps = Platform.OS === 'ios'
-    ? { style: styles.container, behavior: 'padding' as const }
-    : { style: [styles.container, { marginBottom: androidKeyboardHeight }] };
+    ? { style: ts.container, behavior: 'padding' as const }
+    : { style: [ts.container, { marginBottom: androidKeyboardHeight }] };
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Top Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+      <View style={[ts.header, { paddingTop: insets.top + 8 }]}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         {/* Avatar */}
-        <View style={[styles.avatar, { backgroundColor: getAvatarBg(initials) }]}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={[ts.avatar, { backgroundColor: getAvatarBg(initials) }]}>
+          <Text style={ts.avatarText}>{initials}</Text>
         </View>
 
         {/* Dealer name and status */}
-        <View style={styles.headerInfo}>
-          <View style={styles.nameRow}>
-            <Text style={styles.dealerName} numberOfLines={1}>{displayName}</Text>
+        <View style={ts.headerInfo}>
+          <View style={ts.nameRow}>
+            <Text style={ts.dealerName} numberOfLines={1}>{displayName}</Text>
           </View>
           {otherUserTyping ? (
-            <Text style={[styles.onlineStatus, { color: Colors.accent }]}>typing…</Text>
+            <Text style={[ts.onlineStatus, { color: Colors.accent }]}>typing…</Text>
           ) : (
-            <Text style={styles.onlineStatus}>
+            <Text style={ts.onlineStatus}>
               {onlineUserIds.has(room.otherUser.id) ? '● Online' : 'Conversation'}
             </Text>
           )}
@@ -1028,7 +1032,7 @@ export const ChatScreen: React.FC = () => {
 
         {(room.canBlockChat || room.canUnblockChat) && (
           <IconButton
-            style={styles.safetyHeaderButton}
+            style={ts.safetyHeaderButton}
             icon={
               changingBlock
                 ? <ActivityIndicator size="small" color={Colors.white} />
@@ -1049,7 +1053,7 @@ export const ChatScreen: React.FC = () => {
       {/* Listing context banner */}
       {room.listing && (
         <TouchableOpacity
-          style={styles.listingBanner}
+          style={ts.listingBanner}
           activeOpacity={0.8}
           onPress={handleOpenListing}
           disabled={openingListing}
@@ -1058,11 +1062,11 @@ export const ChatScreen: React.FC = () => {
           accessibilityState={{ disabled: openingListing, busy: openingListing }}
         >
           {room.listing.images?.[0]
-            ? <Image source={{ uri: room.listing.images[0] }} style={styles.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            : <View style={[styles.carImg, styles.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
-          <View style={styles.carMeta}>
-            <Text style={styles.carTitle} numberOfLines={1}>{room.listing.title}</Text>
-            <Text style={styles.carPrice}>
+            ? <Image source={{ uri: room.listing.images[0] }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            : <View style={[ts.carImg, ts.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
+          <View style={ts.carMeta}>
+            <Text style={ts.carTitle} numberOfLines={1}>{room.listing.title}</Text>
+            <Text style={ts.carPrice}>
               {isAuction && room.listing.auction?.winningBidAmount 
                 ? `Winning Bid: £${parseFloat(String(room.listing.auction.winningBidAmount)).toLocaleString('en-GB')}`
                 : `Price: £${carPrice.toLocaleString('en-GB')}`}
@@ -1073,11 +1077,11 @@ export const ChatScreen: React.FC = () => {
       )}
 
       {room.chatBlocked && !shouldBlockChat && (
-        <View style={styles.chatBlockedBanner}>
+        <View style={ts.chatBlockedBanner}>
           <Ionicons name="ban-outline" size={16} color={Colors.warning} />
-          <View style={styles.chatBlockedCopy}>
-            <Text style={styles.chatBlockedTitle}>Messaging blocked</Text>
-            <Text style={styles.chatBlockedText}>
+          <View style={ts.chatBlockedCopy}>
+            <Text style={ts.chatBlockedTitle}>Messaging blocked</Text>
+            <Text style={ts.chatBlockedText}>
               {room.blockedByMe
                 ? 'You blocked this conversation. The transcript remains available and messages can still be reported.'
                 : 'Messaging is paused because this conversation has been blocked. The transcript remains available.'}
@@ -1087,10 +1091,10 @@ export const ChatScreen: React.FC = () => {
             <TouchableOpacity
               onPress={handleBlockToggle}
               disabled={changingBlock}
-              style={styles.unblockInlineButton}
+              style={ts.unblockInlineButton}
               activeOpacity={0.75}
             >
-              <Text style={styles.unblockInlineText}>Unblock</Text>
+              <Text style={ts.unblockInlineText}>Unblock</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1103,8 +1107,8 @@ export const ChatScreen: React.FC = () => {
             scrollToEnd() timing hack (mobile-audit.md P2). Inverted flips header/footer:
             ListHeaderComponent renders at the visual bottom, ListFooterComponent at the top. */}
         <FlatList
-          style={styles.chatArea}
-          contentContainerStyle={styles.chatScroll}
+          style={ts.chatArea}
+          contentContainerStyle={ts.chatScroll}
           showsVerticalScrollIndicator={false}
           inverted
           maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
@@ -1113,8 +1117,8 @@ export const ChatScreen: React.FC = () => {
           renderItem={renderMessageItem}
           ListHeaderComponent={
             otherUserTyping ? (
-              <View style={styles.dealerBubbleWrapper}>
-                <View style={[styles.bubble, styles.bubbleDealer, styles.typingBubble]}>
+              <View style={ts.dealerBubbleWrapper}>
+                <View style={[ts.bubble, ts.bubbleDealer, ts.typingBubble]}>
                   <TypingDots />
                 </View>
               </View>
@@ -1124,7 +1128,7 @@ export const ChatScreen: React.FC = () => {
             <View>
               {hasMore && (
                 <TouchableOpacity
-                  style={styles.loadEarlierButton}
+                  style={ts.loadEarlierButton}
                   onPress={loadOlderMessages}
                   disabled={loadingOlder}
                   activeOpacity={0.75}
@@ -1135,11 +1139,11 @@ export const ChatScreen: React.FC = () => {
                   {loadingOlder ? (
                     <ActivityIndicator size="small" color={Colors.textSecondary} />
                   ) : (
-                    <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                    <Text style={ts.loadEarlierText}>Load earlier messages</Text>
                   )}
                 </TouchableOpacity>
               )}
-              <Text style={styles.dateSeparator}>
+              <Text style={ts.dateSeparator}>
                 {messages.length === 0 ? 'No messages yet' : 'LIVE CHAT LOGS'}
               </Text>
             </View>
@@ -1148,37 +1152,37 @@ export const ChatScreen: React.FC = () => {
 
         {/* Blocking Overlay for deposit check */}
         {shouldBlockChat && (
-          <View style={styles.blockingOverlay}>
-            <View style={styles.blockingCard}>
-              <View style={styles.trophyIconWrap}>
+          <View style={ts.blockingOverlay}>
+            <View style={ts.blockingCard}>
+              <View style={ts.trophyIconWrap}>
                 <Ionicons name="trophy" size={40} color={Colors.warning} />
               </View>
-              <Text style={styles.blockingTitle}>£125 Buyer Fee Due</Text>
-              <Text style={styles.blockingDesc}>
+              <Text style={ts.blockingTitle}>£125 Buyer Fee Due</Text>
+              <Text style={ts.blockingDesc}>
                 You won this auction! To unlock chat with the seller and secure the vehicle, you must pay the £125 buyer fee.
               </Text>
-              <Text style={styles.blockingSubDesc}>
+              <Text style={ts.blockingSubDesc}>
                 • £100 is released to the seller as a completion bonus.{"\n"}
                 • £25 covers the Carmazium platform fee.{"\n"}
                 • The buyer fee is non-refundable; the agreed hammer price is settled directly with the seller at handover.
               </Text>
 
               <TouchableOpacity
-                style={styles.payOverlayBtn}
+                style={ts.payOverlayBtn}
                 onPress={handlePayDeposit}
                 activeOpacity={0.8}
               >
                 <Ionicons name="card" size={18} color={Colors.bgPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
+                <Text style={ts.payOverlayBtnText}>PAY £125 VIA STRIPE</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.refreshOverlayBtn} 
+                style={ts.refreshOverlayBtn} 
                 onPress={handleRefreshStatus}
                 activeOpacity={0.7}
               >
                 <Ionicons name="refresh" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={styles.refreshOverlayBtnText}>I've paid, refresh chat</Text>
+                <Text style={ts.refreshOverlayBtnText}>I've paid, refresh chat</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1187,24 +1191,24 @@ export const ChatScreen: React.FC = () => {
 
       {/* Sticky action CTAs bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && room.listing && (
-        <View style={styles.actionsBar}>
+        <View style={ts.actionsBar}>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.actionBtnOutlineRed]}
+            style={[ts.actionBtn, ts.actionBtnOutlineRed]}
             onPress={handleCounterOffer}
             activeOpacity={0.7}
           >
             <Ionicons name="pricetag-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={[styles.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
+            <Text style={[ts.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
           </TouchableOpacity>
 
           {!offerAccepted && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnGreen]}
+              style={[ts.actionBtn, ts.actionBtnGreen]}
               onPress={handleAcceptOffer}
               activeOpacity={0.7}
             >
               <Ionicons name="checkmark-circle-outline" size={13} color={Colors.white} style={{ marginRight: 4 }} />
-              <Text style={styles.actionLabel}>Accept Offer</Text>
+              <Text style={ts.actionLabel}>Accept Offer</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1212,9 +1216,9 @@ export const ChatScreen: React.FC = () => {
 
       {/* Bottom Text bar (hide if blocked) */}
       {!shouldBlockChat && !room.chatBlocked && (
-        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[ts.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <IconButton
-            style={styles.attachBtn}
+            style={ts.attachBtn}
             icon={
               uploadingPhoto
                 ? <ActivityIndicator size="small" color={Colors.white} />
@@ -1225,7 +1229,7 @@ export const ChatScreen: React.FC = () => {
             accessibilityLabel="Send photo"
           />
           <TextInput
-            style={styles.textInput}
+            style={ts.textInput}
             value={inputVal}
             onChangeText={handleTextChange}
             placeholder="Type a message..."
@@ -1235,7 +1239,7 @@ export const ChatScreen: React.FC = () => {
             accessibilityHint="Type a message to send in this conversation"
           />
 
-          <IconButton style={[styles.sendBtn, (!inputVal.trim() || uploadingPhoto) && styles.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
+          <IconButton style={[ts.sendBtn, (!inputVal.trim() || uploadingPhoto) && ts.sendBtnDisabled]} icon={<Ionicons name="send" size={15} color={Colors.white} />} onPress={handleSend} disabled={!inputVal.trim() || uploadingPhoto} accessibilityLabel="Send message" />
         </View>
       )}
 
@@ -1245,15 +1249,15 @@ export const ChatScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={closeReport}
       >
-        <View style={styles.reportModalBackdrop}>
-          <View style={styles.reportModalCard}>
-            <View style={styles.reportModalHeader}>
+        <View style={ts.reportModalBackdrop}>
+          <View style={ts.reportModalCard}>
+            <View style={ts.reportModalHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.reportModalEyebrow}>Safety</Text>
-                <Text style={styles.reportModalTitle}>Report message</Text>
+                <Text style={ts.reportModalEyebrow}>Safety</Text>
+                <Text style={ts.reportModalTitle}>Report message</Text>
               </View>
               <IconButton
-                style={styles.reportModalClose}
+                style={ts.reportModalClose}
                 icon={<Ionicons name="close" size={20} color={Colors.white} />}
                 onPress={closeReport}
                 disabled={reporting}
@@ -1261,28 +1265,28 @@ export const ChatScreen: React.FC = () => {
               />
             </View>
 
-            <Text style={styles.reportModalHelp}>
+            <Text style={ts.reportModalHelp}>
               CarMazium moderators receive only the reported message and its attachment evidence, not your surrounding private conversation.
             </Text>
 
             {reportTarget && (
-              <View style={styles.reportPreview}>
-                <Text style={styles.reportPreviewText} numberOfLines={4}>
+              <View style={ts.reportPreview}>
+                <Text style={ts.reportPreviewText} numberOfLines={4}>
                   {reportTarget.content || (reportTarget.attachmentPath ? 'Photo message' : 'Message')}
                 </Text>
               </View>
             )}
 
-            <Text style={styles.reportSectionLabel}>Reason</Text>
-            <View style={styles.reportReasonWrap}>
+            <Text style={ts.reportSectionLabel}>Reason</Text>
+            <View style={ts.reportReasonWrap}>
               {REPORT_REASONS.map((reason) => {
                 const selected = reportReason === reason.value;
                 return (
                   <TouchableOpacity
                     key={reason.value}
                     style={[
-                      styles.reportReasonChip,
-                      selected && styles.reportReasonChipSelected,
+                      ts.reportReasonChip,
+                      selected && ts.reportReasonChipSelected,
                     ]}
                     onPress={() => setReportReason(reason.value)}
                     activeOpacity={0.75}
@@ -1292,8 +1296,8 @@ export const ChatScreen: React.FC = () => {
                   >
                     <Text
                       style={[
-                        styles.reportReasonText,
-                        selected && styles.reportReasonTextSelected,
+                        ts.reportReasonText,
+                        selected && ts.reportReasonTextSelected,
                       ]}
                     >
                       {reason.label}
@@ -1303,9 +1307,9 @@ export const ChatScreen: React.FC = () => {
               })}
             </View>
 
-            <Text style={styles.reportSectionLabel}>Additional details (optional)</Text>
+            <Text style={ts.reportSectionLabel}>Additional details (optional)</Text>
             <TextInput
-              style={styles.reportDetailsInput}
+              style={ts.reportDetailsInput}
               value={reportDetails}
               onChangeText={(value) => setReportDetails(value.slice(0, 1000))}
               placeholder="Tell the moderator what happened"
@@ -1314,9 +1318,9 @@ export const ChatScreen: React.FC = () => {
               maxLength={1000}
             />
 
-            <View style={styles.reportModalActions}>
+            <View style={ts.reportModalActions}>
               <TouchableOpacity
-                style={styles.reportCancelButton}
+                style={ts.reportCancelButton}
                 onPress={closeReport}
                 disabled={reporting}
                 activeOpacity={0.75}
@@ -1324,12 +1328,12 @@ export const ChatScreen: React.FC = () => {
                 accessibilityLabel="Cancel message report"
                 accessibilityState={{ disabled: reporting }}
               >
-                <Text style={styles.reportCancelText}>Cancel</Text>
+                <Text style={ts.reportCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  styles.reportSubmitButton,
-                  (!reportReason || reporting) && styles.reportSubmitDisabled,
+                  ts.reportSubmitButton,
+                  (!reportReason || reporting) && ts.reportSubmitDisabled,
                 ]}
                 onPress={() => void submitReport()}
                 disabled={!reportReason || reporting}
@@ -1343,7 +1347,7 @@ export const ChatScreen: React.FC = () => {
                 ) : (
                   <Ionicons name="flag-outline" size={16} color={Colors.white} />
                 )}
-                <Text style={styles.reportSubmitText}>Submit report</Text>
+                <Text style={ts.reportSubmitText}>Submit report</Text>
               </TouchableOpacity>
             </View>
           </View>

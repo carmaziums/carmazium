@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -50,6 +52,8 @@ const trailingText = (job: ServiceJob) => {
 };
 
 export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [jobs, setJobs] = useState<ServiceJob[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -93,12 +97,12 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
 
   const renderJob = ({ item: job }: { item: ServiceJob }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={ts.card}
       activeOpacity={0.82}
       onPress={() => navigation.navigate('CustomerServiceJobDetail', { jobId: job.id })}
     >
-      <View style={styles.topRow}>
-        <View style={styles.iconBox}>
+      <View style={ts.topRow}>
+        <View style={ts.iconBox}>
           <Ionicons
             name={job.serviceType === 'INSPECTION' ? 'search-outline' : 'car-outline'}
             size={19}
@@ -106,27 +110,27 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.typeText}>
+          <Text style={ts.typeText}>
             {job.serviceType === 'DELIVERY' && job.isRecovery
               ? 'Recovery'
               : SERVICE_LABELS[job.serviceType]}
           </Text>
-          <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+          <Text style={ts.title} numberOfLines={2}>{job.title}</Text>
         </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{statusLabel(job.status)}</Text>
+        <View style={ts.statusPill}>
+          <Text style={ts.statusText}>{statusLabel(job.status)}</Text>
         </View>
       </View>
 
-      <View style={styles.metaRow}>
+      <View style={ts.metaRow}>
         <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-        <Text style={styles.metaText}>{locationText(job)}</Text>
+        <Text style={ts.metaText}>{locationText(job)}</Text>
       </View>
 
       {job.vehicles?.[0] ? (
-        <View style={styles.metaRow}>
+        <View style={ts.metaRow}>
           <Ionicons name="car-sport-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>
+          <Text style={ts.metaText}>
             {[job.vehicles[0].registration, job.vehicles[0].make, job.vehicles[0].model]
               .filter(Boolean).join(' · ') || 'Vehicle'}
           </Text>
@@ -135,26 +139,26 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
 
       {job.serviceType === 'INSPECTION' && job.inspectionOutcome ? (
         <View style={[
-          styles.outcome,
+          ts.outcome,
           job.inspectionOutcome === 'FAULTS_FOUND'
-            ? styles.outcomeWarning
-            : styles.outcomeOk,
+            ? ts.outcomeWarning
+            : ts.outcomeOk,
         ]}>
           <Ionicons
             name={job.inspectionOutcome === 'FAULTS_FOUND' ? 'warning-outline' : 'checkmark-circle-outline'}
             size={14}
             color={job.inspectionOutcome === 'FAULTS_FOUND' ? Colors.warning : Colors.accentGreen}
           />
-          <Text style={styles.outcomeText}>
+          <Text style={ts.outcomeText}>
             {job.inspectionOutcome === 'FAULTS_FOUND' ? 'Faults found' : 'Inspection passed'}
           </Text>
         </View>
       ) : null}
 
-      <View style={styles.footer}>
-        <Text style={styles.trailing}>{trailingText(job)}</Text>
-        <View style={styles.openRow}>
-          <Text style={styles.openText}>VIEW JOB</Text>
+      <View style={ts.footer}>
+        <Text style={ts.trailing}>{trailingText(job)}</Text>
+        <View style={ts.openRow}>
+          <Text style={ts.openText}>VIEW JOB</Text>
           <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
         </View>
       </View>
@@ -162,48 +166,48 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>My Service Jobs</Text>
-          <Text style={styles.headerSub}>Delivery & inspection requests</Text>
+          <Text style={ts.headerTitle}>My Service Jobs</Text>
+          <Text style={ts.headerSub}>Delivery & inspection requests</Text>
         </View>
         <HamburgerButton />
       </View>
 
       {loading && jobs.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+        <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : error && jobs.length === 0 ? (
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load jobs</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.emptyTitle}>Could not load jobs</Text>
+          <Text style={ts.emptyText}>{error}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load('reset')}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       ) : jobs.length === 0 ? (
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No service jobs yet</Text>
-          <Text style={styles.emptyText}>
+          <Text style={ts.emptyTitle}>No service jobs yet</Text>
+          <Text style={ts.emptyText}>
             Post a delivery, recovery or inspection request to receive quotes from approved service providers.
           </Text>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={ts.primaryButton}
             onPress={() => navigation.navigate('Services')}
             accessibilityRole="button"
             accessibilityLabel="Open TradeXchange services to post a job"
           >
-            <Text style={styles.primaryText}>POST A SERVICE JOB</Text>
+            <Text style={ts.primaryText}>POST A SERVICE JOB</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -211,7 +215,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
           data={jobs}
           keyExtractor={(item) => item.id}
           renderItem={renderJob}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={ts.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.accent} />
           }
@@ -221,7 +225,7 @@ export const CustomerServiceJobsScreen: React.FC<Props> = ({ navigation }) => {
             loadingMore
               ? <ActivityIndicator color={Colors.accent} style={{ marginVertical: 18 }} />
               : error
-                ? <Text style={styles.inlineError}>{error}</Text>
+                ? <Text style={ts.inlineError}>{error}</Text>
                 : null
           }
         />
