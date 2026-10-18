@@ -431,12 +431,16 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
   );
 };
 
-const Info = ({ label, value }: { label: string; value: string }) => (
+const Info = ({ label, value }: { label: string; value: string }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  return (
   <View style={ts.infoLine}>
     <Text style={ts.infoLabel}>{label}</Text>
     <Text style={ts.infoValue}>{value}</Text>
   </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
