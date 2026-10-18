@@ -30,3 +30,22 @@ const dark = {
 export type AppearancePalette = typeof light;
 export const appearancePalette = (mode: AppearanceMode): AppearancePalette =>
   mode === 'light' ? light : dark;
+
+/**
+ * Light mode must only override colours, never drop the original dimensions,
+ * padding, layout or borders. A shallow map spread replaces the ENTIRE style
+ * for a key (e.g. a stock card loses flexDirection and padding). Merge each
+ * named style individually instead. Dark mode continues to use the untouched
+ * original StyleSheet.
+ */
+export function mergeAppearanceStyles<T extends Record<string, object>>(
+  base: T,
+  overrides: Partial<Record<keyof T, object>>,
+): T {
+  const result = { ...base };
+  for (const key of Object.keys(overrides) as (keyof T)[]) {
+    const patch = overrides[key];
+    if (patch) result[key] = { ...base[key], ...patch } as T[typeof key];
+  }
+  return result;
+}
