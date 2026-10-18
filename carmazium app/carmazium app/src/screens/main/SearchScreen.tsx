@@ -331,7 +331,7 @@ export const SearchScreen: React.FC = () => {
     const qf = QUICK_FILTERS.find(f => f.id === quickFilter);
     const parseMi = (s: string) => {
       if (s === 'Any') return undefined;
-      return parseInt(ts.replace('k', ''), 10) * 1000;
+      return parseInt(s.replace('k', ''), 10) * 1000;
     };
     return {
       search: query.trim() || undefined,
@@ -553,7 +553,7 @@ export const SearchScreen: React.FC = () => {
     }
   };
 
-  const sortLabel = SORT_OPTIONS.find(s => ts.id === sortId)?.label ?? 'Sort';
+  const sortLabel = SORT_OPTIONS.find(s => s.id === sortId)?.label ?? 'Sort';
 
   const searchAiConsentKey = () => {
     const userId = useAuthStore.getState().user?.id;
