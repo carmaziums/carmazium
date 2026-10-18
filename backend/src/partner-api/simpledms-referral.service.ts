@@ -22,6 +22,7 @@ export class SimpleDmsReferralService {
   private enabled() {
     if (this.config.get<string>('PARTNER_API_ENABLED') !== 'true' ||
         this.config.get<string>('PARTNER_API_SIMPLEDMS_ENABLED') !== 'true' ||
+        this.config.get<string>('PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED') !== 'true' ||
         this.config.get<string>('PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED') !== 'true') {
       throw new NotFoundException();
     }
