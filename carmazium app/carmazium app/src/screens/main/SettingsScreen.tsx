@@ -602,6 +602,14 @@ export const SettingsScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
       <View style={styles.settingsPageHeader}>
         <Text style={styles.settingsPageTitle}>Account Settings</Text>
         <Text style={styles.settingsPageSubtitle}>
@@ -613,15 +621,6 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.settingsBackText}>Back</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView
-        ref={scrollRef}
-        style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
-
         <View style={styles.accountToolsPanel}>
           <Text style={styles.accountToolsHeading}>YOUR ACCOUNT TOOLS</Text>
           <Text style={styles.accountToolsSub}>Quick access to the same conversations and saved vehicles on web and app.</Text>
