@@ -23,6 +23,8 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { MainStackParamList } from '../navigation/MainStackNavigator';
 import { TabParamList } from '../navigation/TabNavigator';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
@@ -81,6 +83,8 @@ export const GlobalDrawer: React.FC = () => {
   const dealerMode = accountRole === 'dealer' && role === 'dealer';
   const [expandedMenu, setExpandedMenu] = useState<'buy' | 'sell' | null>(null);
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightGlobalDrawerStyles) : styles;
   // Navigation is always the same ten-item right drawer, regardless of role.
   // Dealer-specific tools now live on the separate DealerMore tab.
   // Use live viewport dimensions so orientation changes cannot expose a sheet.
@@ -244,35 +248,35 @@ export const GlobalDrawer: React.FC = () => {
       {/* Keep the dealer tab bar above the backdrop, like the website. */}
       <TouchableWithoutFeedback onPress={closeDrawer}>
         <Animated.View
-          style={[styles.backdrop, backdropStyle]}
+          style={[ts.backdrop, backdropStyle]}
         />
       </TouchableWithoutFeedback>
 
       {/* The header Menu is the only navigation drawer for every account role. */}
       <Animated.View
         style={[
-          styles.panel,
-          styles.sidePanel,
+          ts.panel,
+          ts.sidePanel,
           panelStyle,
           { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 16 },
         ]}
       >
         {/* ── Close button ─────────────────────────────── */}
-        <IconButton style={styles.closeBtn} icon={<Ionicons name="close" size={20} color={Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close navigation menu" />
+        <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.paleBlue_e2e2ea} />} onPress={closeDrawer} accessibilityLabel="Close navigation menu" />
 
         {/* ── User card ────────────────────────────────── */}
-        <View style={styles.userCard}>
-          <View style={[styles.avatar, role === 'dealer' && styles.avatarDealer, role === 'seller' && styles.avatarSeller]}>
-            <Text style={styles.avatarText}>{initial}</Text>
+        <View style={ts.userCard}>
+          <View style={[ts.avatar, role === 'dealer' && ts.avatarDealer, role === 'seller' && ts.avatarSeller]}>
+            <Text style={ts.avatarText}>{initial}</Text>
           </View>
-          <View style={styles.userMeta}>
-            <Text style={styles.userName} maxFontSizeMultiplier={2} numberOfLines={2}>{userName}</Text>
+          <View style={ts.userMeta}>
+            <Text style={ts.userName} maxFontSizeMultiplier={2} numberOfLines={2}>{userName}</Text>
             {!!userEmail && (
-              <Text style={styles.userEmail} numberOfLines={1} maxFontSizeMultiplier={2} ellipsizeMode="middle">{userEmail}</Text>
+              <Text style={ts.userEmail} numberOfLines={1} maxFontSizeMultiplier={2} ellipsizeMode="middle">{userEmail}</Text>
             )}
           </View>
           {(user?.isAddressVerified === true && user?.isVerified === true) && (
-            <View style={styles.verifiedDot}>
+            <View style={ts.verifiedDot}>
               <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success} />
             </View>
           )}
@@ -283,12 +287,12 @@ export const GlobalDrawer: React.FC = () => {
             groups or 'show more' controls compete for attention. */}
         <ScrollView
           key={`simple-app-menu-${role}`}
-          style={styles.scroll}
-          contentContainerStyle={styles.simpleMenuContent}
+          style={ts.scroll}
+          contentContainerStyle={ts.simpleMenuContent}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          <Text style={styles.groupLabel}>EXPLORE CARMAZIUM</Text>
+          <Text style={ts.groupLabel}>EXPLORE CARMAZIUM</Text>
           {MAIN_MENU.map(item => {
             const expanded = item.children && expandedMenu === item.id;
             const active = !!item.tabName
@@ -296,7 +300,7 @@ export const GlobalDrawer: React.FC = () => {
             return (
               <View key={item.id}>
                 <TouchableOpacity
-                  style={[styles.row, active && styles.rowActive]}
+                  style={[ts.row, active && ts.rowActive]}
                   onPress={() => handleItem(item)}
                   accessibilityRole="button"
                   accessibilityLabel={item.id === 'dashboard' && dealerMode ? 'Dealer Dashboard' : item.label}
@@ -306,11 +310,11 @@ export const GlobalDrawer: React.FC = () => {
                   accessibilityState={item.children ? { expanded: !!expanded } : { selected: active }}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.bar, active && styles.barActive]} />
-                  <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                  <View style={[ts.bar, active && ts.barActive]} />
+                  <View style={[ts.iconWrap, active && ts.iconWrapActive]}>
                     {renderIcon(item, active)}
                   </View>
-                  <Text style={[styles.rowLabel, active && styles.rowLabelActive]} maxFontSizeMultiplier={2}>{item.label}</Text>
+                  <Text style={[ts.rowLabel, active && ts.rowLabelActive]} maxFontSizeMultiplier={2}>{item.label}</Text>
                   {item.children ? (
                     <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18}
                       color={Colors.lightGrey} accessibilityElementsHidden />
@@ -320,20 +324,20 @@ export const GlobalDrawer: React.FC = () => {
                   )}
                 </TouchableOpacity>
                 {!!expanded && (
-                  <View style={styles.subMenu} accessibilityLabel={item.label + ' choices'}>
+                  <View style={ts.subMenu} accessibilityLabel={item.label + ' choices'}>
                     {item.children!.map(child => (
                       <TouchableOpacity
                         key={child.id}
-                        style={styles.subMenuRow}
+                        style={ts.subMenuRow}
                         onPress={() => handleItem(child)}
                         accessibilityRole="button"
                         accessibilityLabel={child.label}
                         accessibilityHint={item.label + ', ' + child.label}
                         activeOpacity={0.75}
                       >
-                        <View style={styles.subMenuIcon}>{renderIcon(child, false)}</View>
-                        <Text style={styles.subMenuText} maxFontSizeMultiplier={2}>{child.label}</Text>
-                        <Ionicons name="arrow-forward" size={16} color={Colors.textSecondary} accessibilityElementsHidden />
+                        <View style={ts.subMenuIcon}>{renderIcon(child, false)}</View>
+                        <Text style={ts.subMenuText} maxFontSizeMultiplier={2}>{child.label}</Text>
+                        <Ionicons name="arrow-forward" size={16} color={appearanceMode === 'light' ? '#334155' : Colors.textSecondary} accessibilityElementsHidden />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -344,19 +348,19 @@ export const GlobalDrawer: React.FC = () => {
 
           {/* Test-only feedback is outside the navigation hierarchy. */}
           {IS_QA_REVIEW_BUILD && (
-            <TouchableOpacity style={styles.qaFeedback} onPress={handleShareQaFeedback}
+            <TouchableOpacity style={ts.qaFeedback} onPress={handleShareQaFeedback}
               accessibilityRole="button" accessibilityLabel="Share QA feedback">
-              <Ionicons name="share-social-outline" size={18} color={Colors.textSecondary} />
-              <Text style={styles.qaFeedbackText} maxFontSizeMultiplier={2}>Share private QA feedback</Text>
+              <Ionicons name="share-social-outline" size={18} color={appearanceMode === 'light' ? '#334155' : Colors.textSecondary} />
+              <Text style={ts.qaFeedbackText} maxFontSizeMultiplier={2}>Share private QA feedback</Text>
             </TouchableOpacity>
           )}
 
           {/* Branding is not a fixed overlay. On short phones and at 200%
               text sizes the ten menu rows must get the full scroll area,
               without a pinned footer stealing room or hiding the last item. */}
-          <View style={styles.footer}>
-            <Text style={styles.footerBrand} maxFontSizeMultiplier={2}>CARMAZIUM</Text>
-            <Text style={styles.footerTagline} maxFontSizeMultiplier={2}>Auction FREE · Retail £1</Text>
+          <View style={ts.footer}>
+            <Text style={ts.footerBrand} maxFontSizeMultiplier={2}>CARMAZIUM</Text>
+            <Text style={ts.footerTagline} maxFontSizeMultiplier={2}>Auction FREE · Retail £1</Text>
           </View>
         </ScrollView>
       </Animated.View>
@@ -375,6 +379,28 @@ export const GlobalDrawer: React.FC = () => {
     </Modal>
   );
 };
+
+const lightGlobalDrawerStyles = StyleSheet.create({
+  panel: { backgroundColor: '#FFFFFF' },
+  sidePanel: { borderLeftColor: '#D5E1EC' },
+  closeBtn: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  userCard: { backgroundColor: '#FFFFFF' },
+  userName: { color: '#0F172A' },
+  userEmail: { color: '#64748B' },
+  groupLabel: { color: '#64748B' },
+  row: { backgroundColor: '#FFFFFF' },
+  rowLabel: { color: '#0F172A' },
+  subMenu: { backgroundColor: '#F7FBFF' },
+  subMenuRow: { backgroundColor: '#F7FBFF' },
+  subMenuText: { color: '#0F172A' },
+  iconWrap: { backgroundColor: '#E5EEF7' },
+  qaFeedback: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  qaFeedbackText: { color: '#334155' },
+  divider: { backgroundColor: '#D5E1EC' },
+  footer: { backgroundColor: '#FFFFFF', borderTopColor: '#D5E1EC' },
+  footerBrand: { color: '#0F172A' },
+  footerTagline: { color: '#64748B' },
+});
 
 const styles = StyleSheet.create({
   // Backdrop
