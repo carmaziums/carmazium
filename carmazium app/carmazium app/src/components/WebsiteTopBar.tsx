@@ -8,6 +8,8 @@ import { FontFamily } from '../constants/typography';
 import { useAuthStore } from '../store/authStore';
 import { HamburgerButton } from './HamburgerButton';
 import { Logo } from './Logo';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { appearancePalette } from '../theme/appearancePalette';
 
 /**
  * Single native counterpart of website src/components/layout/Header.tsx.
@@ -18,6 +20,8 @@ import { Logo } from './Logo';
  */
 export const WebsiteTopBar: React.FC = () => {
   const navigation = useNavigation<any>();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const palette = appearancePalette(appearanceMode);
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   // Web Header.tsx renders a ~160px logo on mobile. Keep that footprint
@@ -30,7 +34,7 @@ export const WebsiteTopBar: React.FC = () => {
     || (role === 'dealer' ? 'D' : 'C')).toUpperCase();
 
   return (
-    <View style={[styles.bar, { paddingTop: insets.top + 7 }]}>
+    <View style={[styles.bar, { paddingTop: insets.top + 7, backgroundColor: palette.header, borderBottomColor: palette.border }]}>
       <TouchableOpacity
         onPress={() => navigation.navigate('Tabs', { screen: 'Home' })}
         activeOpacity={0.75}
@@ -42,16 +46,16 @@ export const WebsiteTopBar: React.FC = () => {
       </TouchableOpacity>
       <View style={styles.actions}>
         <TouchableOpacity
-          style={styles.notificationButton}
+          style={[styles.notificationButton, appearanceMode === 'light' && { backgroundColor: palette.input, borderColor: palette.border }]}
           onPress={() => navigation.navigate('Notifications')}
           accessibilityRole="button"
           accessibilityLabel="Notifications"
           activeOpacity={0.75}
         >
-          <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
+          <Ionicons name="notifications-outline" size={20} color={palette.secondary} />
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.accountButton}
+          style={[styles.accountButton, appearanceMode === 'light' && { backgroundColor: palette.input, borderColor: palette.border }]}
           onPress={() => navigation.navigate('Settings')}
           accessibilityRole="button"
           accessibilityLabel="Account settings"
@@ -59,7 +63,7 @@ export const WebsiteTopBar: React.FC = () => {
           activeOpacity={0.75}
         >
           <View style={styles.avatar}><Text style={styles.avatarLetter}>{initial}</Text></View>
-          <Ionicons name="chevron-down" size={15} color={Colors.textMuted} />
+          <Ionicons name="chevron-down" size={15} color={palette.secondary} />
         </TouchableOpacity>
         <HamburgerButton websiteStyle />
       </View>
