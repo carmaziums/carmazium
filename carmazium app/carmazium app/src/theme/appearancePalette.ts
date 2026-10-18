@@ -76,12 +76,12 @@ export function mergeAppearanceStyles<T extends Record<string, object>>(
  */
 export function adaptLegacyLightStyles<T extends Record<string, object>>(base: T): T {
   const patch: Partial<Record<keyof T, object>> = {};
-  const rootBackgrounds = new Set([Colors.bgPrimary, Colors.bgBody]);
-  const lightCards = new Set([
+  const rootBackgrounds = new Set<string>([Colors.bgPrimary, Colors.bgBody]);
+  const lightCards = new Set<string>([
     Colors.bgSecondary, Colors.bgTertiary, Colors.bgCardSolid, Colors.bgSurface,
     Colors.bgCard, Colors.bgCardHi, Colors.bgElevated, Colors.inputBg,
   ]);
-  const neutralBorders = new Set([Colors.border, Colors.borderHi,
+  const neutralBorders = new Set<string>([Colors.border, Colors.borderHi,
     Colors.borderSubtle, Colors.borderMuted, Colors.glassBorder, Colors.inputBorder]);
   for (const [name, raw] of Object.entries(base)) {
     if (!raw || typeof raw !== 'object') continue;
