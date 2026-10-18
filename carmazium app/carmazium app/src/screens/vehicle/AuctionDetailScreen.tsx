@@ -202,8 +202,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // screen to every field on the store, so `currentUser`'s object identity
   // changed on any unrelated store write — which re-ran the effects keyed on
   // it, including the auction socket below.
-  const currentUser = useAuthStore((s) => ts.user);
-  const role = useAuthStore((s) => ts.role);
+  const currentUser = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
 
   // ── Auction state ──
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
