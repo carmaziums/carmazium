@@ -1022,6 +1022,19 @@ const lightBuyerOffersScreenStyles = StyleSheet.create({
   emptyState: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   emptyTitle: { color: '#0F172A' },
   emptySub: { color: '#64748B' },
+  counterBackExpand: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  counterBackRow: { backgroundColor: '#FFFFFF' },
+  deliveryFormExpand: { backgroundColor: '#FFFFFF' },
+  counterLockedBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  counterBackInputWrap: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  deliveryFormInput: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
+  counterBackInput: { color: '#0F172A' },
+  deliveryFormLabel: { color: '#0F172A' },
+  deliveryStatusText: { color: '#64748B' },
+  counterBackExpandLabel: { color: '#0F172A' },
+  deliveryFormHint: { color: '#64748B' },
+  deliveryLinkMuted: { color: '#64748B' },
+  counterLockedText: { color: '#64748B' },
 });
 
 const styles = StyleSheet.create({
