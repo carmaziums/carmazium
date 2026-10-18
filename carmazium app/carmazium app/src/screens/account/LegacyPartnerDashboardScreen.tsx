@@ -565,7 +565,10 @@ const StatCard = ({
   label: string;
   value: string | number;
   icon: string;
-}) => (
+}) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  return (
   <View style={ts.statCard}>
     <Ionicons name={icon as any} size={17} color={Colors.accent} />
     <Text style={ts.statValue} numberOfLines={1} adjustsFontSizeToFit>
@@ -573,8 +576,8 @@ const StatCard = ({
     </Text>
     <Text style={ts.statLabel}>{label}</Text>
   </View>
-);
-
+  );
+};
 const PartnerRecordCard = ({
   kind,
   item,
@@ -590,6 +593,8 @@ const PartnerRecordCard = ({
   onReject: () => void;
   onComplete: () => void;
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const finance = item as FinancePartnerApplication;
   const insurance = item as InsurancePartnerQuote;
   const pending = item.status === 'PENDING';
