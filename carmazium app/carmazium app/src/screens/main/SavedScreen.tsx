@@ -19,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
@@ -44,6 +45,8 @@ type ViewMode = 'grid' | 'list';
 
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightSavedStyles } : styles;
   const accountRole = useAuthStore(s => s.accountRole);
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -119,11 +122,11 @@ export const SavedScreen: React.FC = () => {
   // ─── Skeleton ──────────────────────────────────────────────────────────────
 
   const renderSkeleton = () => (
-    <View style={styles.skeletonGrid}>
+    <View style={ts.skeletonGrid}>
       {Array.from({ length: 4 }).map((_, i) => (
-        <View key={`sk-${i}`} style={styles.skeletonCard}>
+        <View key={`sk-${i}`} style={ts.skeletonCard}>
           <Skeleton w={(width - 40 - 16) / 2} h={116} r={0} />
-          <View style={styles.skeletonInfo}>
+          <View style={ts.skeletonInfo}>
             <Skeleton w={60} h={10} r={4} />
             <Skeleton w={90} h={13} r={5} />
             <Skeleton w={70} h={14} r={6} />
@@ -143,23 +146,23 @@ export const SavedScreen: React.FC = () => {
     const saved = isSaved(listing.id);
     return (
       <TouchableOpacity
-        style={styles.gridCard}
+        style={ts.gridCard}
         activeOpacity={0.88}
         onPress={() => handleCardPress(listing)}
       >
-        <View style={styles.gridImgWrap}>
+        <View style={ts.gridImgWrap}>
           {listing.images[0] ? (
-            <Image source={{ uri: listing.images[0] }} style={styles.gridImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+            <Image source={{ uri: listing.images[0] }} style={ts.gridImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
-            <View style={[styles.gridImg, { backgroundColor: Colors.bgTertiary }]} />
+            <View style={[ts.gridImg, { backgroundColor: Colors.bgTertiary }]} />
           )}
           {listing.status && (
-            <View style={[styles.statusBadge, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
-              <Text style={styles.statusBadgeText}>{listing.status}</Text>
+            <View style={[ts.statusBadge, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
+              <Text style={ts.statusBadgeText}>{listing.status}</Text>
             </View>
           )}
           <TouchableOpacity
-            style={styles.heartBtnIcon}
+            style={ts.heartBtnIcon}
             activeOpacity={0.7}
             onPress={() => toggle(listing)}
             accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
@@ -173,19 +176,19 @@ export const SavedScreen: React.FC = () => {
             />
           </TouchableOpacity>
         </View>
-        <View style={styles.gridInfo}>
-          <Text style={styles.cardMeta}>
+        <View style={ts.gridInfo}>
+          <Text style={ts.cardMeta}>
             {listing.year} · {listing.mileage.toLocaleString('en-GB')} MI
           </Text>
-          <Text style={styles.cardTitle} numberOfLines={1}>
+          <Text style={ts.cardTitle} numberOfLines={1}>
             {listing.make} {listing.model}
           </Text>
-          <Text style={styles.cardMeta} numberOfLines={1}>
+          <Text style={ts.cardMeta} numberOfLines={1}>
             Gearbox: {listing.transmission || 'Not specified'}
           </Text>
-          <View style={styles.gridPriceRow}>
-            <Text style={styles.cardPrice}>{formatPrice(listing.price)}</Text>
-            <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
+          <View style={ts.gridPriceRow}>
+            <Text style={ts.cardPrice}>{formatPrice(listing.price)}</Text>
+            <Text style={ts.viewCountText}>{listing.viewCount ?? 0} views</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -196,17 +199,17 @@ export const SavedScreen: React.FC = () => {
   // mounting every row at once (mobile-audit.md P3/P6). ──
 
   const renderListSortRow = () => (
-    <View style={styles.listSortRow}>
-      <Text style={styles.listSortLabel}>{totalCount} {totalCount === 1 ? 'car' : 'cars'} saved</Text>
+    <View style={ts.listSortRow}>
+      <Text style={ts.listSortLabel}>{totalCount} {totalCount === 1 ? 'car' : 'cars'} saved</Text>
       <TouchableOpacity
-        style={styles.listSortChange}
+        style={ts.listSortChange}
         onPress={() => setSortMode(prev => prev === 'saved' ? 'price-low' : prev === 'price-low' ? 'price-high' : 'saved')}
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={`Sort saved cars, currently ${sortLabel}`}
       >
         <Ionicons name="swap-vertical-outline" size={16} color={Colors.accent} />
-        <Text style={styles.listSortChangeText}>{sortLabel}</Text>
+        <Text style={ts.listSortChangeText}>{sortLabel}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -215,36 +218,36 @@ export const SavedScreen: React.FC = () => {
     const saved = isSaved(listing.id);
     return (
       <TouchableOpacity
-        style={styles.listCard}
+        style={ts.listCard}
         activeOpacity={0.85}
         onPress={() => handleCardPress(listing)}
       >
         {listing.images[0] ? (
-          <Image source={{ uri: listing.images[0] }} style={styles.listImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+          <Image source={{ uri: listing.images[0] }} style={ts.listImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
-          <View style={[styles.listImg, { backgroundColor: Colors.bgTertiary }]} />
+          <View style={[ts.listImg, { backgroundColor: Colors.bgTertiary }]} />
         )}
-        <View style={styles.listInfo}>
-          <View style={styles.listTitleRow}>
-            <Text style={styles.listTitle} numberOfLines={1}>
+        <View style={ts.listInfo}>
+          <View style={ts.listTitleRow}>
+            <Text style={ts.listTitle} numberOfLines={1}>
               {listing.make} {listing.model}
             </Text>
             {listing.status && (
-              <View style={[styles.statusBadgeSmall, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
-                <Text style={styles.statusBadgeSmallText}>{listing.status}</Text>
+              <View style={[ts.statusBadgeSmall, { backgroundColor: STATUS_BADGE_BG[listing.status] ?? Colors.textMuted }]}>
+                <Text style={ts.statusBadgeSmallText}>{listing.status}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.listMeta} numberOfLines={2}>
+          <Text style={ts.listMeta} numberOfLines={2}>
             {[listing.year, `${listing.mileage.toLocaleString('en-GB')} mi`, listing.fuelType, `Gearbox: ${listing.transmission || 'Not specified'}`, listing.location].filter(Boolean).join(' · ')}
           </Text>
-          <View style={styles.listPriceRow}>
-            <Text style={styles.listPrice}>{formatPrice(listing.price)}</Text>
-            <Text style={styles.viewCountText}>{listing.viewCount ?? 0} views</Text>
+          <View style={ts.listPriceRow}>
+            <Text style={ts.listPrice}>{formatPrice(listing.price)}</Text>
+            <Text style={ts.viewCountText}>{listing.viewCount ?? 0} views</Text>
           </View>
         </View>
         <TouchableOpacity
-          style={styles.listHeartBtn}
+          style={ts.listHeartBtn}
           activeOpacity={0.7}
           onPress={() => toggle(listing)}
           accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
@@ -264,7 +267,7 @@ export const SavedScreen: React.FC = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
@@ -275,17 +278,17 @@ export const SavedScreen: React.FC = () => {
 
       <WebsiteTopBar />
       {/* Website watchlist header below global navigation. */}
-      <View style={[styles.header, { paddingTop: 12 }]}>
+      <View style={[ts.header, { paddingTop: 12 }]}>
         <View>
-          <Text style={styles.headerSub}>{headerSub}</Text>
-          <Text style={styles.headerTitle}>{headerTitle}</Text>
+          <Text style={ts.headerSub}>{headerSub}</Text>
+          <Text style={ts.headerTitle}>{headerTitle}</Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={ts.headerActions}>
           <IconButton
             icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
             onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            style={styles.iconBtn}
+            style={ts.iconBtn}
           />
         </View>
       </View>
@@ -294,14 +297,14 @@ export const SavedScreen: React.FC = () => {
       {isLoading && savedListings.length === 0 ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[ts.scrollContent, { paddingBottom: 100 }]}
         >
           {renderSkeleton()}
         </ScrollView>
       ) : viewMode === 'list' ? (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          contentContainerStyle={[ts.scrollContent, { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -320,7 +323,7 @@ export const SavedScreen: React.FC = () => {
       ) : (
         <FlatList
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100, gap: 16 }]}
+          contentContainerStyle={[ts.scrollContent, { paddingBottom: 100, gap: 16 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -332,7 +335,7 @@ export const SavedScreen: React.FC = () => {
           }
           data={displayedListings}
           numColumns={2}
-          columnWrapperStyle={styles.gridRow}
+          columnWrapperStyle={ts.gridRow}
           keyExtractor={(item) => item.id}
           renderItem={renderGridItem}
           ListHeaderComponent={displayedListings.length > 0 ? renderListSortRow() : null}
@@ -346,6 +349,26 @@ export const SavedScreen: React.FC = () => {
 // scrollContent uses paddingHorizontal: 24 on each side, with a 16px gap
 // between the two grid columns.
 const CARD_WIDTH = (width - 24 * 2 - 16) / 2;
+
+const lightSavedStyles = StyleSheet.create({
+  container: {backgroundColor: '#EEF5FB'},
+  headerSub: {color: '#64748B'},
+  headerTitle: {color: '#0F172A'},
+  iconBtn: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  skeletonCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  gridCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  gridImgWrap: {backgroundColor: '#F7FBFF'},
+  cardMeta: {color: '#64748B'},
+  cardTitle: {color: '#0F172A'},
+  cardPrice: {color: '#0F172A'},
+  viewCountText: {color: '#64748B'},
+  listSortLabel: {color: '#64748B'},
+  listSortChangeText: {color: '#334155'},
+  listCard: {backgroundColor: '#FFFFFF', borderColor: '#D5E1EC'},
+  listTitle: {color: '#0F172A'},
+  listMeta: {color: '#64748B'},
+  listPrice: {color: '#0F172A'},
+});
 
 const styles = StyleSheet.create({
   container: {
