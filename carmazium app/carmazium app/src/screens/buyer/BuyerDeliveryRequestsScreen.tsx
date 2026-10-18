@@ -297,7 +297,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -307,7 +307,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
       <View style={{ height: insets.top }} />
 
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
         <Text style={ts.headerTitle}>Delivery Requests</Text>
         <View style={{ width: 38 }} />
       </View>
