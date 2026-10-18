@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -448,7 +449,7 @@ const InventoryRow: React.FC<{
 }> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
   const s = STATUS_STYLE[listing.status];
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightInventoryStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
   const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
@@ -542,7 +543,7 @@ const InventoryRow: React.FC<{
 const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
   const s = STATUS_STYLE[listing.status];
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightInventoryStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
   return (
     <TouchableOpacity style={ts.gridCard} onPress={() => onPress(listing.id)}
       accessibilityRole="button"
@@ -578,7 +579,7 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...styles, ...lightInventoryStyles } : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
