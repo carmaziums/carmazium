@@ -16,6 +16,7 @@ function harness(overrides: Record<string, string> = {}) {
   const env = {
     PARTNER_API_ENABLED: 'true',
     PARTNER_API_SIMPLEDMS_ENABLED: 'true',
+    PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED: 'true',
     PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'true',
     PARTNER_API_REFERRAL_SIGNING_SECRET: KEY,
     ...overrides,
@@ -54,6 +55,13 @@ describe('SimpleDmsReferralService security and attribution', () => {
   it('never generates referrals when partner access is disabled', async () => {
     const { service } = harness({ PARTNER_API_SIMPLEDMS_REFERRALS_ENABLED: 'false' });
     await expect(visitValid(service)).rejects.toThrow(NotFoundException);
+  });
+
+  it('keeps signed referrals disabled without final production approval even with other flags active', async () => {
+    const { service } = harness({ PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED: 'false' });
+    await expect(visitValid(service)).rejects.toThrow(NotFoundException);
+    const { service: unset } = harness({ PARTNER_API_SIMPLEDMS_PRODUCTION_APPROVED: '' });
+    await expect(visitValid(unset)).rejects.toThrow(NotFoundException);
   });
 
   it('only redirects valid approved live auction records to the fixed CarMazium site', async () => {
