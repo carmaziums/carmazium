@@ -448,13 +448,14 @@ export class ListingsService {
             }
 
             for (const comparable of result.comparables ?? []) {
+                // One advert can appear on a marketplace and the dealer's
+                // own website with differently formatted derivative labels.
+                // Do not let that double-count identical price/year/mileage
+                // as independent market evidence or raise confidence.
                 const key = [
                     Math.round(Number(comparable.price) || 0),
                     comparable.year ?? '',
                     comparable.mileage ?? '',
-                    (comparable.variant ?? '').trim().toUpperCase(),
-                    (comparable.fuelType ?? '').trim().toUpperCase(),
-                    (comparable.transmission ?? '').trim().toUpperCase(),
                 ].join('|');
 
                 if (!liveComparableMap.has(key)) {
