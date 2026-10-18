@@ -18,6 +18,7 @@ import { formatPrice, AuctionListing } from '../../data/listings';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -87,6 +88,8 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?: React.ReactNode }> = ({ embeddedDealerHub = false, embeddedHeader }) => {
   const insets = useSafeAreaInsets();
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? { ...styles, ...lightLiveStyles } : styles;
   const navigation = useNavigation<NavProp>();
   const { latitude: originLatitude, longitude: originLongitude } = useLocation();
   const origin = useMemo(() => originLatitude == null || originLongitude == null ? null : ({ latitude: originLatitude, longitude: originLongitude }), [originLatitude, originLongitude]);
@@ -286,12 +289,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
   }, [upcomingList, q, filters, origin]);
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {dealerMode && !embeddedDealerHub && <WebsiteTopBar />}
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: embeddedHeader ? 0 : dealerMode ? 12 : insets.top + 16 }]}
+        contentContainerStyle={[ts.scrollContent, { paddingTop: embeddedHeader ? 0 : dealerMode ? 12 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -306,10 +309,10 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
             Bleed through the card gutter so the global top bar remains full width. */}
         {embeddedHeader && <View style={{ marginHorizontal: -24, marginBottom: 12 }}>{embeddedHeader}</View>}
         {/* ─── Header ──────────────────────────────────────────────── */}
-        <View style={styles.header}>
+        <View style={ts.header}>
           <View>
-            <Text style={styles.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
-            <Text style={styles.headerTitle}>Live Auctions</Text>
+            <Text style={ts.headerMeta}>{activeList.length} LIVE NOW · UPCOMING</Text>
+            <Text style={ts.headerTitle}>Live Auctions</Text>
           </View>
           {!dealerMode && <HamburgerButton />}
         </View>
@@ -319,10 +322,10 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         )}
 
         {/* ─── Search ──────────────────────────────────────────────── */}
-        <View style={styles.searchBar}>
+        <View style={ts.searchBar}>
           <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={ts.searchInput}
             placeholder="Search make or model…"
             placeholderTextColor={Colors.textMuted}
             value={searchQuery}
@@ -339,9 +342,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         {/* ─── Filters ─────────────────────────────────────────────────
             Web rebuilt the /auctions filter panel to match Buy Cars
             (commit 5a99b5d0); this screen had only the text query above. */}
-        <View style={styles.filterRow}>
+        <View style={ts.filterRow}>
           <TouchableOpacity
-            style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+            style={[ts.filterBtn, activeFilterCount > 0 && ts.filterBtnActive]}
             onPress={() => setFilterSheetOpen(true)}
             activeOpacity={0.85}
             accessibilityRole="button"
@@ -357,18 +360,18 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
               color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
             />
             <Text
-              style={[styles.filterBtnText, activeFilterCount > 0 && styles.filterBtnTextActive]}
+              style={[ts.filterBtnText, activeFilterCount > 0 && ts.filterBtnTextActive]}
             >
               Filters
             </Text>
             {activeFilterCount > 0 && (
-              <View style={styles.filterCountBadge}>
-                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+              <View style={ts.filterCountBadge}>
+                <Text style={ts.filterCountText}>{activeFilterCount}</Text>
               </View>
             )}
           </TouchableOpacity>
 
-          <Text style={styles.sortLabel} numberOfLines={1}>
+          <Text style={ts.sortLabel} numberOfLines={1}>
             {AUCTION_SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label}
           </Text>
 
@@ -379,7 +382,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
               accessibilityRole="button"
               accessibilityLabel="Clear all filters"
             >
-              <Text style={styles.clearFiltersText}>Clear</Text>
+              <Text style={ts.clearFiltersText}>Clear</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -387,15 +390,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         {/* Dealer staff without MANAGE_INVENTORY must not see a seller CTA. */}
         {canCreateAuction && (
         <TouchableOpacity
-          style={styles.auctionCtaBanner}
+          style={ts.auctionCtaBanner}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('SellCarFlow' as any)}
         >
-          <View style={styles.auctionCtaLeft}>
+          <View style={ts.auctionCtaLeft}>
             <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
             <View>
-              <Text style={styles.auctionCtaTitle}>Auction your car</Text>
-              <Text style={styles.auctionCtaSub}>List it now — bidding starts today</Text>
+              <Text style={ts.auctionCtaTitle}>Auction your car</Text>
+              <Text style={ts.auctionCtaSub}>List it now — bidding starts today</Text>
             </View>
           </View>
           <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
@@ -403,9 +406,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         )}
 
         {/* ─── Live Alert Banner ──────────────────────────────────── */}
-        <View style={styles.alertBanner}>
-          <View style={styles.alertDot} />
-          <Text style={styles.alertText}>
+        <View style={ts.alertBanner}>
+          <View style={ts.alertDot} />
+          <Text style={ts.alertText}>
             {canPlaceDealerBid
               ? 'Bidding is live — place your bid before the gavel drops.'
               : 'Browse live auctions. Bidding requires dealer bidding permission.'}
@@ -413,12 +416,12 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         </View>
 
         {/* ─── LIVE NOW Section ──────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>LIVE NOW</Text>
+        <Text style={ts.sectionTitle}>LIVE NOW</Text>
 
         {isLoading ? (
           <View style={{ gap: 16, marginBottom: 8 }}>
             {[0, 1].map((i) => (
-              <View key={i} style={[styles.auctionCard, { overflow: 'hidden' }]}>
+              <View key={i} style={[ts.auctionCard, { overflow: 'hidden' }]}>
                 {/* Image block skeleton */}
                 <Skeleton w={SCREEN_WIDTH - 48} h={196} r={0} />
                 {/* Stats row skeleton */}
@@ -457,9 +460,9 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
           // Rules). Show Buy It Now instead when the seller set one.
 
           return (
-            <View key={auction.id} style={styles.auctionCard}>
+            <View key={auction.id} style={ts.auctionCard}>
               {/* Image Block */}
-              <View style={styles.imageBlock}>
+              <View style={ts.imageBlock}>
                 <ImageCarousel
                   images={auction.images}
                   width={SCREEN_WIDTH - 48}
@@ -470,15 +473,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                   // would collide with that text.
                   showIndicator={false}
                 />
-                <View style={styles.imageGradient} pointerEvents="none" />
+                <View style={ts.imageGradient} pointerEvents="none" />
 
-                <View style={styles.liveBadge} pointerEvents="none">
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                <View style={ts.liveBadge} pointerEvents="none">
+                  <View style={ts.liveDot} />
+                  <Text style={ts.liveBadgeText}>LIVE</Text>
                 </View>
-                <View style={styles.viewerBadge} pointerEvents="none">
+                <View style={ts.viewerBadge} pointerEvents="none">
                   <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
-                  <Text style={styles.viewerCount}>{auction.viewers}</Text>
+                  <Text style={ts.viewerCount}>{auction.viewers}</Text>
                 </View>
                 <WishlistHeart listing={auction} />
                 {/* Trust badges sit below the LIVE pill, same left offset */}
@@ -490,14 +493,14 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                   />
                 </View>
 
-                <View style={styles.imageNameContainer} pointerEvents="none">
+                <View style={ts.imageNameContainer} pointerEvents="none">
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.imageCarMake}>
+                    <Text style={ts.imageCarMake}>
                       {auction.make.toUpperCase()}
                     </Text>
                     <GradeChip grade={auction.exteriorGrade} />
                   </View>
-                  <Text style={styles.imageCarModel}>
+                  <Text style={ts.imageCarModel}>
                     {auction.model} {auction.variant}
                   </Text>
                 </View>
@@ -517,29 +520,29 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
               </View>
 
               {/* Stats Row */}
-              <View style={styles.statsRow}>
-                <View style={styles.statsLeft}>
-                  <Text style={styles.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
-                  <Text style={styles.statsPrice}>
+              <View style={ts.statsRow}>
+                <View style={ts.statsLeft}>
+                  <Text style={ts.statsLabel}>{auction.totalBids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
+                  <Text style={ts.statsPrice}>
                     {formatPrice(auction.totalBids > 0 ? auction.currentBid : auction.startingBid)}
                   </Text>
                   {auction.totalBids === 0 && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={[styles.statsAboveReserve, { color: Colors.warning }]}>
+                    <View style={ts.statsSubRow}>
+                      <Text style={[ts.statsAboveReserve, { color: Colors.warning }]}>
                         First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
                       </Text>
                     </View>
                   )}
                   {!!auction.buyItNowPrice && (
-                    <View style={styles.statsSubRow}>
-                      <Text style={styles.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
+                    <View style={ts.statsSubRow}>
+                      <Text style={ts.statsAboveReserve}>Buy it now: {formatPrice(auction.buyItNowPrice)}</Text>
                     </View>
                   )}
                 </View>
-                <View style={styles.statsRight}>
-                  <Text style={styles.statsLabel}>ENDS IN</Text>
+                <View style={ts.statsRight}>
+                  <Text style={ts.statsLabel}>ENDS IN</Text>
                   <FlipTimer seconds={secsLeft} />
-                  <Text style={styles.statsBidderCount}>
+                  <Text style={ts.statsBidderCount}>
                     {auction.totalBids} bidders
                   </Text>
                 </View>
@@ -554,15 +557,15 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                 const isOwnAuction = !!currentUser?.id && auction.seller?.id === currentUser.id;
                 return (
                   <TouchableOpacity
-                    style={[styles.bidNowBtn, isOwnAuction && styles.bidNowBtnOwn]}
+                    style={[ts.bidNowBtn, isOwnAuction && ts.bidNowBtnOwn]}
                     activeOpacity={0.8}
                     onPress={() =>
                       navigation.navigate('LiveAuctionDetailed', { listing: auction })
                     }
                   >
-                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={styles.bidBtnIcon} />
-                    <Text style={styles.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
-                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={styles.bidBtnArrow} />
+                    <MaterialCommunityIcons name={isOwnAuction ? 'eye-outline' : 'gavel'} size={16} color={Colors.white} style={ts.bidBtnIcon} />
+                    <Text style={ts.bidNowBtnText}>{isOwnAuction ? 'YOUR AUCTION' : 'BID NOW'}</Text>
+                    <Ionicons name="arrow-forward" size={15} color={Colors.white} style={ts.bidBtnArrow} />
                   </TouchableOpacity>
                 );
               })()}
@@ -571,8 +574,8 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         })}
 
         {/* ─── UPCOMING Section ─────────────────────────────────── */}
-        <View style={styles.upcomingHeaderRow}>
-          <Text style={styles.sectionTitle}>UPCOMING</Text>
+        <View style={ts.upcomingHeaderRow}>
+          <Text style={ts.sectionTitle}>UPCOMING</Text>
         </View>
 
         {filteredUpcoming.length > 0 ? (
@@ -632,11 +635,11 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
             return (
               <TouchableOpacity
                 key={auc.id}
-                style={styles.upcomingItem}
+                style={ts.upcomingItem}
                 activeOpacity={0.9}
                 onPress={() => navigation.navigate('LiveAuctionDetailed', { listing: mappedListing })}
               >
-                <View style={styles.upcomingImage}>
+                <View style={ts.upcomingImage}>
                   <ImageCarousel
                     images={auc.listing.images ?? []}
                     width={58}
@@ -649,28 +652,28 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                     style={{ top: 2, right: 2, width: 20, height: 20, borderRadius: 6 }}
                   />
                 </View>
-                <View style={styles.upcomingInfo}>
-                  <View style={styles.upcomingTitleRow}>
-                    <Text style={styles.upcomingCarName} numberOfLines={1}>
+                <View style={ts.upcomingInfo}>
+                  <View style={ts.upcomingTitleRow}>
+                    <Text style={ts.upcomingCarName} numberOfLines={1}>
                       {auc.listing.make} {auc.listing.model}
                     </Text>
                     {/* No lot number is supplied by this endpoint; never invent one. */}
                   </View>
-                  <Text style={styles.upcomingSpecs} numberOfLines={1}>
+                  <Text style={ts.upcomingSpecs} numberOfLines={1}>
                     {auc.listing.year} · {auc.listing.colour || 'Verified Spec'}
                   </Text>
-                  <View style={styles.upcomingFooter}>
-                    <Text style={styles.upcomingTime}>{timeText}</Text>
-                    <Text style={styles.upcomingEst}>{estPriceRange}</Text>
+                  <View style={ts.upcomingFooter}>
+                    <Text style={ts.upcomingTime}>{timeText}</Text>
+                    <Text style={ts.upcomingEst}>{estPriceRange}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
             );
           })
         ) : !isLoading ? (
-          <View style={styles.emptyUpcoming}>
+          <View style={ts.emptyUpcoming}>
             <Ionicons name="calendar-clear-outline" size={28} color={Colors.textMuted} />
-            <Text style={styles.emptyUpcomingText}>
+            <Text style={ts.emptyUpcomingText}>
               {q ? 'No upcoming auctions match your search' : 'No upcoming auctions scheduled right now'}
             </Text>
           </View>
@@ -678,13 +681,13 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
 
         {/* ─── Market Insight ───────────────────────────────────── */}
         {topActiveAuction && (
-          <View style={styles.marketAiBanner}>
-            <View style={styles.marketAiIconWrap}>
+          <View style={ts.marketAiBanner}>
+            <View style={ts.marketAiIconWrap}>
               <Ionicons name="bulb-outline" size={16} color={Colors.accentGlow} />
             </View>
-            <View style={styles.marketAiBody}>
-              <Text style={styles.marketAiTitle}>MARKET INSIGHT</Text>
-              <Text style={styles.marketAiText}>
+            <View style={ts.marketAiBody}>
+              <Text style={ts.marketAiTitle}>MARKET INSIGHT</Text>
+              <Text style={ts.marketAiText}>
                 {/* Reserve status is seller-only info — never surfaced here
                     (Ground Rules: reserve is enforced server-side, display-only). */}
                 {topActiveAuction.totalBids > 0 ? (
@@ -718,6 +721,39 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
     </View>
   );
 };
+
+
+const lightLiveStyles = StyleSheet.create({
+  container: { backgroundColor: '#EEF5FB' },
+  filterBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  filterBtnText: { color: '#334155' },
+  sortLabel: { color: '#64748B' },
+  headerMeta: { color: '#64748B' },
+  headerTitle: { color: '#0F172A' },
+  avatarBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  searchBar: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  searchInput: { color: '#0F172A' },
+  auctionCtaBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  auctionCtaTitle: { color: '#0F172A' },
+  auctionCtaSub: { color: '#64748B' },
+  alertBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  alertText: { color: '#334155' },
+  sectionTitle: { color: '#0F172A' },
+  emptyUpcoming: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  emptyUpcomingText: { color: '#64748B' },
+  auctionCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statsRow: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  statsLabel: { color: '#64748B' },
+  statsPrice: { color: '#0F172A' },
+  statsBidderCount: { color: '#64748B' },
+  upcomingItem: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  upcomingCarName: { color: '#0F172A' },
+  upcomingSpecs: { color: '#64748B' },
+  upcomingEst: { color: '#0F172A' },
+  marketAiBanner: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  marketAiTitle: { color: '#0F172A' },
+  marketAiText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   filterRow: {
