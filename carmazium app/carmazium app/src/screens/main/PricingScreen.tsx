@@ -13,6 +13,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { PRICING } from '../../constants/pricing';
@@ -153,11 +155,13 @@ const ADD_ONS: AddOn[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PricingScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -169,21 +173,21 @@ export const PricingScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Pricing</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.textPrimary} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Pricing</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Intro ── */}
-        <View style={styles.introSection}>
-          <Text style={styles.introHeading}>Simple, honest pricing</Text>
-          <Text style={styles.introSub}>
+        <View style={ts.introSection}>
+          <Text style={ts.introHeading}>Simple, honest pricing</Text>
+          <Text style={ts.introSub}>
             List your car for free at auction, or choose Basic £1, Standard £10
             with HPI included, or Premium £25 with HPI and a 28-day Featured Boost. Retail buyers pay no CarMazium buyer fee.
           </Text>
@@ -194,58 +198,58 @@ export const PricingScreen: React.FC = () => {
           <View
             key={plan.id}
             style={[
-              styles.planCard,
+              ts.planCard,
               { borderColor: plan.accentBorder },
             ]}
           >
             {/* Card top accent bar */}
-            <View style={[styles.planTopBar, { backgroundColor: plan.accentColor }]} />
+            <View style={[ts.planTopBar, { backgroundColor: plan.accentColor }]} />
 
             {plan.badge && (
-              <View style={styles.mostPopularBadge}>
+              <View style={ts.mostPopularBadge}>
                 <Ionicons name="star" size={10} color={Colors.white} />
-                <Text style={styles.mostPopularText}>{plan.badge}</Text>
+                <Text style={ts.mostPopularText}>{plan.badge}</Text>
               </View>
             )}
 
             {/* Card header */}
-            <View style={styles.planHeader}>
-              <View style={[styles.planIconWrap, { backgroundColor: plan.accentBg }]}>
+            <View style={ts.planHeader}>
+              <View style={[ts.planIconWrap, { backgroundColor: plan.accentBg }]}>
                 <Ionicons
                   name={plan.id === 'auction' ? 'hammer-outline' : 'pricetag-outline'}
                   size={20}
                   color={plan.accentColor}
                 />
               </View>
-              <View style={styles.planTitleWrap}>
-                <Text style={styles.planTitle}>{plan.title}</Text>
-                <Text style={styles.planSubtitle}>{plan.subtitle}</Text>
+              <View style={ts.planTitleWrap}>
+                <Text style={ts.planTitle}>{plan.title}</Text>
+                <Text style={ts.planSubtitle}>{plan.subtitle}</Text>
               </View>
             </View>
 
             {/* Price */}
-            <View style={styles.priceRow}>
-              <Text style={[styles.planPrice, { color: plan.accentColor, fontFamily: FontFamily.mono }]}>
+            <View style={ts.priceRow}>
+              <Text style={[ts.planPrice, { color: plan.accentColor, fontFamily: FontFamily.mono }]}>
                 {plan.price}
               </Text>
               {plan.period ? (
-                <Text style={styles.planPeriod}> {plan.period}</Text>
+                <Text style={ts.planPeriod}> {plan.period}</Text>
               ) : null}
             </View>
 
             {/* Divider */}
-            <View style={styles.planDivider} />
+            <View style={ts.planDivider} />
 
             {/* Features */}
-            <View style={styles.featuresSection}>
+            <View style={ts.featuresSection}>
               {plan.features.map((feat) => (
-                <View key={feat.label} style={styles.featureRow}>
+                <View key={feat.label} style={ts.featureRow}>
                   <Ionicons
                     name={feat.included ? 'checkmark' : 'close'}
                     size={14}
                     color={feat.included ? plan.accentColor : Colors.textFaint}
                   />
-                  <Text style={[styles.featureText, !feat.included && styles.featureTextExcluded]}>
+                  <Text style={[ts.featureText, !feat.included && ts.featureTextExcluded]}>
                     {feat.label}
                   </Text>
                 </View>
@@ -255,49 +259,49 @@ export const PricingScreen: React.FC = () => {
         ))}
 
         {/* ── Add-ons ── */}
-        <View style={styles.sectionHeadingWrap}>
-          <Text style={styles.sectionHeading}>Optional add-ons</Text>
-          <Text style={styles.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
+        <View style={ts.sectionHeadingWrap}>
+          <Text style={ts.sectionHeading}>Optional add-ons</Text>
+          <Text style={ts.sectionSub}>Enhance any listing at any time — buy once, apply instantly.</Text>
         </View>
 
         {ADD_ONS.map((addon) => (
-          <View key={addon.id} style={styles.addonCard}>
-            <View style={[styles.addonIconWrap, { backgroundColor: addon.accentBg }]}>
+          <View key={addon.id} style={ts.addonCard}>
+            <View style={[ts.addonIconWrap, { backgroundColor: addon.accentBg }]}>
               <Ionicons name={addon.icon as any} size={22} color={addon.accentColor} />
             </View>
-            <View style={styles.addonBody}>
-              <View style={styles.addonTitleRow}>
-                <Text style={styles.addonTitle}>{addon.title}</Text>
-                <View style={styles.addonPriceWrap}>
-                  <Text style={styles.addonPrice}>{addon.price}</Text>
-                  {addon.meta && <Text style={styles.addonMeta}>{addon.meta}</Text>}
+            <View style={ts.addonBody}>
+              <View style={ts.addonTitleRow}>
+                <Text style={ts.addonTitle}>{addon.title}</Text>
+                <View style={ts.addonPriceWrap}>
+                  <Text style={ts.addonPrice}>{addon.price}</Text>
+                  {addon.meta && <Text style={ts.addonMeta}>{addon.meta}</Text>}
                 </View>
               </View>
-              <Text style={styles.addonSubtitle}>{addon.subtitle}</Text>
+              <Text style={ts.addonSubtitle}>{addon.subtitle}</Text>
             </View>
           </View>
         ))}
 
         {/* ── Dealer prompt ── */}
         <TouchableOpacity
-          style={styles.dealerPrompt}
+          style={ts.dealerPrompt}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('DealerOnboarding')}
         >
-          <View style={styles.dealerPromptIconWrap}>
+          <View style={ts.dealerPromptIconWrap}>
             <Ionicons name="business-outline" size={20} color={Colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.dealerPromptTitle}>Motor trader or automotive business?</Text>
-            <Text style={styles.dealerPromptSub}>Use a Partner Account for verified business tools and auction access.</Text>
+            <Text style={ts.dealerPromptTitle}>Motor trader or automotive business?</Text>
+            <Text style={ts.dealerPromptSub}>Use a Partner Account for verified business tools and auction access.</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
         {/* ── Footer note ── */}
-        <View style={styles.footerNote}>
+        <View style={ts.footerNote}>
           <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
-          <Text style={styles.footerNoteText}>
+          <Text style={ts.footerNoteText}>
             Retail buyers pay no CarMazium buyer fee. Vehicle sale money is paid directly between buyer and seller; CarMazium does not hold it.
           </Text>
         </View>

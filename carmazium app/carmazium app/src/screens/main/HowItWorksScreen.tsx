@@ -13,6 +13,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -116,6 +118,8 @@ const PEACE_OF_MIND = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const HowItWorksScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const [mode, setMode] = useState<Mode>('buyer');
@@ -123,7 +127,7 @@ export const HowItWorksScreen: React.FC = () => {
   const receipt = mode === 'buyer' ? RECEIPTS.buyer : RECEIPTS.seller;
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -135,56 +139,56 @@ export const HowItWorksScreen: React.FC = () => {
       <View style={{ height: insets.top }} />
 
       {/* ── Header ── */}
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>How It Works</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>How It Works</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.introSub}>
+        <Text style={ts.introSub}>
           Whether you’re buying your next car or selling your current one, here’s exactly
           what to expect at every step.
         </Text>
 
         {/* Tab toggle */}
-        <View style={styles.toggleRow}>
+        <View style={ts.toggleRow}>
           <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'buyer' && styles.toggleBtnActive]}
+            style={[ts.toggleBtn, mode === 'buyer' && ts.toggleBtnActive]}
             activeOpacity={0.8}
             onPress={() => setMode('buyer')}
           >
-            <Text style={[styles.toggleText, mode === 'buyer' && styles.toggleTextActive]}>I’M BUYING</Text>
+            <Text style={[ts.toggleText, mode === 'buyer' && ts.toggleTextActive]}>I’M BUYING</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'seller' && styles.toggleBtnActive]}
+            style={[ts.toggleBtn, mode === 'seller' && ts.toggleBtnActive]}
             activeOpacity={0.8}
             onPress={() => setMode('seller')}
           >
-            <Text style={[styles.toggleText, mode === 'seller' && styles.toggleTextActive]}>I’M SELLING</Text>
+            <Text style={[ts.toggleText, mode === 'seller' && ts.toggleTextActive]}>I’M SELLING</Text>
           </TouchableOpacity>
         </View>
 
         {/* Steps */}
         {steps.map((step) => (
-          <View key={step.id} style={styles.stepCard}>
-            <View style={styles.stepTopRow}>
-              <View style={styles.stepIconWrap}>
+          <View key={step.id} style={ts.stepCard}>
+            <View style={ts.stepTopRow}>
+              <View style={ts.stepIconWrap}>
                 <Ionicons name={step.icon} size={22} color={Colors.accent} />
               </View>
-              <Text style={styles.stepNumber}>{step.id}</Text>
+              <Text style={ts.stepNumber}>{step.id}</Text>
             </View>
-            <Text style={styles.stepTitle}>{step.title}</Text>
-            <Text style={styles.stepDesc}>{step.desc}</Text>
-            <View style={styles.detailChipsRow}>
+            <Text style={ts.stepTitle}>{step.title}</Text>
+            <Text style={ts.stepDesc}>{step.desc}</Text>
+            <View style={ts.detailChipsRow}>
               {step.details.map((d) => (
-                <View key={d} style={styles.detailChip}>
+                <View key={d} style={ts.detailChip}>
                   <Ionicons name="checkmark" size={11} color={Colors.success} />
-                  <Text style={styles.detailChipText}>{d}</Text>
+                  <Text style={ts.detailChipText}>{d}</Text>
                 </View>
               ))}
             </View>
@@ -196,35 +200,35 @@ export const HowItWorksScreen: React.FC = () => {
             economics instead of describing them. Mobile had no fee figures on
             this screen at all, so a seller couldn't find out what they'd be
             paid, or a buyer what they'd owe, without starting a transaction. */}
-        <Text style={styles.sectionTitle}>{receipt.label}</Text>
-        <View style={styles.receiptCard}>
+        <Text style={ts.sectionTitle}>{receipt.label}</Text>
+        <View style={ts.receiptCard}>
           {receipt.rows.map((row) => (
-            <View key={row.k} style={styles.receiptRow}>
-              <View style={styles.receiptRowLeft}>
-                <Text style={styles.receiptKey}>{row.k}</Text>
-                <Text style={styles.receiptNote}>{row.note}</Text>
+            <View key={row.k} style={ts.receiptRow}>
+              <View style={ts.receiptRowLeft}>
+                <Text style={ts.receiptKey}>{row.k}</Text>
+                <Text style={ts.receiptNote}>{row.note}</Text>
               </View>
-              <Text style={styles.receiptValue}>{row.v}</Text>
+              <Text style={ts.receiptValue}>{row.v}</Text>
             </View>
           ))}
-          <View style={styles.receiptTotalRow}>
-            <Text style={styles.receiptTotalKey}>{receipt.total.k}</Text>
-            <Text style={styles.receiptTotalValue}>{receipt.total.v}</Text>
+          <View style={ts.receiptTotalRow}>
+            <Text style={ts.receiptTotalKey}>{receipt.total.k}</Text>
+            <Text style={ts.receiptTotalValue}>{receipt.total.v}</Text>
           </View>
-          <Text style={styles.receiptFootnote}>
+          <Text style={ts.receiptFootnote}>
             Example figures on an £8,450 vehicle. CarMazium never holds the sale
             money — it moves directly between buyer and seller.
           </Text>
         </View>
 
         {/* Peace of mind grid */}
-        <Text style={styles.sectionTitle}>Complete Peace of Mind</Text>
-        <View style={styles.peaceGrid}>
+        <Text style={ts.sectionTitle}>Complete Peace of Mind</Text>
+        <View style={ts.peaceGrid}>
           {PEACE_OF_MIND.map((item) => (
-            <View key={item.title} style={styles.peaceCard}>
+            <View key={item.title} style={ts.peaceCard}>
               <Ionicons name={item.icon} size={20} color={Colors.textSecondary} />
-              <Text style={styles.peaceTitle}>{item.title}</Text>
-              <Text style={styles.peaceDesc}>{item.desc}</Text>
+              <Text style={ts.peaceTitle}>{item.title}</Text>
+              <Text style={ts.peaceDesc}>{item.desc}</Text>
             </View>
           ))}
         </View>

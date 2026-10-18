@@ -17,6 +17,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -41,6 +43,8 @@ const statusColor = (status?: string) => {
 };
 
 export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [caps, setCaps] = useState<ContractorCapability[]>([]);
   const [stripe, setStripe] = useState({ connected: false, complete: false });
@@ -95,46 +99,46 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
   const byType = new Map(caps.map((cap) => [cap.serviceType, cap]));
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Service add-ons</Text>
-        <View style={styles.headerButton} />
+      <View style={ts.header}>
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Service add-ons</Text>
+        <View style={ts.headerButton} />
       </View>
 
-      {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
+      {loading ? <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View> : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={ts.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={Colors.accent} />}
         >
-          <Text style={styles.title}>Manage your services</Text>
-          <Text style={styles.sub}>Activate each service independently. Complete verification and set your coverage before matched jobs or enquiries can reach you.</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
+          <Text style={ts.title}>Manage your services</Text>
+          <Text style={ts.sub}>Activate each service independently. Complete verification and set your coverage before matched jobs or enquiries can reach you.</Text>
+          <View style={ts.quickActions}>
+            <TouchableOpacity style={ts.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
               <Ionicons name="briefcase-outline" size={19} color={Colors.accent} />
-              <Text style={styles.quickActionText}>Service jobs</Text>
+              <Text style={ts.quickActionText}>Service jobs</Text>
               <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched finance and warranty enquiries">
+            <TouchableOpacity style={ts.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched finance and warranty enquiries">
               <Ionicons name="mail-outline" size={19} color={Colors.accent} />
-              <Text style={styles.quickActionText}>Enquiries</Text>
+              <Text style={ts.quickActionText}>Enquiries</Text>
               <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <Text style={ts.error}>{error}</Text> : null}
 
-          <View style={styles.payoutCard}>
+          <View style={ts.payoutCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Paid-job payouts</Text>
-              <Text style={styles.cardText}>Delivery and Inspection use a 9% CarMazium / 91% Partner payout split.</Text>
+              <Text style={ts.cardTitle}>Paid-job payouts</Text>
+              <Text style={ts.cardText}>Delivery and Inspection use a 9% CarMazium / 91% Partner payout split.</Text>
             </View>
             {stripe.complete ? (
               <Ionicons name="checkmark-circle" size={24} color={Colors.accentGreen} />
             ) : (
-              <TouchableOpacity style={styles.smallButton} onPress={connectStripe} disabled={busy === 'stripe'}>
-                {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
+              <TouchableOpacity style={ts.smallButton} onPress={connectStripe} disabled={busy === 'stripe'}>
+                {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={ts.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
               </TouchableOpacity>
             )}
           </View>
@@ -148,41 +152,41 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
                   : !cap.jobNationwide && cap.jobPostcodeAreas.length === 0)
               : false;
             return (
-              <View key={type} style={styles.card}>
-                <View style={styles.row}>
-                  <View style={styles.icon}>
+              <View key={type} style={ts.card}>
+                <View style={ts.row}>
+                  <View style={ts.icon}>
                     <Ionicons name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : type === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'} size={21} color={statusColor(cap?.status)} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{SERVICE_LABELS[type]}</Text>
-                    <Text style={[styles.status, { color: statusColor(cap?.status) }]}>{cap?.status || 'NOT ACTIVATED'}</Text>
+                    <Text style={ts.cardTitle}>{SERVICE_LABELS[type]}</Text>
+                    <Text style={[ts.status, { color: statusColor(cap?.status) }]}>{cap?.status || 'NOT ACTIVATED'}</Text>
                   </View>
                   {canApply ? (
-                    <TouchableOpacity style={styles.smallButton} onPress={() => apply(type)} disabled={busy === type} accessibilityRole="button" accessibilityLabel={`${cap ? 'Reapply for' : 'Add'} ${SERVICE_LABELS[type]} service`}>
-                      {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
+                    <TouchableOpacity style={ts.smallButton} onPress={() => apply(type)} disabled={busy === type} accessibilityRole="button" accessibilityLabel={`${cap ? 'Reapply for' : 'Add'} ${SERVICE_LABELS[type]} service`}>
+                      {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={ts.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
                     </TouchableOpacity>
                   ) : null}
                 </View>
 
-                <Text style={styles.cardText}>
+                <Text style={ts.cardText}>
                   {type === 'DELIVERY' ? 'Quote on vehicle transport and recovery jobs.' :
                    type === 'INSPECTION' ? 'Quote on independent vehicle inspection jobs.' :
                    type === 'FINANCE' ? 'Receive matched vehicle finance enquiries.' :
                    'Receive matched warranty enquiries.'}
                 </Text>
 
-                {cap?.reviewNote ? <Text style={styles.error}>{cap.reviewNote}</Text> : null}
-                {coverageMissing ? <Text style={styles.warning}>Matching coverage is not configured yet.</Text> : null}
+                {cap?.reviewNote ? <Text style={ts.error}>{cap.reviewNote}</Text> : null}
+                {coverageMissing ? <Text style={ts.warning}>Matching coverage is not configured yet.</Text> : null}
 
                 {cap ? (
-                  <View style={styles.actions}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`View verification for ${SERVICE_LABELS[type]}`}>
+                  <View style={ts.actions}>
+                    <TouchableOpacity style={ts.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`View verification for ${SERVICE_LABELS[type]}`}>
                       <Ionicons name="document-text-outline" size={15} color={Colors.white} />
-                      <Text style={styles.actionText}>VERIFICATION</Text>
+                      <Text style={ts.actionText}>VERIFICATION</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`Set matching coverage for ${SERVICE_LABELS[type]}`}>
+                    <TouchableOpacity style={ts.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`Set matching coverage for ${SERVICE_LABELS[type]}`}>
                       <Ionicons name="options-outline" size={15} color={Colors.white} />
-                      <Text style={styles.actionText}>MATCHING</Text>
+                      <Text style={ts.actionText}>MATCHING</Text>
                     </TouchableOpacity>
                   </View>
                 ) : null}

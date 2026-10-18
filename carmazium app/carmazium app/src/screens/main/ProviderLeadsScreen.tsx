@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -51,6 +53,8 @@ const requirementText = (lead: ServiceLead) => {
 };
 
 export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('ALL');
   const [leads, setLeads] = useState<ServiceLead[]>([]);
@@ -110,13 +114,13 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={ts.card}
         activeOpacity={0.82}
         onPress={() => navigation.navigate('ProviderLeadDetail', { leadId: lead.id })}
       >
-        <View style={styles.cardTop}>
-          <View style={styles.typeRow}>
-            <View style={styles.iconBox}>
+        <View style={ts.cardTop}>
+          <View style={ts.typeRow}>
+            <View style={ts.iconBox}>
               <Ionicons
                 name={lead.serviceType === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'}
                 size={19}
@@ -124,51 +128,51 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.typeText}>
+              <Text style={ts.typeText}>
                 {lead.serviceType === 'FINANCE' ? 'Vehicle Finance' : 'Warranty'}
               </Text>
-              <Text style={styles.title} numberOfLines={2}>{vehicleText(lead)}</Text>
+              <Text style={ts.title} numberOfLines={2}>{vehicleText(lead)}</Text>
             </View>
           </View>
           <View style={[
-            styles.statusPill,
-            status === 'RESPONDED' && styles.respondedPill,
-            expired && styles.expiredPill,
+            ts.statusPill,
+            status === 'RESPONDED' && ts.respondedPill,
+            expired && ts.expiredPill,
           ]}>
             <Text style={[
-              styles.statusText,
-              status === 'RESPONDED' && styles.respondedText,
-              expired && styles.expiredText,
+              ts.statusText,
+              status === 'RESPONDED' && ts.respondedText,
+              expired && ts.expiredText,
             ]}>
               {expired ? 'EXPIRED' : status}
             </Text>
           </View>
         </View>
 
-        <View style={styles.metaRow}>
+        <View style={ts.metaRow}>
           <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>
+          <Text style={ts.metaText}>
             {lead.postcode ? `Postcode ${lead.postcode}` : 'Nationwide / postcode not supplied'}
           </Text>
         </View>
 
         {lead.vehicleValuePence != null ? (
-          <View style={styles.metaRow}>
+          <View style={ts.metaRow}>
             <Ionicons name="car-outline" size={14} color={Colors.textMuted} />
-            <Text style={styles.metaText}>Vehicle value {formatPence(lead.vehicleValuePence)}</Text>
+            <Text style={ts.metaText}>Vehicle value {formatPence(lead.vehicleValuePence)}</Text>
           </View>
         ) : null}
 
-        <View style={styles.requirementBox}>
-          <Text style={styles.requirementText}>{requirementText(lead)}</Text>
+        <View style={ts.requirementBox}>
+          <Text style={ts.requirementText}>{requirementText(lead)}</Text>
         </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.receivedText}>
+        <View style={ts.cardFooter}>
+          <Text style={ts.receivedText}>
             Received {new Date(lead.createdAt).toLocaleDateString('en-GB')}
           </Text>
-          <View style={styles.openRow}>
-            <Text style={styles.openText}>{status === 'RESPONDED' ? 'VIEW / UPDATE' : 'OPEN LEAD'}</Text>
+          <View style={ts.openRow}>
+            <Text style={ts.openText}>{status === 'RESPONDED' ? 'VIEW / UPDATE' : 'OPEN LEAD'}</Text>
             <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
           </View>
         </View>
@@ -177,33 +181,33 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Finance & Warranty Enquiries</Text>
-          <Text style={styles.headerSub}>Matched customer enquiries</Text>
+          <Text style={ts.headerTitle}>Finance & Warranty Enquiries</Text>
+          <Text style={ts.headerSub}>Matched customer enquiries</Text>
         </View>
         <HamburgerButton />
       </View>
 
-      <View style={styles.filters}>
+      <View style={ts.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
             key={item}
-            style={[styles.filter, filter === item && styles.filterActive]}
+            style={[ts.filter, filter === item && ts.filterActive]}
             onPress={() => setFilter(item)}
             accessibilityRole="button"
             accessibilityState={{ selected: filter === item }}
           >
-            <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+            <Text style={[ts.filterText, filter === item && ts.filterTextActive]}>
               {item === 'ALL' ? 'All' : item === 'FINANCE' ? 'Finance' : 'Warranty'}
             </Text>
           </TouchableOpacity>
@@ -211,32 +215,32 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <TouchableOpacity
-        style={styles.manageCoverage}
+        style={ts.manageCoverage}
         onPress={() => navigation.navigate('ProviderCapabilities')}
         accessibilityRole="button"
         accessibilityLabel="Manage finance and warranty service approvals and matching coverage"
         activeOpacity={0.8}
       >
         <Ionicons name="options-outline" size={17} color={Colors.accent} />
-        <Text style={styles.manageCoverageText}>Manage service areas & approval</Text>
+        <Text style={ts.manageCoverageText}>Manage service areas & approval</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
 
       {loading && leads.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+        <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : error && leads.length === 0 ? (
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load enquiries</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.emptyTitle}>Could not load enquiries</Text>
+          <Text style={ts.emptyText}>{error}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load('reset')}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={ts.secondaryButton}
             onPress={() => navigation.navigate('ProviderCapabilities')}
           >
-            <Text style={styles.secondaryText}>CHECK SERVICE APPROVAL</Text>
+            <Text style={ts.secondaryText}>CHECK SERVICE APPROVAL</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -244,7 +248,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
           data={leads}
           keyExtractor={(item) => item.id}
           renderItem={renderLead}
-          contentContainerStyle={leads.length ? styles.list : styles.emptyList}
+          contentContainerStyle={leads.length ? ts.list : ts.emptyList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -253,17 +257,17 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.centerCard}>
+            <View style={ts.centerCard}>
               <Ionicons name="mail-unread-outline" size={34} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>No matched enquiries</Text>
-              <Text style={styles.emptyText}>
+              <Text style={ts.emptyTitle}>No matched enquiries</Text>
+              <Text style={ts.emptyText}>
                 New Finance and Warranty enquiries appear automatically when they match your approved service and matching settings.
               </Text>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={ts.secondaryButton}
                 onPress={() => navigation.navigate('ProviderCapabilities')}
               >
-                <Text style={styles.secondaryText}>MANAGE MATCHING</Text>
+                <Text style={ts.secondaryText}>MANAGE MATCHING</Text>
               </TouchableOpacity>
             </View>
           }

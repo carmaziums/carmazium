@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -36,6 +38,8 @@ const parseMoneyToPence = (value: string) => {
 };
 
 export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { leadId } = route.params;
 
@@ -166,7 +170,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[ts.container, ts.center, { paddingTop: insets.top }]}>
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -174,23 +178,23 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
   if (!lead) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[ts.container, { paddingTop: insets.top }]}>
+        <View style={ts.header}>
           <IconButton
-            style={styles.headerButton}
+            style={ts.headerButton}
             icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
-          <Text style={styles.headerTitle}>Matched Enquiry</Text>
+          <Text style={ts.headerTitle}>Matched Enquiry</Text>
           <View style={{ width: 38 }} />
         </View>
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.cardTitle}>Enquiry unavailable</Text>
-          <Text style={styles.bodyText}>{error || 'This enquiry could not be loaded.'}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load()}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.cardTitle}>Enquiry unavailable</Text>
+          <Text style={ts.bodyText}>{error || 'This enquiry could not be loaded.'}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load()}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -204,81 +208,81 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
   ].filter(Boolean).join(' · ') || 'Vehicle enquiry';
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>
+          <Text style={ts.headerTitle}>
             {lead.serviceType === 'FINANCE' ? 'Finance Enquiry' : 'Warranty Enquiry'}
           </Text>
-          <Text style={styles.headerSub}>{vehicleTitle}</Text>
+          <Text style={ts.headerSub}>{vehicleTitle}</Text>
         </View>
         <View style={[
-          styles.statusPill,
-          lead.recipientStatus === 'RESPONDED' && styles.respondedPill,
-          expired && styles.expiredPill,
+          ts.statusPill,
+          lead.recipientStatus === 'RESPONDED' && ts.respondedPill,
+          expired && ts.expiredPill,
         ]}>
           <Text style={[
-            styles.statusText,
-            lead.recipientStatus === 'RESPONDED' && styles.respondedText,
-            expired && styles.expiredText,
+            ts.statusText,
+            lead.recipientStatus === 'RESPONDED' && ts.respondedText,
+            expired && ts.expiredText,
           ]}>
             {expired ? 'EXPIRED' : (lead.recipientStatus || 'VIEWED')}
           </Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={ts.content} showsVerticalScrollIndicator={false}>
         {error ? (
-          <View style={styles.errorCard}>
+          <View style={ts.errorCard}>
             <Ionicons name="alert-circle-outline" size={18} color={Colors.accent} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={ts.errorText}>{error}</Text>
           </View>
         ) : null}
 
         {success ? (
-          <View style={styles.successCard}>
+          <View style={ts.successCard}>
             <Ionicons name="checkmark-circle-outline" size={18} color={Colors.accentGreen} />
-            <Text style={styles.successText}>{success}</Text>
+            <Text style={ts.successText}>{success}</Text>
           </View>
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Customer contact</Text>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>Customer contact</Text>
           <Info label="Name" value={lead.fullName || 'Not supplied'} />
           {lead.email ? (
             <TouchableOpacity
-              style={styles.contactRow}
+              style={ts.contactRow}
               onPress={() => void Linking.openURL(`mailto:${lead.email}`)}
             >
               <Ionicons name="mail-outline" size={16} color={Colors.accent} />
-              <Text style={styles.contactText}>{lead.email}</Text>
+              <Text style={ts.contactText}>{lead.email}</Text>
             </TouchableOpacity>
           ) : null}
           {lead.phone ? (
             <TouchableOpacity
-              style={styles.contactRow}
+              style={ts.contactRow}
               onPress={() => void Linking.openURL(`tel:${lead.phone}`)}
             >
               <Ionicons name="call-outline" size={16} color={Colors.accent} />
-              <Text style={styles.contactText}>{lead.phone}</Text>
+              <Text style={ts.contactText}>{lead.phone}</Text>
             </TouchableOpacity>
           ) : null}
           <Info label="Postcode" value={lead.postcode || 'Not supplied'} />
-          <Text style={styles.privacyText}>
+          <Text style={ts.privacyText}>
             Contact details are shown because the customer consented to sharing this enquiry with matched approved providers.
           </Text>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Vehicle</Text>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>Vehicle</Text>
           <Info label="Registration" value={lead.vehicleRegistration || 'Not supplied'} />
           <Info label="Make" value={lead.vehicleMake || 'Not supplied'} />
           <Info label="Model" value={lead.vehicleModel || 'Not supplied'} />
@@ -293,8 +297,8 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
           />
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>
             {lead.serviceType === 'FINANCE' ? 'Finance requirements' : 'Warranty requirements'}
           </Text>
 
@@ -313,32 +317,32 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             </>
           )}
 
-          <View style={styles.notesBox}>
-            <Text style={styles.label}>CUSTOMER NOTES</Text>
-            <Text style={styles.bodyText}>{lead.summary || 'No additional notes supplied.'}</Text>
+          <View style={ts.notesBox}>
+            <Text style={ts.label}>CUSTOMER NOTES</Text>
+            <Text style={ts.bodyText}>{lead.summary || 'No additional notes supplied.'}</Text>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>
             {lead.recipientStatus === 'RESPONDED' ? 'Update your response' : 'Respond to customer'}
           </Text>
-          <Text style={styles.bodyText}>
+          <Text style={ts.bodyText}>
             Your response appears inside the customer’s CarMazium enquiry.
           </Text>
 
           {expired ? (
-            <View style={styles.warningCard}>
+            <View style={ts.warningCard}>
               <Ionicons name="time-outline" size={16} color={Colors.warning} />
-              <Text style={styles.warningText}>
+              <Text style={ts.warningText}>
                 This enquiry has expired. Existing response details remain visible, but new responses may be rejected by the backend.
               </Text>
             </View>
           ) : null}
 
-          <Text style={styles.label}>HEADLINE</Text>
+          <Text style={ts.label}>HEADLINE</Text>
           <TextInput
-            style={styles.input}
+            style={ts.input}
             value={headline}
             onChangeText={setHeadline}
             maxLength={120}
@@ -346,9 +350,9 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             placeholderTextColor={Colors.textMuted}
           />
 
-          <Text style={styles.label}>PRODUCT / PLAN NAME</Text>
+          <Text style={ts.label}>PRODUCT / PLAN NAME</Text>
           <TextInput
-            style={styles.input}
+            style={ts.input}
             value={productName}
             onChangeText={setProductName}
             maxLength={120}
@@ -356,9 +360,9 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             placeholderTextColor={Colors.textMuted}
           />
 
-          <Text style={styles.label}>MESSAGE</Text>
+          <Text style={ts.label}>MESSAGE</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[ts.input, ts.textArea]}
             value={message}
             onChangeText={setMessage}
             multiline
@@ -367,15 +371,15 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             placeholderTextColor={Colors.textMuted}
           />
 
-          <Text style={styles.label}>
+          <Text style={ts.label}>
             {lead.serviceType === 'FINANCE'
               ? 'INDICATIVE MONTHLY PAYMENT / COST'
               : 'INDICATIVE WARRANTY PRICE'}
           </Text>
-          <View style={styles.moneyInput}>
-            <Text style={styles.currency}>£</Text>
+          <View style={ts.moneyInput}>
+            <Text style={ts.currency}>£</Text>
             <TextInput
-              style={styles.moneyField}
+              style={ts.moneyField}
               value={price}
               onChangeText={setPrice}
               keyboardType="decimal-pad"
@@ -386,9 +390,9 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
           {lead.serviceType === 'FINANCE' ? (
             <>
-              <Text style={styles.label}>REPRESENTATIVE APR %</Text>
+              <Text style={ts.label}>REPRESENTATIVE APR %</Text>
               <TextInput
-                style={styles.input}
+                style={ts.input}
                 value={apr}
                 onChangeText={setApr}
                 keyboardType="decimal-pad"
@@ -396,9 +400,9 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
                 placeholderTextColor={Colors.textMuted}
               />
 
-              <Text style={styles.label}>FINANCE TERM MONTHS</Text>
+              <Text style={ts.label}>FINANCE TERM MONTHS</Text>
               <TextInput
-                style={styles.input}
+                style={ts.input}
                 value={term}
                 onChangeText={setTerm}
                 keyboardType="number-pad"
@@ -409,13 +413,13 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
           ) : null}
 
           <TouchableOpacity
-            style={[styles.primaryButton, busy && styles.disabled]}
+            style={[ts.primaryButton, busy && ts.disabled]}
             disabled={busy}
             onPress={() => void send()}
           >
             {busy
               ? <ActivityIndicator color={Colors.white} />
-              : <Text style={styles.primaryText}>
+              : <Text style={ts.primaryText}>
                   {lead.recipientStatus === 'RESPONDED' ? 'UPDATE RESPONSE' : 'SEND RESPONSE'}
                 </Text>}
           </TouchableOpacity>
@@ -428,9 +432,9 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 };
 
 const Info = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoLine}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
+  <View style={ts.infoLine}>
+    <Text style={ts.infoLabel}>{label}</Text>
+    <Text style={ts.infoValue}>{value}</Text>
   </View>
 );
 

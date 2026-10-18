@@ -18,6 +18,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useAuthStore } from '../../store/authStore';
@@ -51,6 +53,8 @@ const statusText = (status?: string) => {
 };
 
 export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
@@ -174,106 +178,106 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
     || byType.get('INSPECTION')?.status === 'APPROVED';
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
-        <Text style={styles.headerTitle}>Partner Account</Text>
+        <Text style={ts.headerTitle}>Partner Account</Text>
         <HamburgerButton />
       </View>
 
       {loading ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+        <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <Text style={styles.eyebrow}>TRADEXCHANGE PARTNER</Text>
-            <Text style={styles.title}>One business account</Text>
-            <Text style={styles.sub}>
+        <ScrollView contentContainerStyle={ts.content} showsVerticalScrollIndicator={false}>
+          <View style={ts.hero}>
+            <Text style={ts.eyebrow}>TRADEXCHANGE PARTNER</Text>
+            <Text style={ts.title}>One business account</Text>
+            <Text style={ts.sub}>
               Add Vehicle Dealer, Delivery & Recovery, Inspection, Finance and Warranty services without replacing the services you already use.
             </Text>
           </View>
 
           {error ? (
-            <View style={styles.errorCard}>
+            <View style={ts.errorCard}>
               <Ionicons name="alert-circle-outline" size={16} color={Colors.accent} />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={ts.errorText}>{error}</Text>
             </View>
           ) : null}
 
           {!isPartnerRole ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Create a Partner Account</Text>
-              <Text style={styles.cardText}>
+            <View style={ts.card}>
+              <Text style={ts.cardTitle}>Create a Partner Account</Text>
+              <Text style={ts.cardText}>
                 Your existing CarMazium login is kept. This changes the business shell so multiple trade services can live under one account.
               </Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={createPartner} disabled={busy === 'partner'}>
-                {busy === 'partner' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryText}>CREATE PARTNER ACCOUNT</Text>}
+              <TouchableOpacity style={ts.primaryButton} onPress={createPartner} disabled={busy === 'partner'}>
+                {busy === 'partner' ? <ActivityIndicator color={Colors.white} /> : <Text style={ts.primaryText}>CREATE PARTNER ACCOUNT</Text>}
               </TouchableOpacity>
             </View>
           ) : !profile?.dealerProfile ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Set up your Partner business</Text>
-              <Text style={styles.cardText}>Add these details once. CarMazium reuses them across every service you activate.</Text>
-              <TextInput style={styles.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={Colors.textMuted} />
-              <TextInput style={styles.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
-              <TextInput style={styles.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
-              <TouchableOpacity style={styles.primaryButton} onPress={saveBusiness} disabled={busy === 'business'}>
-                {busy === 'business' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.primaryText}>SAVE PARTNER BUSINESS</Text>}
+            <View style={ts.card}>
+              <Text style={ts.cardTitle}>Set up your Partner business</Text>
+              <Text style={ts.cardText}>Add these details once. CarMazium reuses them across every service you activate.</Text>
+              <TextInput style={ts.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={Colors.textMuted} />
+              <TextInput style={ts.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
+              <TextInput style={ts.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
+              <TouchableOpacity style={ts.primaryButton} onPress={saveBusiness} disabled={busy === 'business'}>
+                {busy === 'business' ? <ActivityIndicator color={Colors.white} /> : <Text style={ts.primaryText}>SAVE PARTNER BUSINESS</Text>}
               </TouchableOpacity>
             </View>
           ) : (
             <>
-              <View style={styles.card}>
-                <View style={styles.rowBetween}>
+              <View style={ts.card}>
+                <View style={ts.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.label}>PARTNER BUSINESS</Text>
-                    <Text style={styles.cardTitle}>{profile.dealerProfile.companyName || team?.companyName || 'Partner business'}</Text>
-                    {!!profile.dealerProfile.businessAddress && <Text style={styles.cardText}>{profile.dealerProfile.businessAddress}</Text>}
+                    <Text style={ts.label}>PARTNER BUSINESS</Text>
+                    <Text style={ts.cardTitle}>{profile.dealerProfile.companyName || team?.companyName || 'Partner business'}</Text>
+                    {!!profile.dealerProfile.businessAddress && <Text style={ts.cardText}>{profile.dealerProfile.businessAddress}</Text>}
                   </View>
                   <Ionicons name="business-outline" size={28} color={Colors.warning} />
                 </View>
               </View>
 
-              <View style={styles.quickTasks}>
-                <Text style={styles.sectionTitle}>Your workspace</Text>
-                <View style={styles.quickTaskGrid}>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderJobs')} accessibilityRole="button" accessibilityLabel="See available delivery and inspection jobs" activeOpacity={0.8}>
+              <View style={ts.quickTasks}>
+                <Text style={ts.sectionTitle}>Your workspace</Text>
+                <View style={ts.quickTaskGrid}>
+                  <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderJobs')} accessibilityRole="button" accessibilityLabel="See available delivery and inspection jobs" activeOpacity={0.8}>
                     <Ionicons name="briefcase-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Available jobs</Text>
+                    <Text style={ts.quickTaskText}>Available jobs</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched finance and warranty enquiries" activeOpacity={0.8}>
+                  <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched finance and warranty enquiries" activeOpacity={0.8}>
                     <Ionicons name="document-text-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Enquiries</Text>
+                    <Text style={ts.quickTaskText}>Enquiries</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
+                  <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
                     <Ionicons name="options-outline" size={21} color={Colors.accent} />
-                    <Text style={styles.quickTaskText}>Service areas</Text>
+                    <Text style={ts.quickTaskText}>Service areas</Text>
                     <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                   </TouchableOpacity>
                   {hasApprovedJobCapability && (
-                    <TouchableOpacity style={styles.quickTask} onPress={() => navigation.navigate('ProviderMessages')} accessibilityRole="button" accessibilityLabel="Read service job messages" activeOpacity={0.8}>
+                    <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderMessages')} accessibilityRole="button" accessibilityLabel="Read service job messages" activeOpacity={0.8}>
                       <Ionicons name="chatbubble-outline" size={21} color={Colors.accent} />
-                      <Text style={styles.quickTaskText}>Job messages</Text>
+                      <Text style={ts.quickTaskText}>Job messages</Text>
                       <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
-              <View style={styles.sectionHeader}>
+              <View style={ts.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>Your services</Text>
-                  <Text style={styles.sectionSub}>Adding one service never removes another.</Text>
+                  <Text style={ts.sectionTitle}>Your services</Text>
+                  <Text style={ts.sectionSub}>Adding one service never removes another.</Text>
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('ProviderCapabilities')}>
-                  <Text style={styles.linkText}>MANAGE</Text>
+                  <Text style={ts.linkText}>MANAGE</Text>
                 </TouchableOpacity>
               </View>
 
@@ -281,8 +285,8 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                 const cap = byType.get(type);
                 const approved = cap?.status === 'APPROVED';
                 return (
-                  <View key={type} style={styles.serviceCard}>
-                    <View style={styles.serviceIcon}>
+                  <View key={type} style={ts.serviceCard}>
+                    <View style={ts.serviceIcon}>
                       <Ionicons
                         name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : type === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'}
                         size={21}
@@ -290,111 +294,111 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.serviceTitle}>{SERVICE_LABELS[type]}</Text>
-                      <Text style={[styles.serviceStatus, approved && { color: Colors.accentGreen }]}>{statusText(cap?.status)}</Text>
-                      {cap?.reviewNote ? <Text style={styles.reviewNote}>{cap.reviewNote}</Text> : null}
+                      <Text style={ts.serviceTitle}>{SERVICE_LABELS[type]}</Text>
+                      <Text style={[ts.serviceStatus, approved && { color: Colors.accentGreen }]}>{statusText(cap?.status)}</Text>
+                      {cap?.reviewNote ? <Text style={ts.reviewNote}>{cap.reviewNote}</Text> : null}
                     </View>
                     {!cap || cap.status === 'REJECTED' ? (
-                      <TouchableOpacity style={styles.smallButton} onPress={() => applyService(type)} disabled={busy === type}>
-                        {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
+                      <TouchableOpacity style={ts.smallButton} onPress={() => applyService(type)} disabled={busy === type}>
+                        {busy === type ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={ts.smallButtonText}>{cap ? 'REAPPLY' : 'ADD'}</Text>}
                       </TouchableOpacity>
                     ) : (
-                      <TouchableOpacity style={styles.smallOutline} onPress={() => navigation.navigate('ProviderCapabilities')}>
-                        <Text style={styles.smallOutlineText}>DETAILS</Text>
+                      <TouchableOpacity style={ts.smallOutline} onPress={() => navigation.navigate('ProviderCapabilities')}>
+                        <Text style={ts.smallOutlineText}>DETAILS</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 );
               })}
 
-              <View style={styles.card}>
-                <View style={styles.rowBetween}>
+              <View style={ts.card}>
+                <View style={ts.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Service Jobs</Text>
-                    <Text style={styles.cardText}>
+                    <Text style={ts.cardTitle}>Service Jobs</Text>
+                    <Text style={ts.cardText}>
                       Quote on matching Delivery, Recovery and Inspection work. Accepted jobs stay here through payment, chat, start and completion.
                     </Text>
                   </View>
                   <Ionicons name="briefcase-outline" size={26} color={Colors.accent} />
                 </View>
                 <TouchableOpacity
-                  style={styles.secondaryButton}
+                  style={ts.secondaryButton}
                   onPress={() => navigation.navigate('ProviderJobs')}
                 >
                   <Ionicons name="construct-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN SERVICE JOBS</Text>
+                  <Text style={ts.secondaryText}>OPEN SERVICE JOBS</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.card}>
-                <View style={styles.rowBetween}>
+              <View style={ts.card}>
+                <View style={ts.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Finance & Warranty Enquiries</Text>
-                    <Text style={styles.cardText}>
+                    <Text style={ts.cardTitle}>Finance & Warranty Enquiries</Text>
+                    <Text style={ts.cardText}>
                       Review Finance and Warranty enquiries matched to your approved services, then send or update your response from the app.
                     </Text>
                   </View>
                   <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />
                 </View>
                 <TouchableOpacity
-                  style={styles.secondaryButton}
+                  style={ts.secondaryButton}
                   onPress={() => navigation.navigate('ProviderLeads')}
                 >
                   <Ionicons name="document-text-outline" size={17} color={Colors.white} />
-                  <Text style={styles.secondaryText}>OPEN ENQUIRIES</Text>
+                  <Text style={ts.secondaryText}>OPEN ENQUIRIES</Text>
                 </TouchableOpacity>
               </View>
 
               {hasApprovedJobCapability && (
-                <View style={styles.card}>
-                  <View style={styles.rowBetween}>
+                <View style={ts.card}>
+                  <View style={ts.rowBetween}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>Service job messages</Text>
-                      <Text style={styles.cardText}>
+                      <Text style={ts.cardTitle}>Service job messages</Text>
+                      <Text style={ts.cardText}>
                         Keep Delivery, Recovery and Inspection customer conversations separate from your general CarMazium inbox.
                       </Text>
                     </View>
                     <Ionicons name="chatbubbles-outline" size={26} color={Colors.accentGreen} />
                   </View>
                   <TouchableOpacity
-                    style={styles.secondaryButton}
+                    style={ts.secondaryButton}
                     onPress={() => navigation.navigate('ProviderMessages')}
                   >
                     <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
-                    <Text style={styles.secondaryText}>OPEN JOB MESSAGES</Text>
+                    <Text style={ts.secondaryText}>OPEN JOB MESSAGES</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
               {hasPaidJobCapability ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Business payouts</Text>
-                  <Text style={styles.cardText}>
+                <View style={ts.card}>
+                  <Text style={ts.cardTitle}>Business payouts</Text>
+                  <Text style={ts.cardText}>
                     Delivery and Inspection customers pay through CarMazium. CarMazium deducts 9% and 91% is paid to the Partner business Stripe Connect account.
                   </Text>
                   {team?.stripeConnect.complete ? (
-                    <View style={styles.successRow}>
+                    <View style={ts.successRow}>
                       <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
-                      <Text style={styles.successText}>Stripe payouts connected</Text>
+                      <Text style={ts.successText}>Stripe payouts connected</Text>
                     </View>
                   ) : (
-                    <TouchableOpacity style={styles.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
-                      {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
+                    <TouchableOpacity style={ts.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
+                      {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={ts.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
                     </TouchableOpacity>
                   )}
                 </View>
               ) : (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Finance & Warranty payouts</Text>
-                  <Text style={styles.cardText}>
+                <View style={ts.card}>
+                  <Text style={ts.cardTitle}>Finance & Warranty payouts</Text>
+                  <Text style={ts.cardText}>
                     No Stripe payout account is required for Finance or Warranty enquiries because CarMazium does not collect those provider payments.
                   </Text>
                 </View>
               )}
 
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
+              <TouchableOpacity style={ts.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
                 <Ionicons name="people-outline" size={17} color={Colors.white} />
-                <Text style={styles.secondaryText}>MANAGE PARTNER TEAM</Text>
+                <Text style={ts.secondaryText}>MANAGE PARTNER TEAM</Text>
               </TouchableOpacity>
             </>
           )}

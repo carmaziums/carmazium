@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -54,6 +56,8 @@ const requestedText = (job: ServiceJob) => {
 const statusText = (status: ServiceJob['status']) => status.replace(/_/g, ' ');
 
 export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
 
@@ -263,7 +267,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+      <View style={[ts.container, ts.center, { paddingTop: insets.top }]}>
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -271,23 +275,23 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   if (!job) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[ts.container, { paddingTop: insets.top }]}>
+        <View style={ts.header}>
           <IconButton
-            style={styles.headerButton}
+            style={ts.headerButton}
             icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
-          <Text style={styles.headerTitle}>Partner Job</Text>
+          <Text style={ts.headerTitle}>Partner Job</Text>
           <View style={{ width: 38 }} />
         </View>
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />
-          <Text style={styles.cardTitle}>Job unavailable</Text>
-          <Text style={styles.bodyText}>{error || 'This job could not be loaded.'}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load()}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.cardTitle}>Job unavailable</Text>
+          <Text style={ts.bodyText}>{error || 'This job could not be loaded.'}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load()}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -295,71 +299,71 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Partner Job</Text>
-          <Text style={styles.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
+          <Text style={ts.headerTitle}>Partner Job</Text>
+          <Text style={ts.headerSub}>{SERVICE_LABELS[job.serviceType]}</Text>
         </View>
-        <View style={styles.statusPill}>
-          <Text style={styles.statusText}>{statusText(job.status)}</Text>
+        <View style={ts.statusPill}>
+          <Text style={ts.statusText}>{statusText(job.status)}</Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={ts.content} showsVerticalScrollIndicator={false}>
         {flash ? (
-          <View style={styles.successCard}>
+          <View style={ts.successCard}>
             <Ionicons name="checkmark-circle-outline" size={18} color={Colors.accentGreen} />
-            <Text style={styles.successText}>{flash}</Text>
+            <Text style={ts.successText}>{flash}</Text>
           </View>
         ) : null}
 
         {error ? (
-          <View style={styles.errorCard}>
+          <View style={ts.errorCard}>
             <Ionicons name="alert-circle-outline" size={18} color={Colors.accent} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={ts.errorText}>{error}</Text>
           </View>
         ) : null}
 
-        <View style={styles.nextStepCard}>
+        <View style={ts.nextStepCard}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.nextStepLabel}>WHAT HAPPENS NEXT</Text>
-            <Text style={styles.bodyText}>{nextStep}</Text>
+            <Text style={ts.nextStepLabel}>WHAT HAPPENS NEXT</Text>
+            <Text style={ts.bodyText}>{nextStep}</Text>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.eyebrow}>
+        <View style={ts.card}>
+          <Text style={ts.eyebrow}>
             {job.serviceType === 'DELIVERY' && job.isRecovery ? 'RECOVERY' : SERVICE_LABELS[job.serviceType].toUpperCase()}
           </Text>
-          <Text style={styles.title}>{job.title}</Text>
+          <Text style={ts.title}>{job.title}</Text>
 
-          <View style={styles.infoRow}>
+          <View style={ts.infoRow}>
             <Ionicons name="location-outline" size={16} color={Colors.accent} />
-            <Text style={styles.infoText}>{routeText(job)}</Text>
+            <Text style={ts.infoText}>{routeText(job)}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={ts.infoRow}>
             <Ionicons name="time-outline" size={16} color={Colors.warning} />
-            <Text style={styles.infoText}>{requestedText(job)}</Text>
+            <Text style={ts.infoText}>{requestedText(job)}</Text>
           </View>
 
-          {job.description ? <Text style={styles.description}>{job.description}</Text> : null}
+          {job.description ? <Text style={ts.description}>{job.description}</Text> : null}
         </View>
 
         {isMine && (
           job.pickupAddress || job.deliveryAddress || job.serviceAddress
         ) ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Full job location</Text>
+          <View style={ts.card}>
+            <Text style={ts.cardTitle}>Full job location</Text>
             {job.pickupAddress ? (
               <Info label="Pickup" value={`${job.pickupAddress}, ${job.pickupPostcode || ''}`} />
             ) : null}
@@ -372,34 +376,34 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
           </View>
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Vehicle{job.vehicles.length === 1 ? '' : 's'}</Text>
+        <View style={ts.card}>
+          <Text style={ts.cardTitle}>Vehicle{job.vehicles.length === 1 ? '' : 's'}</Text>
           {job.vehicles.length ? job.vehicles.map((vehicle, index) => (
-            <View key={vehicle.id || `${vehicle.registration || 'vehicle'}-${index}`} style={styles.vehicleRow}>
+            <View key={vehicle.id || `${vehicle.registration || 'vehicle'}-${index}`} style={ts.vehicleRow}>
               <Ionicons name="car-outline" size={18} color={Colors.textMuted} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.vehicleTitle}>
+                <Text style={ts.vehicleTitle}>
                   {[vehicle.registration, vehicle.make, vehicle.model].filter(Boolean).join(' · ') || `Vehicle ${index + 1}`}
                 </Text>
-                <Text style={styles.smallText}>
+                <Text style={ts.smallText}>
                   {[vehicle.year, vehicle.notes].filter(Boolean).join(' · ') || 'No extra vehicle notes'}
                 </Text>
               </View>
             </View>
-          )) : <Text style={styles.bodyText}>No vehicle details supplied.</Text>}
+          )) : <Text style={ts.bodyText}>No vehicle details supplied.</Text>}
         </View>
 
         {canQuote ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
+          <View style={ts.card}>
+            <Text style={ts.cardTitle}>
               {myQuote?.status === 'ACTIVE' ? 'Your quote' : 'Quote this job'}
             </Text>
 
-            <Text style={styles.label}>Customer price</Text>
-            <View style={styles.moneyInput}>
-              <Text style={styles.currency}>£</Text>
+            <Text style={ts.label}>Customer price</Text>
+            <View style={ts.moneyInput}>
+              <Text style={ts.currency}>£</Text>
               <TextInput
-                style={styles.moneyField}
+                style={ts.moneyField}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
@@ -409,14 +413,14 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             </View>
 
             {providerPence != null ? (
-              <Text style={styles.payoutHint}>
+              <Text style={ts.payoutHint}>
                 Customer pays {formatPence(amountPence)}. Your business receives approximately {formatPence(providerPence)} after the current CarMazium platform fee.
               </Text>
             ) : null}
 
-            <Text style={styles.label}>Quote message</Text>
+            <Text style={ts.label}>Quote message</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[ts.input, ts.textArea]}
               value={quoteMessage}
               onChangeText={setQuoteMessage}
               multiline
@@ -426,38 +430,38 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, (busy === 'quote' || amountPence < 100) && styles.disabled]}
+              style={[ts.primaryButton, (busy === 'quote' || amountPence < 100) && ts.disabled]}
               disabled={busy === 'quote' || amountPence < 100}
               onPress={() => void sendQuote()}
             >
               {busy === 'quote'
                 ? <ActivityIndicator color={Colors.white} />
-                : <Text style={styles.primaryText}>
+                : <Text style={ts.primaryText}>
                     {myQuote?.status === 'ACTIVE' ? 'UPDATE QUOTE' : 'SEND QUOTE'}
                   </Text>}
             </TouchableOpacity>
 
             {myQuote?.status === 'ACTIVE' ? (
               <TouchableOpacity
-                style={styles.dangerButton}
+                style={ts.dangerButton}
                 disabled={busy === 'withdraw'}
                 onPress={withdraw}
               >
                 {busy === 'withdraw'
                   ? <ActivityIndicator color={Colors.accent} />
-                  : <Text style={styles.dangerText}>WITHDRAW QUOTE</Text>}
+                  : <Text style={ts.dangerText}>WITHDRAW QUOTE</Text>}
               </TouchableOpacity>
             ) : null}
           </View>
         ) : null}
 
         {isMine && job.agreedAmountPence != null ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Your payout</Text>
-            <Text style={styles.payoutAmount}>
+          <View style={ts.card}>
+            <Text style={ts.cardTitle}>Your payout</Text>
+            <Text style={ts.payoutAmount}>
               {formatPence(job.contractorAmountPence ?? 0)}
             </Text>
-            <Text style={styles.bodyText}>
+            <Text style={ts.bodyText}>
               From {formatPence(job.agreedAmountPence)} customer price. {
                 job.payment?.status === 'RELEASED'
                   ? 'Transferred to your Stripe business account.'
@@ -470,32 +474,32 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.customer && ACTIVE_JOB_STATUSES.includes(job.status) ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Customer</Text>
-            <Text style={styles.customerName}>
+          <View style={ts.card}>
+            <Text style={ts.cardTitle}>Customer</Text>
+            <Text style={ts.customerName}>
               {[job.customer.firstName, job.customer.lastName].filter(Boolean).join(' ') || 'Customer'}
             </Text>
             {job.customer.phone ? (
               <TouchableOpacity
-                style={styles.contactRow}
+                style={ts.contactRow}
                 onPress={() => void Linking.openURL(`tel:${job.customer?.phone}`)}
               >
                 <Ionicons name="call-outline" size={16} color={Colors.accent} />
-                <Text style={styles.contactText}>{job.customer.phone}</Text>
+                <Text style={ts.contactText}>{job.customer.phone}</Text>
               </TouchableOpacity>
             ) : null}
             {job.customer.email ? (
               <TouchableOpacity
-                style={styles.contactRow}
+                style={ts.contactRow}
                 onPress={() => void Linking.openURL(`mailto:${job.customer?.email}`)}
               >
                 <Ionicons name="mail-outline" size={16} color={Colors.accent} />
-                <Text style={styles.contactText}>{job.customer.email}</Text>
+                <Text style={ts.contactText}>{job.customer.email}</Text>
               </TouchableOpacity>
             ) : null}
             {canMessageCustomer ? (
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={ts.secondaryButton}
                 disabled={busy === 'chat'}
                 onPress={() => void openChat()}
               >
@@ -503,7 +507,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                   ? <ActivityIndicator color={Colors.white} />
                   : <>
                       <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
-                      <Text style={styles.secondaryText}>MESSAGE CUSTOMER</Text>
+                      <Text style={ts.secondaryText}>MESSAGE CUSTOMER</Text>
                     </>}
               </TouchableOpacity>
             ) : null}
@@ -511,57 +515,57 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && (job.status === 'PAID' || job.status === 'IN_PROGRESS') ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Work status</Text>
+          <View style={ts.card}>
+            <Text style={ts.cardTitle}>Work status</Text>
 
             {job.status === 'PAID' ? (
               <>
-                <Text style={styles.bodyText}>Customer payment is confirmed. Start the job when work begins.</Text>
+                <Text style={ts.bodyText}>Customer payment is confirmed. Start the job when work begins.</Text>
                 <TouchableOpacity
-                  style={styles.primaryButton}
+                  style={ts.primaryButton}
                   disabled={busy === 'start'}
                   onPress={start}
                 >
                   {busy === 'start'
                     ? <ActivityIndicator color={Colors.white} />
-                    : <Text style={styles.primaryText}>START JOB</Text>}
+                    : <Text style={ts.primaryText}>START JOB</Text>}
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 {job.serviceType === 'INSPECTION' ? (
                   <>
-                    <Text style={styles.label}>Inspection outcome</Text>
-                    <View style={styles.choiceRow}>
+                    <Text style={ts.label}>Inspection outcome</Text>
+                    <View style={ts.choiceRow}>
                       <TouchableOpacity
-                        style={[styles.choice, inspectionOutcome === 'PASS' && styles.choiceActive]}
+                        style={[ts.choice, inspectionOutcome === 'PASS' && ts.choiceActive]}
                         onPress={() => setInspectionOutcome('PASS')}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: inspectionOutcome === 'PASS' }}
                         accessibilityLabel="Inspection passed"
                       >
-                        <Text style={[styles.choiceText, inspectionOutcome === 'PASS' && styles.choiceTextActive]}>
+                        <Text style={[ts.choiceText, inspectionOutcome === 'PASS' && ts.choiceTextActive]}>
                           PASS
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.choice, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceActiveWarning]}
+                        style={[ts.choice, inspectionOutcome === 'FAULTS_FOUND' && ts.choiceActiveWarning]}
                         onPress={() => setInspectionOutcome('FAULTS_FOUND')}
                         accessibilityRole="radio"
                         accessibilityState={{ checked: inspectionOutcome === 'FAULTS_FOUND' }}
                         accessibilityLabel="Faults found at inspection"
                       >
-                        <Text style={[styles.choiceText, inspectionOutcome === 'FAULTS_FOUND' && styles.choiceTextWarning]}>
+                        <Text style={[ts.choiceText, inspectionOutcome === 'FAULTS_FOUND' && ts.choiceTextWarning]}>
                           FAULTS FOUND
                         </Text>
                       </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.label}>
+                    <Text style={ts.label}>
                       Inspection summary {inspectionOutcome === 'FAULTS_FOUND' ? '· required' : '· optional'}
                     </Text>
                     <TextInput
-                      style={[styles.input, styles.textArea]}
+                      style={[ts.input, ts.textArea]}
                       value={inspectionSummary}
                       onChangeText={setInspectionSummary}
                       multiline
@@ -571,9 +575,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                     />
 
                     {inspectionOutcome === 'FAULTS_FOUND' ? (
-                      <View style={styles.warningCard}>
+                      <View style={ts.warningCard}>
                         <Ionicons name="warning-outline" size={16} color={Colors.warning} />
-                        <Text style={styles.warningText}>
+                        <Text style={ts.warningText}>
                           A verified fault outcome can allow a linked auction buyer to refuse the vehicle before approved handover and receive the full buyer-fee refund.
                         </Text>
                       </View>
@@ -583,7 +587,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
                 <TouchableOpacity
                   style={[
-                    styles.primaryButton,
+                    ts.primaryButton,
                     (
                       busy === 'complete'
                       || (job.serviceType === 'INSPECTION' && !inspectionOutcome)
@@ -592,7 +596,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                         && inspectionOutcome === 'FAULTS_FOUND'
                         && !inspectionSummary.trim()
                       )
-                    ) && styles.disabled,
+                    ) && ts.disabled,
                   ]}
                   disabled={
                     busy === 'complete'
@@ -607,7 +611,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 >
                   {busy === 'complete'
                     ? <ActivityIndicator color={Colors.white} />
-                    : <Text style={styles.primaryText}>MARK COMPLETE</Text>}
+                    : <Text style={ts.primaryText}>MARK COMPLETE</Text>}
                 </TouchableOpacity>
               </>
             )}
@@ -615,8 +619,8 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.status === 'ACCEPTED' ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>
+          <View style={ts.noticeCard}>
+            <Text style={ts.bodyText}>
               Your quote was accepted. Waiting for customer payment{
                 settings ? ` within ${settings.acceptedPaymentTimeoutMinutes} minutes` : ''
               }. If payment is not completed, the backend safely reopens the job.
@@ -625,16 +629,16 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         ) : null}
 
         {isMine && job.status === 'COMPLETED' ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>
+          <View style={ts.noticeCard}>
+            <Text style={ts.bodyText}>
               Waiting for the customer to confirm completion. The backend auto-releases payout after the configured confirmation period.
             </Text>
           </View>
         ) : null}
 
         {!isMine && !canQuote ? (
-          <View style={styles.noticeCard}>
-            <Text style={styles.bodyText}>This job is no longer open for quoting.</Text>
+          <View style={ts.noticeCard}>
+            <Text style={ts.bodyText}>This job is no longer open for quoting.</Text>
           </View>
         ) : null}
 
@@ -645,9 +649,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 };
 
 const Info = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.infoLine}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
+  <View style={ts.infoLine}>
+    <Text style={ts.infoLabel}>{label}</Text>
+    <Text style={ts.infoValue}>{value}</Text>
   </View>
 );
 

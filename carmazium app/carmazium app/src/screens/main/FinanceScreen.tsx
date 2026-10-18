@@ -13,6 +13,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -38,11 +40,13 @@ const ELIGIBILITY_POINTS = [
 ];
 
 export const FinanceScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <LinearGradient
         colors={[Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -53,67 +57,67 @@ export const FinanceScreen: React.FC = () => {
 
       <View style={{ height: insets.top }} />
 
-      <View style={styles.header}>
-        <IconButton style={styles.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Vehicle Finance</Text>
+      <View style={ts.header}>
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Vehicle Finance</Text>
         <HamburgerButton />
       </View>
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={ts.scroll}
+        contentContainerStyle={ts.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.introTitle}>Smart financing for your next car</Text>
-        <Text style={styles.introSub}>
+        <Text style={ts.introTitle}>Smart financing for your next car</Text>
+        <Text style={ts.introSub}>
           Competitive rates and transparent terms — here's what to expect before you apply.
         </Text>
 
-        <View style={styles.sectionCard}>
+        <View style={ts.sectionCard}>
           {ELIGIBILITY_POINTS.map((p) => (
-            <View key={p} style={styles.bulletRow}>
+            <View key={p} style={ts.bulletRow}>
               <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-              <Text style={styles.bulletText}>{p}</Text>
+              <Text style={ts.bulletText}>{p}</Text>
             </View>
           ))}
         </View>
 
-        <View style={styles.exampleCard}>
-          <Text style={styles.exampleTitle}>Representative example</Text>
-          <Text style={styles.exampleText}>
+        <View style={ts.exampleCard}>
+          <Text style={ts.exampleTitle}>Representative example</Text>
+          <Text style={ts.exampleText}>
             Borrowing £20,000 over 48 months with a representative APR of 19%, an annual interest rate
             of 19% (fixed) and a deposit of £2,000. The amount payable would be £425.32 per month, with
             a total cost of credit of £2,415.36 and a total amount payable of £22,415.36.
           </Text>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Calculate your monthly payments</Text>
-          <Text style={styles.bodyText}>
+        <View style={ts.sectionCard}>
+          <Text style={ts.sectionTitle}>Calculate your monthly payments</Text>
+          <Text style={ts.bodyText}>
             Every listing has a finance calculator for that specific vehicle's price — open any car
             you're interested in and expand the "Finance Calculator" section to see estimated payments.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.cta}
+          style={ts.cta}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Tabs' as any, { screen: 'Search' } as any)}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.ctaTitle}>Browse cars with finance estimates</Text>
-            <Text style={styles.ctaSub}>Find a vehicle and see its monthly payment estimate</Text>
+            <Text style={ts.ctaTitle}>Browse cars with finance estimates</Text>
+            <Text style={ts.ctaSub}>Find a vehicle and see its monthly payment estimate</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.white} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryCta}
+          style={ts.secondaryCta}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Contact')}
         >
           <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accent} />
-          <Text style={styles.secondaryCtaText}>Have a question about financing? Contact us</Text>
+          <Text style={ts.secondaryCtaText}>Have a question about financing? Contact us</Text>
         </TouchableOpacity>
 
         <View style={{ height: 60 }} />

@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -56,6 +58,8 @@ const timingText = (job: ServiceJob) => {
 };
 
 export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('open');
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -130,13 +134,13 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={ts.card}
         activeOpacity={0.82}
         onPress={() => navigation.navigate('ProviderJobDetail', { jobId: job.id })}
       >
-        <View style={styles.cardTop}>
-          <View style={styles.typeRow}>
-            <View style={styles.iconBox}>
+        <View style={ts.cardTop}>
+          <View style={ts.typeRow}>
+            <View style={ts.iconBox}>
               <Ionicons
                 name={job.serviceType === 'INSPECTION' ? 'search-outline' : 'car-outline'}
                 size={19}
@@ -144,43 +148,43 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.typeText}>
+              <Text style={ts.typeText}>
                 {job.serviceType === 'DELIVERY' && job.isRecovery
                   ? 'Recovery'
                   : SERVICE_LABELS[job.serviceType]}
               </Text>
-              <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+              <Text style={ts.title} numberOfLines={2}>{job.title}</Text>
             </View>
           </View>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusText}>{statusLabel(job.status)}</Text>
+          <View style={ts.statusPill}>
+            <Text style={ts.statusText}>{statusLabel(job.status)}</Text>
           </View>
         </View>
 
-        <View style={styles.metaRow}>
+        <View style={ts.metaRow}>
           <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>{routeText(job)}</Text>
+          <Text style={ts.metaText}>{routeText(job)}</Text>
         </View>
-        <View style={styles.metaRow}>
+        <View style={ts.metaRow}>
           <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>{timingText(job)}</Text>
+          <Text style={ts.metaText}>{timingText(job)}</Text>
         </View>
-        <View style={styles.metaRow}>
+        <View style={ts.metaRow}>
           <Ionicons name="car-sport-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.metaText}>
+          <Text style={ts.metaText}>
             {job.vehicles?.length || 0} vehicle{(job.vehicles?.length || 0) === 1 ? '' : 's'}
           </Text>
         </View>
 
-        <View style={styles.cardFooter}>
+        <View style={ts.cardFooter}>
           <Text style={[
-            styles.trailing,
+            ts.trailing,
             myQuote?.status === 'ACTIVE' && { color: Colors.accentGreen },
           ]}>
             {trailing}
           </Text>
-          <View style={styles.openRow}>
-            <Text style={styles.openText}>OPEN JOB</Text>
+          <View style={ts.openRow}>
+            <Text style={ts.openText}>OPEN JOB</Text>
             <Ionicons name="chevron-forward" size={15} color={Colors.accent} />
           </View>
         </View>
@@ -189,54 +193,54 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.headerButton}
+          style={ts.headerButton}
           icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Service Jobs</Text>
-          <Text style={styles.headerSub}>Delivery, Recovery & Inspection</Text>
+          <Text style={ts.headerTitle}>Service Jobs</Text>
+          <Text style={ts.headerSub}>Delivery, Recovery & Inspection</Text>
         </View>
         <HamburgerButton />
       </View>
 
-      <View style={styles.tabs}>
+      <View style={ts.tabs}>
         <TouchableOpacity
-          style={[styles.tab, tab === 'open' && styles.tabActive]}
+          style={[ts.tab, tab === 'open' && ts.tabActive]}
           onPress={() => setTab('open')}
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'open' }}
           accessibilityLabel="Available service jobs"
         >
-          <Text style={[styles.tabText, tab === 'open' && styles.tabTextActive]}>AVAILABLE</Text>
+          <Text style={[ts.tabText, tab === 'open' && ts.tabTextActive]}>AVAILABLE</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, tab === 'assigned' && styles.tabActive]}
+          style={[ts.tab, tab === 'assigned' && ts.tabActive]}
           onPress={() => setTab('assigned')}
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'assigned' }}
           accessibilityLabel="My assigned service work"
         >
-          <Text style={[styles.tabText, tab === 'assigned' && styles.tabTextActive]}>MY WORK</Text>
+          <Text style={[ts.tabText, tab === 'assigned' && ts.tabTextActive]}>MY WORK</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.filters}>
+      <View style={ts.filters}>
         {FILTERS.map((item) => (
           <TouchableOpacity
             key={item}
-            style={[styles.filter, filter === item && styles.filterActive]}
+            style={[ts.filter, filter === item && ts.filterActive]}
             onPress={() => setFilter(item)}
             accessibilityRole="button"
             accessibilityState={{ selected: filter === item }}
           >
-            <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+            <Text style={[ts.filterText, filter === item && ts.filterTextActive]}>
               {item === 'ALL' ? 'All' : item === 'DELIVERY' ? 'Delivery' : 'Inspection'}
             </Text>
           </TouchableOpacity>
@@ -244,40 +248,40 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <TouchableOpacity
-        style={styles.manageCoverage}
+        style={ts.manageCoverage}
         onPress={() => navigation.navigate('ProviderCapabilities')}
         accessibilityRole="button"
         accessibilityLabel="Manage approved services and job-matching coverage"
         activeOpacity={0.8}
       >
         <Ionicons name="options-outline" size={17} color={Colors.accent} />
-        <Text style={styles.manageCoverageText}>Manage service areas & verification</Text>
+        <Text style={ts.manageCoverageText}>Manage service areas & verification</Text>
         <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
       </TouchableOpacity>
 
       {loading && jobs.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View>
+        <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View>
       ) : notApproved ? (
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="shield-outline" size={34} color={Colors.warning} />
-          <Text style={styles.emptyTitle}>Approved service required</Text>
-          <Text style={styles.emptyText}>
+          <Text style={ts.emptyTitle}>Approved service required</Text>
+          <Text style={ts.emptyText}>
             Apply for Delivery & Recovery or Vehicle Inspection, finish verification and connect payouts. Matching jobs appear here after approval.
           </Text>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={ts.primaryButton}
             onPress={() => navigation.navigate('ProviderCapabilities')}
           >
-            <Text style={styles.primaryText}>MANAGE SERVICES</Text>
+            <Text style={ts.primaryText}>MANAGE SERVICES</Text>
           </TouchableOpacity>
         </View>
       ) : error && jobs.length === 0 ? (
-        <View style={styles.centerCard}>
+        <View style={ts.centerCard}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.accent} />
-          <Text style={styles.emptyTitle}>Could not load jobs</Text>
-          <Text style={styles.emptyText}>{error}</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={() => void load('reset')}>
-            <Text style={styles.primaryText}>TRY AGAIN</Text>
+          <Text style={ts.emptyTitle}>Could not load jobs</Text>
+          <Text style={ts.emptyText}>{error}</Text>
+          <TouchableOpacity style={ts.primaryButton} onPress={() => void load('reset')}>
+            <Text style={ts.primaryText}>TRY AGAIN</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -285,7 +289,7 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
           data={jobs}
           keyExtractor={(item) => item.id}
           renderItem={renderJob}
-          contentContainerStyle={jobs.length ? styles.list : styles.emptyList}
+          contentContainerStyle={jobs.length ? ts.list : ts.emptyList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -294,12 +298,12 @@ export const ProviderJobsScreen: React.FC<Props> = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.centerCard}>
+            <View style={ts.centerCard}>
               <Ionicons name="briefcase-outline" size={34} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>
+              <Text style={ts.emptyTitle}>
                 {tab === 'open' ? 'No matching jobs right now' : 'No assigned work yet'}
               </Text>
-              <Text style={styles.emptyText}>
+              <Text style={ts.emptyText}>
                 {tab === 'open'
                   ? 'New customer jobs appear automatically when they match your approved service areas.'
                   : 'Quote on available jobs. Accepted and paid work stays here for your team.'}

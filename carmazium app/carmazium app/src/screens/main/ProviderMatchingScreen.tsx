@@ -16,6 +16,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -43,6 +45,8 @@ const areasFromText = (value: string) =>
   [...new Set(value.split(/[\s,]+/).map((v) => v.trim().toUpperCase()).filter(Boolean))];
 
 export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const { capabilityId } = route.params;
   const insets = useSafeAreaInsets();
   const [cap, setCap] = useState<ContractorCapability | null>(null);
@@ -153,10 +157,10 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
   }, [cap]);
 
   const field = (label: string, value: string, setter: (value: string) => void, placeholder: string, numeric = true) => (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={ts.field}>
+      <Text style={ts.label}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={ts.input}
         value={value}
         onChangeText={setter}
         placeholder={placeholder}
@@ -168,27 +172,27 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[ts.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.header}>
-        <IconButton style={styles.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
-        <Text style={styles.headerTitle}>Matching settings</Text>
-        <View style={styles.headerButton} />
+      <View style={ts.header}>
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <Text style={ts.headerTitle}>Matching settings</Text>
+        <View style={ts.headerButton} />
       </View>
 
-      {loading ? <View style={styles.center}><ActivityIndicator color={Colors.accent} /></View> : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>{cap ? SERVICE_LABELS[cap.serviceType] : 'TradeXchange service'}</Text>
-          <Text style={styles.sub}>{coverageDescription}</Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+      {loading ? <View style={ts.center}><ActivityIndicator color={Colors.accent} /></View> : (
+        <ScrollView contentContainerStyle={ts.content}>
+          <Text style={ts.title}>{cap ? SERVICE_LABELS[cap.serviceType] : 'TradeXchange service'}</Text>
+          <Text style={ts.sub}>{coverageDescription}</Text>
+          {error ? <Text style={ts.error}>{error}</Text> : null}
 
           {cap ? (
             <>
-              <View style={styles.card}>
-                <View style={styles.switchRow}>
+              <View style={ts.card}>
+                <View style={ts.switchRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>Nationwide coverage</Text>
-                    <Text style={styles.cardText}>Receive matching work from across the UK.</Text>
+                    <Text style={ts.cardTitle}>Nationwide coverage</Text>
+                    <Text style={ts.cardText}>Receive matching work from across the UK.</Text>
                   </View>
                   <Switch
                     value={nationwide}
@@ -198,24 +202,24 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                   />
                 </View>
                 {!nationwide ? (
-                  <View style={styles.field}>
-                    <Text style={styles.label}>UK POSTCODE AREAS</Text>
+                  <View style={ts.field}>
+                    <Text style={ts.label}>UK POSTCODE AREAS</Text>
                     <TextInput
-                      style={styles.input}
+                      style={ts.input}
                       value={areas}
                       onChangeText={setAreas}
                       placeholder="B, CV, M, SW"
                       placeholderTextColor={Colors.textMuted}
                       autoCapitalize="characters"
                     />
-                    <Text style={styles.hint}>Use postcode areas, not full postcodes.</Text>
+                    <Text style={ts.hint}>Use postcode areas, not full postcodes.</Text>
                   </View>
                 ) : null}
               </View>
 
               {isLead ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Vehicle filters</Text>
+                <View style={ts.card}>
+                  <Text style={ts.cardTitle}>Vehicle filters</Text>
                   {field('MINIMUM VEHICLE VALUE (£)', minValue, setMinValue, 'Optional')}
                   {field('MAXIMUM VEHICLE VALUE (£)', maxValue, setMaxValue, 'Optional')}
                   {field('MINIMUM VEHICLE YEAR', minYear, setMinYear, 'Optional')}
@@ -223,7 +227,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
 
                   {cap.serviceType === 'FINANCE' ? (
                     <>
-                      <Text style={styles.cardTitle}>Finance filters</Text>
+                      <Text style={ts.cardTitle}>Finance filters</Text>
                       {field('MINIMUM ANNUAL INCOME (£)', minIncome, setMinIncome, 'Optional')}
                       {field('MINIMUM TERM (MONTHS)', financeTermMin, setFinanceTermMin, 'Optional')}
                       {field('MAXIMUM TERM (MONTHS)', financeTermMax, setFinanceTermMax, 'Optional')}
@@ -232,7 +236,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
 
                   {cap.serviceType === 'WARRANTY' ? (
                     <>
-                      <Text style={styles.cardTitle}>Warranty filters</Text>
+                      <Text style={ts.cardTitle}>Warranty filters</Text>
                       {field('WARRANTY LEVELS', warrantyLevels, setWarrantyLevels, 'Basic, Premium', false)}
                       {field('MINIMUM MONTHS', warrantyMin, setWarrantyMin, 'Optional')}
                       {field('MAXIMUM MONTHS', warrantyMax, setWarrantyMax, 'Optional')}
@@ -241,8 +245,8 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                 </View>
               ) : null}
 
-              <TouchableOpacity style={[styles.primaryButton, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
-                {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.white} /><Text style={styles.primaryText}>SAVE MATCHING SETTINGS</Text></>}
+              <TouchableOpacity style={[ts.primaryButton, busy && { opacity: 0.6 }]} onPress={save} disabled={busy}>
+                {busy ? <ActivityIndicator color={Colors.white} /> : <><Ionicons name="checkmark-circle-outline" size={17} color={Colors.white} /><Text style={ts.primaryText}>SAVE MATCHING SETTINGS</Text></>}
               </TouchableOpacity>
             </>
           ) : null}

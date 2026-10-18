@@ -11,33 +11,37 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { IconButton } from '../../components/IconButton';
 
 const PRIVACY_URL = 'https://www.carmazium.com/privacy-policy';
 
 export const PrivacyPolicyScreen: React.FC = () => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   return (
-    <View style={styles.container}>
+    <View style={ts.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={{ height: insets.top }} />
-      <View style={styles.header}>
+      <View style={ts.header}>
         <IconButton
-          style={styles.backBtn}
+          style={ts.backBtn}
           icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
-        <Text style={styles.headerTitle}>Privacy Policy</Text>
-        <View style={styles.headerSpacer} />
+        <Text style={ts.headerTitle}>Privacy Policy</Text>
+        <View style={ts.headerSpacer} />
       </View>
 
-      <View style={styles.webWrap}>
+      <View style={ts.webWrap}>
         <WebView
           source={{ uri: PRIVACY_URL }}
           onLoadStart={() => {
@@ -52,21 +56,21 @@ export const PrivacyPolicyScreen: React.FC = () => {
           startInLoadingState={false}
           javaScriptEnabled
           domStorageEnabled
-          style={styles.webview}
+          style={ts.webview}
         />
 
         {loading && (
-          <View style={styles.overlay} pointerEvents="none">
+          <View style={ts.overlay} pointerEvents="none">
             <ActivityIndicator size="large" color={Colors.accent} />
-            <Text style={styles.loadingText}>Loading Privacy Policy…</Text>
+            <Text style={ts.loadingText}>Loading Privacy Policy…</Text>
           </View>
         )}
 
         {failed && !loading && (
-          <View style={styles.overlay}>
+          <View style={ts.overlay}>
             <Ionicons name="cloud-offline-outline" size={30} color={Colors.textMuted} />
-            <Text style={styles.errorTitle}>Privacy Policy unavailable</Text>
-            <Text style={styles.errorText}>
+            <Text style={ts.errorTitle}>Privacy Policy unavailable</Text>
+            <Text style={ts.errorText}>
               Check your connection and try again. The policy is also available at carmazium.com/privacy-policy.
             </Text>
           </View>
