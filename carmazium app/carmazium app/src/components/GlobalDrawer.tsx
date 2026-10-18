@@ -295,8 +295,12 @@ export const GlobalDrawer: React.FC = () => {
           <Text style={ts.groupLabel}>EXPLORE CARMAZIUM</Text>
           {MAIN_MENU.map(item => {
             const expanded = item.children && expandedMenu === item.id;
-            const active = !!item.tabName
-              && (item.id === 'dashboard' && dealerMode ? activeTab === 'DealerHome' : item.tabName === activeTab);
+            // Dealer navigation is separate from the public Menu. In particular,
+            // do not highlight public Home while the dealer Dashboard is open.
+            const active = !!item.tabName &&
+              (dealerMode
+                ? item.id === 'dashboard' && activeTab === 'DealerHome'
+                : item.tabName === activeTab);
             return (
               <View key={item.id}>
                 <TouchableOpacity
@@ -390,6 +394,10 @@ const lightGlobalDrawerStyles = StyleSheet.create({
   groupLabel: { color: '#526177' },
   row: { backgroundColor: '#FFFFFF' },
   rowLabel: { color: '#0F172A' },
+  // Active row is a PALE surface in light mode: white dark-mode text is invalid.
+  rowActive: { backgroundColor: '#FCE8EA', borderColor: '#F2BCC2', borderWidth: 1 },
+  rowLabelActive: { color: '#7F1D1D' },
+  iconWrapActive: { backgroundColor: '#F8CDD2' },
   subMenu: { backgroundColor: '#F7FBFF' },
   subMenuRow: { backgroundColor: '#F7FBFF' },
   subMenuText: { color: '#0F172A' },
