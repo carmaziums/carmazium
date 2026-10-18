@@ -114,6 +114,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   const [draft, setDraft] = useState<AuctionFilterState>(value);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [makeQuery, setMakeQuery] = useState('');
+  const [showAllMakes, setShowAllMakes] = useState(false);
   const [featureQuery, setFeatureQuery] = useState('');
   const [postcodeInput, setPostcodeInput] = useState('');
   const [savingPostcode, setSavingPostcode] = useState(false);
@@ -121,7 +122,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   const hasDistanceOrigin = latitude != null && longitude != null;
   const makeOptions = Array.from(new Set([...CAR_MAKES, ...availableMakes, ...draft.makes]));
   const searchedMakes = makeOptions.filter(m => m.toLowerCase().includes(makeQuery.trim().toLowerCase()));
-  const visibleMakes = makeQuery.trim() ? searchedMakes : [...new Set([...availableMakes, ...draft.makes, ...CAR_MAKES.slice(0, 12)])];
+  const visibleMakes = makeQuery.trim() ? searchedMakes : showAllMakes ? makeOptions : [...new Set([...availableMakes, ...draft.makes, ...CAR_MAKES.slice(0, 12)])];
   const modelOptions = draft.makes.length === 1 ? getModelsForMake(draft.makes[0]) : [];
 
 
@@ -194,8 +195,8 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               ))}
             </View>
             {!makeQuery.trim() && (
-              <TouchableOpacity style={styles.showAllMakes} onPress={() => setMakeQuery(' ')} accessibilityRole="button">
-                <Text style={styles.resetText}>Search the full make catalogue above</Text>
+              <TouchableOpacity style={styles.showAllMakes} onPress={() => setShowAllMakes(open => !open)} accessibilityRole="button">
+                <Text style={styles.resetText}>{showAllMakes ? 'Show fewer makes' : 'Show all makes'}</Text>
               </TouchableOpacity>
             )}
           </Section>
