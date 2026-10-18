@@ -92,6 +92,22 @@ test('preserve dealer privileges, read-only paginated fetch and previous detail 
   assert.ok(native.includes('ErrorBanner'));
 });
 
+test('dealer Inventory sort uses a selectable dropdown with truthful ordering', () => {
+  assert.ok(native.includes('type InventorySort ='));
+  assert.ok(native.includes('const SORT_OPTIONS:'));
+  for (const label of ['Newest first', 'Oldest first', 'Price: low to high', 'Price: high to low',
+    'Mileage: low to high', 'Mileage: high to low', 'Most viewed']) {
+    assert.ok(native.includes(label), label);
+  }
+  assert.ok(native.includes('accessibilityState={{ expanded: sortMenuOpen }}'));
+  assert.ok(native.includes('SORT_OPTIONS.map(option =>'));
+  assert.ok(native.includes('setSortOrder(option.value)'));
+  assert.ok(native.includes('setSortMenuOpen(false)'));
+  assert.ok(native.includes('a.mileage === null'), 'unknown mileage should not sort as zero');
+  assert.ok(native.includes('a.createdAt === null'), 'missing dates should sort last');
+  assert.ok(!native.includes("setSortOrder(prev => prev === 'newest'"), 'old cycling sort removed');
+});
+
 test('no screenshot or device acceptance invented; isolated revert boundary documented', () => {
   for (const x of ['PR #476','PR #478','PR #479','PR #480','360×800','390×844',
     'VISUAL SIGN-OFF: PENDING','synthetic','Revert','STOP at 40%']) {
