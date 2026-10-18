@@ -195,6 +195,45 @@ test('Customers CRM scrolls header, KPIs, pipeline and cards as one vertical sur
   assert.ok(crm.includes('navigation?.navigate(\'DealerOffers\')'),'offers route retained');
 });
 
+test('18 October Samsung light-mode screenshots: critical surfaces and approved menu glyphs',()=>{
+  const iconMap = app('components/BrandIcon.tsx');
+  const header = app('components/WebsiteTopBar.tsx');
+  const menu = app('components/HamburgerButton.tsx');
+  const sellerAuctions = app('screens/seller/SellerAuctionsScreen.tsx');
+  const dashboard = app('screens/main/DealerProfileScreen.tsx');
+  const valuation = app('screens/sell/SellLandingScreen.tsx');
+  const drawer = app('components/GlobalDrawer.tsx');
+  assert.ok(iconMap.includes("'menu': 'Menu'"),'top-right Menu must not fall back to a question-mark icon');
+  assert.ok(iconMap.includes("'apps-outline': 'LayoutGrid'"),'dealer More must not fall back to question-mark icon');
+  assert.ok(header.includes('<HamburgerButton websiteStyle showLabel />'),'approved top-right Menu label');
+  assert.ok(header.includes('name="notifications-outline" size={20} color={Colors.white}'),'bell must contrast with navy header in light mode');
+  assert.ok(menu.includes('showLabel && <Text'),'menu has a visible action label');
+  assert.ok(tabs.includes('adjustsFontSizeToFit'),'Dashboard and Customers bottom labels must not break');
+  assert.ok(tabs.includes('numberOfLines={1}'),'bottom labels stay on one line');
+  assert.ok(drawer.includes('lightGlobalDrawerStyles'),'Menu option surfaces theme with the page');
+  for(const [path,token] of [
+    ['screens/main/DealerPurchasesScreen.tsx','lightPurchasesStyles'],
+    ['screens/main/DealerMyOffersScreen.tsx','lightMyOffersStyles'],
+    ['screens/main/DealerOffersScreen.tsx','lightReceivedOffersStyles'],
+    ['screens/main/NotificationsScreen.tsx','lightNotificationsScreenStyles'],
+    ['components/offers/CounterLedger.tsx','lightCounterLedgerStyles'],
+    ['components/SaleCancellationSheet.tsx','lightSaleCancellationStyles'],
+    ['components/delivery/ReceivedDeliveryRequestsPanel.tsx','lightDeliveryRequestStyles'],
+  ]) {
+    const source = app(path);
+    assert.ok(source.includes(token), path+' must have light palette');
+    assert.ok(source.includes('mergeAppearanceStyles('),path+' must keep structural card styles');
+  }
+  assert.ok(valuation.includes('lightValuationStyles'),'valuation fields must theme');
+  assert.ok(valuation.includes('const mode = useAppearanceStore'),'shared field editor must theme');
+  assert.ok(dashboard.includes('attentionRow: { backgroundColor: \'#FFFFFF\''),'Dashboard attention cards must not remain navy');
+  assert.ok(dashboard.includes('extraInsightsBody: { backgroundColor: \'#EEF5FB\''),'Additional insights area must theme');
+  assert.ok(sellerAuctions.includes('lightSellerAuctionStyles'),'Create Auction wizard cards must theme');
+  assert.ok(sellerAuctions.includes("appearanceMode === 'light' ? '#0F172A' : Colors.white"),'white-sheet close icons must contrast');
+  assert.ok(sellerAuctions.includes('flexWrap: \'wrap\''),'auction tabs must not clip horizontally');
+  assert.ok(sellerAuctions.includes('contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 8, paddingBottom: insets.bottom + 85'),'auction wizard scrolls above Samsung system bar');
+});
+
 test('contractor/finance/admin role routing stays explicit and no unsafe acceptance claim',()=>{
   for(const source of [
     "accountRole === 'contractor'",
