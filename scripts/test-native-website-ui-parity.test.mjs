@@ -11,6 +11,7 @@ const web = read('src/components/dashboard/DashboardSidebar.tsx');
 const tabs = app('navigation/TabNavigator.tsx');
 const drawer = app('components/GlobalDrawer.tsx');
 const bar = app('components/WebsiteTopBar.tsx');
+const dealerMore = app('screens/main/DealerMoreScreen.tsx');
 
 test('web dealer and native Dashboard shortcuts retain matching destinations with clearer native label', () => {
   for (const segment of [
@@ -29,13 +30,14 @@ test('web dealer and native Dashboard shortcuts retain matching destinations wit
     assert.ok(tabs.includes("name: '"+route+"'"),route);
     assert.ok(tabs.includes("label: '"+label+"'"),label);
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'),route);
-    assert.ok(drawer.includes("tabName: '"+route+"'") || route === 'DealerMore', route);
+    assert.ok(tabs.includes(route === 'DealerMore' ? '<Tab.Screen name="DealerMore" component={GatedDealerMoreTab} />' : 'name: \''+route+'\''), route);
   }
   // DealerHome still opens the same Command Centre; only its display label changed.
   assert.ok(tabs.includes("initialRouteName={dealerMode ? 'DealerHome' : 'Home'}"));
   assert.ok(web.includes('Home'), 'website continues to label its dealer home separately');
-  assert.ok(tabs.includes("openDrawer();"));
-  assert.ok(drawer.includes("dealerMode ? 'DEALER WORKSPACE' : 'BUY, SELL & EXPLORE'"));
+  assert.ok(drawer.includes('const MAIN_MENU: MenuItem[]'), 'ten approved public menu entries');
+  assert.ok(tabs.includes('const GatedDealerMoreTab = withDealerGate(DealerMoreScreen)'));
+  assert.ok(dealerMore.includes('allowedTools = EXTRA_DEALER_TOOLS.filter(tool => hasPermission(tool.permission))'));
 });
 
 test('role switching and permissions retain secured routes and consumer deep links', () => {
@@ -45,8 +47,10 @@ test('role switching and permissions retain secured routes and consumer deep lin
   for (const route of ['Home','Search','Live','Saved','Profile']) {
     assert.ok(tabs.includes('<Tab.Screen name="'+route+'"'));
   }
-  assert.ok(drawer.includes('visiblePrimaryDealerItems'));
-  assert.ok(drawer.includes('hasDealerPermission(item.requiredPermission)'));
+  assert.ok(tabs.includes('<Tab.Screen name="Sell" component={SellLandingScreen} />'));
+  assert.ok(tabs.includes("route.name !== 'Live'"), 'consumer auction route stays reachable but outside bottom tabs');
+  assert.ok(dealerMore.includes("permission: 'MANAGE_OFFERS'"));
+  assert.ok(dealerMore.includes('hasPermission(tool.permission)'));
 });
 
 test('native shared header follows actual website logo, notification, account and More hierarchy', () => {
