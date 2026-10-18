@@ -18,6 +18,8 @@ import Animated, {
 import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
@@ -39,6 +41,8 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   listing,
   onPress,
 }) => {
+  const appearanceMode = useAppearanceStore(state => state.mode);
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightHorizontalCardStyles) : styles;
   // Selector-subscribed rather than destructuring the whole store — see the
   // note in VehicleCard.tsx. Re-renders only when this row's own saved state
   // changes, not when any listing anywhere is saved.
@@ -96,14 +100,14 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
     <>
     <AnimatedTouchable
       entering={FadeIn.duration(220)}
-      style={[styles.card, animatedStyle]}
+      style={[ts.card, animatedStyle]}
       onPress={() => onPress(listing.id)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
     >
       {/* Full-width photo first: mirrors the readable website listing cards. */}
-      <View style={styles.imageContainer}>
+      <View style={ts.imageContainer}>
         <ImageCarousel
           images={listing.images}
           width={imageWidth}
@@ -113,52 +117,52 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
 
         {/* Banner label takes priority over the tier badge — same corner, tight space */}
         {listing.bannerLabel ? (
-          <View style={styles.bannerBadge}>
-            <Text style={styles.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
+          <View style={ts.bannerBadge}>
+            <Text style={ts.bannerText} numberOfLines={1}>{listing.bannerLabel}</Text>
           </View>
         ) : (listing.isPremium || listing.badgeTier === 'PREMIUM') && (
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumText}>• PREMIUM</Text>
+          <View style={ts.premiumBadge}>
+            <Text style={ts.premiumText}>• PREMIUM</Text>
           </View>
         )}
         {listing.isDepartedSale && (
-          <View style={styles.estateBadge}>
-            <Text style={styles.estateText}>ESTATE</Text>
+          <View style={ts.estateBadge}>
+            <Text style={ts.estateText}>ESTATE</Text>
           </View>
         )}
-        <View style={styles.saveButtonOverlay}>
-          <IconButton style={styles.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        <View style={ts.saveButtonOverlay}>
+          <IconButton style={ts.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
         </View>
       </View>
 
       {/* Full-width details, with a clear hierarchy and no tiny cramped column. */}
-      <View style={styles.infoContainer}>
+      <View style={ts.infoContainer}>
         {/* Specs Row: Colour & Distance */}
-        <Text style={styles.specsText} numberOfLines={1}>
+        <Text style={ts.specsText} numberOfLines={1}>
           {getSpecsTopText(listing)}
         </Text>
 
         {/* Title: Make & Model */}
-        <Text style={styles.titleText} numberOfLines={2}>
+        <Text style={ts.titleText} numberOfLines={2}>
           {listing.make} {listing.model}
         </Text>
 
         {/* Vehicle details are visible without opening each listing. */}
-        <Text style={styles.subSpecsText} numberOfLines={2}>
+        <Text style={ts.subSpecsText} numberOfLines={2}>
           {[`Gearbox: ${listing.transmission || 'Not specified'}`, formatMileage(listing.mileage), listing.fuelType, listing.category].filter(Boolean).join('  ·  ')}
         </Text>
 
         {/* Bottom: Price, Grade & Heart Bookmark */}
-        <View style={styles.bottomRow}>
+        <View style={ts.bottomRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
-            <View style={styles.priceWrapper}>
-              <Text style={styles.priceText}>{formatPrice(listing.price)}</Text>
+            <View style={ts.priceWrapper}>
+              <Text style={ts.priceText}>{formatPrice(listing.price)}</Text>
             </View>
             <GradeChip grade={listing.exteriorGrade} />
           </View>
 
-          <View style={styles.viewDetails}>
-            <Text style={styles.viewDetailsText}>View details</Text>
+          <View style={ts.viewDetails}>
+            <Text style={ts.viewDetailsText}>View details</Text>
             <Ionicons name="chevron-forward" size={16} color={Colors.accent} />
           </View>
         </View>
@@ -175,6 +179,20 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
 };
 
 export const HorizontalVehicleCard = React.memo(HorizontalVehicleCardBase);
+
+const lightHorizontalCardStyles = StyleSheet.create({
+  card: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  imageContainer: { backgroundColor: '#E5EEF7' },
+  infoContainer: { backgroundColor: '#FFFFFF' },
+  specsText: { color: '#526177' },
+  titleText: { color: '#0F172A' },
+  subSpecsText: { color: '#526177' },
+  bottomRow: { borderTopColor: '#D5E1EC' },
+  priceWrapper: { backgroundColor: '#F7FBFF' },
+  priceWrapperOutline: { borderColor: '#D5E1EC' },
+  priceText: { color: '#0F172A' },
+  viewDetailsText: { color: '#334155' },
+});
 
 const styles = StyleSheet.create({
   card: {
