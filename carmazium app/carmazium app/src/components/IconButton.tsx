@@ -1,6 +1,7 @@
 import React, { ComponentType, ReactNode } from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Colors } from '../constants/colors';
+import { useAppearanceStore } from '../store/appearanceStore';
 
 // Every icon-only button in the app used to be a bare TouchableOpacity wrapping
 // an Ionicons/MaterialCommunityIcons element with no accessibilityLabel/Role and
@@ -28,11 +29,13 @@ export const IconButton: React.FC<IconButtonProps> = ({
   accessibilityLabel,
   onPress,
   size = 20,
-  color = Colors.white,
+  color,
   variant = 'ghost',
   disabled = false,
   style,
 }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const effectiveColor = color ?? (mode === 'light' ? '#0F172A' : Colors.white);
   const iconElement = React.isValidElement(icon)
     ? icon
     : icon
@@ -52,7 +55,9 @@ export const IconButton: React.FC<IconButtonProps> = ({
       style={[
         styles.base,
         variant === 'solid' && styles.solid,
+        variant === 'solid' && mode === 'light' && { backgroundColor: '#FFFFFF' },
         variant === 'circle' && styles.circle,
+        variant === 'circle' && mode === 'light' && { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
         disabled && styles.disabled,
         style,
       ]}
