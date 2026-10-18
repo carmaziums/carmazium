@@ -21,6 +21,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
+import { mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -364,7 +365,7 @@ const BODY_TYPES = [
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? { ...s, ...lightHomeStyles } : s;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightHomeStyles) : s;
   const role = useAuthStore((s) => s.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
