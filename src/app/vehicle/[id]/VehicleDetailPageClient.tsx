@@ -1289,12 +1289,9 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                     </Button>
                                 </div>
                                 <div className="h-56 relative opacity-40 pointer-events-none grayscale-[0.2]">
-                                    <Image
-                                        src="/assets/images/hpi_report_mockup.png"
-                                        alt="Vehicle history report preview"
-                                        fill
-                                        className="object-cover object-top"
-                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
+                                        <ShieldCheck size={96} className="text-blue-300/30" aria-hidden="true" />
+                                    </div>
                                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/20 to-slate-900/50" />
                                 </div>
                             </div>
