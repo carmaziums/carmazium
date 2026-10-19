@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - "src/components/listing/**"
+      - "src/app/auctions/live/**"
+      - "src/app/vehicle/**"
+      - "src/app/buy-cars/**"
+      - "src/lib/damageMarkers.ts"
+      - "scripts/test-public-damage-pins.test.mjs"
+      - "scripts/test-web-damage-release.test.mjs"
       - "src/components/features/ImportListingModal.tsx"
       - "src/components/dashboard/ListingEditModal.tsx"
       - "src/components/admin/AdminVehicleReviewPanel.tsx"
@@ -75,6 +81,9 @@ jobs:
 
       - name: Verify 3D damage upload, buyer evidence and safe navigation
         run: node --test scripts/test-web-damage-release.test.mjs
+
+      - name: Verify exact and approximate damage marker mapping for auction and retail
+        run: node --test scripts/test-public-damage-pins.test.mjs
 
       - name: Verify buyer DVLA and MOT information for both auction and retail
         run: node --test scripts/test-buyer-mot-display.test.mjs

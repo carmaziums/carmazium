@@ -43,30 +43,32 @@ test('all listing modes serialize 3D damage reports and fail closed on damage-sa
   assert.match(wizard, /Damage evidence was not saved/);
   assert.match(wizard, /Damage details were not saved/);
 });
-test('public viewers show only seller-saved numbered damage, never blanket plus markers', () => {
-  const auction = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
-  // Root cause: the old !onSurfaceTap branch rendered every predefined
-  // zone as a black "+" button on public listings.
-  assert.doesNotMatch(viewer, /!onSurfaceTap && ALL_ZONES\.map/);
-  assert.doesNotMatch(viewer, /function Hotspot\(/);
-  assert.match(viewer, /modelBounds && damagePins\.map\(pin =>/);
-  assert.match(viewer, /\{pin\.number\}/);
-  assert.match(viewer, /onClick=\{onSurfaceTap \? handleMeshTap : undefined\}/);
-  // Retail and auction both render only real, bounded persisted coordinates.
-  assert.match(buyer, /damagePins=\{buyerDamagePins\}/);
-  assert.match(auction, /const positionedDamage = damageRecords\.flatMap/);
-  assert.match(auction, /record\.coords\?\.surfacePoint/);
-  assert.match(auction, /point\[key\] >= 0 && point\[key\] <= 1/);
-  assert.match(auction, /damagePins=\{positionedDamage\}/);
-  assert.match(auction, /onDamagePinPress=\{id =>/);
-  assert.match(auction, /select a number or the detail card below/);
-  assert.match(mapper, /onSurfaceTap=\{handleSurfaceTap\}/);
+test('public viewers render exact and approximate damage pins, not blanket plus buttons', () => {
+  const vehicle = read('src/app/vehicle/[id]/VehicleDetailPageClient.tsx');
+  const liveAuction = read('src/app/auctions/live/[id]/page.tsx');
+  const helper = read('src/lib/damageMarkers.ts');
+  assert.ok(!viewer.includes('function Hotspot('));
+  assert.ok(!viewer.includes('!onSurfaceTap && ALL_ZONES.map'));
+  assert.ok(viewer.includes('damagePins.map((pin, pinIndex) =>'));
+  assert.ok(viewer.includes('{pin.number}'));
+  assert.ok(viewer.includes('pin.approximate'));
+  assert.ok(helper.includes('surfacePoint'));
+  assert.ok(helper.includes('panelPoints'));
+  assert.ok(buyer.includes('damagePins={buyerDamagePins}'));
+  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords)'));
+  assert.ok(vehicle.includes('const positionedDamage = buildBuyerDamagePins(damageRecords)'));
+  assert.ok(vehicle.includes('damagePins={positionedDamage}'));
+  assert.ok(liveAuction.includes('damagePins={buyerDamagePins}'));
+  assert.ok(liveAuction.includes('selectedDamageId={selectedDamageId}'));
+  assert.ok(liveAuction.includes('onDamagePinPress={id =>'));
+  assert.ok(mapper.includes('onSurfaceTap={handleSurfaceTap}'));
 });
 
 test('buyer can inspect individual seller-reported damage without editing it', () => {
   assert.match(buyer,/const \[selectedDamageId, setSelectedDamageId\]/);
   assert.match(buyer,/damagePins=\{buyerDamagePins\}/);
-  assert.match(buyer,/record\.coords\?\.surfacePoint/);
+  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords)'));
+  assert.ok(read('src/lib/damageMarkers.ts').includes('record.coords?.surfacePoint'));
   assert.match(buyer,/No damage reported by the seller/);
 });
 test('server authenticates owner or authorized dealer role inside transaction; evidence photo URLs validated', () => {
