@@ -411,7 +411,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
                 <Text style={styles.summaryValue}>{fmt(buyerFee)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>HPI check</Text>
+                <Text style={styles.summaryLabel}>Vehicle history check</Text>
                 <Text style={styles.summaryValueGreen}>Included</Text>
               </View>
             </>
