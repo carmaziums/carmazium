@@ -19,8 +19,8 @@ const TYPE_LABELS: Record<string, string> = {
     FULL_PAYMENT: "Full Payment",
     COMMISSION: "Auction Fee",
     REFUND: "Refund",
-    HPI_REPORT: "HPI Report",
-    HPI_REPORT_EMAIL: "HPI Report (emailed)",
+    HPI_REPORT: "Vehicle History Report",
+    HPI_REPORT_EMAIL: "Vehicle History Report (emailed)",
     LISTING_FEE: "Listing Fee",
     BOOST: "Boost",
     KYC_VERIFICATION: "Dealer KYC",
@@ -313,7 +313,7 @@ export default function AdminTransactionsPage() {
                     onClose={() => setHpiUploadTarget(null)}
                     onSaved={() => {
                         setHpiUploadTarget(null)
-                        setHpiSuccess("HPI report uploaded — the seller and any waiting buyers have been notified.")
+                        setHpiSuccess("Vehicle history report uploaded — the seller and any waiting buyers have been notified.")
                         reloadTransactions()
                     }}
                 />
@@ -326,7 +326,7 @@ export default function AdminTransactionsPage() {
                     hasExistingPdf={hpiFormTarget.hasPdf}
                     onClose={() => setHpiFormTarget(null)}
                     onSaved={() => {
-                        setHpiSuccess("HPI report saved — the seller and any waiting buyers have been notified.")
+                        setHpiSuccess("Vehicle history report saved — the seller and any waiting buyers have been notified.")
                         reloadTransactions()
                     }}
                 />
