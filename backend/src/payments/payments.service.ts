@@ -580,7 +580,7 @@ export class PaymentsService {
         const canonicalVrm = String(listing.vrm ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const suppliedVrm = String(requestedVrm ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (!canonicalVrm || !suppliedVrm || suppliedVrm !== canonicalVrm) {
-            throw new BadRequestException('HPI registration must match the saved vehicle listing');
+            throw new BadRequestException('Vehicle history report registration must match the saved vehicle listing');
         }
         return canonicalVrm;
     }
@@ -601,7 +601,7 @@ export class PaymentsService {
                 amount: this.HPI_REPORT_PRICE,
                 type: 'HPI_REPORT' as any,
                 status: 'PENDING',
-                description: `Comprehensive HPI Report for ${vrm}`,
+                description: `Vehicle History Check for ${vrm}`,
             },
         });
 
@@ -613,7 +613,7 @@ export class PaymentsService {
                     price_data: {
                         currency: 'gbp',
                         product_data: {
-                            name: 'Comprehensive HPI Report',
+                            name: 'Vehicle History Check',
                             description: `Full history check for vehicle ${vrm}`,
                         },
                         unit_amount: Math.round(this.HPI_REPORT_PRICE * 100),
@@ -948,7 +948,7 @@ export class PaymentsService {
         const descriptionMap: Record<string, string> = {
             COMMISSION: `Auction buyer fee — ${listing.title}`,
             LISTING_FEE: `${badgeTier ?? ''} Listing Fee — ${listing.title}`.trim(),
-            HPI_REPORT: `Comprehensive HPI Report for ${vrm}`,
+            HPI_REPORT: `Vehicle History Check for ${vrm}`,
         };
 
         // Only buyer-fee reservations need the auction-row lock.
