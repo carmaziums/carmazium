@@ -138,7 +138,7 @@ export function BuyerVehicleInformation({ listing }: { listing: Listing }) {
                 </h3>
                 <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
                     Available information saved with this listing from vehicle registration checks and the seller.
-                    Only known fields are shown. This is not a live DVLA/DVSA refresh or an independent HPI check.
+                    Only known fields are shown. This is not a live DVLA/DVSA refresh or an independent vehicle history check.
                 </p>
                 {latestRecorded && (
                     <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3">
