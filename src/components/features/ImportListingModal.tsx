@@ -32,7 +32,7 @@ const PLANS = [
         price: 25,
         icon: Star,
         colour: 'amber',
-        features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost included for 28 days'],
+        features: ['Everything in Standard, including a vehicle history report', 'Premium listing badge and presentation', 'Featured Boost included for 28 days'],
     },
 ]
 
