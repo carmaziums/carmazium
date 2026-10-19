@@ -200,7 +200,7 @@ export function HpiReportForm({ listingId, listingTitle, hasExistingPdf, onClose
                 <div className="shrink-0 p-5 border-b border-[var(--border-default)] space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="min-w-0">
-                            <h3 className="text-lg font-black uppercase tracking-tight">Prepare HPI Report</h3>
+                            <h3 className="text-lg font-black uppercase tracking-tight">Prepare Vehicle History Report</h3>
                             {listingTitle && <p className="text-xs text-[var(--text-muted)] truncate">{listingTitle}</p>}
                         </div>
                         <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
