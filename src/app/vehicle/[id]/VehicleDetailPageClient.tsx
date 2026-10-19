@@ -458,7 +458,7 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
     const [showEnquireModal, setShowEnquireModal] = React.useState(false)
     const [latestOffer, setLatestOffer] = React.useState<LatestOffer | null>(null)   // most recent offer on listing (any buyer) — public display
     const [myOffer, setMyOffer] = React.useState<LatestOffer | null>(null)            // this user's own offer — drives button state
-    const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const [offerSuccess, setOfferSuccess] = React.useState(false)
     const [isWatchlisted, setIsWatchlisted] = React.useState(false)
     const [watchlistLoading, setWatchlistLoading] = React.useState(false)
@@ -1169,11 +1169,8 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                     <ThreeDVehicleViewer
                                         bodyType={listing.bodyType ?? undefined}
                                         damagePins={positionedDamage}
-                                        selectedDamageId={positionedDamage.find(pin => pin.zone === selectedDamageZone)?.id ?? null}
-                                        onDamagePinPress={id => {
-                                            const zone = positionedDamage.find(pin => pin.id === id)?.zone
-                                            if (zone) setSelectedDamageZone(prev => prev === zone ? null : zone)
-                                        }}
+                                        selectedDamageId={selectedDamageId}
+                                        onDamagePinPress={id => setSelectedDamageId(prev => prev === id ? null : id)}
                                     />
                                 </ThreeDErrorBoundary>
 
@@ -1190,8 +1187,8 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                                             return (
                                                 <button
                                                     key={record.id ?? i}
-                                                    onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
-                                                    className={`text-left flex gap-3 p-4 rounded-xl border transition-colors ${selectedDamageZone === record.part ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-500/5 border-amber-500/15 hover:border-amber-500/30'}`}
+                                                    onClick={() => setSelectedDamageId(prev => prev === String(record.id ?? `damage-${i}`) ? null : String(record.id ?? `damage-${i}`))}
+                                                    className={`text-left flex gap-3 p-4 rounded-xl border transition-colors ${selectedDamageId === String(record.id ?? `damage-${i}`) ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-500/5 border-amber-500/15 hover:border-amber-500/30'}`}
                                                 >
                                                     {record.imageUrl && (
                                                         <div className="w-20 h-16 rounded-lg overflow-hidden shrink-0 border border-[var(--border-default)] relative">
