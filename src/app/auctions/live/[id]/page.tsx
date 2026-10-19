@@ -1658,7 +1658,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                                 : <Clock size={16} className="text-amber-400" />}
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <p className="text-xs font-bold text-[var(--text-primary)]">HPI History Check</p>
+                                                            <p className="text-xs font-bold text-[var(--text-primary)]">Vehicle History Check</p>
                                                             <p className="text-[10px] text-[var(--text-muted)] truncate">
                                                                 {hpiReady
                                                                     ? 'Vehicle history report — stolen, finance, write-off & more'
