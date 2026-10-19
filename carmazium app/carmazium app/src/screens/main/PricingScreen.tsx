@@ -83,7 +83,7 @@ const PLANS: PlanCard[] = [
   {
     id: 'standard',
     title: 'Standard',
-    subtitle: 'HPI vehicle-history report included',
+    subtitle: 'Vehicle history report included',
     price: `£${PRICING.listing.standard.price}`,
     period: 'one-off',
     accentColor: Colors.infoBlue,
@@ -91,7 +91,7 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.infoBlueAlpha25,
     features: [
       { label: 'Everything in Basic', included: true },
-      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Vehicle history report included', included: true },
       { label: 'Standard package badge', included: true },
       { label: 'Advertised until sold', included: true },
       { label: 'Featured Boost available separately', included: true },
@@ -100,7 +100,7 @@ const PLANS: PlanCard[] = [
   {
     id: 'premium',
     title: 'Premium',
-    subtitle: 'HPI + 28-day Featured Boost included',
+    subtitle: 'Vehicle history report + 28-day Featured Boost included',
     price: `£${PRICING.listing.premium.price}`,
     period: 'one-off',
     badge: 'BEST VALUE',
@@ -109,7 +109,7 @@ const PLANS: PlanCard[] = [
     accentBorder: Colors.accentAlpha25,
     features: [
       { label: 'Everything in Standard', included: true },
-      { label: 'HPI vehicle-history report included', included: true },
+      { label: 'Vehicle history report included', included: true },
       { label: 'Premium listing badge and presentation', included: true },
       { label: 'Advertised until sold', included: true },
       { label: 'Featured Boost included for 28 days', included: true },
@@ -131,8 +131,8 @@ interface AddOn {
 const ADD_ONS: AddOn[] = [
   {
     id: 'hpi',
-    title: 'HPI Vehicle Check',
-    subtitle: 'Optional for Auction and Basic Retail. Standard and Premium Retail already include the HPI report.',
+    title: 'Vehicle History Check',
+    subtitle: 'Optional for Auction and Basic Retail. Standard and Premium Retail already include a vehicle history report.',
     price: `£${PRICING.hpiReport.price}`,
     icon: 'shield-checkmark-outline',
     accentColor: Colors.success,
@@ -185,7 +185,7 @@ export const PricingScreen: React.FC = () => {
           <Text style={styles.introHeading}>Simple, honest pricing</Text>
           <Text style={styles.introSub}>
             List your car for free at auction, or choose Basic £1, Standard £10
-            with HPI included, or Premium £25 with HPI and a 28-day Featured Boost. Retail buyers pay no CarMazium buyer fee.
+            with a vehicle history report included, or Premium £25 with a vehicle history report and a 28-day Featured Boost. Retail buyers pay no CarMazium buyer fee.
           </Text>
         </View>
 
