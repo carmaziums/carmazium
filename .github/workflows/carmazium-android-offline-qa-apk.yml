@@ -169,7 +169,27 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon -x lint -x lintVitalRelease
+          # Tee Gradle diagnostics so failed CI runs retain a reproducible error,
+          # not just a red status with an expired GitHub job-log endpoint.
+          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon --stacktrace -x lint -x lintVitalRelease 2>&1 | tee "$GITHUB_WORKSPACE/carmazium-gradle-build.log"
+      - name: Save truncated Gradle diagnostic evidence if native compilation fails
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/carmazium-gradle-build.log" ]; then
+            mkdir -p "$GITHUB_WORKSPACE/qa-build-diagnostics"
+            tail -n 450 "$GITHUB_WORKSPACE/carmazium-gradle-build.log" > "$GITHUB_WORKSPACE/qa-build-diagnostics/build-failure-tail.log"
+            echo '### Android QA compilation failed — diagnostics saved' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Inspect private `CarMazium-Android-Build-Failure-Diagnostics` artifact; do not claim an APK exists.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload native build-failure diagnostics for review
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Android-Build-Failure-Diagnostics
+          path: qa-build-diagnostics/*
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Verify signed QA APK and source SHA
         shell: bash
         run: |
