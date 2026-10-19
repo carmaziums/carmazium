@@ -106,7 +106,7 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
         <Ionicons name="list-outline" size={19} color={Colors.infoBlue} />
         <Text style={styles.heading}>FULL VEHICLE INFORMATION</Text>
       </View>
-      <Text style={styles.note}>Saved registration-check details and seller information. Fields not supplied are omitted; this is not a live DVLA update or HPI report.</Text>
+      <Text style={styles.note}>Saved registration-check details and seller information. Fields not supplied are omitted; this is not a live DVLA update or an independent vehicle history report.</Text>
       {groups.map(group => {
         const entries = group.entries.map(([label, value]) => [label, readable(value)] as const)
           .filter((entry): entry is readonly [string, string] => entry[1] !== null);
