@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Alert,
   ActivityIndicator,
   TextInput,
@@ -19,7 +18,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { apiClient } from '../../lib/apiClient';
@@ -31,6 +30,8 @@ import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 
 import { IconButton } from '../../components/IconButton';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─────────────────────────────── types ────────────────────────────────
@@ -75,8 +76,9 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
   navigation,
   route,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const confettiRef = useRef<any>(null);
@@ -377,7 +379,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             onClose={() => setCancelOpen(false)}
           />
         )}
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <LinearGradient
           colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
@@ -413,18 +415,17 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
               <Image source={{ uri: listingImage }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={[ts.carImg, ts.carImgPlaceholder]}>
-                <Ionicons name="car-outline" size={20} color={Colors.iconMuted} />
+                <Ionicons name="car-outline" size={20} color={tc(Colors.iconMuted)} />
               </View>
             )}
             <View style={ts.carInfo}>
               <Text style={ts.carTitle} numberOfLines={2}>{listingTitle}</Text>
               <View style={ts.carStatusRow}>
-                <Ionicons name="checkmark-circle-outline" size={14} color={Colors.accentGreen} />
+                <Ionicons name="checkmark-circle-outline" size={14} color={tc(Colors.accentGreen)} />
                 <Text style={ts.carStatusText}>Fee paid · Handover to be arranged</Text>
               </View>
             </View>
           </View>
-
 
           {/* ── Seller review ── */}
           {sellerProfileId && (
@@ -434,7 +435,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
               {reviewDone ? (
                 <View style={ts.reviewDoneRow}>
-                  <Ionicons name="checkmark-circle" size={20} color={Colors.accentGreen} />
+                  <Ionicons name="checkmark-circle" size={20} color={tc(Colors.accentGreen)} />
                   <Text style={ts.reviewDoneText}>Review submitted — thank you!</Text>
                 </View>
               ) : (
@@ -442,7 +443,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                   {/* Stars */}
                   <View style={ts.starsRow}>
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <IconButton key={star} icon={<Ionicons name={star <= reviewRating ? 'star' : 'star-outline'} size={32} color={star <= reviewRating ? Colors.warning : 'rgba(255,255,255,0.25)'} />} onPress={() => setReviewRating(star)} accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`} />
+                      <IconButton key={star} icon={<Ionicons name={star <= reviewRating ? 'star' : 'star-outline'} size={32} color={tc(star <= reviewRating ? Colors.warning : Colors.textDisabled)} />} onPress={() => setReviewRating(star)} accessibilityLabel={`Rate ${star} star${star === 1 ? '' : 's'}`} />
                     ))}
                   </View>
 
@@ -451,7 +452,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                     <TextInput
                       style={ts.reviewInput}
                       placeholder="Add a comment (optional, min 10 chars)…"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={tc(Colors.textMuted)}
                       value={reviewComment}
                       onChangeText={setReviewComment}
                       multiline
@@ -470,7 +471,8 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
                     disabled={reviewRating === 0 || submittingReview}
                   >
                     {submittingReview ? (
-                      <ActivityIndicator size="small" color={Colors.white} />
+                      // Matches the black label on the amber button (white was 2.2:1).
+                      <ActivityIndicator size="small" color={Colors.black} />
                     ) : (
                       <Text style={ts.reviewBtnText}>SUBMIT REVIEW</Text>
                     )}
@@ -494,7 +496,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
             activeOpacity={0.8}
             onPress={() => setCancelOpen(true)}
           >
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent }}>
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: tc(Colors.accent) }}>
               Request Sale Cancellation
             </Text>
           </TouchableOpacity>
@@ -522,7 +524,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           onClose={() => setCancelOpen(false)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentGreenAlpha06, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -560,7 +562,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
         <View style={ts.heroWrap}>
           <View style={ts.trophyWrap}>
             <View style={ts.trophyGlow} />
-            <Ionicons name="trophy-outline" size={42} color={Colors.accentGreen} />
+            <Ionicons name="trophy-outline" size={42} color={tc(Colors.accentGreen)} />
           </View>
           <Text style={ts.heroSubGreen}>YOU WON THE AUCTION</Text>
           <Text style={ts.heroTitle} numberOfLines={2}>{listingTitle}</Text>
@@ -587,7 +589,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
               <Ionicons
                 name="time-outline"
                 size={20}
-                color={timeLeft < 3600 ? Colors.error : Colors.warning}
+                color={tc(timeLeft < 3600 ? Colors.error : Colors.warning)}
                 style={{ marginRight: 10 }}
               />
               <View>
@@ -637,7 +639,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
 
         {/* Stripe badge */}
         <View style={ts.paymentNote}>
-          <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
+          <Ionicons name="lock-closed-outline" size={16} color={tc(Colors.accentGreen)} />
           <Text style={ts.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
@@ -680,7 +682,7 @@ export const AuctionCompleteScreen: React.FC<{ navigation?: any; route?: any }> 
           onPress={() => setCancelOpen(true)}
           style={{ minHeight: 38, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}
         >
-          <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent }}>
+          <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: tc(Colors.accent) }}>
             Need to cancel this win? Request cancellation
           </Text>
         </TouchableOpacity>
@@ -1091,4 +1093,19 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 1,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerLabelGreen: { color: lightReadableText.success },
+  carStatusText: { color: lightReadableText.success },
+  reviewSub: { color: LIGHT_PALETTE.secondary },
+  reviewInput: { color: LIGHT_PALETTE.text },
+  heroSubGreen: { color: lightReadableText.success },
+  summaryTotalNote: { color: LIGHT_PALETTE.muted },
+  payBtnText: { color: Colors.white }, // on a solid brand/semantic fill in both modes
+  footerNote: { color: LIGHT_PALETTE.muted },
 });

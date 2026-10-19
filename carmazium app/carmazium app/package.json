@@ -11,7 +11,10 @@
     "web": "expo start --web",
     "typescript": "tsc --noEmit",
     "lint": "eslint .",
-    "test:seller-specs": "node --test scripts/test-seller-vehicle-specs.test.mjs"
+    "test:seller-specs": "node --test scripts/test-seller-vehicle-specs.test.mjs",
+    "test:theme-contrast": "node --test scripts/theme-audit/contrast-audit.test.mjs",
+    "test:theme-tokens": "jest src/theme",
+    "audit:theme": "node scripts/theme-audit/contrast-audit.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.0",

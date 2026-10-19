@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,7 +15,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -26,6 +25,8 @@ import {
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderLeads'>;
 type Filter = 'ALL' | 'FINANCE' | 'WARRANTY';
@@ -53,8 +54,9 @@ const requirementText = (lead: ServiceLead) => {
 };
 
 export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<Filter>('ALL');
   const [leads, setLeads] = useState<ServiceLead[]>([]);
@@ -124,7 +126,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
               <Ionicons
                 name={lead.serviceType === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'}
                 size={19}
-                color={lead.serviceType === 'FINANCE' ? Colors.infoBlueLight : Colors.warning}
+                color={tc(lead.serviceType === 'FINANCE' ? Colors.infoBlueLight : Colors.warning)}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -150,7 +152,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={ts.metaRow}>
-          <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
+          <Ionicons name="location-outline" size={14} color={tc(Colors.textMuted)} />
           <Text style={ts.metaText}>
             {lead.postcode ? `Postcode ${lead.postcode}` : 'Nationwide / postcode not supplied'}
           </Text>
@@ -158,7 +160,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
 
         {lead.vehicleValuePence != null ? (
           <View style={ts.metaRow}>
-            <Ionicons name="car-outline" size={14} color={Colors.textMuted} />
+            <Ionicons name="car-outline" size={14} color={tc(Colors.textMuted)} />
             <Text style={ts.metaText}>Vehicle value {formatPence(lead.vehicleValuePence)}</Text>
           </View>
         ) : null}
@@ -182,12 +184,12 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -258,7 +260,7 @@ export const ProviderLeadsScreen: React.FC<Props> = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={ts.centerCard}>
-              <Ionicons name="mail-unread-outline" size={34} color={Colors.textMuted} />
+              <Ionicons name="mail-unread-outline" size={34} color={tc(Colors.textMuted)} />
               <Text style={ts.emptyTitle}>No matched enquiries</Text>
               <Text style={ts.emptyText}>
                 New Finance and Warranty enquiries appear automatically when they match your approved service and matching settings.
@@ -327,4 +329,14 @@ const styles = StyleSheet.create({
   primaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.white, letterSpacing: 0.7 },
   secondaryButton: { minHeight: 42, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   secondaryText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textSecondary },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  statusText: { color: LIGHT_PALETTE.secondary },
+  headerSub: { color: LIGHT_PALETTE.muted },
+  expiredText: { color: lightReadableText.error },
 });

@@ -7,7 +7,6 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -21,7 +20,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -39,6 +38,8 @@ import {
 } from '../../lib/deliveryApi';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
@@ -179,9 +180,10 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerOffersScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightBuyerOffersScreenStyles), lightContrastStyles) : styles;
 
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -460,7 +462,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   const renderEmptyState = () => (
     <View style={ts.emptyState}>
-      <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
+      <Ionicons name="document-text-outline" size={40} color={tc(Colors.textMuted)} />
       <Text style={ts.emptyTitle}>No offers sent yet</Text>
       <Text style={ts.emptySub}>
         Make offers on listings to see them here
@@ -541,7 +543,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
         {isCountered && displayedCounter != null && (
           <View style={ts.counterSection}>
             <View style={ts.counterHeader}>
-              <Ionicons name="pricetag-outline" size={13} color={Colors.warning} />
+              <Ionicons name="pricetag-outline" size={13} color={tc(Colors.warning)} />
               <Text style={ts.counterLabel}>SELLER'S COUNTER</Text>
             </View>
             <View style={ts.counterAmountRow}>
@@ -550,7 +552,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 <Text
                   style={[
                     ts.counterDiff,
-                    { color: counterDiff > 0 ? Colors.accent : Colors.success },
+                    { color: tc(counterDiff > 0 ? Colors.accent : Colors.success) },
                   ]}
                 >
                   {counterDiff > 0 ? `+${formatPrice(counterDiff)}` : formatPrice(counterDiff)}{' '}
@@ -642,7 +644,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 disabled={isActioning}
               >
                 <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
-                <Text style={[ts.actionBtnText, { color: Colors.accent }]}>
+                <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>
                   Cancel Sale
                 </Text>
               </TouchableOpacity>
@@ -679,7 +681,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           <>
             {buyerCounterLocked && (
               <View style={ts.counterLockedBanner}>
-                <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
+                <Ionicons name="lock-closed-outline" size={12} color={tc(Colors.warning)} />
                 <Text style={ts.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
               </View>
             )}
@@ -691,7 +693,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 onPress={() => handleCounterRespond(offer, 'REJECTED')}
                 disabled={isActioning || counterBackLoading}
               >
-                <Text style={[ts.actionBtnText, { color: Colors.accent }]}>
+                <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>
                   Decline
                 </Text>
               </TouchableOpacity>
@@ -719,7 +721,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 }}
                 disabled={isActioning}
               >
-                <Ionicons name="return-down-back-outline" size={13} color={Colors.textSecondary} />
+                <Ionicons name="return-down-back-outline" size={13} color={tc(Colors.textSecondary)} />
                 <Text style={ts.actionBtnCounterBackText}>Counter Back</Text>
               </TouchableOpacity>
             )}
@@ -783,7 +785,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
             {deliveryLive && deliveryReq ? (
               <View style={ts.deliveryStatusRow}>
                 <View style={ts.deliveryStatusLeft}>
-                  <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
+                  <Ionicons name="car-outline" size={13} color={tc(Colors.accentGreen)} />
                   <Text style={ts.deliveryStatusText}>
                     {deliveryReq.status === 'PENDING' && 'Delivery requested · awaiting seller'}
                     {deliveryReq.status === 'ACCEPTED' && 'Delivery confirmed by seller'}
@@ -815,7 +817,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
                 activeOpacity={0.75}
                 onPress={() => openDeliveryForm(offer)}
               >
-                <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
+                <Ionicons name="car-outline" size={13} color={tc(Colors.accentGreen)} />
                 <Text style={ts.deliveryCtaText}>Add delivery request</Text>
               </TouchableOpacity>
             ) : (
@@ -919,7 +921,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -932,7 +934,7 @@ export const BuyerOffersScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={tc(Colors.white)} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>My Sent Offers</Text>
 
@@ -1278,7 +1280,7 @@ const styles = StyleSheet.create({
   counterSentText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.infoBlue,
+    color: Colors.infoLight,
   },
   counterLockedBanner: {
     flexDirection: 'row',
@@ -1305,12 +1307,12 @@ const styles = StyleSheet.create({
   },
   actionBtnAcceptCounter: {
     flex: 1,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   actionBtnMessage: {
     flex: 1,
-    backgroundColor: Colors.infoBlue,
+    backgroundColor: Colors.infoSolid,
     borderColor: Colors.infoBlue,
     flexDirection: 'row',
   },
@@ -1383,7 +1385,7 @@ const styles = StyleSheet.create({
   counterBackError: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.error,
+    color: Colors.errorLight,
   },
   counterBackCancel: {
     fontFamily: FontFamily.medium,
@@ -1486,4 +1488,26 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     lineHeight: 14,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  actionBtnWithdrawText: { color: LIGHT_PALETTE.secondary },
+  acceptedStatusText: { color: lightReadableText.success },
+  closedStatusText: { color: LIGHT_PALETTE.muted },
+  counterSentText: { color: lightReadableText.info },
+  actionBtnCounterBackText: { color: LIGHT_PALETTE.secondary },
+  counterBackCurrency: { color: LIGHT_PALETTE.muted },
+  counterBackError: { color: lightReadableText.error },
+  counterBackCancel: { color: LIGHT_PALETTE.muted },
+  deliveryStatusText: { color: LIGHT_PALETTE.muted },
+  deliveryLinkMuted: { color: LIGHT_PALETTE.muted },
+  deliveryLinkSuccess: { color: lightReadableText.success },
+  deliveryCtaText: { color: lightReadableText.success },
+  deliveryFormInput: { color: LIGHT_PALETTE.text },
+  actionBtnMessage: { backgroundColor: lightReadableText.info },
+  actionBtnAcceptCounter: { backgroundColor: lightReadableText.success },
 });

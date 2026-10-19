@@ -8,7 +8,6 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -25,7 +24,7 @@ import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText, lightStrongText, lightSolidFill } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -40,6 +39,8 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── types ────────────────────────────────
 
 interface ApiListing {
@@ -207,8 +208,9 @@ const getActionsForStatus = (status?: string): ActionItem[] => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { triggerListingFeePayment } = useListingFeePayment();
 
@@ -629,7 +631,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Image source={{ uri: thumb }} style={ts.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
             <View style={ts.thumbPlaceholder}>
-              <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
+              <Ionicons name="car-outline" size={24} color={tc(Colors.textMuted)} />
             </View>
           )}
         </View>
@@ -646,7 +648,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           )}
           {statusKey === 'REJECTED' && !!item.rejectionReason && (
             <Text
-              style={{ marginTop: 4, fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: Colors.error }}
+              style={{ marginTop: 4, fontFamily: FontFamily.medium, fontSize: FontSize.size10, color: tc(Colors.errorLight) }}
               numberOfLines={2}
             >
               {item.rejectionReason}
@@ -769,7 +771,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -781,14 +783,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.headerBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.headerBtn} icon={<Ionicons name="chevron-back" size={20} color={tc(Colors.white)} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>My Listings</Text>
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <IconButton style={ts.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={Colors.warning} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
-          <IconButton style={ts.headerBtn} icon={<Ionicons name="link-outline" size={18} color={Colors.infoBlueLight} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
-          <IconButton style={ts.headerBtn} icon={<Ionicons name="add" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="cloud-upload-outline" size={18} color={tc(Colors.warning)} />} onPress={() => setShowBulkImportModal(true)} accessibilityLabel="Bulk import" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="link-outline" size={18} color={tc(Colors.infoBlueLight)} />} onPress={() => setShowImportModal(true)} accessibilityLabel="Import from URL" />
+          <IconButton style={ts.headerBtn} icon={<Ionicons name="add" size={20} color={tc(Colors.white)} />} onPress={() => navigation?.navigate('SellCarFlow')} accessibilityLabel="Add listing" />
           <HamburgerButton />
         </View>
       </View>
@@ -862,6 +864,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
       {/* Global action loading overlay */}
       {actionLoading && !sellPriceModal && (
+        // theme-audit-ignore: dim scrim over list content; spinner only
         <View style={ts.actionLoadingOverlay}>
           <ActivityIndicator color={Colors.accent} size="large" />
         </View>
@@ -920,11 +923,11 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   onPress={() => { setAuctionPickerMode('date'); setShowAuctionDatePicker(true); }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
+                  <Ionicons name="calendar-outline" size={14} color={tc(Colors.infoBlueLight)} />
                   <Text style={ts.datePickerBtnText}>
                     {auctionStartDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </Text>
-                  <Ionicons name="chevron-down" size={13} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-down" size={13} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
                 {(Platform.OS === 'ios' || showAuctionDatePicker) && (
                   <DateTimePicker
@@ -979,8 +982,8 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 )}
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(249,115,22,0.06)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.18)', borderRadius: 10, padding: 10, marginTop: 14 }}>
-                  <Ionicons name="time-outline" size={13} color={Colors.lightOrange_fb923c} />
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.lightOrange_fb923c, flex: 1, lineHeight: 16 }}>Auction runs for 24 hours. Anti-snipe: bids in the final 3 minutes extend the auction by 3 minutes.</Text>
+                  <Ionicons name="time-outline" size={13} color={tc(Colors.lightOrange_fb923c)} />
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: tc(Colors.lightOrange_fb923c), flex: 1, lineHeight: 16 }}>Auction runs for 24 hours. Anti-snipe: bids in the final 3 minutes extend the auction by 3 minutes.</Text>
                 </View>
 
                 <TouchableOpacity
@@ -1215,7 +1218,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.textMuted,
   },
 
-
   // ── action sheet ──
   sheetRow: {
     flexDirection: 'row',
@@ -1274,7 +1276,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     height: 52,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -1293,7 +1295,7 @@ const styles = StyleSheet.create({
   soldCancelBtnText: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.sm,
-    color: Colors.error,
+    color: Colors.errorLight,
   },
 
   // ── global action loading overlay ──
@@ -1336,7 +1338,26 @@ const styles = StyleSheet.create({
   datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: Colors.inputBg, borderWidth: 1, borderColor: Colors.infoBlueAlpha30, borderRadius: Radius.inline, paddingHorizontal: 14, paddingVertical: 12 },
   datePickerBtnText: { flex: 1, fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.infoBlueLight },
   dualErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 10 },
-  dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
-  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.lightOrange_f97316, marginTop: 16 },
+  dualErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.errorLight, flex: 1, lineHeight: 17 },
+  dualSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warningSolid, marginTop: 16 }, // white label: orange #F97316 was 2.8:1
   dualSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  cardViews: { color: LIGHT_PALETTE.muted },
+  soldCurrencySymbol: { color: LIGHT_PALETTE.secondary },
+  soldInput: { color: LIGHT_PALETTE.text },
+  soldCancelBtnText: { color: lightReadableText.error },
+  tabBadgeText: { color: LIGHT_PALETTE.muted },
+  dualModalSub: { color: LIGHT_PALETTE.muted },
+  dualCurrency: { color: LIGHT_PALETTE.muted },
+  dualInput: { color: LIGHT_PALETTE.text },
+  soldConfirmBtn: { backgroundColor: lightReadableText.success },
+  boostToastText: { color: styles.boostToastText.color },
+  datePickerBtnText: { color: lightStrongText.info },
+  dualSubmitBtn: { backgroundColor: lightSolidFill.warning },
 });

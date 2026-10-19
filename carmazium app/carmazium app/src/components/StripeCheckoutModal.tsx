@@ -94,12 +94,14 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
               thirdPartyCookiesEnabled
             />
             {loading && (
+              // theme-audit-ignore: transient spinner on a dim scrim over the checkout web view
               <View style={ts.loadingOverlay} pointerEvents="none">
                 <ActivityIndicator size="large" color={Colors.accent} />
               </View>
             )}
           </View>
         ) : (
+          // theme-audit-ignore: transient spinner on a dim scrim over the checkout web view
           <View style={ts.loadingOverlay}>
             <ActivityIndicator size="large" color={Colors.accent} />
           </View>

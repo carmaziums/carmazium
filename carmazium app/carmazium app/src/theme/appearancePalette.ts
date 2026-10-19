@@ -1,8 +1,30 @@
 import { Colors } from '../constants/colors';
 import type { AppearanceMode } from '../store/appearanceStore';
 
+export type StatusBarTone = 'light-content' | 'dark-content';
+
+export interface AppearancePalette {
+  background: string;
+  card: string;
+  elevated: string;
+  input: string;
+  text: string;
+  secondary: string;
+  muted: string;
+  border: string;
+  header: string;
+  tab: string;
+  disabled: string;
+  icon: string;
+  switchTrackOff: string;
+  accentSolid: string;
+  onAccent: string;
+  skeleton: string;
+  statusBar: StatusBarTone;
+}
+
 /** Matches the public website's src/app/globals.css root and .dark tokens. */
-const light = {
+const light: AppearancePalette = {
   background: '#EEF5FB',
   card: '#FFFFFF',
   elevated: '#F7FBFF',
@@ -15,8 +37,21 @@ const light = {
   // Shared logo asset uses white lettering; keep navy header until a dark-letter logo variant is verified.
   header: '#1E293B',
   tab: '#FFFFFF',
+  // Disabled-but-understandable copy: 5.43:1 on cards, 4.93:1 on the page, distinct from
+  // secondary (#334155) so the enabled/disabled difference stays visible.
+  disabled: '#5B6B82',
+  // Neutral glyphs (back chevrons, menu bars, row icons) on pale surfaces.
+  icon: '#334155',
+  // Switch "off" track: 3.46:1 against white, meeting the 3:1 UI-boundary rule.
+  switchTrackOff: '#7C8BA1',
+  // Solid brand fill that carries small white labels at 5.65:1. Colors.accent
+  // (#ED1C24) only reaches 4.37:1 with white text, so light mode deepens it.
+  accentSolid: Colors.accentDeep,
+  onAccent: '#FFFFFF',
+  skeleton: '#DCE6F0',
+  statusBar: 'dark-content',
 };
-const dark = {
+const dark: AppearancePalette = {
   background: Colors.bgPrimary,
   card: Colors.bgCardSolid,
   elevated: Colors.bgSecondary,
@@ -27,6 +62,13 @@ const dark = {
   border: Colors.borderSubtle,
   header: '#1E293B',
   tab: '#243047',
+  disabled: Colors.textMuted,
+  icon: Colors.white,
+  switchTrackOff: Colors.borderMuted,
+  accentSolid: Colors.accent,
+  onAccent: Colors.white,
+  skeleton: Colors.bgTertiary,
+  statusBar: 'light-content',
 };
 /**
  * High-contrast labels on pale/white surfaces. Brand accents remain unchanged
@@ -40,9 +82,162 @@ export const lightReadableText = {
   warning: '#92400E',
   info: '#1D4ED8',
   error: '#B91C1C',
+  purple: '#6D28D9',
+  pink: '#BE185D',
 } as const;
 
-export type AppearancePalette = typeof light;
+// ─── Foreground colour translation for light mode ──────────────────────────
+// Most screens were written against the dark palette and pass colours inline
+// (`<Ionicons color={Colors.textMuted} />`, `{ color: Colors.success }`).
+// themedColor() keeps the exact dark value in dark mode and returns the
+// readable light-mode equivalent of the same role in light mode, so a call
+// site changes from `Colors.success` to `tc(Colors.success)` and dark mode is
+// byte-for-byte unchanged.
+//
+// Only use it for colours drawn on the PAGE / CARD surface. Foreground on a
+// solid brand or semantic fill (white on a red CTA) must stay as it is.
+
+const parseRgb = (c: string): [number, number, number, number] | null => {
+  const v = c.trim();
+  const hex = v.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+  if (hex) {
+    let h = hex[1];
+    if (h.length === 3) h = h.split('').map(x => x + x).join('');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16),
+      h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1];
+  }
+  const rgb = v.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgb) {
+    const p = rgb[1].split(',').map(x => parseFloat(x));
+    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+  }
+  return null;
+};
+
+const ACCENT_FAMILY = new Set<string>([Colors.accent, Colors.accentDeep, '#FF0037'].map(c => c.toUpperCase()));
+
+/** Light-mode equivalent of a dark-mode foreground colour. Pure; exported for tests. */
+export function toLightForeground(color: string): string {
+  if (typeof color !== 'string') return color;
+  if (ACCENT_FAMILY.has(color.toUpperCase())) return lightReadableText.accent;
+  const rgb = parseRgb(color);
+  if (!rgb) return color;
+  const [r, g, b, a] = rgb;
+  // Composite translucent colours over the dark page they were designed for.
+  const base = parseRgb(Colors.bgPrimary) ?? [27, 37, 56, 1];
+  const [R, G, B] = [r, g, b].map((v, i) => v * a + base[i] * (1 - a));
+  const max = Math.max(R, G, B) / 255;
+  const min = Math.min(R, G, B) / 255;
+  const chroma = max - min;
+  const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const lum = 0.2126 * lin(R) + 0.7152 * lin(G) + 0.0722 * lin(B);
+  // Already dark enough to read on a pale surface: leave it alone.
+  if (lum < 0.09) return color;
+  if (chroma < 0.18) { // slate greys carry a slight blue tint (#A3B1C4 = 0.13)
+    // Neutral: white is primary copy, light slate (#E2E8F0) secondary copy,
+    // anything dimmer was muted/disabled copy.
+    if (lum >= 0.9) return light.text;
+    if (lum >= 0.6) return light.secondary;
+    return light.muted;
+  }
+  let hue = 0;
+  const d = chroma;
+  const rn = R / 255, gn = G / 255, bn = B / 255;
+  if (max === rn) hue = ((gn - bn) / d) % 6;
+  else if (max === gn) hue = (bn - rn) / d + 2;
+  else hue = (rn - gn) / d + 4;
+  hue = (hue * 60 + 360) % 360;
+  if (hue < 15 || hue >= 345) return lightReadableText.error;
+  if (hue < 65) return lightReadableText.warning;
+  if (hue < 175) return lightReadableText.success;
+  if (hue < 255) return lightReadableText.info;
+  if (hue < 300) return lightReadableText.purple;
+  return lightReadableText.pink;
+}
+
+/**
+ * Deeper text for semantic labels sitting on their own pale tint (a red label
+ * in a 15%-red pill reaches only ~4.3:1 with lightReadableText). 7:1+ on the
+ * tints and on white.
+ */
+export const lightStrongText = {
+  accent: '#991B1B',
+  error: '#991B1B',
+  warning: '#78350F',
+  success: '#065F46',
+  info: '#1E3A8A',
+  purple: '#5B21B6',
+  pink: '#9D174D',
+} as const;
+
+/**
+ * Solid semantic fills that carry a WHITE label at 4.5:1+ in light mode.
+ * The dark-mode fills (#10B981 green 2.5:1, #F59E0B amber 2.2:1 with white)
+ * stay untouched in dark mode — see the audit report for that decision.
+ */
+export const lightSolidFill = {
+  success: '#047857',
+  warning: '#B45309',
+  info: '#1D4ED8',
+  error: '#B91C1C',
+  purple: '#6D28D9',
+} as const;
+
+const hueFamily = (color: string): keyof typeof lightSolidFill | 'neutral' | null => {
+  const out = toLightForeground(color);
+  if (out === lightReadableText.success) return 'success';
+  if (out === lightReadableText.warning) return 'warning';
+  if (out === lightReadableText.info) return 'info';
+  if (out === lightReadableText.error || out === lightReadableText.accent) return 'error';
+  if (out === lightReadableText.purple || out === lightReadableText.pink) return 'purple';
+  if (out === light.text || out === light.secondary || out === light.muted) return 'neutral';
+  return null;
+};
+
+/** Stronger light-mode text for a semantic label on its own tinted chip. */
+export function toLightStrongForeground(color: string): string {
+  if (ACCENT_FAMILY.has(color.toUpperCase())) return lightStrongText.accent;
+  const fam = hueFamily(color);
+  if (fam === 'neutral') return light.text;
+  if (fam === 'error') return lightStrongText.error;
+  return fam ? lightStrongText[fam] : toLightForeground(color);
+}
+
+/** Light-mode solid fill that keeps a white label readable. */
+export function toLightFill(color: string): string {
+  const fam = hueFamily(color);
+  return fam && fam !== 'neutral' ? lightSolidFill[fam] : color;
+}
+
+/**
+ * Light-mode surface for a dark neutral fill (navy cards, slate inputs,
+ * translucent dark panels). Chromatic or already-light fills are returned
+ * unchanged.
+ */
+export function toLightSurface(color: string, kind: 'card' | 'elevated' = 'card'): string {
+  const rgb = parseRgb(color);
+  if (!rgb) return color;
+  const [r, g, b] = rgb;
+  const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+  const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const lum = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const isWhiteAlpha = r > 240 && g > 240 && b > 240 && rgb[3] < 0.3;
+  if (isWhiteAlpha || (lum < 0.12 && chroma < 0.25)) return kind === 'card' ? light.card : light.elevated;
+  return color;
+}
+
+export function themedSurface(mode: AppearanceMode, color: string, kind: 'card' | 'elevated' = 'card'): string {
+  return mode === 'light' ? toLightSurface(color, kind) : color;
+}
+
+export function themedFill(mode: AppearanceMode, color: string): string {
+  return mode === 'light' ? toLightFill(color) : color;
+}
+
+export function themedColor(mode: AppearanceMode, color: string): string {
+  return mode === 'light' ? toLightForeground(color) : color;
+}
+
 export const appearancePalette = (mode: AppearanceMode): AppearancePalette =>
   mode === 'light' ? light : dark;
 

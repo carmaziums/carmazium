@@ -3,7 +3,6 @@ import {
   Alert,
   Animated,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,9 +18,11 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightSolidFill } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 // ─────────────────────────── types ───────────────────────────────
 
@@ -75,7 +76,7 @@ interface TileProps {
 
 const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, badge, sublabel, onPress, wide }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles), lightContrastStyles) : styles;
   return (
   <TouchableOpacity
     style={[ts.tile, wide && ts.tileWide]}
@@ -111,9 +112,10 @@ const Tile: React.FC<TileProps> = ({ label, icon, iconLib = 'ion', accentColor, 
 // ══════════════════════════ COMPONENT ════════════════════════════
 
 export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightUnifiedDashboardScreenStyles), lightContrastStyles) : styles;
   const { user, role, accountRole, logout } = useAuthStore();
   const [data, setData] = useState<UnifiedDashboardData>(EMPTY);
   const [loading, setLoading] = useState(true);
@@ -170,7 +172,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.5 }}
@@ -184,7 +186,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         <View style={ts.headerRight}>
           <TouchableOpacity style={ts.bellBtn} activeOpacity={0.75} onPress={() => nav('Notifications')} accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
             {unreadMessages > 0 && <View style={ts.bellDot} />}
-            <Ionicons name="notifications-outline" size={18} color={Colors.textPrimary} />
+            <Ionicons name="notifications-outline" size={18} color={tc(Colors.textPrimary)} />
           </TouchableOpacity>
           <HamburgerButton />
         </View>
@@ -209,7 +211,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             <Text style={ts.profileEmail} numberOfLines={1}>{email}</Text>
           </View>
           <View style={[ts.rolePill, isDealer ? ts.rolePillAmber : isSeller ? ts.rolePillBlue : ts.rolePillGreen]}>
-            <Text style={[ts.rolePillText, isDealer ? { color: Colors.warning } : isSeller ? { color: Colors.infoBlue } : { color: Colors.success }]}>
+            <Text style={[ts.rolePillText, isDealer ? { color: tc(Colors.warning) } : isSeller ? { color: Colors.infoBlue } : { color: tc(Colors.success) }]}>
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
@@ -224,7 +226,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
-            <Ionicons name="car-outline" size={19} color={Colors.white} />
+            <Ionicons name="car-outline" size={19} color={tc(Colors.white)} />
             <Text style={ts.accountQuickText}>Buy Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -234,7 +236,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
             accessibilityLabel={isSellerAccount ? 'Manage your vehicle listings' : 'Start selling a car'}
             activeOpacity={0.8}
           >
-            <Ionicons name="pricetag-outline" size={19} color={Colors.white} />
+            <Ionicons name="pricetag-outline" size={19} color={tc(Colors.white)} />
             <Text style={ts.accountQuickText}>{isSellerAccount ? 'My Listings' : 'Sell a Car'}</Text>
           </TouchableOpacity>
         </View>
@@ -459,4 +461,10 @@ const styles = StyleSheet.create({
   signOutRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, backgroundColor: Colors.accentAlpha06, borderWidth: 1, borderColor: Colors.accentAlpha20, borderRadius: Radius.inline, paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   signOutIcon: { width: 34, height: 34, borderRadius: Radius.inline, backgroundColor: Colors.accentAlpha12, alignItems: 'center', justifyContent: 'center' },
   signOutText: { flex: 1, fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.accent },
+});
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  avatarDealer: { backgroundColor: lightSolidFill.warning },
 });

@@ -4,7 +4,6 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -27,6 +26,8 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const HALF_CARD = (SCREEN_WIDTH - 40 - CARD_GAP) / 2;
@@ -83,6 +84,7 @@ const formatPrice = (n: number): string => `£${n.toLocaleString('en-GB')}`;
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerFinanceScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerFinanceScreenStyles) : styles;
@@ -201,7 +203,7 @@ export const DealerFinanceScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(74,222,128,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
@@ -214,7 +216,7 @@ export const DealerFinanceScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={ts.headerTitle}>Finance</Text>
         <HamburgerButton />
       </View>

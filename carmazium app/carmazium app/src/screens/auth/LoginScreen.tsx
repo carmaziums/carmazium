@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,16 +22,19 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +86,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       {/* Background gradient with top red glow */}
       <LinearGradient
@@ -131,7 +133,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={emailFocused ? Colors.accent : Colors.textMuted}
+                  color={tc(emailFocused ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -162,7 +164,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={passwordFocused ? Colors.accent : Colors.textMuted}
+                  color={tc(passwordFocused ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -178,7 +180,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setPasswordFocused(false)}
                   onSubmitEditing={handleLogin}
                 />
-                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={tc(Colors.textMuted)} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
@@ -432,4 +434,13 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 60,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  input: { color: LIGHT_PALETTE.text },
+  sessionNote: { color: LIGHT_PALETTE.secondary },
 });

@@ -17,12 +17,13 @@ import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Logo } from '../../components/Logo';
+import { useAppearance } from '../../theme/useAppearance';
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -84,17 +85,24 @@ const Chip: React.FC<{
   label: string;
   selected: boolean;
   onPress: () => void;
-}> = ({ label, selected, onPress }) => (
-  <TouchableOpacity
-    style={[chipStyles.chip, selected && chipStyles.chipSelected]}
-    onPress={onPress}
-    activeOpacity={0.75}
-  >
-    <Text style={[chipStyles.label, selected && chipStyles.labelSelected]}>
-      {label}
-    </Text>
-  </TouchableOpacity>
-);
+}> = ({ label, selected, onPress }) => {
+  // Glass chips (6% white) and #E2E8F0 labels vanished on the light page.
+  const isLight = useAppearanceStore(state => state.mode) === 'light';
+  const cs = isLight ? chipLightStyles : chipStyles;
+  return (
+    <TouchableOpacity
+      style={[cs.chip, selected && cs.chipSelected]}
+      onPress={onPress}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+    >
+      <Text style={[cs.label, selected && cs.labelSelected]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+};
 
 const chipStyles = StyleSheet.create({
   chip: {
@@ -122,11 +130,19 @@ const chipStyles = StyleSheet.create({
   },
 });
 
+const chipLightStyles = mergeAppearanceStyles(chipStyles, {
+  chip: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  chipSelected: { backgroundColor: Colors.accentAlpha12, borderColor: lightReadableText.accent },
+  label: { color: '#334155' },
+  labelSelected: { color: lightStrongText.accent },
+});
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export const PostSignupOnboardingScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const accountRole = useAuthStore((s) => s.accountRole);
@@ -451,13 +467,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
               <View style={ts.fieldGroup}>
                 <Text style={ts.fieldLabel}>FIRST NAME</Text>
                 <View style={ts.inputWrapper}>
-                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={ts.inputIcon} />
+                  <Ionicons name="person-outline" size={20} color={tc(Colors.textMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.input}
                     value={onbFirstName}
                     onChangeText={(v) => { setOnbFirstName(v); if (nameError) setNameError(''); }}
                     placeholder="First name"
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="words"
                     returnKeyType="next"
                   />
@@ -467,13 +483,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
               <View style={ts.fieldGroup}>
                 <Text style={ts.fieldLabel}>LAST NAME</Text>
                 <View style={ts.inputWrapper}>
-                  <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={ts.inputIcon} />
+                  <Ionicons name="person-outline" size={20} color={tc(Colors.textMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.input}
                     value={onbLastName}
                     onChangeText={(v) => { setOnbLastName(v); if (nameError) setNameError(''); }}
                     placeholder="Last name"
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="words"
                     returnKeyType="done"
                   />
@@ -529,7 +545,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
               {/* Inline warning */}
               {verifyWarning !== '' && (
                 <View style={ts.warningRow}>
-                  <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
+                  <Ionicons name="alert-circle-outline" size={16} color={tc(Colors.warning)} />
                   <Text style={ts.warningText}>{verifyWarning}</Text>
                 </View>
               )}
@@ -566,13 +582,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   focusedContactField === 'phone' && ts.inputFocused,
                   phoneError !== '' && ts.inputError,
                 ]}>
-                  <Ionicons name="call-outline" size={20} color={phoneError ? Colors.error : focusedContactField === 'phone' ? Colors.accent : Colors.textMuted} style={ts.inputIcon} />
+                  <Ionicons name="call-outline" size={20} color={tc(phoneError ? Colors.error : focusedContactField === 'phone' ? Colors.accent : Colors.textMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.input}
                     value={phone}
                     onChangeText={(value) => { setPhone(value); if (phoneError) setPhoneError(''); }}
                     placeholder="e.g. 07123 456789"
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="phone-pad"
                     autoCorrect={false}
                     returnKeyType="next"
@@ -593,13 +609,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   focusedContactField === 'location' && ts.inputFocused,
                   locationError !== '' && ts.inputError,
                 ]}>
-                  <Ionicons name="location-outline" size={20} color={locationError ? Colors.error : focusedContactField === 'location' ? Colors.accent : Colors.textMuted} style={ts.inputIcon} />
+                  <Ionicons name="location-outline" size={20} color={tc(locationError ? Colors.error : focusedContactField === 'location' ? Colors.accent : Colors.textMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.input}
                     value={location}
                     onChangeText={(value) => { setLocation(value); if (locationError) setLocationError(''); }}
                     placeholder="e.g. Birmingham"
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="words"
                     returnKeyType="next"
                     onFocus={() => setFocusedContactField('location')}
@@ -619,13 +635,13 @@ export const PostSignupOnboardingScreen: React.FC = () => {
                   focusedContactField === 'postcode' && ts.inputFocused,
                   postcodeError !== '' && ts.inputError,
                 ]}>
-                  <Ionicons name="navigate-outline" size={20} color={postcodeError ? Colors.error : focusedContactField === 'postcode' ? Colors.accent : Colors.textMuted} style={ts.inputIcon} />
+                  <Ionicons name="navigate-outline" size={20} color={tc(postcodeError ? Colors.error : focusedContactField === 'postcode' ? Colors.accent : Colors.textMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.input}
                     value={postcode}
                     onChangeText={(value) => { setPostcode(value.toUpperCase()); if (postcodeError) setPostcodeError(''); }}
                     placeholder="e.g. B1 1AA"
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="characters"
                     autoCorrect={false}
                     returnKeyType="done"
@@ -641,7 +657,7 @@ export const PostSignupOnboardingScreen: React.FC = () => {
               </View>
 
               <View style={ts.warningRow}>
-                <Ionicons name="shield-checkmark-outline" size={16} color={Colors.warning} />
+                <Ionicons name="shield-checkmark-outline" size={16} color={tc(Colors.warning)} />
                 <Text style={ts.warningText}>
                   These fields are required on both the app and website before dashboard access.
                 </Text>
@@ -885,7 +901,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.error,
+    color: Colors.errorLight,
     lineHeight: FontSize.sm * 1.5,
   },
 
@@ -934,7 +950,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginTop: 6,
     letterSpacing: 0.3,
   },
@@ -1018,4 +1034,15 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 60,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  stepIndicator: { color: lightReadableText.accent },
+  input: { color: LIGHT_PALETTE.text },
+  ghostBtnText: { color: LIGHT_PALETTE.text },
+  preferencesIntro: { color: LIGHT_PALETTE.secondary },
 });

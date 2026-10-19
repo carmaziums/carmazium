@@ -3,9 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
-  StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -28,6 +26,9 @@ import {
   updateLeadMatching,
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
+import { ThemedSwitch } from '../../components/ThemedSwitch';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderMatching'>;
 
@@ -45,8 +46,9 @@ const areasFromText = (value: string) =>
   [...new Set(value.split(/[\s,]+/).map((v) => v.trim().toUpperCase()).filter(Boolean))];
 
 export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const { capabilityId } = route.params;
   const insets = useSafeAreaInsets();
   const [cap, setCap] = useState<ContractorCapability | null>(null);
@@ -164,7 +166,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
         value={value}
         onChangeText={setter}
         placeholder={placeholder}
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={tc(Colors.textMuted)}
         keyboardType={numeric ? 'number-pad' : 'default'}
         autoCapitalize={numeric ? 'none' : 'words'}
       />
@@ -173,9 +175,9 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={ts.header}>
-        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={ts.headerTitle}>Matching settings</Text>
         <View style={ts.headerButton} />
       </View>
@@ -194,10 +196,9 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                     <Text style={ts.cardTitle}>Nationwide coverage</Text>
                     <Text style={ts.cardText}>Receive matching work from across the UK.</Text>
                   </View>
-                  <Switch
+                  <ThemedSwitch
                     value={nationwide}
                     onValueChange={setNationwide}
-                    trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
                     thumbColor={Colors.white}
                   />
                 </View>
@@ -209,7 +210,7 @@ export const ProviderMatchingScreen: React.FC<Props> = ({ route, navigation }) =
                       value={areas}
                       onChangeText={setAreas}
                       placeholder="B, CV, M, SW"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={tc(Colors.textMuted)}
                       autoCapitalize="characters"
                     />
                     <Text style={ts.hint}>Use postcode areas, not full postcodes.</Text>
@@ -277,4 +278,14 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 48, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  input: { color: LIGHT_PALETTE.text },
+  sub: { color: LIGHT_PALETTE.secondary },
+  error: { color: lightReadableText.error },
 });

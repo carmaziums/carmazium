@@ -7,9 +7,10 @@ import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../theme/appearancePalette';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useAppearance } from '../theme/useAppearance';
 
 /**
  * One-time prompt for accounts missing location / postcode.
@@ -36,13 +37,14 @@ import { FontFamily, FontSize } from '../constants/typography';
 let dismissedThisSession = false;
 
 export const LocationPromptSheet: React.FC = () => {
+  const { tc } = useAppearance();
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const updateUser = useAuthStore((s) => s.updateUser);
 
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLocationPromptStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightLocationPromptStyles), lightContrastStyles) : styles;
   const [dismissed, setDismissed] = useState(dismissedThisSession);
   const [location, setLocation] = useState('');
   const [postcode, setPostcode] = useState('');
@@ -106,7 +108,7 @@ export const LocationPromptSheet: React.FC = () => {
           value={location}
           onChangeText={setLocation}
           placeholder="e.g. Manchester"
-          placeholderTextColor={Colors.inputPlaceholder}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           autoCorrect={false}
           editable={!saving}
         />
@@ -117,7 +119,7 @@ export const LocationPromptSheet: React.FC = () => {
           value={postcode}
           onChangeText={setPostcode}
           placeholder="e.g. M1 2AB"
-          placeholderTextColor={Colors.inputPlaceholder}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           autoCapitalize="characters"
           autoCorrect={false}
           editable={!saving}
@@ -202,7 +204,7 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
   },
   saveBtn: {
     marginTop: 6,
@@ -229,4 +231,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 10,
   },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  error: { color: lightReadableText.error },
 });

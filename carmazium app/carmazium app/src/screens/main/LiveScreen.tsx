@@ -19,7 +19,7 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { AuctionFilterSheet } from '../../components/filters/AuctionFilterSheet';
 import {
   AUCTION_SORT_OPTIONS,
@@ -45,6 +45,7 @@ import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/Aucti
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
 import { mapTransmission } from '../../lib/listingsApi';
+import { useAppearance } from '../../theme/useAppearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -66,6 +67,10 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
   const hStr = pad(h);
   const mStr = pad(m);
   const sStr = pad(s);
+  // Digits sit in dark boxes (readable in both modes); the colons sit on the
+  // card itself, so they follow the appearance.
+  const { tc } = useAppearance();
+  const colon = [styles.timerColon, { color: tc(Colors.white) }];
 
   return (
     <View style={styles.timerContainer}>
@@ -73,12 +78,12 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
         <DigitBox value={hStr[0]} />
         <DigitBox value={hStr[1]} />
       </View>
-      <Text style={styles.timerColon}>:</Text>
+      <Text style={colon}>:</Text>
       <View style={styles.digitGroup}>
         <DigitBox value={mStr[0]} />
         <DigitBox value={mStr[1]} />
       </View>
-      <Text style={styles.timerColon}>:</Text>
+      <Text style={colon}>:</Text>
       <View style={styles.digitGroup}>
         <DigitBox value={sStr[0]} />
         <DigitBox value={sStr[1]} />
@@ -88,9 +93,10 @@ const FlipTimer: React.FC<{ seconds: number }> = ({ seconds }) => {
 };
 
 export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?: React.ReactNode }> = ({ embeddedDealerHub = false, embeddedHeader }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLiveStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightLiveStyles), lightContrastStyles) : styles;
   const navigation = useNavigation<NavProp>();
   const { latitude: originLatitude, longitude: originLongitude } = useLocation();
   const origin = useMemo(() => originLatitude == null || originLongitude == null ? null : ({ latitude: originLatitude, longitude: originLongitude }), [originLatitude, originLongitude]);
@@ -324,18 +330,18 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
 
         {/* ─── Search ──────────────────────────────────────────────── */}
         <View style={ts.searchBar}>
-          <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+          <Ionicons name="search-outline" size={18} color={tc(Colors.textMuted)} />
           <TextInput
             style={ts.searchInput}
             placeholder="Search make or model…"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={16} color={Colors.textMuted} />
+              <Ionicons name="close" size={16} color={tc(Colors.textMuted)} />
             </TouchableOpacity>
           )}
         </View>
@@ -358,7 +364,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
             <Ionicons
               name="options-outline"
               size={15}
-              color={activeFilterCount > 0 ? Colors.accent : Colors.textSecondary}
+              color={tc(activeFilterCount > 0 ? Colors.accent : Colors.textSecondary)}
             />
             <Text
               style={[ts.filterBtnText, activeFilterCount > 0 && ts.filterBtnTextActive]}
@@ -396,13 +402,13 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
           onPress={() => navigation.navigate('SellCarFlow' as any)}
         >
           <View style={ts.auctionCtaLeft}>
-            <MaterialCommunityIcons name="gavel" size={18} color={Colors.warning} />
+            <MaterialCommunityIcons name="gavel" size={18} color={tc(Colors.warning)} />
             <View>
               <Text style={ts.auctionCtaTitle}>Auction your car</Text>
               <Text style={ts.auctionCtaSub}>List it now — bidding starts today</Text>
             </View>
           </View>
-          <Ionicons name="arrow-forward" size={16} color={Colors.warning} />
+          <Ionicons name="arrow-forward" size={16} color={tc(Colors.warning)} />
         </TouchableOpacity>
         )}
 
@@ -481,7 +487,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                   <Text style={ts.liveBadgeText}>LIVE</Text>
                 </View>
                 <View style={ts.viewerBadge} pointerEvents="none">
-                  <Ionicons name="eye-outline" size={10} color={Colors.textSecondary} />
+                  <Ionicons name="eye-outline" size={10} color={tc(Colors.textSecondary)} />
                   <Text style={ts.viewerCount}>{auction.viewers}</Text>
                 </View>
                 <WishlistHeart listing={auction} />
@@ -529,7 +535,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
                   </Text>
                   {auction.totalBids === 0 && (
                     <View style={ts.statsSubRow}>
-                      <Text style={[ts.statsAboveReserve, { color: Colors.warning }]}>
+                      <Text style={[ts.statsAboveReserve, { color: tc(Colors.warning) }]}>
                         First offer from {formatPrice(getAuctionFirstOfferFloor(auction.startingBid, auction.reserve))}
                       </Text>
                     </View>
@@ -673,7 +679,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
           })
         ) : !isLoading ? (
           <View style={ts.emptyUpcoming}>
-            <Ionicons name="calendar-clear-outline" size={28} color={Colors.textMuted} />
+            <Ionicons name="calendar-clear-outline" size={28} color={tc(Colors.textMuted)} />
             <Text style={ts.emptyUpcomingText}>
               {q ? 'No upcoming auctions match your search' : 'No upcoming auctions scheduled right now'}
             </Text>
@@ -684,7 +690,7 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
         {topActiveAuction && (
           <View style={ts.marketAiBanner}>
             <View style={ts.marketAiIconWrap}>
-              <Ionicons name="bulb-outline" size={16} color={Colors.accentGlow} />
+              <Ionicons name="bulb-outline" size={16} color={tc(Colors.accentGlow)} />
             </View>
             <View style={ts.marketAiBody}>
               <Text style={ts.marketAiTitle}>MARKET INSIGHT</Text>
@@ -722,7 +728,6 @@ export const LiveScreen: React.FC<{ embeddedDealerHub?: boolean; embeddedHeader?
     </View>
   );
 };
-
 
 const lightLiveStyles = StyleSheet.create({
   container: { backgroundColor: '#EEF5FB' },
@@ -1271,4 +1276,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 17,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  clearFiltersText: { color: lightReadableText.accent },
+  imageCarMake: { color: LIGHT_PALETTE.secondary },
+  imageCarModel: { color: LIGHT_PALETTE.text },
+  statsAboveReserve: { color: lightReadableText.success },
+  upcomingTime: { color: lightReadableText.warning },
+  viewerBadge: { backgroundColor: LIGHT_PALETTE.card },
+  viewerCount: { color: LIGHT_PALETTE.secondary },
 });

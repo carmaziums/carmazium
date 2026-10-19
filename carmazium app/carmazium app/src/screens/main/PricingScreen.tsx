@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { PRICING } from '../../constants/pricing';
@@ -22,6 +21,8 @@ import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -155,14 +156,15 @@ const ADD_ONS: AddOn[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PricingScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -247,7 +249,7 @@ export const PricingScreen: React.FC = () => {
                   <Ionicons
                     name={feat.included ? 'checkmark' : 'close'}
                     size={14}
-                    color={feat.included ? plan.accentColor : Colors.textFaint}
+                    color={tc(feat.included ? plan.accentColor : Colors.textFaint)}
                   />
                   <Text style={[ts.featureText, !feat.included && ts.featureTextExcluded]}>
                     {feat.label}
@@ -295,12 +297,12 @@ export const PricingScreen: React.FC = () => {
             <Text style={ts.dealerPromptTitle}>Motor trader or automotive business?</Text>
             <Text style={ts.dealerPromptSub}>Use a Partner Account for verified business tools and auction access.</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+          <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
         {/* ── Footer note ── */}
         <View style={ts.footerNote}>
-          <Ionicons name="information-circle-outline" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+          <Ionicons name="information-circle-outline" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={ts.footerNoteText}>
             Retail buyers pay no CarMazium buyer fee. Vehicle sale money is paid directly between buyer and seller; CarMazium does not hold it.
           </Text>
@@ -597,4 +599,16 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  introSub: { color: LIGHT_PALETTE.secondary },
+  planPeriod: { color: LIGHT_PALETTE.muted },
+  sectionSub: { color: LIGHT_PALETTE.muted },
+  dealerPromptSub: { color: LIGHT_PALETTE.muted },
+  mostPopularText: { color: Colors.white }, // on a solid brand/semantic fill in both modes
 });

@@ -96,8 +96,11 @@ export const Colors = {
    * Use `textDisabled` if you want genuinely de-emphasised, non-content text.
    */
   textFaint: '#A3B1C4',
-  /** Non-content only — placeholders, disabled controls, decorative rules. */
-  textDisabled: '#4B556B',
+  /** Non-content only — placeholders, disabled controls, decorative rules.
+   *  Was #4B556B (2.0:1 on the navy ground): disabled labels and inactive
+   *  dots were close to invisible. #8A97AB is 5.2:1 on bgBody and stays
+   *  visibly dimmer than textMuted. */
+  textDisabled: '#8A97AB',
 
   // ═══ Borders ═══════════════════════════════════════════════════════════════
   border: 'rgba(255, 255, 255, 0.14)',
@@ -154,7 +157,18 @@ export const Colors = {
   inputBg: 'rgba(51, 65, 85, 0.38)',
   inputBorder: 'rgba(255, 255, 255, 0.14)',
   inputBorderFocused: accent,
-  inputPlaceholder: '#4B556B',
+  // Was #4B556B (1.7-2.0:1 on input fills). 5.0-6.0:1 on every dark input
+  // surface, still clearly lighter-weight than typed (white) text.
+  inputPlaceholder: '#94A3B8',
+
+  // ═══ Solid semantic fills ══════════════════════════════════════════════════
+  // For buttons/badges that carry a WHITE label. The base hues (#10B981 green
+  // 2.5:1, #F59E0B amber 2.2:1, #3B82F6 blue 3.7:1 with white) are too light
+  // for small white text in either appearance. Same values as the light
+  // palette's lightSolidFill.
+  successSolid: '#047857',
+  warningSolid: '#B45309',
+  infoSolid: '#2563EB',
 
   // ═══ Alpha scales ══════════════════════════════════════════════════════════
   whiteAlpha02: 'rgba(255, 255, 255, 0.02)',

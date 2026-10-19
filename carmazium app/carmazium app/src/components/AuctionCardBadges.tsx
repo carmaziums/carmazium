@@ -5,6 +5,7 @@ import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
 import { FontFamily, FontSize } from '../constants/typography';
 import { formatTransmission } from '../lib/transmission';
+import { lightReadableText, appearancePalette } from '../theme/appearancePalette';
 
 // Auction-card ↔ Buy-Cars-card chip/badge parity (Prompt 7.1). All fields are
 // already returned on auction.listing — no API changes, just wiring what was
@@ -65,6 +66,7 @@ export const AuctionCardTrustBadges: React.FC<TrustBadgesProps> = ({
   const trustEligible = badgeTier === 'STANDARD' || badgeTier === 'PREMIUM';
   if (!isFeatured && !trustEligible && !isDepartedSale && !isImported) return null;
   return (
+    // theme-audit-ignore: badges overlay the listing photo, identical in both modes
     <View style={styles.overlayRow}>
       {!!isFeatured && (
         <View style={styles.featuredBadge}>
@@ -195,3 +197,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
+const LIGHT_PALETTE = appearancePalette('light');

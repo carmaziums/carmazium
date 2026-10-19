@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  StatusBar,
   ActivityIndicator,
   Animated,
   Dimensions,
@@ -45,7 +44,7 @@ import {
 import { getListingById } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -53,6 +52,8 @@ import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { convertAndCompress, uploadToSignedStorage } from '../../lib/storageHelper';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Message bubbles cap their width off this instead of a percentage string —
@@ -174,8 +175,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   initials,
   onRetry,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const parsedSpecial = parseSpecialMessage(msg.content);
   const showSeenIndicator = isOwn && !msg.deliveryStatus && msg.isRead && isLastOwnMessage;
 
@@ -228,14 +230,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             )}
             {!!msg.content && <Text style={[ts.bubbleText, ts.photoCaption, { color: isOwn || appearanceMode !== 'light' ? Colors.white : '#0F172A' }]}>{msg.content}</Text>}
             <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
+              {/* theme-audit-ignore: own timestamp sits on the red bubble in both modes */}
               <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
                 {formatMessageTime(msg.createdAt)}
               </Text>
               {isOwn && !msg.deliveryStatus && (
+                // theme-audit-ignore: read tick only renders on the red own bubble
                 <Ionicons
                   name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                   size={14}
-                  color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                  color={Colors.white} // single vs double tick carries read state; blue was 1.7:1 on the red bubble
                   style={ts.readTick}
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
@@ -267,8 +271,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             <Text style={ts.offerTagAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
           <Text style={ts.offerText}>{msg.content}</Text>
+          {/* theme-audit-ignore: offer bubble is red in both modes */}
           <Text
-            style={ts.timeTextRight}
+            style={[ts.timeTextRight, ts.offerTimeText]}
             accessibilityLabel={`${formatMessageTime(msg.createdAt)}${isOwn && !msg.deliveryStatus && msg.isRead ? ', read' : ''}`}
           >
             {formatMessageTime(msg.createdAt)}
@@ -285,7 +290,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       <View style={isOwn ? ts.userBubbleWrapper : ts.dealerBubbleWrapper}>
         <View style={ts.counterMessageCard}>
           <View style={ts.counterHeader}>
-            <Ionicons name="pricetag" size={12} color={Colors.lightGrey} />
+            <Ionicons name="pricetag" size={12} color={tc(Colors.lightGrey)} />
             <Text style={ts.counterTitle}>{isOwn ? 'YOUR COUNTER OFFER' : 'COUNTER OFFER'}</Text>
             <Text style={ts.counterAmount}>£{parsedSpecial.amount.toLocaleString('en-GB')}</Text>
           </View>
@@ -314,14 +319,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         >
           <Text style={[ts.bubbleText, { color: isOwn || appearanceMode !== 'light' ? Colors.white : '#0F172A' }]}>{msg.content}</Text>
           <View style={[ts.msgFooter, isOwn ? ts.msgFooterRight : ts.msgFooterLeft]}>
+            {/* theme-audit-ignore: own timestamp sits on the red bubble in both modes */}
             <Text style={isOwn ? ts.timeTextRightInline : ts.timeTextLeftInline}>
               {formatMessageTime(msg.createdAt)}
             </Text>
             {isOwn && !msg.deliveryStatus && (
+              // theme-audit-ignore: read tick only renders on the red own bubble
               <Ionicons
                 name={msg.isRead ? 'checkmark-done' : 'checkmark'}
                 size={14}
-                color={msg.isRead ? Colors.lightBlue_4fa8ff : 'rgba(255,255,255,0.45)'}
+                color={Colors.white} // single vs double tick carries read state; blue was 1.7:1 on the red bubble
                 style={ts.readTick}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
@@ -346,8 +353,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 });
 
 export const ChatScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   // See useKeyboardHeight.ts — Android-only; iOS keeps the native
   // KeyboardAvoidingView path below, which already works reliably there.
@@ -765,7 +773,7 @@ export const ChatScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Text style={{ color: Colors.accent }}>Go Back</Text>
+          <Text style={{ color: tc(Colors.accent) }}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -948,7 +956,6 @@ export const ChatScreen: React.FC = () => {
     }
   };
 
-
   const performBlockChange = async (shouldBlock: boolean) => {
     if (changingBlock) return;
     try {
@@ -1007,11 +1014,11 @@ export const ChatScreen: React.FC = () => {
 
   return (
     <ScreenWrapper {...screenWrapperProps}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       {/* Top Header */}
       <View style={[ts.header, { paddingTop: insets.top + 8 }]}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         {/* Avatar */}
         <View style={[ts.avatar, { backgroundColor: getAvatarBg(initials) }]}>
@@ -1024,7 +1031,7 @@ export const ChatScreen: React.FC = () => {
             <Text style={ts.dealerName} numberOfLines={1}>{displayName}</Text>
           </View>
           {otherUserTyping ? (
-            <Text style={[ts.onlineStatus, { color: Colors.accent }]}>typing…</Text>
+            <Text style={[ts.onlineStatus, { color: tc(Colors.accent) }]}>typing…</Text>
           ) : (
             <Text style={ts.onlineStatus}>
               {onlineUserIds.has(room.otherUser.id) ? '● Online' : 'Conversation'}
@@ -1037,11 +1044,11 @@ export const ChatScreen: React.FC = () => {
             style={ts.safetyHeaderButton}
             icon={
               changingBlock
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={tc(Colors.white)} />
                 : <Ionicons
                     name={room.blockedByMe ? 'lock-open-outline' : 'ban-outline'}
                     size={19}
-                    color={room.blockedByMe ? Colors.success : Colors.textSecondary}
+                    color={tc(room.blockedByMe ? Colors.success : Colors.textSecondary)}
                   />
             }
             onPress={handleBlockToggle}
@@ -1065,7 +1072,7 @@ export const ChatScreen: React.FC = () => {
         >
           {room.listing.images?.[0]
             ? <Image source={{ uri: room.listing.images[0] }} style={ts.carImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            : <View style={[ts.carImg, ts.carImageMissing]}><Ionicons name="car-outline" size={21} color={Colors.textSecondary} /></View>}
+            : <View style={[ts.carImg, ts.carImageMissing]}><Ionicons name="car-outline" size={21} color={tc(Colors.textSecondary)} /></View>}
           <View style={ts.carMeta}>
             <Text style={ts.carTitle} numberOfLines={1}>{room.listing.title}</Text>
             <Text style={ts.carPrice}>
@@ -1074,13 +1081,13 @@ export const ChatScreen: React.FC = () => {
                 : `Price: £${carPrice.toLocaleString('en-GB')}`}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+          <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
       )}
 
       {room.chatBlocked && !shouldBlockChat && (
         <View style={ts.chatBlockedBanner}>
-          <Ionicons name="ban-outline" size={16} color={Colors.warning} />
+          <Ionicons name="ban-outline" size={16} color={tc(Colors.warning)} />
           <View style={ts.chatBlockedCopy}>
             <Text style={ts.chatBlockedTitle}>Messaging blocked</Text>
             <Text style={ts.chatBlockedText}>
@@ -1139,7 +1146,7 @@ export const ChatScreen: React.FC = () => {
                   accessibilityState={{ disabled: loadingOlder, busy: loadingOlder }}
                 >
                   {loadingOlder ? (
-                    <ActivityIndicator size="small" color={Colors.textSecondary} />
+                    <ActivityIndicator size="small" color={tc(Colors.textSecondary)} />
                   ) : (
                     <Text style={ts.loadEarlierText}>Load earlier messages</Text>
                   )}
@@ -1157,7 +1164,7 @@ export const ChatScreen: React.FC = () => {
           <View style={ts.blockingOverlay}>
             <View style={ts.blockingCard}>
               <View style={ts.trophyIconWrap}>
-                <Ionicons name="trophy" size={40} color={Colors.warning} />
+                <Ionicons name="trophy" size={40} color={tc(Colors.warning)} />
               </View>
               <Text style={ts.blockingTitle}>£125 Buyer Fee Due</Text>
               <Text style={ts.blockingDesc}>
@@ -1183,7 +1190,7 @@ export const ChatScreen: React.FC = () => {
                 onPress={handleRefreshStatus}
                 activeOpacity={0.7}
               >
-                <Ionicons name="refresh" size={16} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+                <Ionicons name="refresh" size={16} color={tc(Colors.textSecondary)} style={{ marginRight: 6 }} />
                 <Text style={ts.refreshOverlayBtnText}>I've paid, refresh chat</Text>
               </TouchableOpacity>
             </View>
@@ -1200,7 +1207,7 @@ export const ChatScreen: React.FC = () => {
             activeOpacity={0.7}
           >
             <Ionicons name="pricetag-outline" size={13} color={Colors.accent} style={{ marginRight: 4 }} />
-            <Text style={[ts.actionLabel, { color: Colors.accent }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
+            <Text style={[ts.actionLabel, { color: tc(Colors.accent) }]}>Counter £{carPrice.toLocaleString('en-GB')}</Text>
           </TouchableOpacity>
 
           {!offerAccepted && (
@@ -1235,7 +1242,7 @@ export const ChatScreen: React.FC = () => {
             value={inputVal}
             onChangeText={handleTextChange}
             placeholder="Type a message..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             multiline
             accessibilityLabel="Message"
             accessibilityHint="Type a message to send in this conversation"
@@ -1260,7 +1267,7 @@ export const ChatScreen: React.FC = () => {
               </View>
               <IconButton
                 style={ts.reportModalClose}
-                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                icon={<Ionicons name="close" size={20} color={tc(Colors.white)} />}
                 onPress={closeReport}
                 disabled={reporting}
                 accessibilityLabel="Close report"
@@ -1315,7 +1322,7 @@ export const ChatScreen: React.FC = () => {
               value={reportDetails}
               onChangeText={(value) => setReportDetails(value.slice(0, 1000))}
               placeholder="Tell the moderator what happened"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={tc(Colors.textMuted)}
               multiline
               maxLength={1000}
             />
@@ -1633,10 +1640,17 @@ const styles = StyleSheet.create({
   msgFooterLeft: {
     justifyContent: 'flex-start',
   },
+  // Own-message timestamp on the red bubble. 50% white was 1.9:1; full white
+  // is the most a #ED1C24 fill allows (4.4:1). Same in both appearances.
   timeTextRightInline: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size9,
-    color: Colors.whiteAlpha50,
+    color: Colors.white,
+  },
+  // Timestamp on the red offer bubble (timeTextRight is also used on the
+  // neutral counter-offer card, so it needs its own colour here).
+  offerTimeText: {
+    color: Colors.white,
   },
   timeTextLeftInline: {
     fontFamily: FontFamily.regular,
@@ -1800,7 +1814,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   actionBtnGreen: {
-    backgroundColor: Colors.accentGreen,
+    backgroundColor: Colors.successSolid,
   },
   actionLabel: {
     fontFamily: FontFamily.bold,
@@ -2152,4 +2166,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  timeTextRight: { color: LIGHT_PALETTE.muted },
+  onlineStatus: { color: lightReadableText.success },
+  refreshOverlayBtnText: { color: LIGHT_PALETTE.secondary },
+  reportModalHelp: { color: LIGHT_PALETTE.secondary },
+  reportReasonTextSelected: { color: LIGHT_PALETTE.text },
+  reportCancelText: { color: LIGHT_PALETTE.secondary },
+  errorContainer: { backgroundColor: LIGHT_PALETTE.card },
+  loadEarlierButton: { backgroundColor: LIGHT_PALETTE.card },
+  actionBtnGreen: { backgroundColor: lightReadableText.success },
+  errorText: { color: LIGHT_PALETTE.text },
+  offerTagTitle: { color: Colors.white }, // on a solid brand/semantic fill in both modes
+  offerTagAmount: { color: Colors.white }, // on a solid brand/semantic fill in both modes
+  offerText: { color: Colors.white }, // on a solid brand/semantic fill in both modes
+  actionLabel: { color: Colors.white }, // on a solid brand/semantic fill in both modes
 });

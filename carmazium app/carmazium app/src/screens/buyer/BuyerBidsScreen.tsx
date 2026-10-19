@@ -23,7 +23,7 @@ import { getAuction } from '../../lib/auctionApi';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -34,6 +34,7 @@ import { DealerAccess, getDealerAccess } from '../../lib/dealerAccessApi';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
 // ─────────────────────────── types ───────────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -201,8 +202,9 @@ const STATUS_CFG: Record<AuctionStatus, StatusCfg> = {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const role = useAuthStore((s) => s.role);
@@ -398,7 +400,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
 
   const renderEmptyState = () => (
     <View style={ts.emptyState}>
-      <MaterialCommunityIcons name="gavel" size={40} color={Colors.textMuted} />
+      <MaterialCommunityIcons name="gavel" size={40} color={tc(Colors.textMuted)} />
       <Text style={ts.emptyTitle}>No auction bids yet</Text>
       <Text style={ts.emptySub}>Browse live auctions to start bidding</Text>
       <TouchableOpacity
@@ -460,11 +462,11 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             {/* Status chip — or WON chip */}
             {bid.isArchived ? (
               <View style={[ts.statusChip, { backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10 }]}>
-                <Text style={[ts.statusChipText, { color: Colors.textMuted }]}>PREVIOUS</Text>
+                <Text style={[ts.statusChipText, { color: tc(Colors.textMuted) }]}>PREVIOUS</Text>
               </View>
             ) : isWon ? (
               <View style={[ts.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
-                <Text style={[ts.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
+                <Text style={[ts.statusChipText, { color: tc(Colors.accentGreen) }]}>WON</Text>
               </View>
             ) : bid.auctionStatus === 'ACTIVE' ? (
               // Web's dashboard/buyer/bids/page.tsx distinguishes Winning vs
@@ -475,7 +477,7 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                 ? { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }
                 : { backgroundColor: Colors.warningAlpha15, borderWidth: 1, borderColor: Colors.warningAlpha25 }]}
               >
-                <Text style={[ts.statusChipText, { color: bid.isWinning ? Colors.accentGreen : Colors.warning }]}>
+                <Text style={[ts.statusChipText, { color: tc(bid.isWinning ? Colors.accentGreen : Colors.warning) }]}>
                   {bid.isWinning ? '● WINNING' : 'OUTBID'}
                 </Text>
               </View>
@@ -540,10 +542,10 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
                 disabled={connectingChatId === bid.id}
               >
                 {connectingChatId === bid.id ? (
-                  <ActivityIndicator size="small" color={Colors.accentGreen} />
+                  <ActivityIndicator size="small" color={tc(Colors.accentGreen)} />
                 ) : (
                   <>
-                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.accentGreen} />
+                    <Ionicons name="chatbubble-ellipses-outline" size={16} color={tc(Colors.accentGreen)} />
                     <Text style={ts.wonChatBtnText}>CHAT WITH SELLER</Text>
                   </>
                 )}
@@ -560,9 +562,9 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
               accessibilityLabel="Call seller"
             >
               {callingBidId === bid.id ? (
-                <ActivityIndicator size="small" color={Colors.accentGreen} />
+                <ActivityIndicator size="small" color={tc(Colors.accentGreen)} />
               ) : (
-                <Ionicons name="call-outline" size={16} color={Colors.accentGreen} />
+                <Ionicons name="call-outline" size={16} color={tc(Colors.accentGreen)} />
               )}
             </TouchableOpacity>
           </View>
@@ -856,7 +858,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   wonCtaBtn: {
-    backgroundColor: Colors.accentGreen,
+    backgroundColor: Colors.successSolid,
     borderRadius: 8,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -951,4 +953,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  emptySub: { color: LIGHT_PALETTE.muted },
+  emptyCtaBtnText: { color: lightReadableText.accent },
+  bidTime: { color: LIGHT_PALETTE.muted },
+  cancelRowHint: { color: LIGHT_PALETTE.muted },
+  cancelBtnText: { color: lightReadableText.accent },
+  pageBtnText: { color: LIGHT_PALETTE.text },
+  pageIndicator: { color: LIGHT_PALETTE.muted },
+  wonCtaBtn: { backgroundColor: lightReadableText.success },
+  wonChatBtnText: { color: lightStrongText.success },
 });

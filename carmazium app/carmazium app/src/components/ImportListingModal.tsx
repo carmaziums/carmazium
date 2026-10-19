@@ -27,6 +27,7 @@ import { KeyboardStickyView } from './KeyboardStickyView';
 import { createPaymentSheet } from '../lib/paymentsApi';
 
 import { IconButton } from './IconButton';
+import { useAppearance } from '../theme/useAppearance';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3;
@@ -82,6 +83,7 @@ const PLATFORM_STYLES: Record<string, { bg: string; text: string; label: string 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(st, lightImportListingStyles) : st;
@@ -244,7 +246,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
       <StatusBar barStyle={appearanceMode === 'light' ? "dark-content" : "light-content"} translucent backgroundColor="transparent" />
       <View style={ts.container}>
         <LinearGradient
-          colors={[Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
+          colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.infoBlueAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0, y: 0.5 }}
           style={StyleSheet.absoluteFillObject}
@@ -271,7 +273,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
             <React.Fragment key={n}>
               <View style={[ts.stepDot, step >= n && ts.stepDotActive]}>
                 {step > n
-                  ? <Ionicons name="checkmark" size={10} color={Colors.white} />
+                  ? <Ionicons name="checkmark" size={10} color={tc(Colors.white)} />
                   : <Text style={[ts.stepDotText, step === n && { color: Colors.white }]}>{n}</Text>
                 }
               </View>
@@ -299,13 +301,13 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
 
               {/* URL input */}
               <View style={ts.urlInputRow}>
-                <Ionicons name="link-outline" size={16} color={Colors.iconMuted} style={{ marginRight: 8 }} />
+                <Ionicons name="link-outline" size={16} color={tc(Colors.iconMuted)} style={{ marginRight: 8 }} />
                 <TextInput
                   style={ts.urlInput}
                   value={url}
                   onChangeText={v => { setUrl(v); setFetchError(null); }}
                   placeholder="https://www.autotrader.co.uk/car-details/..."
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={tc(Colors.inputPlaceholder)}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -313,7 +315,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   onSubmitEditing={handleFetch}
                 />
                 {url.length > 0 && (
-                  <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.borderMuted} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
+                  <IconButton icon={<Ionicons name="close-circle" size={16} color={tc(Colors.textDisabled)} />} onPress={() => setUrl('')} accessibilityLabel="Clear" />
                 )}
               </View>
 
@@ -398,7 +400,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editTitle}
                 onChangeText={v => { setEditTitle(v); setSaveError(null); }}
                 placeholder="e.g. BMW M4 Competition 2021"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={tc(Colors.inputPlaceholder)}
                 autoCorrect={false}
               />
 
@@ -410,7 +412,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   value={editPrice}
                   onChangeText={v => { setEditPrice(v); setSaveError(null); }}
                   placeholder="0"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={tc(Colors.inputPlaceholder)}
                   keyboardType="number-pad"
                 />
               </View>
@@ -421,7 +423,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                 value={editVrm}
                 onChangeText={v => { setEditVrm(v.toUpperCase()); setSaveError(null); }}
                 placeholder="e.g. AB12 CDE"
-                placeholderTextColor={Colors.borderMuted}
+                placeholderTextColor={tc(Colors.inputPlaceholder)}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
@@ -464,7 +466,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
               {/* Success header */}
               <View style={ts.successHeader}>
                 <View style={ts.successIcon}>
-                  <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
+                  <Ionicons name="checkmark-circle" size={32} color={tc(Colors.accentGreen)} />
                 </View>
                 <Text style={ts.successTitle}>Listing saved as draft</Text>
                 <Text style={ts.successSub}>Choose a plan to make it live, or do it later from My Listings.</Text>
@@ -482,7 +484,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                       <View style={[ts.planRadio, selected && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
-                        {selected && <Ionicons name="checkmark" size={11} color={Colors.white} />}
+                        {selected && <Ionicons name="checkmark" size={11} color={tc(Colors.white)} />}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[ts.planLabel, { color: plan.accent }]}>{plan.label}</Text>
@@ -494,7 +496,7 @@ export const ImportListingModal: React.FC<Props> = ({ onClose, onImported }) => 
                       <View style={{ marginTop: 10, marginLeft: 40, gap: 3 }}>
                         {plan.features.map(f => (
                           <View key={f} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Ionicons name="checkmark-circle" size={11} color={Colors.accentGreen} />
+                            <Ionicons name="checkmark-circle" size={11} color={tc(Colors.accentGreen)} />
                             <Text style={ts.planFeatureText}>{f}</Text>
                           </View>
                         ))}
@@ -859,7 +861,7 @@ const st = StyleSheet.create({
   errorText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     flex: 1,
     lineHeight: 17,
   },

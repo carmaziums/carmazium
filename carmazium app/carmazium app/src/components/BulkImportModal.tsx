@@ -18,11 +18,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../theme/appearancePalette';
 import {FontFamily, FontSize } from '../constants/typography';
 import { apiClient } from '../lib/apiClient';
 
 import { IconButton } from './IconButton';
+import { useAppearance } from '../theme/useAppearance';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ImportStatus = 'idle' | 'parsing' | 'importing' | 'complete';
@@ -107,9 +108,10 @@ function parseRows(raw: string): CsvRow[] {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(st, lightBulkImportStyles) : st;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(st, lightBulkImportStyles), lightContrastStyles) : st;
 
   const [status, setStatus] = useState<ImportStatus>('idle');
   const [rows, setRows] = useState<CsvRow[]>([]);
@@ -269,7 +271,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
 
         {/* Header */}
         <View style={ts.header}>
-          <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={18} color={status === 'importing' ? Colors.textMuted : Colors.white} />} onPress={() => { if (status !== 'importing') { reset(); onClose(); } }} disabled={status === 'importing'} accessibilityLabel="Close" />
+          <IconButton style={ts.closeBtn} icon={<Ionicons name="close" size={18} color={tc(status === 'importing' ? Colors.textMuted : Colors.white)} />} onPress={() => { if (status !== 'importing') { reset(); onClose(); } }} disabled={status === 'importing'} accessibilityLabel="Close" />
           <View style={{ flex: 1, alignItems: 'center' }}>
             <Text style={ts.headerTitle}>Bulk Import</Text>
             <Text style={ts.headerSub}>Import listings from a CSV file</Text>
@@ -302,10 +304,10 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
                 activeOpacity={0.8}
               >
                 {sharingTemplate ? (
-                  <ActivityIndicator size="small" color={Colors.warning} />
+                  <ActivityIndicator size="small" color={tc(Colors.warning)} />
                 ) : (
                   <>
-                    <Ionicons name="download-outline" size={16} color={Colors.warning} />
+                    <Ionicons name="download-outline" size={16} color={tc(Colors.warning)} />
                     <Text style={ts.outlineBtnText}>Download CSV Template</Text>
                   </>
                 )}
@@ -347,7 +349,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
               {/* Live error count */}
               {errorRows.length > 0 && (
                 <View style={ts.liveErrorRow}>
-                  <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
+                  <Ionicons name="alert-circle-outline" size={14} color={tc(Colors.warning)} />
                   <Text style={ts.liveErrorText}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed so far</Text>
                 </View>
               )}
@@ -360,7 +362,7 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
               {/* Success count */}
               <View style={ts.completeCard}>
                 <View style={ts.completeIcon}>
-                  <Ionicons name="checkmark-circle" size={32} color={Colors.accentGreen} />
+                  <Ionicons name="checkmark-circle" size={32} color={tc(Colors.accentGreen)} />
                 </View>
                 <Text style={ts.completeTitle}>{importedCount} listing{importedCount !== 1 ? 's' : ''} imported</Text>
                 <Text style={ts.completeSub}>All imported listings are saved as drafts. Review and publish them from My Listings.</Text>
@@ -374,9 +376,9 @@ export const BulkImportModal: React.FC<Props> = ({ isOpen, onClose, onComplete }
                     onPress={() => setErrorsExpanded(v => !v)}
                     activeOpacity={0.75}
                   >
-                    <Ionicons name="alert-circle-outline" size={15} color={Colors.warning} />
+                    <Ionicons name="alert-circle-outline" size={15} color={tc(Colors.warning)} />
                     <Text style={ts.errorSummaryTitle}>{errorRows.length} row{errorRows.length !== 1 ? 's' : ''} failed</Text>
-                    <Ionicons name={errorsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={Colors.textMuted} style={{ marginLeft: 'auto' }} />
+                    <Ionicons name={errorsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={tc(Colors.textMuted)} style={{ marginLeft: 'auto' }} />
                   </TouchableOpacity>
 
                   {errorsExpanded && (
@@ -577,4 +579,12 @@ const st = StyleSheet.create({
   errorItem: { paddingVertical: 10, gap: 2 },
   errorVrm: { fontFamily: FontFamily.mono, fontSize: FontSize.sm, color: Colors.textPrimary },
   errorMsg: { fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, lineHeight: 17 },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  outlineBtnText: { color: lightReadableText.warning },
+  liveErrorText: { color: lightReadableText.warning },
+  errorSummaryTitle: { color: lightReadableText.warning },
 });

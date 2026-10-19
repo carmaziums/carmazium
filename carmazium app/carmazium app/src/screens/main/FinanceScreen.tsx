@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,13 +13,15 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Web's /finance page (src/app/finance/page.tsx) has a "Trusted Lending
@@ -40,14 +41,15 @@ const ELIGIBILITY_POINTS = [
 ];
 
 export const FinanceScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -76,7 +78,7 @@ export const FinanceScreen: React.FC = () => {
         <View style={ts.sectionCard}>
           {ELIGIBILITY_POINTS.map((p) => (
             <View key={p} style={ts.bulletRow}>
-              <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+              <Ionicons name="checkmark-circle" size={16} color={tc(Colors.success)} />
               <Text style={ts.bulletText}>{p}</Text>
             </View>
           ))}
@@ -243,10 +245,11 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.white,
   },
+  // Sits on the red CTA in both modes: 75% white was 2.9:1, white is 4.4:1.
   ctaSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: 'rgba(255,255,255,0.75)',
+    color: Colors.white,
     marginTop: 2,
   },
 
@@ -262,4 +265,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.accent,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  introSub: { color: LIGHT_PALETTE.secondary },
+  secondaryCtaText: { color: lightReadableText.accent },
 });

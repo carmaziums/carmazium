@@ -5,7 +5,7 @@ name: CarMazium Android standalone QA APK (no Expo credentials)
 # or publish to the production Expo OTA channel.
 on:
   push:
-    branches: [main, fix/native-home-card-preserve-qa-20261018, fix/native-qa-restore-approved-navigation-20261018]
+    branches: [main, fix/native-home-card-preserve-qa-20261018, fix/native-qa-restore-approved-navigation-20261018, fix/pr626-theme-contrast-integration-20261019]
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx'
@@ -169,7 +169,27 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon -x lint -x lintVitalRelease
+          # Tee Gradle diagnostics so failed CI runs retain a reproducible error,
+          # not just a red status with an expired GitHub job-log endpoint.
+          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64 --max-workers 2 --no-daemon --stacktrace -x lint -x lintVitalRelease 2>&1 | tee "$GITHUB_WORKSPACE/carmazium-gradle-build.log"
+      - name: Save truncated Gradle diagnostic evidence if native compilation fails
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/carmazium-gradle-build.log" ]; then
+            mkdir -p "$GITHUB_WORKSPACE/qa-build-diagnostics"
+            tail -n 450 "$GITHUB_WORKSPACE/carmazium-gradle-build.log" > "$GITHUB_WORKSPACE/qa-build-diagnostics/build-failure-tail.log"
+            echo '### Android QA compilation failed — diagnostics saved' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Inspect private `CarMazium-Android-Build-Failure-Diagnostics` artifact; do not claim an APK exists.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload native build-failure diagnostics for review
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CarMazium-Android-Build-Failure-Diagnostics
+          path: qa-build-diagnostics/*
+          retention-days: 3
+          if-no-files-found: ignore
       - name: Verify signed QA APK and source SHA
         shell: bash
         run: |
@@ -187,6 +207,18 @@ jobs:
           NODE
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
+          # Broaden QA support beyond ARM64-only; do not publish a purported
+          # universal APK unless every target architecture actually ships.
+          python3 - "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" <<'PYABI'
+          import sys, zipfile
+          expected = ('armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64')
+          with zipfile.ZipFile(sys.argv[1]) as apk:
+              names = set(apk.namelist())
+          missing = [abi for abi in expected if f'lib/{abi}/libreactnative.so' not in names]
+          if missing:
+              raise SystemExit('QA APK missing React Native native libraries for: ' + ', '.join(missing))
+          print('Verified Android QA architecture support: ' + ', '.join(expected))
+          PYABI
           "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
           # Compare shipped Hermes JavaScript labels against the owner's supplied
           # 18 Oct reference APK (SHA256 dfc4c4d83266...ce2f4b5b2).

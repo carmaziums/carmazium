@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -13,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, themedColor, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -21,6 +20,7 @@ import { TERMS_SECTIONS, type Block } from '../../data/termsSections';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -45,17 +45,22 @@ const CALLOUT_TONES = {
 } as const;
 
 const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
+  // The legal text previously rendered with the dark StyleSheet in both modes
+  // (near-white copy on the light page). Use the same light map as the screen.
+  const mode = useAppearanceStore(state => state.mode);
+  const isLight = mode === 'light';
+  const st = isLight ? mergeAppearanceStyles(termsLightStyles, lightStContrastStyles) : styles;
   switch (block.type) {
     case 'p':
-      return <Text style={styles.para}>{block.text}</Text>;
+      return <Text style={st.para}>{block.text}</Text>;
 
     case 'ul':
       return (
-        <View style={styles.list}>
+        <View style={st.list}>
           {block.items.map((item, i) => (
-            <View key={i} style={styles.listRow}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.listText}>{item}</Text>
+            <View key={i} style={st.listRow}>
+              <Text style={st.bullet}>•</Text>
+              <Text style={st.listText}>{item}</Text>
             </View>
           ))}
         </View>
@@ -63,11 +68,11 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 
     case 'dl':
       return (
-        <View style={styles.defList}>
+        <View style={st.defList}>
           {block.items.map((item) => (
-            <View key={item.term} style={styles.defItem}>
-              <Text style={styles.defTerm}>{item.term}</Text>
-              <Text style={styles.defText}>{item.def}</Text>
+            <View key={item.term} style={st.defItem}>
+              <Text style={st.defTerm}>{item.term}</Text>
+              <Text style={st.defText}>{item.def}</Text>
             </View>
           ))}
         </View>
@@ -75,13 +80,13 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 
     case 'steps':
       return (
-        <View style={styles.list}>
+        <View style={st.list}>
           {block.items.map((item, i) => (
-            <View key={i} style={styles.stepRow}>
-              <View style={styles.stepNum}>
-                <Text style={styles.stepNumText}>{i + 1}</Text>
+            <View key={i} style={st.stepRow}>
+              <View style={st.stepNum}>
+                <Text style={st.stepNumText}>{i + 1}</Text>
               </View>
-              <Text style={styles.listText}>{item}</Text>
+              <Text style={st.listText}>{item}</Text>
             </View>
           ))}
         </View>
@@ -89,10 +94,10 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 
     case 'money':
       return (
-        <View style={styles.moneyBox}>
-          <Text style={styles.moneyTitle}>{block.title}</Text>
+        <View style={st.moneyBox}>
+          <Text style={st.moneyTitle}>{block.title}</Text>
           {block.lines.map((line, i) => (
-            <Text key={i} style={styles.moneyLine}>{line}</Text>
+            <Text key={i} style={st.moneyLine}>{line}</Text>
           ))}
         </View>
       );
@@ -100,9 +105,9 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
     case 'callout': {
       const tone = CALLOUT_TONES[block.tone];
       return (
-        <View style={[styles.callout, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-          <Ionicons name={tone.icon} size={16} color={tone.color} />
-          <Text style={styles.calloutText}>{block.text}</Text>
+        <View style={[st.callout, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+          <Ionicons name={tone.icon} size={16} color={themedColor(mode, tone.color)} />
+          <Text style={st.calloutText}>{block.text}</Text>
         </View>
       );
     }
@@ -114,13 +119,13 @@ const BlockRenderer: React.FC<{ block: Block }> = ({ block }) => {
 
 export const TermsScreen: React.FC = () => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -337,3 +342,24 @@ const styles = StyleSheet.create({
 });
 
 export default TermsScreen;
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  companyLine: { color: LIGHT_PALETTE.muted },
+});
+
+// Light styles for the legal-text blocks, built once.
+const termsLightStyles = mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles);
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightStContrastStyles = StyleSheet.create({
+  para: { color: LIGHT_PALETTE.secondary },
+  bullet: { color: lightReadableText.accent },
+  defTerm: { color: LIGHT_PALETTE.text },
+  stepNumText: { color: lightStrongText.accent },
+  moneyLine: { color: LIGHT_PALETTE.secondary },
+});

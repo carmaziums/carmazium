@@ -7,8 +7,9 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
+import { useAppearance } from '../../theme/useAppearance';
 
 // Canonical web layout: src/app/dashboard/dealer/page.tsx.
 // Keep the same API and range query as FlexiblePeriodControl and do not
@@ -69,8 +70,9 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   userName, canManageInventory, canManageCrm, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerOverviewStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerOverviewStyles), lightContrastStyles) : styles;
   const [range, setRange] = useState<Range>(initialRange);
   const [draftAmount, setDraftAmount] = useState('30');
   const [draftUnit, setDraftUnit] = useState<RangeUnit>('days');
@@ -243,7 +245,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
           onPress={() => setRange(previous => ({ ...previous, compare: !previous.compare }))}
         >
           <Ionicons name={range.compare ? 'checkbox' : 'square-outline'} size={21}
-            color={range.compare ? Colors.accent : Colors.textMuted} />
+            color={tc(range.compare ? Colors.accent : Colors.textMuted)} />
           <Text style={ts.compareText}>Compare previous</Text>
         </TouchableOpacity>
         {range.allTime && summary?.accountCreatedAt && (
@@ -315,7 +317,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
               <Text style={ts.actionTitle}>{action.title}</Text>
               <Text style={ts.actionDescription}>{action.description}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color={tc(Colors.textMuted)} />
           </TouchableOpacity>
         ))}
       </View>
@@ -430,4 +432,11 @@ const styles = StyleSheet.create({
   actionTitle: { fontFamily: FontFamily.bold, color: Colors.textPrimary, fontSize: 14 },
   actionDescription: { fontFamily: FontFamily.regular, color: Colors.textMuted,
     fontSize: 12, lineHeight: 18 },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  error: { color: lightReadableText.warning },
+  applyText: { color: lightStrongText.accent },
 });

@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { lightReadableText, appearancePalette, mergeAppearanceStyles } from '../theme/appearancePalette';
+import { useAppearanceStore } from '../store/appearanceStore';
 
 interface SectionHeaderProps {
   title: string;
@@ -15,21 +17,25 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   subtitle,
   onSeeAll,
   showSeeAll = true,
-}) => (
-  <View style={styles.container}>
-    <View style={styles.titleRow}>
-      <View>
-        {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-        <Text style={styles.title}>{title}</Text>
+}) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? lightStyles : styles;
+  return (
+    <View style={ts.container}>
+      <View style={ts.titleRow}>
+        <View>
+          {subtitle && <Text style={ts.subtitle}>{subtitle}</Text>}
+          <Text style={ts.title}>{title}</Text>
+        </View>
+        {showSeeAll && onSeeAll && (
+          <Text style={ts.seeAll} onPress={onSeeAll} accessibilityRole="link">
+            See all →
+          </Text>
+        )}
       </View>
-      {showSeeAll && onSeeAll && (
-        <Text style={styles.seeAll} onPress={onSeeAll}>
-          See all →
-        </Text>
-      )}
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -60,4 +66,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     letterSpacing: 0.3,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+const lightStyles = mergeAppearanceStyles(styles, {
+  subtitle: { color: lightReadableText.accent },
+  title: { color: LIGHT_PALETTE.text },
+  seeAll: { color: LIGHT_PALETTE.secondary },
 });

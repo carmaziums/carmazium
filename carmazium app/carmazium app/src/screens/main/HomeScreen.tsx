@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, RefreshControl,
+  Dimensions, RefreshControl,
   TextInput, ActivityIndicator, FlatList, Alert, useWindowDimensions,
 } from 'react-native';
 import type { ListRenderItem } from 'react-native';
@@ -21,7 +21,7 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
@@ -31,6 +31,8 @@ import { GradeChip } from '../../components/GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from '../../components/AuctionCardBadges';
 import { WishlistHeart } from '../../components/WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../../lib/auctionPricing';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -70,12 +72,13 @@ function useCountdown(targetIso: string) {
 /** Each home card responds to appearance preference without re-rendering all rails. */
 function useHomeCardStyles() {
   const mode = useAppearanceStore(state => state.mode);
-  return useMemo(() => mode === 'light' ? mergeAppearanceStyles(s, lightHomeStyles) : s, [mode]);
+  return useMemo(() => mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(s, lightHomeStyles), lightContrastStyles) : s, [mode]);
 }
 
 // ─── Live Auction Card ────────────────────────────────────────────────────────
 
 const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const { tc } = useAppearance();
   const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   const timeLeft = useCountdown(auction.endTime);
@@ -108,14 +111,14 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
             <Text style={cs.overlayLabel}>{bids > 0 ? 'CURRENT BID' : 'STARTING BID'}</Text>
             <Text style={cs.overlayVal}>{formatPrice(bids > 0 ? currentBid : startingBid)}</Text>
             {bids === 0 && firstOfferFloor > 0 && (
-              <Text style={[cs.overlayLabel, { color: Colors.warning, marginTop: 2 }]}>
+              <Text style={[cs.overlayLabel, { color: tc(Colors.warning), marginTop: 2 }]}>
                 FIRST OFFER {formatPrice(firstOfferFloor)}
               </Text>
             )}
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={cs.overlayLabel}>ENDS IN</Text>
-            <Text style={[cs.overlayVal, { color: Colors.warning }]}>{timeLeft}</Text>
+            <Text style={[cs.overlayVal, { color: tc(Colors.warning) }]}>{timeLeft}</Text>
           </View>
         </View>
         <Text style={cs.cardSpecs}>
@@ -135,7 +138,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
         />
         <View style={cs.homeCardCta}>
           <Text style={cs.homeCardCtaLabel}>{bids} bid{bids !== 1 ? 's' : ''} · View auction</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
+          <Ionicons name="arrow-forward" size={16} color={tc(Colors.white)} accessibilityElementsHidden />
         </View>
       </View>
     </TouchableOpacity>
@@ -145,6 +148,7 @@ const LiveAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }>
 // ─── Upcoming Auction Card ────────────────────────────────────────────────────
 
 const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => void }> = ({ auction, onPress }) => {
+  const { tc } = useAppearance();
   const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   const startsIn = useCountdown(auction.startTime);
@@ -176,7 +180,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={cs.overlayLabel}>STARTS IN</Text>
-            <Text style={[cs.overlayVal, { color: Colors.infoBlueLight }]}>{startsIn}</Text>
+            <Text style={[cs.overlayVal, { color: tc(Colors.infoBlueLight) }]}>{startsIn}</Text>
           </View>
         </View>
         <Text style={cs.cardSpecs}>
@@ -197,7 +201,7 @@ const UpcomingAuctionCard: React.FC<{ auction: AuctionDetail; onPress: () => voi
             Only surface a Buy it now price when the seller set one. */}
         {!!auction.buyItNowPrice && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-            <Ionicons name="flash-outline" size={11} color={Colors.textSecondary} />
+            <Ionicons name="flash-outline" size={11} color={tc(Colors.textSecondary)} />
             <Text style={cs.cardMeta}>Buy it now: {formatPrice(Number(auction.buyItNowPrice))}</Text>
           </View>
         )}
@@ -215,6 +219,7 @@ const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => void }>(({
   listing, onPress
 }) => {
+  const { tc } = useAppearance();
   const cs = useHomeCardStyles();
   const { width: windowWidth } = useWindowDimensions();
   // The card owns its own saved state rather than receiving `saved`/`onToggle`
@@ -255,6 +260,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
         {listing.isFeatured && (
           <View style={cs.featuredBadge} pointerEvents="none"><Text style={cs.featuredBadgeText}>FEATURED</Text></View>
         )}
+        {/* theme-audit-ignore: dark translucent button over the listing photo in both modes */}
         <TouchableOpacity
           style={cs.heartBtn}
           onPress={() => toggle(listing)}
@@ -293,7 +299,7 @@ const ListingCard = React.memo<{ listing: CarListing; onPress: (id: string) => v
         </View>
         <View style={cs.homeCardCta}>
           <Text style={cs.homeCardCtaLabel}>View Details</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.white} accessibilityElementsHidden />
+          <Ionicons name="arrow-forward" size={16} color={tc(Colors.white)} accessibilityElementsHidden />
         </View>
       </View>
     </AnimatedTouchable>
@@ -372,31 +378,40 @@ function Rail<T>({
 
 const Section: React.FC<{ title: string; onSeeAll?: () => void; children: React.ReactNode; badge?: string }> = ({
   title, onSeeAll, children, badge
-}) => (
-  <View style={s.section}>
-    <View style={s.sectionHeader}>
+}) => {
+  // Section headings used the dark sheet directly (white titles on the light
+  // page). Same light map as the cards.
+  const hs = useHomeCardStyles();
+  return (
+  <View style={hs.section}>
+    <View style={hs.sectionHeader}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={s.sectionTitle}>{title}</Text>
-        {badge ? <View style={s.sectionBadge}><Text style={s.sectionBadgeText}>{badge}</Text></View> : null}
+        <Text style={hs.sectionTitle}>{title}</Text>
+        {badge ? <View style={hs.sectionBadge}><Text style={hs.sectionBadgeText}>{badge}</Text></View> : null}
       </View>
       {onSeeAll && (
         <TouchableOpacity onPress={onSeeAll} activeOpacity={0.7}>
-          <Text style={s.seeAll}>See all</Text>
+          <Text style={hs.seeAll}>See all</Text>
         </TouchableOpacity>
       )}
     </View>
     {children}
   </View>
 );
+};
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
-  <View style={s.emptyState}>
-    <Ionicons name={icon as any} size={24} color={Colors.borderMuted} />
-    <Text style={s.emptyStateText}>{text}</Text>
-  </View>
-);
+const EmptyState: React.FC<{ icon: string; text: string }> = ({ icon, text }) => {
+  const { tc } = useAppearance();
+  const hs = useHomeCardStyles();
+  return (
+    <View style={hs.emptyState}>
+      <Ionicons name={icon as any} size={24} color={tc(Colors.textDisabled)} />
+      <Text style={[hs.emptyStateText, { color: tc(Colors.textMuted) }]}>{text}</Text>
+    </View>
+  );
+};
 
 // ─── Body type chips ──────────────────────────────────────────────────────────
 
@@ -416,9 +431,10 @@ const BODY_TYPES = [
 // ─── Home Screen ──────────────────────────────────────────────────────────────
 
 export const HomeScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightHomeStyles) : s;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(s, lightHomeStyles), lightContrastStyles) : s;
   const role = useAuthStore((s) => s.role);
   // Deliberately does NOT subscribe to the watchlist store — ListingCard owns
   // its own saved state (see its selector). Subscribing here re-rendered the
@@ -582,7 +598,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
       <View style={ts.topGlow} />
       <WebsiteTopBar />
 
@@ -620,9 +636,9 @@ export const HomeScreen: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="Browse cars for sale"
           >
-            <Ionicons name="car-outline" size={20} color={Colors.textPrimary} />
+            <Ionicons name="car-outline" size={20} color={tc(Colors.textPrimary)} />
             <Text style={ts.buyJourneyText}>Buy Cars</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={16} color={tc(Colors.textSecondary)} />
           </TouchableOpacity>
           <TouchableOpacity
             style={ts.sellJourneyBtn}
@@ -648,14 +664,14 @@ export const HomeScreen: React.FC = () => {
             )}
             {upcomingAuctions.length > 0 && (
               <View style={[ts.statChip, { borderColor: Colors.infoBlueAlpha30, backgroundColor: Colors.infoBlueAlpha06 }]}>
-                <Ionicons name="calendar-outline" size={10} color={Colors.infoBlueLight} />
-                <Text style={[ts.statChipText, { color: Colors.infoBlueLight }]}>{upcomingAuctions.length} Upcoming</Text>
+                <Ionicons name="calendar-outline" size={10} color={tc(Colors.infoBlueLight)} />
+                <Text style={[ts.statChipText, { color: tc(Colors.infoBlueLight) }]}>{upcomingAuctions.length} Upcoming</Text>
               </View>
             )}
             {latestListings.length > 0 && (
               <View style={[ts.statChip, { borderColor: Colors.accentGreenAlpha30, backgroundColor: Colors.accentGreenAlpha06 }]}>
-                <Ionicons name="pricetag-outline" size={10} color={Colors.accentGreen} />
-                <Text style={[ts.statChipText, { color: Colors.accentGreen }]}>{latestListings.length}+ Listings</Text>
+                <Ionicons name="pricetag-outline" size={10} color={tc(Colors.accentGreen)} />
+                <Text style={[ts.statChipText, { color: tc(Colors.accentGreen) }]}>{latestListings.length}+ Listings</Text>
               </View>
             )}
           </View>
@@ -665,13 +681,13 @@ export const HomeScreen: React.FC = () => {
             (tapping anywhere just navigated to Search); now a real input
             that runs AI search inline, matching web's HomeClient.tsx. */}
         <View style={ts.searchBar}>
-          <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
+          <Ionicons name="search-outline" size={18} color={tc(Colors.iconMuted)} />
           <TextInput
             style={ts.searchInput}
             value={aiQuery}
             onChangeText={(t) => { setAiQuery(t); if (aiResult) setAiResult(null); if (aiError) setAiError(null); }}
             placeholder="Search make, model, budget..."
-            placeholderTextColor={Colors.iconMuted}
+            placeholderTextColor={tc(Colors.iconMuted)}
             returnKeyType="search"
             onSubmitEditing={handleAiSearch}
             accessibilityLabel="Search cars using MaziuM AI"
@@ -696,7 +712,7 @@ export const HomeScreen: React.FC = () => {
         {aiResult && (
           <View style={ts.aiResultCard}>
             <View style={ts.aiResultHeader}>
-              <Ionicons name="sparkles" size={13} color={Colors.warning} />
+              <Ionicons name="sparkles" size={13} color={tc(Colors.warning)} />
               <Text style={ts.aiResultLabel}>MAZIUM AI</Text>
             </View>
             <Text style={ts.aiResultText}>{aiResult.text}</Text>
@@ -867,7 +883,8 @@ export const HomeScreen: React.FC = () => {
           onPress={() => navigation.navigate('SellLanding')}
           activeOpacity={0.9}
         >
-          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={ts.sellCtaWatermark} />
+          {/* theme-audit-ignore: decorative watermark, intentionally faint in both modes */}
+          <Ionicons name="car-sport" size={72} color={Colors.accentAlpha15} style={ts.sellCtaWatermark} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={ts.sellCtaTitle}>Sell your car</Text>
           <Text style={ts.sellCtaHint}>List in minutes · Get offers from buyers</Text>
           <View style={ts.sellCtaBtn}>
@@ -900,7 +917,7 @@ export const HomeScreen: React.FC = () => {
                   <Text style={ts.utilityRowText} numberOfLines={1}>
                     {liveAuctions.length} live auction{liveAuctions.length !== 1 ? 's' : ''} right now
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               )}
 
@@ -914,10 +931,10 @@ export const HomeScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <View style={ts.utilityRowIconWrap}>
-                    <Ionicons name="business-outline" size={16} color={Colors.infoBlueLight} />
+                    <Ionicons name="business-outline" size={16} color={tc(Colors.infoBlueLight)} />
                   </View>
                   <Text style={ts.utilityRowText} numberOfLines={1}>Are you a car dealer? Apply here</Text>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               )}
             </View>
@@ -1020,7 +1037,7 @@ const s = StyleSheet.create({
   aiResultHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   aiResultLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.warning, letterSpacing: 1 },
   aiResultText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 20 },
-  aiResultError: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.error },
+  aiResultError: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.errorLight },
   aiResultBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     height: 42, borderRadius: Radius.inline, backgroundColor: Colors.accent,
@@ -1112,7 +1129,7 @@ const s = StyleSheet.create({
 
   // Empty state
   emptyState: { width: 240, height: 100, alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.whiteAlpha02, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha05 },
-  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.midBlue_505060 },
+  emptyStateText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.textMuted },
 
   // Sell CTA — the one accent-filled hero action on this screen (CDS restraint
   // rule: at most one primary accent-filled action per view). Accent wash
@@ -1134,3 +1151,15 @@ const s = StyleSheet.create({
   auctionLiveDot: { position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent, borderWidth: 1.5, borderColor: Colors.bgSecondary },
   utilityRowText: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.white },
 });
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  seeAll: { color: lightReadableText.accent }, // keep
+  statChipText: { color: lightReadableText.accent },
+  aiResultError: { color: lightReadableText.error },
+  aiResultLabel: { color: lightReadableText.warning },
+});
+
+
+const LIGHT_PALETTE = appearancePalette('light');

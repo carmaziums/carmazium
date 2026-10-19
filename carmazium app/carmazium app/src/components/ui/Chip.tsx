@@ -4,6 +4,8 @@ import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Radius } from '@/constants/spacing';
 import { FontFamily, Type } from '@/constants/typography';
+import { appearancePalette, lightReadableText, mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { useAppearanceStore } from '../../store/appearanceStore';
 
 type ChipProps = {
   children: React.ReactNode;
@@ -22,14 +24,18 @@ type ChipProps = {
  * `Chip` is for facts and should recede. Every listing surface in the app had
  * its own version of this row; this is the one.
  */
-export const Chip = React.memo<ChipProps>(({ children, icon, accent = false, style }) => (
-  <View style={[styles.chip, accent && styles.chipAccent, style]}>
-    {icon}
-    <Text style={[styles.label, accent && styles.labelAccent]} numberOfLines={1}>
-      {children}
-    </Text>
-  </View>
-));
+export const Chip = React.memo<ChipProps>(({ children, icon, accent = false, style }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? lightStyles : styles;
+  return (
+    <View style={[ts.chip, accent && ts.chipAccent, style]}>
+      {icon}
+      <Text style={[ts.label, accent && ts.labelAccent]} numberOfLines={1}>
+        {children}
+      </Text>
+    </View>
+  );
+});
 
 Chip.displayName = 'Chip';
 
@@ -58,4 +64,13 @@ const styles = StyleSheet.create({
   labelAccent: {
     color: Colors.accent,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light mode: the 4%-white chip and #E2E8F0 label were invisible on white cards.
+const lightStyles = mergeAppearanceStyles(styles, {
+  chip: { backgroundColor: LIGHT_PALETTE.elevated, borderColor: LIGHT_PALETTE.border },
+  label: { color: LIGHT_PALETTE.secondary },
+  labelAccent: { color: lightReadableText.accent },
 });

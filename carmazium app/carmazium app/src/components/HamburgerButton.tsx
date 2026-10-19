@@ -3,6 +3,8 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { useDrawer } from '../context/DrawerContext';
 import { Colors } from '../constants/colors';
 import { Ionicons } from '@/components/BrandIcon';
+import { useAppearance } from '../theme/useAppearance';
+import { appearancePalette } from '../theme/appearancePalette';
 
 interface HamburgerButtonProps {
   color?: string;
@@ -12,15 +14,25 @@ interface HamburgerButtonProps {
 }
 
 export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
-  color = Colors.white,
+  color: colorProp,
   websiteStyle = false,
   showLabel = false,
 }) => {
   const { isOpen, openDrawer, closeDrawer } = useDrawer();
+  const { isLight, palette } = useAppearance();
+  // The website-style menu only ever sits on the navy WebsiteTopBar, so it
+  // stays white in both modes. The legacy pill sits directly on page
+  // backgrounds: white bars on a white-alpha pill vanished in light mode.
+  const color = colorProp ?? (websiteStyle ? Colors.white : palette.icon);
 
   return (
     <TouchableOpacity
-      style={[styles.btn, websiteStyle && styles.websiteButton, showLabel && styles.labelledMenu]}
+      style={[
+        styles.btn,
+        isLight && !websiteStyle && { backgroundColor: palette.card, borderColor: palette.border },
+        websiteStyle && styles.websiteButton,
+        showLabel && styles.labelledMenu,
+      ]}
       activeOpacity={0.7}
       onPress={websiteStyle && isOpen ? closeDrawer : openDrawer}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -33,6 +45,7 @@ export const HamburgerButton: React.FC<HamburgerButtonProps> = ({
       {websiteStyle ? (
         <>
           <Ionicons name={isOpen ? 'close' : 'menu'} size={24} color={color} />
+          {/* theme-audit-ignore: labelled menu only renders on the navy WebsiteTopBar */}
           {showLabel && <Text style={styles.menuText}>{isOpen ? 'Close' : 'Menu'}</Text>}
         </>
       ) : (
@@ -73,3 +86,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 });
+
+
+const LIGHT_PALETTE = appearancePalette('light');

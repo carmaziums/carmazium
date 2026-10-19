@@ -5,6 +5,7 @@ import { CarListing } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
 import { IconButton } from './IconButton';
+import { appearancePalette } from '../theme/appearancePalette';
 
 interface WishlistHeartProps {
   listing: CarListing;
@@ -32,6 +33,7 @@ export const WishlistHeart: React.FC<WishlistHeartProps> = ({ listing, style }) 
   return (
     <IconButton
       style={[styles.btn, style]}
+      // theme-audit-ignore: dark translucent button over the listing photo in both modes
       icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={16} color={saved ? Colors.accent : Colors.white} />}
       onPress={() => toggle(listing)}
       accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'}
@@ -54,3 +56,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.whiteAlpha15,
   },
 });
+
+
+const LIGHT_PALETTE = appearancePalette('light');

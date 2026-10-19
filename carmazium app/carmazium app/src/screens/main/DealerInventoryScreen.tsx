@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, adaptLegacyLightStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
@@ -38,6 +38,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { formatTransmission } from '../../lib/transmission';
+import { useAppearance } from '../../theme/useAppearance';
 
 const VIEW_MODE_STORAGE_KEY = 'czm_dealer_inventory_view_mode';
 
@@ -135,10 +136,11 @@ const ListingDetail: React.FC<{
   onSold: () => void;
   canManageInventory: boolean;
 }> = ({ listing, onBack, navigation, onSold, canManageInventory }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light'
-    ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightInventoryStyles)
+    ? mergeAppearanceStyles(mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightInventoryStyles), lightContrastStyles)
     : styles;
   const [selectedImg, setSelectedImg] = useState(0);
   const thumbW = (SCREEN_WIDTH - 48 - 12) / 3;
@@ -308,7 +310,7 @@ const ListingDetail: React.FC<{
               disabled={!canManageInventory}
             >
               <Text style={ts.detailRowValue}>{listing.price}</Text>
-              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={Colors.iconMuted} style={{ marginLeft: 8 }} />}
+              {canManageInventory && <Ionicons name="pencil-outline" size={14} color={tc(Colors.iconMuted)} style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
           </View>
           <View style={ts.detailDivider} />
@@ -419,7 +421,7 @@ const ListingDetail: React.FC<{
               onChangeText={v => { setSoldPriceInput(v); setMarkSoldError(null); }}
               keyboardType="number-pad"
               placeholder="0"
-              placeholderTextColor={Colors.iconMuted}
+              placeholderTextColor={tc(Colors.iconMuted)}
               autoFocus
             />
           </View>
@@ -451,9 +453,10 @@ const InventoryRow: React.FC<{
   onOpenLinkedAuction?: (linkedId: string) => void;
   canManageInventory: boolean;
 }> = React.memo(({ listing, onPress, onPutOnAuction, onOpenLinkedAuction, canManageInventory }) => {
+  const { tc } = useAppearance();
   const s = STATUS_STYLE[listing.status];
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightInventoryStyles), lightContrastStyles) : styles;
   const hasLinkedAuction = !!listing.linkedListingId;
   const linkedAuctionLive = listing.linkedAuctionStatus === 'ACTIVE';
   const canPutOnAuction = canManageInventory && listing.status === 'LIVE' && !hasLinkedAuction;
@@ -473,7 +476,7 @@ const InventoryRow: React.FC<{
               contentFit="cover" transition={200} cachePolicy="memory-disk"
               accessibilityLabel={listing.title} />
           ) : (
-            <Ionicons name="car-outline" size={23} color={Colors.textMuted} />
+            <Ionicons name="car-outline" size={23} color={tc(Colors.textMuted)} />
           )}
         </View>
         <View style={ts.stockIdentity}>
@@ -537,7 +540,7 @@ const InventoryRow: React.FC<{
       ) : null}
       <View style={ts.stockOpenRow}>
         <Text style={ts.stockOpenText}>View details and actions</Text>
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+        <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} />
       </View>
     </TouchableOpacity>
   );});
@@ -545,9 +548,10 @@ const InventoryRow: React.FC<{
 // ─── Inventory grid card — compact thumbnail-forward alternative to the row
 // view, for dealers scanning many listings at once (mobile-ui-ux-audit.md §C9). ──
 const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => void }> = React.memo(({ listing, onPress }) => {
+  const { tc } = useAppearance();
   const s = STATUS_STYLE[listing.status];
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightInventoryStyles), lightContrastStyles) : styles;
   return (
     <TouchableOpacity style={ts.gridCard} onPress={() => onPress(listing.id)}
       accessibilityRole="button"
@@ -558,7 +562,7 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
           <Image source={{ uri: listing.images[0] }} style={ts.gridThumb}
             contentFit="cover" transition={200} cachePolicy="memory-disk"
             accessibilityLabel={listing.title} />
-        ) : <Ionicons name="car-outline" size={26} color={Colors.textMuted} />}
+        ) : <Ionicons name="car-outline" size={26} color={tc(Colors.textMuted)} />}
         <View style={[ts.statusBadge, { backgroundColor: s.bg }]}>
           <Text style={ts.statusBadgeText}>{s.label}</Text>
         </View>
@@ -571,9 +575,9 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
       )}
       <Text style={ts.gridPrice}>{listing.price}</Text>
       <View style={ts.listingStats}>
-        <Ionicons name="eye-outline" size={12} color={Colors.iconMuted} />
+        <Ionicons name="eye-outline" size={12} color={tc(Colors.iconMuted)} />
         <Text style={ts.statNum}>{listing.views}</Text>
-        <Ionicons name="people-outline" size={12} color={Colors.iconMuted} style={{ marginLeft: 8 }} />
+        <Ionicons name="people-outline" size={12} color={tc(Colors.iconMuted)} style={{ marginLeft: 8 }} />
         <Text style={ts.statNum}>{listing.leads}</Text>
       </View>
     </TouchableOpacity>
@@ -581,9 +585,10 @@ const InventoryGridCard: React.FC<{ listing: Listing; onPress: (id: string) => v
 
 // ─── MAIN INVENTORY SCREEN ───────────────────────────────────────────────────
 export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightInventoryStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightInventoryStyles), lightContrastStyles) : styles;
   const { hasPermission } = useDealerAccess(true);
   const canManageInventory = hasPermission('MANAGE_INVENTORY');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
@@ -754,12 +759,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
           </TouchableOpacity>
           <TouchableOpacity style={ts.stockSecondaryAction} onPress={() => setShowImportModal(true)}
             accessibilityRole="button" accessibilityLabel="Import Listing">
-            <Ionicons name="link-outline" size={16} color={Colors.textSecondary} />
+            <Ionicons name="link-outline" size={16} color={tc(Colors.textSecondary)} />
             <Text style={ts.stockSecondaryActionText}>Import Listing</Text>
           </TouchableOpacity>
           <TouchableOpacity style={ts.stockSecondaryAction} onPress={() => setShowBulkImportModal(true)}
             accessibilityRole="button" accessibilityLabel="Bulk Import">
-            <Ionicons name="cloud-upload-outline" size={16} color={Colors.textSecondary} />
+            <Ionicons name="cloud-upload-outline" size={16} color={tc(Colors.textSecondary)} />
             <Text style={ts.stockSecondaryActionText}>Bulk Import</Text>
           </TouchableOpacity>
         </View>
@@ -767,12 +772,12 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
 
       {/* Search inventory without paging through unrelated vehicles. */}
       <View style={ts.inventorySearchWrap}>
-        <Ionicons name="search-outline" size={20} color={Colors.textSecondary} />
+        <Ionicons name="search-outline" size={20} color={tc(Colors.textSecondary)} />
         <TextInput
           value={inventoryQuery}
           onChangeText={setInventoryQuery}
           placeholder="Search by make, model, VRM..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={tc(Colors.textMuted)}
           autoCapitalize="none"
           autoCorrect={false}
           accessibilityLabel="Search dealer inventory"
@@ -780,7 +785,7 @@ export const DealerInventoryScreen: React.FC<{ navigation?: any }> = ({ navigati
         />
         {!!inventoryQuery && (
           <TouchableOpacity onPress={() => setInventoryQuery('')} accessibilityRole="button" accessibilityLabel="Clear inventory search">
-            <Ionicons name="close-circle" size={20} color={Colors.textSecondary} />
+            <Ionicons name="close-circle" size={20} color={tc(Colors.textSecondary)} />
           </TouchableOpacity>
         )}
       </View>
@@ -1083,7 +1088,7 @@ const styles = StyleSheet.create({
   },
   stockStatusText: { fontFamily: FontFamily.bold, fontSize: 11 },
   stockRejection: { fontFamily: FontFamily.medium, fontSize: 10,
-    color: Colors.error, marginTop: 5 },
+    color: Colors.errorLight, marginTop: 5 },
   stockOpenRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
     gap: 4, marginTop: 13, paddingTop: 10,
@@ -1772,7 +1777,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderRadius: Radius.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1824,7 +1829,7 @@ const styles = StyleSheet.create({
   markSoldConfirmBtn: {
     height: 48,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -1834,4 +1839,24 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.white,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  listingLiveLabel: { color: LIGHT_PALETTE.muted },
+  markSoldModalHint: { color: LIGHT_PALETTE.secondary },
+  soldPriceLabel: { color: LIGHT_PALETTE.muted },
+  soldPriceCurrency: { color: LIGHT_PALETTE.muted },
+  soldPriceInput: { color: LIGHT_PALETTE.text },
+  stockMake: { color: lightReadableText.accent },
+  stockRejection: { color: lightReadableText.error },
+  rowCrossListChipText: { color: LIGHT_PALETTE.muted },
+  rowPutOnAuctionText: { color: lightReadableText.accent },
+  filterTabCount: { color: LIGHT_PALETTE.muted },
+  sortActionText: { color: lightReadableText.accent },
+  boostToast: { backgroundColor: lightReadableText.success },
+  markSoldConfirmBtn: { backgroundColor: lightReadableText.success },
 });

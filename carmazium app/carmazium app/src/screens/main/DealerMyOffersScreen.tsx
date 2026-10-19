@@ -3,7 +3,6 @@ import {
   Alert,
   FlatList,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,7 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -26,6 +25,8 @@ import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── interfaces ───────────────────────────
@@ -137,9 +138,10 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerMyOffersScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightMyOffersStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightMyOffersStyles), lightContrastStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -278,7 +280,7 @@ export const DealerMyOffersScreen: React.FC = () => {
 
   const renderEmptyState = () => (
     <View style={ts.emptyState}>
-      <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
+      <Ionicons name="document-text-outline" size={40} color={tc(Colors.textMuted)} />
       <Text style={ts.emptyTitle}>No offers sent yet</Text>
       <Text style={ts.emptySub}>
         Offers your dealership makes on listings will appear here
@@ -332,7 +334,7 @@ export const DealerMyOffersScreen: React.FC = () => {
         {isCountered && displayCounterAmount != null && (
           <View style={ts.counterSection}>
             <View style={ts.counterHeader}>
-              <Ionicons name="pricetag-outline" size={13} color={Colors.warning} />
+              <Ionicons name="pricetag-outline" size={13} color={tc(Colors.warning)} />
               <Text style={ts.counterLabel}>SELLER’S COUNTER</Text>
             </View>
             <View style={ts.counterAmountRow}>
@@ -416,7 +418,7 @@ export const DealerMyOffersScreen: React.FC = () => {
                 onPress={() => setCancelOffer(offer)}
                 disabled={isActioning}
               >
-                <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Cancel Sale</Text>
+                <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>Cancel Sale</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -431,7 +433,7 @@ export const DealerMyOffersScreen: React.FC = () => {
               onPress={() => handleCounterRespond(offer, 'REJECTED')}
               disabled={isActioning}
             >
-              <Text style={[ts.actionBtnText, { color: Colors.accent }]}>
+              <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>
                 Decline Counter
               </Text>
             </TouchableOpacity>
@@ -475,7 +477,7 @@ export const DealerMyOffersScreen: React.FC = () => {
           onCreated={() => void fetchData()}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -488,7 +490,7 @@ export const DealerMyOffersScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>My Offers</Text>
 
@@ -792,7 +794,7 @@ const styles = StyleSheet.create({
   },
   actionBtnAcceptCounter: {
     flex: 1,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   actionBtnText: {
@@ -800,4 +802,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  actionBtnWithdrawText: { color: LIGHT_PALETTE.secondary },
+  actionBtnAcceptCounter: { backgroundColor: lightReadableText.success },
 });

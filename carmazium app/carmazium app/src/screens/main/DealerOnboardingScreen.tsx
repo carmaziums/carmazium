@@ -5,11 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   TextInput,
   ActivityIndicator,
-  Switch,
-} from 'react-native';
+  } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,15 +21,19 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
+import { ThemedSwitch } from '../../components/ThemedSwitch';
 
 type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
 
 export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { role, user, accountRole, initializeAuth, setRole } = useAuthStore();
   const { showToast } = useContext(GlobalToastContext);
@@ -155,7 +157,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
   if (reactivating) {
     return (
       <View style={[ts.container, ts.reactivatingWrap]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={ts.reactivatingText}>Your dealer account is already verified — switching you over…</Text>
       </View>
@@ -164,7 +166,7 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   return (
     <KeyboardStickyView style={ts.container} behavior="padding">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -257,15 +259,15 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           <View style={ts.formGroup}>
              <Text style={ts.inputLabel}>{businessType === 'SOLE_PROPRIETORSHIP' ? 'TRADING NAME' : 'COMPANY / TRADING NAME'}</Text>
              <View style={ts.inputWrap}>
-                <Ionicons name="business-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                <Ionicons name="business-outline" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
                 <TextInput
                   style={ts.textInput}
                   value={tradingName}
                   onChangeText={v => { setTradingName(v); if (fieldErrors.tradingName) setFieldErrors(prev => ({ ...prev, tradingName: undefined })); }}
                   placeholder="e.g. Knightsbridge Motors Ltd"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                 />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
+                <Ionicons name="pencil-outline" size={16} color={tc(Colors.iconMuted)} style={ts.inputIconRight} />
              </View>
              {fieldErrors.tradingName ? <Text style={ts.fieldErrorText}>{fieldErrors.tradingName}</Text> : null}
           </View>
@@ -275,24 +277,24 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             <View style={ts.formGroup}>
                <Text style={ts.inputLabel}>COMPANIES HOUSE REG</Text>
                <View style={ts.inputWrap}>
-                  <MaterialCommunityIcons name="pound" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
-                  <TextInput style={ts.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={Colors.iconMuted} />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
+                  <MaterialCommunityIcons name="pound" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
+                  <TextInput style={ts.textInput} value={regNumber} onChangeText={setRegNumber} keyboardType="numeric" placeholder="e.g. 12345678" placeholderTextColor={tc(Colors.iconMuted)} />
+                  <Ionicons name="pencil-outline" size={16} color={tc(Colors.iconMuted)} style={ts.inputIconRight} />
                </View>
             </View>
   
             <View style={ts.formGroup}>
                <Text style={ts.inputLabel}>VAT NUMBER</Text>
                <View style={ts.inputWrap}>
-                  <MaterialCommunityIcons name="file-document-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                  <MaterialCommunityIcons name="file-document-outline" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
                   <TextInput
                     style={ts.textInput}
                     value={vatNumber}
                     onChangeText={v => { setVatNumber(v); if (fieldErrors.vatNumber) setFieldErrors(prev => ({ ...prev, vatNumber: undefined })); }}
                     placeholder="e.g. GB 123 456 789"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={tc(Colors.iconMuted)}
                   />
-                  <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
+                  <Ionicons name="pencil-outline" size={16} color={tc(Colors.iconMuted)} style={ts.inputIconRight} />
                </View>
                {fieldErrors.vatNumber ? <Text style={ts.fieldErrorText}>{fieldErrors.vatNumber}</Text> : null}
             </View>
@@ -302,23 +304,23 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
           <View style={ts.formGroup}>
              <Text style={ts.inputLabel}>BUSINESS ADDRESS</Text>
              <View style={ts.inputWrap}>
-                <Ionicons name="location-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
-                <TextInput style={ts.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
+                <Ionicons name="location-outline" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
+                <TextInput style={ts.textInput} value={address} onChangeText={setAddress} placeholder="e.g. 42 Sloane St, SW1X 9LT" placeholderTextColor={tc(Colors.iconMuted)} />
+                <Ionicons name="pencil-outline" size={16} color={tc(Colors.iconMuted)} style={ts.inputIconRight} />
              </View>
           </View>
 
           <View style={ts.formGroup}>
              <Text style={ts.inputLabel}>BUSINESS PHONE</Text>
              <View style={ts.inputWrap}>
-                <Ionicons name="call-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
-                <TextInput style={ts.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={Colors.iconMuted} />
-                <Ionicons name="pencil-outline" size={16} color={Colors.iconMuted} style={ts.inputIconRight} />
+                <Ionicons name="call-outline" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
+                <TextInput style={ts.textInput} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="e.g. +44 20 7123 4567" placeholderTextColor={tc(Colors.iconMuted)} />
+                <Ionicons name="pencil-outline" size={16} color={tc(Colors.iconMuted)} style={ts.inputIconRight} />
              </View>
           </View>
 
           <Text style={ts.sectionLabel}>OPTIONAL BUSINESS INTRODUCTION & SALES SERVICES</Text>
-          <Text style={{ color: Colors.textSecondary, marginBottom: 14, fontSize: 12, lineHeight: 18 }}>
+          <Text style={{ color: tc(Colors.textSecondary), marginBottom: 14, fontSize: 12, lineHeight: 18 }}>
             MaziuM can add these dealer details to vehicle descriptions. You can skip this section and complete it later under Settings → Business Profile.
           </Text>
           <View style={ts.formGroup}>
@@ -326,32 +328,32 @@ export const DealerOnboardingScreen: React.FC<{ navigation?: any }> = ({ navigat
             <TextInput style={[ts.textInput, { minHeight: 90, textAlignVertical: 'top', paddingTop: 12 }]}
               multiline maxLength={2000} value={introduction} onChangeText={setIntroduction}
               placeholder="Introduce your dealership and how you help buyers."
-              placeholderTextColor={Colors.iconMuted} />
+              placeholderTextColor={tc(Colors.iconMuted)} />
           </View>
           <View style={ts.formGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={ts.inputLabel}>WE OFFER A WARRANTY</Text>
-              <Switch value={warrantyOffered} onValueChange={setWarrantyOffered}
+              <ThemedSwitch value={warrantyOffered} onValueChange={setWarrantyOffered}
                 accessibilityLabel="Warranty offered" />
             </View>
             {warrantyOffered && (
               <TextInput style={[ts.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
                 multiline maxLength={1000} value={warrantyDetails} onChangeText={setWarrantyDetails}
                 placeholder="Enter duration, covered components, limits and exclusions."
-                placeholderTextColor={Colors.iconMuted} />
+                placeholderTextColor={tc(Colors.iconMuted)} />
             )}
           </View>
           <View style={ts.formGroup}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={ts.inputLabel}>WE OFFER OR ARRANGE FINANCE</Text>
-              <Switch value={financeOffered} onValueChange={setFinanceOffered}
+              <ThemedSwitch value={financeOffered} onValueChange={setFinanceOffered}
                 accessibilityLabel="Finance offered" />
             </View>
             {financeOffered && (
               <TextInput style={[ts.textInput, { minHeight: 110, textAlignVertical: 'top', paddingTop: 12 }]}
                 multiline maxLength={1000} value={financeDetails} onChangeText={setFinanceDetails}
                 placeholder="Finance provider or arrangement, subject to status and lender approval."
-                placeholderTextColor={Colors.iconMuted} />
+                placeholderTextColor={tc(Colors.iconMuted)} />
             )}
           </View>
 
@@ -512,7 +514,7 @@ const styles = StyleSheet.create({
      fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1.2, marginBottom: 8
   },
   fieldErrorText: {
-     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 6,
+     fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.errorLight, marginTop: 6,
   },
   inputWrap: {
      flexDirection: 'row', alignItems: 'center', height: 50, borderRadius: Radius.inline,
@@ -542,4 +544,17 @@ const styles = StyleSheet.create({
      position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingTop: 16,
      backgroundColor: 'rgba(10,10,12,0.95)', borderTopWidth: 1, borderTopColor: Colors.whiteAlpha05
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSubRed: { color: lightReadableText.accent },
+  stepperLabelActive: { color: LIGHT_PALETTE.text },
+  stepperNum: { color: LIGHT_PALETTE.muted },
+  businessTypeTitleSelected: { color: LIGHT_PALETTE.text },
+  businessTypeHelp: { color: LIGHT_PALETTE.secondary },
+  signInLink: { color: lightReadableText.accent },
 });

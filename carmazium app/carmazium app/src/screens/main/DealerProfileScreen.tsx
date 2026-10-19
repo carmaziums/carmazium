@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Alert,
   Dimensions,
   Platform,
@@ -19,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
@@ -34,6 +33,8 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── Backend response shapes (see GET /dealers/stats & /dealers/analytics) ──
@@ -86,9 +87,10 @@ const trendStyle = (value: number) =>
 const trendLabel = (value: number) => (value === 0 ? '—' : `${value > 0 ? '+' : ''}${value}%`);
 
 export const DealerProfileScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerProfileStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerProfileStyles), lightContrastStyles) : styles;
   const { showToast } = useContext(GlobalToastContext);
   const { user, setRole } = useAuthStore();
   const { access, hasPermission } = useDealerAccess(true);
@@ -263,9 +265,9 @@ export const DealerProfileScreen: React.FC = () => {
                     <View style={ts.listingInfo}>
                       <Text style={ts.listingTitle} numberOfLines={1}>{vehicle.title}</Text>
                       <View style={ts.listingMeta}>
-                        <Ionicons name="eye-outline" size={13} color={Colors.textSecondary} />
+                        <Ionicons name="eye-outline" size={13} color={tc(Colors.textSecondary)} />
                         <Text style={ts.metaText}>{vehicle.views}</Text>
-                        <Ionicons name="pricetag-outline" size={13} color={Colors.textSecondary} style={{ marginLeft: 10 }} />
+                        <Ionicons name="pricetag-outline" size={13} color={tc(Colors.textSecondary)} style={{ marginLeft: 10 }} />
                         <Text style={ts.metaText}>{vehicle.offerCount}</Text>
                       </View>
                     </View>
@@ -304,9 +306,8 @@ export const DealerProfileScreen: React.FC = () => {
                 <Text style={ts.attentionTitle}>{activeLeads} active lead{activeLeads === 1 ? '' : 's'}</Text>
                 <Text style={ts.attentionSub}>Tap to view your CRM pipeline</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
-
 
             )}
             {/* Direct offers */}
@@ -318,15 +319,14 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerOffers')}
             >
               <View style={[ts.attentionIconWrap, { backgroundColor: Colors.warningAlpha08, borderColor: Colors.warningAlpha15 }]}>
-                <Ionicons name="pricetag" size={18} color={Colors.warning} />
+                <Ionicons name="pricetag" size={18} color={tc(Colors.warning)} />
               </View>
               <View style={ts.attentionTextCol}>
                 <Text style={ts.attentionTitle}>Direct offers</Text>
                 <Text style={ts.attentionSub}>Review and respond to buyer offers</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
-
 
             )}
             {/* My Offers */}
@@ -338,15 +338,14 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerMyOffers')}
             >
               <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(96, 165, 250, 0.08)', borderColor: 'rgba(96, 165, 250, 0.15)' }]}>
-                <Ionicons name="send-outline" size={18} color={Colors.infoBlueLight} />
+                <Ionicons name="send-outline" size={18} color={tc(Colors.infoBlueLight)} />
               </View>
               <View style={ts.attentionTextCol}>
                 <Text style={ts.attentionTitle}>My offers</Text>
                 <Text style={ts.attentionSub}>Track offers your dealership has sent</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
-
 
             )}
             {/* Purchases */}
@@ -358,15 +357,14 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerPurchases')}
             >
               <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Ionicons name="receipt-outline" size={18} color={Colors.palePurple_a78bfa} />
+                <Ionicons name="receipt-outline" size={18} color={tc(Colors.palePurple_a78bfa)} />
               </View>
               <View style={ts.attentionTextCol}>
                 <Text style={ts.attentionTitle}>Purchases</Text>
                 <Text style={ts.attentionSub}>Vehicles bought by your dealership</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
-
 
             )}
             {/* Earnings */}
@@ -376,13 +374,13 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerEarnings')}
             >
               <View style={[ts.attentionIconWrap, { backgroundColor: Colors.successAlpha08, borderColor: Colors.successAlpha20 }]}>
-                <Ionicons name="cash-outline" size={18} color={Colors.success} />
+                <Ionicons name="cash-outline" size={18} color={tc(Colors.success)} />
               </View>
               <View style={ts.attentionTextCol}>
                 <Text style={ts.attentionTitle}>Earnings</Text>
                 <Text style={ts.attentionSub}>Revenue, sales registry and receipts</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Live auctions (watch) */}
@@ -398,7 +396,7 @@ export const DealerProfileScreen: React.FC = () => {
                 <Text style={ts.attentionTitle}>Live auctions</Text>
                 <Text style={ts.attentionSub}>Track your dealership's auctions in real time</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Manage auctions (create/schedule/cancel — was previously
@@ -418,9 +416,8 @@ export const DealerProfileScreen: React.FC = () => {
                 <Text style={ts.attentionTitle}>Manage auctions</Text>
                 <Text style={ts.attentionSub}>Schedule, edit or put a listing up for auction</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
-
 
             )}
             {/* Finance applications */}
@@ -436,7 +433,7 @@ export const DealerProfileScreen: React.FC = () => {
                 <Text style={ts.attentionTitle}>Finance applications</Text>
                 <Text style={ts.attentionSub}>Track vehicle finance you've applied for</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Team */}
@@ -448,13 +445,13 @@ export const DealerProfileScreen: React.FC = () => {
               onPress={() => navigation.navigate('DealerTeam')}
             >
               <View style={[ts.attentionIconWrap, { backgroundColor: 'rgba(167, 139, 250, 0.08)', borderColor: 'rgba(167, 139, 250, 0.15)' }]}>
-                <Ionicons name="people-outline" size={18} color={Colors.palePurple_a78bfa} />
+                <Ionicons name="people-outline" size={18} color={tc(Colors.palePurple_a78bfa)} />
               </View>
               <View style={ts.attentionTextCol}>
                 <Text style={ts.attentionTitle}>Team</Text>
                 <Text style={ts.attentionSub}>{staffCount} member{staffCount === 1 ? '' : 's'} on your team</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             )}
@@ -532,7 +529,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={ts.metricCard}>
             <View style={ts.metricHeader}>
               <Text style={ts.metricTitle}>AVG DAYS TO SELL</Text>
-              <Ionicons name="time-outline" size={14} color={Colors.warning} />
+              <Ionicons name="time-outline" size={14} color={tc(Colors.warning)} />
             </View>
             <View style={ts.metricValRow}>
               <Text style={ts.metricNumber}>{kpis?.avgDaysToSell ?? 0}</Text>
@@ -546,7 +543,7 @@ export const DealerProfileScreen: React.FC = () => {
           <View style={ts.metricCard}>
             <View style={ts.metricHeader}>
               <Text style={ts.metricTitle}>OFFER CONVERSION</Text>
-              <Ionicons name="bar-chart-outline" size={14} color={Colors.success} />
+              <Ionicons name="bar-chart-outline" size={14} color={tc(Colors.success)} />
             </View>
             <View style={ts.metricValRow}>
               <Text style={ts.metricNumber}>{kpis?.offerConversionRate ?? 0}%</Text>
@@ -616,7 +613,7 @@ export const DealerProfileScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
 
       {/* Background gradient glow matching the dashboard styling */}
       <LinearGradient
@@ -648,7 +645,7 @@ export const DealerProfileScreen: React.FC = () => {
             activeOpacity={0.85}
             onPress={() => navigation.navigate('Settings' as any)}
           >
-            <Ionicons name="call-outline" size={18} color={Colors.warning} />
+            <Ionicons name="call-outline" size={18} color={tc(Colors.warning)} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={ts.phoneBannerTitle}>Add a contact phone</Text>
               <Text style={ts.phoneBannerSub}>Buyers can't see a number to call you until you set one in Settings.</Text>
@@ -658,7 +655,7 @@ export const DealerProfileScreen: React.FC = () => {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityLabel="Dismiss"
             >
-              <Ionicons name="close" size={16} color={Colors.iconMuted} />
+              <Ionicons name="close" size={16} color={tc(Colors.iconMuted)} />
             </TouchableOpacity>
           </TouchableOpacity>
         )}
@@ -691,7 +688,7 @@ export const DealerProfileScreen: React.FC = () => {
               <Text style={ts.extraInsightsSub}>Inventory snapshots, popular stock and weekly analytics</Text>
             </View>
             <Ionicons name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
-              size={20} color={Colors.textSecondary} />
+              size={20} color={tc(Colors.textSecondary)} />
           </TouchableOpacity>
           {advancedExpanded && (
             <View style={ts.extraInsightsBody}>
@@ -1384,4 +1381,14 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     letterSpacing: 0.8,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  metaText: { color: LIGHT_PALETTE.secondary },
+  metricChangeGreen: { color: lightReadableText.success },
+  loadingText: { color: LIGHT_PALETTE.muted },
 });

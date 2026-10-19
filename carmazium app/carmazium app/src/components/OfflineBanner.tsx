@@ -5,6 +5,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { subscribeToConnectivity } from '../lib/network';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useAppearance } from '../theme/useAppearance';
+import { lightStrongText } from '../theme/appearancePalette';
 
 /**
  * App-wide offline indicator (CROSS-015).
@@ -14,6 +16,7 @@ import { FontFamily, FontSize } from '../constants/typography';
  * online — this must not occupy layout or intercept touches in the normal case.
  */
 export const OfflineBanner: React.FC = () => {
+  const { tc, isLight } = useAppearance();
   const insets = useSafeAreaInsets();
   const [offline, setOffline] = useState(false);
 
@@ -23,7 +26,7 @@ export const OfflineBanner: React.FC = () => {
 
   return (
     <View
-      style={[styles.banner, { paddingTop: insets.top + 8 }]}
+      style={[styles.banner, isLight && styles.bannerLight, { paddingTop: insets.top + 8 }]}
       // Announced to screen readers, but not focusable and not touchable: it is
       // a status, and stealing focus mid-task to say so would be worse than the
       // problem it reports.
@@ -31,8 +34,8 @@ export const OfflineBanner: React.FC = () => {
       accessibilityLabel="No internet connection"
       pointerEvents="none"
     >
-      <Ionicons name="cloud-offline-outline" size={14} color={Colors.warning} />
-      <Text style={styles.text}>No internet connection</Text>
+      <Ionicons name="cloud-offline-outline" size={14} color={tc(Colors.warning)} />
+      <Text style={[styles.text, isLight && styles.textLight]}>No internet connection</Text>
     </View>
   );
 };
@@ -58,5 +61,14 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
     color: Colors.warning,
+  },
+  // Light mode: an opaque pale-amber strip (the 15% tint let page content
+  // show through) with deep amber copy, 9:1.
+  bannerLight: {
+    backgroundColor: '#FEF3C7',
+    borderBottomColor: '#F5D48A',
+  },
+  textLight: {
+    color: lightStrongText.warning,
   },
 });

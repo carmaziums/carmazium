@@ -14,7 +14,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { BottomSheet } from './BottomSheet';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import {
@@ -26,6 +26,7 @@ import {
   type SaleCancellationRequest,
 } from '../lib/saleCancellationApi';
 import { haptics } from '../lib/haptics';
+import { useAppearance } from '../theme/useAppearance';
 
 const REASONS = Object.keys(SALE_CANCELLATION_REASON_LABELS) as SaleCancellationReason[];
 const MAX_EVIDENCE_FILES = 5;
@@ -57,8 +58,9 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
   onClose,
   onCreated,
 }) => {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightSaleCancellationStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightSaleCancellationStyles), lightContrastStyles) : styles;
   const [reason, setReason] = useState<SaleCancellationReason>('MUTUAL_AGREEMENT');
   const [details, setDetails] = useState('');
   const [evidence, setEvidence] = useState<MobileCancellationEvidence[]>([]);
@@ -185,7 +187,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
         showsVerticalScrollIndicator={false}
       >
         <View style={ts.warningCard}>
-          <Ionicons name="warning-outline" size={18} color={Colors.warning} />
+          <Ionicons name="warning-outline" size={18} color={tc(Colors.warning)} />
           <View style={{ flex: 1 }}>
             <Text style={ts.warningTitle}>{vehicleTitle}</Text>
             <Text style={ts.warningText}>
@@ -228,7 +230,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
           maxLength={2000}
           textAlignVertical="top"
           placeholder="Give the other party and CarMazium enough detail to understand the cancellation."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={tc(Colors.textMuted)}
         />
 
         <View style={[ts.evidenceCard, evidenceRequired && ts.evidenceCardRequired]}>
@@ -236,7 +238,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
             <Ionicons
               name={evidenceRequired ? 'alert-circle-outline' : 'attach-outline'}
               size={18}
-              color={evidenceRequired ? Colors.warning : Colors.infoBlue}
+              color={tc(evidenceRequired ? Colors.warning : Colors.infoBlue)}
             />
             <View style={{ flex: 1 }}>
               <Text style={ts.evidenceTitle}>
@@ -254,7 +256,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
             onPress={pickEvidence}
             disabled={submitting || evidence.length >= MAX_EVIDENCE_FILES}
           >
-            <Ionicons name="cloud-upload-outline" size={15} color={Colors.textPrimary} />
+            <Ionicons name="cloud-upload-outline" size={15} color={tc(Colors.textPrimary)} />
             <Text style={ts.pickButtonText}>
               {evidence.length >= MAX_EVIDENCE_FILES ? '5 files attached' : 'Choose evidence'}
             </Text>
@@ -267,7 +269,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
                   <Ionicons
                     name={file.type.startsWith('video/') ? 'videocam-outline' : 'image-outline'}
                     size={15}
-                    color={Colors.textSecondary}
+                    color={tc(Colors.textSecondary)}
                   />
                   <View style={{ flex: 1 }}>
                     <Text style={ts.fileName} numberOfLines={1}>{file.name}</Text>
@@ -280,7 +282,7 @@ export const SaleCancellationSheet: React.FC<SaleCancellationSheetProps> = ({
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     disabled={submitting}
                   >
-                    <Ionicons name="close-circle" size={20} color={Colors.textMuted} />
+                    <Ionicons name="close-circle" size={20} color={tc(Colors.textMuted)} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -513,7 +515,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
     lineHeight: 18,
-    color: Colors.error,
+    color: Colors.errorLight,
   },
   actions: { flexDirection: 'row', gap: 10, marginTop: 2 },
   keepButton: {
@@ -543,4 +545,16 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.white,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  reasonTextSelected: { color: LIGHT_PALETTE.text },
+  pickButtonText: { color: LIGHT_PALETTE.text },
+  totalEvidenceText: { color: LIGHT_PALETTE.muted },
+  errorText: { color: lightReadableText.error },
+  fileMeta: { color: LIGHT_PALETTE.text },
 });

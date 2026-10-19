@@ -10,6 +10,8 @@ import Animated, {
 import { Colors } from '@/constants/colors';
 import { Radius } from '@/constants/spacing';
 import { FontFamily, Type } from '@/constants/typography';
+import { useAppearanceStore } from '../../store/appearanceStore';
+import { lightStrongText, mergeAppearanceStyles } from '../../theme/appearancePalette';
 
 export type BadgeKind =
   | 'live'
@@ -52,15 +54,20 @@ const LiveDot = () => {
  * (each listing surface had its own slightly different "FEATURED" pill). The
  * variants and their colours come from the design system's mobile kit.
  */
-export const Badge = React.memo<BadgeProps>(({ kind = 'neutral', children, icon, style }) => (
-  <View style={[styles.base, variantContainer[kind], style]}>
-    {kind === 'live' && <LiveDot />}
-    {icon}
-    <Text style={[styles.label, variantLabel[kind]]} numberOfLines={1}>
-      {children}
-    </Text>
-  </View>
-));
+export const Badge = React.memo<BadgeProps>(({ kind = 'neutral', children, icon, style }) => {
+  const isLight = useAppearanceStore(state => state.mode) === 'light';
+  const vc = isLight ? variantContainerLight : variantContainer;
+  const vl = isLight ? variantLabelLight : variantLabel;
+  return (
+    <View style={[styles.base, vc[kind], style]}>
+      {kind === 'live' && <LiveDot />}
+      {icon}
+      <Text style={[styles.label, vl[kind]]} numberOfLines={1}>
+        {children}
+      </Text>
+    </View>
+  );
+});
 
 Badge.displayName = 'Badge';
 
@@ -137,4 +144,17 @@ const variantLabel = StyleSheet.create({
   verified: { color: Colors.successLight },
   neutral: { color: Colors.textSecondary },
   dark: { color: Colors.white },
+});
+
+// Light mode: tinted pills keep their hue but take the deep text variant
+// (the pale dark-mode labels were ~2:1 on their own tint); the neutral pill
+// becomes a bordered white chip. Live/featured/dark fills are unchanged.
+const variantContainerLight = mergeAppearanceStyles(variantContainer, {
+  neutral: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+});
+const variantLabelLight = mergeAppearanceStyles(variantLabel, {
+  premium: { color: lightStrongText.warning },
+  standard: { color: lightStrongText.info },
+  verified: { color: lightStrongText.success },
+  neutral: { color: '#334155' },
 });

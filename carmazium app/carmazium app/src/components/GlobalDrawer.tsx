@@ -28,6 +28,7 @@ import { mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
+import { useAppearance } from '../theme/useAppearance';
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 const IS_QA_REVIEW_BUILD = process.env.EXPO_PUBLIC_QA_READ_ONLY === '1';
@@ -75,6 +76,7 @@ const MAIN_MENU: MenuItem[] = [
 ];
 
 export const GlobalDrawer: React.FC = () => {
+  const { tc } = useAppearance();
   const { isOpen, closeDrawer } = useDrawer();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
@@ -277,7 +279,7 @@ export const GlobalDrawer: React.FC = () => {
           </View>
           {(user?.isAddressVerified === true && user?.isVerified === true) && (
             <View style={ts.verifiedDot}>
-              <Ionicons name="checkmark-circle" size={18} color={role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success} />
+              <Ionicons name="checkmark-circle" size={18} color={tc(role === 'dealer' ? Colors.warning : role === 'seller' ? Colors.infoBlue : Colors.success)} />
             </View>
           )}
         </View>

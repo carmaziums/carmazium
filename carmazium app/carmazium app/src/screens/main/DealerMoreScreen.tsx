@@ -7,13 +7,14 @@ import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
 import { getBottomTabBarHeight } from '../../lib/nativeLayoutParity';
 import type { DealerPermission } from '../../lib/dealerAccessApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { useAuthStore } from '../../store/authStore';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { useAppearance } from '../../theme/useAppearance';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type DealerTool = {
@@ -36,10 +37,11 @@ const EXTRA_DEALER_TOOLS: DealerTool[] = [
 ];
 
 export const DealerMoreScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const navigation = useNavigation<NavProp>();
   const insets = useSafeAreaInsets();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerMoreStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerMoreStyles), lightContrastStyles) : styles;
   const { fontScale } = useWindowDimensions();
   const accountRole = useAuthStore(s => s.accountRole);
   const role = useAuthStore(s => s.role);
@@ -100,7 +102,7 @@ export const DealerMoreScreen: React.FC = () => {
                   <Text style={ts.toolTitle}>{tool.title}</Text>
                   <Text style={ts.toolDescription}>{tool.description}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} accessibilityElementsHidden />
+                <Ionicons name="chevron-forward" size={18} color={tc(Colors.textSecondary)} accessibilityElementsHidden />
               </TouchableOpacity>
             ))}
           </View>
@@ -140,4 +142,12 @@ const styles = StyleSheet.create({
   toolDescription: { color: Colors.textSecondary, fontFamily: FontFamily.regular, fontSize: 12, lineHeight: 18 },
   retry: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, backgroundColor: Colors.accent, paddingHorizontal: 16 },
   retryText: { color: Colors.white, fontFamily: FontFamily.bold, fontSize: 13 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  subtitle: { color: LIGHT_PALETTE.muted },
 });

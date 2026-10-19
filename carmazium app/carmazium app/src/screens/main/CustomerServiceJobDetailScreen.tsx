@@ -5,7 +5,6 @@ import {
   AppState,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -35,6 +34,8 @@ import {
 import { refuseAuctionAfterInspection } from '../../lib/auctionApi';
 import { getOrCreateServiceJobRoom } from '../../lib/chatApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerServiceJobDetail'>;
 
@@ -46,8 +47,9 @@ const providerName = (quote?: ServiceQuote | null) =>
   || 'Service provider';
 
 export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
   const [job, setJob] = useState<ServiceJob | null>(null);
@@ -234,7 +236,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         <View style={ts.header}>
           <IconButton
             style={ts.headerButton}
-            icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+            icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
@@ -281,12 +283,12 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -296,8 +298,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
         </View>
         <TouchableOpacity style={ts.refreshButton} onPress={() => void load()}>
           {loading
-            ? <ActivityIndicator size="small" color={Colors.textSecondary} />
-            : <Ionicons name="refresh-outline" size={18} color={Colors.textSecondary} />}
+            ? <ActivityIndicator size="small" color={tc(Colors.textSecondary)} />
+            : <Ionicons name="refresh-outline" size={18} color={tc(Colors.textSecondary)} />}
         </TouchableOpacity>
       </View>
 
@@ -307,7 +309,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
       >
         {flash ? (
           <View style={[ts.notice, ts.noticeOk]}>
-            <Ionicons name="checkmark-circle-outline" size={17} color={Colors.accentGreen} />
+            <Ionicons name="checkmark-circle-outline" size={17} color={tc(Colors.accentGreen)} />
             <Text style={ts.noticeText}>{flash}</Text>
           </View>
         ) : null}
@@ -332,7 +334,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               <Ionicons
                 name={isInspection ? 'search-outline' : 'car-outline'}
                 size={22}
-                color={isInspection ? Colors.warning : Colors.accent}
+                color={tc(isInspection ? Colors.warning : Colors.accent)}
               />
             </View>
             <View style={{ flex: 1 }}>
@@ -381,7 +383,7 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               <Ionicons
                 name={job.inspectionOutcome === 'FAULTS_FOUND' ? 'warning-outline' : 'checkmark-circle-outline'}
                 size={22}
-                color={job.inspectionOutcome === 'FAULTS_FOUND' ? Colors.warning : Colors.accentGreen}
+                color={tc(job.inspectionOutcome === 'FAULTS_FOUND' ? Colors.warning : Colors.accentGreen)}
               />
               <Text style={ts.resultTitle}>
                 {job.inspectionOutcome === 'FAULTS_FOUND'
@@ -541,8 +543,8 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
               onPress={disputeJob}
               disabled={busy === 'dispute'}
             >
-              <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
-              <Text style={[ts.secondaryText, { color: Colors.warning }]}>RAISE DISPUTE</Text>
+              <Ionicons name="alert-circle-outline" size={16} color={tc(Colors.warning)} />
+              <Text style={[ts.secondaryText, { color: tc(Colors.warning) }]}>RAISE DISPUTE</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -553,14 +555,14 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
             onPress={cancelJob}
             disabled={busy === 'cancel'}
           >
-            <Ionicons name="trash-outline" size={15} color={Colors.textMuted} />
+            <Ionicons name="trash-outline" size={15} color={tc(Colors.textMuted)} />
             <Text style={ts.cancelText}>Cancel service request</Text>
           </TouchableOpacity>
         ) : null}
 
         {job.status === 'DISPUTED' ? (
           <View style={[ts.notice, ts.noticeWarning]}>
-            <Ionicons name="shield-outline" size={17} color={Colors.warning} />
+            <Ionicons name="shield-outline" size={17} color={tc(Colors.warning)} />
             <Text style={ts.noticeText}>This job is frozen while CarMazium reviews the dispute.</Text>
           </View>
         ) : null}
@@ -572,11 +574,12 @@ export const CustomerServiceJobDetailScreen: React.FC<Props> = ({ navigation, ro
 };
 
 const Info = ({ icon, label, value }: { icon: string; label: string; value: string }) => {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   return (
   <View style={ts.infoRow}>
-    <Ionicons name={icon} size={16} color={Colors.textMuted} />
+    <Ionicons name={icon} size={16} color={tc(Colors.textMuted)} />
     <View style={{ flex: 1 }}>
       <Text style={ts.infoLabel}>{label}</Text>
       <Text style={ts.infoValue}>{value}</Text>
@@ -675,4 +678,15 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1, fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textSecondary, lineHeight: 18 },
   centerCard: { flex: 1, padding: 34, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.white },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: LIGHT_PALETTE.muted },
+  status: { color: LIGHT_PALETTE.muted },
+  muted: { color: LIGHT_PALETTE.muted },
+  cancelText: { color: LIGHT_PALETTE.muted },
 });

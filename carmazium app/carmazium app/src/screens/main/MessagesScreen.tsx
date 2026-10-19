@@ -7,8 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   TextInput,
-  StatusBar,
-} from 'react-native';
+  } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -19,7 +18,7 @@ import { useChat } from '../../context/ChatContext';
 import { ChatRoom, ChatUser } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -28,6 +27,8 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // Helper format functions for chat data mapping
@@ -89,7 +90,7 @@ interface ThreadRowProps {
 // every parent re-render (mobile-audit.md P3/P4).
 const ThreadRow: React.FC<ThreadRowProps> = React.memo(({ room, onPress, isOnline }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightMessagesStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightMessagesStyles), lightContrastStyles) : styles;
   const isUnread = room.unreadCount > 0;
   const displayName = getDisplayName(room.otherUser);
   const initials = getInitials(displayName);
@@ -183,9 +184,10 @@ const renderSkeletonRows = (ts: typeof styles) => (
 );
 
 export const MessagesScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightMessagesStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightMessagesStyles), lightContrastStyles) : styles;
   const navigation = useNavigation<NavProp>();
   const { rooms, unreadCount, markAsRead, refreshRooms, isLoading, onlineUserIds } = useChat();
 
@@ -244,7 +246,7 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
 
       {/* Top red-blue glow backdrop */}
       <LinearGradient
@@ -269,28 +271,28 @@ export const MessagesScreen: React.FC = () => {
             {/* Header navigation bar */}
             <View style={ts.header}>
               <View>
-                <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+                <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
                 <Text style={ts.unreadTag}>{unreadCount > 0 ? `${unreadCount} UNREAD` : 'ALL CAUGHT UP'}</Text>
                 <Text style={ts.title}>Messages</Text>
               </View>
 
-              <IconButton style={ts.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={Colors.white} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
+              <IconButton style={ts.searchIconBtn} icon={<Ionicons name="refresh-outline" size={20} color={tc(Colors.white)} />} onPress={() => void handleRefresh()} accessibilityLabel="Refresh conversations" />
             </View>
 
             {/* Website-style search is always visible and usable. */}
               <View style={ts.searchWrapper}>
                 <View style={ts.searchBar}>
-                  <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+                  <Ionicons name="search-outline" size={18} color={tc(Colors.textMuted)} />
                   <TextInput
                     style={ts.searchInput}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholder="Search messages..."
-                    placeholderTextColor={Colors.inputPlaceholder}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="none"
                   />
                   {searchQuery.length > 0 && (
-                    <IconButton icon={<Ionicons name="close-circle" size={16} color={Colors.textMuted} />} onPress={() => setSearchQuery('')} accessibilityLabel="Clear" />
+                    <IconButton icon={<Ionicons name="close-circle" size={16} color={tc(Colors.textMuted)} />} onPress={() => setSearchQuery('')} accessibilityLabel="Clear" />
                   )}
                 </View>
               </View>
@@ -612,4 +614,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  textBold: { color: LIGHT_PALETTE.text },
+  offerTagText: { color: lightReadableText.accent },
+  lastMessageTextUnread: { color: LIGHT_PALETTE.text },
 });

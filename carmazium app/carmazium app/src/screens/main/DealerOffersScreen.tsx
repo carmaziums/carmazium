@@ -6,7 +6,6 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -23,7 +22,7 @@ import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -36,6 +35,8 @@ import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -145,9 +146,10 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerOffersScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightReceivedOffersStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightReceivedOffersStyles), lightContrastStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -461,7 +463,7 @@ export const DealerOffersScreen: React.FC = () => {
         {isCountered && (
           buyerCounteredBack ? (
             <View style={ts.buyerCounteredChip}>
-              <Ionicons name="swap-horizontal-outline" size={12} color={Colors.warning} />
+              <Ionicons name="swap-horizontal-outline" size={12} color={tc(Colors.warning)} />
               <Text style={ts.buyerCounteredText}>
                 BUYER COUNTERED
                 {offer.buyerCounterAmount != null ? ` — ${formatPrice(offer.buyerCounterAmount)}` : ''}
@@ -482,7 +484,7 @@ export const DealerOffersScreen: React.FC = () => {
           <>
           {sellerCounterLocked && (
             <View style={ts.counterLockedBanner}>
-              <Ionicons name="lock-closed-outline" size={12} color={Colors.warning} />
+              <Ionicons name="lock-closed-outline" size={12} color={tc(Colors.warning)} />
               <Text style={ts.counterLockedText}>Counter limit reached — Accept or Decline.</Text>
             </View>
           )}
@@ -493,7 +495,7 @@ export const DealerOffersScreen: React.FC = () => {
               onPress={() => handleDecline(offer)}
               disabled={isActioning}
             >
-              <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Decline</Text>
+              <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>Decline</Text>
             </TouchableOpacity>
 
             {!sellerCounterLocked && (
@@ -503,7 +505,7 @@ export const DealerOffersScreen: React.FC = () => {
                 onPress={() => openCounterModal(offer)}
                 disabled={isActioning}
               >
-                <Text style={[ts.actionBtnText, { color: Colors.warning }]}>Counter</Text>
+                <Text style={[ts.actionBtnText, { color: tc(Colors.warning) }]}>Counter</Text>
               </TouchableOpacity>
             )}
 
@@ -527,7 +529,7 @@ export const DealerOffersScreen: React.FC = () => {
             second sale, but the buttons shouldn't have been offered at all. */}
         {offer.status === 'ACCEPTED' && offer.listing?.status === 'SOLD' && (
           <View style={ts.soldNoticeBanner}>
-            <Ionicons name="checkmark-circle" size={13} color={Colors.accentGreen} />
+            <Ionicons name="checkmark-circle" size={13} color={tc(Colors.accentGreen)} />
             <Text style={ts.soldNoticeText}>Vehicle already sold</Text>
           </View>
         )}
@@ -542,7 +544,7 @@ export const DealerOffersScreen: React.FC = () => {
               {messagingBuyerId === offer.id ? (
                 <ActivityIndicator size="small" color={Colors.infoBlue} />
               ) : (
-                <Text style={[ts.actionBtnText, { color: Colors.infoBlue }]}>Message</Text>
+                <Text style={[ts.actionBtnText, { color: tc(Colors.infoLight) }]}>Message</Text>
               )}
             </TouchableOpacity>
 
@@ -564,7 +566,7 @@ export const DealerOffersScreen: React.FC = () => {
             disabled={isActioning}
           >
             <Ionicons name="close-circle-outline" size={14} color={Colors.accent} style={{ marginRight: 6 }} />
-            <Text style={[ts.actionBtnText, { color: Colors.accent }]}>Request Cancellation</Text>
+            <Text style={[ts.actionBtnText, { color: tc(Colors.accent) }]}>Request Cancellation</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -593,7 +595,7 @@ export const DealerOffersScreen: React.FC = () => {
           onCreated={() => void fetchData(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.warningAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -606,7 +608,7 @@ export const DealerOffersScreen: React.FC = () => {
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>Offers Received</Text>
 
@@ -679,7 +681,7 @@ export const DealerOffersScreen: React.FC = () => {
             onChangeText={setCounterAmount}
             keyboardType="numeric"
             placeholder="Enter amount"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             selectionColor={Colors.accent}
           />
 
@@ -725,7 +727,7 @@ export const DealerOffersScreen: React.FC = () => {
             onChangeText={v => { setSaleSoldPrice(v); setSaleError(null); }}
             keyboardType="numeric"
             placeholder="Enter sale price"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             selectionColor={Colors.accent}
           />
 
@@ -758,7 +760,7 @@ export const DealerOffersScreen: React.FC = () => {
 
       {toast && (
         <View style={ts.toastBanner} pointerEvents="none">
-          <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+          <Ionicons name="checkmark-circle" size={14} color={tc(Colors.success)} />
           <Text style={ts.toastBannerText}>{toast}</Text>
         </View>
       )}
@@ -973,7 +975,7 @@ const styles = StyleSheet.create({
   counterSentText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.infoBlue,
+    color: Colors.infoLight,
   },
   buyerCounteredChip: {
     flexDirection: 'row',
@@ -1051,7 +1053,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.warning,
   },
   actionBtnAccept: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   actionBtnMessage: {
@@ -1059,7 +1061,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.infoBlue,
   },
   actionBtnMarkSold: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   actionBtnText: {
@@ -1115,7 +1117,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
   },
   modalBtnConfirmSale: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
   },
   modalBtnConfirmSaleText: {
     fontFamily: FontFamily.bold,
@@ -1153,4 +1155,18 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     flexShrink: 1,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  buyerCounteredText: { color: lightReadableText.warning },
+  counterSentText: { color: lightReadableText.info },
+  modalBtnCancelText: { color: LIGHT_PALETTE.secondary },
+  toastBannerText: { color: LIGHT_PALETTE.text },
+  actionBtnAccept: { backgroundColor: lightReadableText.success },
+  actionBtnMarkSold: { backgroundColor: lightReadableText.success },
+  modalBtnConfirmSale: { backgroundColor: lightReadableText.success },
 });

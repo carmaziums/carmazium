@@ -6,6 +6,7 @@ import { useAppearanceStore } from '../store/appearanceStore';
 import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../theme/appearancePalette';
 import { FontFamily } from '../constants/typography';
 import type { NativeMotTest, OfficialVehicleData } from '../data/listings';
+import { useAppearance } from '../theme/useAppearance';
 
 const displayDate = (value: unknown): string | null => {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -30,6 +31,7 @@ const motOdometer = (test: NativeMotTest): string | null => {
 
 /** Only allowlisted, saved listing facts are rendered. No public DVLA call or guessed trims. */
 export function BuyerVehicleFacts({ record }: { record: object | null | undefined }) {
+  const { tc } = useAppearance();
   const [allTests, setAllTests] = useState(false);
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightBuyerFactsStyles) : styles;
@@ -149,12 +151,12 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
                 accessibilityRole="button" accessibilityState={{ expanded }}
                 accessibilityLabel={test.testResult + ' MOT test ' + (displayDate(test.completedDate) ?? '')}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[ts.result, { color: passed ? Colors.success : Colors.error }]}>
+                  <Text style={[ts.result, { color: tc(passed ? Colors.success : Colors.errorLight) }]}>
                     {passed ? 'PASSED' : 'FAILED'} · {displayDate(test.completedDate)}
                   </Text>
                   <Text style={ts.note}>{motOdometer(test) || 'Odometer unavailable'} · {defects.length} recorded advisory/defect item(s)</Text>
                 </View>
-                <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={17} color={Colors.textSecondary}/>
+                <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={17} color={tc(Colors.textSecondary)}/>
               </TouchableOpacity>
               {expanded && (
                 <View style={ts.defects}>
@@ -164,7 +166,7 @@ export function BuyerVehicleFacts({ record }: { record: object | null | undefine
                   {!defects.length && <Text style={ts.note}>No individual defect text was saved for this test.</Text>}
                   {defects.map((defect, i) => (
                     <View key={i} style={ts.defect}>
-                      <Text style={[ts.defectType, { color: defect.type === 'MAJOR' || defect.type === 'DANGEROUS' ? Colors.error : Colors.warning }]}>
+                      <Text style={[ts.defectType, { color: tc(defect.type === 'MAJOR' || defect.type === 'DANGEROUS' ? Colors.error : Colors.warning) }]}>
                         {defect.type}
                       </Text>
                       <Text style={ts.value}>{defect.text}</Text>
@@ -227,5 +229,5 @@ const styles = StyleSheet.create({
   defectType: { fontFamily: FontFamily.extraBold, fontSize: 11 },
   more: { minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 9,
     borderWidth: 1, borderColor: Colors.infoBlue, paddingHorizontal: 12 },
-  moreText: { color: Colors.infoBlue, fontFamily: FontFamily.bold, fontSize: 12 },
+  moreText: { color: Colors.infoLight, fontFamily: FontFamily.bold, fontSize: 12 },
 });

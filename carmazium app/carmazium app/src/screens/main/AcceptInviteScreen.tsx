@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
@@ -21,11 +20,13 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { IconButton } from '../../components/IconButton';
 import { Button } from '../../components/Button';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -44,8 +45,9 @@ const extractToken = (raw: string): string => {
 };
 
 export const AcceptInviteScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const { initializeAuth } = useAuthStore();
@@ -97,7 +99,7 @@ export const AcceptInviteScreen: React.FC = () => {
 
   return (
     <KeyboardStickyView style={ts.container} behavior="padding">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -117,7 +119,7 @@ export const AcceptInviteScreen: React.FC = () => {
         {successMessage ? (
           <View style={ts.successWrap}>
             <View style={ts.successIconWrap}>
-              <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
+              <Ionicons name="checkmark-circle" size={40} color={tc(Colors.success)} />
             </View>
             <Text style={ts.successText}>{successMessage}</Text>
             <View style={{ marginTop: 24, width: '100%' }}>
@@ -139,13 +141,13 @@ export const AcceptInviteScreen: React.FC = () => {
             <View style={ts.formGroup}>
               <Text style={ts.inputLabel}>INVITE LINK OR CODE</Text>
               <View style={ts.inputWrap}>
-                <Ionicons name="link-outline" size={18} color={Colors.iconMuted} style={ts.inputIcon} />
+                <Ionicons name="link-outline" size={18} color={tc(Colors.iconMuted)} style={ts.inputIcon} />
                 <TextInput
                   style={ts.textInput}
                   value={input}
                   onChangeText={(v) => { setInput(v); if (error) setError(null); }}
                   placeholder="Paste here"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                   autoCapitalize="none"
                   autoCorrect={false}
                   multiline
@@ -160,7 +162,7 @@ export const AcceptInviteScreen: React.FC = () => {
                 loading={submitting}
                 size="lg"
                 fullWidth
-                icon={<Ionicons name="checkmark" size={18} color={Colors.white} />}
+                icon={<Ionicons name="checkmark" size={18} color={tc(Colors.white)} />}
               />
             </View>
           </>
@@ -202,4 +204,13 @@ const styles = StyleSheet.create({
   successWrap: { alignItems: 'center', paddingHorizontal: 24, marginTop: 40 },
   successIconWrap: { marginBottom: 16 },
   successText: { fontFamily: FontFamily.medium, fontSize: FontSize.base, color: Colors.white, textAlign: 'center', lineHeight: 22 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSubRed: { color: lightReadableText.accent },
+  successText: { color: LIGHT_PALETTE.text },
 });

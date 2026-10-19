@@ -21,7 +21,7 @@ import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -30,6 +30,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
 const HALF_CARD = (SCREEN_WIDTH - 48 - CARD_GAP) / 2;
@@ -153,6 +154,7 @@ const toAgingBarData = (buckets: Record<string, number>): { value: number; label
 
 // ─── Circular gauge ─────────────────────────────────────────────────────────
 const CircularGauge: React.FC<{ value: number; size: number }> = ({ value, size }) => {
+  const { tc } = useAppearance();
   const strokeWidth = 8;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
@@ -199,7 +201,7 @@ const CircularGauge: React.FC<{ value: number; size: number }> = ({ value, size 
         );
       })}
       {/* Centre text */}
-      <Text style={{ fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: Colors.white }}>
+      <Text style={{ fontFamily: FontFamily.extraBold, fontSize: FontSize.xl, color: tc(Colors.white) }}>
         {value}%
       </Text>
     </View>
@@ -224,9 +226,10 @@ const AnalyticsSkeleton: React.FC = () => (
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerAnalyticsScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerAnalyticsScreenStyles), lightContrastStyles) : styles;
   const [period, setPeriod] = useState<Period>('30D');
   const [subView, setSubView] = useState<SubView>('analytics');
 
@@ -389,7 +392,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
               <View style={ts.benchRow}>
                 <Text style={[ts.benchLabel, { width: 170 }]}>Avg accepted offer</Text>
                 <View style={{ flex: 1 }} />
-                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: Colors.success }}>
+                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size14, color: tc(Colors.success) }}>
                   {formatGBP(ob.avgAcceptedAmount)}
                 </Text>
               </View>
@@ -510,7 +513,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                 />
               ) : (
                 <View style={{ height: 90, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted }}>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: tc(Colors.textMuted) }}>
                     Not enough sales yet to chart a trend
                   </Text>
                 </View>
@@ -593,9 +596,9 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                 <Ionicons
                   name={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? 'alert-circle' : 'checkmark-circle'}
                   size={11}
-                  color={(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success}
+                  color={tc((analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success)}
                 />
-                <Text style={[ts.statChangeGreen, { color: (analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success }]}>
+                <Text style={[ts.statChangeGreen, { color: tc((analytics?.inventoryHealth.staleCount ?? 0) > 0 ? Colors.warning : Colors.success) }]}>
                   {' '}{(analytics?.inventoryHealth.staleCount ?? 0) > 0 ? `${analytics?.inventoryHealth.staleCount} stale 60d+` : 'All listings fresh'}
                 </Text>
               </View>
@@ -653,7 +656,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={ts.topSection}>
             {(analytics?.topVehicles ?? []).length === 0 ? (
               <View style={{ paddingVertical: 28, paddingHorizontal: 12, alignItems: 'center' }}>
-                <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.textMuted, textAlign: 'center' }}>
+                <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: tc(Colors.textMuted), textAlign: 'center' }}>
                   No listings yet — your top performers will appear here once your cars start getting views.
                 </Text>
               </View>
@@ -668,7 +671,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
                       <Image source={{ uri: car.image }} style={ts.perfThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
                     ) : (
                       <View style={[ts.perfThumb, { alignItems: 'center', justifyContent: 'center' }]}>
-                        <Ionicons name="car-sport-outline" size={18} color={Colors.textMuted} />
+                        <Ionicons name="car-sport-outline" size={18} color={tc(Colors.textMuted)} />
                       </View>
                     )}
                     <View style={ts.perfInfo}>
@@ -710,7 +713,7 @@ export const DealerAnalyticsScreen: React.FC<{ navigation?: any }> = ({ navigati
             </View>
             <View style={ts.convCTARight}>
               <Text style={ts.convCTALink}>Deep dive</Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.success} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={14} color={tc(Colors.success)} accessibilityElementsHidden importantForAccessibility="no" />
             </View>
           </TouchableOpacity>
 
@@ -1296,4 +1299,15 @@ const styles = StyleSheet.create({
     width: 42,
     textAlign: 'right',
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  funnelStep: { color: LIGHT_PALETTE.text },
+  headerSub: { color: LIGHT_PALETTE.muted },
+  convCTA: { backgroundColor: LIGHT_PALETTE.card },
+  convCTALink: { color: lightReadableText.success },
 });

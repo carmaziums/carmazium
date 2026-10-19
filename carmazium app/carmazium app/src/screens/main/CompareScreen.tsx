@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
-  StatusBar,
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -23,13 +22,15 @@ import { searchListings } from '../../lib/listingsApi';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const getMileageText = (car: CarListing) => `${(car.mileage / 1000).toFixed(1)}k`;
@@ -93,8 +94,9 @@ const getCapsuleTitle = (car: CarListing) => {
 };
 
 export const CompareScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
@@ -236,7 +238,7 @@ export const CompareScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       {/* Background glow gradient */}
       <LinearGradient
@@ -301,7 +303,7 @@ export const CompareScreen: React.FC = () => {
                   <View style={[ts.badgeIndicator, ts.badgeA]}>
                     <Text style={ts.badgeIndicatorText}>A</Text>
                   </View>
-                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
+                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={tc(Colors.textSecondary)} />} onPress={() => handleRemoveCar(0)} accessibilityLabel="Remove vehicle A from comparison" />
 
                   <View style={ts.carCardMeta}>
                     <Text style={ts.carModel} numberOfLines={2}>{carA.make} {carA.model}</Text>
@@ -316,7 +318,7 @@ export const CompareScreen: React.FC = () => {
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
+                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={tc(Colors.textMuted)} />
                   <Text style={ts.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle A'}</Text>
                 </TouchableOpacity>
               )}
@@ -330,7 +332,7 @@ export const CompareScreen: React.FC = () => {
                   <View style={[ts.badgeIndicator, ts.badgeB]}>
                     <Text style={ts.badgeIndicatorText}>B</Text>
                   </View>
-                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={Colors.textSecondary} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
+                  <IconButton style={ts.removeBtn} icon={<Ionicons name="close-circle" size={16} color={tc(Colors.textSecondary)} />} onPress={() => handleRemoveCar(1)} accessibilityLabel="Remove vehicle B from comparison" />
 
                   <View style={ts.carCardMeta}>
                     <Text style={ts.carModel} numberOfLines={2}>{carB.make} {carB.model}</Text>
@@ -345,7 +347,7 @@ export const CompareScreen: React.FC = () => {
                   activeOpacity={0.8}
                   disabled={loadingListings}
                 >
-                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={Colors.textMuted} />
+                  <Ionicons name={loadingListings ? 'hourglass-outline' : 'add'} size={24} color={tc(Colors.textMuted)} />
                   <Text style={ts.emptyCardText}>{loadingListings ? 'Loading vehicles…' : 'Add vehicle B'}</Text>
                 </TouchableOpacity>
               )}
@@ -483,7 +485,7 @@ export const CompareScreen: React.FC = () => {
             onPress={() => handleOpenSelect(2)}
             activeOpacity={0.7}
           >
-            <Ionicons name="add" size={16} color={Colors.white} style={{ marginRight: 6 }} />
+            <Ionicons name="add" size={16} color={tc(Colors.white)} style={{ marginRight: 6 }} />
             <Text style={ts.addThirdText}>Add a third car to compare</Text>
           </TouchableOpacity>
         )}
@@ -521,13 +523,13 @@ export const CompareScreen: React.FC = () => {
         avoidKeyboard
       >
         <View style={ts.pickerSearchWrap}>
-          <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+          <Ionicons name="search-outline" size={16} color={tc(Colors.textMuted)} />
           <TextInput
             style={ts.pickerSearchInput}
             value={pickerQuery}
             onChangeText={setPickerQuery}
             placeholder="Search make, model, or keyword..."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -562,7 +564,7 @@ export const CompareScreen: React.FC = () => {
                 {isAlreadySelected ? (
                   <Text style={ts.selectedLabelText}>Compared</Text>
                 ) : (
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 )}
               </TouchableOpacity>
             );
@@ -872,7 +874,7 @@ const styles = StyleSheet.create({
   highValueB: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.lightBlue_0084ff,
+    color: Colors.infoLight,
   },
   // Specs Table Grid
   specsTable: {
@@ -961,10 +963,12 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   textBlue: {
-    color: Colors.lightBlue_0084ff,
+    color: Colors.infoLight,
   },
+  // Third-car column label. midPink (#9A161D) was 1.75:1 on the dark table;
+  // amber keeps the three columns distinct (red / blue / amber) and readable.
   textMagenta: {
-    color: Colors.midPink,
+    color: Colors.warningLight,
   },
   textGreen: {
     color: Colors.accentGreen,
@@ -1120,4 +1124,24 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs - 2,
     color: Colors.accent,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerTag: { color: LIGHT_PALETTE.muted },
+  carModel: { color: LIGHT_PALETTE.text },
+  carSub: { color: LIGHT_PALETTE.muted },
+  highBadgeText: { color: LIGHT_PALETTE.text },
+  highValueB: { color: lightReadableText.info },
+  textRed: { color: lightReadableText.accent },
+  textBlue: { color: lightReadableText.info },
+  rowVal: { color: LIGHT_PALETTE.text },
+  rowValThreeCol: { color: LIGHT_PALETTE.text },
+  pickerSearchInput: { color: LIGHT_PALETTE.text },
+  selectedLabelText: { color: lightReadableText.accent },
+  rowValWinner: { color: LIGHT_PALETTE.text },
+  textGreen: { color: lightReadableText.success },
 });

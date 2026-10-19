@@ -25,13 +25,14 @@ import { ImageLightbox } from './ImageLightbox';
 import { GradeChip } from './GradeChip';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Elevation, Radius } from '../constants/spacing';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
 
 import { IconButton } from './IconButton';
+import { useAppearance } from '../theme/useAppearance';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 48;
 
@@ -52,8 +53,9 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
   width = CARD_WIDTH,
   compact = false,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightVehicleCardStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightVehicleCardStyles), lightContrastStyles) : styles;
   // Selector-subscribed, not `useWatchlistStore()`. Destructuring the whole
   // store subscribes this component to every field on it, so saving ANY
   // listing anywhere re-rendered EVERY card on screen. This is the app's
@@ -150,7 +152,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               listing package the seller bought (mobile-ui-ux-audit.md §C5). */}
           {(listing.badgeTier === 'STANDARD' || listing.badgeTier === 'PREMIUM') && (
             <View style={ts.verifiedBadge}>
-              <Ionicons name="shield-checkmark" size={10} color={Colors.infoBlueLight} />
+              <Ionicons name="shield-checkmark" size={10} color={tc(Colors.infoBlueLight)} />
               <Text style={ts.verifiedText}>{listing.badgeTier}</Text>
             </View>
           )}
@@ -158,7 +160,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
               only shown when the seller has actually been verified. */}
           {listing.isSellerVerified === true && (
             <View style={ts.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={10} color={Colors.success} />
+              <Ionicons name="checkmark-circle" size={10} color={tc(Colors.success)} />
               <Text style={ts.verifiedText}>VERIFIED</Text>
             </View>
           )}
@@ -175,7 +177,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         </View>
 
         {/* Save button */}
-        <IconButton style={ts.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
+        <IconButton style={ts.saveBtn} icon={<Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={tc(saved ? Colors.accent : Colors.white)} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
 
         {/* Price tag */}
         <View style={ts.priceTag}>
@@ -200,7 +202,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {listing.rating != null && (
               <View style={ts.ratingBadge}>
-                <Ionicons name="star" size={10} color={Colors.warning} />
+                <Ionicons name="star" size={10} color={tc(Colors.warning)} />
                 <Text style={ts.ratingText}>{listing.rating}</Text>
               </View>
             )}
@@ -219,7 +221,7 @@ const VehicleCardBase: React.FC<VehicleCardProps> = ({
         {!compact && (
           <View style={ts.footer}>
             <View style={ts.locationRow}>
-              <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
+              <Ionicons name="location-outline" size={12} color={tc(Colors.textMuted)} />
               <Text style={ts.locationText} numberOfLines={1}>
                 {listing.location}
               </Text>
@@ -331,7 +333,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   newBadge: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -514,4 +516,16 @@ const styles = StyleSheet.create({
     color: Colors.textDisabled,
     fontSize: FontSize.xs,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  verifiedText: { color: lightReadableText.info },
+  estateText: { color: LIGHT_PALETTE.secondary },
+  bannerBadge: { backgroundColor: lightReadableText.info },
+  newBadge: { backgroundColor: lightReadableText.success },
+  saveBtn: { backgroundColor: LIGHT_PALETTE.card },
 });

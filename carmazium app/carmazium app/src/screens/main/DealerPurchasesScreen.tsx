@@ -22,7 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
@@ -32,6 +32,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
@@ -114,9 +115,10 @@ const STATUS_CONFIG: Record<
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerPurchasesScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightPurchasesStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightPurchasesStyles), lightContrastStyles) : styles;
   const navigation = useNavigation<NavProp>();
 
   const [purchases, setPurchases] = useState<PurchaseItem[]>([]);
@@ -207,7 +209,7 @@ export const DealerPurchasesScreen: React.FC = () => {
               <Image source={{ uri: item.imageUrl }} style={ts.thumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={item.vehicleTitle} />
             ) : (
               <View style={[ts.thumb, ts.thumbPlaceholder]}>
-                <Ionicons name="car-outline" size={20} color={Colors.textMuted} />
+                <Ionicons name="car-outline" size={20} color={tc(Colors.textMuted)} />
               </View>
             )}
 
@@ -325,7 +327,7 @@ export const DealerPurchasesScreen: React.FC = () => {
                   <Image source={{ uri: summaryItem.imageUrl }} style={ts.modalThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" alt={summaryItem.vehicleTitle} />
                 ) : (
                   <View style={[ts.modalThumb, ts.thumbPlaceholder]}>
-                    <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
+                    <Ionicons name="car-outline" size={24} color={tc(Colors.textMuted)} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
@@ -386,8 +388,8 @@ export const DealerPurchasesScreen: React.FC = () => {
                   disabled={!summaryItem.sellerEmail}
                   onPress={() => handleEmailSeller(summaryItem)}
                 >
-                  <Ionicons name="mail-outline" size={15} color={summaryItem.sellerEmail ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[ts.sellerActionText, !summaryItem.sellerEmail && { color: Colors.textMuted }]}>Email</Text>
+                  <Ionicons name="mail-outline" size={15} color={tc(summaryItem.sellerEmail ? Colors.textPrimary : Colors.textMuted)} />
+                  <Text style={[ts.sellerActionText, !summaryItem.sellerEmail && { color: tc(Colors.textMuted) }]}>Email</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[ts.sellerActionBtn, !summaryItem.sellerPhone && ts.sellerActionBtnDisabled]}
@@ -395,8 +397,8 @@ export const DealerPurchasesScreen: React.FC = () => {
                   disabled={!summaryItem.sellerPhone}
                   onPress={() => handleCallSeller(summaryItem)}
                 >
-                  <Ionicons name="call-outline" size={15} color={summaryItem.sellerPhone ? Colors.textPrimary : Colors.textMuted} />
-                  <Text style={[ts.sellerActionText, !summaryItem.sellerPhone && { color: Colors.textMuted }]}>Call</Text>
+                  <Ionicons name="call-outline" size={15} color={tc(summaryItem.sellerPhone ? Colors.textPrimary : Colors.textMuted)} />
+                  <Text style={[ts.sellerActionText, !summaryItem.sellerPhone && { color: tc(Colors.textMuted) }]}>Call</Text>
                 </TouchableOpacity>
               </View>
 
@@ -417,7 +419,7 @@ export const DealerPurchasesScreen: React.FC = () => {
                   setCancelItem(item);
                 }}
               >
-                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.accent }}>
+                <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: tc(Colors.accent) }}>
                   Request Sale Cancellation
                 </Text>
               </TouchableOpacity>
@@ -502,7 +504,7 @@ const styles = StyleSheet.create({
     minWidth: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.palePurple_a78bfa,
+    backgroundColor: Colors.infoSolid, // white count: palePurple (#60A5FA) was 2.5:1
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -776,4 +778,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sellerSectionLabel: { color: LIGHT_PALETTE.muted },
+  sellerActionText: { color: LIGHT_PALETTE.text },
+  modalCloseBtnText: { color: LIGHT_PALETTE.secondary },
+  countBadge: { backgroundColor: lightReadableText.info },
 });

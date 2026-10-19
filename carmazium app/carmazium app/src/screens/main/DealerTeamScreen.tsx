@@ -21,7 +21,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { BottomSheet } from '../../components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { appearancePalette, lightReadableText, mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import {
@@ -82,12 +82,20 @@ const ROLE_COLORS: Record<string, { bg: string; border: string; text: string }> 
   },
 };
 
-const getRoleColor = (role: string) =>
-  ROLE_COLORS[role] ?? {
+const LIGHT_ROLE_TEXT: Record<string, string> = {
+  ADMIN: lightReadableText.warning,
+  SALES_AGENT: lightReadableText.info,
+  FINANCE_MANAGER: lightReadableText.success,
+};
+const TEAM_LIGHT_PALETTE = appearancePalette('light');
+const getRoleColor = (role: string, isLight = false) => {
+  const base = ROLE_COLORS[role] ?? {
     bg: 'rgba(160,160,171,0.12)',
     border: Colors.textSecondaryAlpha20,
     text: Colors.textSecondary,
   };
+  return isLight ? { ...base, text: LIGHT_ROLE_TEXT[role] ?? '#334155' } : base;
+};
 
 const getInitials = (member: StaffMember): string => {
   const first = member.user.firstName?.[0] ?? '';
@@ -125,7 +133,7 @@ interface RolePillProps {
 const RolePill: React.FC<RolePillProps> = ({ label, selected, onSelect, colorKey }) => {
   const mode = useAppearanceStore(state => state.mode);
   const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerTeamScreenStyles) : styles;
-  const c = getRoleColor(colorKey);
+  const c = getRoleColor(colorKey, mode === 'light');
   return (
     <TouchableOpacity
       style={[
@@ -164,7 +172,7 @@ interface StaffCardProps {
 const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRemove }) => {
   const mode = useAppearanceStore(state => state.mode);
   const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerTeamScreenStyles) : styles;
-  const role = getRoleColor(member.role);
+  const role = getRoleColor(member.role, mode === 'light');
   const initials = getInitials(member);
   const displayName = getDisplayName(member);
 
@@ -172,7 +180,7 @@ const StaffCard: React.FC<StaffCardProps> = React.memo(({ member, removing, onRe
     <View style={ts.staffCard}>
       {/* Avatar */}
       <LinearGradient
-        colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
+        colors={mode === 'light' ? ['#E5EEF7', '#E5EEF7'] : [Colors.darkBlue_2d3c63, Colors.darkBlue_1a2238]}
         style={ts.avatar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -431,7 +439,8 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           value={Boolean(draft[field])}
           disabled={disabled}
           onValueChange={(value) => setTradeFlag(email, field, value)}
-          trackColor={{ false: Colors.borderMuted, true: Colors.accent }}
+          trackColor={{ false: appearanceMode === 'light' ? TEAM_LIGHT_PALETTE.switchTrackOff : Colors.borderMuted, true: Colors.accent }}
+          ios_backgroundColor={appearanceMode === 'light' ? TEAM_LIGHT_PALETTE.switchTrackOff : Colors.borderMuted}
           thumbColor={Colors.white}
         />
       </View>
@@ -464,7 +473,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           </Text>
         </View>
         {tradeError ? (
-          <Text style={{ color: Colors.error, fontFamily: FontFamily.medium, fontSize: FontSize.xs }}>{tradeError}</Text>
+          <Text style={{ color: appearanceMode === 'light' ? lightReadableText.error : Colors.errorLight, fontFamily: FontFamily.medium, fontSize: FontSize.xs }}>{tradeError}</Text>
         ) : null}
         {people.map((person) => {
           const draft = tradeDrafts[person.email] ?? blankTradeDraft(person.email);

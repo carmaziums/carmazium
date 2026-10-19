@@ -4,7 +4,6 @@ import {
   Alert,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -18,7 +17,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -35,6 +34,8 @@ import {
 } from '../../lib/servicesApi';
 import { getOrCreateServiceJobRoom } from '../../lib/chatApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderJobDetail'>;
 
@@ -56,8 +57,9 @@ const requestedText = (job: ServiceJob) => {
 const statusText = (status: ServiceJob['status']) => status.replace(/_/g, ' ');
 
 export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { jobId } = route.params;
 
@@ -279,7 +281,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
         <View style={ts.header}>
           <IconButton
             style={ts.headerButton}
-            icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+            icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
@@ -300,12 +302,12 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -321,7 +323,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
       <ScrollView contentContainerStyle={ts.content} showsVerticalScrollIndicator={false}>
         {flash ? (
           <View style={ts.successCard}>
-            <Ionicons name="checkmark-circle-outline" size={18} color={Colors.accentGreen} />
+            <Ionicons name="checkmark-circle-outline" size={18} color={tc(Colors.accentGreen)} />
             <Text style={ts.successText}>{flash}</Text>
           </View>
         ) : null}
@@ -352,7 +354,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
             <Text style={ts.infoText}>{routeText(job)}</Text>
           </View>
           <View style={ts.infoRow}>
-            <Ionicons name="time-outline" size={16} color={Colors.warning} />
+            <Ionicons name="time-outline" size={16} color={tc(Colors.warning)} />
             <Text style={ts.infoText}>{requestedText(job)}</Text>
           </View>
 
@@ -380,7 +382,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
           <Text style={ts.cardTitle}>Vehicle{job.vehicles.length === 1 ? '' : 's'}</Text>
           {job.vehicles.length ? job.vehicles.map((vehicle, index) => (
             <View key={vehicle.id || `${vehicle.registration || 'vehicle'}-${index}`} style={ts.vehicleRow}>
-              <Ionicons name="car-outline" size={18} color={Colors.textMuted} />
+              <Ionicons name="car-outline" size={18} color={tc(Colors.textMuted)} />
               <View style={{ flex: 1 }}>
                 <Text style={ts.vehicleTitle}>
                   {[vehicle.registration, vehicle.make, vehicle.model].filter(Boolean).join(' · ') || `Vehicle ${index + 1}`}
@@ -407,7 +409,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={tc(Colors.textMuted)}
                 keyboardType="decimal-pad"
               />
             </View>
@@ -426,7 +428,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
               multiline
               maxLength={1000}
               placeholder="Collection window, vehicle type, anything that helps the customer choose you"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={tc(Colors.textMuted)}
             />
 
             <TouchableOpacity
@@ -504,9 +506,9 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                 onPress={() => void openChat()}
               >
                 {busy === 'chat'
-                  ? <ActivityIndicator color={Colors.white} />
+                  ? <ActivityIndicator color={tc(Colors.white)} />
                   : <>
-                      <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
+                      <Ionicons name="chatbubble-ellipses-outline" size={17} color={tc(Colors.white)} />
                       <Text style={ts.secondaryText}>MESSAGE CUSTOMER</Text>
                     </>}
               </TouchableOpacity>
@@ -571,12 +573,12 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
                       multiline
                       maxLength={2000}
                       placeholder="Condition, checks completed and any faults found"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={tc(Colors.textMuted)}
                     />
 
                     {inspectionOutcome === 'FAULTS_FOUND' ? (
                       <View style={ts.warningCard}>
-                        <Ionicons name="warning-outline" size={16} color={Colors.warning} />
+                        <Ionicons name="warning-outline" size={16} color={tc(Colors.warning)} />
                         <Text style={ts.warningText}>
                           A verified fault outcome can allow a linked auction buyer to refuse the vehicle before approved handover and receive the full buyer-fee refund.
                         </Text>
@@ -650,7 +652,7 @@ export const ProviderJobDetailScreen: React.FC<Props> = ({ navigation, route }) 
 
 const Info = ({ label, value }: { label: string; value: string }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   return (
   <View style={ts.infoLine}>
     <Text style={ts.infoLabel}>{label}</Text>
@@ -692,7 +694,7 @@ const styles = StyleSheet.create({
   errorCard: { flexDirection: 'row', gap: 8, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10, padding: 12 },
   errorText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.size12, color: Colors.paleRed_fca5a5, lineHeight: 18 },
   warningCard: { flexDirection: 'row', gap: 8, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha08, backgroundColor: Colors.whiteAlpha06, padding: 12 },
-  warningText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.warning, lineHeight: 18 },
+  warningText: { flex: 1, fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.warningLight, lineHeight: 18 },
   eyebrow: { fontFamily: FontFamily.bold, color: Colors.accent, fontSize: FontSize.size10, letterSpacing: 1.2 },
   title: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xl },
   cardTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base },
@@ -731,4 +733,17 @@ const styles = StyleSheet.create({
   choiceText: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10 },
   choiceTextActive: { color: Colors.accentGreen },
   choiceTextWarning: { color: Colors.warning },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: LIGHT_PALETTE.muted },
+  statusText: { color: LIGHT_PALETTE.secondary },
+  currency: { color: LIGHT_PALETTE.muted },
+  moneyField: { color: LIGHT_PALETTE.text },
+  input: { color: LIGHT_PALETTE.text },
+  dangerText: { color: lightReadableText.accent },
 });

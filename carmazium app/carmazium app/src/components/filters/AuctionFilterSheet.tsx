@@ -11,7 +11,7 @@ import {
 import { BottomSheet } from '@/components/BottomSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightStrongText } from '../../theme/appearancePalette';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { BODY_TYPE_ICONS } from '../../constants/bodyTypes';
@@ -26,6 +26,7 @@ import {
   INITIAL_AUCTION_FILTERS,
   countActiveAuctionFilters,
 } from './auctionFilters';
+import { useAppearance } from '../../theme/useAppearance';
 
 // Match the full website/retail catalogue rather than just five common fuels.
 const POPULAR_MAKES = ['BMW', 'Audi', 'Mercedes-Benz', 'Volkswagen', 'Ford', 'Toyota', 'Honda', 'Porsche', 'Land Rover', 'Tesla'];
@@ -62,7 +63,6 @@ const NUMERIC_FILTERS: { title: string; fields: { key: NumericFilterKey; label: 
   { title: 'Acceleration (0–60 mph)', fields: [{ key: 'maxZeroToSixty', label: 'Maximum seconds' }] },
 ];
 
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -76,7 +76,7 @@ interface Props {
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightAuctionFilterStyles), lightContrastStyles) : styles;
   return (
     <View style={ts.section}>
       <Text style={ts.sectionTitle}>{title}</Text>
@@ -91,7 +91,7 @@ const Pill: React.FC<{ label: string; selected: boolean; onPress: () => void }> 
   onPress,
 }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightAuctionFilterStyles), lightContrastStyles) : styles;
   return (
   <TouchableOpacity
     style={[ts.pill, selected && ts.pillSelected]}
@@ -122,9 +122,10 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   onApply,
   availableMakes,
 }) => {
+  const { tc } = useAppearance();
   const [draft, setDraft] = useState<AuctionFilterState>(value);
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightAuctionFilterStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightAuctionFilterStyles), lightContrastStyles) : styles;
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [makeQuery, setMakeQuery] = useState('');
   const [showAllMakes, setShowAllMakes] = useState(false);
@@ -138,7 +139,6 @@ export const AuctionFilterSheet: React.FC<Props> = ({
   const visibleMakes = makeQuery.trim() ? searchedMakes : showAllMakes ? makeOptions : [...new Set([...availableMakes, ...draft.makes, ...POPULAR_MAKES])];
   const modelOptions = draft.makes.length === 1 ? getModelsForMake(draft.makes[0]) : [];
   const variantOptions = draft.makes.length === 1 && draft.model.trim() ? getVariantsForModel(draft.makes[0], draft.model) : [];
-
 
   // Re-seed the draft each time the sheet opens so a cancelled edit doesn't
   // persist into the next open.
@@ -199,7 +199,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               value={makeQuery}
               onChangeText={setMakeQuery}
               placeholder="Search all makes…"
-              placeholderTextColor={Colors.inputPlaceholder}
+              placeholderTextColor={tc(Colors.inputPlaceholder)}
               autoCorrect={false}
               accessibilityLabel="Search vehicle makes"
             />
@@ -217,7 +217,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 
           <Section title="Model">
             <TextInput style={ts.input} value={draft.model} onChangeText={t => set('model', t)}
-              placeholder="Search model" placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} />
+              placeholder="Search model" placeholderTextColor={tc(Colors.inputPlaceholder)} autoCorrect={false} />
             {modelOptions.length > 0 && (
               <View style={[ts.pillWrap, { marginTop: 10 }]}>
                 {modelOptions.filter(m => !draft.model.trim() || m.toLowerCase().includes(draft.model.toLowerCase()))
@@ -230,7 +230,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
 
           <Section title="Variant / trim">
             <TextInput style={ts.input} value={draft.variant} onChangeText={t => set('variant', t)}
-              placeholder="e.g. M Sport, GT Line" placeholderTextColor={Colors.inputPlaceholder} autoCorrect={false} />
+              placeholder="e.g. M Sport, GT Line" placeholderTextColor={tc(Colors.inputPlaceholder)} autoCorrect={false} />
             {variantOptions.length > 0 && (
               <View style={[ts.pillWrap, { marginTop: 10 }]}>
                 {variantOptions.filter(v => !draft.variant || v.toLowerCase().includes(draft.variant.toLowerCase()))
@@ -288,7 +288,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 value={draft.minBid}
                 onChangeText={(t) => set('minBid', t)}
                 placeholder="Min"
-                placeholderTextColor={Colors.inputPlaceholder}
+                placeholderTextColor={tc(Colors.inputPlaceholder)}
                 keyboardType="number-pad"
               />
               <TextInput
@@ -296,7 +296,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 value={draft.maxBid}
                 onChangeText={(t) => set('maxBid', t)}
                 placeholder="Max"
-                placeholderTextColor={Colors.inputPlaceholder}
+                placeholderTextColor={tc(Colors.inputPlaceholder)}
                 keyboardType="number-pad"
               />
             </View>
@@ -319,7 +319,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
             <>
               <Section title="Colour">
                 <TextInput style={ts.input} value={draft.colour} onChangeText={t => set('colour', t)}
-                  placeholder="e.g. Black or Blue" placeholderTextColor={Colors.inputPlaceholder} />
+                  placeholder="e.g. Black or Blue" placeholderTextColor={tc(Colors.inputPlaceholder)} />
               </Section>
               {NUMERIC_FILTERS.map(group => (
                 <Section key={group.title} title={group.title}>
@@ -328,7 +328,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                       <TextInput key={field.key} style={[ts.input, ts.inputHalf]}
                         value={draft[field.key]} onChangeText={t => set(field.key, t)}
                         placeholder={field.label} accessibilityLabel={group.title + ': ' + field.label}
-                        placeholderTextColor={Colors.inputPlaceholder} keyboardType="decimal-pad" />
+                        placeholderTextColor={tc(Colors.inputPlaceholder)} keyboardType="decimal-pad" />
                     ))}
                   </View>
                 </Section>
@@ -388,7 +388,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               </Section>
               <Section title="Features / options">
                 <TextInput style={ts.input} value={featureQuery} onChangeText={setFeatureQuery}
-                  placeholder="Search equipment" placeholderTextColor={Colors.inputPlaceholder} />
+                  placeholder="Search equipment" placeholderTextColor={tc(Colors.inputPlaceholder)} />
                 {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, entries]) => {
                   const options = entries.filter(x => x.toLowerCase().includes(featureQuery.trim().toLowerCase()));
                   return options.length ? (
@@ -427,7 +427,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
               </Section>
               <Section title="Location">
                 <TextInput style={ts.input} value={draft.location} onChangeText={t => set('location', t)}
-                  placeholder="Town, city or county" placeholderTextColor={Colors.inputPlaceholder} />
+                  placeholder="Town, city or county" placeholderTextColor={tc(Colors.inputPlaceholder)} />
               </Section>
               <Section title="Distance from postcode">
                 <Text style={ts.moreSubtitle}>
@@ -436,7 +436,7 @@ export const AuctionFilterSheet: React.FC<Props> = ({
                 {!hasDistanceOrigin && (
                   <View style={[ts.row, { marginTop: 10 }]}>
                     <TextInput style={[ts.input, ts.inputHalf]} value={postcodeInput} onChangeText={setPostcodeInput}
-                      placeholder="UK postcode" placeholderTextColor={Colors.inputPlaceholder} autoCapitalize="characters" />
+                      placeholder="UK postcode" placeholderTextColor={tc(Colors.inputPlaceholder)} autoCapitalize="characters" />
                     <TouchableOpacity style={ts.postcodeButton} disabled={savingPostcode || !postcodeInput.trim()}
                       accessibilityRole="button" onPress={async () => {
                         setSavingPostcode(true);
@@ -613,4 +613,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
+});
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  pillTextSelected: { color: lightStrongText.accent },
 });

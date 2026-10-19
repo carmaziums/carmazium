@@ -7,9 +7,10 @@ import { apiClient } from '../lib/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../theme/appearancePalette';
 import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
+import { useAppearance } from '../theme/useAppearance';
 
 /**
  * One-time prompt for accounts missing a name or phone number (DASH-003).
@@ -40,6 +41,7 @@ import { FontFamily, FontSize } from '../constants/typography';
 let dismissedThisSession = false;
 
 export const ProfileCompletionPromptSheet: React.FC = () => {
+  const { tc } = useAppearance();
   const user = useAuthStore((s) => s.user);
   const role = useAuthStore((s) => s.accountRole);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -47,7 +49,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
   const updateUser = useAuthStore((s) => s.updateUser);
 
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightProfileCompletionStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightProfileCompletionStyles), lightContrastStyles) : styles;
   const [dismissed, setDismissed] = useState(dismissedThisSession);
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
@@ -140,7 +142,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
               value={firstName}
               onChangeText={setFirstName}
               placeholder="e.g. Alex"
-              placeholderTextColor={Colors.inputPlaceholder}
+              placeholderTextColor={tc(Colors.inputPlaceholder)}
               autoCapitalize="words"
               autoCorrect={false}
               editable={!saving}
@@ -152,7 +154,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
               value={lastName}
               onChangeText={setLastName}
               placeholder="e.g. Thompson"
-              placeholderTextColor={Colors.inputPlaceholder}
+              placeholderTextColor={tc(Colors.inputPlaceholder)}
               autoCapitalize="words"
               autoCorrect={false}
               editable={!saving}
@@ -168,7 +170,7 @@ export const ProfileCompletionPromptSheet: React.FC = () => {
               value={phone}
               onChangeText={setPhone}
               placeholder="e.g. 07700 900000"
-              placeholderTextColor={Colors.inputPlaceholder}
+              placeholderTextColor={tc(Colors.inputPlaceholder)}
               keyboardType="phone-pad"
               autoCorrect={false}
               editable={!saving}
@@ -246,7 +248,7 @@ const styles = StyleSheet.create({
   error: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginBottom: 12,
   },
   saveBtn: {
@@ -269,4 +271,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.textMuted,
   },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  error: { color: lightReadableText.error },
 });

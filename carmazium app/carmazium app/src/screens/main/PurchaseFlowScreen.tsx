@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -19,9 +18,11 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { createPaymentSheet, reconcileAuctionFeeIntent } from '../../lib/paymentsApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────────── types ────────────────────────────────
 
 export interface PurchaseFlowParams {
@@ -71,9 +72,10 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   navigation,
   route,
 }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightPurchaseFlowScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightPurchaseFlowScreenStyles), lightContrastStyles) : styles;
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   // Nav params — graceful fallback so the screen never crashes if navigated bare
@@ -261,16 +263,16 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   if (paymentType !== 'COMMISSION') {
     return (
       <View style={ts.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <View style={{ paddingTop: insets.top + 24, paddingHorizontal: 20, flex: 1 }}>
           <IconButton
             style={ts.backBtn}
-            icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />}
+            icon={<Ionicons name="chevron-back" size={20} color={tc(Colors.white)} />}
             onPress={() => navigation?.goBack()}
             accessibilityLabel="Go back"
           />
           <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 80 }}>
-            <Ionicons name="shield-checkmark-outline" size={42} color={Colors.accentGreen} />
+            <Ionicons name="shield-checkmark-outline" size={42} color={tc(Colors.accentGreen)} />
             <Text style={[ts.headerTitle, { fontSize: FontSize.xl, marginTop: 16 }]}>Pay the seller directly</Text>
             <Text style={[ts.commissionNote, { marginTop: 12, fontSize: FontSize.size14, lineHeight: 22 }]}>
               CarMazium does not collect or hold the vehicle purchase price or a vehicle deposit. Agree the final amount with the seller and settle the vehicle payment directly with them.
@@ -285,7 +287,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   if (paid) {
     return (
       <View style={ts.container}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <LinearGradient
           colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentGreenAlpha08, 'rgba(0,0,0,0)', Colors.bgPrimary]}
           style={StyleSheet.absoluteFillObject}
@@ -294,7 +296,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
         />
         <View style={[ts.successWrap, { paddingTop: insets.top + 60 }]}>
           <View style={ts.successCircle}>
-            <Ionicons name="checkmark-circle" size={56} color={Colors.accentGreen} />
+            <Ionicons name="checkmark-circle" size={56} color={tc(Colors.accentGreen)} />
           </View>
           <Text style={ts.successTitle}>Payment successful</Text>
           <Text style={ts.successSub}>
@@ -331,7 +333,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
   // ── Payment screen ────────────────────────────────────────────────
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -348,7 +350,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
       >
         {/* Header */}
         <View style={ts.header}>
-          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+          <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={tc(Colors.white)} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
           <View style={ts.headerCenter}>
             <Text style={ts.headerSub}>
               {isCommission ? 'AUCTION WON' : 'OFFER ACCEPTED'}
@@ -366,7 +368,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
             <Image source={{ uri: listingImage }} style={ts.heroImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           ) : (
             <View style={[ts.heroImg, ts.heroImgPlaceholder]}>
-              <Ionicons name="car-outline" size={24} color={Colors.iconMuted} />
+              <Ionicons name="car-outline" size={24} color={tc(Colors.iconMuted)} />
             </View>
           )}
           <View style={ts.heroInfo}>
@@ -374,7 +376,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
               <Ionicons
                 name={isCommission ? 'trophy-outline' : 'checkmark-circle-outline'}
                 size={14}
-                color={Colors.accentGreen}
+                color={tc(Colors.accentGreen)}
               />
               <Text style={ts.successText}>
                 {isCommission ? 'You won this auction' : 'Seller accepted your offer'}
@@ -429,7 +431,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
         {/* Payment method note */}
         <View style={ts.paymentNote}>
-          <Ionicons name="lock-closed-outline" size={16} color={Colors.accentGreen} />
+          <Ionicons name="lock-closed-outline" size={16} color={tc(Colors.accentGreen)} />
           <Text style={ts.paymentNoteText}>
             Secure payment via Stripe. Card, Apple Pay &amp; Google Pay accepted.
           </Text>
@@ -441,7 +443,7 @@ export const PurchaseFlowScreen: React.FC<{ navigation?: any; route?: any }> = (
 
         {pendingConfirmationId ? (
           <View style={ts.paymentNote}>
-            <Ionicons name="time-outline" size={16} color={Colors.warning} />
+            <Ionicons name="time-outline" size={16} color={tc(Colors.warning)} />
             <Text style={ts.paymentNoteText}>
               Your card payment was submitted. Do not pay again — confirm the same payment status below.
             </Text>
@@ -714,4 +716,17 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 1,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  commissionNote: { color: LIGHT_PALETTE.secondary },
+  successNote: { color: LIGHT_PALETTE.secondary },
+  headerSub: { color: LIGHT_PALETTE.muted },
+  successText: { color: lightReadableText.success },
+  summaryValueGreen: { color: lightReadableText.success },
+  bottomNote: { color: LIGHT_PALETTE.muted },
 });

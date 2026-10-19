@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity,
-  StatusBar, Dimensions, ActivityIndicator, FlatList,
-  RefreshControl, Switch, KeyboardAvoidingView, Platform, Alert,
+  Dimensions, ActivityIndicator, FlatList,
+  RefreshControl, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { useLocation } from '../../context/LocationContext';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText, lightSolidFill } from '../../theme/appearancePalette';
 import { getBodyTypeIcon } from '../../constants/bodyTypes';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -33,6 +33,9 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
+import { ThemedSwitch } from '../../components/ThemedSwitch';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 const { width: SW } = Dimensions.get('window');
@@ -171,9 +174,10 @@ const DISTANCE_CHIPS = [10, 25, 50, 100, 200];
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const SearchScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(s, lightRetailStyles) : s;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(s, lightRetailStyles), lightContrastStyles) : s;
   const navigation = useNavigation<NavProp>();
   const route = useRoute<any>();
   const { postcode: userPostcode, latitude: userLat, longitude: userLng, setPostcode: saveUserPostcode } = useLocation();
@@ -662,19 +666,19 @@ export const SearchScreen: React.FC = () => {
       {/* ── Search bar ── */}
       <View style={ts.searchWrap}>
         <View style={ts.searchBar}>
-          <Ionicons name="search-outline" size={18} color={Colors.iconMuted} />
+          <Ionicons name="search-outline" size={18} color={tc(Colors.iconMuted)} />
           <TextInput
             style={ts.searchInput}
             value={query}
             onChangeText={setQuery}
             placeholder="Make, model, or keyword..."
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={tc(Colors.inputPlaceholder)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <IconButton icon={<Ionicons name="close" size={16} color={Colors.iconMuted} />} onPress={() => setQuery('')} accessibilityLabel="Clear search" />
+            <IconButton icon={<Ionicons name="close" size={16} color={tc(Colors.iconMuted)} />} onPress={() => setQuery('')} accessibilityLabel="Clear search" />
           )}
         </View>
       </View>
@@ -682,7 +686,7 @@ export const SearchScreen: React.FC = () => {
       {/* ── AI Search button ── */}
       <View style={ts.aiSearchWrap}>
         <TouchableOpacity style={ts.aiSearchBtn} onPress={() => setAiModalVisible(true)} activeOpacity={0.8}>
-          <Ionicons name="sparkles" size={13} color={Colors.warning} />
+          <Ionicons name="sparkles" size={13} color={tc(Colors.warning)} />
           <Text style={ts.aiSearchBtnText}>Try AI Search ✦</Text>
         </TouchableOpacity>
       </View>
@@ -690,9 +694,9 @@ export const SearchScreen: React.FC = () => {
       {/* ── AI Explanation banner ── */}
       {aiExplanation && (
         <View style={ts.aiExplanationBanner}>
-          <Ionicons name="sparkles" size={12} color={Colors.warning} />
+          <Ionicons name="sparkles" size={12} color={tc(Colors.warning)} />
           <Text style={ts.aiExplanationText} numberOfLines={2}>{aiExplanation}</Text>
-          <IconButton icon={<Ionicons name="close" size={14} color={Colors.warning} />} onPress={() => setAiExplanation(null)} accessibilityLabel="Dismiss AI search explanation" />
+          <IconButton icon={<Ionicons name="close" size={14} color={tc(Colors.warning)} />} onPress={() => setAiExplanation(null)} accessibilityLabel="Dismiss AI search explanation" />
         </View>
       )}
 
@@ -725,7 +729,7 @@ export const SearchScreen: React.FC = () => {
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Sort */}
           <TouchableOpacity style={ts.sortBtn} onPress={() => setShowSortMenu(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Sort cars, currently ${sortLabel}`}>
-            <Ionicons name="swap-vertical-outline" size={16} color={Colors.textSecondary} />
+            <Ionicons name="swap-vertical-outline" size={16} color={tc(Colors.textSecondary)} />
             <Text style={ts.sortBtnText}>Sort</Text>
           </TouchableOpacity>
           {/* Filter */}
@@ -734,7 +738,7 @@ export const SearchScreen: React.FC = () => {
             onPress={() => setFilterOpen(true)}
             activeOpacity={0.7}
           >
-            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : Colors.textSecondary} />
+            <Ionicons name="options-outline" size={14} color={filterCount > 0 ? Colors.white : tc(Colors.textSecondary)} />
             <Text style={[ts.filterBtnText, filterCount > 0 && { color: Colors.white }]}>
               Filters{filterCount > 0 ? ` (${filterCount})` : ''}
             </Text>
@@ -755,7 +759,7 @@ export const SearchScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha04, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }}
@@ -867,7 +871,7 @@ export const SearchScreen: React.FC = () => {
             value={aiQuery}
             onChangeText={setAiQuery}
             placeholder="Describe the car you're looking for…"
-            placeholderTextColor={Colors.borderMuted}
+            placeholderTextColor={tc(Colors.inputPlaceholder)}
             multiline
             numberOfLines={3}
             onSubmitEditing={handleAiSearch}
@@ -897,7 +901,7 @@ export const SearchScreen: React.FC = () => {
         {/* Custom header (with Reset) kept as content — BottomSheet's own title
             row doesn't support a second right-side action. */}
         <View style={ts.modalHeader}>
-          <IconButton style={ts.modalClose} icon={<Ionicons name="close" size={18} color={Colors.white} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
+          <IconButton style={ts.modalClose} icon={<Ionicons name="close" size={18} color={tc(Colors.white)} />} onPress={() => setFilterOpen(false)} accessibilityLabel="Close" />
           <Text style={ts.modalTitle}>Filter cars</Text>
           <TouchableOpacity onPress={resetFilters} activeOpacity={0.7}>
             <Text style={ts.modalReset}>Reset</Text>
@@ -910,11 +914,11 @@ export const SearchScreen: React.FC = () => {
               {/* Select several makes: all selections are now submitted to the backend. */}
               <Text style={ts.filterLabel}>MAKE</Text>
               <View style={ts.makeSearchBox}>
-                <Ionicons name="search" size={14} color={Colors.iconMuted} />
+                <Ionicons name="search" size={14} color={tc(Colors.iconMuted)} />
                 <TextInput
                   style={ts.makeSearchInput}
                   placeholder="Search all makes"
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                   value={makeQuery}
                   onChangeText={setMakeQuery}
                   autoCorrect={false}
@@ -923,7 +927,7 @@ export const SearchScreen: React.FC = () => {
                 />
                 {makeQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setMakeQuery('')} activeOpacity={0.7} accessibilityLabel="Clear make search">
-                    <Ionicons name="close-circle" size={15} color={Colors.iconMuted} />
+                    <Ionicons name="close-circle" size={15} color={tc(Colors.iconMuted)} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -950,7 +954,7 @@ export const SearchScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => setShowAllMakes(v => !v)} activeOpacity={0.7}
                   accessibilityRole="button" accessibilityLabel={showAllMakes ? 'Show popular makes' : 'Browse all makes'}
                   style={{ paddingVertical: 12 }}>
-                  <Text style={[ts.filterChipText, { color: Colors.accent }]}>
+                  <Text style={[ts.filterChipText, { color: tc(Colors.accent) }]}>
                     {showAllMakes ? 'Show popular makes' : `Browse all ${CAR_MAKES.length} makes (A–Z)`}
                   </Text>
                 </TouchableOpacity>
@@ -965,7 +969,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={ts.inputBoxLabel}>SEARCH OR ENTER MODEL</Text>
                 <TextInput style={ts.inputBoxValue} value={modelFilter} onChangeText={value => { setModelFilter(value); setVariantFilter(''); }}
                   placeholder={selectedMakes.length ? 'Search models or enter another' : 'Choose a make or type model'}
-                  placeholderTextColor={Colors.borderMuted} autoCorrect={false} autoCapitalize="words" />
+                  placeholderTextColor={tc(Colors.inputPlaceholder)} autoCorrect={false} autoCapitalize="words" />
               </View>}
               {selectedMakes.length === 1 && (
                 <View style={{ marginTop: 8 }}>
@@ -997,7 +1001,7 @@ export const SearchScreen: React.FC = () => {
                   <View style={ts.inputBox}>
                     <TextInput style={ts.inputBoxValue} value={variantFilter}
                       onChangeText={setVariantFilter} placeholder="e.g. M Sport, GT Line"
-                      placeholderTextColor={Colors.borderMuted} autoCapitalize="words" />
+                      placeholderTextColor={tc(Colors.inputPlaceholder)} autoCapitalize="words" />
                   </View>
                   {selectedMakes.length === 1 && getVariantsForModel(selectedMakes[0], modelFilter).length > 0 && (
                     <View style={ts.chipGrid}>
@@ -1025,7 +1029,7 @@ export const SearchScreen: React.FC = () => {
                     value={minPrice > 0 ? `£${minPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMinPrice(parseInt(t.replace(/[^0-9]/g, '') || '0'))}
                     placeholder="£ 0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1036,7 +1040,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxPrice < 150000 ? `£${maxPrice.toLocaleString()}` : ''}
                     onChangeText={t => setMaxPrice(parseInt(t.replace(/[^0-9]/g, '') || '150000'))}
                     placeholder="£ Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1054,7 +1058,7 @@ export const SearchScreen: React.FC = () => {
                     onPress={() => setSelectedBody(prev => prev === bt.id ? '' : bt.id)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : Colors.textSecondary} />
+                    <Ionicons name={bt.icon as any} size={16} color={selectedBody === bt.id ? Colors.white : tc(Colors.textSecondary)} />
                     <Text style={[ts.filterChipText, selectedBody === bt.id && ts.filterChipTextActive]}>
                       {bt.label}
                     </Text>
@@ -1088,14 +1092,14 @@ export const SearchScreen: React.FC = () => {
                   <Text style={ts.inputBoxLabel}>FROM YEAR</Text>
                   <TextInput style={ts.inputBoxValue} value={minYear === 'Any' ? '' : minYear}
                     onChangeText={v => setMinYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder="Any" placeholderTextColor={Colors.borderMuted}
+                    placeholder="Any" placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
                 <View style={[ts.inputBox, { flex: 1 }]}>
                   <Text style={ts.inputBoxLabel}>TO YEAR</Text>
                   <TextInput style={ts.inputBoxValue} value={maxYear === 'Any' ? '' : maxYear}
                     onChangeText={v => setMaxYear(v ? v.replace(/[^0-9]/g, '').slice(0, 4) : 'Any')}
-                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={Colors.borderMuted}
+                    placeholder={String(CURRENT_YEAR)} placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad" maxLength={4} />
                 </View>
               </View>
@@ -1188,13 +1192,13 @@ export const SearchScreen: React.FC = () => {
                   <Text style={ts.moreFiltersTitle}>More filters {advancedFilterCount > 0 ? `(${advancedFilterCount} active)` : ''}</Text>
                   <Text style={ts.moreFiltersSubtitle}>Exterior grade, condition, insurance history and specs</Text>
                 </View>
-                <Ionicons name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.textSecondary} />
+                <Ionicons name={showAdvancedFilters ? 'chevron-up' : 'chevron-down'} size={20} color={tc(Colors.textSecondary)} />
               </TouchableOpacity>
               {showAdvancedFilters && (
                 <>
               {/* Search the same Grade 1–5 computed from seller's damage map. */}
               <Text style={ts.filterLabel}>EXTERIOR GRADE (1–5)</Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
+              <Text style={{ color: tc(Colors.textSecondary), fontSize: 12, marginBottom: 8 }}>Calculated from reported defects. Grade 1 is best.</Text>
               <View style={ts.chipGrid}>
                 {EXTERIOR_GRADE_OPTIONS.map(g => (
                   <TouchableOpacity key={g.value} style={[ts.filterChip, exteriorGrades.includes(g.value) && ts.filterChipActive]}
@@ -1223,7 +1227,7 @@ export const SearchScreen: React.FC = () => {
               <View style={ts.divider} />
 
               <Text style={ts.filterLabel}>INSURANCE WRITE-OFF STATUS</Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently HPI-verified.</Text>
+              <Text style={{ color: tc(Colors.textSecondary), fontSize: 12, marginBottom: 8 }}>Declared history may not be independently HPI-verified.</Text>
               <View style={ts.chipGrid}>
                 {WRITE_OFF_OPTIONS.map(c => (
                   <TouchableOpacity key={c.id} style={[ts.filterChip, writeOffCategories.includes(c.id) && ts.filterChipActive]}
@@ -1245,7 +1249,7 @@ export const SearchScreen: React.FC = () => {
                     value={minBhp}
                     onChangeText={setMinBhp}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1256,7 +1260,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxBhp}
                     onChangeText={setMaxBhp}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1274,7 +1278,7 @@ export const SearchScreen: React.FC = () => {
                     value={minEngine}
                     onChangeText={setMinEngine}
                     placeholder="0"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1285,7 +1289,7 @@ export const SearchScreen: React.FC = () => {
                     value={maxEngine}
                     onChangeText={setMaxEngine}
                     placeholder="Any"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     keyboardType="number-pad"
                   />
                 </View>
@@ -1302,7 +1306,7 @@ export const SearchScreen: React.FC = () => {
                   value={maxCo2}
                   onChangeText={setMaxCo2}
                   placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={tc(Colors.inputPlaceholder)}
                   keyboardType="number-pad"
                 />
               </View>
@@ -1327,7 +1331,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={ts.inputBoxLabel}>MINIMUM MPG (REPORTED)</Text>
                 <TextInput style={ts.inputBoxValue} value={minCombinedMpg}
                   onChangeText={setMinCombinedMpg} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={tc(Colors.inputPlaceholder)} keyboardType="decimal-pad" />
               </View>
               <View style={ts.divider} />
               <Text style={ts.filterLabel}>ACCELERATION (0–60 MPH)</Text>
@@ -1335,7 +1339,7 @@ export const SearchScreen: React.FC = () => {
                 <Text style={ts.inputBoxLabel}>MAXIMUM SECONDS</Text>
                 <TextInput style={ts.inputBoxValue} value={maxZeroTo60Mph}
                   onChangeText={setMaxZeroTo60Mph} placeholder="Any"
-                  placeholderTextColor={Colors.borderMuted} keyboardType="decimal-pad" />
+                  placeholderTextColor={tc(Colors.inputPlaceholder)} keyboardType="decimal-pad" />
               </View>
               <View style={ts.divider} />
               <Text style={ts.filterLabel}>DRIVETRAIN</Text>
@@ -1378,7 +1382,7 @@ export const SearchScreen: React.FC = () => {
                   value={colorFilter}
                   onChangeText={setColorFilter}
                   placeholder="Any colour"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={tc(Colors.inputPlaceholder)}
                   autoCapitalize="words"
                 />
               </View>
@@ -1445,7 +1449,7 @@ export const SearchScreen: React.FC = () => {
               {/* Equipment from shared web/native catalogue. */}
               <Text style={ts.filterLabel}>FEATURES / OPTIONS</Text>
               <TextInput style={ts.makeSearchInput} placeholder="Search vehicle equipment"
-                placeholderTextColor={Colors.iconMuted} value={featureQuery}
+                placeholderTextColor={tc(Colors.iconMuted)} value={featureQuery}
                 onChangeText={setFeatureQuery} autoCorrect={false} />
               {Object.entries(VEHICLE_FEATURE_GROUPS).map(([group, options]) => {
                 const visible = options.filter(feat => feat.toLowerCase().includes(featureQuery.trim().toLowerCase()));
@@ -1476,7 +1480,7 @@ export const SearchScreen: React.FC = () => {
                   value={locationFilter}
                   onChangeText={setLocationFilter}
                   placeholder="e.g. London"
-                  placeholderTextColor={Colors.borderMuted}
+                  placeholderTextColor={tc(Colors.inputPlaceholder)}
                   autoCapitalize="words"
                 />
               </View>
@@ -1503,7 +1507,7 @@ export const SearchScreen: React.FC = () => {
                     activeOpacity={0.7}
                   >
                     <Text style={ts.inputBoxValue}>{maxDistanceMi != null ? `${maxDistanceMi} mi` : 'Any distance'}</Text>
-                    <Ionicons name="chevron-down" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                    <Ionicons name="chevron-down" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                   </TouchableOpacity>
                 </>
               ) : (
@@ -1516,7 +1520,7 @@ export const SearchScreen: React.FC = () => {
                     value={postcodeInput}
                     onChangeText={setPostcodeInput}
                     placeholder="e.g. SW1X 7LY"
-                    placeholderTextColor={Colors.borderMuted}
+                    placeholderTextColor={tc(Colors.inputPlaceholder)}
                     autoCapitalize="characters"
                     autoCorrect={false}
                   />
@@ -1580,10 +1584,9 @@ export const SearchScreen: React.FC = () => {
                   <Text style={ts.toggleLabel}>DELIVERY AVAILABLE ONLY</Text>
                   <Text style={ts.toggleHint}>Only show listings where seller offers delivery</Text>
                 </View>
-                <Switch
+                <ThemedSwitch
                   value={deliveryAvailable}
                   onValueChange={setDeliveryAvailable}
-                  trackColor={{ false: Colors.darkBlue_2a2a35, true: Colors.accent }}
                   thumbColor={Colors.white}
                 />
               </View>
@@ -1655,7 +1658,6 @@ export const SearchScreen: React.FC = () => {
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
 
 const lightRetailStyles = StyleSheet.create({
   container: { backgroundColor: '#EEF5FB' },
@@ -1765,7 +1767,7 @@ const s = StyleSheet.create({
   resultsList: { flex: 1 },
   listContent: { paddingHorizontal: 24 },
   loadMoreWrap: { alignItems: 'center', paddingVertical: 20 },
-  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.borderMuted, paddingVertical: 20 },
+  endText: { textAlign: 'center', fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, paddingVertical: 20 },
   skeletonList: { paddingHorizontal: 24, gap: 14 },
   skeletonCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.whiteAlpha06, padding: 14 },
   skeletonInfo: { flex: 1, gap: 6 },
@@ -1839,7 +1841,7 @@ const s = StyleSheet.create({
   aiModalSubtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.iconMuted, lineHeight: 19 },
   aiPrivacyHint: { fontFamily: FontFamily.regular, fontSize: FontSize.size10, color: Colors.textMuted, lineHeight: 16 },
   aiModalInput: { backgroundColor: Colors.bgSecondary, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.borderSubtle, paddingHorizontal: 16, paddingVertical: 14, fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.white, minHeight: 80, textAlignVertical: 'top' },
-  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warning },
+  aiModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: Radius.inline, backgroundColor: Colors.warningSolid },
   aiModalBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white },
 
   // Segmented controls (listing type / seller type)
@@ -1852,4 +1854,19 @@ const s = StyleSheet.create({
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   toggleLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.white, marginBottom: 3 },
   toggleHint: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.iconMuted, lineHeight: 15 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: lightReadableText.accent },
+  aiSearchBtnText: { color: lightReadableText.warning },
+  aiExplanationText: { color: lightReadableText.warning },
+  clearBelowText: { color: lightReadableText.accent },
+  endText: { color: LIGHT_PALETTE.muted },
+  modalReset: { color: lightReadableText.accent },
+  postcodeChangeLink: { color: lightReadableText.accent },
+  aiModalBtn: { backgroundColor: lightSolidFill.warning },
 });

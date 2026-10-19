@@ -3,6 +3,9 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { FontFamily, FontSize } from '../../constants/typography';
+import { themedColorNow } from '../../theme/useAppearance';
+import { appearancePalette, mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { useAppearanceStore } from '../../store/appearanceStore';
 
 interface Props {
   height: number;
@@ -33,10 +36,13 @@ export class DamageViewerErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      // Class component: read the appearance directly (the screen above
+      // re-renders this on a mode change).
+      const st = useAppearanceStore.getState().mode === 'light' ? fallbackLightStyles : styles;
       return (
-        <View style={[styles.fallback, { height: this.props.height }]}>
-          <Ionicons name="cube-outline" size={22} color={Colors.textMuted} />
-          <Text style={styles.fallbackText}>3D preview isn't available on this device</Text>
+        <View style={[st.fallback, { height: this.props.height }]}>
+          <Ionicons name="cube-outline" size={22} color={themedColorNow(Colors.textMuted)} />
+          <Text style={st.fallbackText}>3D preview isn't available on this device</Text>
         </View>
       );
     }
@@ -62,4 +68,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 24,
   },
+});
+
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+const fallbackLightStyles = mergeAppearanceStyles(styles, {
+  fallback: { backgroundColor: LIGHT_PALETTE.card, borderColor: LIGHT_PALETTE.border },
+  fallbackText: { color: LIGHT_PALETTE.muted },
 });

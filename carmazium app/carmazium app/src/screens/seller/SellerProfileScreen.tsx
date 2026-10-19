@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,11 +16,13 @@ import { apiClient } from '../../lib/apiClient';
 import { mapApiListingToCarListing, ApiListing, BackendPaginatedResponse } from '../../lib/listingsApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SellerProfileData {
@@ -100,24 +101,28 @@ const timeAgo = (iso?: string): string => {
   return `${Math.floor(diffMonths / 12)}y ago`;
 };
 
-const Stars: React.FC<{ rating: number; size?: number }> = ({ rating, size = 13 }) => (
+const Stars: React.FC<{ rating: number; size?: number }> = ({ rating, size = 13 }) => {
+  const { tc } = useAppearance();
+  return (
   <View style={{ flexDirection: 'row', gap: 2 }}>
     {[1, 2, 3, 4, 5].map((i) => (
       <Ionicons
         key={i}
         name={rating >= i ? 'star' : rating >= i - 0.5 ? 'star-half' : 'star-outline'}
         size={size}
-        color={Colors.warning}
+        color={tc(Colors.warning)}
       />
     ))}
   </View>
 );
+};
 
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const sellerId: string | undefined = route?.params?.sellerId;
 
@@ -178,7 +183,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (loading) {
     return (
       <View style={[ts.container, ts.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <ActivityIndicator color={Colors.accent} />
       </View>
     );
@@ -187,10 +192,10 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
   if (notFound || !profile) {
     return (
       <View style={[ts.container, ts.centerFill]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <View style={{ height: insets.top }} />
         <IconButton style={[ts.backBtn, { position: 'absolute', top: insets.top + 10, left: 16 }]} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
-        <Ionicons name="person-circle-outline" size={48} color={Colors.textMuted} />
+        <Ionicons name="person-circle-outline" size={48} color={tc(Colors.textMuted)} />
         <Text style={ts.emptyTitle}>Seller not found</Text>
         <Text style={ts.emptySub}>This profile may have been removed.</Text>
       </View>
@@ -202,7 +207,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -251,7 +256,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
               onPress={() => Linking.openURL(`tel:${contactPhone.phone}`)}
               accessibilityLabel={`Call ${contactPhone.phone}`}
             >
-              <Ionicons name="call" size={13} color={Colors.success} />
+              <Ionicons name="call" size={13} color={tc(Colors.success)} />
               <Text style={ts.phoneText}>{contactPhone.phone}</Text>
             </TouchableOpacity>
           )}
@@ -314,7 +319,7 @@ export const SellerProfileScreen: React.FC<{ navigation?: any; route?: any }> = 
             {reviews.map((r) => (
               <View key={r.id} style={ts.reviewCard}>
                 <View style={ts.reviewTopRow}>
-                  <LinearGradient colors={[Colors.textDisabled, Colors.darkBlue_26262e]} style={ts.reviewAvatar}>
+                  <LinearGradient colors={[Colors.darkBlue_2d3c63, Colors.darkBlue_26262e]} style={ts.reviewAvatar}>
                     <Text style={ts.reviewAvatarText}>{getInitials(r.reviewer)}</Text>
                   </LinearGradient>
                   <View style={{ flex: 1, marginLeft: 10 }}>
@@ -543,4 +548,15 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     color: Colors.textMuted,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  emptySub: { color: LIGHT_PALETTE.muted },
+  heroSub: { color: LIGHT_PALETTE.secondary },
+  reviewTime: { color: LIGHT_PALETTE.muted },
+  reviewComment: { color: LIGHT_PALETTE.secondary },
 });
