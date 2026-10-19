@@ -11,6 +11,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
+import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import {
     ArrowLeft, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon,
     MapPin, Share2, Heart, Scale, Loader2, AlertTriangle, X, Tag,
@@ -1129,23 +1130,9 @@ export function VehicleDetailPageClient({ params, initialListing }: { params: Pr
                         {/* Condition & Damage — always shown (same 3D model + auto grade as the Buy Cars page), even with zero reported damage */}
                         {(() => {
                             const damageRecords = Array.isArray((listing as any).damageRecords) ? (listing as any).damageRecords as any[] : []
-                            // Only seller-saved surface coordinates can become numbered
-                            // public markers. Older records without a precise 3D point
-                            // remain accessible in the damage cards below (no fake pins).
-                            const positionedDamage = damageRecords.flatMap((record: any, index: number) => {
-                                const point = record.coords?.surfacePoint
-                                if (!point || !['fx', 'fy', 'fz'].every(key =>
-                                    typeof point[key] === 'number' && Number.isFinite(point[key])
-                                    && point[key] >= 0 && point[key] <= 1)) return []
-                                return [{
-                                    id: String(record.id ?? `record-${index}`),
-                                    number: index + 1,
-                                    zone: String(record.part ?? ''),
-                                    point: { fx: point.fx, fy: point.fy, fz: point.fz },
-                                    type: String(record.type ?? '').split(' - ')[0].toUpperCase(),
-                                    hasPhoto: Boolean(record.imageUrl),
-                                }]
-                            })
+                            // Show exact seller-saved 3D points; for old/manual exterior
+                            // reports, use clearly labelled approximate panel markers.
+                            const positionedDamage = buildBuyerDamagePins(damageRecords)
                             // exteriorGrade is computed automatically by the platform from the
                             // seller's reported damage zones — not seller-chosen. Same value
                             // drives the "Grade N" chip on the card and the Buy Cars detail page.
