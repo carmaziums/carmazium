@@ -209,23 +209,23 @@ const BADGES = [
     id: 'BASIC' as const, label: 'Basic', price: '£1',
     sub: 'One-off · advertised until sold',
     listingType: 'CLASSIFIED' as const,
-    features: ['Public marketplace listing', 'Offer range system', 'HPI optional'],
+    features: ['Public marketplace listing', 'Offer range system', 'Vehicle history check optional'],
     negative: [],
     accent: Colors.white,
   },
   {
     id: 'STANDARD' as const, label: 'Standard', price: '£10',
-    sub: 'HPI report included',
+    sub: 'Vehicle history report included',
     listingType: 'CLASSIFIED' as const,
-    features: ['Everything in Basic', 'HPI vehicle-history report included', 'Standard package badge'],
+    features: ['Everything in Basic', 'Vehicle history report included', 'Standard package badge'],
     negative: [],
     accent: Colors.infoBlue,
   },
   {
     id: 'PREMIUM' as const, label: 'Premium', price: '£25',
-    sub: 'HPI + 28-day Featured Boost included',
+    sub: 'Vehicle history report + 28-day Featured Boost included',
     listingType: 'CLASSIFIED' as const,
-    features: ['Everything in Standard, including HPI', 'Premium listing badge and presentation', 'Featured Boost included for 28 days'],
+    features: ['Everything in Standard, including a vehicle history report', 'Premium listing badge and presentation', 'Featured Boost included for 28 days'],
     negative: [],
     accent: Colors.warning,
   },
@@ -1842,7 +1842,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           const conversion = await getRetailConversionCandidate(vrm);
           if (conversion.candidate) {
             Alert.alert(
-              conversion.candidate.canConvert ? 'Switch to Retail first' : 'HPI unavailable for this draft',
+              conversion.candidate.canConvert ? 'Switch to Retail first' : 'History check unavailable for this draft',
               conversion.candidate.canConvert
                 ? 'This registration already belongs to your auction listing. Publish this Retail form first so CarMazium can safely reuse and switch that listing; then you can add the optional HPI check from the Retail draft.'
                 : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
@@ -1905,10 +1905,10 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       if (!found) {
         // Payment succeeded even if the report isn't back yet — don't block
         // the seller, just show it as pending rather than failed.
-        Alert.alert('Payment received', 'Your HPI check is being generated and will appear shortly.');
+        Alert.alert('Payment received', 'Your vehicle history report has been requested. It will appear when prepared.');
       }
     } catch (err: any) {
-      Alert.alert('HPI Check failed', err?.message ?? 'Please try again.');
+      Alert.alert('Vehicle history check failed', err?.message ?? 'Please try again.');
     } finally {
       setHpiUnlocking(false);
     }
@@ -2463,7 +2463,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     why: 'Accurate details help buyers search and understand the car. Required fields are marked and highlighted if missed.',
   } : step === 2 ? {
     what: `Add at least ${MIN_PHOTOS} clear photos, including exterior, interior and any damage.`,
-    why: 'Photos and disclosed faults help buyers judge the car before making offers or bids. HPI is optional.',
+    why: 'Photos and disclosed faults help buyers judge the car before making offers or bids. a vehicle history check is optional.',
   } : step === 3 ? {
     what: isAuction ? 'Check the Auction valuation and confirm the market value.' : 'Choose the public Retail asking price and optional minimum.',
     why: isAuction
@@ -4024,7 +4024,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Ionicons name="shield-checkmark" size={22} color={Colors.accentGreen} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>HPI Check Verified</Text>
+              <Text style={s.hpiCalloutTitle}>Vehicle History Check Verified</Text>
               <Text style={s.hpiCalloutSub}>
                 {hpiSummary?.isClear === false
                   ? 'This vehicle has records on file — full report available to buyers.'
@@ -4038,9 +4038,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>HPI Check Included</Text>
+              <Text style={s.hpiCalloutTitle}>Vehicle History Report Included</Text>
               <Text style={s.hpiCalloutSub}>
-                Your {badgeTier === 'PREMIUM' ? 'Premium' : 'Standard'} package includes the HPI report. It is requested automatically after the listing fee is paid.
+                Your {badgeTier === 'PREMIUM' ? 'Premium' : 'Standard'} package includes a vehicle history report. It is requested automatically after the listing fee is paid.
               </Text>
             </View>
             <View style={s.hpiCalloutBadge}>
@@ -4060,7 +4060,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
                 : <Ionicons name="shield-checkmark-outline" size={22} color={Colors.infoBlue} />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.hpiCalloutTitle}>Add Optional HPI Vehicle Check</Text>
+              <Text style={s.hpiCalloutTitle}>Add Optional Vehicle History Check</Text>
               <Text style={s.hpiCalloutSub}>Add a vehicle-history report if you want one; it is not required to publish.</Text>
             </View>
             <View style={s.hpiCalloutBadge}>
