@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -12,15 +11,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { IconButton } from '../../components/IconButton';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const PRIVACY_URL = 'https://www.carmazium.com/privacy-policy';
 
 export const PrivacyPolicyScreen: React.FC = () => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ export const PrivacyPolicyScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={{ height: insets.top }} />
       <View style={ts.header}>
         <IconButton
@@ -139,3 +139,9 @@ const styles = StyleSheet.create({
 });
 
 export default PrivacyPolicyScreen;
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  loadingText: { color: styles.loadingText.color },
+});

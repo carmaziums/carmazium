@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -20,7 +19,7 @@ import type { CarListing } from '../../data/listings';
 import { getUnreadCount } from '../../lib/notificationsApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
@@ -28,6 +27,8 @@ import { HamburgerButton } from '../../components/HamburgerButton';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface BuyerDashData {
@@ -88,7 +89,7 @@ const KpiCard: React.FC<{
   fullWidth?: boolean;
 }> = ({ label, icon, tone, value, sublabel, loading, fullWidth }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightBuyerStyles), lightContrastStyles) : styles;
   return (
   <View style={[ts.kpiCard, fullWidth && ts.kpiCardFull]}>
     <View style={[ts.kpiGlow, { backgroundColor: tone }]} />
@@ -122,7 +123,7 @@ const ActivityRow: React.FC<{
   isLast?: boolean;
 }> = ({ icon, tone, title, subtitle, time, onPress, isLast }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightBuyerStyles), lightContrastStyles) : styles;
   return (
   <TouchableOpacity
     style={[ts.activityRow, !isLast && ts.activityRowBorder]}
@@ -146,9 +147,10 @@ const ActivityRow: React.FC<{
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc, tfill } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightBuyerStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightBuyerStyles), lightContrastStyles) : styles;
   const { user } = useAuthStore();
 
   const [dash, setDash] = useState<BuyerDashData | null>(null);
@@ -238,7 +240,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
@@ -256,7 +258,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('Notifications')}
            accessibilityLabel="Notifications" accessibilityRole="button" hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}>
-            <Ionicons name="notifications-outline" size={18} color={Colors.white} />
+            <Ionicons name="notifications-outline" size={18} color={tc(Colors.white)} />
             {unreadCount > 0 && <View style={ts.bellDot} />}
           </TouchableOpacity>
           <HamburgerButton />
@@ -315,7 +317,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             accessibilityLabel="Browse cars for sale"
             activeOpacity={0.8}
           >
-            <Ionicons name="car-outline" size={20} color={Colors.white} />
+            <Ionicons name="car-outline" size={20} color={tc(Colors.white)} />
             <Text style={ts.buyerJourneyLabel}>Browse Cars</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -325,7 +327,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             accessibilityLabel="View your saved cars"
             activeOpacity={0.8}
           >
-            <Ionicons name="heart-outline" size={20} color={Colors.white} />
+            <Ionicons name="heart-outline" size={20} color={tc(Colors.white)} />
             <Text style={ts.buyerJourneyLabel}>Saved Cars</Text>
           </TouchableOpacity>
         </View>
@@ -489,7 +491,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               onPress={() => navigation?.navigate('BuyerBids')}
             >
               <View style={[ts.quickIcon, { backgroundColor: Colors.successAlpha12 }]}>
-                <Ionicons name="hammer-outline" size={18} color={Colors.success} />
+                <Ionicons name="hammer-outline" size={18} color={tc(Colors.success)} />
               </View>
               <Text style={ts.quickLabel}>My Bids</Text>
               {activeBids > 0 && (
@@ -505,11 +507,11 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               onPress={() => navigation?.navigate('BuyerOffers')}
             >
               <View style={[ts.quickIcon, { backgroundColor: Colors.warningAlpha12 }]}>
-                <Ionicons name="document-text-outline" size={18} color={Colors.warning} />
+                <Ionicons name="document-text-outline" size={18} color={tc(Colors.warning)} />
               </View>
               <Text style={ts.quickLabel}>My Offers</Text>
               {activeOffers > 0 && (
-                <View style={[ts.quickBadge, { backgroundColor: Colors.warning }]}>
+                <View style={[ts.quickBadge, { backgroundColor: tfill(Colors.warningSolid) }]}>
                   <Text style={ts.quickBadgeText}>{activeOffers}</Text>
                 </View>
               )}
@@ -548,7 +550,7 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               onPress={() => navigation?.navigate('BuyerDeliveryRequests')}
             >
               <View style={[ts.quickIcon, { backgroundColor: Colors.accentGreenAlpha12 }]}>
-                <Ionicons name="car-outline" size={18} color={Colors.accentGreen} />
+                <Ionicons name="car-outline" size={18} color={tc(Colors.accentGreen)} />
               </View>
               <Text style={ts.quickLabel}>Delivery</Text>
             </TouchableOpacity>
@@ -569,8 +571,8 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
               gap: 8,
             }}
           >
-            <Ionicons name="shield-checkmark-outline" size={17} color={Colors.warning} />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning }}>
+            <Ionicons name="shield-checkmark-outline" size={17} color={tc(Colors.warning)} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: tc(Colors.warning) }}>
               Sale Cancellations
             </Text>
           </TouchableOpacity>
@@ -585,11 +587,11 @@ export const BuyerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Text style={ts.profileName} numberOfLines={1}>{displayName}</Text>
             <Text style={ts.profileEmail} numberOfLines={1}>{displayEmail}</Text>
             <View style={ts.verifiedBadge}>
-              <Ionicons name="checkmark-circle-sharp" size={11} color={Colors.success} />
+              <Ionicons name="checkmark-circle-sharp" size={11} color={tc(Colors.success)} />
               <Text style={ts.verifiedBadgeText}>VERIFIED BUYER</Text>
             </View>
           </View>
-          <IconButton style={ts.profileGear} icon={<Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
+          <IconButton style={ts.profileGear} icon={<Ionicons name="settings-outline" size={18} color={tc(Colors.textSecondary)} />} onPress={() => navigation?.navigate('Settings')} accessibilityLabel="Settings" />
         </View>
 
         <View style={{ height: 110 }} />
@@ -721,4 +723,11 @@ const styles = StyleSheet.create({
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', backgroundColor: Colors.successAlpha08, borderWidth: 1, borderColor: Colors.successAlpha20, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 20 },
   verifiedBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.success, letterSpacing: 0.5 },
   profileGear: { width: 38, height: 38, borderRadius: Radius.inline, backgroundColor: Colors.whiteAlpha04, borderWidth: 1, borderColor: Colors.whiteAlpha08, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  seeAllText: { color: lightReadableText.accent },
+  verifiedBadgeText: { color: lightReadableText.success },
 });

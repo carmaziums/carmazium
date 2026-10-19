@@ -4,7 +4,6 @@ import {
   Alert,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -17,7 +16,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -27,6 +26,8 @@ import {
   respondToProviderLead,
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderLeadDetail'>;
 
@@ -38,8 +39,9 @@ const parseMoneyToPence = (value: string) => {
 };
 
 export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { leadId } = route.params;
 
@@ -182,7 +184,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
         <View style={ts.header}>
           <IconButton
             style={ts.headerButton}
-            icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+            icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
@@ -209,12 +211,12 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -249,7 +251,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
         {success ? (
           <View style={ts.successCard}>
-            <Ionicons name="checkmark-circle-outline" size={18} color={Colors.accentGreen} />
+            <Ionicons name="checkmark-circle-outline" size={18} color={tc(Colors.accentGreen)} />
             <Text style={ts.successText}>{success}</Text>
           </View>
         ) : null}
@@ -333,7 +335,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
           {expired ? (
             <View style={ts.warningCard}>
-              <Ionicons name="time-outline" size={16} color={Colors.warning} />
+              <Ionicons name="time-outline" size={16} color={tc(Colors.warning)} />
               <Text style={ts.warningText}>
                 This enquiry has expired. Existing response details remain visible, but new responses may be rejected by the backend.
               </Text>
@@ -347,7 +349,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             onChangeText={setHeadline}
             maxLength={120}
             placeholder="Clear summary of your option"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
           />
 
           <Text style={ts.label}>PRODUCT / PLAN NAME</Text>
@@ -357,7 +359,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             onChangeText={setProductName}
             maxLength={120}
             placeholder={lead.serviceType === 'FINANCE' ? 'e.g. Hire Purchase' : 'e.g. Comprehensive 24'}
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
           />
 
           <Text style={ts.label}>MESSAGE</Text>
@@ -368,7 +370,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
             multiline
             maxLength={2000}
             placeholder="Explain the option, eligibility, important limitations and next steps."
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
           />
 
           <Text style={ts.label}>
@@ -384,7 +386,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
               onChangeText={setPrice}
               keyboardType="decimal-pad"
               placeholder="0.00"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={tc(Colors.textMuted)}
             />
           </View>
 
@@ -397,7 +399,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
                 onChangeText={setApr}
                 keyboardType="decimal-pad"
                 placeholder="e.g. 9.9"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={tc(Colors.textMuted)}
               />
 
               <Text style={ts.label}>FINANCE TERM MONTHS</Text>
@@ -407,7 +409,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
                 onChangeText={setTerm}
                 keyboardType="number-pad"
                 placeholder="e.g. 48"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={tc(Colors.textMuted)}
               />
             </>
           ) : null}
@@ -433,7 +435,7 @@ export const ProviderLeadDetailScreen: React.FC<Props> = ({ navigation, route })
 
 const Info = ({ label, value }: { label: string; value: string }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   return (
   <View style={ts.infoLine}>
     <Text style={ts.infoLabel}>{label}</Text>
@@ -482,4 +484,17 @@ const styles = StyleSheet.create({
   primaryButton: { minHeight: 46, borderRadius: Radius.inline, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   primaryText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.xs, letterSpacing: 0.7 },
   disabled: { opacity: 0.55 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: LIGHT_PALETTE.muted },
+  statusText: { color: LIGHT_PALETTE.secondary },
+  input: { color: LIGHT_PALETTE.text },
+  currency: { color: LIGHT_PALETTE.muted },
+  moneyField: { color: LIGHT_PALETTE.text },
+  expiredText: { color: lightReadableText.error },
 });

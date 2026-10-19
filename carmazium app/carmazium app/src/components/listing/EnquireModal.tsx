@@ -12,13 +12,14 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
 import { haptics } from '../../lib/haptics';
 import { BottomSheet } from '../BottomSheet';
 import { Button } from '../Button';
+import { useAppearance } from '../../theme/useAppearance';
 
 type ContactPref = 'CHAT' | 'PHONE' | 'EMAIL';
 
@@ -74,8 +75,9 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
   sellerId,
   onSent,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightEnquireModalStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightEnquireModalStyles), lightContrastStyles) : styles;
   const prefill =
     `Hi — I'm interested in the ${listing.title ?? [listing.year, listing.make, listing.model].filter(Boolean).join(' ') ?? 'listing'}. ` +
     `Could you tell me a bit more about it and let me know when I could see it?`;
@@ -218,12 +220,12 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                     <Ionicons
                       name={opt.icon}
                       size={16}
-                      color={selected ? Colors.accent : Colors.textSecondary}
+                      color={tc(selected ? Colors.accent : Colors.textSecondary)}
                     />
                     <Text
                       style={[
                         ts.contactOptionText,
-                        selected && { color: Colors.accent },
+                        selected && { color: tc(Colors.accent) },
                       ]}
                     >
                       {opt.label}
@@ -243,7 +245,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                 setPickerVisible(true);
               }}
             >
-              <Ionicons name="calendar-outline" size={14} color={Colors.infoBlueLight} />
+              <Ionicons name="calendar-outline" size={14} color={tc(Colors.infoBlueLight)} />
               <Text style={ts.dateBtnText}>
                 {testDriveDate ? fmtDate(testDriveDate) : 'Pick a date & time'}
               </Text>
@@ -252,7 +254,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
                   onPress={() => setTestDriveDate(null)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="close" size={14} color={Colors.textMuted} />
+                  <Ionicons name="close" size={14} color={tc(Colors.textMuted)} />
                 </TouchableOpacity>
               )}
             </TouchableOpacity>
@@ -282,7 +284,7 @@ export const EnquireModal: React.FC<EnquireModalProps> = ({
               loading={submitting}
               fullWidth
               style={{ marginTop: 18 }}
-              icon={<Ionicons name="paper-plane-outline" size={16} color={Colors.white} />}
+              icon={<Ionicons name="paper-plane-outline" size={16} color={tc(Colors.white)} />}
               iconPosition="left"
             />
 
@@ -399,7 +401,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     lineHeight: 17,
   },
   skipRow: {
@@ -413,4 +415,10 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textDecorationLine: 'underline',
   },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  errorText: { color: lightReadableText.error },
 });

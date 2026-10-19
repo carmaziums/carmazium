@@ -13,14 +13,16 @@ import { apiClient } from '../../lib/apiClient';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Logo } from '../../components/Logo';
+import { useAppearance } from '../../theme/useAppearance';
 
 export const VerifyEmailScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { user, initializeAuth, logout } = useAuthStore();
   const [resending, setResending] = useState(false);
@@ -114,7 +116,7 @@ export const VerifyEmailScreen: React.FC = () => {
 
       {notVerifiedYet && !checking && (
         <View style={ts.notVerifiedRow}>
-          <Ionicons name="alert-circle-outline" size={16} color={Colors.warning} />
+          <Ionicons name="alert-circle-outline" size={16} color={tc(Colors.warning)} />
           <Text style={ts.notVerifiedText}>
             Email not verified yet — click the link in your inbox first.
           </Text>
@@ -137,7 +139,7 @@ export const VerifyEmailScreen: React.FC = () => {
         activeOpacity={0.8}
       >
         {resending ? (
-          <ActivityIndicator size="small" color={Colors.textSecondary} />
+          <ActivityIndicator size="small" color={tc(Colors.textSecondary)} />
         ) : (
           <Text style={ts.secondaryBtnText}>
             {cooldownSec > 0
@@ -150,7 +152,7 @@ export const VerifyEmailScreen: React.FC = () => {
       </TouchableOpacity>
 
       <TouchableOpacity style={ts.backBtn} onPress={logout} activeOpacity={0.7}>
-        <Ionicons name="arrow-back" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
+        <Ionicons name="arrow-back" size={14} color={tc(Colors.textMuted)} style={{ marginRight: 4 }} />
         <Text style={ts.backBtnText}>Back to sign in</Text>
       </TouchableOpacity>
     </View>
@@ -273,4 +275,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sub: { color: LIGHT_PALETTE.secondary },
+  email: { color: LIGHT_PALETTE.text },
+  secondaryBtnText: { color: LIGHT_PALETTE.secondary },
+  backBtnText: { color: LIGHT_PALETTE.muted },
 });

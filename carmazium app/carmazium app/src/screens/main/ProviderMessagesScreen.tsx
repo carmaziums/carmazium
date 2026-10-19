@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -19,11 +18,13 @@ import { useChat } from '../../context/ChatContext';
 import { ChatRoom } from '../../lib/chatApi';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderMessages'>;
 
@@ -53,8 +54,9 @@ const serviceLabel = (room: ChatRoom) => {
 };
 
 export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { rooms, refreshRooms, markAsRead, isLoading } = useChat();
   const [search, setSearch] = useState('');
@@ -159,12 +161,12 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
+      <ThemedStatusBar backgroundColor={Colors.bgPrimary} />
 
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -184,18 +186,18 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
       </View>
 
       <View style={ts.searchWrap}>
-        <Ionicons name="search-outline" size={17} color={Colors.textMuted} />
+        <Ionicons name="search-outline" size={17} color={tc(Colors.textMuted)} />
         <TextInput
           style={ts.searchInput}
           value={search}
           onChangeText={setSearch}
           placeholder="Search job, customer or message"
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={tc(Colors.textMuted)}
           autoCapitalize="none"
         />
         {!!search && (
           <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={17} color={Colors.textMuted} />
+            <Ionicons name="close-circle" size={17} color={tc(Colors.textMuted)} />
           </TouchableOpacity>
         )}
       </View>
@@ -220,7 +222,7 @@ export const ProviderMessagesScreen: React.FC<Props> = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={ts.empty}>
-              <Ionicons name="chatbubbles-outline" size={36} color={Colors.textMuted} />
+              <Ionicons name="chatbubbles-outline" size={36} color={tc(Colors.textMuted)} />
               <Text style={ts.emptyTitle}>
                 {search ? 'No matching service conversations' : 'No service-job messages yet'}
               </Text>
@@ -271,4 +273,16 @@ const styles = StyleSheet.create({
   empty: { flex: 1, minHeight: 320, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   emptyTitle: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.base, marginTop: 12, textAlign: 'center' },
   emptyText: { fontFamily: FontFamily.regular, color: Colors.textMuted, fontSize: FontSize.size12, textAlign: 'center', lineHeight: 19, marginTop: 6 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  time: { color: LIGHT_PALETTE.muted },
+  statusLabel: { color: lightReadableText.success },
+  sub: { color: LIGHT_PALETTE.secondary },
+  searchInput: { color: LIGHT_PALETTE.text },
+  muted: { color: LIGHT_PALETTE.muted },
 });

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  ActivityIndicator, ScrollView, StatusBar, StyleSheet,
+  ActivityIndicator, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -9,12 +9,14 @@ import { Ionicons } from '@/components/BrandIcon';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
 import { normalizeNativeRegistration } from '../../lib/sellerVehicleSpecs';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 type DvlaPreview = {
@@ -45,7 +47,7 @@ const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardT
   placeholder:string; keyboardType?:'default'|'number-pad';
 }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightValuationStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightValuationStyles), lightContrastStyles) : styles;
   return <View style={ts.field}>
   <Text style={ts.fieldLabel}>{label}</Text>
   <TextInput style={ts.fieldInput} value={value} onChangeText={onChangeText}
@@ -55,9 +57,10 @@ const SellValuationField = ({ label, value, onChangeText, placeholder, keyboardT
 };
 
 export const SellLandingScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const navigation = useNavigation<Nav>();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightValuationStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightValuationStyles), lightContrastStyles) : styles;
   const [vrm, setVrm] = useState('');
   const [mileage, setMileage] = useState('');
   const [make, setMake] = useState('');
@@ -189,10 +192,9 @@ export const SellLandingScreen: React.FC = () => {
     });
   };
 
-
   return (
     <View style={ts.screen}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
+      <ThemedStatusBar tone="light-content" />
       <WebsiteTopBar />
       <ScrollView keyboardShouldPersistTaps="handled"
         contentContainerStyle={ts.page} showsVerticalScrollIndicator={false}>
@@ -301,7 +303,7 @@ export const SellLandingScreen: React.FC = () => {
           <Ionicons name="hammer-outline" size={20} color={Colors.white}/>
           <View style={ts.actionCopy}>
             <Text style={ts.actionTitle}>FREE Dealer Auction</Text>
-            <Text style={ts.actionSub}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
+            <Text style={[ts.actionSub, ts.auctionActionSub]}>£0 listing fee · Qualifying successful auction sales may earn £100 after approved handover</Text>
           </View>
           <Ionicons name="arrow-forward" size={18} color={Colors.white}/>
         </TouchableOpacity>
@@ -312,7 +314,7 @@ export const SellLandingScreen: React.FC = () => {
             <Text style={ts.retailTitle}>£1 Retail Listing</Text>
             <Text style={ts.actionSub}>Advertise directly to buyers · No retail buyer fee</Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={Colors.textPrimary}/>
+          <Ionicons name="arrow-forward" size={18} color={tc(Colors.textPrimary)}/>
         </TouchableOpacity>
         </>}
         <Text style={ts.footnote}>The £100 CarMazium incentive applies only to eligible completed auction sales after handover approval. Vehicle payment is made directly to the seller.</Text>
@@ -348,6 +350,7 @@ const lightValuationStyles = StyleSheet.create({
   retailAction: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   retailTitle: { color: '#0F172A' },
   actionSub: { color: '#334155' },
+  auctionActionSub: { color: Colors.white },
   footnote: { color: '#526177' },
 });
 
@@ -372,7 +375,7 @@ const styles=StyleSheet.create({
     gap:10,backgroundColor:Colors.accent,borderRadius:12,minHeight:49,marginTop:1},
   valuationButtonText:{fontFamily:FontFamily.extraBold,color:Colors.white,fontSize:13},
   guideNote:{fontFamily:FontFamily.regular,color:Colors.textMuted,fontSize:11,lineHeight:17},
-  error:{color:Colors.error,fontFamily:FontFamily.medium,fontSize:12,lineHeight:18},
+  error:{color:Colors.errorLight,fontFamily:FontFamily.medium,fontSize:12,lineHeight:18},
   guideResult:{borderRadius:13,borderWidth:1,borderColor:Colors.infoBlue,backgroundColor:Colors.bgElevated,
     padding:13,gap:5},
   resultLabel:{fontFamily:FontFamily.bold,fontSize:11,color:Colors.accent,textTransform:'uppercase'},
@@ -386,7 +389,7 @@ const styles=StyleSheet.create({
   priceChoiceName:{fontFamily:FontFamily.extraBold,fontSize:15,color:Colors.textPrimary},
   auctionPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.accent,
     flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
-  retailPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.infoBlue,
+  retailPriceButton:{minHeight:46,borderRadius:9,backgroundColor:Colors.infoSolid,
     flexDirection:'row',alignItems:'center',justifyContent:'center',gap:8,marginTop:5},
   auctionPriceButtonText:{fontFamily:FontFamily.extraBold,fontSize:13,color:Colors.white},
   benefits:{flexDirection:'row',gap:7},benefit:{flex:1,minWidth:0,borderRadius:12,
@@ -401,5 +404,13 @@ const styles=StyleSheet.create({
   actionCopy:{flex:1,gap:4},actionTitle:{fontFamily:FontFamily.extraBold,color:Colors.white,fontSize:14},
   retailTitle:{fontFamily:FontFamily.extraBold,color:Colors.textPrimary,fontSize:14},
   actionSub:{fontFamily:FontFamily.medium,fontSize:11,lineHeight:16,color:Colors.textSecondary},
+  // Sits on the solid red auction button in both modes: white, not slate.
+  auctionActionSub:{color:Colors.white},
   footnote:{fontFamily:FontFamily.regular,color:Colors.textMuted,fontSize:11,lineHeight:17,marginTop:4},
+});
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  retailPriceButton: { backgroundColor: lightReadableText.info },
 });

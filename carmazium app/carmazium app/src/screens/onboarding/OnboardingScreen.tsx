@@ -6,7 +6,6 @@ import {
   FlatList,
   Dimensions,
   TouchableOpacity,
-  StatusBar,
   Animated as RNAnimated,
   Platform,
 } from 'react-native';
@@ -17,9 +16,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
-import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -129,8 +127,11 @@ const SlideItem: React.FC<{
 });
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
-  const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  // Onboarding is a full-bleed photo carousel whose slides fade to the navy
+  // brand ground (see SlideItem's gradient) in BOTH appearances, so its copy
+  // and controls stay light-on-dark. Remapping them for light mode put dark
+  // text on the photo and pale dots on navy.
+  const ts = styles;
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new RNAnimated.Value(0)).current;
@@ -173,7 +174,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
 
       {/* Skip Button (Static on top right) */}
       <TouchableOpacity style={ts.skipBtn} onPress={handleSkip} activeOpacity={0.7}>

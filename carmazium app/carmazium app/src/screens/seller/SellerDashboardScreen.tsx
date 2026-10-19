@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
   Image,
   Animated,
   RefreshControl,
@@ -22,7 +21,7 @@ import { apiClient } from '../../lib/apiClient';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { CarListing } from '../../data/listings';
@@ -30,6 +29,8 @@ import { PRICING } from '../../constants/pricing';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface ListingStats {
@@ -183,8 +184,9 @@ const QUICK_ACTIONS = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
 
   const [stats, setStats] = useState<ListingStats>({ activeListings: 0, totalViews: 0, offersReceived: 0, savedCount: 0, soldListings: 0, totalRevenue: 0 });
@@ -289,7 +291,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(59,130,246,0.05)', Colors.accentAlpha03, Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -401,12 +403,12 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
           <View style={ts.statsRow}>
             {/* Views */}
             <View style={[ts.statCard, ts.statCardViews]}>
-              <Ionicons name="eye-outline" size={15} color={Colors.textMuted} />
+              <Ionicons name="eye-outline" size={15} color={tc(Colors.textMuted)} />
               <Text style={ts.statValue}>
                 {stats.totalViews.toLocaleString('en-GB')}
               </Text>
               <Text style={ts.statLabel}>VIEWS</Text>
-              <Text style={[ts.statDelta, { color: Colors.textMuted }]}>total</Text>
+              <Text style={[ts.statDelta, { color: tc(Colors.textMuted) }]}>total</Text>
             </View>
 
             {/* Saves */}
@@ -416,17 +418,17 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                 {stats.savedCount.toLocaleString('en-GB')}
               </Text>
               <Text style={ts.statLabel}>SAVES</Text>
-              <Text style={[ts.statDelta, { color: Colors.textMuted }]}>watching</Text>
+              <Text style={[ts.statDelta, { color: tc(Colors.textMuted) }]}>watching</Text>
             </View>
 
             {/* Offers */}
             <View style={[ts.statCard, ts.statCardOffers]}>
-              <Ionicons name="pricetag-outline" size={15} color={Colors.warning} />
-              <Text style={[ts.statValue, { color: Colors.warning }]}>
+              <Ionicons name="pricetag-outline" size={15} color={tc(Colors.warning)} />
+              <Text style={[ts.statValue, { color: tc(Colors.warning) }]}>
                 {stats.offersReceived}
               </Text>
-              <Text style={[ts.statLabel, { color: Colors.warning }]}>OFFERS</Text>
-              <Text style={[ts.statDelta, { color: Colors.warning }]}>received</Text>
+              <Text style={[ts.statLabel, { color: tc(Colors.warning) }]}>OFFERS</Text>
+              <Text style={[ts.statDelta, { color: tc(Colors.warning) }]}>received</Text>
             </View>
           </View>
         )}
@@ -435,20 +437,20 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
         {!loading && (
           <View style={[ts.statsRow, { marginTop: 12 }]}>
             <View style={[ts.statCard, ts.statCardSold]}>
-              <Ionicons name="trending-up-outline" size={15} color={Colors.success} />
-              <Text style={[ts.statValue, { color: Colors.success }]}>
+              <Ionicons name="trending-up-outline" size={15} color={tc(Colors.success)} />
+              <Text style={[ts.statValue, { color: tc(Colors.success) }]}>
                 {stats.soldListings}
               </Text>
-              <Text style={[ts.statLabel, { color: Colors.success }]}>SOLD</Text>
-              <Text style={[ts.statDelta, { color: Colors.success }]}>all time</Text>
+              <Text style={[ts.statLabel, { color: tc(Colors.success) }]}>SOLD</Text>
+              <Text style={[ts.statDelta, { color: tc(Colors.success) }]}>all time</Text>
             </View>
             <View style={[ts.statCard, ts.statCardRevenue]}>
-              <Ionicons name="cash-outline" size={15} color={Colors.accentGreen} />
-              <Text style={[ts.statValue, { color: Colors.accentGreen }]}>
+              <Ionicons name="cash-outline" size={15} color={tc(Colors.accentGreen)} />
+              <Text style={[ts.statValue, { color: tc(Colors.accentGreen) }]}>
                 {formatPrice(stats.totalRevenue)}
               </Text>
-              <Text style={[ts.statLabel, { color: Colors.accentGreen }]}>REVENUE</Text>
-              <Text style={[ts.statDelta, { color: Colors.accentGreen }]}>all time</Text>
+              <Text style={[ts.statLabel, { color: tc(Colors.accentGreen) }]}>REVENUE</Text>
+              <Text style={[ts.statDelta, { color: tc(Colors.accentGreen) }]}>all time</Text>
             </View>
           </View>
         )}
@@ -466,8 +468,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
             activeOpacity={0.75}
             onPress={() => navigation?.navigate('SellerListings')}
           >
-            <Ionicons name="list-outline" size={15} color={Colors.textSecondary} />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary }}>
+            <Ionicons name="list-outline" size={15} color={tc(Colors.textSecondary)} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: tc(Colors.textSecondary) }}>
               All Listings
             </Text>
           </TouchableOpacity>
@@ -483,8 +485,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
             activeOpacity={0.75}
             onPress={() => navigation?.navigate('SellerAuctions')}
           >
-            <Ionicons name="hammer-outline" size={15} color={Colors.textSecondary} />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.textSecondary }}>
+            <Ionicons name="hammer-outline" size={15} color={tc(Colors.textSecondary)} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: tc(Colors.textSecondary) }}>
               My Auctions
             </Text>
           </TouchableOpacity>
@@ -511,7 +513,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
 
           {recentOffers.length === 0 ? (
             <View style={ts.offersEmpty}>
-              <Ionicons name="mail-outline" size={28} color={Colors.textMuted} />
+              <Ionicons name="mail-outline" size={28} color={tc(Colors.textMuted)} />
               <Text style={ts.offersEmptyTitle}>No offers yet</Text>
               <Text style={ts.offersEmptySub}>Buyers can make offers on your listings</Text>
             </View>
@@ -597,8 +599,8 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
               gap: 8,
             }}
           >
-            <Ionicons name="shield-checkmark-outline" size={17} color={Colors.warning} />
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: Colors.warning }}>
+            <Ionicons name="shield-checkmark-outline" size={17} color={tc(Colors.warning)} />
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.size10, color: tc(Colors.warning) }}>
               Sale Cancellations
             </Text>
           </TouchableOpacity>
@@ -618,7 +620,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
             </>
           ) : listings.length === 0 ? (
             <View style={ts.emptyState}>
-              <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
+              <Ionicons name="car-outline" size={40} color={tc(Colors.textMuted)} />
               <Text style={ts.emptyTitle}>No listings yet</Text>
               <Text style={ts.emptySubText}>
                 List your first vehicle and reach thousands of serious buyers
@@ -654,7 +656,7 @@ export const SellerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigati
                       />
                     ) : (
                       <View style={ts.listingThumbPlaceholder}>
-                        <Ionicons name="car-outline" size={24} color={Colors.textMuted} />
+                        <Ionicons name="car-outline" size={24} color={tc(Colors.textMuted)} />
                       </View>
                     )}
                   </View>
@@ -1188,3 +1190,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sectionSeeAll: { color: lightReadableText.accent },
+  heroDaysPillText: { color: styles.heroDaysPillText.color },
+  statCardViews: { backgroundColor: LIGHT_PALETTE.card },
+  statCardSaves: { backgroundColor: LIGHT_PALETTE.card },
+  offersEmpty: { backgroundColor: LIGHT_PALETTE.card },
+  quickTile: { backgroundColor: LIGHT_PALETTE.card },
+  offersEmptySub: { color: LIGHT_PALETTE.muted },
+  quickSub: { color: LIGHT_PALETTE.muted },
+});
+

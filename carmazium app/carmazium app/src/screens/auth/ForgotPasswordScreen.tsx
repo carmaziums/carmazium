@@ -7,8 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  StatusBar,
-} from 'react-native';
+  } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -19,16 +18,19 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const [email, setEmail] = useState('');
   const [emailFocused, setEmailFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +59,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
@@ -92,7 +94,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
             {sent ? (
               <View style={ts.successContainer}>
                 <View style={ts.successIconWrapper}>
-                  <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
+                  <Ionicons name="checkmark-circle" size={40} color={tc(Colors.success)} />
                 </View>
                 <Text style={ts.successTitle}>Check your inbox</Text>
                 <Text style={ts.successBody}>
@@ -116,7 +118,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                     <Ionicons
                       name="mail-outline"
                       size={20}
-                      color={emailFocused ? Colors.accent : Colors.textMuted}
+                      color={tc(emailFocused ? Colors.accent : Colors.textMuted)}
                       style={ts.inputIcon}
                     />
                     <TextInput
@@ -127,7 +129,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
                         if (errorMessage) setErrorMessage(null);
                       }}
                       placeholder="your@email.com"
-                      placeholderTextColor={Colors.inputPlaceholder}
+                      placeholderTextColor={tc(Colors.inputPlaceholder)}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       returnKeyType="send"
@@ -260,7 +262,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginTop: 8,
   },
   ctaWrapper: {
@@ -304,4 +306,15 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 60,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  successTitle: { color: LIGHT_PALETTE.text },
+  successBody: { color: LIGHT_PALETTE.secondary },
+  successEmail: { color: LIGHT_PALETTE.text },
+  input: { color: LIGHT_PALETTE.text },
 });

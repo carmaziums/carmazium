@@ -4,7 +4,6 @@ import {
   Dimensions,
   FlatList,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,12 +16,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ─────────────────────────── interfaces ───────────────────────────
@@ -111,8 +112,9 @@ const FILTERS: { key: 'ALL' | TransactionStatus; label: string }[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   const renderEmptyState = () => (
     <View style={ts.emptyWrap}>
-      <Ionicons name="receipt-outline" size={40} color={Colors.textMuted} />
+      <Ionicons name="receipt-outline" size={40} color={tc(Colors.textMuted)} />
       <Text style={ts.emptyTitle}>
         {filter === 'ALL' ? 'No transactions yet' : `No ${STATUS_STYLE[filter as TransactionStatus]?.label.toLowerCase()} transactions`}
       </Text>
@@ -169,7 +171,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <Image source={{ uri: thumbnail }} style={ts.txThumb} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
           <View style={[ts.txThumb, ts.txIconWrap]}>
-            <Ionicons name={TYPE_ICONS[t.type]} size={18} color={Colors.textSecondary} />
+            <Ionicons name={TYPE_ICONS[t.type]} size={18} color={tc(Colors.textSecondary)} />
           </View>
         )}
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -196,7 +198,7 @@ export const PaymentHistoryScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -426,4 +428,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  emptySub: { color: LIGHT_PALETTE.muted },
+  summarySub: { color: LIGHT_PALETTE.secondary },
 });

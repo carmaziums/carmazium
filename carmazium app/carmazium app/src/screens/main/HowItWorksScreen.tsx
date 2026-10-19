@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,13 +13,15 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -118,8 +119,9 @@ const PEACE_OF_MIND = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const HowItWorksScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
   const [mode, setMode] = useState<Mode>('buyer');
@@ -128,7 +130,7 @@ export const HowItWorksScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha05, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -180,14 +182,15 @@ export const HowItWorksScreen: React.FC = () => {
               <View style={ts.stepIconWrap}>
                 <Ionicons name={step.icon} size={22} color={Colors.accent} />
               </View>
-              <Text style={ts.stepNumber}>{step.id}</Text>
+              {/* theme-audit-ignore: decorative numeral (the step title carries the order); faint by design in dark */}
+              <Text style={ts.stepNumber} accessibilityElementsHidden importantForAccessibility="no">{step.id}</Text>
             </View>
             <Text style={ts.stepTitle}>{step.title}</Text>
             <Text style={ts.stepDesc}>{step.desc}</Text>
             <View style={ts.detailChipsRow}>
               {step.details.map((d) => (
                 <View key={d} style={ts.detailChip}>
-                  <Ionicons name="checkmark" size={11} color={Colors.success} />
+                  <Ionicons name="checkmark" size={11} color={tc(Colors.success)} />
                   <Text style={ts.detailChipText}>{d}</Text>
                 </View>
               ))}
@@ -226,7 +229,7 @@ export const HowItWorksScreen: React.FC = () => {
         <View style={ts.peaceGrid}>
           {PEACE_OF_MIND.map((item) => (
             <View key={item.title} style={ts.peaceCard}>
-              <Ionicons name={item.icon} size={20} color={Colors.textSecondary} />
+              <Ionicons name={item.icon} size={20} color={tc(Colors.textSecondary)} />
               <Text style={ts.peaceTitle}>{item.title}</Text>
               <Text style={ts.peaceDesc}>{item.desc}</Text>
             </View>
@@ -470,4 +473,18 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     lineHeight: 16,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  // Decorative step numeral (7% white in dark). Light: large-text 3:1 on cards.
+  stepNumber: { color: LIGHT_PALETTE.switchTrackOff }, // keep
+  introSub: { color: LIGHT_PALETTE.secondary },
+  receiptKey: { color: LIGHT_PALETTE.text },
+  receiptNote: { color: LIGHT_PALETTE.muted },
+  receiptTotalKey: { color: LIGHT_PALETTE.muted },
+  receiptFootnote: { color: LIGHT_PALETTE.muted },
 });

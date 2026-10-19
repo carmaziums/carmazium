@@ -379,7 +379,8 @@ export default function App() {
               route including ones added later. Renders null when online. */}
           <OfflineBanner />
         </DrawerProvider>
-        <StatusBar style="light" />
+        {/* Root default for routes that do not mount their own status bar. */}
+        <StatusBar style={appearanceMode === 'light' ? 'dark' : 'light'} />
       </NavigationContainer>
     </SafeAreaProvider>
     </StripeProvider>

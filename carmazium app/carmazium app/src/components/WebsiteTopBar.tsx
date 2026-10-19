@@ -100,8 +100,13 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 31, height: 31, borderRadius: 16,
-    backgroundColor: 'rgba(237, 28, 36, 0.14)',
+    backgroundColor: 'rgba(237, 28, 36, 0.45)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarLetter: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.accent },
+  // The bar is navy in both modes; red-on-red-tint read at 2.6:1. White initial.
+  avatarLetter: { fontFamily: FontFamily.bold, fontSize: 15, color: Colors.white },
+
 });
+
+
+const LIGHT_PALETTE = appearancePalette('light');

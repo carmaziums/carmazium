@@ -9,8 +9,9 @@ import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
+import { useAppearance } from '../../theme/useAppearance';
 
 // Canonical sources: src/app/dashboard/dealer/auctions/shortlisted/page.tsx
 // and src/app/dashboard/dealer/bids/page.tsx. Both endpoints return
@@ -54,17 +55,18 @@ const timeLeft = (raw: string, now: number): string => {
 };
 
 function Thumbnail({ uri }: { uri?: string }) {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles), lightContrastStyles) : styles;
   return <View style={ts.thumb}>
     {uri ? <Image source={{ uri }} style={ts.image} contentFit="cover" cachePolicy="memory-disk" />
-      : <Ionicons name="car-outline" size={25} color={Colors.textMuted} />}
+      : <Ionicons name="car-outline" size={25} color={tc(Colors.textMuted)} />}
   </View>;
 }
 
 function ErrorText({ message, onRetry }: { message: string; onRetry: () => void }) {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles), lightContrastStyles) : styles;
   return <View style={ts.error}>
     <Text style={ts.errorText}>{message}</Text>
     <TouchableOpacity onPress={onRetry} accessibilityRole="button">
@@ -74,8 +76,9 @@ function ErrorText({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 export function DealerAuctionShortlist({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles), lightContrastStyles) : styles;
   const [view, setView] = useState<'live' | 'all'>('live');
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<SavedAuction[]>([]);
@@ -165,7 +168,7 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
               <Thumbnail uri={item.listing?.images?.[0]}/>
               <View style={ts.cardCopy}>
                 <Text style={ts.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
-                <Text style={[ts.status, live && { color: Colors.success }]}>{state}</Text>
+                <Text style={[ts.status, live && { color: tc(Colors.success) }]}>{state}</Text>
                 {a && <Text style={ts.meta}>Opening bid {money(a.startingBid)}</Text>}
                 {a && <Text style={ts.meta}>
                   {live ? 'Ends ' + timeLeft(a.endTime, now)
@@ -203,8 +206,9 @@ export function DealerAuctionShortlist({ navigation, header }: { navigation?: Na
 }
 
 export function DealerActiveBidPositions({ navigation, header }: { navigation?: Nav; header?: React.ReactNode }) {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerAuctionSectionStyles), lightContrastStyles) : styles;
   const [positions, setPositions] = useState<AuctionPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -268,7 +272,7 @@ export function DealerActiveBidPositions({ navigation, header }: { navigation?: 
             <View style={ts.cardCopy}>
               <Text style={ts.cardTitle} numberOfLines={2}>{item.listing?.title || 'Vehicle auction'}</Text>
               <Text style={[ts.status,
-                { color: item.isLeading ? Colors.success : Colors.warning }]}>
+                { color: tc(item.isLeading ? Colors.success : Colors.warning) }]}>
                 {item.isLeading ? 'CURRENTLY LEADING' : 'OUTBID / ACTION NEEDED'}
               </Text>
               <Text style={ts.meta}>{timeLeft(item.endTime, now)}</Text>
@@ -374,4 +378,12 @@ const styles = StyleSheet.create({
     alignItems:'center',justifyContent:'center',marginTop:6},
   mainActionText:{fontFamily:FontFamily.bold,color:Colors.white,fontSize:12},
   historyLink:{paddingTop:15,paddingBottom:15,alignItems:'center'},
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  retry: { color: lightReadableText.accent },
+  go: { color: lightReadableText.accent },
+  pageLink: { color: lightReadableText.accent },
 });

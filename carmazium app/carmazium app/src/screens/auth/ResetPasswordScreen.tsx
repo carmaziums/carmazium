@@ -7,8 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  StatusBar,
-} from 'react-native';
+  } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@/components/BrandIcon';
 import { useAuthStore } from '../../store/authStore';
@@ -18,15 +17,18 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -80,7 +82,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha08, Colors.bgPrimary, Colors.bgPrimary]}
@@ -111,7 +113,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
           <View style={ts.formContainer}>
             {succeeded ? (
               <View style={ts.successContainer}>
-                <Ionicons name="checkmark-circle" size={48} color={Colors.success} style={ts.successIcon} />
+                <Ionicons name="checkmark-circle" size={48} color={tc(Colors.success)} style={ts.successIcon} />
                 <Text style={ts.successTitle}>Password updated!</Text>
                 <Text style={ts.successBody}>
                   Taking you back to sign in...
@@ -133,7 +135,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
-                      color={newFocused ? Colors.accent : Colors.textMuted}
+                      color={tc(newFocused ? Colors.accent : Colors.textMuted)}
                       style={ts.inputIcon}
                     />
                     <TextInput
@@ -144,14 +146,14 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                         setValidationError(null);
                       }}
                       placeholder="••••••••"
-                      placeholderTextColor={Colors.inputPlaceholder}
+                      placeholderTextColor={tc(Colors.inputPlaceholder)}
                       secureTextEntry={!showNew}
                       returnKeyType="next"
                       onFocus={() => setNewFocused(true)}
                       onBlur={() => setNewFocused(false)}
                       onSubmitEditing={() => confirmRef.current?.focus()}
                     />
-                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Hide password' : 'Show password'} />
+                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showNew ? 'eye-off-outline' : 'eye-outline'} size={20} color={tc(Colors.textMuted)} />} onPress={() => setShowNew(!showNew)} accessibilityLabel={showNew ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
@@ -162,7 +164,7 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                     <Ionicons
                       name="lock-closed-outline"
                       size={20}
-                      color={confirmFocused ? Colors.accent : Colors.textMuted}
+                      color={tc(confirmFocused ? Colors.accent : Colors.textMuted)}
                       style={ts.inputIcon}
                     />
                     <TextInput
@@ -174,14 +176,14 @@ export const ResetPasswordScreen: React.FC<{ navigation?: any }> = ({ navigation
                         setValidationError(null);
                       }}
                       placeholder="••••••••"
-                      placeholderTextColor={Colors.inputPlaceholder}
+                      placeholderTextColor={tc(Colors.inputPlaceholder)}
                       secureTextEntry={!showConfirm}
                       returnKeyType="done"
                       onFocus={() => setConfirmFocused(true)}
                       onBlur={() => setConfirmFocused(false)}
                       onSubmitEditing={isFormValid ? handleSetPassword : undefined}
                     />
-                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'} />
+                    <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color={tc(Colors.textMuted)} />} onPress={() => setShowConfirm(!showConfirm)} accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'} />
                   </View>
                 </View>
 
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
   validationError: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginBottom: 16,
     marginTop: -8,
   },
@@ -309,7 +311,7 @@ const styles = StyleSheet.create({
   submitError: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.sm,
-    color: Colors.error,
+    color: Colors.errorLight,
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -362,4 +364,16 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 60,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  successTitle: { color: LIGHT_PALETTE.text },
+  successBody: { color: LIGHT_PALETTE.secondary },
+  input: { color: LIGHT_PALETTE.text },
+  validationError: { color: lightReadableText.error },
+  submitError: { color: lightReadableText.error },
 });

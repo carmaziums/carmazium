@@ -5,8 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
@@ -17,12 +15,15 @@ import { Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { GlobalToastContext } from '../../components/GlobalToastProvider';
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
+import { ThemedSwitch } from '../../components/ThemedSwitch';
 type NotifView = 'main' | 'delivery';
 
 // FROM/UNTIL used to be static "22:00"/"08:00" text with a decorative
@@ -36,8 +37,9 @@ const cycleTime = (current: string) => {
 };
 
 export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { showToast } = useContext(GlobalToastContext);
   const { user } = useAuthStore();
@@ -128,12 +130,11 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
   }, [loading, loadError, saving, savedNotifications, muteAll, outbid, winning, endingSoon, newLot, counterOffer, offerAccepted, offerDeclined, push, email, quietHours, quietStart, quietEnd, showToast]);
 
   const CustomSwitch = ({ value, onValueChange, activeColor = Colors.accent, disabled }: any) => (
-    <Switch
+    <ThemedSwitch
        value={value}
        onValueChange={onValueChange}
-       trackColor={{ false: Colors.whiteAlpha10, true: activeColor }}
+       trackColor={{ true: activeColor }}
        thumbColor={Colors.white}
-       ios_backgroundColor={Colors.whiteAlpha10}
        disabled={disabled}
     />
   );
@@ -148,7 +149,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            <Text style={ts.headerTitle}>Notifications</Text>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={tc(Colors.white)} />
                 : <Text style={ts.resetText}>Save</Text>
               }
            </TouchableOpacity>
@@ -217,7 +218,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
         {/* OFFERS */}
         <View style={ts.sectionHeaderWrap}>
            <View style={ts.sectionIconWrapYellow}>
-              <Ionicons name="pricetag-outline" size={12} color={Colors.warning} />
+              <Ionicons name="pricetag-outline" size={12} color={tc(Colors.warning)} />
            </View>
            <Text style={ts.sectionTitle}>OFFERS</Text>
         </View>
@@ -257,7 +258,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
               <Text style={ts.toggleTitle}>Delivery & quiet hours</Text>
               <Text style={ts.toggleSub}>Manage push, email and quiet hours</Text>
            </View>
-           <Ionicons name="chevron-forward" size={20} color={Colors.iconMuted} accessibilityElementsHidden importantForAccessibility="no" />
+           <Ionicons name="chevron-forward" size={20} color={tc(Colors.iconMuted)} accessibilityElementsHidden importantForAccessibility="no" />
         </TouchableOpacity>
 
       </ScrollView>
@@ -281,7 +282,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            </View>
            <TouchableOpacity onPress={savePreferences} disabled={saving} activeOpacity={0.7}>
               {saving
-                ? <ActivityIndicator size="small" color={Colors.white} />
+                ? <ActivityIndicator size="small" color={tc(Colors.white)} />
                 : <Text style={ts.resetText}>Save</Text>
               }
            </TouchableOpacity>
@@ -314,7 +315,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
            <View style={ts.divider} />
            <View style={ts.toggleRow}>
               <View style={ts.channelIconGrey}>
-                 <Ionicons name="chatbubble-outline" size={16} color={Colors.textSecondary} />
+                 <Ionicons name="chatbubble-outline" size={16} color={tc(Colors.textSecondary)} />
               </View>
               <View style={ts.toggleTextWrap}>
                  <Text style={ts.toggleTitle}>SMS</Text>
@@ -356,14 +357,14 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
                  <Text style={ts.timeLabel}>FROM</Text>
                  <TouchableOpacity style={ts.timeInput} onPress={() => setQuietStart(cycleTime(quietStart))} activeOpacity={0.7}>
                     <Text style={ts.timeText}>{quietStart}</Text>
-                    <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
+                    <Ionicons name="chevron-down" size={16} color={tc(Colors.textSecondary)} accessibilityElementsHidden importantForAccessibility="no" />
                  </TouchableOpacity>
               </View>
               <View style={ts.timeBlock}>
                  <Text style={ts.timeLabel}>UNTIL</Text>
                  <TouchableOpacity style={ts.timeInput} onPress={() => setQuietEnd(cycleTime(quietEnd))} activeOpacity={0.7}>
                     <Text style={ts.timeText}>{quietEnd}</Text>
-                    <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
+                    <Ionicons name="chevron-down" size={16} color={tc(Colors.textSecondary)} accessibilityElementsHidden importantForAccessibility="no" />
                  </TouchableOpacity>
               </View>
            </View>
@@ -376,7 +377,7 @@ export const NotificationSettingsScreen: React.FC<{ navigation?: any }> = ({ nav
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -581,4 +582,14 @@ const styles = StyleSheet.create({
   tabLabel: {
      fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, marginTop: 4, letterSpacing: 0.5
   }
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  muteSub: { color: LIGHT_PALETTE.secondary },
+  toggleSub: { color: LIGHT_PALETTE.muted },
+  deliveryBtn: { backgroundColor: LIGHT_PALETTE.card },
 });

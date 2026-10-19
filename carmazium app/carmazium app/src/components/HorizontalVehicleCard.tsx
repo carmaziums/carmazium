@@ -19,7 +19,7 @@ import { CarListing, formatPrice, formatMileage } from '../data/listings';
 import { useWatchlistStore } from '../store/watchlistStore';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useLocation } from '../context/LocationContext';
 import { haversineDistanceMiles } from '../lib/distance';
@@ -42,7 +42,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
   onPress,
 }) => {
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightHorizontalCardStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightHorizontalCardStyles), lightContrastStyles) : styles;
   // Selector-subscribed rather than destructuring the whole store — see the
   // note in VehicleCard.tsx. Re-renders only when this row's own saved state
   // changes, not when any listing anywhere is saved.
@@ -130,6 +130,7 @@ const HorizontalVehicleCardBase: React.FC<HorizontalVehicleCardProps> = ({
             <Text style={ts.estateText}>ESTATE</Text>
           </View>
         )}
+        {/* theme-audit-ignore: dark translucent button over the listing photo in both modes */}
         <View style={ts.saveButtonOverlay}>
           <IconButton style={ts.bookmarkBtn} icon={<Ionicons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? Colors.accent : Colors.white} />} onPress={handleToggle} accessibilityLabel={saved ? 'Remove from watchlist' : 'Save to watchlist'} />
         </View>
@@ -323,4 +324,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.accent,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  estateText: { color: LIGHT_PALETTE.secondary },
+  bannerBadge: { backgroundColor: lightReadableText.info },
 });

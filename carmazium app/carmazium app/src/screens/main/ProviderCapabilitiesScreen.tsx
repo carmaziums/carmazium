@@ -5,7 +5,6 @@ import {
   Linking,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -30,6 +29,8 @@ import {
   getMyCapabilities,
 } from '../../lib/servicesApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderCapabilities'>;
 
@@ -43,8 +44,9 @@ const statusColor = (status?: string) => {
 };
 
 export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const [caps, setCaps] = useState<ContractorCapability[]>([]);
   const [stripe, setStripe] = useState({ connected: false, complete: false });
@@ -100,9 +102,9 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={ts.header}>
-        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={ts.headerTitle}>Service add-ons</Text>
         <View style={ts.headerButton} />
       </View>
@@ -118,12 +120,12 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity style={ts.quickAction} onPress={() => navigation.navigate('ProviderJobs')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open available delivery and inspection jobs">
               <Ionicons name="briefcase-outline" size={19} color={Colors.accent} />
               <Text style={ts.quickActionText}>Service jobs</Text>
-              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={17} color={tc(Colors.textSecondary)} />
             </TouchableOpacity>
             <TouchableOpacity style={ts.quickAction} onPress={() => navigation.navigate('ProviderLeads')} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Open matched finance and warranty enquiries">
               <Ionicons name="mail-outline" size={19} color={Colors.accent} />
               <Text style={ts.quickActionText}>Enquiries</Text>
-              <Ionicons name="chevron-forward" size={17} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={17} color={tc(Colors.textSecondary)} />
             </TouchableOpacity>
           </View>
 
@@ -135,7 +137,7 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={ts.cardText}>Delivery and Inspection use a 9% CarMazium / 91% Partner payout split.</Text>
             </View>
             {stripe.complete ? (
-              <Ionicons name="checkmark-circle" size={24} color={Colors.accentGreen} />
+              <Ionicons name="checkmark-circle" size={24} color={tc(Colors.accentGreen)} />
             ) : (
               <TouchableOpacity style={ts.smallButton} onPress={connectStripe} disabled={busy === 'stripe'}>
                 {busy === 'stripe' ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={ts.smallButtonText}>{stripe.connected ? 'FINISH' : 'SET UP'}</Text>}
@@ -181,11 +183,11 @@ export const ProviderCapabilitiesScreen: React.FC<Props> = ({ navigation }) => {
                 {cap ? (
                   <View style={ts.actions}>
                     <TouchableOpacity style={ts.actionButton} onPress={() => navigation.navigate('ProviderVerification', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`View verification for ${SERVICE_LABELS[type]}`}>
-                      <Ionicons name="document-text-outline" size={15} color={Colors.white} />
+                      <Ionicons name="document-text-outline" size={15} color={tc(Colors.white)} />
                       <Text style={ts.actionText}>VERIFICATION</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={ts.actionButton} onPress={() => navigation.navigate('ProviderMatching', { capabilityId: cap.id })} accessibilityRole="button" accessibilityLabel={`Set matching coverage for ${SERVICE_LABELS[type]}`}>
-                      <Ionicons name="options-outline" size={15} color={Colors.white} />
+                      <Ionicons name="options-outline" size={15} color={tc(Colors.white)} />
                       <Text style={ts.actionText}>MATCHING</Text>
                     </TouchableOpacity>
                   </View>
@@ -226,4 +228,15 @@ const styles = StyleSheet.create({
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
   warning: { fontFamily: FontFamily.medium, color: Colors.warning, fontSize: FontSize.xs },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sub: { color: LIGHT_PALETTE.secondary },
+  error: { color: lightReadableText.error },
+  warning: { color: lightReadableText.warning },
+  actionButton: { backgroundColor: LIGHT_PALETTE.card },
 });

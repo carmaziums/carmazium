@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,6 +14,7 @@ import { useAppearanceStore } from '../../store/appearanceStore';
 import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { getListingById } from '../../lib/listingsApi';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDeepLink'>;
 
@@ -48,7 +48,7 @@ export const VehicleDeepLinkScreen: React.FC<Props> = ({ navigation, route }) =>
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bgPrimary} />
+      <ThemedStatusBar backgroundColor={Colors.bgPrimary} />
       {error ? (
         <View style={ts.card}>
           <Ionicons name="alert-circle-outline" size={34} color={Colors.accent} />

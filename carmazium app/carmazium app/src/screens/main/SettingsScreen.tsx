@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, TextInput, ActivityIndicator, Switch, AppState, useWindowDimensions,
+  Alert, TextInput, ActivityIndicator, AppState, useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,7 +19,7 @@ import { startAddressVerification, confirmAddressVerification } from '../../lib/
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { appearancePalette } from '../../theme/appearancePalette';
+import { appearancePalette, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 
 import { IconButton } from '../../components/IconButton';
 import { BottomSheet } from '../../components/BottomSheet';
@@ -27,6 +27,9 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useSingleColumnSettings } from '../../lib/nativeLayoutParity';
 import { getOrCreateSupportRoom } from '../../lib/chatApi';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
+import { ThemedSwitch } from '../../components/ThemedSwitch';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type SettingsCategory = 'personal' | 'business' | 'verification' | 'notifications' | 'payouts' | 'appearance' | 'security' | 'reviews' | 'account';
 const isSettingsCategory = (value: unknown): value is SettingsCategory =>
@@ -64,6 +67,7 @@ const FieldLabel: React.FC<{ label: string }> = ({ label }) => {
 // ══════════════════════════ COMPONENT ════════════════════════════
 
 export const SettingsScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const setAppearanceMode = useAppearanceStore(state => state.setMode);
   const palette = appearancePalette(appearanceMode);
@@ -603,7 +607,7 @@ export const SettingsScreen: React.FC = () => {
   };
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
       <LinearGradient
         colors={appearanceMode === 'light' ? [palette.background, palette.background, palette.background] : [Colors.accentAlpha04, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }}
@@ -626,8 +630,8 @@ export const SettingsScreen: React.FC = () => {
         </Text>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to previous screen"
           onPress={() => navigation.goBack()} style={styles.settingsBackLink}>
-          <Ionicons name="arrow-back" size={16} color={Colors.accent} />
-          <Text style={styles.settingsBackText}>Back</Text>
+          <Ionicons name="arrow-back" size={16} color={tc(Colors.accent)} />
+          <Text style={[styles.settingsBackText, appearanceMode === 'light' && lightSettingsStyles.settingsBackText]}>Back</Text>
         </TouchableOpacity>
       </View>
         <View style={[styles.accountToolsPanel, appearanceMode === 'light' && lightSettingsStyles.accountToolsPanel]}>
@@ -647,7 +651,7 @@ export const SettingsScreen: React.FC = () => {
                 onPress={tool.action}>
                 <Ionicons name={tool.icon as any} size={19} color={Colors.accent} />
                 <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>{tool.label}</Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+                <Ionicons name="chevron-forward" size={14} color={tc(Colors.textMuted)} />
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={[styles.accountToolButton, appearanceMode === 'light' && lightSettingsStyles.accountToolButton, singleColumnSettings && styles.fullWidthTool]} accessibilityRole="button"
@@ -657,7 +661,7 @@ export const SettingsScreen: React.FC = () => {
               <Text style={[styles.accountToolLabel, appearanceMode === 'light' && lightSettingsStyles.accountToolLabel]}>
                 {supportLoading ? 'Opening support…' : 'Contact Support'}
               </Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.textMuted} />
+              <Ionicons name="chevron-forward" size={14} color={tc(Colors.textMuted)} />
             </TouchableOpacity>
           </View>
         </View>
@@ -678,7 +682,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons
                   name={category.icon as any}
                   size={19}
-                  color={selected ? Colors.white : Colors.textSecondary}
+                  color={selected ? Colors.white : tc(Colors.textSecondary)}
                 />
                 <Text style={[styles.categoryLabel, appearanceMode === 'light' && lightSettingsStyles.categoryLabel, selected && styles.categoryLabelSelected]}>
                   {category.label}
@@ -709,7 +713,7 @@ export const SettingsScreen: React.FC = () => {
               )}
             </View>
             <View>
-              <Text style={styles.avatarChangeText}>Change photo</Text>
+              <Text style={[styles.avatarChangeText, appearanceMode === 'light' && lightSettingsStyles.avatarChangeText]}>Change photo</Text>
               <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
             </View>
           </TouchableOpacity>
@@ -789,41 +793,37 @@ export const SettingsScreen: React.FC = () => {
             <Text style={[styles.notificationShortcutTitle, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutTitle]}>Notification preferences</Text>
             <Text style={[styles.notificationShortcutHint, appearanceMode === 'light' && lightSettingsStyles.notificationShortcutHint]}>Choose auction, offer and email alerts</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+          <Ionicons name="chevron-forward" size={18} color={tc(Colors.textSecondary)} />
         </TouchableOpacity>
             <View style={[styles.card, appearanceMode === 'light' && lightSettingsStyles.card]}>
           {!preferencesFetchComplete && (
-            <Text style={styles.preferenceNotice}>Loading your saved notification and privacy preferences…</Text>
+            <Text style={[styles.preferenceNotice, appearanceMode === 'light' && lightSettingsStyles.preferenceNotice]}>Loading your saved notification and privacy preferences…</Text>
           )}
           {preferencesFetchComplete && !preferencesLoaded && (
-            <Text style={styles.preferenceNotice}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
+            <Text style={[styles.preferenceNotice, appearanceMode === 'light' && lightSettingsStyles.preferenceNotice]}>Your saved preferences could not be confirmed. They will not be changed until they can be loaded.</Text>
           )}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Email me when a listing is sold</Text>
             </View>
-            <Switch
+            <ThemedSwitch
               value={notifyOnSale}
               onValueChange={setNotifyOnSale}
               disabled={!preferencesLoaded}
               accessibilityLabel="Email me when a listing is sold"
-              trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
               thumbColor={Colors.white}
-              ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
               <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>Show my profile publicly</Text>
             </View>
-            <Switch
+            <ThemedSwitch
               value={showPublicProfile}
               onValueChange={setShowPublicProfile}
               disabled={!preferencesLoaded}
               accessibilityLabel="Show my profile publicly"
-              trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }}
               thumbColor={Colors.white}
-              ios_backgroundColor={Colors.whiteAlpha10}
             />
           </View>
               <View style={[styles.cardDivider, appearanceMode === 'light' && lightSettingsStyles.cardDivider]} />
@@ -862,11 +862,11 @@ export const SettingsScreen: React.FC = () => {
                   ) : dealerLogo ? (
                     <Image source={{ uri: dealerLogo }} style={styles.avatarImage} contentFit="cover" />
                   ) : (
-                    <Ionicons name="storefront-outline" size={22} color={Colors.iconMuted} />
+                    <Ionicons name="storefront-outline" size={22} color={tc(Colors.iconMuted)} />
                   )}
                 </View>
                 <View>
-                  <Text style={styles.avatarChangeText}>Change logo</Text>
+                  <Text style={[styles.avatarChangeText, appearanceMode === 'light' && lightSettingsStyles.avatarChangeText]}>Change logo</Text>
                   <Text style={[styles.avatarHintText, appearanceMode === 'light' && lightSettingsStyles.avatarHintText]}>JPG or PNG, square works best</Text>
                 </View>
               </TouchableOpacity>
@@ -880,7 +880,7 @@ export const SettingsScreen: React.FC = () => {
                   placeholder={isSoleTraderDealer ? "e.g. Smith Motors" : "e.g. Knightsbridge Motors Ltd"}
                   placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                 />
-                {dealerFieldErrors.companyName ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.companyName}</Text> : null}
+                {dealerFieldErrors.companyName ? <Text style={[styles.fieldErrorText, appearanceMode === 'light' && lightSettingsStyles.fieldErrorText]}>{dealerFieldErrors.companyName}</Text> : null}
               </View>
 
               {!isSoleTraderDealer ? (
@@ -894,7 +894,7 @@ export const SettingsScreen: React.FC = () => {
                       placeholder="e.g. GB 123 456 789"
                       placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
                     />
-                    {dealerFieldErrors.vatNumber ? <Text style={styles.fieldErrorText}>{dealerFieldErrors.vatNumber}</Text> : null}
+                    {dealerFieldErrors.vatNumber ? <Text style={[styles.fieldErrorText, appearanceMode === 'light' && lightSettingsStyles.fieldErrorText]}>{dealerFieldErrors.vatNumber}</Text> : null}
                   </View>
 
                   <View>
@@ -964,8 +964,8 @@ export const SettingsScreen: React.FC = () => {
               <Text style={[styles.payoutDesc, appearanceMode === 'light' && lightSettingsStyles.payoutDesc]}>MaziuM can add your business introduction and verified location to future vehicle descriptions. The dealer profile is the source of truth; AI will not invent your policies.</Text>
               <View style={styles.toggleRow}>
                 <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer a vehicle warranty</Text>
-                <Switch value={dealerWarrantyOffered} onValueChange={setDealerWarrantyOffered}
-                  accessibilityLabel="Warranty offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
+                <ThemedSwitch value={dealerWarrantyOffered} onValueChange={setDealerWarrantyOffered}
+                  accessibilityLabel="Warranty offered" />
               </View>
               {dealerWarrantyOffered && (
                 <View>
@@ -979,8 +979,8 @@ export const SettingsScreen: React.FC = () => {
               )}
               <View style={styles.toggleRow}>
                 <Text style={[styles.toggleTitle, appearanceMode === 'light' && lightSettingsStyles.toggleTitle]}>We offer or arrange finance</Text>
-                <Switch value={dealerFinanceOffered} onValueChange={setDealerFinanceOffered}
-                  accessibilityLabel="Finance offered" trackColor={{ false: Colors.whiteAlpha10, true: Colors.accent }} />
+                <ThemedSwitch value={dealerFinanceOffered} onValueChange={setDealerFinanceOffered}
+                  accessibilityLabel="Finance offered" />
               </View>
               {dealerFinanceOffered && (
                 <View>
@@ -1053,7 +1053,7 @@ export const SettingsScreen: React.FC = () => {
               <Ionicons name="mail-open-outline" size={16} color={Colors.accent} />
             </View>
             <Text style={[styles.inviteRowText, appearanceMode === 'light' && lightSettingsStyles.inviteRowText]}>Have a dealer team invite? Accept it here</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+            <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} />
           </TouchableOpacity>
         )}
 
@@ -1067,8 +1067,8 @@ export const SettingsScreen: React.FC = () => {
           </Text>
           {isAddressVerified ? (
             <View style={styles.stripeConnected}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Address verified</Text>
+              <Ionicons name="checkmark-circle" size={18} color={tc(Colors.success)} />
+              <Text style={[styles.stripeConnectedText, appearanceMode === 'light' && lightSettingsStyles.stripeConnectedText]}>Address verified</Text>
             </View>
           ) : (
             <TouchableOpacity
@@ -1101,11 +1101,11 @@ export const SettingsScreen: React.FC = () => {
               value={currentPwd}
               onChangeText={setCurrentPwd}
               placeholder="••••••••"
-              placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
+              placeholderTextColor={tc(Colors.iconMuted)}
               secureTextEntry={!showCurrentPwd}
               autoCapitalize="none"
             />
-            <IconButton icon={<Ionicons name={showCurrentPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowCurrentPwd(v => !v)} accessibilityLabel={showCurrentPwd ? 'Hide password' : 'Show password'} />
+            <IconButton icon={<Ionicons name={showCurrentPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={tc(Colors.iconMuted)} />} onPress={() => setShowCurrentPwd(v => !v)} accessibilityLabel={showCurrentPwd ? 'Hide password' : 'Show password'} />
           </View>
 
           <View style={styles.pwdRow}>
@@ -1117,11 +1117,11 @@ export const SettingsScreen: React.FC = () => {
                   value={newPwd}
                   onChangeText={setNewPwd}
                   placeholder="Min. 8 characters"
-                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                   secureTextEntry={!showNewPwd}
                   autoCapitalize="none"
                 />
-                <IconButton icon={<Ionicons name={showNewPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowNewPwd(v => !v)} accessibilityLabel={showNewPwd ? 'Hide password' : 'Show password'} />
+                <IconButton icon={<Ionicons name={showNewPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={tc(Colors.iconMuted)} />} onPress={() => setShowNewPwd(v => !v)} accessibilityLabel={showNewPwd ? 'Hide password' : 'Show password'} />
               </View>
             </View>
             <View style={{ width: 12 }} />
@@ -1133,11 +1133,11 @@ export const SettingsScreen: React.FC = () => {
                   value={confirmPwd}
                   onChangeText={setConfirmPwd}
                   placeholder="••••••••"
-                  placeholderTextColor={appearanceMode === 'light' ? '#64748B' : Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                   secureTextEntry={!showConfirmPwd}
                   autoCapitalize="none"
                 />
-                <IconButton icon={<Ionicons name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.iconMuted} />} onPress={() => setShowConfirmPwd(v => !v)} accessibilityLabel={showConfirmPwd ? 'Hide password' : 'Show password'} />
+                <IconButton icon={<Ionicons name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'} size={18} color={tc(Colors.iconMuted)} />} onPress={() => setShowConfirmPwd(v => !v)} accessibilityLabel={showConfirmPwd ? 'Hide password' : 'Show password'} />
               </View>
             </View>
           </View>
@@ -1170,15 +1170,15 @@ export const SettingsScreen: React.FC = () => {
             <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 16 }} />
           ) : stripeOnboarded ? (
             <View style={styles.stripeConnected}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.stripeConnectedText}>Stripe payouts enabled</Text>
+              <Ionicons name="checkmark-circle" size={18} color={tc(Colors.success)} />
+              <Text style={[styles.stripeConnectedText, appearanceMode === 'light' && lightSettingsStyles.stripeConnectedText]}>Stripe payouts enabled</Text>
             </View>
           ) : (
             <>
               {stripePartial && (
                 <View style={styles.stripeWarning}>
-                  <Ionicons name="alert-circle-outline" size={14} color={Colors.warning} />
-                  <Text style={styles.stripeWarningText}>
+                  <Ionicons name="alert-circle-outline" size={14} color={tc(Colors.warning)} />
+                  <Text style={[styles.stripeWarningText, appearanceMode === 'light' && lightSettingsStyles.stripeWarningText]}>
                     Stripe payout setup is not yet enabled. Review any outstanding verification or onboarding requirements below.
                   </Text>
                 </View>
@@ -1196,7 +1196,7 @@ export const SettingsScreen: React.FC = () => {
                       <Text style={styles.stripeBtnText}>{stripePartial ? 'REVIEW PAYOUT ONBOARDING' : 'CONNECT PAYOUT ACCOUNT'}</Text>
                     </>}
               </TouchableOpacity>
-              <Text style={styles.stripeNote}>
+              <Text style={[styles.stripeNote, appearanceMode === 'light' && lightSettingsStyles.stripeNote]}>
                 You will be taken to Stripe's secure onboarding — this takes about 2 minutes.
               </Text>
             </>
@@ -1254,9 +1254,10 @@ export const SettingsScreen: React.FC = () => {
             onPress={handleSaveBank}
             disabled={bankSaving}
           >
+            {/* Amber fill: white was 2.2:1, black is 9.7:1 (same in both modes). */}
             {bankSaving
-              ? <ActivityIndicator size="small" color={Colors.white} />
-              : <Text style={styles.saveBtnText}>SAVE BANK DETAILS</Text>}
+              ? <ActivityIndicator size="small" color={Colors.black} />
+              : <Text style={[styles.saveBtnText, styles.bankSaveBtnText]}>SAVE BANK DETAILS</Text>}
           </TouchableOpacity>
         </View>
           </>
@@ -1278,8 +1279,8 @@ export const SettingsScreen: React.FC = () => {
             accessibilityRole="button"
             accessibilityLabel="Delete account"
           >
-            <Ionicons name="trash-outline" size={15} color={Colors.error} />
-            <Text style={styles.deleteBtnText}>DELETE ACCOUNT</Text>
+            <Ionicons name="trash-outline" size={15} color={tc(Colors.error)} />
+            <Text style={[styles.deleteBtnText, appearanceMode === 'light' && lightSettingsStyles.deleteBtnText]}>DELETE ACCOUNT</Text>
           </TouchableOpacity>
         </View>
           </>
@@ -1329,11 +1330,11 @@ export const SettingsScreen: React.FC = () => {
             <Text style={[styles.accountSectionText, appearanceMode === 'light' && lightSettingsStyles.accountSectionText]}>See what others have written about you and the reviews you have given.</Text>
             {ratingLoading && <ActivityIndicator color={Colors.accent} style={{ marginVertical: 10 }} />}
             {!!ratingError && (
-              <Text style={styles.accountErrorText}>{ratingError}</Text>
+              <Text style={[styles.accountErrorText, appearanceMode === 'light' && lightSettingsStyles.accountErrorText]}>{ratingError}</Text>
             )}
             {!!ratingSummary && (
               <View style={styles.reviewSummary}>
-                <Ionicons name="star" size={20} color={Colors.warning} />
+                <Ionicons name="star" size={20} color={tc(Colors.warning)} />
                 <Text style={[styles.reviewScore, appearanceMode === 'light' && lightSettingsStyles.reviewScore]}>
                   {Number(ratingSummary.average).toFixed(1)}
                 </Text>
@@ -1361,7 +1362,7 @@ export const SettingsScreen: React.FC = () => {
                               ? review.reviewer?.displayName || 'CarMazium user'
                               : review.target?.displayName || 'CarMazium user'}
                           </Text>
-                          <Text style={styles.reviewStars}>
+                          <Text style={[styles.reviewStars, appearanceMode === 'light' && lightSettingsStyles.reviewStars]}>
                             {Number(review.rating).toFixed(1)} / 5
                           </Text>
                         </View>
@@ -1545,6 +1546,16 @@ export const SettingsScreen: React.FC = () => {
 // ══════════════════════════ STYLES ════════════════════════════════
 
 const lightSettingsStyles = StyleSheet.create({
+  // Semantic copy on white cards (dark-mode hues were 2.1–4.4:1 here).
+  avatarChangeText: { color: lightReadableText.accent },
+  preferenceNotice: { color: lightReadableText.warning },
+  fieldErrorText: { color: lightReadableText.error },
+  stripeConnectedText: { color: lightReadableText.success },
+  stripeWarningText: { color: lightStrongText.warning },
+  deleteBtnText: { color: lightStrongText.error },
+  accountErrorText: { color: lightReadableText.warning },
+  reviewStars: { color: lightReadableText.warning },
+  settingsBackText: { color: lightReadableText.accent },
   settingsPageTitle: { color: '#0F172A' },
   settingsPageSubtitle: { color: '#526177' },
   accountToolsPanel: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
@@ -1585,7 +1596,7 @@ const lightSettingsStyles = StyleSheet.create({
   verifyStepSub: { color: '#334155' },
   resendLinkText: { color: '#334155' },
   dangerCopy: { color: '#334155' },
-  stripeNote: { color: '#64748B' },
+  stripeNote: { color: '#526177' },
 });
 
 const styles = StyleSheet.create({
@@ -1660,7 +1671,7 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     letterSpacing: 1.1,
   },
   deleteConfirmBtn: {
@@ -1729,7 +1740,7 @@ const styles = StyleSheet.create({
 
   // Field label
   fieldLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size9, color: Colors.iconMuted, letterSpacing: 1, marginBottom: 6 },
-  fieldErrorText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.error, marginTop: 6 },
+  fieldErrorText: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.errorLight, marginTop: 6 },
 
   // Mobile forms get a full-width field each, not two narrow desktop columns.
   fieldRow: { flexDirection: 'column', gap: 14 },
@@ -1810,6 +1821,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning, borderRadius: Radius.inline, height: 44,
     alignItems: 'center', justifyContent: 'center',
   },
+  bankSaveBtnText: { color: Colors.black },
 
   // Address verification modal
   verifyModalBody: { padding: 20 },

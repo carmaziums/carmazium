@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  StatusBar,
   Dimensions,
   Alert,
   ActivityIndicator,
@@ -26,10 +25,12 @@ import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 import { haptics } from '../../lib/haptics';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { useDrawer } from '../../context/DrawerContext';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Hoisted + memoized so FlatList only re-renders the row whose props
@@ -41,6 +42,10 @@ const ListingRow: React.FC<{
   onPutOnAuction?: () => void;
   onOpenLinkedAuction?: () => void;
 }> = React.memo(({ item, onPress, onPutOnAuction, onOpenLinkedAuction }) => {
+  // This row used the dark StyleSheet directly, so every listing card stayed
+  // navy-on-light in light mode. Same light map as the screen.
+  const { tc, isLight } = useAppearance();
+  const ts = isLight ? listingLightStyles : styles;
   const listingTitle = item.title || `${item.make ?? ''} ${item.model ?? ''}`.trim() || 'Vehicle';
   const listingImage = item.images?.[0];
   const statusColor = item.status === 'ACTIVE' ? Colors.accentGreen : item.status === 'SOLD' ? Colors.warning : Colors.textSecondary;
@@ -53,31 +58,31 @@ const ListingRow: React.FC<{
   const canPutOnAuction = item.status === 'ACTIVE' && !hasLinkedAuction;
 
   return (
-    <TouchableOpacity style={styles.listingCard} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity style={ts.listingCard} onPress={onPress} activeOpacity={0.75}>
       {listingImage ? (
-        <Image source={{ uri: listingImage }} style={styles.listingImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+        <Image source={{ uri: listingImage }} style={ts.listingImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
       ) : (
-        <View style={[styles.listingImage, styles.listingImagePlaceholder]}>
-          <Ionicons name="car-outline" size={32} color={Colors.textMuted} />
+        <View style={[ts.listingImage, ts.listingImagePlaceholder]}>
+          <Ionicons name="car-outline" size={32} color={tc(Colors.textMuted)} />
         </View>
       )}
-      <View style={styles.listingInfo}>
-        <View style={styles.listingTitleRow}>
-          <Text style={styles.listingTitle} numberOfLines={1}>{listingTitle}</Text>
-          <View style={[styles.statusPill, { backgroundColor: `${statusColor}22`, borderColor: `${statusColor}66` }]}>
-            <Text style={[styles.statusText, { color: statusColor }]}>{item.status ?? 'DRAFT'}</Text>
+      <View style={ts.listingInfo}>
+        <View style={ts.listingTitleRow}>
+          <Text style={ts.listingTitle} numberOfLines={1}>{listingTitle}</Text>
+          <View style={[ts.statusPill, { backgroundColor: `${statusColor}22`, borderColor: `${statusColor}66` }]}>
+            <Text style={[ts.statusText, { color: tc(statusColor) }]}>{item.status ?? 'DRAFT'}</Text>
           </View>
         </View>
-        <Text style={styles.listingPrice}>£{Number(item.price ?? 0).toLocaleString('en-GB')}</Text>
-        <View style={styles.listingMetaRow}>
-          {item.year ? <Text style={styles.listingMeta}>{item.year}</Text> : null}
-          {item.year && item.mileage ? <Text style={styles.listingMetaDot}>·</Text> : null}
-          {item.mileage ? <Text style={styles.listingMeta}>{Number(item.mileage).toLocaleString('en-GB')} mi</Text> : null}
+        <Text style={ts.listingPrice}>£{Number(item.price ?? 0).toLocaleString('en-GB')}</Text>
+        <View style={ts.listingMetaRow}>
+          {item.year ? <Text style={ts.listingMeta}>{item.year}</Text> : null}
+          {item.year && item.mileage ? <Text style={ts.listingMetaDot}>·</Text> : null}
+          {item.mileage ? <Text style={ts.listingMeta}>{Number(item.mileage).toLocaleString('en-GB')} mi</Text> : null}
           {item.viewCount != null ? (
             <>
-              <Text style={styles.listingMetaDot}>·</Text>
-              <Ionicons name="eye-outline" size={11} color={Colors.iconMuted} />
-              <Text style={styles.listingMeta}>{item.viewCount}</Text>
+              <Text style={ts.listingMetaDot}>·</Text>
+              <Ionicons name="eye-outline" size={11} color={tc(Colors.iconMuted)} />
+              <Text style={ts.listingMeta}>{item.viewCount}</Text>
             </>
           ) : null}
         </View>
@@ -85,26 +90,26 @@ const ListingRow: React.FC<{
             "Put on auction" shortcut when eligible. */}
         {hasLinkedAuction ? (
           <TouchableOpacity
-            style={[styles.crossListingChip, linkedAuctionLive && styles.crossListingChipLive]}
+            style={[ts.crossListingChip, linkedAuctionLive && ts.crossListingChipLive]}
             onPress={onOpenLinkedAuction}
             activeOpacity={0.7}
             accessibilityLabel="Open linked auction"
           >
-            <Ionicons name="gavel" size={11} color={linkedAuctionLive ? Colors.accentGreen : Colors.textMuted} />
-            <Text style={[styles.crossListingChipText, linkedAuctionLive && { color: Colors.accentGreen }]}>
+            <Ionicons name="gavel" size={11} color={tc(linkedAuctionLive ? Colors.accentGreen : Colors.textMuted)} />
+            <Text style={[ts.crossListingChipText, linkedAuctionLive && { color: tc(Colors.accentGreen) }]}>
               {linkedAuctionLive ? 'Linked auction — LIVE' : `Linked auction${linkedAuctionStatus ? ` — ${linkedAuctionStatus}` : ''}`}
             </Text>
-            <Ionicons name="chevron-forward" size={12} color={Colors.iconMuted} />
+            <Ionicons name="chevron-forward" size={12} color={tc(Colors.iconMuted)} />
           </TouchableOpacity>
         ) : canPutOnAuction && onPutOnAuction ? (
           <TouchableOpacity
-            style={styles.putOnAuctionInline}
+            style={ts.putOnAuctionInline}
             onPress={onPutOnAuction}
             activeOpacity={0.7}
             accessibilityLabel="Also list this vehicle on auction"
           >
-            <Ionicons name="gavel" size={11} color={Colors.accent} />
-            <Text style={styles.putOnAuctionInlineText}>Also list on auction</Text>
+            <Ionicons name="gavel" size={11} color={tc(Colors.accent)} />
+            <Text style={ts.putOnAuctionInlineText}>Also list on auction</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -113,8 +118,9 @@ const ListingRow: React.FC<{
 });
 
 export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const { openDrawer } = useDrawer();
   const [listings, setListings] = useState<any[]>([]);
@@ -246,24 +252,24 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
   const renderTabBar = () => (
      <View style={[ts.mockTabBar, { paddingBottom: insets.bottom || 12 }]}>
          <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Home')} activeOpacity={0.8}>
-            <Ionicons name="home-outline" size={24} color={Colors.textSecondary} />
+            <Ionicons name="home-outline" size={24} color={tc(Colors.textSecondary)} />
             <Text style={ts.tabLabel}>HOME</Text>
          </TouchableOpacity>
          <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Search')} activeOpacity={0.8}>
-            <Ionicons name="search-outline" size={24} color={Colors.textSecondary} />
+            <Ionicons name="search-outline" size={24} color={tc(Colors.textSecondary)} />
             <Text style={ts.tabLabel}>SEARCH</Text>
          </TouchableOpacity>
          <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Live')} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="gavel" size={24} color={Colors.textSecondary} />
+            <MaterialCommunityIcons name="gavel" size={24} color={tc(Colors.textSecondary)} />
             <Text style={ts.tabLabel}>LIVE</Text>
          </TouchableOpacity>
          <TouchableOpacity style={ts.tabItem} onPress={() => navTab('Saved')} activeOpacity={0.8}>
-            <Ionicons name="heart-outline" size={24} color={Colors.textSecondary} />
+            <Ionicons name="heart-outline" size={24} color={tc(Colors.textSecondary)} />
             <Text style={ts.tabLabel}>SAVED</Text>
          </TouchableOpacity>
          <TouchableOpacity style={ts.tabItem} onPress={openDrawer} activeOpacity={0.8}>
             <Ionicons name="person" size={24} color={Colors.accent} />
-            <Text style={[ts.tabLabel, { color: Colors.accent }]}>PROFILE</Text>
+            <Text style={[ts.tabLabel, { color: tc(Colors.accent) }]}>PROFILE</Text>
          </TouchableOpacity>
       </View>
   );
@@ -304,11 +310,11 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                 <Text style={ts.headerSub}>MY LISTINGS</Text>
                 <Text style={ts.headerTitle}>Selling</Text>
               </View>
-              <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+              <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={tc(Colors.white)} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
             </View>
 
             <View style={ts.emptyState}>
-              <Ionicons name="car-outline" size={56} color={Colors.textMuted} style={{ marginBottom: 16 }} />
+              <Ionicons name="car-outline" size={56} color={tc(Colors.textMuted)} style={{ marginBottom: 16 }} />
               <Text style={ts.emptyTitle}>No listings yet</Text>
               <Text style={ts.emptySubtitle}>Sell your car on Carmazium and reach thousands of verified buyers.</Text>
               <TouchableOpacity
@@ -347,19 +353,19 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                   <Text style={ts.headerSub}>MY LISTINGS</Text>
                   <Text style={ts.headerTitle}>Selling</Text>
                 </View>
-                <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={Colors.white} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
+                <IconButton style={ts.notifBtn} icon={<Ionicons name="notifications-outline" size={20} color={tc(Colors.white)} />} onPress={() => navigation?.navigate('Notifications')} accessibilityLabel="Notifications" />
               </View>
 
               {/* Stats KPI bar from real API */}
               <View style={ts.statsRow}>
                 <View style={ts.statCard}>
-                  <Ionicons name="car-outline" size={18} color={Colors.textSecondary} style={ts.statIcon} />
+                  <Ionicons name="car-outline" size={18} color={tc(Colors.textSecondary)} style={ts.statIcon} />
                   <Text style={ts.statValue}>{stats?.activeListings ?? listings.filter((l) => l.status === 'ACTIVE').length}</Text>
                   <Text style={ts.statLabel}>ACTIVE</Text>
                   <Text style={ts.statChange}>{listings.length} total</Text>
                 </View>
                 <View style={ts.statCard}>
-                  <Ionicons name="eye-outline" size={18} color={Colors.textSecondary} style={ts.statIcon} />
+                  <Ionicons name="eye-outline" size={18} color={tc(Colors.textSecondary)} style={ts.statIcon} />
                   <Text style={ts.statValue}>{stats?.totalViews ?? primaryListing?.viewCount ?? 0}</Text>
                   <Text style={ts.statLabel}>VIEWS</Text>
                   <Text style={ts.statChange}>all listings</Text>
@@ -371,7 +377,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   />
-                  <Ionicons name="pricetag-outline" size={18} color={Colors.warning} style={ts.statIcon} />
+                  <Ionicons name="pricetag-outline" size={18} color={tc(Colors.warning)} style={ts.statIcon} />
                   <Text style={ts.statValue}>{stats?.offersReceived ?? 0}</Text>
                   <Text style={ts.statLabelOffers}>OFFERS</Text>
                   <Text style={ts.statChangeOffers}>tap to view</Text>
@@ -398,8 +404,10 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
                   />
                   <View style={ts.livePill}>
                     <View style={ts.liveDot} />
+                    {/* theme-audit-ignore: pill sits on the transparent (left) end of the banner gradient */}
                     <Text style={ts.liveText}>LIVE</Text>
                   </View>
+                  {/* theme-audit-ignore: dark translucent button on the red end of the live banner */}
                   <IconButton style={ts.editBtn} icon={<Ionicons name="create-outline" size={14} color={Colors.white} />} onPress={() => navigation?.navigate('SellCarFlow', { listingId: listings[0]?.id })} accessibilityLabel="Edit listing" />
                 </View>
               )}
@@ -407,22 +415,22 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
               {/* Action Grid */}
               <View style={ts.actionGrid}>
                 <TouchableOpacity style={ts.actionCard} onPress={handleBoostListing} disabled={actionBusy} activeOpacity={0.8}>
-                  <Ionicons name="flash-outline" size={20} color={Colors.warning} style={ts.actionIcon} />
+                  <Ionicons name="flash-outline" size={20} color={tc(Colors.warning)} style={ts.actionIcon} />
                   <Text style={ts.actionTitle}>Boost listing</Text>
                   <Text style={ts.actionSub}>Get more views</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ts.actionCard} onPress={handleShareListing} activeOpacity={0.8}>
-                  <Ionicons name="share-social-outline" size={20} color={Colors.lightTeal_38bdf8} style={ts.actionIcon} />
+                  <Ionicons name="share-social-outline" size={20} color={tc(Colors.lightTeal_38bdf8)} style={ts.actionIcon} />
                   <Text style={ts.actionTitle}>Share listing</Text>
                   <Text style={ts.actionSub}>Share with friends</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ts.actionCard} onPress={handleViewInsights} disabled={actionBusy} activeOpacity={0.8}>
-                  <Ionicons name="bar-chart-outline" size={20} color={Colors.palePurple_a78bfa} style={ts.actionIcon} />
+                  <Ionicons name="bar-chart-outline" size={20} color={tc(Colors.palePurple_a78bfa)} style={ts.actionIcon} />
                   <Text style={ts.actionTitle}>View insights</Text>
                   <Text style={ts.actionSub}>Views & performance</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ts.actionCard} onPress={() => navigation?.navigate('SellCarFlow')} activeOpacity={0.8}>
-                  <Ionicons name="add-circle-outline" size={20} color={Colors.accentGreen} style={ts.actionIcon} />
+                  <Ionicons name="add-circle-outline" size={20} color={tc(Colors.accentGreen)} style={ts.actionIcon} />
                   <Text style={ts.actionTitle}>New listing</Text>
                   <Text style={ts.actionSub}>List another car</Text>
                 </TouchableOpacity>
@@ -438,7 +446,7 @@ export const MyListingDashboardScreen: React.FC<{ navigation?: any }> = ({ navig
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -803,3 +811,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: LIGHT_PALETTE.muted },
+  statChange: { color: lightReadableText.success },
+  statChangeOffers: { color: lightReadableText.warning },
+  actionSub: { color: LIGHT_PALETTE.secondary },
+  liveText: { color: lightStrongText.success },
+  toastText: { color: styles.toastText.color },
+  listingImagePlaceholder: { backgroundColor: LIGHT_PALETTE.elevated }, // keep
+});
+
+// Light styles for the memoised ListingCard row, built once.
+const listingLightStyles = mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles);

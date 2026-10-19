@@ -17,7 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, lightReadableText, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -33,6 +33,7 @@ import { apiClient } from '../../lib/apiClient';
 import { haptics } from '../../lib/haptics';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
 // The backend DeliveryRequest payload does NOT include a listing summary —
 // only listingId. We hydrate title/image by fetching each linked listing
 // once and caching by id so a refresh doesn't refetch every row. Typical
@@ -81,8 +82,9 @@ const STATUS_CFG: Record<
 export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<DeliveryRequest[]>([]);
   const [summaries, setSummaries] = useState<Record<string, ListingSummary>>({});
@@ -240,7 +242,7 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
         </View>
 
         <View style={ts.addressBlock}>
-          <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
+          <Ionicons name="location-outline" size={13} color={tc(Colors.textMuted)} />
           <Text style={ts.addressText} numberOfLines={2}>
             {[addr?.street, addr?.city, addr?.postcode].filter(Boolean).join(', ')}
           </Text>
@@ -262,9 +264,9 @@ export const BuyerDeliveryRequestsScreen: React.FC<{ navigation?: any }> = ({
                 disabled={isActioning}
               >
                 {isActioning ? (
-                  <ActivityIndicator size="small" color={Colors.paleRed_f87171} />
+                  <ActivityIndicator size="small" color={tc(Colors.paleRed_f87171)} />
                 ) : (
-                  <Text style={[ts.actionBtnText, { color: Colors.paleRed_f87171 }]}>
+                  <Text style={[ts.actionBtnText, { color: tc(Colors.paleRed_f87171) }]}>
                     Cancel request
                   </Text>
                 )}
@@ -492,7 +494,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(248,113,113,0.08)',
   },
   actionBtnPrimary: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   actionBtnText: {
@@ -500,4 +502,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  actionBtnPrimary: { backgroundColor: lightReadableText.success },
+  backBtn: { backgroundColor: LIGHT_PALETTE.card },
 });

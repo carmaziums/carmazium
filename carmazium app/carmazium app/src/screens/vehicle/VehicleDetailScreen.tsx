@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  StatusBar,
   Alert,
   Share,
   Modal,
@@ -34,7 +33,7 @@ import { formatPrice, formatMileage, CarListing } from '../../data/listings';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize, TextPresets } from '../../constants/typography';
 import { Elevation, Radius } from '../../constants/spacing';
 import { useWatchlistStore } from '../../store/watchlistStore';
@@ -59,6 +58,8 @@ import { EnquireModal } from '../../components/listing/EnquireModal';
 import { useLocation } from '../../context/LocationContext';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type Props = NativeStackScreenProps<MainStackParamList, 'VehicleDetail'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -75,7 +76,6 @@ function getVideoPlatformLabel(url: string): string {
   if (/(?:^|\/\/)x\.com|twitter\.com/i.test(url)) return 'X';
   return 'Video';
 }
-
 
 // ─── Specification model ──────────────────────────────────────────────────────
 // Data-driven so rows with no value disappear rather than printing "Not
@@ -163,10 +163,11 @@ const SPEC_GROUPS: { title: string; rows: (l: CarListing) => SpecRow[] }[] = [
 ];
 
 export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { tc, tbg } = useAppearance();
   const { listing } = route.params;
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightVehicleDetailStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightVehicleDetailStyles), lightContrastStyles) : styles;
   const [activeImage, setActiveImage] = useState(0);
   const { isSaved, save, unsave } = useWatchlistStore();
   const { refreshRooms } = useChat();
@@ -790,7 +791,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
 
       {/* Main Scrollable Content */}
       <ScrollView
@@ -890,7 +891,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               listing has no location, same pattern as GradeChip's null case */}
           {!!listing.location && (
             <View style={ts.locationRow}>
-              <Ionicons name="location-outline" size={14} color={Colors.textFaint} />
+              <Ionicons name="location-outline" size={14} color={tc(Colors.textFaint)} />
               <Text style={ts.locationText}>{listing.location}</Text>
             </View>
           )}
@@ -914,9 +915,9 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons
                   name={isSold ? 'close-circle' : 'alert-circle-outline'}
                   size={18}
-                  color={isSold ? Colors.error : Colors.warning}
+                  color={tc(isSold ? Colors.error : Colors.warning)}
                 />
-                <Text style={[ts.statusBannerText, { color: isSold ? Colors.error : Colors.warning }]}>
+                <Text style={[ts.statusBannerText, { color: tc(isSold ? Colors.errorLight : Colors.warning) }]}>
                   {label}
                 </Text>
               </View>
@@ -1001,7 +1002,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={() => Linking.openURL(listing.importedFromUrl!)}
               activeOpacity={0.7}
             >
-              <Ionicons name="globe-outline" size={11} color={Colors.textMuted} />
+              <Ionicons name="globe-outline" size={11} color={tc(Colors.textMuted)} />
               <Text style={ts.importedBadgeText}>
                 {`See on ${
                   listing.importedSource === 'AUTOTRADER' ? 'AutoTrader' :
@@ -1037,12 +1038,12 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           <View style={ts.buyerJourneyNote}>
-            <Ionicons name="information-circle-outline" size={18} color={Colors.infoBlueLight} />
+            <Ionicons name="information-circle-outline" size={18} color={tc(Colors.infoBlueLight)} />
             <Text style={ts.buyerJourneyText}>Contact the seller or make a private offer. Once agreed, arrange inspection or collection and pay the seller directly — CarMazium does not take vehicle sale payments.</Text>
           </View>
           {listing.ulezCompliant === false && (
             <View style={ts.ulezWarning}>
-              <Ionicons name="alert-circle-outline" size={17} color={Colors.warning} />
+              <Ionicons name="alert-circle-outline" size={17} color={tc(Colors.warning)} />
               <Text style={ts.ulezWarningText}>Seller data indicates this car is not ULEZ compliant. Check the rules for your area.</Text>
             </View>
           )}
@@ -1055,7 +1056,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               onPress={handleOpenLinkedAuction}
               disabled={openingLinkedAuction}
             >
-              <Ionicons name="hammer-outline" size={14} color={Colors.warning} />
+              <Ionicons name="hammer-outline" size={14} color={tc(Colors.warning)} />
               <Text style={ts.linkedAuctionText}>
                 {'Also in Live Auction — ends '}
                 {new Date(listing.linkedListing.auction.endTime).toLocaleString('en-GB', {
@@ -1072,7 +1073,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {listing.description ? (
               <Text style={ts.aboutText}>{listing.description}</Text>
             ) : (
-              <Text style={[ts.aboutText, { color: Colors.textMuted, fontStyle: 'italic' }]}>
+              <Text style={[ts.aboutText, { color: tc(Colors.textMuted), fontStyle: 'italic' }]}>
                 No description provided
               </Text>
             )}
@@ -1097,14 +1098,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Ionicons
                   name={featuresExpanded ? 'chevron-up' : 'chevron-down'}
                   size={18}
-                  color={Colors.textMuted}
+                  color={tc(Colors.textMuted)}
                 />
               </TouchableOpacity>
               {featuresExpanded && (
                 <View style={ts.featuresGrid}>
                   {listing.features.map((feature, idx) => (
                     <View key={`${feature}-${idx}`} style={ts.featureChip}>
-                      <Ionicons name="checkmark-circle" size={12} color={Colors.accentGreen} />
+                      <Ionicons name="checkmark-circle" size={12} color={tc(Colors.accentGreen)} />
                       <Text style={ts.featureChipText}>{feature}</Text>
                     </View>
                   ))}
@@ -1210,19 +1211,19 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* The search card is incomplete by design. A failed full fetch
               must not quietly masquerade as "no MOT data exists". */}
           {vehicleFactsState === 'loading' && (
-            <Text style={{ color: Colors.textSecondary, marginVertical: 10, fontSize: 12 }}>
+            <Text style={{ color: tc(Colors.textSecondary), marginVertical: 10, fontSize: 12 }}>
               Loading saved vehicle specifications and MOT history…
             </Text>
           )}
           {vehicleFactsState === 'failed' && (
             <View style={{ marginVertical: 12, padding: 13, borderWidth: 1, borderColor: Colors.warning, borderRadius: 11, gap: 9 }}>
-              <Text style={{ color: Colors.textPrimary, fontSize: 12 }}>
+              <Text style={{ color: tc(Colors.textPrimary), fontSize: 12 }}>
                 Could not retrieve the complete vehicle information. The basic listing is shown below; MOT and DVLA records may be missing.
               </Text>
               <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retry loading full vehicle information"
-                style={{ paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: Colors.bgElevated }}
+                style={{ paddingVertical: 10, alignItems: 'center', borderRadius: 8, backgroundColor: tbg(Colors.bgElevated) }}
                 onPress={() => setVehicleFactsAttempt(previous => previous + 1)}>
-                <Text style={{ fontSize: 13, color: Colors.infoBlue, fontFamily: FontFamily.bold }}>Retry full vehicle details</Text>
+                <Text style={{ fontSize: 13, color: tc(Colors.infoLight), fontFamily: FontFamily.bold }}>Retry full vehicle details</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1321,7 +1322,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       <Ionicons
                         name={hpiData.isClear ? 'shield-checkmark' : 'warning'}
                         size={16}
-                        color={hpiData.isClear ? Colors.success : Colors.warning}
+                        color={tc(hpiData.isClear ? Colors.success : Colors.warning)}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -1331,7 +1332,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
@@ -1341,16 +1342,16 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 >
                   <View style={ts.hpiReportLeft}>
                     <View style={[ts.hpiIconBg, { backgroundColor: Colors.warningAlpha08 }]}>
-                      <Ionicons name="time-outline" size={16} color={Colors.warning} />
+                      <Ionicons name="time-outline" size={16} color={tc(Colors.warning)} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={ts.hpiReportTitle}>Vehicle History Report</Text>
-                      <Text style={[ts.hpiReportSub, { color: Colors.warning }]}>
+                      <Text style={[ts.hpiReportSub, { color: tc(Colors.warning) }]}>
                         Requested — being prepared by our team
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
               )
             ) : (
@@ -1370,8 +1371,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   </View>
                 </View>
                 {hpiLoading
-                  ? <ActivityIndicator size="small" color={Colors.textMuted} />
-                  : <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  ? <ActivityIndicator size="small" color={tc(Colors.textMuted)} />
+                  : <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 }
               </TouchableOpacity>
             )}
@@ -1388,14 +1389,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <BuyerDamageViewer records={damageRecords} isLoading={damageLoading} bodyTypeLabel={listing.category} hasError={damageError} onRetry={fetchDamageRecords} />
             {listing.mechanicalIssues ? (
               <View style={{ marginTop: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,158,11,0.28)', backgroundColor: 'rgba(245,158,11,0.07)' }}>
-                <Text style={{ color: Colors.warning, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 20 }}>{listing.mechanicalIssues}</Text>
+                <Text style={{ color: tc(Colors.warning), fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN MECHANICAL PROBLEMS</Text>
+                <Text style={{ color: tc(Colors.textSecondary), fontSize: 13, lineHeight: 20 }}>{listing.mechanicalIssues}</Text>
               </View>
             ) : null}
             {listing.electricalIssues ? (
               <View style={{ marginTop: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.28)', backgroundColor: 'rgba(59,130,246,0.07)' }}>
-                <Text style={{ color: Colors.infoBlueLight, fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN ELECTRICAL PROBLEMS</Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 20 }}>{listing.electricalIssues}</Text>
+                <Text style={{ color: tc(Colors.infoBlueLight), fontFamily: FontFamily.bold, fontSize: 11, marginBottom: 6 }}>KNOWN ELECTRICAL PROBLEMS</Text>
+                <Text style={{ color: tc(Colors.textSecondary), fontSize: 13, lineHeight: 20 }}>{listing.electricalIssues}</Text>
               </View>
             ) : null}
           </View>
@@ -1459,7 +1460,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   }}
                   accessibilityLabel={`Call ${sellerPhone}`}
                 >
-                  <Ionicons name="call" size={15} color={Colors.success} />
+                  <Ionicons name="call" size={15} color={tc(Colors.success)} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -1476,7 +1477,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
               </TouchableOpacity>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textFaint} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={18} color={tc(Colors.textFaint)} accessibilityElementsHidden importantForAccessibility="no" />
             </TouchableOpacity>
 
             {/* Dealer detail — the backend returns the full dealerProfile on
@@ -1494,7 +1495,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View style={ts.dealerMetaRow}>
                   {!!listing.seller?.memberSince && (
                     <View style={ts.dealerMetaItem}>
-                      <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
+                      <Ionicons name="calendar-outline" size={12} color={tc(Colors.textMuted)} />
                       <Text style={ts.dealerMetaText}>
                         Member since{' '}
                         {new Date(listing.seller.memberSince).toLocaleDateString('en-GB', {
@@ -1506,7 +1507,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   )}
                   {!!listing.seller?.businessAddress && (
                     <View style={ts.dealerMetaItem}>
-                      <Ionicons name="business-outline" size={12} color={Colors.textMuted} />
+                      <Ionicons name="business-outline" size={12} color={tc(Colors.textMuted)} />
                       <Text style={ts.dealerMetaText} numberOfLines={1}>
                         {listing.seller.businessAddress}
                       </Text>
@@ -1582,7 +1583,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                             key={n}
                             name={n <= r.rating ? 'star' : 'star-outline'}
                             size={11}
-                            color={n <= r.rating ? Colors.warning : Colors.textDisabled}
+                            color={tc(n <= r.rating ? Colors.warning : Colors.textDisabled)}
                           />
                         ))}
                       </View>
@@ -1620,7 +1621,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Ionicons
               name={financeExpanded ? 'chevron-up' : 'chevron-down'}
               size={16}
-              color={Colors.textMuted}
+              color={tc(Colors.textMuted)}
               style={{ marginLeft: 8 }}
             />
           </TouchableOpacity>
@@ -1629,7 +1630,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={ts.financeCalcBody}>
               {/* Coming Soon overlay message */}
               <View style={ts.financeComingSoonBox}>
-                <Ionicons name="time-outline" size={20} color={Colors.textMuted} />
+                <Ionicons name="time-outline" size={20} color={tc(Colors.textMuted)} />
                 <Text style={ts.financeComingSoonLabel}>Finance Calculator Coming Soon</Text>
                 <Text style={ts.financeComingSoonSub}>
                   Finance options will be available here. Contact the seller directly to discuss finance.
@@ -1687,11 +1688,11 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Ionicons
               name={hpiData && isReportReady(hpiData) && hpiData.isClear ? 'shield-checkmark' : 'information-circle-outline'}
               size={16}
-              color={hpiData && isReportReady(hpiData) && hpiData.isClear ? Colors.midGreen_00d28e : Colors.textMuted}
+              color={tc(hpiData && isReportReady(hpiData) && hpiData.isClear ? Colors.midGreen_00d28e : Colors.textMuted)}
             />
             <Text style={[
               ts.protectionText,
-              !(hpiData && isReportReady(hpiData) && hpiData.isClear) && { color: Colors.textSecondary },
+              !(hpiData && isReportReady(hpiData) && hpiData.isClear) && { color: tc(Colors.textSecondary) },
             ]}>
               {hpiData && isReportReady(hpiData)
                 ? (hpiData.isClear ? 'Vehicle history report clear' : 'Vehicle history report available — review before purchase')
@@ -1707,7 +1708,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Header row */}
               <View style={ts.deliveryHeader}>
                 <View style={ts.deliveryIconWrap}>
-                  <Ionicons name="car-outline" size={16} color={Colors.accentGreen} />
+                  <Ionicons name="car-outline" size={16} color={tc(Colors.accentGreen)} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={ts.deliveryTitle}>Delivery available</Text>
@@ -1719,7 +1720,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
                 <View style={ts.deliveryFeeWrap}>
                   {deliveryQuoteLoading ? (
-                    <ActivityIndicator size="small" color={Colors.accentGreen} />
+                    <ActivityIndicator size="small" color={tc(Colors.accentGreen)} />
                   ) : deliveryFee != null ? (
                     <>
                       <Text style={ts.deliveryFeeLabel}>ESTIMATE</Text>
@@ -1745,14 +1746,14 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </Text>
               ) : (
                 <View style={ts.postcodeEntryRow}>
-                  <Ionicons name="location-outline" size={13} color={Colors.infoBlueLight} />
+                  <Ionicons name="location-outline" size={13} color={tc(Colors.infoBlueLight)} />
                   <TextInput
                     style={ts.postcodeInput}
                     value={postcodeDraft}
                     onChangeText={setPostcodeDraft}
                     autoCapitalize="characters"
                     placeholder="Enter your postcode"
-                    placeholderTextColor={Colors.iconMuted}
+                    placeholderTextColor={tc(Colors.iconMuted)}
                     editable={!postcodeSaving}
                     returnKeyType="done"
                     onSubmitEditing={async () => {
@@ -1783,7 +1784,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
                     {postcodeSaving ? (
-                      <ActivityIndicator size="small" color={Colors.infoBlueLight} />
+                      <ActivityIndicator size="small" color={tc(Colors.infoBlueLight)} />
                     ) : (
                       <Text style={ts.postcodeSaveText}>Save</Text>
                     )}
@@ -1794,7 +1795,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {/* Outside-radius warning */}
               {outsideRadius && (
                 <View style={ts.deliveryOutsideRadius}>
-                  <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_f87171} />
+                  <Ionicons name="alert-circle-outline" size={13} color={tc(Colors.paleRed_f87171)} />
                   <Text style={ts.deliveryOutsideRadiusText}>
                     Outside your delivery radius ({deliveryDistanceMiles} mi &gt; {listing.deliveryMaxMiles} mi)
                   </Text>
@@ -1814,7 +1815,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
               {deliverySubmitted && (
                 <View style={ts.deliverySuccessRow}>
-                  <Ionicons name="checkmark-circle" size={14} color={Colors.accentGreen} />
+                  <Ionicons name="checkmark-circle" size={14} color={tc(Colors.accentGreen)} />
                   <Text style={ts.deliverySuccessText}>Delivery request sent — seller will confirm soon.</Text>
                 </View>
               )}
@@ -1846,7 +1847,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryStreet}
           onChangeText={v => { setDeliveryStreet(v); setDeliveryError(null); }}
           placeholder="e.g. 42 Park Lane"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           autoCapitalize="words"
         />
 
@@ -1857,7 +1858,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryCity}
           onChangeText={v => { setDeliveryCity(v); setDeliveryError(null); }}
           placeholder="e.g. London"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           autoCapitalize="words"
         />
 
@@ -1868,7 +1869,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryPostcode}
           onChangeText={v => { setDeliveryPostcode(v.toUpperCase()); setDeliveryError(null); }}
           placeholder="e.g. SW1A 1AA"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           autoCapitalize="characters"
         />
 
@@ -1879,7 +1880,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           value={deliveryNotes}
           onChangeText={setDeliveryNotes}
           placeholder="e.g. Leave at reception, call on arrival…"
-          placeholderTextColor={Colors.borderMuted}
+          placeholderTextColor={tc(Colors.inputPlaceholder)}
           multiline
         />
 
@@ -1965,7 +1966,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           ) : (
             <View style={[ts.makeOfferButton, ts.makeOfferButtonDisabled]}>
-              <Text style={ts.makeOfferText}>{disabledLabel}</Text>
+              <Text style={[ts.makeOfferText, ts.makeOfferTextDisabled]}>{disabledLabel}</Text>
             </View>
           );
         })()}
@@ -2011,7 +2012,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     onBlur={handleOfferAmountBlur}
                     keyboardType="number-pad"
                     placeholder="0"
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={tc(Colors.textSecondary)}
                     selectTextOnFocus
                     accessibilityLabel="Your offer amount"
                   />
@@ -2045,7 +2046,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 value={offerMessage}
                 onChangeText={setOfferMessage}
                 placeholder="e.g. I can collect this weekend."
-                placeholderTextColor={Colors.textSecondary}
+                placeholderTextColor={tc(Colors.textSecondary)}
                 multiline
                 maxLength={500}
                 textAlignVertical="top"
@@ -2128,7 +2129,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View>
             <Text style={ts.modalTitle}>HPI Check Report</Text>
             {hpiData && (
-              <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
+              <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: tc(Colors.textMuted), marginTop: 2 }}>
                 {[
                   hpiData.vrm,
                   hpiData.format === 'LEGACY'
@@ -2138,15 +2139,15 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </Text>
             )}
           </View>
-          <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
+          <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={tc(Colors.white)} />} onPress={() => setHpiModalVisible(false)} accessibilityLabel="Close" />
         </View>
 
         {hpiData && !isReportReady(hpiData) && (
           /* Paid for, not yet produced. Reachable on a perfectly normal live
              listing now that publishing doesn't wait for the report. */
           <View style={{ alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 }}>
-            <Ionicons name="time-outline" size={40} color={Colors.warning} />
-            <Text style={[ts.hpiOverallText, { color: Colors.white, marginTop: 14, textAlign: 'center' }]}>
+            <Ionicons name="time-outline" size={40} color={tc(Colors.warning)} />
+            <Text style={[ts.hpiOverallText, { color: tc(Colors.white), marginTop: 14, textAlign: 'center' }]}>
               Report being prepared
             </Text>
             <Text style={[ts.hpiCheckDetail, { textAlign: 'center', marginTop: 8, lineHeight: 18 }]}>
@@ -2162,8 +2163,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
             {/* Overall status */}
             <View style={[ts.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
-              <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
-              <Text style={[ts.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
+              <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={tc(hpiData.isClear ? Colors.success : Colors.error)} />
+              <Text style={[ts.hpiOverallText, { color: tc(hpiData.isClear ? Colors.success : Colors.errorLight) }]}>
                 {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
               </Text>
             </View>
@@ -2184,7 +2185,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Ionicons
                     name={check.passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
-                    color={check.passed ? Colors.success : Colors.error}
+                    color={tc(check.passed ? Colors.success : Colors.error)}
                   />
                   <View style={ts.hpiCheckText}>
                     <Text style={ts.hpiCheckLabel}>{labels[key] || key}</Text>
@@ -2205,7 +2206,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Ionicons
                     name={passed ? 'checkmark-circle' : 'close-circle'}
                     size={18}
-                    color={passed ? Colors.success : Colors.error}
+                    color={tc(passed ? Colors.success : Colors.error)}
                   />
                   <View style={ts.hpiCheckText}>
                     <Text style={ts.hpiCheckLabel}>{def.label}</Text>
@@ -2272,8 +2273,8 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 </View>
               </View>
               <View style={ts.chatHeaderRight}>
-                <IconButton style={ts.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={Colors.textFaint} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
-                <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={Colors.white} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
+                <IconButton style={ts.chatResetBtn} icon={<Ionicons name="refresh" size={16} color={tc(Colors.textFaint)} />} onPress={resetChat} accessibilityLabel="Reset conversation" />
+                <IconButton style={ts.modalCloseBtn} icon={<Ionicons name="close" size={20} color={tc(Colors.white)} />} onPress={() => setChatVisible(false)} accessibilityLabel="Close" />
               </View>
             </View>
 
@@ -2611,7 +2612,7 @@ const styles = StyleSheet.create({
   verifiedText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.size8,
-    color: Colors.infoBlue,
+    color: Colors.infoLight,
     letterSpacing: 0.5,
   },
   detailBannerChip: {
@@ -3216,7 +3217,7 @@ const styles = StyleSheet.create({
     gap: 7,
     height: 42,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.accentGreen,
+    backgroundColor: Colors.successSolid,
   },
   deliveryRequestBtnText: {
     fontFamily: FontFamily.bold,
@@ -3320,7 +3321,7 @@ const styles = StyleSheet.create({
   deliveryModalSubmitBtn: {
     height: 50,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.accentGreen,
+    backgroundColor: Colors.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
@@ -3370,6 +3371,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.glassBorder,
   },
+  // Dark mode keeps the white label on the glass pill; light mode overrides.
+  makeOfferTextDisabled: {},
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3581,7 +3584,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -3755,7 +3758,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8,
   },
   hpiViewFullText: {
-    fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.infoBlue,
+    fontFamily: FontFamily.bold, fontSize: FontSize.size12, color: Colors.infoLight,
   },
 
   // Finance calculator body
@@ -3882,4 +3885,51 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  detailBannerText: { color: lightReadableText.info },
+  importedBadgeText: { color: LIGHT_PALETTE.muted },
+  ulezWarningText: { color: lightReadableText.warning },
+  linkedAuctionText: { color: lightReadableText.warning },
+  linkedAuctionCta: { color: lightReadableText.warning },
+  warnText: { color: lightReadableText.warning },
+  dealerWebsiteText: { color: lightReadableText.accent },
+  reviewsResponse: { color: LIGHT_PALETTE.muted },
+  comingSoonText: { color: lightReadableText.warning },
+  deliveryDistanceLine: { color: LIGHT_PALETTE.secondary },
+  postcodeSaveText: { color: lightReadableText.info },
+  deliveryOutsideRadiusText: { color: lightReadableText.error },
+  deliverySuccessText: { color: lightReadableText.success },
+  modalSheetSubtitle: { color: LIGHT_PALETTE.muted },
+  deliveryInputLabel: { color: LIGHT_PALETTE.muted },
+  makeOfferText: { color: Colors.white }, // on a solid brand/semantic fill in both modes
+  offerRangeHint: { color: LIGHT_PALETTE.muted },
+  offerLimitHint: { color: LIGHT_PALETTE.muted },
+  offerMessageCount: { color: LIGHT_PALETTE.muted },
+  boldText: { color: LIGHT_PALETTE.text },
+  hpiCheckLabel: { color: LIGHT_PALETTE.text },
+  hpiViewFullText: { color: lightReadableText.info },
+  chatDealerName: { color: LIGHT_PALETTE.text },
+  chatOnlineStatus: { color: lightReadableText.success },
+  verifiedBadge: { backgroundColor: LIGHT_PALETTE.card },
+  videoLinkText: { color: lightReadableText.accent }, // keep
+  greenText: { color: lightReadableText.success },
+  hpiButton: { backgroundColor: LIGHT_PALETTE.card },
+  financeCalcBody: { backgroundColor: LIGHT_PALETTE.card },
+  deliveryRequestBtn: { backgroundColor: lightReadableText.success },
+  deliveryInput: { backgroundColor: LIGHT_PALETTE.elevated, color: LIGHT_PALETTE.text },
+  deliveryModalSubmitBtn: { backgroundColor: lightReadableText.success },
+  successIconWrapper: { backgroundColor: lightReadableText.success },
+  verifiedText: { color: lightReadableText.info },
+  financeComingSoonLabel: { color: LIGHT_PALETTE.secondary },
+  financeComingSoonSub: { color: LIGHT_PALETTE.muted },
+  depositStepText: { color: LIGHT_PALETTE.secondary },
+  makeOfferButtonDisabled: { backgroundColor: LIGHT_PALETTE.elevated, borderColor: LIGHT_PALETTE.border }, // keep
+  makeOfferTextDisabled: { color: LIGHT_PALETTE.disabled }, // keep
+  videoLinkChip: { backgroundColor: LIGHT_PALETTE.card, borderColor: LIGHT_PALETTE.border }, // keep
 });

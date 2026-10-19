@@ -14,12 +14,13 @@ import { sendAiChatMessage, reportAiResponse, AiChatMessage, type AiReportReason
 import { navigationRef } from '../lib/navigationRef';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, themedColor } from '../theme/appearancePalette';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { IconButton } from './IconButton';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
 import { getBottomTabBarHeight } from '../lib/nativeLayoutParity';
+import { useAppearance } from '../theme/useAppearance';
 
 // Bundle the exact approved transparent mascot used by the website widget.
 // This avoids a network-dependent icon or any visual placeholder.
@@ -133,10 +134,13 @@ class ChatErrorBoundary extends React.Component<
   }
   render() {
     if (this.state.hasError) {
+      // Class component: read the appearance directly. The chat panel above it
+      // re-renders on a mode change, which re-renders this fallback.
+      const isLight = useAppearanceStore.getState().mode === 'light';
       return (
         <View style={styles.errorFallback}>
-          <Ionicons name="alert-circle-outline" size={28} color={Colors.accent} />
-          <Text style={styles.errorFallbackText}>Something went wrong with chat.</Text>
+          <Ionicons name="alert-circle-outline" size={28} color={themedColor(isLight ? 'light' : 'dark', Colors.accent)} />
+          <Text style={[styles.errorFallbackText, isLight && { color: '#334155' }]}>Something went wrong with chat.</Text>
           <TouchableOpacity
             style={styles.errorFallbackBtn}
             activeOpacity={0.8}
@@ -159,6 +163,7 @@ class ChatErrorBoundary extends React.Component<
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export const GlobalAIChatBot: React.FC = () => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightAiChatStyles) : styles;
@@ -547,6 +552,8 @@ export const GlobalAIChatBot: React.FC = () => {
             <ChatErrorBoundary onReset={() => setIsOpen(false)}>
 
               {/* Header */}
+              {/* Navy header in both modes (website parity). Its title, status
+                  and icons therefore stay light-on-navy in light mode too. */}
               <LinearGradient colors={[Colors.bgBody, Colors.bgElevated]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={ts.chatHeader}>
                 <View style={ts.chatHeaderLeft}>
                   <View style={ts.chatAvatar}>
@@ -624,7 +631,7 @@ export const GlobalAIChatBot: React.FC = () => {
                         <Ionicons
                           name="flag-outline"
                           size={12}
-                          color={reportedResponseIds.has(msg.id) ? Colors.success : Colors.textMuted}
+                          color={tc(reportedResponseIds.has(msg.id) ? Colors.success : Colors.textMuted)}
                         />
                         <Text
                           style={[
@@ -698,7 +705,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 <TextInput
                   style={ts.chatInput}
                   placeholder="e.g. Show me BMWs under £20k..."
-                  placeholderTextColor={Colors.iconMuted}
+                  placeholderTextColor={tc(Colors.iconMuted)}
                   value={message}
                   onChangeText={setMessage}
                   onSubmitEditing={() => sendMessage(message)}
@@ -745,7 +752,7 @@ export const GlobalAIChatBot: React.FC = () => {
               </View>
               <IconButton
                 style={ts.aiReportClose}
-                icon={<Ionicons name="close" size={20} color={Colors.white} />}
+                icon={<Ionicons name="close" size={20} color={tc(Colors.white)} />}
                 onPress={closeAiReport}
                 disabled={aiReporting}
                 accessibilityLabel="Close AI report"
@@ -797,7 +804,7 @@ export const GlobalAIChatBot: React.FC = () => {
               value={aiReportDetails}
               onChangeText={(value) => setAiReportDetails(value.slice(0, 1000))}
               placeholder="What was wrong with this response?"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={tc(Colors.textMuted)}
               multiline
               maxLength={1000}
             />
@@ -865,7 +872,7 @@ export const GlobalAIChatBot: React.FC = () => {
                 accessibilityLabel="Permanently dismiss Mazium greeting"
                 hitSlop={10}
               >
-                <Ionicons name="close" size={14} color={Colors.textMuted} />
+                <Ionicons name="close" size={14} color={tc(Colors.textMuted)} />
               </TouchableOpacity>
               <View style={ts.greetingArrow} pointerEvents="none" />
             </Animated.View>
@@ -901,8 +908,14 @@ const lightAiChatStyles = StyleSheet.create({
   greetingOnlineDot: { borderColor: '#FFFFFF' },
   chatBox: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   chatHeader: { borderBottomColor: '#D5E1EC' },
-  chatTitle: { color: '#0F172A' },
-  chatStatus: { color: '#526177' },
+  // The header gradient is navy in both modes: the old navy title/status here
+  // made them invisible (1.2:1). Keep them light-on-navy.
+  chatTitle: { color: Colors.white },
+  chatStatus: { color: Colors.textMuted },
+  // Moved from the audit-generated contrast map so the light map stays single.
+  aiPrivacyFooterDot: { color: '#526177' },
+  aiReportReasonTextSelected: { color: '#0F172A' },
+  aiReportCancelText: { color: '#334155' },
   botAccentDot: { borderColor: '#FFFFFF' },
   chatScroll: { backgroundColor: '#EEF5FB' },
   msgAI: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },

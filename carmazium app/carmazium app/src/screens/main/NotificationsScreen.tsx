@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   FlatList,
-  StatusBar,
   ActivityIndicator,
   RefreshControl,
   Alert,
@@ -35,6 +34,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── helpers ──────────────────────────────────────────
 
 function groupByDate(
@@ -70,6 +71,7 @@ function groupByDate(
 export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
   navigation,
 }) => {
+  const { tc } = useAppearance();
   const accountRole = useAuthStore((s) => s.accountRole);
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightNotificationsScreenStyles) : styles;
@@ -218,7 +220,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
 
       {/* Subtle gradient */}
       <LinearGradient
@@ -233,7 +235,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
 
       {/* ── Header ── */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={18} color={tc(Colors.white)} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <View style={ts.headerCenter}>
           <Text style={ts.headerTitle}>Notifications</Text>
@@ -273,7 +275,7 @@ export const NotificationsScreen: React.FC<{ navigation?: any }> = ({
       {/* Preserve the last known notifications and offer retry after a network error. */}
       {!!loadError && (
         <View style={ts.retryBanner}>
-          <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
+          <Ionicons name="alert-circle-outline" size={20} color={tc(Colors.warning)} />
           <Text style={ts.retryText}>{loadError}</Text>
           <TouchableOpacity style={ts.retryButton} onPress={() => void load()} accessibilityRole="button" accessibilityLabel="Retry loading notifications">
             <Text style={ts.retryButtonText}>Retry</Text>

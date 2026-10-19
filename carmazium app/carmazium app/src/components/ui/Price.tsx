@@ -3,6 +3,8 @@ import { StyleSheet, Text, TextProps } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { FontFamily, Type } from '@/constants/typography';
+import { appearancePalette, mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { useAppearanceStore } from '../../store/appearanceStore';
 
 type PriceProps = Omit<TextProps, 'children'> & {
   value: number | string | null | undefined;
@@ -39,13 +41,15 @@ const formatValue = (value: number | string | null | undefined, fallback: string
  */
 export const Price = React.memo<PriceProps>(
   ({ value, size = Type.h2, currency = '£', muted = false, fallback = '—', style, ...rest }) => {
+    const mode = useAppearanceStore(state => state.mode);
+    const ts = mode === 'light' ? lightStyles : styles;
     const formatted = formatValue(value, fallback);
     const isFallback = formatted === fallback;
 
     return (
       <Text
         {...rest}
-        style={[styles.price, { fontSize: size }, muted && styles.muted, style]}
+        style={[ts.price, { fontSize: size }, muted && ts.muted, style]}
       >
         {isFallback ? formatted : `${currency}${formatted}`}
       </Text>
@@ -64,4 +68,10 @@ const styles = StyleSheet.create({
   muted: {
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+const lightStyles = mergeAppearanceStyles(styles, {
+  price: { color: LIGHT_PALETTE.text },
+  muted: { color: LIGHT_PALETTE.secondary },
 });

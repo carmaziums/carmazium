@@ -21,7 +21,7 @@ import { PrimaryCTA } from '../../components/PrimaryCTA';
 import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
@@ -30,6 +30,7 @@ import { StripeCheckoutModal } from '../../components/StripeCheckoutModal';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
 
 type BusinessType = 'PRIVATE_LIMITED' | 'SOLE_PROPRIETORSHIP';
 
@@ -69,7 +70,7 @@ const FormField: React.FC<FormFieldProps> = ({
         formFieldStyles.input,
         light && { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC', color: '#0F172A' },
         multiline ? formFieldStyles.inputMultiline : formFieldStyles.inputSingleLine,
-        error ? { borderColor: Colors.error } : null,
+        error ? { borderColor: light ? lightReadableText.error : Colors.error } : null,
       ]}
       value={value}
       onChangeText={onChange}
@@ -79,7 +80,7 @@ const FormField: React.FC<FormFieldProps> = ({
       multiline={multiline}
       autoCapitalize="none"
     />
-    {error ? <Text style={formFieldStyles.errorText}>{error}</Text> : null}
+    {error ? <Text style={[formFieldStyles.errorText, light && { color: lightReadableText.error }]}>{error}</Text> : null}
   </View>
   );
 };
@@ -118,7 +119,7 @@ const formFieldStyles = StyleSheet.create({
   errorText: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginTop: 6,
   },
 });
@@ -127,7 +128,7 @@ const formFieldStyles = StyleSheet.create({
 
 const SectionLabel: React.FC<{ title: string }> = ({ title }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerKYCScreenStyles), lightContrastStyles) : styles;
   return (
   <Text style={ts.sectionEyebrow}>{title}</Text>
   );
@@ -136,19 +137,20 @@ const SectionLabel: React.FC<{ title: string }> = ({ title }) => {
 // ─── Pending state view ───────────────────────────────────────────────────────
 
 const PendingView: React.FC<{ onEdit?: () => void }> = ({ onEdit }) => {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerKYCScreenStyles), lightContrastStyles) : styles;
   return (
   <View style={ts.pendingContainer}>
     <View style={ts.pendingIconCircle}>
-      <Ionicons name="shield-outline" size={36} color={Colors.warning} />
+      <Ionicons name="shield-outline" size={36} color={tc(Colors.warning)} />
     </View>
     <Text style={ts.pendingHeading}>Verification in progress</Text>
     <Text style={ts.pendingBody}>
       Your documents are under review. We'll notify you once verified.
     </Text>
     <View style={ts.pendingInfoRow}>
-      <Ionicons name="time-outline" size={14} color={Colors.warning} />
+      <Ionicons name="time-outline" size={14} color={tc(Colors.warning)} />
       <Text style={ts.pendingInfoText}>Typically reviewed within 2–3 business days</Text>
     </View>
     {onEdit ? (
@@ -186,9 +188,10 @@ const KycSkeleton: React.FC = () => {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ navigation, route }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerKYCScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerKYCScreenStyles), lightContrastStyles) : styles;
   const reverifyRequested = route?.params?.reverify === true;
   const [businessType, setBusinessType] = useState<BusinessType>(
     route?.params?.businessType === 'SOLE_PROPRIETORSHIP' ? 'SOLE_PROPRIETORSHIP' : 'PRIVATE_LIMITED',
@@ -694,7 +697,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
               <View style={[ts.infoCard, { borderColor: Colors.warningAlpha25 }]}>
                 <View style={ts.infoCardHeader}>
                   <View style={ts.infoIconWrap}>
-                    <Ionicons name="alert-circle-outline" size={20} color={Colors.warning} />
+                    <Ionicons name="alert-circle-outline" size={20} color={tc(Colors.warning)} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={ts.infoCardTitle}>Re-verify legal business type</Text>
@@ -712,7 +715,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
               <View style={[ts.infoCard, { borderColor: Colors.warningAlpha25 }]}>
                 <View style={ts.infoCardHeader}>
                   <View style={ts.infoIconWrap}>
-                    <Ionicons name="create-outline" size={20} color={Colors.warning} />
+                    <Ionicons name="create-outline" size={20} color={tc(Colors.warning)} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={ts.infoCardTitle}>Editing application under review</Text>
@@ -919,7 +922,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                   </View>
                 ) : docUrls[field] ? (
                   <View style={ts.docUploadedRow}>
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
+                    <Ionicons name="checkmark-circle" size={18} color={tc(Colors.success)} />
                     <Text style={ts.docUploadedText} numberOfLines={1}>Uploaded</Text>
                     <TouchableOpacity onPress={() => handleDocumentCapture(field, type)} activeOpacity={0.7}>
                       <Text style={ts.docReplaceLink}>Replace</Text>
@@ -934,7 +937,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                     <Ionicons
                       name={type === 'pdf' ? 'document-outline' : 'camera-outline'}
                       size={16}
-                      color={Colors.textMuted}
+                      color={tc(Colors.textMuted)}
                     />
                     <Text style={ts.docTapText}>
                       Tap to upload {type === 'pdf' ? 'PDF or image' : 'photo'}
@@ -952,10 +955,10 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
                 <Ionicons
                   name="checkmark-circle"
                   size={16}
-                  color={Colors.success}
+                  color={tc(Colors.success)}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 />
-                <Text style={[ts.paymentInfoText, { color: Colors.success }]}>
+                <Text style={[ts.paymentInfoText, { color: tc(Colors.success) }]}>
                   Verification fee paid
                   {paidAt
                     ? ` on ${new Date(paidAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -967,7 +970,7 @@ export const DealerKYCScreen: React.FC<{ navigation?: any; route?: any }> = ({ n
               <View style={ts.paymentInfoBox}>
                 <Ionicons name="information-circle-outline"
                   size={16}
-                  color={Colors.warning}
+                  color={tc(Colors.warning)}
                   style={{ marginRight: 10, marginTop: 1, flexShrink: 0 }}
                 accessibilityElementsHidden importantForAccessibility="no" />
                 <Text style={ts.paymentInfoText}>
@@ -1406,4 +1409,18 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     color: Colors.warning,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sectionEyebrow: { color: LIGHT_PALETTE.muted },
+  infoCardAmber: { color: lightReadableText.warning },
+  businessTypeTitleSelected: { color: LIGHT_PALETTE.text },
+  docUploadedText: { color: LIGHT_PALETTE.muted },
+  docReplaceLink: { color: LIGHT_PALETTE.secondary },
+  docUploadingRow: { backgroundColor: LIGHT_PALETTE.card },
+  businessTypeHint: { color: LIGHT_PALETTE.muted },
 });

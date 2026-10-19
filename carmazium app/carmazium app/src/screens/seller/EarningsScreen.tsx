@@ -4,7 +4,6 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,7 +19,7 @@ import { apiClient } from '../../lib/apiClient';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -29,6 +28,8 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── interfaces ───────────────────────────
 
 interface SaleRecord {
@@ -105,8 +106,9 @@ const getBuyerName = (buyer?: SaleRecord['buyer']): string => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
 
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -243,7 +245,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
       <View key={sale.id} style={ts.saleRow}>
         {/* Trophy icon circle */}
         <View style={ts.trophyCircle}>
-          <Ionicons name="ribbon" size={18} color={Colors.success} />
+          <Ionicons name="ribbon" size={18} color={tc(Colors.success)} />
         </View>
 
         {/* Details */}
@@ -269,7 +271,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -293,7 +295,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             onPress={handleExport}
             disabled={exporting}
           >
-            <Ionicons name="download-outline" size={15} color={Colors.success} />
+            <Ionicons name="download-outline" size={15} color={tc(Colors.success)} />
             <Text style={ts.exportBtnText}>
               {exporting ? 'Exporting…' : 'Export'}
             </Text>
@@ -349,7 +351,6 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           </View>
         </View>
 
-
         {/* ── Auction bonuses (DASH-010) ──
             The £100 seller bonus is the only money CarMazium itself pays out —
             the winning bid is settled directly between buyer and seller — so it
@@ -359,7 +360,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
         {!loading && auctionSales.length > 0 && (
           <View style={ts.bonusCard}>
             <View style={ts.bonusHeader}>
-              <Ionicons name="trophy-outline" size={16} color={Colors.success} />
+              <Ionicons name="trophy-outline" size={16} color={tc(Colors.success)} />
               <Text style={ts.bonusTitle}>AUCTION BONUSES</Text>
               <Text style={ts.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
             </View>
@@ -403,7 +404,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
             <Text style={ts.receiptsTitle}>Payment receipts</Text>
             <Text style={ts.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+          <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} />
         </TouchableOpacity>
 
         {/* ── Sale history ── */}
@@ -425,7 +426,7 @@ export const EarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) =
           <View style={ts.payoutsCard}>
             <View style={ts.payoutsCardHeader}>
               <View style={ts.payoutsIconCircle}>
-                <Ionicons name="card-outline" size={18} color={Colors.success} />
+                <Ionicons name="card-outline" size={18} color={tc(Colors.success)} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={ts.payoutsCardTitle}>Set up bank payouts</Text>
@@ -831,4 +832,24 @@ const styles = StyleSheet.create({
     color: Colors.white,
     textAlign: 'center',
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  saleBuyer: { color: LIGHT_PALETTE.muted },
+  exportBtnText: { color: lightReadableText.success },
+  bonusTotal: { color: lightReadableText.success },
+  bonusBlurb: { color: LIGHT_PALETTE.muted },
+  bonusMore: { color: LIGHT_PALETTE.muted },
+  sectionHeader: { color: LIGHT_PALETTE.muted },
+  payoutsCardSub: { color: LIGHT_PALETTE.muted },
+  summaryCard: { backgroundColor: LIGHT_PALETTE.card },
+  receiptsIconWrap: { backgroundColor: LIGHT_PALETTE.card },
+  receiptsRow: { backgroundColor: LIGHT_PALETTE.card },
+  summaryRevenue: { color: LIGHT_PALETTE.text },
+  summarySalesCount: { color: LIGHT_PALETTE.text },
+  receiptsSub: { color: LIGHT_PALETTE.muted },
 });

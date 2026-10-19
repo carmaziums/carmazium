@@ -1,0 +1,42 @@
+name: Mobile Light/Dark Contrast CI
+
+on:
+  pull_request:
+    paths:
+      - "carmazium app/carmazium app/src/**"
+      - "carmazium app/carmazium app/App.tsx"
+      - "carmazium app/carmazium app/package.json"
+      - "carmazium app/carmazium app/scripts/theme-audit/**"
+      - "scripts/test-native-visual-parity-block9.test.mjs"
+      - ".github/workflows/mobile-theme-contrast-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: "carmazium app/carmazium app"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: "carmazium app/carmazium app/package-lock.json"
+      - name: Install exact native dependencies
+        run: npm ci
+      - name: Full native TypeScript check
+        run: npm run typescript
+      - name: Check theme contrast for all screens
+        run: npm run test:theme-contrast
+      - name: Appearance token unit tests
+        run: npm run test:theme-tokens -- --ci
+      - name: Existing native visual regression assertions
+        run: node --test "../../scripts/test-native-visual-parity-block9.test.mjs"
+      - name: Existing mobile seller specifications
+        run: npm run test:seller-specs

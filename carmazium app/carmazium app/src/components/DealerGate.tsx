@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
@@ -10,6 +10,7 @@ import { Radius } from '../constants/spacing';
 import { FontFamily, FontSize } from '../constants/typography';
 import { useDealerAccess } from '../hooks/useDealerAccess';
 import type { DealerPermission } from '../lib/dealerAccessApi';
+import { ThemedStatusBar } from './ThemedStatusBar';
 
 const LOCKED_FEATURES = [
   'List Vehicles',
@@ -112,7 +113,7 @@ export const DealerGate: React.FC<{
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 40 }]}
         showsVerticalScrollIndicator={false}

@@ -4,7 +4,6 @@ import {
   Alert,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -18,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { SERVICE_LABELS, getMyCapabilities } from '../../lib/servicesApi';
@@ -32,6 +31,8 @@ import {
   uploadCapabilityAttachment,
 } from '../../lib/serviceOperationsApi';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ProviderVerification'>;
 
@@ -43,8 +44,9 @@ const stateColor = (state?: string) => {
 };
 
 export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const { capabilityId } = route.params;
   const insets = useSafeAreaInsets();
   const [detail, setDetail] = useState<CapabilityVerificationDetail | null>(null);
@@ -173,9 +175,9 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={ts.header}>
-        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.headerButton} icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />
         <Text style={ts.headerTitle}>Provider verification</Text>
         <View style={ts.headerButton} />
       </View>
@@ -224,7 +226,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
               ))}
 
               <View style={ts.warningCard}>
-                <Ionicons name="business-outline" size={18} color={Colors.warning} />
+                <Ionicons name="business-outline" size={18} color={tc(Colors.warning)} />
                 <Text style={ts.warningText}>
                   Upload business, insurance, qualification or regulatory evidence only. Do not upload passports, driving licences, personal bank statements or unrelated identity documents.
                 </Text>
@@ -235,19 +237,19 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                 <Text style={ts.cardText}>PDF, JPG, PNG or WEBP. Maximum 10 MB.</Text>
 
                 <TouchableOpacity style={ts.fileButton} onPress={pickFile}>
-                  <Ionicons name="attach-outline" size={17} color={Colors.white} />
+                  <Ionicons name="attach-outline" size={17} color={tc(Colors.white)} />
                   <Text style={ts.fileButtonText}>{file?.name || 'CHOOSE FILE'}</Text>
                 </TouchableOpacity>
 
-                <TextInput style={ts.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={ts.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={Colors.textMuted} />
-                <TextInput style={ts.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={Colors.textMuted} />
+                <TextInput style={ts.input} value={label} onChangeText={setLabel} placeholder="Label (optional)" placeholderTextColor={tc(Colors.textMuted)} />
+                <TextInput style={ts.input} value={issuer} onChangeText={setIssuer} placeholder="Issuer (optional)" placeholderTextColor={tc(Colors.textMuted)} />
+                <TextInput style={ts.input} value={reference} onChangeText={setReference} placeholder="Policy / authority reference (optional)" placeholderTextColor={tc(Colors.textMuted)} />
                 <TextInput
                   style={ts.input}
                   value={expiresAt}
                   onChangeText={setExpiresAt}
                   placeholder={selectedRequirement?.expiryRequired ? 'Expiry YYYY-MM-DD (required)' : 'Expiry YYYY-MM-DD (optional)'}
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={tc(Colors.textMuted)}
                   autoCapitalize="none"
                 />
                 <TouchableOpacity style={[ts.primaryButton, busy && { opacity: 0.6 }]} onPress={upload} disabled={busy || !file || !evidenceType}>
@@ -284,7 +286,7 @@ export const ProviderVerificationScreen: React.FC<Props> = ({ route, navigation 
                     ) : null}
                     {entry.evidenceStatus === 'PENDING' ? (
                       <TouchableOpacity style={[ts.actionButton, { borderColor: Colors.accentAlpha25 }]} onPress={() => remove(entry)} disabled={busy}>
-                        <Text style={[ts.actionText, { color: Colors.paleRed_fca5a5 }]}>DELETE</Text>
+                        <Text style={[ts.actionText, { color: tc(Colors.paleRed_fca5a5) }]}>DELETE</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -331,4 +333,15 @@ const styles = StyleSheet.create({
   actionButton: { minHeight: 35, borderWidth: 1, borderColor: Colors.whiteAlpha10, borderRadius: 9, justifyContent: 'center', paddingHorizontal: 10 },
   actionText: { fontFamily: FontFamily.bold, color: Colors.white, fontSize: FontSize.size10 },
   error: { fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sub: { color: LIGHT_PALETTE.secondary },
+  error: { color: lightReadableText.error },
+  fileButtonText: { color: LIGHT_PALETTE.text },
+  input: { color: LIGHT_PALETTE.text },
 });

@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,12 +20,14 @@ import { getListingById } from '../../lib/listingsApi';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── types ───────────────────────────────
 
 type TxStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
@@ -126,8 +127,9 @@ const STATUS_CFG: Record<TxStatus, {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -257,7 +259,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
 
   const renderEmptyState = () => (
     <View style={ts.emptyState}>
-      <Ionicons name="receipt-outline" size={36} color={Colors.textMuted} />
+      <Ionicons name="receipt-outline" size={36} color={tc(Colors.textMuted)} />
       <Text style={ts.emptyTitle}>No purchases yet</Text>
       <Text style={ts.emptySub}>Completed vehicle purchases will appear here</Text>
     </View>
@@ -339,9 +341,9 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
           disabled={isDownloading}
         >
           {isDownloading ? (
-            <ActivityIndicator size="small" color={Colors.textSecondary} />
+            <ActivityIndicator size="small" color={tc(Colors.textSecondary)} />
           ) : (
-            <Ionicons name="download-outline" size={14} color={Colors.textSecondary} />
+            <Ionicons name="download-outline" size={14} color={tc(Colors.textSecondary)} />
           )}
           <Text style={ts.receiptBtnText}>
             {isDownloading ? 'Preparing receipt…' : 'Download Receipt'}
@@ -354,7 +356,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
   // ── main render ────────────────────────────────────────────────
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       {/* Gradient backdrop */}
       <LinearGradient
@@ -419,7 +421,7 @@ export const BuyerPurchaseHistoryScreen: React.FC<{ navigation?: any }> = ({ nav
             disabled={loadingMore}
           >
             {loadingMore ? (
-              <ActivityIndicator size="small" color={Colors.textSecondary} />
+              <ActivityIndicator size="small" color={tc(Colors.textSecondary)} />
             ) : (
               <Text style={ts.loadMoreBtnText}>Load more</Text>
             )}
@@ -470,7 +472,7 @@ const styles = StyleSheet.create({
     minWidth: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -659,4 +661,15 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  emptySub: { color: LIGHT_PALETTE.muted },
+  receiptBtnText: { color: LIGHT_PALETTE.secondary },
+  loadMoreBtnText: { color: LIGHT_PALETTE.secondary },
+  countBadge: { backgroundColor: lightReadableText.success },
 });

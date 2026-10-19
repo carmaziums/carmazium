@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, adaptLegacyLightStyles, appearancePalette, lightReadableText, lightStrongText } from '../../theme/appearancePalette';
 import { RowDensity, Radius } from '../../constants/spacing';
 import { apiClient } from '../../lib/apiClient';
 import { createChatRoom } from '../../lib/chatApi';
@@ -40,6 +40,8 @@ import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { fetchAllMyListings } from '../../lib/myListingsApi';
 import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type FilterTab = 'All' | 'Hot' | 'Warm' | 'New' | 'Won' | 'Lost';
 type ViewMode = 'list' | 'board';
 
@@ -171,10 +173,11 @@ const LeadDetail: React.FC<{
   busy: boolean;
   navigation?: any;
 }> = ({ lead, onBack, onUpdateStatus, onSaveNotes, onReassign, staffOptions, busy, navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light'
-    ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles)
+    ? mergeAppearanceStyles(mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles), lightContrastStyles)
     : styles;
   const [notesDraft, setNotesDraft] = useState(lead.notes);
   const [messagingBusy, setMessagingBusy] = useState(false);
@@ -259,11 +262,11 @@ const LeadDetail: React.FC<{
           {/* Meta row — source & time */}
           <View style={ts.metaRow}>
             <View style={ts.metaChip}>
-              <Ionicons name="radio-outline" size={12} color={Colors.textSecondary} />
+              <Ionicons name="radio-outline" size={12} color={tc(Colors.textSecondary)} />
               <Text style={ts.metaChipText}>{sourceLabel}</Text>
             </View>
             <View style={ts.metaChip}>
-              <Ionicons name="time-outline" size={12} color={Colors.textSecondary} />
+              <Ionicons name="time-outline" size={12} color={tc(Colors.textSecondary)} />
               <Text style={ts.metaChipText}>{lead.time} ago</Text>
             </View>
           </View>
@@ -403,7 +406,7 @@ const LeadDetail: React.FC<{
 // own props changed (mobile-audit.md P3/P4). ──
 const LeadRow: React.FC<{ lead: Lead; onPress: (id: string) => void }> = React.memo(({ lead, onPress }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles), lightContrastStyles) : styles;
   return (
   <TouchableOpacity style={ts.leadCard} onPress={() => onPress(lead.id)} activeOpacity={0.7}>
      <View style={ts.avatar}>
@@ -457,14 +460,15 @@ const BoardCard: React.FC<{
   onMove: (id: string) => void;
   onFollowUp: (id: string, current: string | null | undefined) => void;
 }> = React.memo(({ lead, onPress, onMove, onFollowUp }) => {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightDealerLeadsScreenStyles), lightContrastStyles) : styles;
   return (
   <AnimatedTouchable entering={FadeIn.duration(200)}
     style={ts.websiteLeadCard} onPress={() => onPress(lead.id)} activeOpacity={0.85}
     accessibilityRole="button" accessibilityLabel={`Open customer ${lead.name}`}>
     <View style={ts.websiteLeadCardHead}>
-      <View style={ts.boardAvatar}><Ionicons name="person-outline" size={17} color={Colors.textSecondary} /></View>
+      <View style={ts.boardAvatar}><Ionicons name="person-outline" size={17} color={tc(Colors.textSecondary)} /></View>
       <View style={ts.websiteLeadCardIdentity}>
         <Text style={ts.boardCardName} numberOfLines={2}>{lead.name}</Text>
         <Text style={ts.websiteLeadSource} numberOfLines={2}>
@@ -477,7 +481,7 @@ const BoardCard: React.FC<{
         accessibilityLabel={`Change pipeline stage for ${lead.name}`}
         onPress={() => onMove(lead.id)}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <Ionicons name="swap-horizontal-outline" size={17} color={Colors.textSecondary} />
+        <Ionicons name="swap-horizontal-outline" size={17} color={tc(Colors.textSecondary)} />
       </TouchableOpacity>
     </View>
     {lead.vehicle !== 'General enquiry' && (
@@ -492,7 +496,7 @@ const BoardCard: React.FC<{
           style={ts.websiteContactChip}
           accessibilityRole="button" accessibilityLabel={`Email ${lead.name}`}
           onPress={() => { void Linking.openURL(`mailto:${lead.email}`); }}>
-          <Ionicons name="mail-outline" size={14} color={Colors.textSecondary} />
+          <Ionicons name="mail-outline" size={14} color={tc(Colors.textSecondary)} />
           <Text style={ts.websiteContactText} numberOfLines={1}>{lead.email}</Text>
         </TouchableOpacity>
       )}
@@ -500,7 +504,7 @@ const BoardCard: React.FC<{
         <TouchableOpacity style={ts.websiteContactChip}
           accessibilityRole="button" accessibilityLabel={`Call ${lead.name}`}
           onPress={() => { void Linking.openURL(`tel:${lead.phone}`); }}>
-          <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+          <Ionicons name="call-outline" size={14} color={tc(Colors.textSecondary)} />
           <Text style={ts.websiteContactText} numberOfLines={1}>{lead.phone}</Text>
         </TouchableOpacity>
       )}
@@ -516,8 +520,8 @@ const BoardCard: React.FC<{
           ? (isFollowUpOverdue(lead) ? 'Clear overdue follow-up' : 'Clear follow-up reminder')
           : 'Schedule follow-up for tomorrow'}>
         <Ionicons name="time-outline" size={14}
-          color={isFollowUpOverdue(lead) ? Colors.error : Colors.textSecondary} />
-        <Text style={[ts.websiteFollowText, isFollowUpOverdue(lead) && { color: Colors.error }]}>
+          color={tc(isFollowUpOverdue(lead) ? Colors.error : Colors.textSecondary)} />
+        <Text style={[ts.websiteFollowText, isFollowUpOverdue(lead) && { color: tc(Colors.errorLight) }]}>
           {lead.nextFollowUpAt ? isFollowUpOverdue(lead) ? 'Overdue' : 'Reminder' : 'Follow up'}
         </Text>
       </TouchableOpacity>
@@ -527,7 +531,7 @@ const BoardCard: React.FC<{
       <TouchableOpacity style={ts.websitePhaseButton} onPress={() => onMove(lead.id)}
         accessibilityRole="button" accessibilityLabel="Change phase status">
         <Text style={ts.websitePhaseText}>{BOARD_STAGES.find(x => x.key === lead.status)?.label || lead.status}</Text>
-        <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+        <Ionicons name="chevron-down" size={14} color={tc(Colors.textSecondary)} />
       </TouchableOpacity>
     </View>
   </AnimatedTouchable>
@@ -536,9 +540,10 @@ const BoardCard: React.FC<{
 
 // ─── Main Leads Screen ───────────────────────────────────────────────────────
 export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerLeadsScreenStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerLeadsScreenStyles), lightContrastStyles) : styles;
   const { fontScale } = useWindowDimensions();
   const { hasPermission } = useDealerAccess(true);
   const canManageOffers = hasPermission('MANAGE_OFFERS');
@@ -826,7 +831,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   const renderEmptyState = () => (
     <View style={ts.emptyWrap}>
-      <Ionicons name="people-outline" size={40} color={Colors.iconMuted} />
+      <Ionicons name="people-outline" size={40} color={tc(Colors.iconMuted)} />
       <Text style={ts.emptyTitle}>{activeFilter === 'All' ? 'No customer enquiries yet' : `No ${activeFilter.toLowerCase()} customer enquiries`}</Text>
       <Text style={ts.emptySub}>Buyer enquiries on your listings will show up here.</Text>
     </View>
@@ -855,7 +860,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               onPress={() => navigation?.navigate('DealerOffers')}
               accessibilityRole="button" accessibilityLabel="Offers received">
               <Text style={ts.crmOffersText}>Offers received</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.textSecondary} />
+              <Ionicons name="chevron-forward" size={16} color={tc(Colors.textSecondary)} />
             </TouchableOpacity>
           )}
           <View style={ts.viewModeToggle}>
@@ -865,7 +870,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'board' }}
               accessibilityLabel="Pipeline board view">
               <Ionicons name="albums-outline" size={17}
-                color={viewMode === 'board' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'board' ? Colors.white : tc(Colors.textMuted)} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[ts.viewModeBtn, viewMode === 'list' && ts.viewModeBtnActive]}
@@ -873,13 +878,13 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
               accessibilityRole="button" accessibilityState={{ selected: viewMode === 'list' }}
               accessibilityLabel="Customer list view">
               <Ionicons name="list-outline" size={17}
-                color={viewMode === 'list' ? Colors.white : Colors.textMuted} />
+                color={viewMode === 'list' ? Colors.white : tc(Colors.textMuted)} />
             </TouchableOpacity>
           </View>
         </View>
       </View>
       <View style={ts.crmAutoBanner}>
-        <Ionicons name="sparkles-outline" size={19} color={Colors.success} />
+        <Ionicons name="sparkles-outline" size={19} color={tc(Colors.success)} />
         <View style={ts.crmAutoText}>
           <Text style={ts.crmAutoTitle}>Customer enquiries are automatic</Text>
           <Text style={ts.crmAutoDescription}>
@@ -962,7 +967,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha05, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -1007,7 +1012,7 @@ export const DealerLeadsScreen: React.FC<{ navigation?: any }> = ({ navigation }
             </View>
           ) : viewMode === 'board' ? (
             <View style={ts.crmBoardEmpty}>
-              <Ionicons name="people-outline" size={24} color={Colors.textMuted} />
+              <Ionicons name="people-outline" size={24} color={tc(Colors.textMuted)} />
               <Text style={ts.crmBoardEmptyText}>No customers in this stage</Text>
             </View>
           ) : renderEmptyState()
@@ -1691,4 +1696,37 @@ const styles = StyleSheet.create({
      backgroundColor: Colors.bgPrimary, color: Colors.white, fontFamily: FontFamily.regular, fontSize: FontSize.size14,
      paddingHorizontal: 14, paddingVertical: 12,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  avatarText: { color: LIGHT_PALETTE.text },
+  detailName: { color: LIGHT_PALETTE.text },
+  detailVehicle: { color: LIGHT_PALETTE.muted },
+  metaChipText: { color: LIGHT_PALETTE.secondary },
+  sectionLabel: { color: LIGHT_PALETTE.muted },
+  staffChipText: { color: LIGHT_PALETTE.secondary },
+  tagWarmText: { color: lightReadableText.warning },
+  emptySub: { color: LIGHT_PALETTE.secondary },
+  headerTitle: { color: LIGHT_PALETTE.text },
+  crmSubtitle: { color: LIGHT_PALETTE.muted },
+  crmStageText: { color: LIGHT_PALETTE.muted },
+  crmRetry: { color: lightReadableText.accent },
+  reassignRowText: { color: LIGHT_PALETTE.text },
+  createFieldLabel: { color: LIGHT_PALETTE.muted },
+  crmSelectedListingText: { color: LIGHT_PALETTE.text },
+  tagHotTextInline: { color: lightStrongText.accent },
+  listingCard: { backgroundColor: LIGHT_PALETTE.card },
+  tagHotText: { color: lightStrongText.accent },
+  websiteFollowUp: { backgroundColor: LIGHT_PALETTE.card },
+  crmOffersButton: { backgroundColor: LIGHT_PALETTE.card },
+  crmErrorBanner: { backgroundColor: LIGHT_PALETTE.card },
+  createInput: { backgroundColor: LIGHT_PALETTE.elevated, color: LIGHT_PALETTE.text },
+  listingTitle: { color: LIGHT_PALETTE.text },
+  listingPrice: { color: lightReadableText.accent },
+  crmErrorText: { color: lightReadableText.warning },
+  staffChipTextActive: { color: lightStrongText.accent },
 });

@@ -11,7 +11,7 @@ import { Ionicons } from '@/components/BrandIcon';
 import { AuctionListing, formatPrice, formatMileage } from '../data/listings';
 import { Colors } from '../constants/colors';
 import { useAppearanceStore } from '../store/appearanceStore';
-import { mergeAppearanceStyles } from '../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../theme/appearancePalette';
 import { FontFamily, FontSize } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import { ImageCarousel } from './ImageCarousel';
@@ -19,6 +19,7 @@ import { GradeChip } from './GradeChip';
 import { AuctionCardChips, AuctionCardTrustBadges } from './AuctionCardBadges';
 import { WishlistHeart } from './WishlistHeart';
 import { getAuctionFirstOfferFloor } from '../lib/auctionPricing';
+import { useAppearance } from '../theme/useAppearance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // This card renders full-width inside its parent's own horizontal padding —
@@ -71,18 +72,20 @@ const TimeBlock: React.FC<{ value: number; label: string; urgent: boolean }> = (
     }
   }, [urgent]);
 
+  const mode = useAppearanceStore(state => state.mode);
+  const ts = mode === 'light' ? liveBidCardLightStyles : styles;
   return (
     <RNAnimated.View
       style={[
-        styles.timeBlock,
-        urgent && styles.timeBlockUrgent,
+        ts.timeBlock,
+        urgent && ts.timeBlockUrgent,
         { transform: [{ scale: pulseAnim }] },
       ]}
     >
-      <Text style={[styles.timeValue, urgent && styles.timeValueUrgent]}>
+      <Text style={[ts.timeValue, urgent && ts.timeValueUrgent]}>
         {String(value).padStart(2, '0')}
       </Text>
-      <Text style={styles.timeLabel}>{label}</Text>
+      <Text style={ts.timeLabel}>{label}</Text>
     </RNAnimated.View>
   );
 };
@@ -92,8 +95,9 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
   onPress,
   onBid,
 }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightLiveBidCardStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightLiveBidCardStyles), lightContrastStyles) : styles;
   const countdown = useCountdown(auction.endsAt);
   const hasRealBids = auction.totalBids > 0;
   const displayBid = hasRealBids ? auction.currentBid : auction.startingBid;
@@ -125,7 +129,7 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
         {/* Viewers */}
         {auction.isLive && (
           <View style={ts.viewersBadge} pointerEvents="none">
-            <Ionicons name="eye-outline" size={11} color="rgba(255,255,255,0.8)" />
+            <Ionicons name="eye-outline" size={11} color={tc("rgba(255,255,255,0.8)")} />
             <Text style={ts.viewersText}>{auction.viewers}</Text>
           </View>
         )}
@@ -171,10 +175,10 @@ export const LiveBidCard: React.FC<LiveBidCardProps> = ({
             <Text style={ts.bidLabel}>{hasRealBids ? 'CURRENT BID' : 'STARTING BID'}</Text>
             <Text style={ts.bidAmount}>{formatPrice(displayBid)}</Text>
             <View style={ts.bidMeta}>
-              <Ionicons name="people-outline" size={11} color={Colors.textMuted} />
+              <Ionicons name="people-outline" size={11} color={tc(Colors.textMuted)} />
               <Text style={ts.bidCount}>{auction.totalBids} bids</Text>
               {!hasRealBids && firstOfferFloor > 0 && (
-                <Text style={[ts.bidCount, { color: Colors.warning }]}>
+                <Text style={[ts.bidCount, { color: tc(Colors.warning) }]}>
                   First offer {formatPrice(firstOfferFloor)}
                 </Text>
               )}
@@ -361,7 +365,7 @@ const styles = StyleSheet.create({
   binBadgeText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size9,
-    color: Colors.success,
+    color: Colors.successLight,
     letterSpacing: 0.3,
   },
   // Countdown
@@ -437,3 +441,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 });
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  binBadgeText: { color: lightReadableText.success },
+  viewersBadge: { backgroundColor: LIGHT_PALETTE.card },
+  viewersText: { color: LIGHT_PALETTE.secondary },
+});
+
+// Countdown blocks render in their own component; share the card's light map.
+const liveBidCardLightStyles = mergeAppearanceStyles(mergeAppearanceStyles(styles, lightLiveBidCardStyles), lightContrastStyles);

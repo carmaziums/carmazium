@@ -4,7 +4,6 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,7 +19,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { getAccessToken } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -28,6 +27,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── interfaces ───────────────────────────
 // Same GET /listings/earnings endpoint as the private-seller EarningsScreen —
 // web's dealer earnings page (src/app/dashboard/dealer/earnings/page.tsx)
@@ -108,8 +109,9 @@ const getBuyerName = (buyer?: SaleRecord['buyer']): string => {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
 
   const [sales, setSales] = useState<SaleRecord[]>([]);
@@ -230,7 +232,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     return (
       <View key={sale.id} style={ts.saleRow}>
         <View style={ts.trophyCircle}>
-          <Ionicons name="car-sport" size={17} color={Colors.success} />
+          <Ionicons name="car-sport" size={17} color={tc(Colors.success)} />
         </View>
 
         <View style={ts.saleDetails}>
@@ -251,7 +253,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : ['rgba(34,197,94,0.05)', 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -274,7 +276,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onPress={handleExport}
           disabled={exporting}
         >
-          <Ionicons name="download-outline" size={15} color={Colors.success} />
+          <Ionicons name="download-outline" size={15} color={tc(Colors.success)} />
           <Text style={ts.exportBtnText}>
             {exporting ? 'Exporting…' : 'Export'}
           </Text>
@@ -324,7 +326,6 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </View>
         </View>
 
-
         {/* ── Auction bonuses (DASH-010) ──
             The £100 seller bonus is the only money CarMazium itself pays out —
             the winning bid is settled directly between buyer and seller — so it
@@ -334,7 +335,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
         {!loading && auctionSales.length > 0 && (
           <View style={ts.bonusCard}>
             <View style={ts.bonusHeader}>
-              <Ionicons name="trophy-outline" size={16} color={Colors.success} />
+              <Ionicons name="trophy-outline" size={16} color={tc(Colors.success)} />
               <Text style={ts.bonusTitle}>AUCTION BONUSES</Text>
               <Text style={ts.bonusTotal}>{formatPrice(totalAuctionBonus)}</Text>
             </View>
@@ -378,7 +379,7 @@ export const DealerEarningsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             <Text style={ts.receiptsTitle}>Payment receipts</Text>
             <Text style={ts.receiptsSub}>All platform fees, listing charges, and KYC payments</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={Colors.iconMuted} />
+          <Ionicons name="chevron-forward" size={16} color={tc(Colors.iconMuted)} />
         </TouchableOpacity>
 
         {/* ── Sales registry ── */}
@@ -664,4 +665,19 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size10,
     color: Colors.success,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  saleBuyer: { color: LIGHT_PALETTE.muted },
+  exportBtnText: { color: lightReadableText.success },
+  bonusTotal: { color: lightReadableText.success },
+  bonusBlurb: { color: LIGHT_PALETTE.muted },
+  bonusMore: { color: LIGHT_PALETTE.muted },
+  receiptsSub: { color: LIGHT_PALETTE.muted },
+  sectionHeader: { color: LIGHT_PALETTE.muted },
+  summaryCard: { backgroundColor: LIGHT_PALETTE.card },
 });

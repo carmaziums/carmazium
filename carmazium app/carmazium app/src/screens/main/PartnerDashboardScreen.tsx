@@ -5,7 +5,6 @@ import {
   AppState,
   Linking,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -19,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { useAuthStore } from '../../store/authStore';
@@ -37,6 +36,8 @@ import {
 } from '../../lib/servicesApi';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PartnerDashboard'>;
 
@@ -53,8 +54,9 @@ const statusText = (status?: string) => {
 };
 
 export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const initializeAuth = useAuthStore((s) => s.initializeAuth);
@@ -179,11 +181,11 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={ts.header}>
         <IconButton
           style={ts.headerButton}
-          icon={<Ionicons name="chevron-back" size={19} color={Colors.white} />}
+          icon={<Ionicons name="chevron-back" size={19} color={tc(Colors.white)} />}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Go back"
         />
@@ -224,9 +226,9 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
             <View style={ts.card}>
               <Text style={ts.cardTitle}>Set up your Partner business</Text>
               <Text style={ts.cardText}>Add these details once. CarMazium reuses them across every service you activate.</Text>
-              <TextInput style={ts.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={Colors.textMuted} />
-              <TextInput style={ts.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={Colors.textMuted} keyboardType="phone-pad" />
-              <TextInput style={ts.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={Colors.textMuted} multiline />
+              <TextInput style={ts.input} value={companyName} onChangeText={setCompanyName} placeholder="Business or trading name" placeholderTextColor={tc(Colors.textMuted)} />
+              <TextInput style={ts.input} value={phone} onChangeText={setPhone} placeholder="Business phone" placeholderTextColor={tc(Colors.textMuted)} keyboardType="phone-pad" />
+              <TextInput style={ts.input} value={businessAddress} onChangeText={setBusinessAddress} placeholder="Business address / service area" placeholderTextColor={tc(Colors.textMuted)} multiline />
               <TouchableOpacity style={ts.primaryButton} onPress={saveBusiness} disabled={busy === 'business'}>
                 {busy === 'business' ? <ActivityIndicator color={Colors.white} /> : <Text style={ts.primaryText}>SAVE PARTNER BUSINESS</Text>}
               </TouchableOpacity>
@@ -240,7 +242,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={ts.cardTitle}>{profile.dealerProfile.companyName || team?.companyName || 'Partner business'}</Text>
                     {!!profile.dealerProfile.businessAddress && <Text style={ts.cardText}>{profile.dealerProfile.businessAddress}</Text>}
                   </View>
-                  <Ionicons name="business-outline" size={28} color={Colors.warning} />
+                  <Ionicons name="business-outline" size={28} color={tc(Colors.warning)} />
                 </View>
               </View>
 
@@ -250,23 +252,23 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderJobs')} accessibilityRole="button" accessibilityLabel="See available delivery and inspection jobs" activeOpacity={0.8}>
                     <Ionicons name="briefcase-outline" size={21} color={Colors.accent} />
                     <Text style={ts.quickTaskText}>Available jobs</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="arrow-forward-outline" size={16} color={tc(Colors.textSecondary)} />
                   </TouchableOpacity>
                   <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderLeads')} accessibilityRole="button" accessibilityLabel="See matched finance and warranty enquiries" activeOpacity={0.8}>
                     <Ionicons name="document-text-outline" size={21} color={Colors.accent} />
                     <Text style={ts.quickTaskText}>Enquiries</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="arrow-forward-outline" size={16} color={tc(Colors.textSecondary)} />
                   </TouchableOpacity>
                   <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderCapabilities')} accessibilityRole="button" accessibilityLabel="Manage services and matching areas" activeOpacity={0.8}>
                     <Ionicons name="options-outline" size={21} color={Colors.accent} />
                     <Text style={ts.quickTaskText}>Service areas</Text>
-                    <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="arrow-forward-outline" size={16} color={tc(Colors.textSecondary)} />
                   </TouchableOpacity>
                   {hasApprovedJobCapability && (
                     <TouchableOpacity style={ts.quickTask} onPress={() => navigation.navigate('ProviderMessages')} accessibilityRole="button" accessibilityLabel="Read service job messages" activeOpacity={0.8}>
                       <Ionicons name="chatbubble-outline" size={21} color={Colors.accent} />
                       <Text style={ts.quickTaskText}>Job messages</Text>
-                      <Ionicons name="arrow-forward-outline" size={16} color={Colors.textSecondary} />
+                      <Ionicons name="arrow-forward-outline" size={16} color={tc(Colors.textSecondary)} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -290,12 +292,12 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       <Ionicons
                         name={type === 'DELIVERY' ? 'car-outline' : type === 'INSPECTION' ? 'search-outline' : type === 'FINANCE' ? 'cash-outline' : 'shield-checkmark-outline'}
                         size={21}
-                        color={approved ? Colors.accentGreen : Colors.textSecondary}
+                        color={tc(approved ? Colors.accentGreen : Colors.textSecondary)}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={ts.serviceTitle}>{SERVICE_LABELS[type]}</Text>
-                      <Text style={[ts.serviceStatus, approved && { color: Colors.accentGreen }]}>{statusText(cap?.status)}</Text>
+                      <Text style={[ts.serviceStatus, approved && { color: tc(Colors.successLight) }]}>{statusText(cap?.status)}</Text>
                       {cap?.reviewNote ? <Text style={ts.reviewNote}>{cap.reviewNote}</Text> : null}
                     </View>
                     {!cap || cap.status === 'REJECTED' ? (
@@ -325,7 +327,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   style={ts.secondaryButton}
                   onPress={() => navigation.navigate('ProviderJobs')}
                 >
-                  <Ionicons name="construct-outline" size={17} color={Colors.white} />
+                  <Ionicons name="construct-outline" size={17} color={tc(Colors.white)} />
                   <Text style={ts.secondaryText}>OPEN SERVICE JOBS</Text>
                 </TouchableOpacity>
               </View>
@@ -338,13 +340,13 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                       Review Finance and Warranty enquiries matched to your approved services, then send or update your response from the app.
                     </Text>
                   </View>
-                  <Ionicons name="mail-unread-outline" size={26} color={Colors.infoBlueLight} />
+                  <Ionicons name="mail-unread-outline" size={26} color={tc(Colors.infoBlueLight)} />
                 </View>
                 <TouchableOpacity
                   style={ts.secondaryButton}
                   onPress={() => navigation.navigate('ProviderLeads')}
                 >
-                  <Ionicons name="document-text-outline" size={17} color={Colors.white} />
+                  <Ionicons name="document-text-outline" size={17} color={tc(Colors.white)} />
                   <Text style={ts.secondaryText}>OPEN ENQUIRIES</Text>
                 </TouchableOpacity>
               </View>
@@ -358,13 +360,13 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                         Keep Delivery, Recovery and Inspection customer conversations separate from your general CarMazium inbox.
                       </Text>
                     </View>
-                    <Ionicons name="chatbubbles-outline" size={26} color={Colors.accentGreen} />
+                    <Ionicons name="chatbubbles-outline" size={26} color={tc(Colors.accentGreen)} />
                   </View>
                   <TouchableOpacity
                     style={ts.secondaryButton}
                     onPress={() => navigation.navigate('ProviderMessages')}
                   >
-                    <Ionicons name="chatbubble-ellipses-outline" size={17} color={Colors.white} />
+                    <Ionicons name="chatbubble-ellipses-outline" size={17} color={tc(Colors.white)} />
                     <Text style={ts.secondaryText}>OPEN JOB MESSAGES</Text>
                   </TouchableOpacity>
                 </View>
@@ -378,12 +380,12 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
                   </Text>
                   {team?.stripeConnect.complete ? (
                     <View style={ts.successRow}>
-                      <Ionicons name="checkmark-circle" size={18} color={Colors.accentGreen} />
+                      <Ionicons name="checkmark-circle" size={18} color={tc(Colors.accentGreen)} />
                       <Text style={ts.successText}>Stripe payouts connected</Text>
                     </View>
                   ) : (
                     <TouchableOpacity style={ts.secondaryButton} onPress={startStripe} disabled={busy === 'stripe'}>
-                      {busy === 'stripe' ? <ActivityIndicator color={Colors.white} /> : <Text style={ts.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
+                      {busy === 'stripe' ? <ActivityIndicator color={tc(Colors.white)} /> : <Text style={ts.secondaryText}>{team?.stripeConnect.connected ? 'FINISH PAYOUT SETUP' : 'SET UP BUSINESS PAYOUTS'}</Text>}
                     </TouchableOpacity>
                   )}
                 </View>
@@ -397,7 +399,7 @@ export const PartnerDashboardScreen: React.FC<Props> = ({ navigation }) => {
               )}
 
               <TouchableOpacity style={ts.secondaryButton} onPress={() => navigation.navigate('DealerTeam')}>
-                <Ionicons name="people-outline" size={17} color={Colors.white} />
+                <Ionicons name="people-outline" size={17} color={tc(Colors.white)} />
                 <Text style={ts.secondaryText}>MANAGE PARTNER TEAM</Text>
               </TouchableOpacity>
             </>
@@ -449,7 +451,19 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   label: { fontFamily: FontFamily.bold, color: Colors.textMuted, fontSize: FontSize.size10, letterSpacing: 1.2, marginBottom: 4 },
   successRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  successText: { fontFamily: FontFamily.bold, color: Colors.accentGreen, fontSize: FontSize.size12 },
+  successText: { fontFamily: FontFamily.bold, color: Colors.successLight, fontSize: FontSize.size12 },
   errorCard: { flexDirection: 'row', gap: 9, borderRadius: Radius.inline, borderWidth: 1, borderColor: Colors.accentAlpha25, backgroundColor: Colors.accentAlpha10, padding: 12 },
   errorText: { flex: 1, fontFamily: FontFamily.regular, color: Colors.paleRed_fca5a5, fontSize: FontSize.size12, lineHeight: 18 },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sub: { color: LIGHT_PALETTE.secondary },
+  input: { color: LIGHT_PALETTE.text },
+  sectionSub: { color: LIGHT_PALETTE.muted },
+  serviceStatus: { color: LIGHT_PALETTE.muted },
+  reviewNote: { color: lightReadableText.error },
 });

@@ -63,6 +63,8 @@ test('every native screen with styled surfaces subscribes to the saved appearanc
     if(!src.includes('StyleSheet.create(')) continue;
     // Native splash has intentional fixed brand artwork, independent of preference.
     if(file.endsWith('/loading/SplashScreen.tsx')) continue;
+    // Photo-led onboarding is intentionally dark artwork in both modes.
+    if(file.endsWith('/onboarding/OnboardingScreen.tsx')) continue;
     assert.ok(src.includes('useAppearanceStore'),
       'missing appearance subscription: '+file.slice(screensRoot.length));
     assert.ok(src.includes('adaptLegacyLightStyles(') ||
@@ -475,9 +477,9 @@ test('light appearance reaches nested KYC, CRM, dashboard and upload field compo
   }
   assert.ok(account.includes('const Tile: React.FC')&&account.includes('style={[ts.tile'),'Unified Dashboard tiles need theme');
   assert.ok(account.includes("backgroundColor: mode === 'light' ? '#E5EEF7'"),'Dashboard skeleton colours must theme');
-  assert.ok(upload.includes("const placeholderColor = appearanceMode === 'light' ? '#64748B' : Colors.borderMuted"),
+  assert.ok(upload.includes("const placeholderColor = appearanceMode === 'light' ? '#64748B' : Colors.inputPlaceholder"),
     'main guided upload fields need legible placeholders');
-  assert.ok(upload.includes("const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.borderMuted"),
+  assert.ok(upload.includes("const placeholderColor = useAppearanceStore(state => state.mode) === 'light' ? '#64748B' : Colors.inputPlaceholder"),
     'helper input sheets need legible placeholders');
   assert.ok(!upload.includes('placeholderTextColor={Colors.borderMuted}'),'no unreadable fixed dim upload placeholder');
 });
@@ -523,6 +525,7 @@ test('every non-splash native screen declares a light/dark appearance path',()=>
   assert.ok(files.length >= 81, 'detect silently omitted native screens');
   for(const file of files) {
     if(file.endsWith('/loading/SplashScreen.tsx')) continue;
+    if(file.endsWith('/onboarding/OnboardingScreen.tsx')) continue;
     const code=readFileSync(file,'utf8');
     assert.ok(code.includes('useAppearanceStore'),file+' must subscribe to user light/dark selection');
     assert.ok(code.includes('adaptLegacyLightStyles(') ||

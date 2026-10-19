@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,16 +21,19 @@ import { KeyboardStickyView } from '../../components/KeyboardStickyView';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 
 import { IconButton } from '../../components/IconButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
 export const SignupScreen: React.FC<Props> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -137,7 +139,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
 
       {/* Background gradient with top glow */}
       <LinearGradient
@@ -196,7 +198,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                       <Ionicons
                         name={opt.icon}
                         size={18}
-                        color={selected ? Colors.accent : Colors.textMuted}
+                        color={tc(selected ? Colors.accent : Colors.textMuted)}
                       />
                       <Text style={[ts.roleCardLabel, selected && ts.roleCardLabelActive]}>{opt.label}</Text>
                       <Text style={ts.roleCardHint}>{opt.hint}</Text>
@@ -223,7 +225,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="person-outline"
                   size={20}
-                  color={focusedField === 'name' ? Colors.accent : Colors.textMuted}
+                  color={tc(focusedField === 'name' ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -253,7 +255,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="mail-outline"
                   size={20}
-                  color={focusedField === 'email' ? Colors.accent : Colors.textMuted}
+                  color={tc(focusedField === 'email' ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -285,7 +287,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={focusedField === 'password' ? Colors.accent : Colors.textMuted}
+                  color={tc(focusedField === 'password' ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -301,7 +303,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                 />
-                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={tc(Colors.textMuted)} />} onPress={() => setShowPassword(!showPassword)} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} />
               </View>
             </View>
 
@@ -340,7 +342,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
-                  color={focusedField === 'confirmPassword' ? Colors.accent : Colors.textMuted}
+                  color={tc(focusedField === 'confirmPassword' ? Colors.accent : Colors.textMuted)}
                   style={ts.inputIcon}
                 />
                 <TextInput
@@ -356,7 +358,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
                   onBlur={() => setFocusedField(null)}
                   onSubmitEditing={handleSignup}
                 />
-                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textMuted} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'} />
+                <IconButton style={ts.eyeBtn} icon={<Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={tc(Colors.textMuted)} />} onPress={() => setShowConfirmPassword(!showConfirmPassword)} accessibilityLabel={showConfirmPassword ? 'Hide password' : 'Show password'} />
               </View>
               {confirmPassword.length > 0 && !passwordsMatch && (
                 <Text style={ts.fieldError}>Passwords do not match</Text>
@@ -370,6 +372,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
               onPress={() => setAgreeTerms(!agreeTerms)}
             >
               <View style={[ts.checkbox, agreeTerms && ts.checkboxChecked]}>
+                {/* theme-audit-ignore: tick only renders on the checked (red) box */}
                 {agreeTerms && <Ionicons name="checkmark" size={12} color={Colors.white} />}
               </View>
               <Text style={ts.checkboxLabel}>
@@ -564,7 +567,7 @@ const styles = StyleSheet.create({
   fieldError: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginTop: 6,
   },
   inputIcon: {
@@ -694,4 +697,16 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 60,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  stepIndicator: { color: lightReadableText.accent },
+  roleCardLabelActive: { color: LIGHT_PALETTE.text },
+  roleNote: { color: LIGHT_PALETTE.muted },
+  input: { color: LIGHT_PALETTE.text },
+  fieldError: { color: lightReadableText.error },
 });

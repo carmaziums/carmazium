@@ -6,7 +6,6 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -27,7 +26,7 @@ import { BottomSheet } from '../../components/BottomSheet';
 import { SaleCancellationSheet } from '../../components/SaleCancellationSheet';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText, appearancePalette } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -47,6 +46,8 @@ import { useAuthStore } from '../../store/authStore';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 // ─────────────────────────── Types ───────────────────────────
 
 type AuctionStatus = 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
@@ -166,6 +167,7 @@ function fmtDate(iso: string) {
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const accountRole = useAuthStore((s) => s.accountRole);
   const isDealerStaff = useAuthStore((s) => !!s.user?.isDealerStaff);
   const dealerIdentity = accountRole === 'dealer' || isDealerStaff;
@@ -177,7 +179,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
     || (!dealerAccessLoading && hasDealerPermission('MANAGE_INVENTORY'));
   const insets = useSafeAreaInsets();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightSellerAuctionStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightSellerAuctionStyles), lightContrastStyles) : styles;
   const route = useRoute<any>();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   // Dealers reach this screen from a specific listing's "Put on Auction"
@@ -931,14 +933,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           <Image source={{ uri: thumb }} style={ts.listingPickThumb} contentFit="cover" transition={200} />
         ) : (
           <View style={[ts.listingPickThumb, ts.listingPickThumbPlaceholder]}>
-            <MaterialCommunityIcons name="car-outline" size={20} color={Colors.textMuted} />
+            <MaterialCommunityIcons name="car-outline" size={20} color={tc(Colors.textMuted)} />
           </View>
         )}
         <View style={{ flex: 1 }}>
           <Text style={ts.listingPickTitle} numberOfLines={1}>{title}</Text>
           <Text style={ts.listingPickPrice}>{price}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+        <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
       </TouchableOpacity>
     );
   }, []);
@@ -1063,7 +1065,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Image source={{ uri: thumb }} style={ts.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={ts.thumbPlaceholder}>
-                <MaterialCommunityIcons name="gavel" size={22} color={Colors.textMuted} />
+                <MaterialCommunityIcons name="gavel" size={22} color={tc(Colors.textMuted)} />
               </View>
             )}
           </View>
@@ -1081,7 +1083,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? (provisionalPending(item) || item.status === 'SCHEDULED' ? lightReadableText.warning : item.status === 'ACTIVE' ? lightReadableText.success : lightReadableText.muted) : (provisionalPending(item) ? Colors.warning : cfg.chipText) }]}>{provisionalPending(item) ? 'PROVISIONALLY SOLD' : cfg.label}</Text>
             </View>
             {isLoadingNav ? (
-              <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
+              <ActivityIndicator size="small" color={tc(Colors.textMuted)} style={{ width: 28, height: 28 }} />
             ) : (isScheduled || item.status === 'ACTIVE') ? (
               // Three-dots menu for SCHEDULED (edit/cancel) and ACTIVE (also-list-retail/close-bids)
               <TouchableOpacity
@@ -1090,7 +1092,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
+                <Ionicons name="ellipsis-vertical" size={18} color={tc(Colors.textMuted)} />
               </TouchableOpacity>
             ) : item.status === 'ENDED' ? (
               // Results — winner/no-winner summary, matches web's Results button
@@ -1104,17 +1106,17 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 <Text style={ts.resultsBtnText}>Results</Text>
               </TouchableOpacity>
             ) : (
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={18} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             )}
           </View>
         </TouchableOpacity>
 
         {stage !== 'NOT_APPLICABLE' ? (
           <View style={{ paddingHorizontal: 14, paddingBottom: 10 }}>
-            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textPrimary }}>
+            <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: tc(Colors.textPrimary) }}>
               {getSellerStageLabel(stage)}
             </Text>
-            <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 }}>
+            <Text style={{ fontSize: FontSize.xs, color: tc(Colors.textMuted), marginTop: 4 }}>
               {getSellerStageHint(stage)}
             </Text>
           </View>
@@ -1223,7 +1225,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={ts.handoverFeeRow}>
                 <View style={ts.handoverFeeCell}>
                   <Text style={ts.handoverFeeLabel}>YOUR BONUS</Text>
-                  <Text style={[ts.handoverFeeValue, { color: Colors.lightGreen_4ade80 }]}>£100</Text>
+                  <Text style={[ts.handoverFeeValue, { color: tc(Colors.lightGreen_4ade80) }]}>£100</Text>
                   <Text style={ts.handoverFeeLabel}>AFTER HANDOVER VERIFIED</Text>
                 </View>
               </View>
@@ -1237,7 +1239,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
                 onPress={() => navigation?.navigate('Settings')}
               >
-                <Ionicons name="alert-circle-outline" size={13} color={Colors.warning} />
+                <Ionicons name="alert-circle-outline" size={13} color={tc(Colors.warning)} />
                 <Text style={ts.payoutSetupText}>
                   Payout method not set up — connect a bank account in Settings to receive your £100 after approval.
                 </Text>
@@ -1245,7 +1247,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             )}
             {item.handoverRejectedAt && !item.handoverSubmittedAt && !item.sellerBonusReleased ? (
               <View style={ts.payoutFailPill}>
-                <Ionicons name="information-circle-outline" size={13} color={Colors.warning} />
+                <Ionicons name="information-circle-outline" size={13} color={tc(Colors.warning)} />
                 <Text style={ts.payoutFailText}>
                   Proof needs correction: {item.handoverRejectionReason || 'Please upload corrected handover evidence.'} Your sale and buyer fee are unchanged.
                 </Text>
@@ -1253,36 +1255,36 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             ) : null}
             {item.stripePayoutError ? (
               <View style={ts.payoutFailPill}>
-                <Ionicons name="alert-circle-outline" size={13} color={Colors.paleRed_fca5a5} />
+                <Ionicons name="alert-circle-outline" size={13} color={tc(Colors.paleRed_fca5a5)} />
                 <Text style={ts.payoutFailText}>
                   Payout failed — {item.stripePayoutError}
                 </Text>
               </View>
             ) : item.sellerBonusReleased ? (
               <View style={ts.payoutOkPill}>
-                <Ionicons name="checkmark-circle" size={13} color={Colors.lightGreen_4ade80} />
+                <Ionicons name="checkmark-circle" size={13} color={tc(Colors.lightGreen_4ade80)} />
                 <Text style={ts.handoverDone}>{stage === 'BONUS_PAID' ? '£100 bonus paid' : 'Handover approved — £100 bonus processing'}</Text>
               </View>
             ) : handoverUploaded[item.id] || item.handoverSubmittedAt || item.handoverProofUrl ? (
               <View style={ts.payoutOkPill}>
-                <Ionicons name="hourglass-outline" size={13} color={Colors.lightGreen_4ade80} />
+                <Ionicons name="hourglass-outline" size={13} color={tc(Colors.lightGreen_4ade80)} />
                 <Text style={ts.handoverDone}>Awaiting admin approval</Text>
               </View>
             ) : dealerIdentity && dealerAccessLoading ? (
               <View style={ts.payoutOkPill}>
-                <ActivityIndicator size="small" color={Colors.lightGreen_4ade80} />
+                <ActivityIndicator size="small" color={tc(Colors.lightGreen_4ade80)} />
                 <Text style={ts.handoverDone}>Checking dealership permissions</Text>
               </View>
             ) : !canManageHandover ? (
               <View style={ts.payoutFailPill}>
-                <Ionicons name="lock-closed-outline" size={13} color={Colors.paleRed_fca5a5} />
+                <Ionicons name="lock-closed-outline" size={13} color={tc(Colors.paleRed_fca5a5)} />
                 <Text style={ts.payoutFailText}>
                   Your dealership role can view this auction but cannot submit handover proof.
                 </Text>
               </View>
             ) : !item.buyerFeePaid ? (
               <View style={ts.payoutFailPill}>
-                <Ionicons name="time-outline" size={13} color={Colors.warning} />
+                <Ionicons name="time-outline" size={13} color={tc(Colors.warning)} />
                 <Text style={ts.payoutFailText}>Waiting for the winning buyer’s £125 platform fee. No handover upload is needed yet.</Text>
               </View>
             ) : !item.sellerFundsConfirmedAt ? (
@@ -1335,7 +1337,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
               onPress={() => setCancelSaleAuction(item)}
             >
-              <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.accent }}>
+              <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: tc(Colors.accent) }}>
                 Request Sale Cancellation
               </Text>
             </TouchableOpacity>
@@ -1396,7 +1398,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Image source={{ uri: thumb }} style={ts.thumbImg} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={ts.thumbPlaceholder}>
-                <MaterialCommunityIcons name="trophy" size={22} color={Colors.textMuted} />
+                <MaterialCommunityIcons name="trophy" size={22} color={tc(Colors.textMuted)} />
               </View>
             )}
           </View>
@@ -1416,9 +1418,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Text style={[ts.statusChipText, { color: appearanceMode === 'light' ? lightReadableText.success : Colors.success }]}>WON</Text>
             </View>
             {isLoadingNav ? (
-              <ActivityIndicator size="small" color={Colors.textMuted} style={{ width: 28, height: 28 }} />
+              <ActivityIndicator size="small" color={tc(Colors.textMuted)} style={{ width: 28, height: 28 }} />
             ) : (
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+              <Ionicons name="chevron-forward" size={18} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
             )}
           </View>
         </View>
@@ -1437,7 +1439,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           onCreated={() => void fetchAuctions(true)}
         />
       )}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha04, Colors.infoBlueAlpha03, Colors.bgPrimary]}
         start={{ x: 0, y: 0 }}
@@ -1566,7 +1568,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
           </Text>
         )}
 
-        <Text style={{ color: Colors.accentGreen, fontSize: 12, marginTop: 10, lineHeight: 18 }}>
+        <Text style={{ color: tc(Colors.accentGreen), fontSize: 12, marginTop: 10, lineHeight: 18 }}>
           Keep your existing Auction and bids running. This will create a linked Retail draft, then request the selected listing fee. Your Retail listing will require normal admin review.
         </Text>
 
@@ -1600,7 +1602,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               activeOpacity={0.8}
             >
               <View style={[ts.retailPlanRadio, retailTier === plan.tier && { backgroundColor: plan.accent, borderColor: plan.accent }]}>
-                {retailTier === plan.tier && <Ionicons name="checkmark" size={11} color={Colors.white} />}
+                {retailTier === plan.tier && <Ionicons name="checkmark" size={11} color={tc(Colors.white)} />}
               </View>
               <Text style={[ts.retailPlanLabel, { color: plan.accent }]}>{plan.label}</Text>
               <Text style={[ts.retailPlanPrice, { color: plan.accent }]}>£{plan.price}</Text>
@@ -1671,7 +1673,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View key={tag} style={ts.digestTagChip}>
                 <Text style={ts.digestTagChipText} numberOfLines={1}>{tag}</Text>
                 <TouchableOpacity onPress={() => setDigestTags(prev => prev.filter(t => t !== tag))} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} activeOpacity={0.7}>
-                  <Ionicons name="close" size={12} color={Colors.textMuted} />
+                  <Ionicons name="close" size={12} color={tc(Colors.textMuted)} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -1685,7 +1687,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <Ionicons
                 name={digestRating != null && n <= digestRating ? 'star' : 'star-outline'}
                 size={28}
-                color={digestRating != null && n <= digestRating ? Colors.warning : Colors.textMuted}
+                color={tc(digestRating != null && n <= digestRating ? Colors.warning : Colors.textMuted)}
                 style={{ marginRight: 6 }}
               />
             </TouchableOpacity>
@@ -1729,7 +1731,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             {/* Status banner */}
             {resultsAuction.winnerId ? (
               <View style={ts.resultsBanner}>
-                <Ionicons name="trophy" size={20} color={Colors.warning} />
+                <Ionicons name="trophy" size={20} color={tc(Colors.warning)} />
                 <View style={{ flex: 1 }}>
                   <Text style={ts.resultsBannerTitle}>{resultsAuction.buyerRefusedAt ? 'Buyer declined after inspection' : 'Winner determined'}</Text>
                   <Text style={ts.resultsBannerSub}>
@@ -1739,9 +1741,9 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </View>
             ) : (
               <View style={[ts.resultsBanner, { backgroundColor: Colors.whiteAlpha04, borderColor: Colors.whiteAlpha10 }]}>
-                <Ionicons name="close-circle-outline" size={20} color={Colors.textMuted} />
+                <Ionicons name="close-circle-outline" size={20} color={tc(Colors.textMuted)} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[ts.resultsBannerTitle, { color: provisionalPending(resultsAuction) ? Colors.warning : Colors.textSecondary }]}>{provisionalPending(resultsAuction) ? 'Provisionally Sold — Your Decision' : 'No Winner'}</Text>
+                  <Text style={[ts.resultsBannerTitle, { color: tc(provisionalPending(resultsAuction) ? Colors.warning : Colors.textSecondary) }]}>{provisionalPending(resultsAuction) ? 'Provisionally Sold — Your Decision' : 'No Winner'}</Text>
                   <Text style={ts.resultsBannerSub}>{provisionalPending(resultsAuction)
                     ? `Highest offer £${Number(resultsAuction.listing.bids?.[0]?.amount).toLocaleString('en-GB')}. Accept, re-list in auction or list on Retail.`
                     : 'Reserve price not met or no bids placed'}</Text>
@@ -1800,7 +1802,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 activeOpacity={0.8}
                 onPress={() => { setResultsAuction(null); handleTap(resultsAuction); }}
               >
-                <Ionicons name="eye-outline" size={14} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+                <Ionicons name="eye-outline" size={14} color={tc(Colors.textSecondary)} style={{ marginRight: 6 }} />
                 <Text style={ts.resultsViewBtnText}>View Auction</Text>
               </TouchableOpacity>
               {resultsAuction.winnerId && resultsAuction.buyerFeePaid && !resultsAuction.buyerRefusedAt ? (
@@ -1907,7 +1909,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
               ) : createError ? null : eligibleListings.length === 0 ? (
                 <View style={ts.modalCenter}>
-                  <Ionicons name="car-outline" size={40} color={Colors.textMuted} />
+                  <Ionicons name="car-outline" size={40} color={tc(Colors.textMuted)} />
                   <Text style={ts.modalEmptyTitle}>No eligible listings</Text>
                   <Text style={ts.modalEmptyText}>
                     Only active classified listings can be converted to auctions.
@@ -1936,7 +1938,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             >
               {/* Selected listing summary */}
               <View style={ts.selectedListingChip}>
-                <Ionicons name="checkmark-circle" size={14} color={Colors.success} />
+                <Ionicons name="checkmark-circle" size={14} color={tc(Colors.success)} />
                 <Text style={ts.selectedListingText} numberOfLines={1}>
                   {selectedListing.title || [selectedListing.year, selectedListing.make, selectedListing.model].filter(Boolean).join(' ')}
                 </Text>
@@ -1953,14 +1955,14 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                   onPress={() => { setPickerMode('date'); setShowDatePicker(true); }}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="calendar-outline" size={16} color={Colors.infoBlueLight} />
+                  <Ionicons name="calendar-outline" size={16} color={tc(Colors.infoBlueLight)} />
                   <Text style={ts.datePickerBtnText}>
                     {startDate.toLocaleString('en-GB', {
                       day: '2-digit', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
                     })}
                   </Text>
-                  <Ionicons name="chevron-down" size={14} color={Colors.textMuted} accessibilityElementsHidden importantForAccessibility="no" />
+                  <Ionicons name="chevron-down" size={14} color={tc(Colors.textMuted)} accessibilityElementsHidden importantForAccessibility="no" />
                 </TouchableOpacity>
 
                 {/* iOS: always show picker inline; Android: show as dialog when showDatePicker */}
@@ -1994,11 +1996,11 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
                 {selectedMarketValue > 0 ? (
                   <>
-                    <Text style={[ts.formHint, { color: Colors.success, marginTop: 4 }]}>
+                    <Text style={[ts.formHint, { color: tc(Colors.success), marginTop: 4 }]}>
                       Suggested reserve: £{reserveGuide.low.toLocaleString('en-GB')}–£{reserveGuide.high.toLocaleString('en-GB')}
                     </Text>
                     {newReservePrice && Number(newReservePrice) > reserveGuide.high ? (
-                      <Text style={[ts.formHint, { color: Number(newReservePrice) >= selectedMarketValue ? Colors.error : Colors.warning, marginTop: 2 }]}>
+                      <Text style={[ts.formHint, { color: tc(Number(newReservePrice) >= selectedMarketValue ? Colors.error : Colors.warning), marginTop: 2 }]}>
                         {Number(newReservePrice) >= selectedMarketValue
                           ? 'Reserve is at or above market value. Dealer bidding may be very limited.'
                           : 'Reserve is above the suggested range and may reduce bidding.'}
@@ -2065,7 +2067,7 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
               {/* Duration note */}
               <View style={ts.durationNote}>
-                <Ionicons name="time-outline" size={13} color={Colors.infoBlueLight} />
+                <Ionicons name="time-outline" size={13} color={tc(Colors.infoBlueLight)} />
                 <Text style={ts.durationNoteText}>
                   Auctions always run for exactly 24 hours. Anti-snipe: any bid in the final 3 minutes extends the auction by 3 minutes.
                 </Text>
@@ -2410,7 +2412,7 @@ const styles = StyleSheet.create({
   editError: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.xs,
-    color: Colors.error,
+    color: Colors.errorLight,
     marginTop: 4,
   },
   editActions: {
@@ -2673,7 +2675,7 @@ const styles = StyleSheet.create({
   retailPlanLabel: { fontFamily: FontFamily.bold, fontSize: FontSize.size14, flex: 1 },
   retailPlanPrice: { fontFamily: FontFamily.mono, fontSize: FontSize.base, flexShrink: 0 },
   retailErrorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: Colors.errorAlpha08, borderWidth: 1, borderColor: Colors.errorAlpha20, borderRadius: Radius.inline, padding: 10, marginTop: 12 },
-  retailErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.error, flex: 1, lineHeight: 17 },
+  retailErrorText: { fontFamily: FontFamily.medium, fontSize: FontSize.size12, color: Colors.errorLight, flex: 1, lineHeight: 17 },
   retailSubmitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 50, borderRadius: Radius.inline, backgroundColor: Colors.infoBlue, marginTop: 16, marginBottom: 4 },
   retailSubmitText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.white, letterSpacing: 0.3 },
 
@@ -2844,7 +2846,7 @@ const styles = StyleSheet.create({
   formHint: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.xs,
-    color: Colors.borderMuted,
+    color: Colors.textMuted,
     lineHeight: 15,
     marginBottom: 2,
   },
@@ -2921,7 +2923,7 @@ const styles = StyleSheet.create({
   createErrorText: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.size12,
-    color: Colors.error,
+    color: Colors.errorLight,
     flex: 1,
     lineHeight: 17,
   },
@@ -2941,4 +2943,30 @@ const styles = StyleSheet.create({
     color: Colors.white,
     letterSpacing: 0.3,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  resultsBtnText: { color: lightReadableText.accent },
+  auctionInfoValue: { color: lightReadableText.info },
+  editLabel: { color: LIGHT_PALETTE.muted },
+  editCurrency: { color: LIGHT_PALETTE.muted },
+  editInput: { color: LIGHT_PALETTE.text },
+  editError: { color: lightReadableText.error },
+  editDiscard: { color: LIGHT_PALETTE.muted },
+  handoverFeeLabel: { color: LIGHT_PALETTE.muted },
+  payoutSetupText: { color: lightReadableText.warning },
+  payoutFailText: { color: lightReadableText.error },
+  handoverDone: { color: lightReadableText.success },
+  retailInput: { color: LIGHT_PALETTE.text },
+  retailErrorText: { color: lightReadableText.error },
+  fieldHintSmall: { color: LIGHT_PALETTE.muted },
+  digestTagChipText: { color: LIGHT_PALETTE.text },
+  resultsViewBtnText: { color: LIGHT_PALETTE.secondary },
+  selectedListingText: { color: lightReadableText.success },
+  createErrorText: { color: lightReadableText.error },
+  resultsTimeline: { backgroundColor: LIGHT_PALETTE.card },
 });

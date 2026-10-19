@@ -7,7 +7,6 @@ import {
   ScrollView,
   FlatList,
   RefreshControl,
-  StatusBar,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -20,7 +19,7 @@ import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { IconButton } from '../../components/IconButton';
 import { CarListing, formatPrice } from '../../data/listings';
@@ -30,6 +29,8 @@ import { getSavedAuctionIdForListing } from '../../lib/watchlistApi';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const { width } = Dimensions.get('window');
 
@@ -45,9 +46,10 @@ type ViewMode = 'grid' | 'list';
 // ─── Saved Screen ─────────────────────────────────────────────────────────────
 
 export const SavedScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const navigation = useNavigation<NavProp>();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightSavedStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightSavedStyles), lightContrastStyles) : styles;
   const accountRole = useAuthStore(s => s.accountRole);
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -173,7 +175,7 @@ export const SavedScreen: React.FC = () => {
             <Ionicons
               name={saved ? 'heart' : 'heart-outline'}
               size={16}
-              color={saved ? Colors.accent : Colors.white}
+              color={tc(saved ? Colors.accent : Colors.white)}
             />
           </TouchableOpacity>
         </View>
@@ -258,7 +260,7 @@ export const SavedScreen: React.FC = () => {
           <Ionicons
             name={saved ? 'heart' : 'heart-outline'}
             size={18}
-            color={saved ? Colors.accent : Colors.textMuted}
+            color={tc(saved ? Colors.accent : Colors.textMuted)}
           />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -269,7 +271,7 @@ export const SavedScreen: React.FC = () => {
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar tone="light-content" />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha03, 'rgba(0,0,0,0)', Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -286,7 +288,7 @@ export const SavedScreen: React.FC = () => {
         </View>
         <View style={ts.headerActions}>
           <IconButton
-            icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={Colors.textSecondary} />}
+            icon={<Ionicons name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'} size={20} color={tc(Colors.textSecondary)} />}
             accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
             onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
             style={ts.iconBtn}
@@ -602,4 +604,12 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingVertical: 4,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  heartBtnIcon: { backgroundColor: LIGHT_PALETTE.card },
 });

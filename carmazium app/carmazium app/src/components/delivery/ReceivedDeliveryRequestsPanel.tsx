@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
 import {
   acceptDeliveryRequest,
@@ -19,6 +19,7 @@ import {
   type DeliveryRequest,
 } from '../../lib/deliveryApi';
 import { haptics } from '../../lib/haptics';
+import { useAppearance } from '../../theme/useAppearance';
 
 // Compact panel that surfaces PENDING delivery requests waiting on this
 // seller/dealer. Shown at the top of the offers scroll so acceptance
@@ -36,8 +37,9 @@ const fmtGbp = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`;
 export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
   contextLabel = 'your listing',
 }) => {
+  const { tc } = useAppearance();
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? mergeAppearanceStyles(styles, lightDeliveryRequestStyles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDeliveryRequestStyles), lightContrastStyles) : styles;
   const [rows, setRows] = useState<DeliveryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
   return (
     <View style={ts.container}>
       <View style={ts.headerRow}>
-        <Ionicons name="car-outline" size={13} color={Colors.accentGreen} />
+        <Ionicons name="car-outline" size={13} color={tc(Colors.accentGreen)} />
         <Text style={ts.headerText}>
           {rows.length} delivery request{rows.length === 1 ? '' : 's'} awaiting your response
         </Text>
@@ -154,7 +156,7 @@ export const ReceivedDeliveryRequestsPanel: React.FC<Props> = ({
                 onPress={() => onDecline(req)}
                 disabled={isActioning}
               >
-                <Text style={[ts.btnText, { color: Colors.paleRed_f87171 }]}>Decline</Text>
+                <Text style={[ts.btnText, { color: tc(Colors.paleRed_f87171) }]}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[ts.btn, ts.btnAccept]}
@@ -264,7 +266,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(248,113,113,0.08)',
   },
   btnAccept: {
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     borderColor: Colors.success,
   },
   btnText: {
@@ -272,4 +274,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size12,
     letterSpacing: 0.3,
   },
+});
+
+// Light-mode colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  btnAccept: { backgroundColor: lightReadableText.success },
 });

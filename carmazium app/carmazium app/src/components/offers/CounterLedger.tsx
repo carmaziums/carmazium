@@ -3,8 +3,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightStrongText } from '../../theme/appearancePalette';
 import {FontFamily, FontSize } from '../../constants/typography';
+import { useAppearance } from '../../theme/useAppearance';
 
 // The backend keeps a single Offer row per negotiation, not one row per
 // round. So a full round-by-round ledger isn't derivable — we can only
@@ -76,9 +77,10 @@ interface Row {
 }
 
 export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) => {
+  const { tc } = useAppearance();
   const rows: Row[] = [];
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightCounterLedgerStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightCounterLedgerStyles), lightContrastStyles) : styles;
 
   const buyerLabel = viewerRole === 'BUYER' ? 'You offered' : 'Buyer offered';
   const buyerCounterLabel = viewerRole === 'BUYER' ? 'You countered' : 'Buyer countered';
@@ -130,7 +132,7 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
   return (
     <View style={ts.container}>
       <View style={ts.headerRow}>
-        <Ionicons name="git-network-outline" size={12} color={Colors.textMuted} />
+        <Ionicons name="git-network-outline" size={12} color={tc(Colors.textMuted)} />
         <Text style={ts.headerLabel}>NEGOTIATION HISTORY</Text>
         {expiry && (
           <View
@@ -144,11 +146,11 @@ export const CounterLedger: React.FC<Props> = ({ offer, viewerRole = 'BUYER' }) 
               name="time-outline"
               size={10}
               color={
-                expiry.tone === 'error'
+                tc(expiry.tone === 'error'
                   ? Colors.error
                   : expiry.tone === 'warning'
                     ? Colors.warning
-                    : Colors.textMuted
+                    : Colors.textMuted)
               }
             />
             <Text
@@ -347,4 +349,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.size10,
     color: Colors.textMuted,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  attemptCount: { color: LIGHT_PALETTE.muted },
+  currentPillText: { color: lightStrongText.accent },
 });

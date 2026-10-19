@@ -3,6 +3,8 @@ import { StyleSheet, Text, TextProps } from 'react-native';
 
 import { Colors } from '@/constants/colors';
 import { TextPresets } from '@/constants/typography';
+import { appearancePalette, themedColor } from '../../theme/appearancePalette';
+import { useAppearanceStore } from '../../store/appearanceStore';
 
 type EyebrowProps = TextProps & {
   children: React.ReactNode;
@@ -19,11 +21,16 @@ type EyebrowProps = TextProps & {
  * why the UI read as untyped. Anything that would otherwise be a 9-10px
  * all-caps label should be this.
  */
-export const Eyebrow = React.memo<EyebrowProps>(({ children, color, style, ...rest }) => (
-  <Text {...rest} style={[styles.eyebrow, color ? { color } : null, style]}>
-    {children}
-  </Text>
-));
+export const Eyebrow = React.memo<EyebrowProps>(({ children, color, style, ...rest }) => {
+  const mode = useAppearanceStore(state => state.mode);
+  // Callers pass dark-palette colours (e.g. Colors.accent); translate them so
+  // the label stays readable on light surfaces. Identity in dark mode.
+  return (
+    <Text {...rest} style={[mode === 'light' ? lightStyles.eyebrow : styles.eyebrow, color ? { color: themedColor(mode, color) } : null, style]}>
+      {children}
+    </Text>
+  );
+});
 
 Eyebrow.displayName = 'Eyebrow';
 
@@ -33,3 +40,6 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
   },
 });
+
+const LIGHT_PALETTE = appearancePalette('light');
+const lightStyles = StyleSheet.create({ eyebrow: { ...TextPresets.eyebrow, color: LIGHT_PALETTE.muted } });

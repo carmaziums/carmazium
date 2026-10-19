@@ -5,7 +5,6 @@ import {
   Linking,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,7 +19,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -31,6 +30,8 @@ import {
   type SaleCancellationRequest,
 } from '../../lib/saleCancellationApi';
 import { haptics } from '../../lib/haptics';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING_COUNTERPARTY: 'Waiting for other party',
@@ -49,8 +50,9 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<SaleCancellationRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF'] : [Colors.accentAlpha04, Colors.bgPrimary]}
         style={StyleSheet.absoluteFillObject}
@@ -231,7 +233,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
                             color={Colors.infoBlue}
                           />
                           <Text style={ts.evidenceName} numberOfLines={1}>{item.fileName}</Text>
-                          <Ionicons name="open-outline" size={14} color={Colors.textMuted} />
+                          <Ionicons name="open-outline" size={14} color={tc(Colors.textMuted)} />
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -240,7 +242,7 @@ export const SaleCancellationsScreen: React.FC<{ navigation?: any }> = ({ naviga
 
                 {!!request.linkedServiceJobs?.length && (
                   <View style={ts.serviceWarning}>
-                    <Ionicons name="alert-circle-outline" size={15} color={Colors.warning} />
+                    <Ionicons name="alert-circle-outline" size={15} color={tc(Colors.warning)} />
                     <Text style={ts.serviceWarningText}>
                       Linked TradeXchange work has progressed. CarMazium admin must review this cancellation separately from the provider job.
                     </Text>
@@ -463,7 +465,7 @@ const styles = StyleSheet.create({
     minWidth: 130,
     height: 42,
     borderRadius: Radius.inline,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.successSolid,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -483,4 +485,17 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  headerSub: { color: LIGHT_PALETTE.muted },
+  reason: { color: LIGHT_PALETTE.text },
+  serviceWarningText: { color: LIGHT_PALETTE.secondary },
+  note: { color: LIGHT_PALETTE.secondary },
+  secondaryBtnText: { color: lightReadableText.accent },
+  primaryBtn: { backgroundColor: lightReadableText.success },
 });

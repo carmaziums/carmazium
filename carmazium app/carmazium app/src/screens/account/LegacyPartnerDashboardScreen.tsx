@@ -5,7 +5,6 @@ import {
   Modal,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -20,7 +19,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, appearancePalette } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import {
@@ -40,6 +39,8 @@ import {
   updateInsurancePartnerQuote,
 } from '../../lib/legacyPartnerApi';
 import { useAuthStore } from '../../store/authStore';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 
 const PAGE_SIZE = 20;
 
@@ -58,8 +59,9 @@ const applicantName = (item: LegacyPartnerItem) => {
 };
 
 export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const accountRole = useAuthStore((s) => s.accountRole);
   const kind: LegacyPartnerKind =
@@ -308,7 +310,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
   if (loading) {
     return (
       <View style={[ts.container, ts.center, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <ThemedStatusBar />
         <ActivityIndicator size="large" color={Colors.accent} />
         <Text style={ts.loadingText}>Loading {labels.title}…</Text>
       </View>
@@ -317,7 +319,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
 
   return (
     <View style={[ts.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <View style={ts.header}>
         <View>
           <Text style={ts.eyebrow}>{labels.eyebrow}</Text>
@@ -416,7 +418,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             value={companyName}
             onChangeText={setCompanyName}
             placeholder="Company name"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
           />
 
           <Text style={ts.fieldLabel}>CALLBACK URL</Text>
@@ -425,7 +427,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             value={callbackUrl}
             onChangeText={setCallbackUrl}
             placeholder="https://your-api.example.com/webhook"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={tc(Colors.textMuted)}
             autoCapitalize="none"
             keyboardType="url"
           />
@@ -461,7 +463,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
             accessibilityRole="button"
           >
             {regeneratingKey ? (
-              <ActivityIndicator color={Colors.textPrimary} />
+              <ActivityIndicator color={tc(Colors.textPrimary)} />
             ) : (
               <Text style={ts.secondaryButtonText}>REGENERATE INTEGRATION KEY</Text>
             )}
@@ -512,7 +514,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
               onChangeText={setAmountDraft}
               keyboardType="decimal-pad"
               placeholder="0.00"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={tc(Colors.textMuted)}
             />
 
             {kind === 'insurance' ? (
@@ -523,7 +525,7 @@ export const LegacyPartnerDashboardScreen: React.FC<{ navigation?: any }> = ({ n
                   value={coverageDraft}
                   onChangeText={setCoverageDraft}
                   placeholder="Comprehensive"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={tc(Colors.textMuted)}
                 />
               </>
             ) : null}
@@ -567,7 +569,7 @@ const StatCard = ({
   icon: string;
 }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   return (
   <View style={ts.statCard}>
     <Ionicons name={icon as any} size={17} color={Colors.accent} />
@@ -594,7 +596,7 @@ const PartnerRecordCard = ({
   onComplete: () => void;
 }) => {
   const mode = useAppearanceStore(state => state.mode);
-  const ts = mode === 'light' ? adaptLegacyLightStyles(styles) : styles;
+  const ts = mode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightContrastStyles) : styles;
   const finance = item as FinancePartnerApplication;
   const insurance = item as InsurancePartnerQuote;
   const pending = item.status === 'PENDING';
@@ -955,4 +957,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  sectionSub: { color: LIGHT_PALETTE.muted },
+  input: { color: LIGHT_PALETTE.text },
+  keyWarning: { color: LIGHT_PALETTE.muted },
+  secondaryButtonText: { color: LIGHT_PALETTE.text },
+  modalSub: { color: LIGHT_PALETTE.secondary },
+  modalCancelText: { color: LIGHT_PALETTE.secondary },
+  recordSub: { color: LIGHT_PALETTE.muted },
+  statusText: { color: LIGHT_PALETTE.secondary },
+  loadMoreText: { color: Colors.white }, // on a solid brand/semantic fill in both modes
 });

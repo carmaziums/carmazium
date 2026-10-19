@@ -16,13 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { adaptLegacyLightStyles, mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { adaptLegacyLightStyles, mergeAppearanceStyles, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
 import { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
 type NavProp = NativeStackNavigationProp<MainStackParamList>;
 
 // ─────────────────────────── data ──────────────────────────────────
@@ -92,8 +93,9 @@ const SERVICES: ServiceItem[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const ServicesScreen: React.FC = () => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightServicesStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(adaptLegacyLightStyles(styles), lightServicesStyles), lightContrastStyles) : styles;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -163,7 +165,7 @@ export const ServicesScreen: React.FC = () => {
           onPress={() => navigation.navigate('CustomerServiceJobs')}
         >
           <View style={ts.customerJobsIcon}>
-            <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
+            <Ionicons name="briefcase-outline" size={22} color={tc(Colors.infoBlueLight)} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={ts.partnerTitle}>My service jobs</Text>
@@ -171,7 +173,7 @@ export const ServicesScreen: React.FC = () => {
               Track delivery and inspection requests, compare quotes, pay providers and manage completed work.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          <Ionicons name="chevron-forward" size={18} color={tc(Colors.textMuted)} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -180,7 +182,7 @@ export const ServicesScreen: React.FC = () => {
           onPress={() => navigation.navigate('PartnerDashboard')}
         >
           <View style={ts.partnerIcon}>
-            <Ionicons name="business-outline" size={22} color={Colors.warning} />
+            <Ionicons name="business-outline" size={22} color={tc(Colors.warning)} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={ts.partnerTitle}>Provide services with CarMazium</Text>
@@ -188,7 +190,7 @@ export const ServicesScreen: React.FC = () => {
               Use one Partner Account for Delivery & Recovery, Inspections, Vehicle Finance and Warranty services.
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          <Ionicons name="chevron-forward" size={18} color={tc(Colors.textMuted)} />
         </TouchableOpacity>
 
         <Text style={ts.sectionHeading}>Choose a service</Text>
@@ -219,7 +221,7 @@ export const ServicesScreen: React.FC = () => {
         ))}
 
         <View style={ts.noteCard}>
-          <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
+          <Ionicons name="information-circle-outline" size={18} color={tc(Colors.textSecondary)} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={ts.noteText}>
             Delivery and inspection are paid service jobs with competing provider quotes and CarMazium checkout. Finance and warranty are matched enquiries handled directly with providers. CarMazium does not make lending decisions or guarantee approval.
           </Text>
@@ -414,4 +416,10 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 18,
   },
+});
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  cardKind: { color: lightReadableText.accent },
 });

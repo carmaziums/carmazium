@@ -18,6 +18,10 @@ import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../constants/colors';
 import { FontFamily, FontSize, LetterSpacing } from '../constants/typography';
 import { haptics } from '../lib/haptics';
+import { useAppearanceStore } from '../store/appearanceStore';
+import { appearancePalette } from '../theme/appearancePalette';
+
+const LIGHT = appearancePalette('light');
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -70,6 +74,11 @@ export const PrimaryCTA: React.FC<PrimaryCTAProps> = ({
   };
 
   const isDisabled = disabled || isLoading;
+  // Light mode: a 45%-opacity red fill with a white label read at ~2:1 on a
+  // white page. Disabled filled CTAs get a solid neutral fill and a readable
+  // disabled label (5.4:1) instead; dark mode keeps the dimmed brand fill.
+  const isLight = useAppearanceStore(state => state.mode) === 'light';
+  const lightDisabled = isLight && disabled && !isLoading && variant === 'filled';
 
   const containerStyle = [
     styles.base,
@@ -79,10 +88,14 @@ export const PrimaryCTA: React.FC<PrimaryCTAProps> = ({
     styles[`size_${size}`],
     fullWidth && styles.fullWidth,
     isDisabled && styles.disabled,
+    // The chamfered shape is drawn by the SVG (fill below); only the plain
+    // pill takes the solid neutral background.
+    isLight && lightDisabled && (hasChamfer ? styles.disabledLightChamfer : styles.disabledLight),
     style,
   ];
 
   const getSvgFillColor = () => {
+    if (lightDisabled) return LIGHT.input;
     if (variant === 'filled') return Colors.accent;
     if (variant === 'ghost') return Colors.accentSubtle;
     return 'transparent';
@@ -130,6 +143,7 @@ export const PrimaryCTA: React.FC<PrimaryCTAProps> = ({
             style={[
               styles.label,
               variant === 'filled' && styles.labelFilled,
+              isLight && lightDisabled && styles.labelDisabledLight,
               variant === 'outline' && styles.labelOutline,
               variant === 'ghost' && styles.labelGhost,
               styles[`labelSize_${size}`],
@@ -203,6 +217,19 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
     shadowOpacity: 0,
+  },
+  disabledLight: {
+    opacity: 1,
+    backgroundColor: LIGHT.input,
+    borderWidth: 1,
+    borderColor: LIGHT.border,
+    elevation: 0,
+  },
+  disabledLightChamfer: {
+    opacity: 1,
+  },
+  labelDisabledLight: {
+    color: LIGHT.disabled,
   },
   // Inner layout
   inner: {

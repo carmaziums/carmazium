@@ -10,12 +10,13 @@ import { DealerActiveBidPositions, DealerAuctionShortlist } from './DealerAuctio
 import { WebsiteTopBar } from '../../components/WebsiteTopBar';
 import { Colors } from '../../constants/colors';
 import { useAppearanceStore } from '../../store/appearanceStore';
-import { mergeAppearanceStyles } from '../../theme/appearancePalette';
+import { mergeAppearanceStyles, appearancePalette, lightReadableText } from '../../theme/appearancePalette';
 import { FontFamily } from '../../constants/typography';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { useDealerAccess } from '../../hooks/useDealerAccess';
 import { getScrollableStageHeight } from '../../lib/nativeLayoutParity';
 import { LiveScreen } from './LiveScreen';
+import { useAppearance } from '../../theme/useAppearance';
 
 // Website reference: src/app/dashboard/dealer/auctions/page.tsx.
 // /dashboard/dealer/auctions is the CANONICAL default Buy & Bid route:
@@ -59,9 +60,10 @@ const formatDate = (raw?: string | null): string => {
 // actions, especially seller funds confirmation and handover proof: copying
 // those state transitions into this overview would be unsafe.
 export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const { loading: accessLoading, hasPermission } = useDealerAccess(true);
   const appearanceMode = useAppearanceStore(state => state.mode);
-  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(styles, lightDealerBuyBidStyles) : styles;
+  const ts = appearanceMode === 'light' ? mergeAppearanceStyles(mergeAppearanceStyles(styles, lightDealerBuyBidStyles), lightContrastStyles) : styles;
   const { fontScale } = useWindowDimensions();
   const canManageInventory = !accessLoading && hasPermission('MANAGE_INVENTORY');
   const canViewPurchases = !accessLoading && hasPermission('VIEW_PURCHASES');
@@ -164,7 +166,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
       {canManageInventory && (
         <View style={ts.cardFooter}>
           <Text style={ts.cardAction}>View auction management and results</Text>
-          <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+          <Ionicons name="chevron-forward" size={16} color={tc(Colors.textMuted)} />
         </View>
       )}
     </TouchableOpacity>
@@ -196,7 +198,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
             accessibilityState={link.active === undefined ? undefined : { selected: link.active }}
             style={[ts.navButton, { minHeight: Math.max(44, getScrollableStageHeight(fontScale) - 10) }, link.active && ts.navSelected]}>
             <Ionicons name={link.icon as any} size={17}
-              color={link.active ? Colors.white : Colors.textMuted} />
+              color={link.active ? Colors.white : tc(Colors.textMuted)} />
             <Text style={[ts.navText, link.active && ts.navTextActive]}>
               {link.label}
             </Text>
@@ -212,7 +214,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
             <TouchableOpacity style={ts.warning} onPress={openManager}
               accessibilityRole="button"
               accessibilityLabel={`${needsHandover} auctions may need next handover steps`}>
-              <Ionicons name="alert-circle-outline" size={19} color={Colors.warning} />
+              <Ionicons name="alert-circle-outline" size={19} color={tc(Colors.warning)} />
               <Text style={ts.warningText}>
                 {needsHandover} auction{needsHandover === 1 ? '' : 's'} may need a next step.
                 Open My Auctions to review funds confirmation, inspection and handover.
@@ -289,7 +291,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
                 <Text style={ts.emptyText}>Loading your auctions…</Text>
               </View>
               : error ? null : <View style={ts.emptyState}>
-                <Ionicons name="hammer-outline" size={26} color={Colors.textMuted} />
+                <Ionicons name="hammer-outline" size={26} color={tc(Colors.textMuted)} />
                 <Text style={ts.emptyText}>No auctions yet</Text>
                 <Text style={ts.emptyHint}>
                   Your own auctions will appear here. Use Live Auctions to find vehicles to bid on.
@@ -400,4 +402,16 @@ const styles = StyleSheet.create({
   emptyText: { color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 13 },
   emptyHint: { color: Colors.textMuted, fontFamily: FontFamily.regular,
     fontSize: 12, lineHeight: 18, textAlign: 'center' },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light-mode text colours for keys the screen's light map did not cover.
+// Generated from the contrast audit (scripts/theme-audit); dark mode is untouched.
+const lightContrastStyles = StyleSheet.create({
+  cardAction: { color: lightReadableText.accent },
+  errorText: { color: lightReadableText.warning },
+  retryText: { color: lightReadableText.accent },
+  manageLink: { color: lightReadableText.accent },
+  permissionNotice: { color: LIGHT_PALETTE.muted },
 });

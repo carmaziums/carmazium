@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -25,6 +24,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 import { IconButton } from '../../components/IconButton';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { useAppearance } from '../../theme/useAppearance';
+import { ThemedStatusBar } from '../../components/ThemedStatusBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_W = SCREEN_WIDTH - 64;
 
@@ -107,6 +108,7 @@ const PerformanceSkeleton: React.FC = () => (
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const { tc } = useAppearance();
   const appearanceMode = useAppearanceStore(state => state.mode);
   const ts = appearanceMode === 'light' ? adaptLegacyLightStyles(styles) : styles;
   const insets = useSafeAreaInsets();
@@ -148,7 +150,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ThemedStatusBar />
       <LinearGradient
         colors={appearanceMode === 'light' ? ['#EEF5FB', '#F7FBFF', '#EEF5FB'] : [Colors.accentAlpha06, 'rgba(10,10,12,0)', Colors.bgPrimary]}
         start={{ x: 0.5, y: 0 }}
@@ -198,7 +200,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
             <View style={ts.statsGrid}>
               <View style={ts.statCard}>
                 <View style={[ts.statIconWrap, { backgroundColor: Colors.successAlpha12 }]}>
-                  <Ionicons name="cash-outline" size={16} color={Colors.success} />
+                  <Ionicons name="cash-outline" size={16} color={tc(Colors.success)} />
                 </View>
                 <Text style={ts.statValue}>{formatCurrency(data!.totalRevenue)}</Text>
                 <Text style={ts.statLabel}>TOTAL REVENUE</Text>
@@ -212,7 +214,7 @@ export const SellerPerformanceScreen: React.FC<{ navigation?: any }> = ({ naviga
               </View>
               <View style={ts.statCard}>
                 <View style={[ts.statIconWrap, { backgroundColor: Colors.warningAlpha12 }]}>
-                  <Ionicons name="car-sport-outline" size={16} color={Colors.warning} />
+                  <Ionicons name="car-sport-outline" size={16} color={tc(Colors.warning)} />
                 </View>
                 <Text style={ts.statValue}>{String(data!.totalListings)}</Text>
                 <Text style={ts.statLabel}>LISTINGS</Text>

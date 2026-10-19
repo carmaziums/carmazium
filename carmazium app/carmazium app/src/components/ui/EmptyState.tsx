@@ -4,6 +4,8 @@ import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../../constants/colors';
 import { Radius } from '../../constants/spacing';
 import { FontFamily, FontSize, TextPresets, Type } from '../../constants/typography';
+import { useAppearance } from '../../theme/useAppearance';
+import { appearancePalette, lightReadableText, mergeAppearanceStyles } from '../../theme/appearancePalette';
 
 interface EmptyStateProps {
   /** Icon name from the BrandIcon Ionicons map (e.g. 'car-outline', 'bookmark') */
@@ -48,33 +50,36 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   accent = false,
 }) => {
   const showCta = !!ctaLabel && !!onCtaPress;
+  const { isLight, palette } = useAppearance();
+  const ts = isLight ? lightStyles : styles;
 
   return (
     <View style={styles.container}>
-      <View style={[styles.iconOrb, accent && styles.iconOrbAccent]}>
+      <View style={[ts.iconOrb, accent && ts.iconOrbAccent]}>
         <Ionicons
           name={icon}
           size={26}
-          color={accent ? Colors.accent : Colors.textMuted}
+          color={accent ? (isLight ? lightReadableText.accent : Colors.accent) : palette.muted}
         />
       </View>
 
       {eyebrow ? (
-        <Text style={[styles.eyebrow, accent && styles.eyebrowAccent]}>{eyebrow}</Text>
+        <Text style={[ts.eyebrow, accent && ts.eyebrowAccent]}>{eyebrow}</Text>
       ) : null}
 
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Text style={ts.title}>{title}</Text>
+      {subtitle ? <Text style={ts.subtitle}>{subtitle}</Text> : null}
 
       {showCta ? (
         <TouchableOpacity
-          style={[styles.cta, accent ? styles.ctaAccent : styles.ctaQuiet]}
+          style={[ts.cta, accent ? ts.ctaAccent : ts.ctaQuiet]}
           onPress={onCtaPress}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel={ctaLabel}
         >
-          <Text style={[styles.ctaLabel, !accent && styles.ctaLabelQuiet]}>{ctaLabel}</Text>
+          {/* theme-audit-ignore: quiet CTA label colour comes from ctaLabelQuiet */}
+          <Text style={[ts.ctaLabel, !accent && ts.ctaLabelQuiet]}>{ctaLabel}</Text>
         </TouchableOpacity>
       ) : null}
     </View>
@@ -165,6 +170,20 @@ const styles = StyleSheet.create({
   ctaLabelQuiet: {
     color: Colors.textSecondary,
   },
+});
+
+const LIGHT_PALETTE = appearancePalette('light');
+
+// Light mode: colour-only overrides; layout comes from the base sheet.
+const lightStyles = mergeAppearanceStyles(styles, {
+  iconOrb: { backgroundColor: LIGHT_PALETTE.card, borderColor: LIGHT_PALETTE.border },
+  eyebrow: { color: LIGHT_PALETTE.muted },
+  eyebrowAccent: { color: lightReadableText.accent },
+  title: { color: LIGHT_PALETTE.text },
+  subtitle: { color: LIGHT_PALETTE.muted },
+  ctaAccent: { backgroundColor: LIGHT_PALETTE.accentSolid },
+  ctaQuiet: { backgroundColor: LIGHT_PALETTE.card, borderColor: LIGHT_PALETTE.border },
+  ctaLabelQuiet: { color: LIGHT_PALETTE.secondary },
 });
 
 export default EmptyState;
