@@ -639,7 +639,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       if (!url) throw new Error('No checkout URL returned');
       setHpiCheckoutUrl(url);
     } catch (err: any) {
-      setHpiError(err.message ?? 'HPI check failed');
+      setHpiError(err.message ?? 'Vehicle history check failed');
     } finally {
       setHpiLoading(false);
     }
@@ -1361,7 +1361,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     <Ionicons name="document-text-outline" size={16} color={Colors.infoBlue} />
                   </View>
                   <View>
-                    <Text style={styles.hpiReportTitle}>Check HPI (£9.99)</Text>
+                    <Text style={styles.hpiReportTitle}>Vehicle History Check (£9.99)</Text>
                     <Text style={styles.hpiReportSub}>Stolen · Finance · Write-off · Plate changes</Text>
                   </View>
                 </View>
@@ -1693,7 +1693,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 ? (hpiData.isClear ? 'Vehicle history report clear' : 'Vehicle history report available — review before purchase')
                 : hpiData
                   ? 'Vehicle history report is being prepared'
-                  : 'Vehicle history report not supplied · HPI is optional'}
+                  : 'Vehicle history report not supplied · a vehicle history check is optional'}
             </Text>
           </View>
 
@@ -2106,7 +2106,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {/* HPI CHECKOUT MODAL — hosted Stripe checkout for £9.99 report */}
       <StripeCheckoutModal
         url={hpiCheckoutUrl}
-        title="HPI Report Checkout"
+        title="Vehicle History Check Checkout"
         onSuccess={handleHpiCheckoutSuccess}
         onCancel={() => setHpiCheckoutUrl(null)}
         onClose={() => setHpiCheckoutUrl(null)}
@@ -2122,7 +2122,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             BottomSheet's own title row only supports a single line of text. */}
         <View style={styles.modalHeader}>
           <View>
-            <Text style={styles.modalTitle}>HPI Check Report</Text>
+            <Text style={styles.modalTitle}>Vehicle History Report</Text>
             {hpiData && (
               <Text style={{ fontFamily: FontFamily.medium, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
                 {[
@@ -2160,7 +2160,7 @@ export const VehicleDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={[styles.hpiOverallBanner, { backgroundColor: hpiData.isClear ? Colors.successAlpha08 : Colors.errorAlpha08, borderColor: hpiData.isClear ? Colors.successAlpha25 : Colors.errorAlpha25 }]}>
               <Ionicons name={hpiData.isClear ? 'shield-checkmark' : 'warning'} size={20} color={hpiData.isClear ? Colors.success : Colors.error} />
               <Text style={[styles.hpiOverallText, { color: hpiData.isClear ? Colors.success : Colors.error }]}>
-                {hpiData.isClear ? 'HPI CLEAR — No issues found' : 'ISSUES DETECTED — Review checks below'}
+                {hpiData.isClear ? 'NO ISSUES FOUND — Review report' : 'ISSUES DETECTED — Review checks below'}
               </Text>
             </View>
 
