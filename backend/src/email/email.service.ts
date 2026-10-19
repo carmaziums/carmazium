@@ -1315,7 +1315,7 @@ export class EmailService {
 
         const bodyHtml = `
             <h1 style="margin: 0 0 16px; font-family: 'Poppins', 'Segoe UI', sans-serif; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
-                ${reports.length} HPI report${reports.length === 1 ? '' : 's'} still outstanding
+                ${reports.length} vehicle history report${reports.length === 1 ? '' : 's'} still outstanding
             </h1>
             <p style="margin: 0 0 24px; font-size: 15px; color: #cbd5e1; line-height: 1.6;">
                 These vehicles are already live on CarMazium with a report someone has paid for but hasn't received yet.
@@ -1324,14 +1324,14 @@ export class EmailService {
             <div style="text-align: center; margin: 32px 0 24px;">
                 <a href="${this.frontendUrl}/dashboard/admin/hpi" target="_blank"
                    style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, #ed1c24, #ff4d4d); color: #ffffff; text-decoration: none; font-weight: 800; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 12px; box-shadow: 0 8px 25px rgba(237,28,36,0.3);">
-                    Open HPI Queue →
+                    Open Vehicle History Queue →
                 </a>
             </div>
         `;
 
         return this.sendBrandedEmail({
             to: toEmail,
-            subject: `${reports.length} HPI report${reports.length === 1 ? '' : 's'} awaiting preparation — CarMazium`,
+            subject: `${reports.length} vehicle history report${reports.length === 1 ? '' : 's'} awaiting preparation — CarMazium`,
             bodyHtml,
         });
     }
