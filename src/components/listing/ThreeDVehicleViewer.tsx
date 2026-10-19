@@ -1,6 +1,6 @@
 import * as React from "react"
 import * as THREE from "three"
-import { Canvas, type ThreeEvent } from "@react-three/fiber"
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber"
 import { useGLTF, OrbitControls, Environment, Html, useProgress } from "@react-three/drei"
 import { Loader2, Camera } from "lucide-react"
 
@@ -98,6 +98,9 @@ export interface SurfaceDamagePin {
   point: SurfacePoint
   type?: string
   hasPhoto?: boolean
+  /** true when the seller selected a named panel instead of an exact mesh point */
+  approximate?: boolean
+  zone?: string
 }
 
 type ModelBounds = { min: [number, number, number]; size: [number, number, number] }
@@ -196,6 +199,27 @@ function LoadingScreen() {
 // Editor mode already marks damage by tapping the mesh, so neither view
 // should render those obsolete controls.
 
+// When auction damage is all at the rear, open the viewer facing the rear
+// rather than showing an undamaged front bumper as if nothing was reported.
+// Apply once per incoming marker set so subsequent user rotation is untouched.
+function DamageCameraFocus({ pins }: { pins: SurfaceDamagePin[] }) {
+  const { camera } = useThree()
+  const applied = React.useRef('')
+  React.useEffect(() => {
+    if (!pins.length) return
+    const signature = pins.map(p => `${p.id}:${p.point.fz}`).join('|')
+    if (applied.current === signature) return
+    applied.current = signature
+    const rearOnly = pins.every(p => p.point.fz < 0.4)
+    if (rearOnly) {
+      camera.position.set(5, 3, -7)
+      camera.lookAt(0, 0.5, 0)
+      camera.updateProjectionMatrix()
+    }
+  }, [camera, pins])
+  return null
+}
+
 function CameraGlyph() {
   return <Camera size={11} aria-hidden className="absolute -right-1 -top-1 rounded-full bg-slate-950 p-0.5" />
 }
@@ -273,11 +297,11 @@ export function ThreeDVehicleViewer({
   return (
     <div
       ref={containerRef}
-      className="w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
+      className="relative w-full rounded-2xl overflow-hidden bg-slate-950/80 border border-white/8"
       role="group"
       aria-label={onSurfaceTap
         ? "Interactive 3D vehicle marking area. Tap the surface or use the manual area selector. Use the saved damage list for keyboard navigation."
-        : "Read-only 3D vehicle damage view. Only the seller's positioned damage markers are displayed. Recorded damage details are listed below."}
+        : "Read-only 3D vehicle damage view. Markers identify exact recorded points or approximate saved panels. Damage details are listed below."}
       style={{ height: 400 }}
     >
       {!inView ? (
@@ -301,13 +325,18 @@ export function ThreeDVehicleViewer({
 
         <Environment preset="city" />
 
+        <DamageCameraFocus pins={damagePins} />
         <React.Suspense fallback={<LoadingScreen />}>
           <VehicleModel url={url} onSurfaceTap={onSurfaceTap ? chooseSurface : undefined} onBounds={handleBounds} />
 
           {/* Never render a plus control for every predefined body zone.
               Read-only pages show only persisted numbered damage pins;
               the seller editor continues to add damage via direct mesh taps. */}
-          {modelBounds && damagePins.map(pin => {
+          {modelBounds && damagePins.map((pin, pinIndex) => {
+            const precedingAtSamePoint = damagePins.slice(0, pinIndex).filter(other =>
+              Math.abs(other.point.fx - pin.point.fx) < 0.02 &&
+              Math.abs(other.point.fy - pin.point.fy) < 0.02 &&
+              Math.abs(other.point.fz - pin.point.fz) < 0.02).length
             const { min, size } = modelBounds
             const position: [number, number, number] = [
               min[0] + pin.point.fx * size[0],
@@ -318,12 +347,13 @@ export function ThreeDVehicleViewer({
               <Html key={pin.id} position={position} distanceFactor={6} zIndexRange={[110, 20]}>
                 <button
                   type="button"
-                  title={`Damage ${pin.number}: ${pin.type || 'Other'}`}
-                  aria-label={`Damage ${pin.number}. ${pin.type || 'Other'}. ${pin.hasPhoto ? 'Photo attached.' : 'No photo attached.'} ${onSurfaceTap ? 'Edit' : 'Inspect'} this recorded damage`}
+                  title={`Damage ${pin.number}: ${pin.type || 'Other'}${pin.approximate ? ' (approximate reported panel)' : ' (seller-marked point)'}`}
+                  style={{ marginLeft: precedingAtSamePoint * 46 }}
+                  aria-label={`Damage ${pin.number}. ${pin.type || 'Other'}. ${pin.approximate ? 'Approximate panel location.' : 'Exact seller-marked location.'} ${pin.hasPhoto ? 'Photo attached.' : 'No photo attached.'} ${onSurfaceTap ? 'Edit' : 'Inspect'} this recorded damage`}
                   aria-pressed={selectedDamageId === pin.id}
                   onClick={event => { event.stopPropagation(); onDamagePinPress?.(pin.id) }}
                   disabled={!onDamagePinPress}
-                  className={`flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-sm font-black text-white shadow-xl transition focus:outline-none focus:ring-4 focus:ring-white ${selectedDamageId === pin.id ? 'ring-4 ring-primary bg-primary' : pin.type === 'DENT' || pin.type === 'CRACK' ? 'bg-red-600' : 'bg-amber-600'}`}
+                  className={`flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white ${pin.approximate ? 'border-dashed' : 'border-solid'} text-sm font-black text-white shadow-xl transition focus:outline-none focus:ring-4 focus:ring-white ${selectedDamageId === pin.id ? 'ring-4 ring-primary bg-primary' : pin.type === 'DENT' || pin.type === 'CRACK' ? 'bg-red-600' : 'bg-amber-600'}`}
                 >
                   {pin.number}{pin.hasPhoto ? <CameraGlyph /> : null}
                 </button>
@@ -344,6 +374,14 @@ export function ThreeDVehicleViewer({
           maxDistance={18}
         />
       </Canvas>
+      )}
+      <span className="pointer-events-none absolute left-3 top-3 rounded-md bg-slate-950/75 px-2 py-1 text-[10px] font-medium text-white/90">
+        Illustrative 3D body model, not the exact make/model
+      </span>
+      {!onSurfaceTap && damagePins.some(pin => pin.approximate) && (
+        <span className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-md bg-slate-950/85 px-2 py-1.5 text-[10px] font-medium text-white/90">
+          Dashed circles show an approximate panel, not the precise damage point. Rotate the car to inspect.
+        </span>
       )}
     </div>
   )
