@@ -615,3 +615,16 @@ test('auction loading and seller-contact rows respect selected native appearance
   assert.ok(baseSkeleton.includes('color = Colors.bgTertiary'),'other consumers must retain original dark loading default');
   assert.ok(baseSkeleton.includes('backgroundColor: color'),'loading tint forwarded');
 });
+
+
+test('dealer Team light mode permission labels, icons and summary remain readable',()=>{
+  const team=app('screens/main/DealerTeamScreen.tsx');
+  assert.ok(team.includes("color: appearanceMode === 'light' ? (disabled ? '#526177' : '#334155')"), 'permission labels including disabled controls must contrast white cards');
+  assert.ok(team.includes("summaryLeft: { color: '#334155' }"), 'members label must not be pale on white');
+  assert.ok(team.includes("summaryRight: { color: '#334155' }"), 'Manage Team label must not be pale on white');
+  assert.ok(team.includes("inviteBtn: { backgroundColor: '#1E293B', borderColor: '#1E293B' }"), 'white invite icons and save text require dark filled buttons');
+  assert.ok(team.includes("name=\\"chevron-back\\" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white}"), 'back arrow must be dark on white');
+  assert.ok(team.includes("barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'}"), 'pale Team page needs dark Android status icons');
+  assert.ok(team.includes("avatarText: { color: '#0F172A' }"), 'initials must contrast light avatar');
+  assert.ok(team.includes("placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}"), 'light invite placeholder must be readable');
+});

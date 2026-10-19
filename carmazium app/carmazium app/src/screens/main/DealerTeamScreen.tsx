@@ -424,7 +424,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
     const draft = tradeDrafts[email] ?? blankTradeDraft(email);
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 }}>
-        <Text style={{ color: disabled ? Colors.textMuted : Colors.textSecondary, fontFamily: FontFamily.medium, fontSize: FontSize.size12 }}>
+        <Text style={{ color: appearanceMode === 'light' ? (disabled ? '#526177' : '#334155') : (disabled ? Colors.textMuted : Colors.textSecondary), fontFamily: FontFamily.medium, fontSize: FontSize.size12 }}>
           {label}
         </Text>
         <Switch
@@ -459,7 +459,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
       <View style={{ marginTop: 26, gap: 12 }}>
         <View>
           <Text style={ts.pendingSectionTitle}>TRADEXCHANGE TEAM ACCESS</Text>
-          <Text style={{ color: Colors.textMuted, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 18 }}>
+          <Text style={{ color: appearanceMode === 'light' ? '#526177' : Colors.textMuted, fontFamily: FontFamily.regular, fontSize: FontSize.xs, lineHeight: 18 }}>
             Match the website controls: choose Delivery/Recovery or Inspection, then grant view, chat, bid, manage and complete rights. Payouts always stay with the Partner business.
           </Text>
         </View>
@@ -523,7 +523,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
         {pendingInvites.map((invite) => (
           <View key={invite.id} style={ts.pendingCard}>
             <View style={ts.pendingIconWrap}>
-              <Ionicons name="mail-outline" size={16} color={Colors.textMuted} />
+              <Ionicons name="mail-outline" size={16} color={appearanceMode === 'light' ? '#526177' : Colors.textMuted} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={ts.pendingEmail} numberOfLines={1}>{invite.email}</Text>
@@ -540,7 +540,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
   return (
     <View style={ts.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={appearanceMode === 'light' ? 'dark-content' : 'light-content'} translucent backgroundColor="transparent" />
 
       {/* Background gradient */}
       <LinearGradient
@@ -555,7 +555,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
 
       {/* Header */}
       <View style={ts.header}>
-        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
+        <IconButton style={ts.backBtn} icon={<Ionicons name="chevron-back" size={20} color={appearanceMode === 'light' ? '#0F172A' : Colors.white} />} onPress={() => navigation?.goBack()} accessibilityLabel="Go back" />
 
         <Text style={ts.headerTitle}>Team</Text>
 
@@ -624,7 +624,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
           <Ionicons
             name="mail-outline"
             size={18}
-            color={Colors.textMuted}
+            color={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
             style={{ marginRight: 10 }}
           />
           <TextInput
@@ -632,7 +632,7 @@ export const DealerTeamScreen: React.FC<{ navigation?: any }> = ({ navigation })
             value={inviteEmail}
             onChangeText={setInviteEmail}
             placeholder="colleague@dealership.co.uk"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={appearanceMode === 'light' ? '#526177' : Colors.textMuted}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -698,12 +698,17 @@ const lightDealerTeamScreenStyles = StyleSheet.create({
   container: { backgroundColor: '#EEF5FB' },
   header: { backgroundColor: '#EEF5FB' },
   backBtn: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
+  // Navy filled actions retain white icons and SAVE text in both themes.
+  inviteBtn: { backgroundColor: '#1E293B', borderColor: '#1E293B' },
   headerTitle: { color: '#0F172A' },
   summaryCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   summaryCount: { color: '#0F172A' },
+  summaryLeft: { color: '#334155' },
+  summaryRight: { color: '#334155' },
   staffCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
   staffName: { color: '#0F172A' },
-  staffEmail: { color: '#64748B' },
+  staffEmail: { color: '#526177' },
+  avatarText: { color: '#0F172A' },
   roleChip: { backgroundColor: '#F7FBFF', borderColor: '#D5E1EC' },
   avatar: { backgroundColor: '#E5EEF7' },
   pendingCard: { backgroundColor: '#FFFFFF', borderColor: '#D5E1EC' },
@@ -720,7 +725,8 @@ const lightDealerTeamScreenStyles = StyleSheet.create({
   emailInput: { color: '#0F172A' },
   rolePillText: { color: '#0F172A' },
   pendingRole: { color: '#64748B' },
-  pendingBadgeText: { color: '#64748B' },
+  pendingBadgeText: { color: '#526177' },
+  cancelLinkText: { color: '#334155' },
 });
 
 const styles = StyleSheet.create({
