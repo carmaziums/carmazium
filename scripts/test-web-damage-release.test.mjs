@@ -67,7 +67,8 @@ test('public viewers render exact and approximate damage pins, not blanket plus 
 test('buyer can inspect individual seller-reported damage without editing it', () => {
   assert.match(buyer,/const \[selectedDamageId, setSelectedDamageId\]/);
   assert.match(buyer,/damagePins=\{buyerDamagePins\}/);
-  assert.match(buyer,/record\.coords\?\.surfacePoint/);
+  assert.ok(buyer.includes('buildBuyerDamagePins(damageRecords)'));
+  assert.ok(read('src/lib/damageMarkers.ts').includes('record.coords?.surfacePoint'));
   assert.match(buyer,/No damage reported by the seller/);
 });
 test('server authenticates owner or authorized dealer role inside transaction; evidence photo URLs validated', () => {
