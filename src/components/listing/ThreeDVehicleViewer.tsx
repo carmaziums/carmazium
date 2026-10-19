@@ -214,7 +214,6 @@ function DamageCameraFocus({ pins }: { pins: SurfaceDamagePin[] }) {
     if (rearOnly) {
       camera.position.set(5, 3, -7)
       camera.lookAt(0, 0.5, 0)
-      camera.updateProjectionMatrix()
     }
   }, [camera, pins])
   return null
