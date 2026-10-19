@@ -5,7 +5,7 @@ name: CarMazium Android standalone QA APK (no Expo credentials)
 # or publish to the production Expo OTA channel.
 on:
   push:
-    branches: [main, fix/native-home-card-preserve-qa-20261018, fix/native-qa-restore-approved-navigation-20261018]
+    branches: [main, fix/native-home-card-preserve-qa-20261018, fix/native-qa-restore-approved-navigation-20261018, fix/pr626-theme-contrast-integration-20261019]
     paths:
       - '.github/workflows/carmazium-android-offline-qa-apk.yml'
       - 'carmazium app/carmazium app/src/screens/onboarding/OnboardingScreen.tsx'
