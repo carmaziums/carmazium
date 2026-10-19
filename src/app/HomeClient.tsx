@@ -305,7 +305,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
           <div className="flex flex-wrap justify-center gap-8 mt-8 font-medium" style={{ color: 'var(--text-muted)' }}>
             <div className="flex items-center gap-2 group cursor-default"><ShieldCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Protected accounts</span></div>
             <div className="flex items-center gap-2 group cursor-default"><UserCheck className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Verified sellers</span></div>
-            <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">HPI-ready</span></div>
+            <div className="flex items-center gap-2 group cursor-default"><FileText className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Vehicle history checks</span></div>
             <div className="flex items-center gap-2 group cursor-default"><CheckCircle className="text-primary h-5 w-5 group-hover:scale-110 transition-transform" /> <span className="group-hover:text-primary dark:group-hover:text-white transition-colors">Independent checks advised</span></div>
           </div>
         </motion.div>
