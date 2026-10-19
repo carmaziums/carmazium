@@ -1211,7 +1211,7 @@ export const SearchScreen: React.FC = () => {
               <View style={s.divider} />
 
               <Text style={s.filterLabel}>INSURANCE WRITE-OFF STATUS</Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently HPI-verified.</Text>
+              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Declared history may not be independently verified by a vehicle history report.</Text>
               <View style={s.chipGrid}>
                 {WRITE_OFF_OPTIONS.map(c => (
                   <TouchableOpacity key={c.id} style={[s.filterChip, writeOffCategories.includes(c.id) && s.filterChipActive]}
