@@ -10,6 +10,7 @@ import dynamic from "next/dynamic"
 const FinanceCalculator = dynamic(() => import("@/components/features/FinanceCalculator").then(mod => mod.FinanceCalculator), { ssr: false })
 const ThreeDVehicleViewer = dynamic(() => import("@/components/listing/ThreeDVehicleViewer").then(m => m.ThreeDVehicleViewer), { ssr: false })
 import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
+import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import { ArrowLeft, ArrowRight, Camera, CheckCircle, ShieldCheck, Cog, Music, Car as CarIcon, MapPin, Share2, Heart, Scale, Loader2, MessageCircle, Tag, X, Clock, ThumbsUp, XCircle, AlertTriangle, BadgeCheck, Star, Sparkles, Info, Globe, Fuel, Gavel, Truck, Phone, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react"
 import { ImageLightbox } from "@/components/features/ImageLightbox"
 import { getListingBySlug, makeOffer, amendOffer, getMyOfferForListing, addToWatchlist, removeFromWatchlist, isInWatchlist as checkWatchlist, getDamageRecords, type Listing, type LatestOffer, formatPrice } from "@/lib/listingApi"
@@ -290,16 +291,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
     const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const selectedDamageZone = damageRecords.find((r: any) => r.id === selectedDamageId)?.part ?? null
-    const buyerDamagePins = damageRecords.flatMap((record: any, index: number) => {
-        const point = record.coords?.surfacePoint
-        if (!point || !['fx', 'fy', 'fz'].every(key =>
-            typeof point[key] === 'number' && Number.isFinite(point[key])
-            && point[key] >= 0 && point[key] <= 1)) return []
-        return [{ id: record.id, number: index + 1,
-            point: { fx: point.fx, fy: point.fy, fz: point.fz },
-            type: String(record.type ?? '').split(' - ')[0].toUpperCase(),
-            hasPhoto: Boolean(record.imageUrl) }]
-    })
+    const buyerDamagePins = buildBuyerDamagePins(damageRecords)
     const [deliveryDistanceInfo, setDeliveryDistanceInfo] = React.useState<{ distanceMiles: number } | null>(null)
 
     const handleDealerPhoneClick = React.useCallback(() => {
