@@ -286,7 +286,7 @@ function WonAuctionRow({ auction, canPayAuctionFee }: { auction: Auction; canPay
                 {l.exteriorGrade != null && (
                     <SpecChip icon={Award}>Grade {l.exteriorGrade} — {GRADE_LABELS[l.exteriorGrade] ?? ''}</SpecChip>
                 )}
-                {l.hpiReport?.isClear && <SpecChip icon={ShieldCheck}>HPI Clear</SpecChip>}
+                {l.hpiReport?.isClear && <SpecChip icon={ShieldCheck}>History Report Clear</SpecChip>}
                 {l.owners && <SpecChip icon={Car}>{l.owners === '1' ? '1 Owner' : `${l.owners} Owners`}</SpecChip>}
                 {l.serviceHistory && <SpecChip icon={FileSearch}>{l.serviceHistory} Service History</SpecChip>}
             </>}
