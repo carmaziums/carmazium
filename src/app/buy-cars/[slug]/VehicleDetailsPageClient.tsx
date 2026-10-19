@@ -1142,7 +1142,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                         <div className="bg-[var(--bg-card)] backdrop-blur-md border border-[var(--border-default)] rounded-xl p-8">
                             <h3 className="text-xl font-bold mb-2 border-l-4 border-blue-500 pl-4">Seller Declarations</h3>
                             <p className="text-xs text-[var(--text-muted)] mb-6 pl-5">
-                                Seller-provided information. A separate completed HPI report, where available, is the independent vehicle-history check.
+                                Seller-provided information. A separate completed vehicle history report, where available, provides third-party history information.
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-3">
                                 {listing.stolenRecovered !== null && listing.stolenRecovered !== undefined && (
@@ -1315,7 +1315,7 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
                                                     : <Clock size={18} className="text-amber-400" />}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-[var(--text-primary)] text-sm">HPI History Check</p>
+                                                <p className="font-bold text-[var(--text-primary)] text-sm">Vehicle History Check</p>
                                                 <p className="text-xs text-[var(--text-muted)]">
                                                     {hpiReady
                                                         ? 'Comprehensive vehicle history report — stolen, finance, write-off & more'
