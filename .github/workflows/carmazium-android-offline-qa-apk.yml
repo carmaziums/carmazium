@@ -171,7 +171,7 @@ jobs:
           chmod +x gradlew
           # Tee Gradle diagnostics so failed CI runs retain a reproducible error,
           # not just a red status with an expired GitHub job-log endpoint.
-          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=arm64-v8a,x86_64 --max-workers 2 --no-daemon --stacktrace -x lint -x lintVitalRelease 2>&1 | tee "$GITHUB_WORKSPACE/carmazium-gradle-build.log"
+          ./gradlew :app:assembleRelease -Pandroid.enableProguardInReleaseBuilds=false -Pandroid.enableShrinkResourcesInReleaseBuilds=false -PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64 --max-workers 2 --no-daemon --stacktrace -x lint -x lintVitalRelease 2>&1 | tee "$GITHUB_WORKSPACE/carmazium-gradle-build.log"
       - name: Save truncated Gradle diagnostic evidence if native compilation fails
         if: failure()
         shell: bash
@@ -207,6 +207,18 @@ jobs:
           NODE
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)"
           "$BUILD_TOOLS/apksigner" verify --verbose "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk"
+          # Broaden QA support beyond ARM64-only; do not publish a purported
+          # universal APK unless every target architecture actually ships.
+          python3 - "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" <<'PYABI'
+          import sys, zipfile
+          expected = ('armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64')
+          with zipfile.ZipFile(sys.argv[1]) as apk:
+              names = set(apk.namelist())
+          missing = [abi for abi in expected if f'lib/{abi}/libreactnative.so' not in names]
+          if missing:
+              raise SystemExit('QA APK missing React Native native libraries for: ' + ', '.join(missing))
+          print('Verified Android QA architecture support: ' + ', '.join(expected))
+          PYABI
           "$BUILD_TOOLS/aapt" dump badging "$GITHUB_WORKSPACE/qa-apk/CarMazium-QA-Android.apk" | grep -F "package: name='uk.carmazium.qa'"
           # Compare shipped Hermes JavaScript labels against the owner's supplied
           # 18 Oct reference APK (SHA256 dfc4c4d83266...ce2f4b5b2).
