@@ -1844,7 +1844,7 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             Alert.alert(
               conversion.candidate.canConvert ? 'Switch to Retail first' : 'History check unavailable for this draft',
               conversion.candidate.canConvert
-                ? 'This registration already belongs to your auction listing. Publish this Retail form first so CarMazium can safely reuse and switch that listing; then you can add the optional HPI check from the Retail draft.'
+                ? 'This registration already belongs to your auction listing. Publish this Retail form first so CarMazium can safely reuse and switch that listing; then you can add the optional vehicle history check from the Retail draft.'
                 : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
             );
             return;
