@@ -64,7 +64,7 @@ test('both retail and auction buyer pages expose complete saved government MOT f
   }
   assert.match(facts, /Show all/);
   assert.match(facts, /odometerUnit/);
-  assert.match(facts, /not a live DVLA update or HPI report/);
+  assert.match(facts, /not a live DVLA update or an independent vehicle history report/);
 });
 
 test('seller pricing and minimum-photo safeguards remain intact', () => {
