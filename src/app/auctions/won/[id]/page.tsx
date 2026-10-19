@@ -386,10 +386,10 @@ export default function WonAuctionPage({ params: paramsPromise }: { params: Prom
                                             }`}
                                         >
                                             {listing.hpiReport.status !== 'COMPLETED'
-                                                ? <><Clock size={10} /> HPI Pending</>
+                                                ? <><Clock size={10} /> History Report Pending</>
                                                 : listing.hpiReport.isClear
-                                                    ? <><ShieldCheck size={10} /> HPI Clear</>
-                                                    : <><AlertTriangle size={10} /> HPI — Issues Found</>}
+                                                    ? <><ShieldCheck size={10} /> History Report Clear</>
+                                                    : <><AlertTriangle size={10} /> History Report — Issues Found</>}
                                         </button>
                                     )}
                                     {listing.owners && (
