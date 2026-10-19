@@ -29,6 +29,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords, type Listing } from "@/lib/listingApi"
+import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
 import { getWebSocketUrl, createChatRoom, getAccessToken } from "@/lib/chatApi"
 import { getSessionStatus, applyHpiEmailFee } from "@/lib/paymentApi"
@@ -127,7 +128,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const [copied, setCopied] = React.useState(false)
     const [connectingChat, setConnectingChat] = React.useState(false)
     const [damageRecords, setDamageRecords] = React.useState<any[]>([])
-    const [selectedDamageZone, setSelectedDamageZone] = React.useState<string | null>(null)
+    const [selectedDamageId, setSelectedDamageId] = React.useState<string | null>(null)
     const [showHpiModal, setShowHpiModal] = React.useState(false)
 
     React.useEffect(() => {
@@ -202,6 +203,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
         () => damageRecords.map((r: any) => r.imageUrl).filter(Boolean),
         [damageRecords]
     )
+    const buyerDamagePins = React.useMemo(() => buildBuyerDamagePins(damageRecords), [damageRecords])
     const [acceptingBid, setAcceptingBid] = React.useState<BidEntry | null>(null)
     const [acceptLoading, setAcceptLoading] = React.useState(false)
     const [acceptError, setAcceptError] = React.useState<string | null>(null)
@@ -1559,7 +1561,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             </div>
                                             <p className="text-[10px] text-[var(--text-muted)] mb-4 pl-3">
                                                 {damageRecords.length > 0
-                                                    ? `${damageRecords.length} zone${damageRecords.length !== 1 ? "s" : ""} marked by seller — click a zone to see details`
+                                                    ? `${damageRecords.length} damage report${damageRecords.length !== 1 ? "s" : ""} · ${buyerDamagePins.length} 3D marker${buyerDamagePins.length !== 1 ? "s" : ""} — select a number or detail below`
                                                     : "No damage reported by the seller"}
                                             </p>
                                             <ThreeDErrorBoundary
@@ -1573,17 +1575,17 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                             >
                                                 <ThreeDVehicleViewer
                                                     bodyType={auction.listing.bodyType ?? undefined}
-                                                    markedZones={damageRecords.map((r: any) => r.part)}
-                                                    selectedZone={selectedDamageZone}
-                                                    onZoneClick={(id) => setSelectedDamageZone(prev => prev === id ? null : id)}
+                                                    damagePins={buyerDamagePins}
+                                                    selectedDamageId={selectedDamageId}
+                                                    onDamagePinPress={id => setSelectedDamageId(prev => prev === id ? null : id)}
                                                 />
                                             </ThreeDErrorBoundary>
                                             {damageRecords.length > 0 && (
                                                 <div className="mt-4 space-y-2">
                                                     {damageRecords.map((record: any, i: number) => (
                                                         <div
-                                                            key={i}
-                                                            className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageZone === record.part ? "bg-amber-500/10 border-amber-500/30" : "bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]"}`}
+                                                            key={record.id ?? i}
+                                                            className={`w-full flex items-start gap-3 p-3 rounded-lg border transition-colors ${selectedDamageId === record.id ? "bg-amber-500/10 border-amber-500/30" : "bg-[var(--bg-input)] border-[var(--border-default)] hover:border-[var(--border-default)]"}`}
                                                         >
                                                             {record.imageUrl && (
                                                                 <button
@@ -1600,7 +1602,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                                             )}
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setSelectedDamageZone(prev => prev === record.part ? null : record.part)}
+                                                                onClick={() => setSelectedDamageId(prev => prev === record.id ? null : record.id)}
                                                                 className="min-w-0 flex-1 text-left"
                                                             >
                                                                 <p className="text-sm font-semibold text-[var(--text-primary)] capitalize">
