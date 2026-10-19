@@ -211,7 +211,7 @@ const adminDashboardCardCatalog: AdminDashboardCardDefinition[] = [
     },
     {
         id: "hpi",
-        label: "HPI reports",
+        label: "Vehicle history reports",
         href: "/dashboard/admin/hpi",
         description: "Prepare and upload reports",
         icon: ShieldCheck,
@@ -303,7 +303,7 @@ const toolGroups: ToolGroup[] = [
     },
     {
         title: "Payments & reports",
-        description: "Handle money, HPI reports and listing grants.",
+        description: "Handle money, Vehicle history reports and listing grants.",
         eyebrow: "Financial control",
         headerClass: "from-violet-500/20 via-fuchsia-500/10 to-transparent border-violet-400/25",
         iconClass: "bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-[0_8px_20px_rgba(139,92,246,0.30)]",
@@ -311,7 +311,7 @@ const toolGroups: ToolGroup[] = [
         accentClass: "bg-violet-400",
         tools: [
             { href: "/dashboard/admin/transactions", title: "Transactions", description: "View the complete payment ledger.", icon: Receipt },
-            { href: "/dashboard/admin/hpi", title: "HPI Reports", description: "Prepare, upload and replace HPI reports.", icon: ShieldCheck },
+            { href: "/dashboard/admin/hpi", title: "Vehicle History Reports", description: "Prepare, upload and replace Vehicle history reports.", icon: ShieldCheck },
             { href: "/dashboard/admin/free-listings", title: "Free Grants", description: "Grant free BASIC listings or fee-free auction purchases.", icon: Gift },
         ],
     },
@@ -505,7 +505,7 @@ export default function AdminDashboard() {
         },
         {
             href: "/dashboard/admin/hpi",
-            title: "HPI reports",
+            title: "Vehicle history reports",
             description: "Upload or prepare reports",
             icon: ShieldCheck,
             gradient: "from-violet-500/18 via-fuchsia-500/10 to-transparent",
