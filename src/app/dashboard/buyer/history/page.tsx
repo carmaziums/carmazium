@@ -13,7 +13,7 @@ const TX_TYPE_LABEL: Record<string, string> = {
     FULL_PAYMENT: "Full Payment",
     COMMISSION: "Commission",
     REFUND: "Refund",
-    HPI_REPORT: "HPI Report",
+    HPI_REPORT: "Vehicle History Report",
     LISTING_FEE: "Listing Fee",
     BOOST: "Featured Boost",
 }
