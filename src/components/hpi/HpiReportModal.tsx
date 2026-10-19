@@ -93,7 +93,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                     setSummary(res.data as unknown as HpiSummary)
                 }
             } catch (e: any) {
-                setError(e?.message || "Failed to load HPI report")
+                setError(e?.message || "Failed to load vehicle history report")
             } finally {
                 setLoading(false)
             }
@@ -143,7 +143,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
         const win = window.open("", "_blank")
         if (!win) return
         win.document.write(`
-            <html><head><title>HPI Report — ${summary?.vrm}</title>
+            <html><head><title>Vehicle History Report — ${summary?.vrm}</title>
             <style>
                 body { font-family: Arial, sans-serif; color: #111; padding: 32px; }
                 h1 { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
@@ -381,7 +381,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             <ShieldCheck size={18} className="text-primary" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-[var(--text-primary)] text-lg">HPI Check Report</h2>
+                            <h2 className="font-bold text-[var(--text-primary)] text-lg">Vehicle History Report</h2>
                             {summary && (
                                 <p className="text-xs text-[var(--text-muted)]">
                                     {summary.vrm} · Generated {new Date(summary.purchasedAt || summary.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
@@ -422,7 +422,7 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                         <div ref={printRef}>
                             {/* Print header */}
                             <div className="hidden print:block mb-6">
-                                <h1>HPI Check Report — Carmazium</h1>
+                                <h1>Vehicle History Report — Carmazium</h1>
                                 <h2>{summary.make} {summary.model} ({summary.vrm})</h2>
                             </div>
 
@@ -507,8 +507,8 @@ export function HpiReportModal({ listingId, onClose }: Props) {
                             {/* Disclaimer */}
                             <div className="p-4 rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)]">
                                 <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                                    This HPI check was performed by Carmazium via OneAutoAPI and reflects data available at the time of purchase.
-                                    Results are based on DVLA, insurance industry, and finance house records. Carmazium is not liable for any discrepancies.
+                                    This report presents vehicle-history information supplied for this vehicle as recorded at the time shown.
+                                    Refer to the report for the checks performed and their sources. Verify any information material to your purchase.
                                     Report generated: {new Date(summary.purchasedAt || summary.createdAt).toLocaleString("en-GB")}.
                                 </p>
                             </div>

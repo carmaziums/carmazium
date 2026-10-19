@@ -921,7 +921,7 @@ function SearchPageContent() {
                             </FilterSection>
 
                             <FilterSection title="Insurance Write-off Status">
-                                <p className="text-xs text-[var(--text-muted)] mb-2">Declared history may not be independently HPI-verified.</p>
+                                <p className="text-xs text-[var(--text-muted)] mb-2">Declared history may not be independently verified by a vehicle history report.</p>
                                 <div className="space-y-1">
                                     {WRITE_OFF_OPTIONS.map(w => {
                                         const active = filters.writeOffCategories.includes(w.value)

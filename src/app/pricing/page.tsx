@@ -26,21 +26,21 @@ import { Button } from "@/components/ui/Button"
 
 export const metadata: Metadata = {
     title: "Pricing",
-    description: "CarMazium customer pricing: free auction listings, Basic £1, Standard £10 with HPI, Premium £25 with HPI and a 28-day Featured Boost, and no retail buyer fee.",
+    description: "CarMazium customer pricing: free auction listings, Basic £1, Standard £10 with a vehicle history report, Premium £25 with a vehicle history report and a 28-day Featured Boost, and no retail buyer fee.",
 }
 
 const FAQS = [
     {
         q: "What retail listing packages can I choose?",
-        a: `Basic is £${PRICING.listing.basic.price}, Standard is £${PRICING.listing.standard.price} and includes an HPI vehicle-history report, and Premium is £${PRICING.listing.premium.price} and includes the Standard package benefits plus a 28-day Featured Boost.`,
+        a: `Basic is £${PRICING.listing.basic.price}, Standard is £${PRICING.listing.standard.price} and includes a vehicle history report, and Premium is £${PRICING.listing.premium.price} and includes the Standard package benefits plus a 28-day Featured Boost.`,
     },
     {
         q: "How much does it cost to put my car into auction?",
         a: "Nothing. Auction listings are free for sellers and run for 24 hours. Verified motor traders can bid.",
     },
     {
-        q: "Is an HPI check compulsory?",
-        a: "No. HPI is optional. You can choose Basic without HPI, add an HPI check separately, or choose Standard/Premium where HPI is included.",
+        q: "Is a vehicle history check compulsory?",
+        a: "No. A vehicle history check is optional. Choose Basic without one, purchase a report separately, or choose Standard/Premium with a report included.",
     },
     {
         q: "Does CarMazium charge retail buyers?",
@@ -138,7 +138,7 @@ export default function PricingPage() {
                         <ul className="my-6 flex-1 space-y-3.5">
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> Public marketplace listing</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> Offers and buyer chat</li>
-                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> HPI remains optional</li>
+                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> Vehicle history checks remain optional</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-emerald-500" /> Featured Boost available separately</li>
                         </ul>
                         <Button asChild className={redCta}>
@@ -149,7 +149,7 @@ export default function PricingPage() {
                     <article className="group relative flex h-full flex-col rounded-[24px] border-2 border-blue-500 bg-gradient-to-b from-blue-50 via-[var(--bg-card)] to-[var(--bg-card)] p-6 shadow-[0_18px_48px_rgba(37,99,235,0.16)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(37,99,235,0.22)] dark:from-blue-500/[0.09]">
                         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-600/20">
-                                <BadgeCheck size={13} /> HPI Included
+                                <BadgeCheck size={13} /> History Report Included
                             </span>
                         </div>
                         <div className="border-b border-blue-500/20 pb-6">
@@ -163,11 +163,11 @@ export default function PricingPage() {
                                 <span className="text-5xl font-black tracking-tight">£{PRICING.listing.standard.price}</span>
                                 <span className="mb-1.5 text-sm text-[var(--text-muted)]">one-off</span>
                             </div>
-                            <p className="mt-2 text-sm text-[var(--text-muted)]">Includes HPI vehicle-history report</p>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">Includes a vehicle history report</p>
                         </div>
                         <ul className="my-6 flex-1 space-y-3.5">
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> Everything in Basic</li>
-                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> HPI report included</li>
+                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> Vehicle history report included</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> Standard package badge</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-blue-500" /> Featured Boost still optional</li>
                         </ul>
@@ -179,7 +179,7 @@ export default function PricingPage() {
                     <article className="group relative flex h-full flex-col rounded-[24px] border border-amber-400/60 bg-gradient-to-b from-amber-50/90 via-[var(--bg-card)] to-[var(--bg-card)] p-6 shadow-[0_16px_42px_rgba(245,158,11,0.12)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(245,158,11,0.18)] dark:from-amber-500/[0.07]">
                         <div className="absolute -top-3.5 right-5">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-amber-500/20">
-                                <Star size={12} className="fill-white" /> Best Value · HPI + Boost
+                                <Star size={12} className="fill-white" /> Best Value · Report + Boost
                             </span>
                         </div>
                         <div className="border-b border-amber-500/20 pb-6">
@@ -193,11 +193,11 @@ export default function PricingPage() {
                                 <span className="text-5xl font-black tracking-tight">£{PRICING.listing.premium.price}</span>
                                 <span className="mb-1.5 text-sm text-[var(--text-muted)]">one-off</span>
                             </div>
-                            <p className="mt-2 text-sm text-[var(--text-muted)]">HPI + 28-day Featured Boost included</p>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">Vehicle history report + 28-day Featured Boost included</p>
                         </div>
                         <ul className="my-6 flex-1 space-y-3.5">
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Everything in Standard</li>
-                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> HPI report included</li>
+                            <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Vehicle history report included</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Premium listing badge and presentation</li>
                             <li className={featureRow}><CheckCircle size={18} className="mt-0.5 shrink-0 text-amber-500" /> Featured Boost included for 28 days</li>
                         </ul>
@@ -214,7 +214,7 @@ export default function PricingPage() {
                     </div>
                     <div className="flex items-center gap-3 border-t border-[var(--border-default)] pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0 xl:justify-center">
                         <ShieldCheck size={22} className="text-[var(--text-muted)]" />
-                        <div><p className="text-sm font-bold">HPI available</p><p className="text-xs text-[var(--text-muted)]">Included in Standard & Premium</p></div>
+                        <div><p className="text-sm font-bold">Vehicle history report option</p><p className="text-xs text-[var(--text-muted)]">Included in Standard & Premium</p></div>
                     </div>
                     <div className="flex items-center gap-3 border-t border-[var(--border-default)] pt-4 sm:border-t-0 xl:border-l xl:pl-5 xl:pt-0 xl:justify-center">
                         <ShoppingBag size={22} className="text-[var(--text-muted)]" />
@@ -232,14 +232,14 @@ export default function PricingPage() {
                     <div className="mx-auto max-w-5xl">
                         <div className="mb-9 text-center">
                             <h2 className="text-2xl font-black md:text-3xl">Optional Add-Ons</h2>
-                            <p className="mt-2 text-sm text-[var(--text-muted)]">Optional extras for Auction, Basic and Standard; Premium already includes HPI and the first 28-day Featured Boost.</p>
+                            <p className="mt-2 text-sm text-[var(--text-muted)]">Optional extras for Auction, Basic and Standard; Premium already includes a vehicle history report and the first 28-day Featured Boost.</p>
                         </div>
                         <div className="grid gap-5 md:grid-cols-2">
                             <article className="rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-7 shadow-sm">
                                 <div className="flex items-start justify-between gap-4">
                                     <div>
                                         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-500"><Shield size={20} /></div>
-                                        <h3 className="font-black">HPI Vehicle Check</h3>
+                                        <h3 className="font-black">Vehicle History Check</h3>
                                         <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">Optional for Auction and Basic Retail. Included with Standard and Premium Retail.</p>
                                     </div>
                                     <span className="text-xl font-black">£{PRICING.hpiReport.price}</span>

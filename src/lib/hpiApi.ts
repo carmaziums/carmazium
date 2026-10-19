@@ -163,7 +163,7 @@ export async function removeHpiPdf(listingId: string) {
 export async function openHpiPdf(listingId: string): Promise<void> {
     const base = process.env.NEXT_PUBLIC_API_URL || 'https://carmazium-hjoh9w.fly.dev'
     const res = await fetch(`${base}/hpi/listing/${listingId}/pdf`, { credentials: 'include' })
-    if (!res.ok) throw new Error('Failed to load the HPI report PDF')
+    if (!res.ok) throw new Error('Failed to load the vehicle history report PDF')
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     window.open(url, '_blank', 'noopener')

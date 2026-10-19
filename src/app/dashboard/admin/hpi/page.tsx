@@ -58,7 +58,7 @@ export default function AdminHpiQueuePage() {
         try {
             setRequests(await getPendingHpiRequests())
         } catch (e: any) {
-            setError(e?.message || 'Failed to load the HPI queue')
+            setError(e?.message || 'Failed to load the vehicle history queue')
         } finally {
             setLoading(false)
         }
@@ -101,7 +101,7 @@ export default function AdminHpiQueuePage() {
                     <header>
                         <h1 className="text-2xl font-black tracking-tight flex items-center gap-3">
                             <ShieldCheck className="text-primary" size={24} />
-                            HPI Reports
+                            Vehicle History Reports
                         </h1>
                         <p className="text-sm text-[var(--text-muted)] mt-1.5 leading-relaxed max-w-2xl">
                             Vehicle history reports that have been paid for but not yet produced. Listings stay live

@@ -5,10 +5,10 @@
  *   - Auction seller listing: FREE
  *   - Successful auction seller reward: £100 after approved handover
  *   - Retail packages: Basic £1 / Standard £10 / Premium £25
- *   - Standard includes an HPI vehicle-history report
- *   - Premium includes Standard benefits, HPI, and a 28-day Featured Boost
+ *   - Standard includes a vehicle history report
+ *   - Premium includes Standard benefits, a vehicle history report, and a 28-day Featured Boost
  *   - Retail buyer fee: £0
- *   - HPI remains optional: sellers can choose Basic without HPI or add one separately
+ *   - Vehicle history checks remain optional: sellers can choose Basic without a report or add one separately
  *   - Featured Boost is £25 / 28 days separately for non-Premium listings and renewals
  *
  * Trader auction-buyer pricing is deliberately shown on the separate
@@ -39,13 +39,13 @@ export const PRICING = {
         standard: {
             price: 10,
             label: 'Standard',
-            description: '£10 one-off · HPI report included',
+            description: '£10 one-off · vehicle history report included',
             includesHpi: true,
         },
         premium: {
             price: 25,
             label: 'Premium',
-            description: '£25 one-off · HPI + 28-day Featured Boost included',
+            description: '£25 one-off · Vehicle history report + 28-day Featured Boost included',
             includesHpi: true,
             includesFeaturedBoost: true,
         },
@@ -53,7 +53,7 @@ export const PRICING = {
 
     hpiReport: {
         price: 9.99,
-        label: 'HPI Check',
+        label: 'Vehicle History Check',
         description: 'Optional add-on for eligible listings',
     },
 

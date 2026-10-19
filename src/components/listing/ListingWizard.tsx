@@ -269,7 +269,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
             <div className="mt-8 relative overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 flex flex-col items-center text-center">
                  <div className="flex items-center gap-3">
                      <Clock className="text-blue-400" size={20} />
-                     <h3 className="text-base font-bold text-blue-300">HPI Report Requested</h3>
+                     <h3 className="text-base font-bold text-blue-300">Vehicle History Report Requested</h3>
                  </div>
                  <p className="text-xs text-[var(--text-muted)] mt-1">Our team will prepare your vehicle history report during review.</p>
             </div>
@@ -281,12 +281,9 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
             <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] overflow-hidden flex flex-col md:flex-row shadow-2xl">
                 {/* Left side: Image with blur */}
                 <div className="relative w-full md:w-2/5 aspect-[4/3] md:aspect-auto cursor-pointer group" onClick={onUnlock}>
-                    <Image
-                        src="/assets/images/Hpi Template.jpg"
-                        alt="HPI Report Preview"
-                        fill
-                        className="object-cover blur-[6px] opacity-70 group-hover:blur-sm group-hover:opacity-90 transition-all duration-500 group-hover:scale-105"
-                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950">
+                        <Shield size={108} className="text-blue-300/25" />
+                    </div>
                     <div className="absolute inset-0 bg-slate-900/30 group-hover:bg-slate-900/10 transition-colors" />
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-2">
                         <div className="bg-white/10 backdrop-blur-md p-4 rounded-full text-white shadow-neon border border-white/20">
@@ -300,7 +297,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                 <div className="p-6 md:p-8 flex-1 flex flex-col justify-center text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
                         <Shield className="text-blue-400 shrink-0" size={32} />
-                        <h3 className="text-[var(--text-primary)] font-bold text-xl">Official HPI Vehicle Check</h3>
+                        <h3 className="text-[var(--text-primary)] font-bold text-xl">Vehicle History Check</h3>
                     </div>
                     
                     <p className="text-[var(--text-secondary)] mb-6 leading-relaxed">
@@ -309,7 +306,7 @@ function HpiBaitSection({ isUnlocked, onUnlock }: { isUnlocked: boolean, onUnloc
                     
                     <div className="flex flex-col items-center md:items-start gap-3 mt-auto">
                         <Button type="button" onClick={onUnlock} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-8 py-6 text-base shadow-neon shrink-0 w-full sm:w-auto border-0">
-                            Request HPI Report (Optional)
+                            Request Vehicle History Report (Optional)
                         </Button>
                         <p className="text-xs text-[var(--text-muted)] italic flex items-center gap-1.5">
                             <BadgeCheck size={14} className="text-emerald-400" />
@@ -711,13 +708,13 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 if (status.paymentStatus !== 'paid'
                     || status.metadata?.listingId !== savedDraftId
                     || normalizeVehicleRegistration(status.metadata?.vrm) !== binding?.vrm) {
-                    setHpiVerifyError("This HPI checkout could not be verified for your saved vehicle. If you were charged, please contact support.")
+                    setHpiVerifyError("This vehicle history check payment could not be verified for your saved vehicle. If you were charged, please contact support.")
                     return
                 }
                 return applyHpiFee(sessionId).then(result => {
                     if (cancelled) return
                     if (!result.applied) {
-                        setHpiVerifyError("Your payment was received, but the HPI request has not been confirmed. Please contact support. Do not pay again.")
+                        setHpiVerifyError("Your payment was received, but the vehicle history report request has not been confirmed. Please contact support. Do not pay again.")
                         return
                     }
                     setIsHpiUnlocked(true)
@@ -1073,7 +1070,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
         : currentStep === 2
             ? {
                 what: "Add at least 10 clear photos showing the exterior, interior and any faults. Finish or cancel any open damage-map entry.",
-                why: "Buyers need to see the car and its condition before making an offer or bidding. HPI remains optional.",
+                why: "Buyers need to see the car and its condition before making an offer or bidding. Vehicle history checks remain optional.",
                 reminder: "Upload photos, then choose Next Step. You can add more photos later.",
             }
             : currentStep === 3
@@ -1233,7 +1230,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 }
                 const missingPhotos = Math.max(0, 10 - formData.images.length)
                 return missingPhotos > 0
-                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. HPI is optional.`
+                    ? `Please add ${missingPhotos} more photo${missingPhotos === 1 ? '' : 's'} to continue. A minimum of 10 photos is required. a vehicle history check is optional.`
                     : null
             }
             case 3: {
@@ -2445,14 +2442,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                  // the final submit flow owns the destructive confirmation and reuses
                                  // the existing listing row instead of producing a duplicate.
                                  let listingId = draftListingId
-                                 if (!user?.id || activeDraftOwnerRef.current !== user.id) throw new Error("Please sign in before requesting HPI.")
+                                 if (!user?.id || activeDraftOwnerRef.current !== user.id) throw new Error("Please sign in before requesting a vehicle history report.")
                                  if (!listingId) {
                                      if (formData.listingType === 'CLASSIFIED') {
                                          const conversion = await getRetailConversionCandidate(formData.vrm)
                                          if (conversion.candidate) {
                                              alert(
                                                  conversion.candidate.canConvert
-                                                     ? 'This registration already belongs to your auction listing. Submit this Retail form first so CarMazium can safely switch and reuse that listing; then add the optional HPI check from the Retail draft.'
+                                                     ? 'This registration already belongs to your auction listing. Submit this Retail form first so CarMazium can safely switch and reuse that listing; then add the optional vehicle history check from the Retail draft.'
                                                      : (conversion.candidate.blockedReason || 'This vehicle cannot be changed to a Retail listing at the moment.'),
                                              )
                                              setIsProcessingPayment(false)
@@ -4141,7 +4138,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
 
                             {isVerifyingHpiPayment && (
                                 <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm">
-                                    <Loader2 size={14} className="animate-spin shrink-0" /> Verifying your HPI report payment…
+                                    <Loader2 size={14} className="animate-spin shrink-0" /> Verifying your vehicle history report payment…
                                 </div>
                             )}
                             {hpiVerifyError && (
@@ -4282,7 +4279,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 <p className="text-xs text-[var(--text-muted)] mb-4">
                                     {isAuction
                                         ? "You chose to list this vehicle for auction."
-                                        : "Choose Basic £1, Standard £10 with HPI included, or Premium £25 with HPI and a 28-day Featured Boost included."}
+                                        : "Choose Basic £1, Standard £10 with a vehicle history report included, or Premium £25 with a vehicle history report and a 28-day Featured Boost included."}
                                 </p>
 
                                 <div className={`grid grid-cols-1 gap-3 ${isAuction ? 'md:grid-cols-1 max-w-sm' : 'md:grid-cols-3'}`}>
@@ -4342,7 +4339,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£10</p>
                                                 <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
                                                     <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Basic</li>
-                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> HPI vehicle-history report included</li>
+                                                    <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Vehicle history report included</li>
                                                     <li className="flex items-center gap-1.5"><BadgeCheck size={12} className="text-blue-400" /> Verified Seller badge</li>
                                                 </ul>
                                             </button>
@@ -4360,7 +4357,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                                 <p className="text-amber-400 font-bold text-sm mb-1 mt-1 flex items-center gap-1"><Star size={14} /> Premium</p>
                                                 <p className="text-2xl font-black text-[var(--text-primary)] mb-3">£25</p>
                                                 <ul className="space-y-1.5 text-xs text-[var(--text-muted)]">
-                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard, including HPI</li>
+                                                    <li className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-400" /> Everything in Standard, including a vehicle history report</li>
                                                     <li className="flex items-center gap-1.5"><Star size={12} className="text-amber-400" /> Premium listing badge and presentation</li>
                                                     <li className="flex items-center gap-1.5"><Zap size={12} className="text-amber-400" /> Featured Boost included for 28 days</li>
                                                 </ul>
@@ -4378,9 +4375,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {!isAuction && (formData.badgeTier === 'STANDARD' || formData.badgeTier === 'PREMIUM') && (
                                     <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-blue-200">
                                         <div className="flex items-center gap-2 font-bold">
-                                            <BadgeCheck size={16} /> HPI report included with this package
+                                            <BadgeCheck size={16} /> Vehicle history report included with this package
                                         </div>
-                                        <p className="mt-1 text-xs text-[var(--text-muted)]">No separate HPI payment is required. The report request is created automatically when the listing package payment succeeds.</p>
+                                        <p className="mt-1 text-xs text-[var(--text-muted)]">No separate vehicle history report payment is required. The report request is created automatically when the listing package payment succeeds.</p>
                                     </div>
                                 )}
                             </div>
@@ -4621,7 +4618,7 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                 {isHpiUnlocked && (
                                     <div className="mb-4 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg flex items-center gap-2">
                                          <Clock className="text-blue-400" size={16} />
-                                         <span className="text-sm text-blue-300 font-bold tracking-wide">HPI Report Requested — being prepared</span>
+                                         <span className="text-sm text-blue-300 font-bold tracking-wide">Vehicle History Report Requested — being prepared</span>
                                     </div>
                                 )}
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -4798,14 +4795,14 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                                         {formData.badgeTier === 'STANDARD' && (
                                             <>
                                                 <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md flex items-center gap-1"><BadgeCheck size={10} /> Standard — £10</span>
-                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">HPI Included</span>
+                                                <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">History Report Included</span>
                                                 <span className="text-xs bg-blue-500/10 text-blue-300 px-2 py-0.5 rounded-md">Verified</span>
                                             </>
                                         )}
                                         {formData.badgeTier === 'PREMIUM' && (
                                             <>
-                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25 · HPI + 28-day Boost</span>
-                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">HPI Included</span>
+                                                <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1"><Star size={10} /> Premium — £25 · History Report + 28-day Boost</span>
+                                                <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">History Report Included</span>
                                                 <span className="text-xs bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-md">Verified</span>
                                             </>
                                         )}

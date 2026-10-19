@@ -30,13 +30,13 @@ export const PRICING = {
     standard: {
       price: 10,
       label: 'Standard',
-      description: '£10 one-off · HPI report included',
+      description: '£10 one-off · vehicle history report included',
       includesHpi: true,
     },
     premium: {
       price: 25,
       label: 'Premium',
-      description: '£25 one-off · HPI + 28-day Featured Boost included',
+      description: '£25 one-off · Vehicle history report + 28-day Featured Boost included',
       includesHpi: true,
       includesFeaturedBoost: true,
     },
@@ -44,7 +44,7 @@ export const PRICING = {
 
   hpiReport: {
     price: 9.99,
-    label: 'HPI Check',
+    label: 'Vehicle History Check',
     description: 'Optional add-on for eligible listings',
   },
 

@@ -398,10 +398,10 @@ export default function AdminListingsPage() {
                                 {visiblePendingListings.map((l) => {
                                     const isExpanded = expandedId === l.id
                                     
-                                    // Seller paid for an HPI report that hasn't been produced.
+                                    // Seller paid for an Vehicle history report that hasn't been produced.
                                     // Informational only — this no longer blocks approval; the
                                     // listing goes live and the report is attached afterwards
-                                    // from the HPI queue.
+                                    // from the vehicle history queue.
                                     const hpiPending = l.hpiReport?.status === 'PENDING'
                                     return (
                                         <div key={l.id} className="border border-[var(--border-default)] rounded-xl overflow-hidden">
@@ -423,7 +423,7 @@ export default function AdminListingsPage() {
                                                 </div>
                                                 {hpiPending && (
                                                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-primary/10 text-primary border-primary/30 inline-flex items-center gap-1.5">
-                                                        <FileWarning size={12} /> HPI outstanding
+                                                        <FileWarning size={12} /> History report outstanding
                                                     </span>
                                                 )}
                                                 <span className="text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/20">
@@ -507,10 +507,10 @@ export default function AdminListingsPage() {
                                                                     <div className="flex items-start gap-3">
                                                                         <FileWarning size={16} className="text-primary shrink-0 mt-0.5" />
                                                                         <div className="flex-1 min-w-0">
-                                                                            <p className="text-xs font-bold text-primary">HPI report outstanding</p>
+                                                                            <p className="text-xs font-bold text-primary">Vehicle history report outstanding</p>
                                                                             <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                                                                                 This seller paid for a vehicle history report. You can approve now and attach
-                                                                                it later — it stays in the HPI queue until you do.
+                                                                                it later — it stays in the vehicle history queue until you do.
                                                                             </p>
                                                                         </div>
                                                                     </div>
@@ -539,7 +539,7 @@ export default function AdminListingsPage() {
                                                                     <FileWarning size={16} className="text-emerald-400 shrink-0" />
                                                                     <p className="flex-1 min-w-0 text-[11px] text-[var(--text-muted)]">
                                                                         <span className="font-bold text-emerald-400">
-                                                                            HPI report {l.hpiReport.pdfUploadedAt ? 'uploaded' : 'prepared'}.
+                                                                            Vehicle history report {l.hpiReport.pdfUploadedAt ? 'uploaded' : 'prepared'}.
                                                                         </span>{' '}
                                                                         Spot an error? You can still edit or replace it.
                                                                     </p>
@@ -573,7 +573,7 @@ export default function AdminListingsPage() {
                                                                     type="button"
                                                                     onClick={() => handleApprove(l.id)}
                                                                     disabled={actionLoading === l.id}
-                                                                    title={hpiPending ? 'Goes live with its HPI report still outstanding — attach it later from the HPI queue' : undefined}
+                                                                    title={hpiPending ? 'Goes live with its Vehicle history report still outstanding — attach it later from the vehicle history queue' : undefined}
                                                                     className="min-w-0 w-full min-h-11 px-3 sm:px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-xs uppercase tracking-widest hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
                                                                 >
                                                                     {actionLoading === l.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -879,7 +879,7 @@ export default function AdminListingsPage() {
                     onSaved={() => {
                         setHpiUploadTarget(null)
                         loadPending()
-                        setSuccessMsg('HPI report uploaded — the seller and any waiting buyers have been notified.')
+                        setSuccessMsg('Vehicle history report uploaded — the seller and any waiting buyers have been notified.')
                     }}
                 />
             )}
@@ -888,8 +888,8 @@ export default function AdminListingsPage() {
                     listingId={hpiTarget.id}
                     listingTitle={hpiTarget.title}
                     onClose={() => setHpiTarget(null)}
-                    // Reload so the "HPI outstanding" badge clears.
-                    onSaved={() => { loadPending(); setSuccessMsg('HPI report saved — the seller and any waiting buyers have been notified.') }}
+                    // Reload so the "History report outstanding" badge clears.
+                    onSaved={() => { loadPending(); setSuccessMsg('Vehicle history report saved — the seller and any waiting buyers have been notified.') }}
                 />
             )}
         </div>

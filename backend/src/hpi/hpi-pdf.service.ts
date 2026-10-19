@@ -243,7 +243,7 @@ export class HpiPdfService {
         ctx.gap(14);
         ctx.paragraph(
             `Important: This document is a CarMazium-branded presentation of the supplied third-party check, not an independently ` +
-            `generated HPI or vehicle-history check. Vehicle-history databases can update after a delay. Buyers should verify the ` +
+            `verified vehicle-history check. Vehicle-history databases can update after a delay. Buyers should verify the ` +
             `vehicle, V5C, MOT history and any information material to the purchase before completing a transaction.`,
             { size: 7.5, color: MUTED },
         );

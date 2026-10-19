@@ -237,11 +237,11 @@ if (!backendListings.includes('stripe.paymentIntents.retrieve(tx.stripePaymentId
 
 if (
   !mobileSellFlow.includes("badgeTier === 'STANDARD' || badgeTier === 'PREMIUM'") ||
-  !mobileSellFlow.includes('HPI Check Included')
+  !mobileSellFlow.includes('Vehicle History Report Included')
 ) {
-  fail('Mobile must not offer an extra HPI charge on Standard/Premium packages');
+  fail('Mobile must not offer an extra vehicle-history charge on Standard/Premium packages');
 } else {
-  ok('Mobile HPI add-on respects Standard/Premium HPI inclusion');
+  ok('Mobile vehicle-history add-on respects Standard/Premium report inclusion');
 }
 
 if (

@@ -212,7 +212,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/dashboard/admin/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Marketplace" },
 
             { href: "/dashboard/admin/transactions", label: "Transactions", icon: Receipt, section: "Payments & reports" },
-            { href: "/dashboard/admin/hpi", label: "HPI Reports", icon: ShieldCheck, section: "Payments & reports" },
+            { href: "/dashboard/admin/hpi", label: "Vehicle History Reports", icon: ShieldCheck, section: "Payments & reports" },
             { href: "/dashboard/admin/free-listings", label: "Free Listing Grants", icon: Gift, section: "Payments & reports" },
 
             { href: "/dashboard/admin/users", label: "Accounts", icon: Users, section: "Accounts & partners" },
