@@ -23,13 +23,17 @@ import { ValuationQuoteHistoryPanel } from "@/components/admin/ValuationQuoteHis
 import type { DateRangePreset } from "@/components/dealer"
 
 function fmtDate(d: Date): string {
-    // Display and query London calendar days regardless of the admin device's zone.
-    return new Intl.DateTimeFormat("en-CA", {
+    // The traffic API requires ISO YYYY-MM-DD. Locale .format() strings are
+    // not guaranteed to use ISO ordering across browsers and ICU versions.
+    const parts = new Intl.DateTimeFormat("en-GB", {
         timeZone: "Europe/London",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-    }).format(d)
+    }).formatToParts(d)
+    const value = (part: Intl.DateTimeFormatPartTypes) =>
+        parts.find(p => p.type === part)?.value ?? ""
+    return `${value("year")}-${value("month")}-${value("day")}`
 }
 function shiftCalendarDate(day: string, days: number): string {
     const r = new Date(day + "T12:00:00.000Z")
@@ -196,6 +200,11 @@ export default function AdminAnalyticsPage() {
         if (dateRange === "custom") {
             if (!customStart || !customEnd) {
                 setTrafficError("Select both the start and end dates to view a custom period.")
+                setTrafficLoading(false)
+                return
+            }
+            if (customStart > customEnd) {
+                setTrafficError("The start date must be on or before the end date.")
                 setTrafficLoading(false)
                 return
             }
