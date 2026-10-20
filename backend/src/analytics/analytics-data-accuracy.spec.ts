@@ -88,7 +88,7 @@ describe('London monthly reporting windows', () => {
         const ranges = londonMonthlyRanges(new Date('2026-10-20T22:30:00Z'));
         expect(ranges).toHaveLength(6);
         expect(ranges.map(({ label }) => label)).toEqual([
-            'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26',
+            'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sept 26', 'Oct 26',
         ]);
         const september = ranges[4];
         const october = ranges[5];
