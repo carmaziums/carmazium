@@ -56,7 +56,7 @@ function BarChart({ data, valueKey, color, label }: {
                     return (
                         <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group">
                             <div className="relative w-full flex items-end justify-center" style={{ height: "100px" }}>
-                                <div className={`w-full rounded-t transition-all ${color}`} style={{ height: `${Math.max(pct, 2)}%` }} title={String(val)} />
+                                <div className={`w-full rounded-t transition-all ${color}`} style={{ height: `${val > 0 ? Math.max(pct, 2) : 0}%` }} title={String(val)} />
                             </div>
                             <span className="text-xs text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">{d.month}</span>
                         </div>
@@ -455,9 +455,9 @@ export default function AdminAnalyticsPage() {
                         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="relative flex h-2.5 w-2.5">
-                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                    <span aria-label={valuationError ? "Live analytics unavailable" : valuationLive ? "Live analytics available" : "Waiting for analytics"} className="relative flex h-2.5 w-2.5">
+                                        {!valuationError && valuationLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />}
+                                        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${valuationError ? "bg-rose-500" : valuationLive ? "bg-emerald-500" : "bg-amber-500"}`} />
                                     </span>
                                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Car Valuation — Live</p>
                                 </div>
@@ -848,8 +848,9 @@ export default function AdminAnalyticsPage() {
                         </div>
 
                         {firstOfferError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
+                            <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {firstOfferError}
+                                <button type="button" className="ml-2 font-bold underline" onClick={() => fetchFirstOfferData(true)}>Retry auction analytics</button>
                             </div>
                         )}
 
@@ -1119,26 +1120,26 @@ export default function AdminAnalyticsPage() {
                                             <Calendar size={14} className="text-[var(--text-muted)]" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Traffic by Day</p>
                                         </div>
-                                        <div className="flex items-end gap-1 h-28">
-                                            {traffic.trafficByDay.map(d => {
-                                                const pct = (d.sessions / maxDaySessions) * 100
-                                                return (
-                                                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group cursor-default">
-                                                        <div className="relative w-full flex items-end" style={{ height: "88px" }}>
-                                                            <div
-                                                                className="w-full rounded-t bg-primary/60 group-hover:bg-primary transition-all duration-300"
-                                                                style={{ height: `${Math.max(pct, 2)}%` }}
-                                                                title={`${d.date}: ${d.sessions} sessions, ${d.pageviews} views`}
-                                                            />
+                                        <div role="region" aria-label="Traffic by day, horizontally scrollable chart" tabIndex={0} className="w-full max-w-full overflow-x-auto pb-1">
+                                            <div role="img" aria-label={`Public sessions per London calendar day, ${traffic.trafficByDay.length} days`} className="flex items-end gap-1 min-h-32" style={{ minWidth: `${Math.max(320, traffic.trafficByDay.length * 25)}px` }}>
+                                                {traffic.trafficByDay.map((d, i) => {
+                                                    const pct = maxDaySessions > 0 ? (d.sessions / maxDaySessions) * 100 : 0
+                                                    const showDate = traffic.trafficByDay.length <= 10 || i % (traffic.trafficByDay.length > 40 ? 7 : 5) === 0 || i === traffic.trafficByDay.length - 1
+                                                    return (
+                                                        <div key={d.date} className="flex-1 min-w-0 flex flex-col items-center gap-1 group" title={`${d.date}: ${d.sessions} sessions, ${d.pageviews} views`}>
+                                                            <div className="relative w-full flex items-end" style={{ height: "88px" }}>
+                                                                <div className="w-full rounded-t bg-primary/60 group-hover:bg-primary transition-all duration-300"
+                                                                    style={{ height: `${d.sessions > 0 ? Math.max(pct, 2) : 0}%` }} />
+                                                            </div>
+                                                            <span className="text-[10px] text-[var(--text-secondary)] tabular-nums whitespace-nowrap">
+                                                                {showDate ? d.date.slice(5) : " "}
+                                                            </span>
                                                         </div>
-                                                        <span className="text-[7px] text-[var(--text-secondary)] group-hover:text-[var(--text-muted)] transition-colors rotate-90 origin-center hidden xl:block">
-                                                            {d.date.slice(5)}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            })}
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{traffic.trafficByDay.length} days · bars = unique sessions</p>
+                                        <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{traffic.trafficByDay.length} days · bars = sessions with page views · scroll horizontally for more dates</p>
                                     </div>
                                 )}
 
