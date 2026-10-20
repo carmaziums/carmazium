@@ -86,7 +86,7 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
                         <div className="flex-1 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
                             <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-black tabular-nums min-w-[3.5rem] max-w-[7rem] text-right shrink-0" aria-label={`${val.toLocaleString()}${unit}`}>{val.toLocaleString()}</span>
+                        <span className="text-xs font-black tabular-nums min-w-[3.5rem] max-w-[7rem] text-right shrink-0" aria-label={`${val.toLocaleString()}${unit}`}>{val.toLocaleString()}{unit}</span>
                     </div>
                 )
             })}
@@ -353,7 +353,7 @@ export default function AdminAnalyticsPage() {
             return `"${text.replace(/"/g, '""')}"`
         }
         const rows = valuationLive.recent.map((item) => [
-            new Date(item.createdAt).toLocaleString("en-GB"),
+            new Date(item.createdAt).toLocaleString("en-GB", { timeZone: "Europe/London" }),
             item.registration || "",
             item.year || "",
             item.make || "",
@@ -528,7 +528,7 @@ export default function AdminAnalyticsPage() {
                                             <tbody>
                                                 {valuationLive.last7Days.map(row => (
                                                     <tr key={`valuation-health-${row.date}`} className="border-b border-[var(--border-default)]/60">
-                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.valuationAttempts}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black text-emerald-500">{row.figuresReturned}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black text-rose-500">{row.withoutFigures}</td>
@@ -659,7 +659,7 @@ export default function AdminAnalyticsPage() {
                                             <tbody>
                                                 {valuationLive.last7Days.map(row => (
                                                     <tr key={row.date} className="border-b border-[var(--border-default)]/60">
-                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.valuationJourneys}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.listingStarted}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black">{row.listingCreated}</td>
@@ -724,9 +724,9 @@ export default function AdminAnalyticsPage() {
                                                     {valuationLive.recent.map(item => (
                                                         <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-[var(--bg-card-hover)]">
                                                             <td className="px-4 py-3 whitespace-nowrap font-bold">
-                                                                <div>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                                                <div>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</div>
                                                                 <div className="text-[10px] text-[var(--text-muted)]">
-                                                                    {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                                                    {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
@@ -941,7 +941,7 @@ export default function AdminAnalyticsPage() {
                                                         return (
                                                             <tr key={item.id} className="hover:bg-[var(--bg-card-hover)]">
                                                                 <td className="px-4 py-3 whitespace-nowrap text-[var(--text-muted)]">
-                                                                    {new Date(item.createdAt).toLocaleString("en-GB")}
+                                                                    {new Date(item.createdAt).toLocaleString("en-GB", { timeZone: "Europe/London" })}
                                                                 </td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="font-black text-[var(--text-primary)]">{item.vehicle || "Vehicle"}</div>
