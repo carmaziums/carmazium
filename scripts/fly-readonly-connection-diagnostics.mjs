@@ -3,6 +3,7 @@
 // GitHub Actions logs are visible on this public repository.
 import { appendFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { probeFlyHealth, summarizeHealthObservations } from './fly-readonly-health-probes.mjs';
 
 const APP = 'carmazium-hjoh9w';
 const TOKEN = process.env.FLY_API_TOKEN;
@@ -43,24 +44,6 @@ if (!TOKEN) {
     return /^[a-zA-Z0-9_:-]{1,48}$/.test(word) ? word : 'other';
   }
 
-  async function probe(path) {
-    const times = [];
-    const statuses = [];
-    for (let i = 0; i < 3; i += 1) {
-      const started = Date.now();
-      try {
-        const response = await fetch('https://' + APP + '.fly.dev' + path, {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(7000),
-        });
-        statuses.push(String(response.status));
-      } catch {
-        statuses.push('network_error');
-      }
-      times.push(Date.now() - started);
-    }
-    return { statuses, times };
-  }
 
   say('## CarMazium Fly.io connection diagnostics');
   say('**Application:** `' + APP + '` (London primary region).');
@@ -142,12 +125,19 @@ if (!TOKEN) {
   }
 
   say('');
-  say('### External API probes (three read-only requests each)');
-  for (const path of ['/health/live', '/health/ready']) {
-    const result = await probe(path);
-    say('- ' + path + ': statuses ' + result.statuses.join(', ') +
-      '; latency ' + result.times.join(', ') + ' ms.');
+  say('### External API probes (12 read-only requests per health endpoint)');
+  const probes = await probeFlyHealth({
+    origin: 'https://' + APP + '.fly.dev',
+    attemptsPerPath: 12,
+    delayMs: 250,
+  });
+  for (const [path, samples] of Object.entries(probes)) {
+    const result = summarizeHealthObservations(samples);
+    say('- ' + path + ': ' + result.count + ' probes; HTTP/network category counts ' +
+      JSON.stringify(result.counts) + '; p50 ' + result.p50Ms +
+      ' ms; p95 ' + result.p95Ms + ' ms; maximum ' + result.maxMs + ' ms.');
   }
+  say('**Interpretation:** Healthy probes do not prove that intermittent Vercel-to-Fly TLS or proxy failures are resolved.');
 
   // Read a bounded in-memory Fly log buffer only. It may not cover the entire
   // outage. Never print raw log lines, because they may contain personal data.
