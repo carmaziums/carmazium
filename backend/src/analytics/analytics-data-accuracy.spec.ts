@@ -114,7 +114,7 @@ describe('Analytics summary scalability', () => {
         const prisma: any = {
             analyticsEvent: {
                 count: jest.fn().mockResolvedValue(5),
-                groupBy: jest.fn().mockResolvedValue([{ type: 'page_view', _count: { type: 5 } }]),
+                groupBy: jest.fn().mockResolvedValue([{ type: 'page_view', _count: 5 }]),
             },
             emailCapture: { count: jest.fn().mockResolvedValue(1) },
             $queryRawUnsafe: jest.fn().mockResolvedValue([{ sessions: 3n }]),
