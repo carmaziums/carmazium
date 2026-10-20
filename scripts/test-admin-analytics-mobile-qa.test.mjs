@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 
 const analytics = readFileSync(new URL('../src/app/dashboard/admin/analytics/page.tsx', import.meta.url), 'utf8');
 const range = readFileSync(new URL('../src/components/dealer/DateRangeFilter.tsx', import.meta.url), 'utf8');
+const history = readFileSync(new URL('../src/components/admin/ValuationQuoteHistoryPanel.tsx', import.meta.url), 'utf8');
 
 test('traffic daily chart retains London-date labels and accessible mobile scrolling', () => {
   assert.match(analytics, /aria-label="Traffic by day, horizontally scrollable chart"/);
@@ -32,4 +33,18 @@ test('shared date filter fits small screens and keeps labelled inputs', () => {
   assert.match(range, /grid-cols-1 sm:grid-cols-\[1fr_auto_1fr\]/);
   assert.match(range, /aria-label="Start date"/);
   assert.match(range, /aria-label="End date"/);
+});
+
+test('valuation, auction and historical quote timestamps are UK-time independent of the browser', () => {
+  assert.match(analytics, /createdAt\)\.toLocaleString\("en-GB", \{ timeZone: "Europe\/London" \}\)/);
+  assert.match(analytics, /T12:00:00Z/);
+  assert.match(analytics, /createdAt\)\.toLocaleTimeString\("en-GB", \{ hour: "2-digit", minute: "2-digit", timeZone: "Europe\/London" \}\)/);
+  assert.match(history, /row\.createdAt\)\.toLocaleDateString\("en-GB", \{ timeZone: "Europe\/London" \}\)/);
+});
+
+test('quote history retries an unavailable panel without showing rows from another filter', () => {
+  assert.match(history, /loadedKey === resultKey && \(/);
+  assert.match(history, /setRetryCount\(count => count \+ 1\)/);
+  assert.match(history, /Showing the last successful results for this search/);
+  assert.match(history, /Retry quote history/);
 });
