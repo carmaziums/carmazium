@@ -108,3 +108,26 @@ describe('London monthly reporting windows', () => {
         expect(january.endExclusive.toISOString()).toBe('2026-02-01T00:00:00.000Z');
     });
 });
+
+describe('Analytics summary scalability', () => {
+    it('counts non-null unique sessions in SQL without transferring all session IDs', async () => {
+        const prisma: any = {
+            analyticsEvent: {
+                count: jest.fn().mockResolvedValue(5),
+                groupBy: jest.fn().mockResolvedValue([{ type: 'page_view', _count: { type: 5 } }]),
+            },
+            emailCapture: { count: jest.fn().mockResolvedValue(1) },
+            $queryRawUnsafe: jest.fn().mockResolvedValue([{ sessions: 3n }]),
+        };
+        const result = await new AnalyticsService(prisma).getSummary();
+        expect(result).toEqual({
+            totalEvents: 5,
+            uniqueSessions: 3,
+            totalEmails: 1,
+            eventsByType: [{ type: 'page_view', count: 5 }],
+        });
+        expect(prisma.analyticsEvent.groupBy).toHaveBeenCalledTimes(1);
+        expect(prisma.$queryRawUnsafe.mock.calls[0][0])
+            .toContain('COUNT(DISTINCT "sessionId")');
+    });
+});
