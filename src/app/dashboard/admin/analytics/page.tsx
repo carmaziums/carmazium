@@ -128,6 +128,7 @@ export default function AdminAnalyticsPage() {
     const [verification, setVerification] = React.useState<AccountVerificationStats | null>(null)
     const [platformLoading, setPlatformLoading] = React.useState(true)
     const [platformError, setPlatformError] = React.useState<string | null>(null)
+    const platformRequestId = React.useRef(0)
 
     // Traffic analytics
     const [traffic, setTraffic] = React.useState<TrafficAnalytics | null>(null)
@@ -150,6 +151,7 @@ export default function AdminAnalyticsPage() {
     const [firstOfferLoading, setFirstOfferLoading] = React.useState(true)
     const [firstOfferError, setFirstOfferError] = React.useState<string | null>(null)
     const [firstOfferDays, setFirstOfferDays] = React.useState(30)
+    const firstOfferRequestId = React.useRef(0)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -160,12 +162,26 @@ export default function AdminAnalyticsPage() {
 
     const fetchPlatformData = React.useCallback(() => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++platformRequestId.current
         setPlatformLoading(true)
         setPlatformError(null)
-        Promise.all([getAdminAnalytics(), getAdminStats(), getAccountVerificationStats()])
-            .then(([a, s, v]) => { setAnalytics(a); setStats(s); setVerification(v) })
-            .catch(err => setPlatformError(err.message || "Failed to load platform stats"))
-            .finally(() => setPlatformLoading(false))
+        // Each card is independent: a broken statistics endpoint must not
+        // suppress otherwise valid registrations, revenue or KYC results.
+        Promise.allSettled([getAdminAnalytics(), getAdminStats(), getAccountVerificationStats()])
+            .then(([monthly, totals, checks]) => {
+                if (requestId !== platformRequestId.current) return
+                const failed: string[] = []
+                if (monthly.status === "fulfilled") setAnalytics(monthly.value)
+                else failed.push("six-month overview")
+                if (totals.status === "fulfilled") setStats(totals.value)
+                else failed.push("all-time statistics")
+                if (checks.status === "fulfilled") setVerification(checks.value)
+                else failed.push("account verification")
+                if (failed.length) setPlatformError("Unavailable: " + failed.join(", ") + ". Other figures are shown from their last successful response.")
+            })
+            .finally(() => {
+                if (requestId === platformRequestId.current) setPlatformLoading(false)
+            })
     }, [profile])
 
     const fetchTrafficData = React.useCallback(() => {
@@ -229,15 +245,27 @@ export default function AdminAnalyticsPage() {
 
     const fetchFirstOfferData = React.useCallback((showSpinner = false) => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++firstOfferRequestId.current
         if (showSpinner) setFirstOfferLoading(true)
         setFirstOfferError(null)
         getAuctionFirstOfferAnalytics(firstOfferDays)
-            .then(setFirstOfferAnalytics)
-            .catch(err => setFirstOfferError(err.message || "Failed to load auction first-offer analytics"))
-            .finally(() => setFirstOfferLoading(false))
+            .then(result => {
+                if (requestId === firstOfferRequestId.current) setFirstOfferAnalytics(result)
+            })
+            .catch(err => {
+                if (requestId === firstOfferRequestId.current) {
+                    setFirstOfferError(err?.message || "Failed to load auction first-offer analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === firstOfferRequestId.current) setFirstOfferLoading(false)
+            })
     }, [profile, firstOfferDays])
 
-    React.useEffect(() => { fetchPlatformData() }, [fetchPlatformData])
+    React.useEffect(() => {
+        fetchPlatformData()
+        return () => { platformRequestId.current += 1 }
+    }, [fetchPlatformData])
     React.useEffect(() => {
         fetchTrafficData()
         return () => { trafficRequestId.current += 1 }
@@ -261,9 +289,10 @@ export default function AdminAnalyticsPage() {
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
         fetchFirstOfferData(true)
+        return () => { firstOfferRequestId.current += 1 }
     }, [profile, fetchFirstOfferData])
 
-    if (authLoading || (user && !profile) || platformLoading) {
+    if (authLoading || (user && !profile)) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
     if (!user || profile?.role !== "ADMIN") return null
@@ -411,7 +440,15 @@ export default function AdminAnalyticsPage() {
                         </Button>
                     </div>
 
-                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300"><strong>Error:</strong> {platformError}</div>}
+                    {platformLoading && !stats && !verification && analytics.length === 0 && (
+                        <p role="status" className="text-sm text-[var(--text-muted)]">Loading platform statistics…</p>
+                    )}
+                    {platformError && (
+                        <div role="alert" className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300">
+                            <strong>Some statistics are unavailable:</strong> {platformError}
+                            <button type="button" onClick={fetchPlatformData} className="ml-3 font-bold underline">Retry platform statistics</button>
+                        </div>
+                    )}
 
                     {/* ── Live vehicle valuation activity ── */}
                     <div className="space-y-4">
@@ -772,7 +809,6 @@ export default function AdminAnalyticsPage() {
                                     )}
                                 </div>
 
-                                <ValuationQuoteHistoryPanel />
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
                                     New valuation journeys now retain the vehicle registration, mileage and exact CarMazium guide figures shown at valuation time for internal pricing QA. Older rows may show “Legacy” because those values were not historically stored; where a legacy valuation later became a listing, registration and mileage are recovered from that listing when available. The funnel still attributes a listing to a valuation for up to 30 days.
@@ -780,6 +816,10 @@ export default function AdminAnalyticsPage() {
                             </>
                         ) : null}
                     </div>
+
+                    {/* This archive has its own endpoint and loading/error state.
+                        Never hide it when the live valuation query times out. */}
+                    <ValuationQuoteHistoryPanel />
 
                     {/* ── Auction zero-bid / discounted first-offer analytics ── */}
                     <div className="space-y-4">
@@ -813,11 +853,11 @@ export default function AdminAnalyticsPage() {
                             </div>
                         )}
 
-                        {firstOfferLoading && !firstOfferAnalytics ? (
+                        {firstOfferLoading && (!firstOfferAnalytics || firstOfferAnalytics.windowDays !== firstOfferDays) ? (
                             <div className="h-28 flex items-center justify-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]">
                                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
                             </div>
-                        ) : firstOfferAnalytics ? (
+                        ) : firstOfferAnalytics?.windowDays === firstOfferDays ? (
                             <>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                                     {([
