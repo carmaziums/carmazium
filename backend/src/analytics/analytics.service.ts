@@ -60,7 +60,7 @@ export class AnalyticsService {
             totalEvents,
             uniqueSessions: Number(uniqueSessionCounts[0]?.sessions ?? 0),
             totalEmails,
-            eventsByType: eventsByType.map((e) => ({ type: e.type, count: e._count.type })),
+            eventsByType: eventsByType.map((e) => ({ type: e.type, count: e._count })),
         };
     }
 
