@@ -1155,7 +1155,50 @@ export class AnalyticsService {
 
     // ─── Admin: Traffic Analytics ─────────────────────────────────────────────
 
+    // Dashboard refresh and concurrent administrators must not rerun 11 separate
+    // grouping queries for the same date window. A small window-keyed cache
+    // reduces database load while keeping different reporting periods isolated.
+    // An unsuccessful query is never cached; administrators can retry promptly.
+    private readonly trafficSnapshots = new Map<string, {
+        data: Awaited<ReturnType<AnalyticsService['queryTrafficAnalytics']>>;
+        expiresAt: number;
+    }>();
+    private readonly trafficReadsInFlight = new Map<
+        string, ReturnType<AnalyticsService['queryTrafficAnalytics']>
+    >();
+
     async getTrafficAnalytics(from: Date, untilExclusive: Date) {
+        const key = from.toISOString() + '/' + untilExclusive.toISOString();
+        const cached = this.trafficSnapshots.get(key);
+        if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+        const inFlight = this.trafficReadsInFlight.get(key);
+        if (inFlight) return inFlight;
+
+        const pending = this.queryTrafficAnalytics(from, untilExclusive);
+        this.trafficReadsInFlight.set(key, pending);
+        try {
+            const data = await pending;
+            this.trafficSnapshots.delete(key);
+            this.trafficSnapshots.set(key, {
+                data,
+                expiresAt: Date.now() + 20_000,
+            });
+            // A bounded cache prevents date-range exploration consuming memory.
+            while (this.trafficSnapshots.size > 8) {
+                const oldest = this.trafficSnapshots.keys().next().value;
+                if (oldest === undefined) break;
+                this.trafficSnapshots.delete(oldest);
+            }
+            return data;
+        } finally {
+            if (this.trafficReadsInFlight.get(key) === pending) {
+                this.trafficReadsInFlight.delete(key);
+            }
+        }
+    }
+
+    private async queryTrafficAnalytics(from: Date, untilExclusive: Date) {
         // PageViewTracker runs globally, including on authenticated dashboards
         // and login pages. Those are product/internal journeys rather than
         // visitor traffic, so every traffic query uses this same public-route
