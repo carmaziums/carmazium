@@ -13,8 +13,10 @@ if (!TOKEN) {
   const report = [];
   const say = (line = '') => report.push(line);
   const start = Date.now();
-  const incidentStart = Date.parse('2026-10-11T13:30:00Z');
-  const incidentEnd = Date.parse('2026-10-11T16:00:00Z');
+  // Always inspect the latest 24h rather than the original October 11 incident.
+  // The window is fixed once per diagnostic run for reproducibility.
+  const incidentEnd = Date.now();
+  const incidentStart = incidentEnd - 24 * 60 * 60 * 1000;
 
   async function flyGet(path) {
     try {
@@ -118,10 +120,10 @@ if (!TOKEN) {
     for (const [key, count] of Object.entries(eventTotals).sort((a, b) => b[1] - a[1]).slice(0, 12)) {
       say('- ' + key + ': ' + count);
     }
-    say('**Events during observed failure window (11 October 13:30–16:00 UTC):** ' + incidentEvents);
+    say('**Machine events in latest 24-hour window (' + new Date(incidentStart).toISOString() + ' to ' + new Date(incidentEnd).toISOString() + '):** ' + incidentEvents);
     for (const line of incidentDetails.sort().slice(-15)) say('- ' + line);
     if (!incidentDetails.length) {
-      say('No matching Machine events found in the available recent event history; this does not rule out Fly Proxy or network errors.');
+      say('No recent Machine lifecycle events found in the sampled history for this rolling 24-hour window; this does not rule out Fly Proxy, TLS or network errors.');
     }
 
     // Current health-check statuses only. Check outputs and full machine config
