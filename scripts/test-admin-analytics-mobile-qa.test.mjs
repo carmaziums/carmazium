@@ -55,3 +55,27 @@ test('displayed traffic reporting dates remain explicit when a request fails', (
   assert.match(analytics, /Displayed traffic: \{trafficPeriod\.from\} to \{trafficPeriod\.to\}/);
   assert.match(analytics, /Last successful snapshot; the requested date range could not be loaded/);
 });
+
+test('UK traffic presets are independent of localized date-string ordering', () => {
+  assert.match(analytics, /\.formatToParts\(d\)/);
+  assert.match(analytics, /value\("year"\).*value\("month"\).*value\("day"\)/);
+  assert.doesNotMatch(analytics, /new Intl\.DateTimeFormat\("en-CA"[\s\S]*?\}\.format\(d\)/);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date("2026-10-20T23:30:00Z"));
+  const get = (type) => parts.find(part => part.type === type).value;
+  assert.equal(`${get("year")}-${get("month")}-${get("day")}`, "2026-10-21");
+  assert.match(analytics, /start date must be on or before the end date/i);
+});
+
+test('custom date labels show UK calendar dates regardless of admin timezone', () => {
+  assert.match(range, /customStart \+ "T12:00:00Z"/);
+  assert.match(range, /customEnd \+ "T12:00:00Z"/);
+  assert.match(range, /timeZone: "Europe\/London"/);
+  const day = new Date("2026-10-25T12:00:00Z");
+  const format = (zone) => new Intl.DateTimeFormat("en-GB", {
+    timeZone: zone, day: "numeric", month: "short", year: "numeric",
+  }).format(day);
+  assert.equal(format("Europe/London"), "25 Oct 2026");
+  assert.equal(format("America/Los_Angeles"), "25 Oct 2026");
+});
