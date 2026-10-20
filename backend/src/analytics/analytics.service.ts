@@ -40,10 +40,14 @@ export class AnalyticsService {
     // ─── Admin: Summary Stats ─────────────────────────────────────────────────
 
     async getSummary() {
-        const [totalEvents, uniqueSessionGroups, totalEmails, eventsByType] =
+        const [totalEvents, uniqueSessionCounts, totalEmails, eventsByType] =
             await Promise.all([
                 this.prisma.analyticsEvent.count(),
-                this.prisma.analyticsEvent.groupBy({ by: ['sessionId'], _count: true }),
+                // Count in Postgres rather than transferring every distinct
+                // session ID to Node (tens of thousands of groups).
+                this.prisma.$queryRawUnsafe<Array<{ sessions: bigint }>>(
+                    'SELECT COUNT(DISTINCT "sessionId") AS sessions FROM analytics_events',
+                ),
                 this.prisma.emailCapture.count(),
                 this.prisma.analyticsEvent.groupBy({
                     by: ['type'],
@@ -54,7 +58,7 @@ export class AnalyticsService {
 
         return {
             totalEvents,
-            uniqueSessions: uniqueSessionGroups.length,
+            uniqueSessions: Number(uniqueSessionCounts[0]?.sessions ?? 0),
             totalEmails,
             eventsByType: eventsByType.map((e) => ({ type: e.type, count: e._count })),
         };
