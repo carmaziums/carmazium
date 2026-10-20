@@ -15,20 +15,26 @@ export function ValuationQuoteHistoryPanel() {
     const [data, setData] = React.useState<ValuationQuoteHistory | null>(null)
     const [loading, setLoading] = React.useState(true)
     const [error, setError] = React.useState<string | null>(null)
+    const [loadedKey, setLoadedKey] = React.useState<string | null>(null)
+    const [retryCount, setRetryCount] = React.useState(0)
+    const resultKey = JSON.stringify([term, page])
 
     React.useEffect(() => {
         let valid = true
         setLoading(true)
         setError(null)
         getValuationQuoteHistory(term, page).then(result => {
-            if (valid) setData(result)
+            if (valid) {
+                setData(result)
+                setLoadedKey(resultKey)
+            }
         }).catch(err => {
             if (valid) setError(err?.message || "Unable to load archived quotes")
         }).finally(() => {
             if (valid) setLoading(false)
         })
         return () => { valid = false }
-    }, [term, page])
+    }, [term, page, resultKey, retryCount])
 
     return (
         <section className="rounded-2xl border border-amber-500/25 bg-[var(--bg-card)] overflow-hidden">
@@ -57,9 +63,16 @@ export function ValuationQuoteHistoryPanel() {
                 </form>
             </div>
 
-            {error && <p className="p-4 text-sm text-red-500" role="alert">{error}</p>}
+            {error && (
+                <div role="alert" className="p-4 text-sm text-red-600 dark:text-red-400 flex flex-wrap items-center justify-between gap-3">
+                    <span>{error}{data && loadedKey === resultKey ? " Showing the last successful results for this search." : ""}</span>
+                    <button type="button" onClick={() => setRetryCount(count => count + 1)} className="rounded-lg border border-current px-3 py-2 font-semibold hover:bg-red-500/10">
+                        Retry quote history
+                    </button>
+                </div>
+            )}
             {loading && <p className="p-4 text-sm text-[var(--text-muted)]">Loading quote history…</p>}
-            {!loading && data && (
+            {!loading && data && loadedKey === resultKey && (
                 <div className="space-y-5 p-4">
                     <p className="text-xs text-[var(--text-muted)]">{data.note}</p>
                     {data.byModel.length > 0 && (
@@ -95,7 +108,7 @@ export function ValuationQuoteHistoryPanel() {
                             <tbody>
                                 {data.rows.map(row => (
                                     <tr key={row.id} className="border-t border-[var(--border-default)] hover:bg-amber-500/5">
-                                        <td className="p-3 whitespace-nowrap">{new Date(row.createdAt).toLocaleDateString("en-GB")}</td>
+                                        <td className="p-3 whitespace-nowrap">{new Date(row.createdAt).toLocaleDateString("en-GB", { timeZone: "Europe/London" })}</td>
                                         <td className="p-3 font-mono font-bold">{row.registration || "—"}</td>
                                         <td className="p-3">{row.year || ""} {row.make || ""} {row.model || ""}</td>
                                         <td className="p-3 text-right">{row.mileage?.toLocaleString("en-GB") ?? "—"}</td>
