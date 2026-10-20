@@ -86,7 +86,7 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
                         <div className="flex-1 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
                             <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-black tabular-nums w-12 text-right shrink-0">{val.toLocaleString()}{unit}</span>
+                        <span className="text-xs font-black tabular-nums min-w-[3.5rem] max-w-[7rem] text-right shrink-0" aria-label={`${val.toLocaleString()}${unit}`}>{val.toLocaleString()}</span>
                     </div>
                 )
             })}
@@ -97,12 +97,12 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
 interface StatCardProps { label: string; value: string | number; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }
 function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
     return (
-        <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+        <div className="glass-card min-w-0 p-3 sm:p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
             <div className={`inline-flex p-2 ${color} rounded-lg mb-3`}>
                 <Icon size={16} className="" />
             </div>
             <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{label}</p>
-            <h3 className="text-3xl font-black font-heading mt-1 text-[var(--text-primary)]">{typeof value === "number" ? value.toLocaleString() : value}</h3>
+            <h3 className="text-xl sm:text-3xl font-black font-heading mt-1 text-[var(--text-primary)] break-words tabular-nums">{typeof value === "number" ? value.toLocaleString() : value}</h3>
         </div>
     )
 }
@@ -465,7 +465,7 @@ export default function AdminAnalyticsPage() {
                             </div>
                             {valuationLive && (
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                                    Updated {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                    Snapshot {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/London" })} UK
                                 </p>
                             )}
                         </div>
@@ -473,7 +473,7 @@ export default function AdminAnalyticsPage() {
                         {valuationError && (
                             <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {valuationError}
-                                {valuationLive && <p className="mt-1 text-xs">Showing the last successful snapshot from {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB")}.</p>}
+                                {valuationLive && <p className="mt-1 text-xs">Showing the last successful snapshot from {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { timeZone: "Europe/London" })} UK.</p>}
                                 <button type="button" className="mt-2 underline font-bold" onClick={() => fetchValuationData(true)}>Retry valuation analytics</button>
                             </div>
                         )}
@@ -1054,7 +1054,7 @@ export default function AdminAnalyticsPage() {
                                 ].map(item => (
                                     <div key={item.label} className="p-3 bg-[var(--bg-card)] rounded-xl">
                                         <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{item.label}</p>
-                                        <p className="text-2xl font-black font-heading mt-1">{item.value}</p>
+                                        <p className="text-xl sm:text-2xl font-black font-heading mt-1 break-words tabular-nums">{item.value}</p>
                                     </div>
                                 ))}
                             </div>
