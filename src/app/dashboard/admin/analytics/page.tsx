@@ -868,7 +868,7 @@ export default function AdminAnalyticsPage() {
                                         { label: "Reached Reserve", value: firstOfferAnalytics.summary.reserveMetSales, icon: ShieldCheck, color: "bg-teal-500/20" },
                                         { label: "Sale Rate", value: `${firstOfferAnalytics.summary.saleRate.toFixed(1)}%`, icon: DollarSign, color: "bg-yellow-500/20" },
                                         { label: "First Offer Cancelled", value: firstOfferAnalytics.summary.firstOfferCancellations, icon: AlertTriangle, color: "bg-orange-500/20" },
-                                        { label: "Zero-Bid Unsold", value: firstOfferAnalytics.summary.zeroBidUnsold, icon: UserX, color: "bg-rose-500/20" },
+                                        { label: "Zero-Bid Unsold (All Auctions)", value: firstOfferAnalytics.summary.zeroBidUnsold, icon: UserX, color: "bg-rose-500/20" },
                                     ] as StatCardProps[]).map(card => <StatCard key={card.label} {...card} />)}
                                 </div>
 
@@ -971,7 +971,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                                    {firstOfferAnalytics.trackingNote} “Sale rate” is based on tracked auctions that received at least one first offer; active auctions without an outcome remain pending rather than being counted as unsold.
+                                    {firstOfferAnalytics.trackingNote} “Sale rate” is based on tracked auctions that received at least one first offer; active auctions without an outcome remain pending rather than being counted as unsold. “Zero-Bid Unsold” separately counts all tracked auctions closed with no bids in the selected window, not only those with first offers.
                                 </p>
                             </>
                         ) : null}
@@ -982,7 +982,7 @@ export default function AdminAnalyticsPage() {
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-3 px-1">Platform Overview — Last 6 Months</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {([
-                                { label: "Retained Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
+                                { label: "Est. Retained Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
                                 { label: "New Registrations (6m)", value: totalUsers6m as string | number, icon: Users, color: "bg-blue-500/20" },
                                 { label: "New Listings (6m)", value: totalListings6m as string | number, icon: Car, color: "bg-primary/20" },
                             ] as StatCardProps[]).map(c => <StatCard key={c.label} {...c} />)}
@@ -1016,7 +1016,7 @@ export default function AdminAnalyticsPage() {
                     {analytics.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                             {[
-                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Retained Revenue" },
+                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Est. Retained Revenue" },
                                 { key: "newUsers" as const, color: "bg-blue-500/70", label: "New Account Registrations" },
                                 { key: "newListings" as const, color: "bg-primary/70", label: "New Listings Created" },
                             ].map(({ key, color, label }) => (
@@ -1042,7 +1042,7 @@ export default function AdminAnalyticsPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
                                 {[
                                     { label: "Registered Accounts", value: stats.totalUsers.toLocaleString() },
-                                    { label: "Retained Revenue", value: formatPrice(stats.totalRevenue) },
+                                    { label: "Est. Retained Revenue", value: formatPrice(stats.totalRevenue) },
                                     { label: "Total Listings", value: stats.totalListings.toLocaleString() },
                                     { label: "Active Listings", value: stats.activeListings.toLocaleString() },
                                     { label: "Vehicles Sold", value: stats.soldListings.toLocaleString() },
@@ -1057,7 +1057,7 @@ export default function AdminAnalyticsPage() {
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-[var(--text-muted)] mt-4">Revenue is CarMazium-retained platform income, not customer-to-seller or other pass-through transaction value.</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-4">Estimated retained revenue is derived from completed platform transactions, not a Stripe settlement reconciliation. It excludes vehicle-sale proceeds, deposits and boost payments; completed auction buyer fees currently contribute an assumed £25 retained amount per transaction after the £100 seller incentive. Verify payouts, refunds, boosts and payment records before treating this figure as booked revenue.</p>
                         </div>
                     )}
 
