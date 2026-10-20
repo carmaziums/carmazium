@@ -40,10 +40,14 @@ export class AnalyticsService {
     // ─── Admin: Summary Stats ─────────────────────────────────────────────────
 
     async getSummary() {
-        const [totalEvents, uniqueSessionGroups, totalEmails, eventsByType] =
+        const [totalEvents, uniqueSessionCounts, totalEmails, eventsByType] =
             await Promise.all([
                 this.prisma.analyticsEvent.count(),
-                this.prisma.analyticsEvent.groupBy({ by: ['sessionId'], _count: true }),
+                // Count in Postgres rather than transferring every distinct
+                // session ID to Node (tens of thousands of groups).
+                this.prisma.$queryRawUnsafe<Array<{ sessions: bigint }>>(
+                    'SELECT COUNT(DISTINCT "sessionId") AS sessions FROM analytics_events',
+                ),
                 this.prisma.emailCapture.count(),
                 this.prisma.analyticsEvent.groupBy({
                     by: ['type'],
@@ -54,7 +58,7 @@ export class AnalyticsService {
 
         return {
             totalEvents,
-            uniqueSessions: uniqueSessionGroups.length,
+            uniqueSessions: Number(uniqueSessionCounts[0]?.sessions ?? 0),
             totalEmails,
             eventsByType: eventsByType.map((e) => ({ type: e.type, count: e._count })),
         };
@@ -117,7 +121,34 @@ export class AnalyticsService {
      * Day/hour boundaries are calculated in Europe/London so the admin's
      * "today" cards remain correct across BST/GMT changes.
      */
+    // The dashboard polls every 15 seconds. Keep one short-lived result per
+    // API instance and share in-flight work across simultaneous admin requests.
+    // The source's generatedAt stays unchanged when we serve a cached snapshot.
+    private valuationSnapshot: {
+        data: Awaited<ReturnType<AnalyticsService['queryValuationAnalytics']>>;
+        expiresAt: number;
+    } | null = null;
+    private valuationSnapshotInFlight: ReturnType<AnalyticsService['queryValuationAnalytics']> | null = null;
+
     async getValuationAnalytics() {
+        const cached = this.valuationSnapshot;
+        if (cached && cached.expiresAt > Date.now()) return cached.data;
+        if (this.valuationSnapshotInFlight) return this.valuationSnapshotInFlight;
+
+        const pending = this.queryValuationAnalytics();
+        this.valuationSnapshotInFlight = pending;
+        try {
+            const data = await pending;
+            this.valuationSnapshot = { data, expiresAt: Date.now() + 30_000 };
+            return data;
+        } finally {
+            if (this.valuationSnapshotInFlight === pending) {
+                this.valuationSnapshotInFlight = null;
+            }
+        }
+    }
+
+    private async queryValuationAnalytics() {
 
         // Price locks were already persisted before browser-side analytics was
         // reliable. Quote receipts now also cover all successful responses.
@@ -220,15 +251,15 @@ export class AnalyticsService {
                         ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London') AS end_utc
                 )
                 SELECT
-                    TO_CHAR(date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
+                    TO_CHAR(date_trunc('hour', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
                     COUNT(*)::TEXT AS requests,
                     COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions
                 FROM analytics_events, bounds
                 WHERE type = 'valuation_requested'
                   AND "createdAt" >= bounds.start_utc
                   AND "createdAt" < bounds.end_utc
-                GROUP BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London')
-                ORDER BY date_trunc('hour', "createdAt" AT TIME ZONE 'Europe/London') ASC
+                GROUP BY date_trunc('hour', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')
+                ORDER BY date_trunc('hour', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London') ASC
             `),
             this.prisma.$queryRawUnsafe<Array<{
                 date: string;
@@ -239,7 +270,7 @@ export class AnalyticsService {
                 confirmed_no_figures: string;
             }>>(`
                 SELECT
-                    TO_CHAR(("createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
+                    TO_CHAR(("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
                     COUNT(*) FILTER (WHERE type = 'valuation_requested')::TEXT AS requests,
                     COUNT(DISTINCT "sessionId") FILTER (
                         WHERE type = 'valuation_requested' AND "sessionId" IS NOT NULL
@@ -267,8 +298,8 @@ export class AnalyticsService {
                   AND "createdAt" < (
                       ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
                   )
-                GROUP BY ("createdAt" AT TIME ZONE 'Europe/London')::date
-                ORDER BY ("createdAt" AT TIME ZONE 'Europe/London')::date ASC
+                GROUP BY ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date
+                ORDER BY ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date ASC
             `),
             this.prisma.$queryRawUnsafe<Array<{
                 date: string;
@@ -291,7 +322,7 @@ export class AnalyticsService {
                         "createdAt",
                         "sessionId",
                         NULLIF(payload->>'valuation_id', '') AS valuation_id,
-                        TO_CHAR(("createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS valuation_date,
+                        TO_CHAR(("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS valuation_date,
                         COALESCE(
                             NULLIF(payload->>'valuation_id', ''),
                             CASE WHEN "sessionId" IS NOT NULL THEN 'session:' || "sessionId" END,
@@ -456,13 +487,17 @@ export class AnalyticsService {
                     WHERE e.type = 'valuation_requested'
                 ),
                 recent_valuations AS (
-                    -- The audit is a journey audit, not a raw HTTP-request log.
-                    -- Keep the newest customer-facing valuation result for each
-                    -- journey while preserving every historical event underneath.
-                    SELECT DISTINCT ON (journey_key)
-                        *
-                    FROM valuation_requests
-                    ORDER BY journey_key, "createdAt" DESC
+                    -- Preserve the latest customer-facing event per journey,
+                    -- but restrict the expensive attribution joins to the 100
+                    -- most recent journeys. Previously LIMIT 100 was applied
+                    -- after all historical journeys had run the LATERAL joins.
+                    SELECT * FROM (
+                        SELECT DISTINCT ON (journey_key) *
+                        FROM valuation_requests
+                        ORDER BY journey_key, "createdAt" DESC
+                    ) deduplicated
+                    ORDER BY "createdAt" DESC
+                    LIMIT 100
                 )
                 SELECT
                     v.id,
@@ -598,23 +633,23 @@ export class AnalyticsService {
                 ORDER BY s."createdAt" DESC LIMIT 100
             `),
             this.prisma.$queryRawUnsafe<Array<{ date: string; total: string }>>(`${missingServerQuotesSql}
-                SELECT TO_CHAR((s."createdAt" AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
+                SELECT TO_CHAR((s."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date, 'YYYY-MM-DD') AS date,
                        COUNT(*)::text AS total
                 FROM dedup s
                 WHERE s."createdAt" >= NOW()-interval '7 days'
                   AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
-                GROUP BY (s."createdAt" AT TIME ZONE 'Europe/London')::date
+                GROUP BY (s."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::date
             `),
             this.prisma.$queryRawUnsafe<Array<{ hour: string; total: string }>>(`${missingServerQuotesSql}
-                SELECT TO_CHAR(date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
+                SELECT TO_CHAR(date_trunc('hour', s."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'), 'HH24:00') AS hour,
                        COUNT(*)::text AS total
                 FROM dedup s
                 WHERE s."createdAt" >= (date_trunc('day', now() AT TIME ZONE 'Europe/London') AT TIME ZONE 'Europe/London')
                   AND s."createdAt" < ((date_trunc('day', now() AT TIME ZONE 'Europe/London') + interval '1 day') AT TIME ZONE 'Europe/London')
                   AND COALESCE((s.payload#>>'{valuation,auction,marketValue}')::numeric, 0) > 0
                   AND COALESCE((s.payload#>>'{valuation,retail,suggestedAsking}')::numeric, 0) > 0
-                GROUP BY date_trunc('hour', s."createdAt" AT TIME ZONE 'Europe/London')
+                GROUP BY date_trunc('hour', s."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')
             `),
         ]);
 
@@ -1120,12 +1155,56 @@ export class AnalyticsService {
 
     // ─── Admin: Traffic Analytics ─────────────────────────────────────────────
 
-    async getTrafficAnalytics(from: Date, to: Date) {
+    // Dashboard refresh and concurrent administrators must not rerun 11 separate
+    // grouping queries for the same date window. A small window-keyed cache
+    // reduces database load while keeping different reporting periods isolated.
+    // An unsuccessful query is never cached; administrators can retry promptly.
+    private readonly trafficSnapshots = new Map<string, {
+        data: Awaited<ReturnType<AnalyticsService['queryTrafficAnalytics']>>;
+        expiresAt: number;
+    }>();
+    private readonly trafficReadsInFlight = new Map<
+        string, ReturnType<AnalyticsService['queryTrafficAnalytics']>
+    >();
+
+    async getTrafficAnalytics(from: Date, untilExclusive: Date) {
+        const key = from.toISOString() + '/' + untilExclusive.toISOString();
+        const cached = this.trafficSnapshots.get(key);
+        if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+        const inFlight = this.trafficReadsInFlight.get(key);
+        if (inFlight) return inFlight;
+
+        const pending = this.queryTrafficAnalytics(from, untilExclusive);
+        this.trafficReadsInFlight.set(key, pending);
+        try {
+            const data = await pending;
+            this.trafficSnapshots.delete(key);
+            this.trafficSnapshots.set(key, {
+                data,
+                expiresAt: Date.now() + 20_000,
+            });
+            // A bounded cache prevents date-range exploration consuming memory.
+            while (this.trafficSnapshots.size > 8) {
+                const oldest = this.trafficSnapshots.keys().next().value;
+                if (oldest === undefined) break;
+                this.trafficSnapshots.delete(oldest);
+            }
+            return data;
+        } finally {
+            if (this.trafficReadsInFlight.get(key) === pending) {
+                this.trafficReadsInFlight.delete(key);
+            }
+        }
+    }
+
+    private async queryTrafficAnalytics(from: Date, untilExclusive: Date) {
         // PageViewTracker runs globally, including on authenticated dashboards
         // and login pages. Those are product/internal journeys rather than
         // visitor traffic, so every traffic query uses this same public-route
         // filter. This keeps overview cards, charts and breakdown tables in sync.
         const publicRouteFilter = `
+            AND COALESCE(payload->>'url', '') LIKE '/%'
             AND COALESCE(payload->>'url', '') NOT LIKE '/dashboard%'
             AND COALESCE(payload->>'url', '') NOT LIKE '/admin%'
             AND COALESCE(payload->>'url', '') NOT LIKE '/auth%'
@@ -1136,137 +1215,143 @@ export class AnalyticsService {
                 this.prisma.$queryRawUnsafe<Array<{ pageviews: string; sessions: string; searches: string }>>(
                     `SELECT
                         COUNT(*) FILTER (WHERE type = 'page_view')::TEXT AS pageviews,
-                        COUNT(DISTINCT "sessionId") FILTER (WHERE "sessionId" IS NOT NULL)::TEXT AS sessions,
+                        COUNT(DISTINCT "sessionId") FILTER (WHERE type = 'page_view' AND "sessionId" IS NOT NULL)::TEXT AS sessions,
                         COUNT(*) FILTER (WHERE type = 'search')::TEXT AS searches
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 this.prisma.$queryRawUnsafe<Array<{ pageviews: string }>>(
                     `SELECT COUNT(*)::TEXT AS pageviews
                      FROM analytics_events
                      WHERE type = 'page_view'
-                       AND "createdAt" >= $1 AND "createdAt" <= $2
+                       AND "createdAt" >= $1 AND "createdAt" < $2
                        AND (
                            COALESCE(payload->>'url', '') LIKE '/dashboard%'
                            OR COALESCE(payload->>'url', '') LIKE '/admin%'
                            OR COALESCE(payload->>'url', '') LIKE '/auth%'
                        )`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Traffic by day (unique first-party sessions per day)
                 this.prisma.$queryRawUnsafe<Array<{ date: string; sessions: string; pageviews: string }>>(
-                    `SELECT DATE("createdAt")::TEXT AS date,
-                            COUNT(DISTINCT "sessionId")::TEXT AS sessions,
+                    `SELECT DATE("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')::TEXT AS date,
+                            COUNT(DISTINCT "sessionId") FILTER (WHERE type = 'page_view')::TEXT AS sessions,
                             COUNT(*) FILTER (WHERE type = 'page_view')::TEXT AS pageviews
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}
-                     GROUP BY DATE("createdAt")
+                     GROUP BY DATE("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London')
                      ORDER BY date ASC`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Busiest day of week (0=Sun, 6=Sat)
                 this.prisma.$queryRawUnsafe<Array<{ dow: string; sessions: string }>>(
-                    `SELECT EXTRACT(DOW FROM "createdAt")::TEXT AS dow,
+                    `SELECT EXTRACT(DOW FROM ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'))::TEXT AS dow,
                             COUNT(DISTINCT "sessionId")::TEXT AS sessions
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}
-                     GROUP BY EXTRACT(DOW FROM "createdAt")
+                       AND type = 'page_view'
+                     GROUP BY EXTRACT(DOW FROM ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'))
                      ORDER BY dow ASC`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Busiest hour of day (0–23)
                 this.prisma.$queryRawUnsafe<Array<{ hour: string; sessions: string }>>(
-                    `SELECT EXTRACT(HOUR FROM "createdAt")::TEXT AS hour,
+                    `SELECT EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'))::TEXT AS hour,
                             COUNT(DISTINCT "sessionId")::TEXT AS sessions
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}
-                     GROUP BY EXTRACT(HOUR FROM "createdAt")
+                       AND type = 'page_view'
+                     GROUP BY EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London'))
                      ORDER BY hour ASC`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Top public pages by view count
                 this.prisma.$queryRawUnsafe<Array<{ url: string; views: string }>>(
                     `SELECT payload->>'url' AS url, COUNT(*)::TEXT AS views
                      FROM analytics_events
                      WHERE type = 'page_view'
-                       AND "createdAt" >= $1 AND "createdAt" <= $2
+                       AND "createdAt" >= $1 AND "createdAt" < $2
                        ${publicRouteFilter}
                        AND payload->>'url' IS NOT NULL
                        AND payload->>'url' != ''
                      GROUP BY payload->>'url'
                      ORDER BY COUNT(*) DESC
                      LIMIT 20`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Referrers for public-site sessions
                 this.prisma.$queryRawUnsafe<Array<{ referrer: string; count: string }>>(
                     `SELECT COALESCE(NULLIF(payload->>'referrer', ''), 'Direct') AS referrer,
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}
+                       AND type = 'page_view'
                      GROUP BY COALESCE(NULLIF(payload->>'referrer', ''), 'Direct')
                      ORDER BY COUNT(DISTINCT "sessionId") DESC
                      LIMIT 20`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Top cities
                 this.prisma.$queryRawUnsafe<Array<{ city: string; count: string }>>(
                     `SELECT payload->>'city' AS city,
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                        ${publicRouteFilter}
+                       AND type = 'page_view'
                        AND payload->>'city' IS NOT NULL
                        AND payload->>'city' != ''
                      GROUP BY payload->>'city'
                      ORDER BY COUNT(DISTINCT "sessionId") DESC
                      LIMIT 20`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Top countries
                 this.prisma.$queryRawUnsafe<Array<{ country: string; count: string }>>(
                     `SELECT payload->>'country' AS country,
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                        ${publicRouteFilter}
+                       AND type = 'page_view'
                        AND payload->>'country' IS NOT NULL
                        AND payload->>'country' != ''
                      GROUP BY payload->>'country'
                      ORDER BY COUNT(DISTINCT "sessionId") DESC
                      LIMIT 20`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Devices
                 this.prisma.$queryRawUnsafe<Array<{ device: string; count: string }>>(
                     `SELECT COALESCE(NULLIF(payload->>'device', ''), 'Unknown') AS device,
                             COUNT(DISTINCT "sessionId")::TEXT AS count
                      FROM analytics_events
-                     WHERE "createdAt" >= $1 AND "createdAt" <= $2
+                     WHERE "createdAt" >= $1 AND "createdAt" < $2
                      ${publicRouteFilter}
+                       AND type = 'page_view'
                      GROUP BY COALESCE(NULLIF(payload->>'device', ''), 'Unknown')
                      ORDER BY COUNT(DISTINCT "sessionId") DESC`,
-                    from, to,
+                    from, untilExclusive,
                 ),
                 // Top searches on visitor-facing routes
                 this.prisma.$queryRawUnsafe<Array<{ query: string; count: string }>>(
                     `SELECT payload->>'query' AS query, COUNT(*)::TEXT AS count
                      FROM analytics_events
                      WHERE type = 'search'
-                       AND "createdAt" >= $1 AND "createdAt" <= $2
+                       AND "createdAt" >= $1 AND "createdAt" < $2
                        ${publicRouteFilter}
                        AND payload->>'query' IS NOT NULL
                        AND payload->>'query' != ''
                      GROUP BY payload->>'query'
                      ORDER BY COUNT(*) DESC
                      LIMIT 20`,
-                    from, to,
+                    from, untilExclusive,
                 ),
             ]);
 

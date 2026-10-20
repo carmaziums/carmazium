@@ -25,6 +25,7 @@ import {
     buyItNowViolatesReserve,
     calculatePlatformOpeningBid,
 } from '../auctions/auction-pricing';
+import { londonMonthlyRanges } from '../analytics/london-traffic-range';
 
 @Injectable()
 export class AdminService {
@@ -2565,7 +2566,7 @@ export class AdminService {
      * CarMazium's to count. BOOST payments don't create Transaction rows at
      * all yet (see FeaturedBoostService) and so aren't reflected here either.
      */
-    private async computeRealRevenue(dateRange?: { gte: Date; lte: Date }): Promise<number> {
+    private async computeRealRevenue(dateRange?: { gte: Date; lt: Date }): Promise<number> {
         const createdAt = dateRange ? { createdAt: dateRange } : {};
         const [feeAgg, commissionCount] = await Promise.all([
             this.prisma.transaction.aggregate({
@@ -2618,35 +2619,20 @@ export class AdminService {
     }
 
     async getAnalyticsData() {
-        // Last 6 months of data
-        const now = new Date();
-        const months: { label: string; start: Date; end: Date }[] = [];
-        for (let i = 5; i >= 0; i--) {
-            const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
-            months.push({
-                label: start.toLocaleString('default', { month: 'short', year: '2-digit' }),
-                start,
-                end,
-            });
-        }
-
+        // Group all six displayed months by UK calendar days. The upper bound
+        // is exclusive, so no payment, listing or registration on the final
+        // millisecond is omitted and adjacent months cannot double-count.
         const data = await Promise.all(
-            months.map(async ({ label, start, end }) => {
+            londonMonthlyRanges(new Date()).map(async ({ label, start, endExclusive }) => {
+                const createdAt = { gte: start, lt: endExclusive };
                 const [newUsers, newListings, revenue] = await Promise.all([
-                    this.prisma.user.count({ where: { createdAt: { gte: start, lte: end }, deletedAt: null } }),
-                    this.prisma.listing.count({ where: { createdAt: { gte: start, lte: end }, deletedAt: null } }),
-                    this.computeRealRevenue({ gte: start, lte: end }),
+                    this.prisma.user.count({ where: { createdAt, deletedAt: null } }),
+                    this.prisma.listing.count({ where: { createdAt, deletedAt: null } }),
+                    this.computeRealRevenue(createdAt),
                 ]);
-                return {
-                    month: label,
-                    newUsers,
-                    newListings,
-                    revenue,
-                };
+                return { month: label, newUsers, newListings, revenue };
             }),
         );
-
         return data;
     }
 

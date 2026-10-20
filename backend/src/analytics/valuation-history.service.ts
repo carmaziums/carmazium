@@ -5,8 +5,9 @@ import { QUOTE_HISTORY_MONTHS } from '../listings/valuation-quote-history';
 
 /**
  * Admin-only, independently paginated, 12-month history. Customer identities
- * never leave the backend. The two types are deduplicated by journey ID;
- * server receipts take precedence when the browser also tracked the event.
+ * never leave the backend. Server receipts take precedence over browser events.
+ * A legacy price lock is recovered only if neither a server receipt nor an
+ * equivalent priced browser event was recorded. No old quotation is invented.
  */
 @Injectable()
 export class ValuationHistoryService {
@@ -31,16 +32,36 @@ export class ValuationHistoryService {
             " NULLIF(COALESCE(e.payload#>>'{valuation,retail,suggestedAsking}',e.payload->>'retail_suggested_asking'),'')::numeric AS retail,",
             " NULLIF(COALESCE(e.payload#>>'{valuation,source}',e.payload->>'valuation_source'),'') AS source,",
             " NULLIF(e.payload->>'valuation_id','') AS valuation_id",
-            ' FROM analytics_events e WHERE e.type IN (\'valuation_quote_issued\',\'valuation_requested\')',
+            ' FROM analytics_events e WHERE e.type IN (\'valuation_quote_issued\',\'valuation_requested\',\'valuation_price_lock\')',
             ' AND e."createdAt" >= $1',
             '), delivered AS (',
             ' SELECT a.* FROM archived a WHERE a.auction > 0 AND a.retail > 0',
-            " AND (a.type = 'valuation_quote_issued' OR NOT EXISTS (",
+            " AND (a.type = 'valuation_quote_issued'",
+            " OR (a.type = 'valuation_requested' AND NOT EXISTS (",
             " SELECT 1 FROM archived s WHERE s.type='valuation_quote_issued'",
             ' AND s."createdAt" BETWEEN a."createdAt" - interval \'5 minutes\' AND a."createdAt" + interval \'5 minutes\'',
             ' AND ((a.valuation_id IS NOT NULL AND a.valuation_id = s.valuation_id)',
             ' OR (a.valuation_id IS NULL AND a.registration IS NOT NULL AND a.registration=s.registration))',
             ' ))',
+            // The old pre-receipt price lock is evidence of a real quote, but
+            // must not add a second history row when a browser or server event
+            // already represents the same valuation. Use only existing prices.
+            " OR (a.type = 'valuation_price_lock'",
+            " AND NOT EXISTS (SELECT 1 FROM archived s",
+            " WHERE s.type='valuation_quote_issued'",
+            ' AND s."createdAt" BETWEEN a."createdAt" - interval \'1 minute\' AND a."createdAt" + interval \'25 hours\'',
+            " AND a.registration IS NOT NULL AND s.registration IS NOT NULL",
+            " AND regexp_replace(upper(s.registration),'[^A-Z0-9]','','g')",
+            " = regexp_replace(upper(a.registration),'[^A-Z0-9]','','g')",
+            ' )',
+            " AND NOT EXISTS (SELECT 1 FROM archived s",
+            " WHERE s.type='valuation_requested' AND s.auction > 0 AND s.retail > 0",
+            ' AND s."createdAt" BETWEEN a."createdAt" - interval \'15 minutes\' AND a."createdAt" + interval \'15 minutes\'',
+            " AND a.registration IS NOT NULL AND s.registration IS NOT NULL",
+            " AND regexp_replace(upper(s.registration),'[^A-Z0-9]','','g')",
+            " = regexp_replace(upper(a.registration),'[^A-Z0-9]','','g')",
+            " ))",
+            " )",
             " AND ($2='' OR CONCAT_WS(' ',a.registration,a.make,a.model,a.year::text) ILIKE $2)",
             ')',
         ].join(' ');

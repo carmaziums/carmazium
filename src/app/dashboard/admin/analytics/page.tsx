@@ -23,12 +23,22 @@ import { ValuationQuoteHistoryPanel } from "@/components/admin/ValuationQuoteHis
 import type { DateRangePreset } from "@/components/dealer"
 
 function fmtDate(d: Date): string {
-    return d.toISOString().split("T")[0]
+    // The traffic API requires ISO YYYY-MM-DD. Locale .format() strings are
+    // not guaranteed to use ISO ordering across browsers and ICU versions.
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(d)
+    const value = (part: Intl.DateTimeFormatPartTypes) =>
+        parts.find(p => p.type === part)?.value ?? ""
+    return `${value("year")}-${value("month")}-${value("day")}`
 }
-function subDaysNative(d: Date, days: number): Date {
-    const r = new Date(d)
-    r.setDate(r.getDate() - days)
-    return r
+function shiftCalendarDate(day: string, days: number): string {
+    const r = new Date(day + "T12:00:00.000Z")
+    r.setUTCDate(r.getUTCDate() + days)
+    return r.toISOString().slice(0, 10)
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -50,7 +60,7 @@ function BarChart({ data, valueKey, color, label }: {
                     return (
                         <div key={d.month} className="flex-1 flex flex-col items-center gap-1 group">
                             <div className="relative w-full flex items-end justify-center" style={{ height: "100px" }}>
-                                <div className={`w-full rounded-t transition-all ${color}`} style={{ height: `${Math.max(pct, 2)}%` }} title={String(val)} />
+                                <div className={`w-full rounded-t transition-all ${color}`} style={{ height: `${val > 0 ? Math.max(pct, 2) : 0}%` }} title={String(val)} />
                             </div>
                             <span className="text-xs text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">{d.month}</span>
                         </div>
@@ -80,7 +90,7 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
                         <div className="flex-1 h-2 bg-[var(--bg-input)] rounded-full overflow-hidden">
                             <div className={`h-full ${color} rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs font-black tabular-nums w-12 text-right shrink-0">{val.toLocaleString()}{unit}</span>
+                        <span className="text-xs font-black tabular-nums min-w-[3.5rem] max-w-[7rem] text-right shrink-0" aria-label={`${val.toLocaleString()}${unit}`}>{val.toLocaleString()}{unit}</span>
                     </div>
                 )
             })}
@@ -91,12 +101,12 @@ function SimpleBarChart({ data, maxVal, labelKey, valueKey, color, unit = "" }: 
 interface StatCardProps { label: string; value: string | number; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }
 function StatCard({ label, value, icon: Icon, color }: StatCardProps) {
     return (
-        <div className="glass-card p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
+        <div className="glass-card min-w-0 p-3 sm:p-5 border border-[var(--border-default)] bg-[var(--bg-card)] rounded-2xl">
             <div className={`inline-flex p-2 ${color} rounded-lg mb-3`}>
                 <Icon size={16} className="" />
             </div>
             <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{label}</p>
-            <h3 className="text-3xl font-black font-heading mt-1 text-[var(--text-primary)]">{typeof value === "number" ? value.toLocaleString() : value}</h3>
+            <h3 className="text-xl sm:text-3xl font-black font-heading mt-1 text-[var(--text-primary)] break-words tabular-nums">{typeof value === "number" ? value.toLocaleString() : value}</h3>
         </div>
     )
 }
@@ -122,10 +132,14 @@ export default function AdminAnalyticsPage() {
     const [verification, setVerification] = React.useState<AccountVerificationStats | null>(null)
     const [platformLoading, setPlatformLoading] = React.useState(true)
     const [platformError, setPlatformError] = React.useState<string | null>(null)
+    const platformRequestId = React.useRef(0)
 
     // Traffic analytics
     const [traffic, setTraffic] = React.useState<TrafficAnalytics | null>(null)
+    const [trafficPeriod, setTrafficPeriod] = React.useState<{ from: string; to: string } | null>(null)
     const [trafficLoading, setTrafficLoading] = React.useState(true)
+    const [trafficError, setTrafficError] = React.useState<string | null>(null)
+    const trafficRequestId = React.useRef(0)
     const [dateRange, setDateRange] = React.useState<DateRangePreset>("30d")
     const [customStart, setCustomStart] = React.useState("")
     const [customEnd, setCustomEnd] = React.useState("")
@@ -134,12 +148,15 @@ export default function AdminAnalyticsPage() {
     const [valuationLive, setValuationLive] = React.useState<ValuationLiveAnalytics | null>(null)
     const [valuationLoading, setValuationLoading] = React.useState(true)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
+    const valuationInFlight = React.useRef(false)
+    const valuationRequestId = React.useRef(0)
 
     // Auction zero-bid / discounted first-offer analytics
     const [firstOfferAnalytics, setFirstOfferAnalytics] = React.useState<AuctionFirstOfferAnalytics | null>(null)
     const [firstOfferLoading, setFirstOfferLoading] = React.useState(true)
     const [firstOfferError, setFirstOfferError] = React.useState<string | null>(null)
     const [firstOfferDays, setFirstOfferDays] = React.useState(30)
+    const firstOfferRequestId = React.useRef(0)
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -150,69 +167,145 @@ export default function AdminAnalyticsPage() {
 
     const fetchPlatformData = React.useCallback(() => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++platformRequestId.current
         setPlatformLoading(true)
         setPlatformError(null)
-        Promise.all([getAdminAnalytics(), getAdminStats(), getAccountVerificationStats()])
-            .then(([a, s, v]) => { setAnalytics(a); setStats(s); setVerification(v) })
-            .catch(err => setPlatformError(err.message || "Failed to load platform stats"))
-            .finally(() => setPlatformLoading(false))
+        // Each card is independent: a broken statistics endpoint must not
+        // suppress otherwise valid registrations, revenue or KYC results.
+        Promise.allSettled([getAdminAnalytics(), getAdminStats(), getAccountVerificationStats()])
+            .then(([monthly, totals, checks]) => {
+                if (requestId !== platformRequestId.current) return
+                const failed: string[] = []
+                if (monthly.status === "fulfilled") setAnalytics(monthly.value)
+                else failed.push("six-month overview")
+                if (totals.status === "fulfilled") setStats(totals.value)
+                else failed.push("all-time statistics")
+                if (checks.status === "fulfilled") setVerification(checks.value)
+                else failed.push("account verification")
+                if (failed.length) setPlatformError("Unavailable: " + failed.join(", ") + ". Other figures are shown from their last successful response.")
+            })
+            .finally(() => {
+                if (requestId === platformRequestId.current) setPlatformLoading(false)
+            })
     }, [profile])
 
     const fetchTrafficData = React.useCallback(() => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++trafficRequestId.current
         setTrafficLoading(true)
+        setTrafficError(null)
         let fromDate: string | undefined
         let toDate: string | undefined
         const now = new Date()
         if (dateRange === "custom") {
+            if (!customStart || !customEnd) {
+                setTrafficError("Select both the start and end dates to view a custom period.")
+                setTrafficLoading(false)
+                return
+            }
+            if (customStart > customEnd) {
+                setTrafficError("The start date must be on or before the end date.")
+                setTrafficLoading(false)
+                return
+            }
             fromDate = customStart
             toDate = customEnd
         } else {
             const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30
-            fromDate = fmtDate(subDaysNative(now, days))
-            toDate = fmtDate(now)
+            const today = fmtDate(now)
+            fromDate = shiftCalendarDate(today, -(days - 1))
+            toDate = today
         }
         getTrafficAnalytics(fromDate, toDate)
-            .then(setTraffic)
-            .catch(console.error)
-            .finally(() => setTrafficLoading(false))
+            .then(result => {
+                if (requestId === trafficRequestId.current) {
+                    setTraffic(result)
+                    setTrafficPeriod({ from: fromDate!, to: toDate! })
+                }
+            })
+            .catch(err => {
+                if (requestId === trafficRequestId.current) {
+                    setTrafficError(err?.message || "Unable to load traffic analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === trafficRequestId.current) setTrafficLoading(false)
+            })
     }, [profile, dateRange, customStart, customEnd])
 
     const fetchValuationData = React.useCallback((showSpinner = false) => {
-        if (profile?.role !== "ADMIN") return
+        if (profile?.role !== "ADMIN" || valuationInFlight.current) return
+        valuationInFlight.current = true
+        const requestId = ++valuationRequestId.current
         if (showSpinner) setValuationLoading(true)
         setValuationError(null)
         getLiveValuationAnalytics()
-            .then(setValuationLive)
-            .catch(err => setValuationError(err.message || "Failed to load valuation analytics"))
-            .finally(() => setValuationLoading(false))
+            .then(result => {
+                if (requestId === valuationRequestId.current) setValuationLive(result)
+            })
+            .catch(err => {
+                if (requestId === valuationRequestId.current) {
+                    setValuationError(err?.message || "Failed to load valuation analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === valuationRequestId.current) {
+                    valuationInFlight.current = false
+                    setValuationLoading(false)
+                }
+            })
     }, [profile])
 
     const fetchFirstOfferData = React.useCallback((showSpinner = false) => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++firstOfferRequestId.current
         if (showSpinner) setFirstOfferLoading(true)
         setFirstOfferError(null)
         getAuctionFirstOfferAnalytics(firstOfferDays)
-            .then(setFirstOfferAnalytics)
-            .catch(err => setFirstOfferError(err.message || "Failed to load auction first-offer analytics"))
-            .finally(() => setFirstOfferLoading(false))
+            .then(result => {
+                if (requestId === firstOfferRequestId.current) setFirstOfferAnalytics(result)
+            })
+            .catch(err => {
+                if (requestId === firstOfferRequestId.current) {
+                    setFirstOfferError(err?.message || "Failed to load auction first-offer analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === firstOfferRequestId.current) setFirstOfferLoading(false)
+            })
     }, [profile, firstOfferDays])
 
-    React.useEffect(() => { fetchPlatformData() }, [fetchPlatformData])
-    React.useEffect(() => { fetchTrafficData() }, [fetchTrafficData])
+    React.useEffect(() => {
+        fetchPlatformData()
+        return () => { platformRequestId.current += 1 }
+    }, [fetchPlatformData])
+    React.useEffect(() => {
+        fetchTrafficData()
+        return () => { trafficRequestId.current += 1 }
+    }, [fetchTrafficData])
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
         fetchValuationData(true)
-        const timer = window.setInterval(() => fetchValuationData(false), 15_000)
-        return () => window.clearInterval(timer)
+        const refreshVisible = () => {
+            if (document.visibilityState === "visible") fetchValuationData(false)
+        }
+        const timer = window.setInterval(refreshVisible, 15_000)
+        document.addEventListener("visibilitychange", refreshVisible)
+        return () => {
+            window.clearInterval(timer)
+            document.removeEventListener("visibilitychange", refreshVisible)
+            valuationRequestId.current += 1
+            valuationInFlight.current = false
+        }
     }, [profile, fetchValuationData])
 
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
         fetchFirstOfferData(true)
+        return () => { firstOfferRequestId.current += 1 }
     }, [profile, fetchFirstOfferData])
 
-    if (authLoading || (user && !profile) || platformLoading) {
+    if (authLoading || (user && !profile)) {
         return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>
     }
     if (!user || profile?.role !== "ADMIN") return null
@@ -273,7 +366,7 @@ export default function AdminAnalyticsPage() {
             return `"${text.replace(/"/g, '""')}"`
         }
         const rows = valuationLive.recent.map((item) => [
-            new Date(item.createdAt).toLocaleString("en-GB"),
+            new Date(item.createdAt).toLocaleString("en-GB", { timeZone: "Europe/London" }),
             item.registration || "",
             item.year || "",
             item.make || "",
@@ -360,31 +453,41 @@ export default function AdminAnalyticsPage() {
                         </Button>
                     </div>
 
-                    {platformError && <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300"><strong>Error:</strong> {platformError}</div>}
+                    {platformLoading && !stats && !verification && analytics.length === 0 && (
+                        <p role="status" className="text-sm text-[var(--text-muted)]">Loading platform statistics…</p>
+                    )}
+                    {platformError && (
+                        <div role="alert" className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-700 dark:text-red-300">
+                            <strong>Some statistics are unavailable:</strong> {platformError}
+                            <button type="button" onClick={fetchPlatformData} className="ml-3 font-bold underline">Retry platform statistics</button>
+                        </div>
+                    )}
 
                     {/* ── Live vehicle valuation activity ── */}
                     <div className="space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="relative flex h-2.5 w-2.5">
-                                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                                    <span role="status" aria-label={valuationError ? "Live analytics unavailable" : valuationLive ? "Live analytics available" : "Waiting for analytics"} className="relative flex h-2.5 w-2.5">
+                                        {!valuationError && valuationLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />}
+                                        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${valuationError ? "bg-rose-500" : valuationLive ? "bg-emerald-500" : "bg-amber-500"}`} />
                                     </span>
                                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Car Valuation — Live</p>
                                 </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Today uses Europe/London time · refreshes automatically every 15 seconds.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Today uses Europe/London time · checks every 15 seconds (server snapshot cached up to 30 seconds).</p>
                             </div>
                             {valuationLive && (
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                                    Updated {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                                    Snapshot {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/London" })} UK
                                 </p>
                             )}
                         </div>
 
                         {valuationError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
+                            <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {valuationError}
+                                {valuationLive && <p className="mt-1 text-xs">Showing the last successful snapshot from {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB", { timeZone: "Europe/London" })} UK.</p>}
+                                <button type="button" className="mt-2 underline font-bold" onClick={() => fetchValuationData(true)}>Retry valuation analytics</button>
                             </div>
                         )}
 
@@ -438,7 +541,7 @@ export default function AdminAnalyticsPage() {
                                             <tbody>
                                                 {valuationLive.last7Days.map(row => (
                                                     <tr key={`valuation-health-${row.date}`} className="border-b border-[var(--border-default)]/60">
-                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.valuationAttempts}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black text-emerald-500">{row.figuresReturned}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black text-rose-500">{row.withoutFigures}</td>
@@ -569,7 +672,7 @@ export default function AdminAnalyticsPage() {
                                             <tbody>
                                                 {valuationLive.last7Days.map(row => (
                                                     <tr key={row.date} className="border-b border-[var(--border-default)]/60">
-                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
+                                                        <td className="px-4 py-3 font-bold whitespace-nowrap">{new Date(`${row.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.valuationJourneys}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums">{row.listingStarted}</td>
                                                         <td className="px-4 py-3 text-right tabular-nums font-black">{row.listingCreated}</td>
@@ -634,9 +737,9 @@ export default function AdminAnalyticsPage() {
                                                     {valuationLive.recent.map(item => (
                                                         <tr key={item.id} className="border-b border-[var(--border-default)]/60 hover:bg-[var(--bg-card-hover)]">
                                                             <td className="px-4 py-3 whitespace-nowrap font-bold">
-                                                                <div>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</div>
+                                                                <div>{new Date(item.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Europe/London" })}</div>
                                                                 <div className="text-[10px] text-[var(--text-muted)]">
-                                                                    {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                                                    {new Date(item.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })}
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-3 whitespace-nowrap">
@@ -719,7 +822,6 @@ export default function AdminAnalyticsPage() {
                                     )}
                                 </div>
 
-                                <ValuationQuoteHistoryPanel />
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
                                     New valuation journeys now retain the vehicle registration, mileage and exact CarMazium guide figures shown at valuation time for internal pricing QA. Older rows may show “Legacy” because those values were not historically stored; where a legacy valuation later became a listing, registration and mileage are recovered from that listing when available. The funnel still attributes a listing to a valuation for up to 30 days.
@@ -727,6 +829,10 @@ export default function AdminAnalyticsPage() {
                             </>
                         ) : null}
                     </div>
+
+                    {/* This archive has its own endpoint and loading/error state.
+                        Never hide it when the live valuation query times out. */}
+                    <ValuationQuoteHistoryPanel />
 
                     {/* ── Auction zero-bid / discounted first-offer analytics ── */}
                     <div className="space-y-4">
@@ -740,7 +846,9 @@ export default function AdminAnalyticsPage() {
                             <div className="flex items-center gap-2">
                                 {[7, 30, 90].map(days => (
                                     <button
+                                        type="button"
                                         key={days}
+                                        aria-pressed={firstOfferDays === days}
                                         onClick={() => setFirstOfferDays(days)}
                                         className={`rounded-lg border px-3 py-1.5 text-xs font-black transition-colors ${
                                             firstOfferDays === days
@@ -755,16 +863,17 @@ export default function AdminAnalyticsPage() {
                         </div>
 
                         {firstOfferError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
+                            <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {firstOfferError}
+                                <button type="button" className="ml-2 font-bold underline" onClick={() => fetchFirstOfferData(true)}>Retry auction analytics</button>
                             </div>
                         )}
 
-                        {firstOfferLoading && !firstOfferAnalytics ? (
+                        {firstOfferLoading && (!firstOfferAnalytics || firstOfferAnalytics.windowDays !== firstOfferDays) ? (
                             <div className="h-28 flex items-center justify-center rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]">
                                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
                             </div>
-                        ) : firstOfferAnalytics ? (
+                        ) : firstOfferAnalytics?.windowDays === firstOfferDays ? (
                             <>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                                     {([
@@ -775,7 +884,7 @@ export default function AdminAnalyticsPage() {
                                         { label: "Reached Reserve", value: firstOfferAnalytics.summary.reserveMetSales, icon: ShieldCheck, color: "bg-teal-500/20" },
                                         { label: "Sale Rate", value: `${firstOfferAnalytics.summary.saleRate.toFixed(1)}%`, icon: DollarSign, color: "bg-yellow-500/20" },
                                         { label: "First Offer Cancelled", value: firstOfferAnalytics.summary.firstOfferCancellations, icon: AlertTriangle, color: "bg-orange-500/20" },
-                                        { label: "Zero-Bid Unsold", value: firstOfferAnalytics.summary.zeroBidUnsold, icon: UserX, color: "bg-rose-500/20" },
+                                        { label: "Zero-Bid Unsold (All Auctions)", value: firstOfferAnalytics.summary.zeroBidUnsold, icon: UserX, color: "bg-rose-500/20" },
                                     ] as StatCardProps[]).map(card => <StatCard key={card.label} {...card} />)}
                                 </div>
 
@@ -845,7 +954,7 @@ export default function AdminAnalyticsPage() {
                                                         return (
                                                             <tr key={item.id} className="hover:bg-[var(--bg-card-hover)]">
                                                                 <td className="px-4 py-3 whitespace-nowrap text-[var(--text-muted)]">
-                                                                    {new Date(item.createdAt).toLocaleString("en-GB")}
+                                                                    {new Date(item.createdAt).toLocaleString("en-GB", { timeZone: "Europe/London" })}
                                                                 </td>
                                                                 <td className="px-4 py-3">
                                                                     <div className="font-black text-[var(--text-primary)]">{item.vehicle || "Vehicle"}</div>
@@ -878,7 +987,7 @@ export default function AdminAnalyticsPage() {
                                 </div>
 
                                 <p className="px-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                                    {firstOfferAnalytics.trackingNote} “Sale rate” is based on tracked auctions that received at least one first offer; active auctions without an outcome remain pending rather than being counted as unsold.
+                                    {firstOfferAnalytics.trackingNote} “Sale rate” is based on tracked auctions that received at least one first offer; active auctions without an outcome remain pending rather than being counted as unsold. “Zero-Bid Unsold” separately counts all tracked auctions closed with no bids in the selected window, not only those with first offers.
                                 </p>
                             </>
                         ) : null}
@@ -889,7 +998,7 @@ export default function AdminAnalyticsPage() {
                         <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)] mb-3 px-1">Platform Overview — Last 6 Months</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {([
-                                { label: "Retained Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
+                                { label: "Est. Retained Revenue (6m)", value: formatPrice(totalRevenue6m), icon: DollarSign, color: "bg-yellow-500/20" },
                                 { label: "New Registrations (6m)", value: totalUsers6m as string | number, icon: Users, color: "bg-blue-500/20" },
                                 { label: "New Listings (6m)", value: totalListings6m as string | number, icon: Car, color: "bg-primary/20" },
                             ] as StatCardProps[]).map(c => <StatCard key={c.label} {...c} />)}
@@ -923,7 +1032,7 @@ export default function AdminAnalyticsPage() {
                     {analytics.length > 0 && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                             {[
-                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Retained Revenue" },
+                                { key: "revenue" as const, color: "bg-yellow-500/70", label: "Monthly Est. Retained Revenue" },
                                 { key: "newUsers" as const, color: "bg-blue-500/70", label: "New Account Registrations" },
                                 { key: "newListings" as const, color: "bg-primary/70", label: "New Listings Created" },
                             ].map(({ key, color, label }) => (
@@ -949,7 +1058,7 @@ export default function AdminAnalyticsPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 text-sm">
                                 {[
                                     { label: "Registered Accounts", value: stats.totalUsers.toLocaleString() },
-                                    { label: "Retained Revenue", value: formatPrice(stats.totalRevenue) },
+                                    { label: "Est. Retained Revenue", value: formatPrice(stats.totalRevenue) },
                                     { label: "Total Listings", value: stats.totalListings.toLocaleString() },
                                     { label: "Active Listings", value: stats.activeListings.toLocaleString() },
                                     { label: "Vehicles Sold", value: stats.soldListings.toLocaleString() },
@@ -960,11 +1069,11 @@ export default function AdminAnalyticsPage() {
                                 ].map(item => (
                                     <div key={item.label} className="p-3 bg-[var(--bg-card)] rounded-xl">
                                         <p className="text-[var(--text-muted)] text-xs uppercase tracking-widest font-bold">{item.label}</p>
-                                        <p className="text-2xl font-black font-heading mt-1">{item.value}</p>
+                                        <p className="text-xl sm:text-2xl font-black font-heading mt-1 break-words tabular-nums">{item.value}</p>
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-xs text-[var(--text-muted)] mt-4">Revenue is CarMazium-retained platform income, not customer-to-seller or other pass-through transaction value.</p>
+                            <p className="text-xs text-[var(--text-muted)] mt-4">Estimated retained revenue is derived from completed platform transactions, not a Stripe settlement reconciliation. It excludes vehicle-sale proceeds, deposits and boost payments; completed auction buyer fees currently contribute an assumed £25 retained amount per transaction after the £100 seller incentive. Verify payouts, refunds, boosts and payment records before treating this figure as booked revenue.</p>
                         </div>
                     )}
 
@@ -990,6 +1099,12 @@ export default function AdminAnalyticsPage() {
                             />
                         </div>
 
+                        {trafficError && (
+                            <div role="alert" className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-sm text-red-700 dark:text-red-300">
+                                {trafficError}{traffic && trafficPeriod && ` — showing previously loaded ${trafficPeriod.from} to ${trafficPeriod.to} (UK dates).`}
+                                <button type="button" className="ml-2 underline font-bold" onClick={fetchTrafficData}>Retry traffic analytics</button>
+                            </div>
+                        )}
                         {trafficLoading ? (
                             <div className="flex items-center justify-center py-16 gap-3">
                                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -997,6 +1112,12 @@ export default function AdminAnalyticsPage() {
                             </div>
                         ) : traffic ? (
                             <div className="space-y-5">
+                                {trafficPeriod && (
+                                    <p className="text-xs font-semibold text-[var(--text-secondary)]" role="status">
+                                        Displayed traffic: {trafficPeriod.from} to {trafficPeriod.to} (UK calendar dates).
+                                        {trafficError ? " Last successful snapshot; the requested date range could not be loaded." : ""}
+                                    </p>
+                                )}
                                 {/* ── Traffic KPI overview ── */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     {([
@@ -1020,26 +1141,26 @@ export default function AdminAnalyticsPage() {
                                             <Calendar size={14} className="text-[var(--text-muted)]" />
                                             <p className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Traffic by Day</p>
                                         </div>
-                                        <div className="flex items-end gap-1 h-28">
-                                            {traffic.trafficByDay.map(d => {
-                                                const pct = (d.sessions / maxDaySessions) * 100
-                                                return (
-                                                    <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group cursor-default">
-                                                        <div className="relative w-full flex items-end" style={{ height: "88px" }}>
-                                                            <div
-                                                                className="w-full rounded-t bg-primary/60 group-hover:bg-primary transition-all duration-300"
-                                                                style={{ height: `${Math.max(pct, 2)}%` }}
-                                                                title={`${d.date}: ${d.sessions} sessions, ${d.pageviews} views`}
-                                                            />
+                                        <div role="region" aria-label="Traffic by day, horizontally scrollable chart" tabIndex={0} className="w-full max-w-full overflow-x-auto pb-1">
+                                            <div role="img" aria-label={`Public sessions per London calendar day, ${traffic.trafficByDay.length} days`} className="flex items-end gap-1 min-h-32" style={{ minWidth: `${Math.max(320, traffic.trafficByDay.length * 25)}px` }}>
+                                                {traffic.trafficByDay.map((d, i) => {
+                                                    const pct = maxDaySessions > 0 ? (d.sessions / maxDaySessions) * 100 : 0
+                                                    const showDate = traffic.trafficByDay.length <= 10 || i % (traffic.trafficByDay.length > 40 ? 7 : 5) === 0 || i === traffic.trafficByDay.length - 1
+                                                    return (
+                                                        <div key={d.date} className="flex-1 min-w-0 flex flex-col items-center gap-1 group" title={`${d.date}: ${d.sessions} sessions, ${d.pageviews} views`}>
+                                                            <div className="relative w-full flex items-end" style={{ height: "88px" }}>
+                                                                <div className="w-full rounded-t bg-primary/60 group-hover:bg-primary transition-all duration-300"
+                                                                    style={{ height: `${d.sessions > 0 ? Math.max(pct, 2) : 0}%` }} />
+                                                            </div>
+                                                            <span className="text-[10px] text-[var(--text-secondary)] tabular-nums whitespace-nowrap">
+                                                                {showDate ? d.date.slice(5) : " "}
+                                                            </span>
                                                         </div>
-                                                        <span className="text-[7px] text-[var(--text-secondary)] group-hover:text-[var(--text-muted)] transition-colors rotate-90 origin-center hidden xl:block">
-                                                            {d.date.slice(5)}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            })}
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
-                                        <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{traffic.trafficByDay.length} days · bars = unique sessions</p>
+                                        <p className="text-xs text-[var(--text-secondary)] mt-2 font-medium">{traffic.trafficByDay.length} days · bars = sessions with page views · scroll horizontally for more dates</p>
                                     </div>
                                 )}
 
