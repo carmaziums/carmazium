@@ -78,6 +78,31 @@ describe('Live valuation dashboard reliability', () => {
         expect(query).toHaveBeenCalledTimes(3);
     });
 
+    it('releases all waiting traffic readers after a shared failure and permits retry', async () => {
+        const service = new AnalyticsService({} as any);
+        let rejectQuery!: (error: Error) => void;
+        const pending = new Promise<any>((_resolve, reject) => { rejectQuery = reject; });
+        const query = jest.spyOn(service as any, 'queryTrafficAnalytics')
+            .mockReturnValueOnce(pending)
+            .mockResolvedValueOnce({ overview: { pageViews: 7 } });
+        const from = new Date('2026-10-01T00:00:00Z');
+        const until = new Date('2026-10-02T00:00:00Z');
+        const first = service.getTrafficAnalytics(from, until);
+        const second = service.getTrafficAnalytics(from, until);
+        expect(query).toHaveBeenCalledTimes(1);
+
+        const bothFailed = Promise.all([
+            expect(first).rejects.toThrow('shared traffic failure'),
+            expect(second).rejects.toThrow('shared traffic failure'),
+        ]);
+        rejectQuery(new Error('shared traffic failure'));
+        await bothFailed;
+
+        await expect(service.getTrafficAnalytics(from, until))
+            .resolves.toMatchObject({ overview: { pageViews: 7 } });
+        expect(query).toHaveBeenCalledTimes(2);
+    });
+
     it('never stores traffic query failures as successful snapshots', async () => {
         const service = new AnalyticsService({} as any);
         const query = jest.spyOn(service as any, 'queryTrafficAnalytics')
