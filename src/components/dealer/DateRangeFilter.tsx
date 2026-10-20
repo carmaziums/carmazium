@@ -50,13 +50,15 @@ export function DateRangeFilter({
     }
 
     return (
-        <div className="relative flex items-center gap-2" ref={customRef}>
-            <div className="flex items-center gap-1 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl">
+        <div className="relative max-w-full min-w-0" ref={customRef}>
+            <div role="group" aria-label="Reporting date range" className="flex flex-wrap items-center gap-1 p-1 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-xl w-fit max-w-full">
                 {PRESETS.map(({ key, label }) => (
                     <button
                         key={key}
+                        type="button"
+                        aria-pressed={activeRange === key}
                         onClick={() => handleSelect(key)}
-                        className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${
+                        className={`px-2.5 sm:px-4 py-2 rounded-lg text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${
                             activeRange === key
                                 ? "bg-gradient-to-r from-primary to-red-700 text-white shadow-lg shadow-primary/20"
                                 : "text-[var(--text-muted)] hover:text-primary dark:hover:text-white hover:bg-white/[0.04]"
@@ -72,31 +74,33 @@ export function DateRangeFilter({
 
             {/* Custom Date Picker Flyout */}
             {showCustom && activeRange === "custom" && (
-                <div className="absolute top-full left-0 mt-2 z-50 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl p-5 shadow-2xl shadow-black/60 min-w-[320px]">
+                <div className="absolute top-full left-0 mt-2 z-50 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl p-4 sm:p-5 shadow-2xl shadow-black/30 dark:shadow-black/60 w-[min(420px,calc(100vw-3rem))] max-w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Custom Range</h4>
-                        <button onClick={() => setShowCustom(false)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
+                        <button type="button" aria-label="Close custom date range" onClick={() => setShowCustom(false)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
                             <X size={14} />
                         </button>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
+                        <div className="min-w-0">
                             <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1.5">From</label>
                             <input
                                 type="date"
+                                aria-label="Start date"
                                 value={customStart || ""}
                                 onChange={(e) => onCustomChange?.(e.target.value, customEnd || "")}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full min-w-0 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
-                        <span className="text-[var(--text-secondary)] text-xs font-bold mt-5">→</span>
-                        <div className="flex-1">
+                        <span aria-hidden="true" className="hidden sm:block text-[var(--text-secondary)] text-xs font-bold mt-5">→</span>
+                        <div className="min-w-0">
                             <label className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1.5">To</label>
                             <input
                                 type="date"
+                                aria-label="End date"
                                 value={customEnd || ""}
                                 onChange={(e) => onCustomChange?.(customStart || "", e.target.value)}
-                                className="w-full bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                                className="w-full min-w-0 bg-[var(--bg-input)] border border-[var(--border-default)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
                             />
                         </div>
                     </div>
