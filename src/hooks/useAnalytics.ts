@@ -9,6 +9,7 @@ import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { hasTrackingConsent } from "@/lib/trackingConsent"
 import { getAccessToken } from "@/lib/supabase"
+import { isSessionTokenForUser } from "@/lib/supabaseSessionIdentity"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
@@ -370,7 +371,9 @@ export function useAnalytics() {
                         }
                     })
                     if (user) {
-                        void getAccessToken().then(sendEvent).catch(() => sendEvent(null))
+                        void getAccessToken()
+                            .then(token => sendEvent(token && isSessionTokenForUser(token, user.id) ? token : null))
+                            .catch(() => sendEvent(null))
                     } else {
                         void sendEvent(null)
                     }
