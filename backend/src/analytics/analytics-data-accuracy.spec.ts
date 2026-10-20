@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
-import { londonDayString, londonTrafficRange, shiftIsoDate } from './london-traffic-range';
+import { londonDayString, londonTrafficRange, londonMonthlyRanges, shiftIsoDate } from './london-traffic-range';
 
 describe('London traffic reporting boundaries', () => {
     it('includes exactly seven calendar dates', () => {
@@ -80,5 +80,31 @@ describe('Traffic reporting query integrity', () => {
         expect(sql[4]).toContain("AND type = 'page_view'");
         expect(sql[6]).toContain("AND type = 'page_view'");
         expect(sql[9]).toContain("AND type = 'page_view'");
+    });
+});
+
+describe('London monthly reporting windows', () => {
+    it('makes adjacent UK months contiguous, including every subsecond at month end', () => {
+        const ranges = londonMonthlyRanges(new Date('2026-10-20T22:30:00Z'));
+        expect(ranges).toHaveLength(6);
+        expect(ranges.map(({ label }) => label)).toEqual([
+            'May 26', 'Jun 26', 'Jul 26', 'Aug 26', 'Sep 26', 'Oct 26',
+        ]);
+        const september = ranges[4];
+        const october = ranges[5];
+        expect(october.start.toISOString()).toBe('2026-09-30T23:00:00.000Z');
+        expect(october.endExclusive.toISOString()).toBe('2026-11-01T00:00:00.000Z');
+        expect(september.endExclusive.getTime()).toBe(october.start.getTime());
+        expect(new Date('2026-09-30T22:59:59.999Z').getTime())
+            .toBeLessThan(october.start.getTime());
+    });
+
+    it('correctly spans the spring daylight-saving transition and a GMT winter month', () => {
+        const march = londonMonthlyRanges(new Date('2026-03-31T12:00:00Z'), 1)[0];
+        expect(march.start.toISOString()).toBe('2026-03-01T00:00:00.000Z');
+        expect(march.endExclusive.toISOString()).toBe('2026-03-31T23:00:00.000Z');
+        const january = londonMonthlyRanges(new Date('2026-01-31T12:00:00Z'), 1)[0];
+        expect(january.start.toISOString()).toBe('2026-01-01T00:00:00.000Z');
+        expect(january.endExclusive.toISOString()).toBe('2026-02-01T00:00:00.000Z');
     });
 });
