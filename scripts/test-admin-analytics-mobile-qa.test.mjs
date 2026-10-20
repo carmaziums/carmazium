@@ -48,3 +48,10 @@ test('quote history retries an unavailable panel without showing rows from anoth
   assert.match(history, /Showing the last successful results for this search/);
   assert.match(history, /Retry quote history/);
 });
+
+test('displayed traffic reporting dates remain explicit when a request fails', () => {
+  assert.match(analytics, /const \[trafficPeriod, setTrafficPeriod\]/);
+  assert.match(analytics, /setTrafficPeriod\(\{ from: fromDate!, to: toDate! \}\)/);
+  assert.match(analytics, /Displayed traffic: \{trafficPeriod\.from\} to \{trafficPeriod\.to\}/);
+  assert.match(analytics, /Last successful snapshot; the requested date range could not be loaded/);
+});
