@@ -8,6 +8,7 @@ import { trackAdsConversion, type AdsEnhancedUserData } from "@/lib/googleAds"
 import { trackGa4Event } from "@/components/analytics/GoogleAnalytics"
 import { trackMetaEvent } from "@/components/analytics/MetaPixel"
 import { hasTrackingConsent } from "@/lib/trackingConsent"
+import { getAccessToken } from "@/lib/supabase"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://carmazium-hjoh9w.fly.dev"
 
@@ -347,21 +348,32 @@ export function useAnalytics() {
                 if (hasTrackingConsent()) {
                     if (!sessionId.current) sessionId.current = getSessionId()
                     const firstTouch = getFirstTouchAttribution()
-                    fetch(`${API_URL}/analytics/event`, {
+                    const eventBody = JSON.stringify({
+                        type,
+                        payload: firstTouch ? { ...enriched, ...firstTouch } : enriched,
+                        sessionId: sessionId.current,
+                    })
+                    // The backend derives userId from a VERIFIED cookie or
+                    // Bearer token. Never assert a browser-provided identity.
+                    const sendEvent = (token: string | null) => fetch(`${API_URL}/analytics/event`, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            type,
-                            payload: firstTouch ? { ...enriched, ...firstTouch } : enriched,
-                            sessionId: sessionId.current,
-                            userId: user?.id ?? undefined,
-                        }),
+                        credentials: "include",
+                        headers: {
+                            "Content-Type": "application/json",
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                        body: eventBody,
                         keepalive: true,
                     }).catch((err) => {
                         if (process.env.NODE_ENV === "development") {
                             console.warn("[analytics] event failed:", err)
                         }
                     })
+                    if (user) {
+                        void getAccessToken().then(sendEvent).catch(() => sendEvent(null))
+                    } else {
+                        void sendEvent(null)
+                    }
                 }
             } catch {
                 // Analytics must never break a user flow.
