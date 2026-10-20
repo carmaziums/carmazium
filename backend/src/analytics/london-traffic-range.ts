@@ -74,3 +74,27 @@ export function londonTrafficRange(fromDay: string, toDay: string) {
         untilExclusive: londonMidnightUtc(shiftIsoDate(toDay, 1)),
     };
 }
+
+/**
+ * Calendar-month reporting windows in the UK, with exclusive UTC end bounds.
+ * Avoids truncating the last 999 milliseconds and the host-local timezone.
+ * The date-only helper also keeps monthly counts correct across BST changes.
+ */
+export function londonMonthlyRanges(now: Date, months = 6) {
+    const { year, month } = parts(now);
+    if (!Number.isInteger(months) || months < 1 || months > 12) {
+        throw new BadRequestException('Analytics months must be between 1 and 12');
+    }
+    return Array.from({ length: months }, (_, index) => {
+        const monthsBack = months - index - 1;
+        const monthStart = new Date(Date.UTC(year, month - 1 - monthsBack, 1));
+        const nextMonthStart = new Date(Date.UTC(year, month - monthsBack, 1));
+        const firstDay = monthStart.toISOString().slice(0, 10);
+        const lastDay = shiftIsoDate(nextMonthStart.toISOString().slice(0, 10), -1);
+        const { from, untilExclusive } = londonTrafficRange(firstDay, lastDay);
+        const label = new Intl.DateTimeFormat('en-GB', {
+            month: 'short', year: '2-digit', timeZone: 'Europe/London',
+        }).format(monthStart);
+        return { label, start: from, endExclusive: untilExclusive };
+    });
+}
