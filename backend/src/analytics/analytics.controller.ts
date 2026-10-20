@@ -8,7 +8,7 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { subDays } from 'date-fns';
+import { londonDayString, londonTrafficRange, shiftIsoDate } from './london-traffic-range';
 
 // Lazy-load geoip-lite so a missing native module doesn't crash startup
 let geoip: typeof import('geoip-lite') | null = null;
@@ -136,10 +136,9 @@ export class AnalyticsController {
         @Query('from') from?: string,
         @Query('to') to?: string,
     ) {
-        const toDate = to ? new Date(to) : new Date();
-        const fromDate = from ? new Date(from) : subDays(toDate, 30);
-        // Set toDate to end of that day
-        toDate.setHours(23, 59, 59, 999);
-        return this.analyticsService.getTrafficAnalytics(fromDate, toDate);
+        const toDay = to || londonDayString(new Date());
+        const fromDay = from || shiftIsoDate(toDay, -29);
+        const { from: fromUtc, untilExclusive } = londonTrafficRange(fromDay, toDay);
+        return this.analyticsService.getTrafficAnalytics(fromUtc, untilExclusive);
     }
 }
