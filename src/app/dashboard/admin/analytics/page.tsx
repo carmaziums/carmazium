@@ -132,6 +132,7 @@ export default function AdminAnalyticsPage() {
 
     // Traffic analytics
     const [traffic, setTraffic] = React.useState<TrafficAnalytics | null>(null)
+    const [trafficPeriod, setTrafficPeriod] = React.useState<{ from: string; to: string } | null>(null)
     const [trafficLoading, setTrafficLoading] = React.useState(true)
     const [trafficError, setTrafficError] = React.useState<string | null>(null)
     const trafficRequestId = React.useRef(0)
@@ -208,7 +209,10 @@ export default function AdminAnalyticsPage() {
         }
         getTrafficAnalytics(fromDate, toDate)
             .then(result => {
-                if (requestId === trafficRequestId.current) setTraffic(result)
+                if (requestId === trafficRequestId.current) {
+                    setTraffic(result)
+                    setTrafficPeriod({ from: fromDate!, to: toDate! })
+                }
             })
             .catch(err => {
                 if (requestId === trafficRequestId.current) {
@@ -1088,7 +1092,7 @@ export default function AdminAnalyticsPage() {
 
                         {trafficError && (
                             <div role="alert" className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-sm text-red-700 dark:text-red-300">
-                                {trafficError}{traffic && " — showing the last successful traffic period."}
+                                {trafficError}{traffic && trafficPeriod && ` — showing previously loaded ${trafficPeriod.from} to ${trafficPeriod.to} (UK dates).`}
                                 <button type="button" className="ml-2 underline font-bold" onClick={fetchTrafficData}>Retry traffic analytics</button>
                             </div>
                         )}
@@ -1099,6 +1103,12 @@ export default function AdminAnalyticsPage() {
                             </div>
                         ) : traffic ? (
                             <div className="space-y-5">
+                                {trafficPeriod && (
+                                    <p className="text-xs font-semibold text-[var(--text-secondary)]" role="status">
+                                        Displayed traffic: {trafficPeriod.from} to {trafficPeriod.to} (UK calendar dates).
+                                        {trafficError ? " Last successful snapshot; the requested date range could not be loaded." : ""}
+                                    </p>
+                                )}
                                 {/* ── Traffic KPI overview ── */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     {([
