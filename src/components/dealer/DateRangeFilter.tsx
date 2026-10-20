@@ -107,9 +107,9 @@ export function DateRangeFilter({
                     {customStart && customEnd && (
                         <div className="mt-3 pt-3 border-t border-[var(--border-default)] text-center">
                             <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                                {new Date(customStart).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                {new Date(customStart + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" })}
                                 {" — "}
-                                {new Date(customEnd).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                {new Date(customEnd + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" })}
                             </span>
                         </div>
                     )}
