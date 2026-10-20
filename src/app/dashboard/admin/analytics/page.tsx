@@ -134,6 +134,8 @@ export default function AdminAnalyticsPage() {
     const [valuationLive, setValuationLive] = React.useState<ValuationLiveAnalytics | null>(null)
     const [valuationLoading, setValuationLoading] = React.useState(true)
     const [valuationError, setValuationError] = React.useState<string | null>(null)
+    const valuationInFlight = React.useRef(false)
+    const valuationRequestId = React.useRef(0)
 
     // Auction zero-bid / discounted first-offer analytics
     const [firstOfferAnalytics, setFirstOfferAnalytics] = React.useState<AuctionFirstOfferAnalytics | null>(null)
@@ -179,13 +181,26 @@ export default function AdminAnalyticsPage() {
     }, [profile, dateRange, customStart, customEnd])
 
     const fetchValuationData = React.useCallback((showSpinner = false) => {
-        if (profile?.role !== "ADMIN") return
+        if (profile?.role !== "ADMIN" || valuationInFlight.current) return
+        valuationInFlight.current = true
+        const requestId = ++valuationRequestId.current
         if (showSpinner) setValuationLoading(true)
         setValuationError(null)
         getLiveValuationAnalytics()
-            .then(setValuationLive)
-            .catch(err => setValuationError(err.message || "Failed to load valuation analytics"))
-            .finally(() => setValuationLoading(false))
+            .then(result => {
+                if (requestId === valuationRequestId.current) setValuationLive(result)
+            })
+            .catch(err => {
+                if (requestId === valuationRequestId.current) {
+                    setValuationError(err?.message || "Failed to load valuation analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === valuationRequestId.current) {
+                    valuationInFlight.current = false
+                    setValuationLoading(false)
+                }
+            })
     }, [profile])
 
     const fetchFirstOfferData = React.useCallback((showSpinner = false) => {
@@ -203,8 +218,17 @@ export default function AdminAnalyticsPage() {
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
         fetchValuationData(true)
-        const timer = window.setInterval(() => fetchValuationData(false), 15_000)
-        return () => window.clearInterval(timer)
+        const refreshVisible = () => {
+            if (document.visibilityState === "visible") fetchValuationData(false)
+        }
+        const timer = window.setInterval(refreshVisible, 15_000)
+        document.addEventListener("visibilitychange", refreshVisible)
+        return () => {
+            window.clearInterval(timer)
+            document.removeEventListener("visibilitychange", refreshVisible)
+            valuationRequestId.current += 1
+            valuationInFlight.current = false
+        }
     }, [profile, fetchValuationData])
 
     React.useEffect(() => {
@@ -373,7 +397,7 @@ export default function AdminAnalyticsPage() {
                                     </span>
                                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--text-secondary)]">Car Valuation — Live</p>
                                 </div>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Today uses Europe/London time · refreshes automatically every 15 seconds.</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Today uses Europe/London time · checks every 15 seconds (server snapshot cached up to 30 seconds).</p>
                             </div>
                             {valuationLive && (
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
