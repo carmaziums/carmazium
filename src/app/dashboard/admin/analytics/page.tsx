@@ -455,7 +455,7 @@ export default function AdminAnalyticsPage() {
                         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 px-1">
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span aria-label={valuationError ? "Live analytics unavailable" : valuationLive ? "Live analytics available" : "Waiting for analytics"} className="relative flex h-2.5 w-2.5">
+                                    <span role="status" aria-label={valuationError ? "Live analytics unavailable" : valuationLive ? "Live analytics available" : "Waiting for analytics"} className="relative flex h-2.5 w-2.5">
                                         {!valuationError && valuationLive && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />}
                                         <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${valuationError ? "bg-rose-500" : valuationLive ? "bg-emerald-500" : "bg-amber-500"}`} />
                                     </span>
@@ -833,7 +833,9 @@ export default function AdminAnalyticsPage() {
                             <div className="flex items-center gap-2">
                                 {[7, 30, 90].map(days => (
                                     <button
+                                        type="button"
                                         key={days}
+                                        aria-pressed={firstOfferDays === days}
                                         onClick={() => setFirstOfferDays(days)}
                                         className={`rounded-lg border px-3 py-1.5 text-xs font-black transition-colors ${
                                             firstOfferDays === days
