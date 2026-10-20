@@ -8,6 +8,8 @@ on:
   pull_request:
     paths:
       - 'scripts/fly-readonly-connection-diagnostics.mjs'
+      - 'scripts/fly-readonly-health-probes.mjs'
+      - 'scripts/fly-readonly-health-probes.test.mjs'
       - '.github/workflows/fly-connection-diagnostics.yml'
   workflow_dispatch:
 
@@ -28,7 +30,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: node --check scripts/fly-readonly-connection-diagnostics.mjs
+      - name: Validate safe read-only diagnostic and probe code
+        run: node --check scripts/fly-readonly-connection-diagnostics.mjs && node --check scripts/fly-readonly-health-probes.mjs
+      - name: Verify bounded read-only health probes without a Fly token
+        run: node --test scripts/fly-readonly-health-probes.test.mjs
 
   inspect:
     name: Inspect Fly backend availability
