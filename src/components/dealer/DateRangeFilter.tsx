@@ -74,7 +74,7 @@ export function DateRangeFilter({
 
             {/* Custom Date Picker Flyout */}
             {showCustom && activeRange === "custom" && (
-                <div className="absolute top-full left-0 mt-2 z-50 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl p-4 sm:p-5 shadow-2xl shadow-black/30 dark:shadow-black/60 w-[min(420px,calc(100vw-3rem))] max-w-full min-w-0">
+                <div className="absolute top-full left-0 mt-2 z-50 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl p-4 sm:p-5 shadow-2xl shadow-black/30 dark:shadow-black/60 w-[min(420px,90vw)] max-w-full min-w-0">
                     <div className="flex items-center justify-between mb-4">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Custom Range</h4>
                         <button type="button" aria-label="Close custom date range" onClick={() => setShowCustom(false)} className="text-[var(--text-muted)] hover:text-primary dark:hover:text-white transition-colors">
