@@ -8,6 +8,8 @@ import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
+import { assertPublicAnalyticsEvent } from './analytics-event-policy';
 import { londonDayString, londonTrafficRange, shiftIsoDate } from './london-traffic-range';
 
 // Lazy-load geoip-lite so a missing native module doesn't crash startup
@@ -30,12 +32,30 @@ export class AnalyticsController {
     constructor(
         private readonly analyticsService: AnalyticsService,
         private readonly valuationHistory: ValuationHistoryService,
+        private readonly authService: AuthService,
     ) { }
 
     // ─── Public Endpoints ──────────────────────────────────────────────────────
 
     @Post('event')
     async trackEvent(@Body() dto: CreateEventDto, @Req() req: Request) {
+        assertPublicAnalyticsEvent(dto);
+
+        // Never trust userId supplied in a public event body. Verify the
+        // Bearer token, or use the user hydrated by validated session middleware.
+        // Prefer the verified Bearer identity when both credentials exist.
+        const header = req.headers.authorization;
+        const bearer = header?.startsWith('Bearer ') ? header.slice(7) : null;
+        let authenticatedUser = (req as Request & { user?: { id?: string } }).user;
+        if (bearer) {
+            try {
+                authenticatedUser = (await this.authService.verifySupabaseToken(bearer)) ?? undefined;
+            } catch {
+                authenticatedUser = undefined;
+            }
+        }
+        dto.userId = typeof authenticatedUser?.id === 'string' ? authenticatedUser.id : undefined;
+
         // Enrich payload with server-side geo derived from client IP
         if (geoip) {
             const ip = extractIp(req);
@@ -43,9 +63,9 @@ export class AnalyticsController {
             if (geo) {
                 const existing = (dto.payload as Record<string, unknown>) ?? {};
                 dto.payload = {
+                    ...existing,
                     city: geo.city || null,
                     country: geo.country || null,
-                    ...existing, // client-sent values take precedence
                 };
             }
         }
