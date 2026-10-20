@@ -38,6 +38,23 @@ describe('London traffic reporting boundaries', () => {
 });
 
 describe('Traffic reporting query integrity', () => {
+    it('calculates pages per session using the page-view session count', async () => {
+        const prisma: any = { $queryRawUnsafe: jest.fn()
+            .mockResolvedValueOnce([{ pageviews: '8', sessions: '4', searches: '2' }])
+            .mockResolvedValueOnce([{ pageviews: '1' }])
+            .mockResolvedValue([]) };
+        const service = new AnalyticsService(prisma);
+        const range = londonTrafficRange('2026-10-14', '2026-10-20');
+        const result = await service.getTrafficAnalytics(range.from, range.untilExclusive);
+        expect(result.overview).toEqual({
+            pageViews: 8,
+            uniqueVisitors: 4,
+            pagesPerVisit: 2,
+            searches: 2,
+            excludedInternalPageViews: 1,
+        });
+    });
+
     it('restricts session-based metrics to recorded public page views', async () => {
         const prisma: any = { $queryRawUnsafe: jest.fn().mockResolvedValue([]) };
         const service = new AnalyticsService(prisma);
