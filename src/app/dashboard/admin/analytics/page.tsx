@@ -23,12 +23,18 @@ import { ValuationQuoteHistoryPanel } from "@/components/admin/ValuationQuoteHis
 import type { DateRangePreset } from "@/components/dealer"
 
 function fmtDate(d: Date): string {
-    return d.toISOString().split("T")[0]
+    // Display and query London calendar days regardless of the admin device's zone.
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Europe/London",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(d)
 }
-function subDaysNative(d: Date, days: number): Date {
-    const r = new Date(d)
-    r.setDate(r.getDate() - days)
-    return r
+function shiftCalendarDate(day: string, days: number): string {
+    const r = new Date(day + "T12:00:00.000Z")
+    r.setUTCDate(r.getUTCDate() + days)
+    return r.toISOString().slice(0, 10)
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -171,12 +177,18 @@ export default function AdminAnalyticsPage() {
         let toDate: string | undefined
         const now = new Date()
         if (dateRange === "custom") {
+            if (!customStart || !customEnd) {
+                setTrafficError("Select both the start and end dates to view a custom period.")
+                setTrafficLoading(false)
+                return
+            }
             fromDate = customStart
             toDate = customEnd
         } else {
             const days = dateRange === "7d" ? 7 : dateRange === "90d" ? 90 : 30
-            fromDate = fmtDate(subDaysNative(now, days))
-            toDate = fmtDate(now)
+            const today = fmtDate(now)
+            fromDate = shiftCalendarDate(today, -(days - 1))
+            toDate = today
         }
         getTrafficAnalytics(fromDate, toDate)
             .then(result => {
