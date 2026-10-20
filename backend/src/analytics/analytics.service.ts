@@ -117,7 +117,34 @@ export class AnalyticsService {
      * Day/hour boundaries are calculated in Europe/London so the admin's
      * "today" cards remain correct across BST/GMT changes.
      */
+    // The dashboard polls every 15 seconds. Keep one short-lived result per
+    // API instance and share in-flight work across simultaneous admin requests.
+    // The source's generatedAt stays unchanged when we serve a cached snapshot.
+    private valuationSnapshot: {
+        data: Awaited<ReturnType<AnalyticsService['queryValuationAnalytics']>>;
+        expiresAt: number;
+    } | null = null;
+    private valuationSnapshotInFlight: ReturnType<AnalyticsService['queryValuationAnalytics']> | null = null;
+
     async getValuationAnalytics() {
+        const cached = this.valuationSnapshot;
+        if (cached && cached.expiresAt > Date.now()) return cached.data;
+        if (this.valuationSnapshotInFlight) return this.valuationSnapshotInFlight;
+
+        const pending = this.queryValuationAnalytics();
+        this.valuationSnapshotInFlight = pending;
+        try {
+            const data = await pending;
+            this.valuationSnapshot = { data, expiresAt: Date.now() + 30_000 };
+            return data;
+        } finally {
+            if (this.valuationSnapshotInFlight === pending) {
+                this.valuationSnapshotInFlight = null;
+            }
+        }
+    }
+
+    private async queryValuationAnalytics() {
 
         // Price locks were already persisted before browser-side analytics was
         // reliable. Quote receipts now also cover all successful responses.
@@ -456,13 +483,17 @@ export class AnalyticsService {
                     WHERE e.type = 'valuation_requested'
                 ),
                 recent_valuations AS (
-                    -- The audit is a journey audit, not a raw HTTP-request log.
-                    -- Keep the newest customer-facing valuation result for each
-                    -- journey while preserving every historical event underneath.
-                    SELECT DISTINCT ON (journey_key)
-                        *
-                    FROM valuation_requests
-                    ORDER BY journey_key, "createdAt" DESC
+                    -- Preserve the latest customer-facing event per journey,
+                    -- but restrict the expensive attribution joins to the 100
+                    -- most recent journeys. Previously LIMIT 100 was applied
+                    -- after all historical journeys had run the LATERAL joins.
+                    SELECT * FROM (
+                        SELECT DISTINCT ON (journey_key) *
+                        FROM valuation_requests
+                        ORDER BY journey_key, "createdAt" DESC
+                    ) deduplicated
+                    ORDER BY "createdAt" DESC
+                    LIMIT 100
                 )
                 SELECT
                     v.id,
