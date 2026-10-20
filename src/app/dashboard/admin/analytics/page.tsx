@@ -126,6 +126,8 @@ export default function AdminAnalyticsPage() {
     // Traffic analytics
     const [traffic, setTraffic] = React.useState<TrafficAnalytics | null>(null)
     const [trafficLoading, setTrafficLoading] = React.useState(true)
+    const [trafficError, setTrafficError] = React.useState<string | null>(null)
+    const trafficRequestId = React.useRef(0)
     const [dateRange, setDateRange] = React.useState<DateRangePreset>("30d")
     const [customStart, setCustomStart] = React.useState("")
     const [customEnd, setCustomEnd] = React.useState("")
@@ -162,7 +164,9 @@ export default function AdminAnalyticsPage() {
 
     const fetchTrafficData = React.useCallback(() => {
         if (profile?.role !== "ADMIN") return
+        const requestId = ++trafficRequestId.current
         setTrafficLoading(true)
+        setTrafficError(null)
         let fromDate: string | undefined
         let toDate: string | undefined
         const now = new Date()
@@ -175,9 +179,17 @@ export default function AdminAnalyticsPage() {
             toDate = fmtDate(now)
         }
         getTrafficAnalytics(fromDate, toDate)
-            .then(setTraffic)
-            .catch(console.error)
-            .finally(() => setTrafficLoading(false))
+            .then(result => {
+                if (requestId === trafficRequestId.current) setTraffic(result)
+            })
+            .catch(err => {
+                if (requestId === trafficRequestId.current) {
+                    setTrafficError(err?.message || "Unable to load traffic analytics")
+                }
+            })
+            .finally(() => {
+                if (requestId === trafficRequestId.current) setTrafficLoading(false)
+            })
     }, [profile, dateRange, customStart, customEnd])
 
     const fetchValuationData = React.useCallback((showSpinner = false) => {
@@ -214,7 +226,10 @@ export default function AdminAnalyticsPage() {
     }, [profile, firstOfferDays])
 
     React.useEffect(() => { fetchPlatformData() }, [fetchPlatformData])
-    React.useEffect(() => { fetchTrafficData() }, [fetchTrafficData])
+    React.useEffect(() => {
+        fetchTrafficData()
+        return () => { trafficRequestId.current += 1 }
+    }, [fetchTrafficData])
     React.useEffect(() => {
         if (profile?.role !== "ADMIN") return
         fetchValuationData(true)
@@ -407,8 +422,10 @@ export default function AdminAnalyticsPage() {
                         </div>
 
                         {valuationError && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
+                            <div role="alert" className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-700 dark:text-red-300">
                                 {valuationError}
+                                {valuationLive && <p className="mt-1 text-xs">Showing the last successful snapshot from {new Date(valuationLive.generatedAt).toLocaleTimeString("en-GB")}.</p>}
+                                <button type="button" className="mt-2 underline font-bold" onClick={() => fetchValuationData(true)}>Retry valuation analytics</button>
                             </div>
                         )}
 
@@ -1014,6 +1031,12 @@ export default function AdminAnalyticsPage() {
                             />
                         </div>
 
+                        {trafficError && (
+                            <div role="alert" className="mb-4 p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-sm text-red-700 dark:text-red-300">
+                                {trafficError}{traffic && " — showing the last successful traffic period."}
+                                <button type="button" className="ml-2 underline font-bold" onClick={fetchTrafficData}>Retry traffic analytics</button>
+                            </div>
+                        )}
                         {trafficLoading ? (
                             <div className="flex items-center justify-center py-16 gap-3">
                                 <Loader2 className="h-7 w-7 animate-spin text-primary" />
