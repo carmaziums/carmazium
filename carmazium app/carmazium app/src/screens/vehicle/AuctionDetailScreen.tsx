@@ -935,7 +935,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     Alert.alert(
       'Accept current highest offer?',
       auction.status === 'ENDED'
-        ? `Accepting ${fmt(bid.amount)} confirms the provisional sale. The dealer becomes the winner and must complete the £125 buyer fee process. This cannot be undone.`
+        ? `Accepting ${fmt(bid.amount)} confirms the provisional sale. The dealer becomes the winner and must complete the £125 buyer fee process. This cannot be undone.${auction.provisionalOfferedAt && Date.now() - new Date(auction.provisionalOfferedAt).getTime() > 72 * 60 * 60 * 1000 ? ' This offer is over 72 hours old; the buyer may no longer be available. No automatic expiry applies.' : ''}`
         : `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
