@@ -1,0 +1,43 @@
+name: Independent Storage backup and no-source recovery tests
+on:
+  push:
+    branches:
+      - security/carmazium-independent-storage-backup-20261003
+    paths:
+      - backend/scripts/security/storage_offsite_backup.py
+      - backend/scripts/security/test_storage_offsite_backup.py
+      - backend/scripts/security/requirements-storage-private-runner.in
+      - backend/scripts/security/requirements-storage-private-runner.txt
+      - .github/workflows/carmazium-independent-storage-backup.yml
+  pull_request:
+    branches:
+      - integration/simpledms-staging-candidate-20261003
+    paths:
+      - backend/scripts/security/storage_offsite_backup.py
+      - backend/scripts/security/test_storage_offsite_backup.py
+      - backend/scripts/security/requirements-storage-private-runner.in
+      - backend/scripts/security/requirements-storage-private-runner.txt
+      - .github/workflows/carmazium-independent-storage-backup.yml
+permissions:
+  contents: read
+jobs:
+  offline-synthetic-independent-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure code syntax without installing or accessing cloud credentials
+        run: python3 -m py_compile backend/scripts/security/storage_offsite_backup.py backend/scripts/security/test_storage_offsite_backup.py
+      - name: Exercise synthetic AWS/Supabase fakes and independent vault restore
+        run: python3 backend/scripts/security/test_storage_offsite_backup.py
+      - name: Verify pinned isolated boto3 and botocore can actually import
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/private-sdk-test"
+          "$RUNNER_TEMP/private-sdk-test/bin/python" -m pip install --disable-pip-version-check --quiet -r backend/scripts/security/requirements-storage-private-runner.txt
+          "$RUNNER_TEMP/private-sdk-test/bin/python" -c "import boto3, botocore, s3transfer; print('VERIFIED ISOLATED SDK:', boto3.__version__, botocore.__version__, s3transfer.__version__)"
+          "$RUNNER_TEMP/private-sdk-test/bin/python" -m pip check
+          "$RUNNER_TEMP/private-sdk-test/bin/python" -m pip freeze
+      - name: Explicit data-control boundary
+        run: echo "Offline synthetic fakes only; NO real Storage bytes, service role, AWS credentials, KYC files, live backups, provider network, paid infrastructure or published artifacts."
