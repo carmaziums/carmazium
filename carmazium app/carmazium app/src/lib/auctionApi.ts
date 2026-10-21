@@ -294,6 +294,10 @@ export async function getAuction(id: string): Promise<AuctionDetail> {
   return res.data;
 }
 
+export async function declineProvisionalOffer(auctionId: string): Promise<void> {
+  await apiClient(`/auctions/${auctionId}/decline-provisional`, { method: 'POST' });
+}
+
 export async function refuseAuctionAfterInspection(
   auctionId: string,
   reason?: string,
