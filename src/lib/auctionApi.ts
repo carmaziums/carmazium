@@ -238,13 +238,48 @@ export async function getScheduledAuctions(): Promise<Auction[]> {
     return [];
 }
 
+/** Load complete seller auction history, not just the default 20 records.
+ * Pending seller decisions must never disappear from the dashboard when the
+ * seller has listed more vehicles. The backend wraps {data,total} inside
+ * StandardResponse. Fail visibly if pagination is incomplete or changes
+ * during retrieval, rather than silently hiding actionable auctions.
+ */
 export async function getMyAuctions(): Promise<Auction[]> {
-    const res = await apiClient<any>(`${API}/auctions/my/list`);
-    if (Array.isArray(res)) return res;
-    if (Array.isArray(res?.data)) return res.data;
-    // Paginated response: StandardResponse wraps { data: Auction[], total: N }
-    if (Array.isArray(res?.data?.data)) return res.data.data;
-    return [];
+    const pageSize = 50;
+    const maxPages = 200;
+    const items = new Map<string, Auction>();
+    let expectedTotal: number | null = null;
+
+    for (let page = 1; page <= maxPages; page++) {
+        const res = await apiClient<any>(`${API}/auctions/my/list?page=${page}&limit=${pageSize}`);
+        // Compatibility with older unpaginated API mocks, which return the
+        // entire array. Production always supplies a numeric total.
+        if (page === 1 && Array.isArray(res)) return res;
+        const payload = res?.data;
+        if (page === 1 && Array.isArray(payload) && !Number.isInteger(res?.total)) {
+            return payload;
+        }
+        if (!Array.isArray(payload?.data)) {
+            throw new Error("Could not load your auction history. Please refresh.");
+        }
+        const total = Number(payload.total);
+        if (!Number.isSafeInteger(total) || total < 0 || total > pageSize * maxPages) {
+            throw new Error("Auction history is too large or invalid. Please contact CarMazium support.");
+        }
+        if (expectedTotal !== null && total !== expectedTotal) {
+            throw new Error("Your auctions changed while loading. Refresh to see the latest decisions.");
+        }
+        expectedTotal = total;
+        for (const auction of payload.data as Auction[]) {
+            if (!auction?.id) throw new Error("Invalid auction history response.");
+            items.set(auction.id, auction);
+        }
+        if (items.size === total) return [...items.values()];
+        if (payload.data.length === 0) {
+            throw new Error("Incomplete auction history. Please refresh.");
+        }
+    }
+    throw new Error("Auction history exceeded the safe page limit. Please contact support.");
 }
 
 export async function getWonAuctions(page = 1, limit = 50): Promise<Auction[]> {
