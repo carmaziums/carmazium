@@ -1038,8 +1038,10 @@ model Auction {
   provisionalOfferedAt    DateTime?
   // Retain the expired bidder and outcome for audit and buyer-facing status.
   // Expiry does not create a winner, Sale or buyer-fee obligation.
-  provisionalExpiredBidId String?
-  provisionalExpiredAt    DateTime?
+  provisionalExpiredBidId       String?
+  provisionalExpiredAt          DateTime? // recorded processing time
+  provisionalExpiryDeadlineAt   DateTime? // exact 72-hour contractual deadline
+  provisionalExpiryNotifiedAt   DateTime? // both in-app expiry notices persisted
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
   buyerFeeReminder24SentAt DateTime?
