@@ -34,6 +34,7 @@ export class ProvisionalAuctionReminderService {
                 'emailSentAt', CASE WHEN ${status} = 'sent' THEN NOW()::text ELSE NULL END
             )
             WHERE id = ${notificationId} AND data->>'emailClaimToken' = ${token}
+            RETURNING id
         `;
     }
 
