@@ -2893,7 +2893,45 @@ export class ListingsService {
             }
         }
 
-        const updated = scheduledAuctionToCancel
+        // A former auction listing converted to Retail can still have a
+        // provisional offer even with linkedListingId=null. Do not let a
+        // generic withdrawal strand that bidder without a seller decision.
+        const updated = status === 'WITHDRAWN' && listing.type === 'CLASSIFIED'
+            ? await this.prisma.$transaction(async tx => {
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${id}, 0))::text`;
+                const outstanding = await tx.auction.findFirst({
+                    where: { listingId: id, deletedAt: null,
+                        OR: [
+                            { provisionalOfferBidId: { not: null } },
+                            { winnerId: { not: null } },
+                            { wonAt: { not: null } },
+                            { status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                        ],
+                    },
+                    select: { id: true },
+                });
+                if (outstanding) {
+                    throw new BadRequestException(
+                        'Resolve the outstanding auction or provisional offer before withdrawing this Retail listing.',
+                    );
+                }
+                if (listing.linkedListingId) {
+                    await tx.listing.updateMany({
+                        where: { id: listing.linkedListingId, linkedListingId: id },
+                        data: { linkedListingId: null },
+                    });
+                }
+                const claimed = await tx.listing.updateMany({
+                    where: { id, type: 'CLASSIFIED', status: listing.status,
+                        linkedListingId: listing.linkedListingId, deletedAt: null },
+                    data: { status: 'WITHDRAWN', linkedListingId: null },
+                });
+                if (claimed.count !== 1) {
+                    throw new ConflictException('This listing changed. Refresh and try again.');
+                }
+                return tx.listing.findUniqueOrThrow({ where: { id } });
+            })
+            : scheduledAuctionToCancel
             ? await this.prisma.$transaction(async (tx) => {
                 const archivedAt = new Date();
                 const cancelled = await tx.auction.updateMany({
@@ -3276,31 +3314,38 @@ export class ListingsService {
         }
 
         const updated = await this.prisma.$transaction(async (tx) => {
-            // A manual/off-platform Retail sale cannot overtake its still-running
-            // linked auction or an auction winner. Use the exact same auction
-            // advisory lock as the bidding/retail-offer lifecycle.
-            if (listing.linkedListingId) {
-                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${listing.linkedListingId}, 0))::text`;
-                const linkedAuction = await tx.auction.findFirst({
-                    where: { listingId: listing.linkedListingId, deletedAt: null },
-                    select: {
-                        status: true, winnerId: true, wonAt: true,
-                        provisionalOfferBidId: true,
-                    },
-                });
-                if (linkedAuction?.winnerId || linkedAuction?.wonAt) {
-                    throw new BadRequestException(
-                        'This vehicle already has an auction winner. Resolve the auction sale or cancellation before recording a Retail sale.',
-                    );
-                }
-                if (linkedAuction && (
-                    ['ACTIVE', 'SCHEDULED'].includes(linkedAuction.status)
-                    || linkedAuction.provisionalOfferBidId
-                )) {
-                    throw new BadRequestException(
-                        'This vehicle is still in a linked auction. End or cancel the auction through its controlled workflow before recording a manual Retail sale. An accepted Retail offer automatically closes the linked auction.',
-                    );
-                }
+            // Even a reclassified CLASSIFIED listing may retain its own ENDED
+            // auction and a valid provisional dealer bid. Check BOTH that
+            // auction and any separately linked auction under the same listing
+            // advisory locks used by seller acceptance and concurrent Retail sales.
+            const auctionListingIds = [...new Set([id, listing.linkedListingId].filter(
+                (value): value is string => Boolean(value),
+            ))].sort();
+            for (const auctionListingId of auctionListingIds) {
+                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${auctionListingId}, 0))::text`;
+            }
+            const currentListing = await tx.listing.findUnique({
+                where: { id }, select: { status: true, type: true, linkedListingId: true, deletedAt: true },
+            });
+            if (!currentListing || currentListing.deletedAt || currentListing.status !== listing.status
+                || currentListing.type !== 'CLASSIFIED' || currentListing.linkedListingId !== listing.linkedListingId) {
+                throw new ConflictException('The Retail listing changed. Refresh before completing the sale.');
+            }
+            const conflictingAuction = await tx.auction.findFirst({
+                where: { listingId: { in: auctionListingIds }, deletedAt: null,
+                    OR: [
+                        { winnerId: { not: null } },
+                        { wonAt: { not: null } },
+                        { provisionalOfferBidId: { not: null } },
+                        { status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (conflictingAuction) {
+                throw new BadRequestException(
+                    'An auction or provisional dealer offer is still outstanding for this vehicle. The seller must explicitly resolve the auction offer before recording a Retail sale.',
+                );
             }
             // Compare-and-set the listing state. Only one concurrent completion can
             // win, so double-clicks/racing requests cannot create duplicate sale
