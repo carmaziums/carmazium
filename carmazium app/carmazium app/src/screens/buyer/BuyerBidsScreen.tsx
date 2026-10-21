@@ -59,6 +59,7 @@ interface RawBid {
       status: AuctionStatus;
       endTime: string;
       winnerId: string | null;
+      provisionalOfferBidId?: string | null;
       winningBidAmount: number | string | null;
       wonAt?: string | null;
       buyerFeeDeadlineAt?: string | null;
@@ -75,6 +76,7 @@ interface Bid {
   isWinning?: boolean;
   isArchived?: boolean;
   isWinner?: boolean;
+  isProvisional?: boolean;
   buyerFeePaid?: boolean;
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
@@ -123,6 +125,8 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     isWinning: b.isWinning,
     isArchived: Boolean(b.isArchived),
     isWinner: !b.isArchived && !!auction?.winnerId && auction.winnerId === currentUserId,
+    isProvisional: !b.isArchived && auction?.status === 'ENDED' && !auction?.winnerId
+      && auction?.provisionalOfferBidId === b.id,
     buyerFeePaid: Boolean(auction?.buyerFeePaid),
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
     // Use the backend's authoritative win timestamp so the 72-hour payment
@@ -461,6 +465,10 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             ) : isWon ? (
               <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
                 <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
+              </View>
+            ) : bid.isProvisional ? (
+              <View style={[styles.statusChip, { backgroundColor: Colors.warningAlpha15, borderWidth: 1, borderColor: Colors.warningAlpha25 }]}>
+                <Text style={[styles.statusChipText, { color: Colors.warning }]}>SELLER DECISION PENDING</Text>
               </View>
             ) : bid.auctionStatus === 'ACTIVE' ? (
               // Web's dashboard/buyer/bids/page.tsx distinguishes Winning vs
