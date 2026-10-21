@@ -1305,7 +1305,9 @@ export class AuctionsService {
             const provisionalAcceptance = auction.status === 'ENDED'
                 && !auction.winnerId && !auction.wonAt
                 && !!auction.provisionalOfferBidId
-                && auction.listing.status === 'DRAFT';
+                // A subsequent Retail approval does not revoke an outstanding provisional offer.
+                && (auction.listing.status === 'DRAFT'
+                    || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED'));
             if (!activeAcceptance && !provisionalAcceptance) {
                 throw new BadRequestException('This auction has no provisional offer available to accept');
             }
