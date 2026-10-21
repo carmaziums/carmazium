@@ -98,6 +98,36 @@
   --neon-glow-hover: 0 0 30px rgba(237, 28, 36, 0.6);
 }
 
+/* ─── Homepage palette ──────────────────────────────────────────────────────
+   The header sits outside HomeClient in the root layout, so apply the
+   homepage tokens to body whenever the homepage wrapper is present. This keeps
+   the header and page content visually cohesive without changing other routes.
+*/
+body:has(.home-page),
+.home-page {
+  --bg-body: #fff1f5;
+  --bg-card: #fffafd;
+  --bg-card-hover: #fff5f8;
+  --bg-header: rgba(255, 250, 253, 0.9);
+  --bg-input: #ffe4ec;
+  --bg-dropdown: #fffafd;
+  --text-primary: #3f1725;
+  --text-secondary: #6b2a42;
+  --text-muted: #8b5a6b;
+  --text-faint: #b78394;
+  --border-default: #f3cbd7;
+  --border-hover: #e9a9bd;
+  --shadow-card: 0 1px 2px rgba(116, 37, 67, 0.04), 0 6px 18px rgba(116, 37, 67, 0.08);
+  --shadow-card-hover: 0 12px 32px rgba(116, 37, 67, 0.12);
+  --scrollbar-track: #ffe4ec;
+  --scrollbar-thumb: #e9a9bd;
+  --scrollbar-hover: #cf718d;
+}
+
+.home-page {
+  background: linear-gradient(180deg, #fff1f5 0%, #ffe8f0 100%);
+}
+
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
 
 @layer base {
