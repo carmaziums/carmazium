@@ -33,7 +33,7 @@ function getResultTips(auction: Auction): string[] {
     const reserve = Number(auction.reservePrice)
 
     if (auction.status === 'ENDED' && !auction.winnerId && !!auction.provisionalOfferBidId
-        && auction.listing.status === 'DRAFT' && bidCount > 0 && topBid > 0 && topBid < reserve) {
+        && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && bidCount > 0 && topBid > 0 && topBid < reserve) {
         return ['Your highest offer is provisional. Accept it to declare a winner, or choose a fresh auction or Retail listing.'];
     }
     if (bidCount === 0) {
