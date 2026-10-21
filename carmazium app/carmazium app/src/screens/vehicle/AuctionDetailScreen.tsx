@@ -1236,14 +1236,17 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={s.sellerCloseBtnText}>Decline provisional offer</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.sellerCloseBtn}
-                onPress={() => navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>Re-list in Auction</Text>
+                onPress={() => auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE'
+                  ? navigation.navigate('SellerListings')
+                  : navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
+                <Text style={s.sellerCloseBtnText}>{auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE'
+                  ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.sellerCloseBtn}
-                onPress={() => auction?.listing?.linkedListingId
+                onPress={() => auction?.listing?.linkedListingId || (auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE')
                   ? navigation.navigate('SellerListings')
                   : navigation.navigate('SellCarFlow', { listingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId || (auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE') ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
               </TouchableOpacity>
             </View>
           )}
