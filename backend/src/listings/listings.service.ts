@@ -1439,6 +1439,23 @@ export class ListingsService {
                 });
             }
 
+            // Once the seller explicitly switches to Retail, an older
+            // provisional acceptance notification must no longer appear as
+            // actionable. Retire it in the SAME transaction as the auction
+            // marker change; retain the notification as an audit record.
+            if (auction && source.sellerId) {
+                await tx.notification.updateMany({
+                    where: {
+                        userId: source.sellerId, entityId: auction.id, isRead: false,
+                        OR: [
+                            { actionType: 'ACCEPT_OR_RELIST' },
+                            { type: 'AUCTION_PROVISIONAL_REMINDER' },
+                        ],
+                    },
+                    data: { isRead: true },
+                });
+            }
+
             // Preserve bid history, but remove old auction bids from all current
             // bid queries immediately after the seller confirms conversion.
             await tx.bid.updateMany({

@@ -61,13 +61,50 @@ export class OffersService {
 
         const updatedOffer = await this.prisma.$transaction(async (tx) => {
             const source = await tx.listing.findUnique({
-                where: { id: offer.listingId }, select: { linkedListingId: true },
+                where: { id: offer.listingId },
+                select: { linkedListingId: true },
             });
-            if (source?.linkedListingId) {
-                // Shares the auction's lock so Retail acceptance and a provisional
-                // auction acceptance cannot both win the same vehicle.
-                await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${source.linkedListingId}, 0))::text`;
+            if (!source) throw new NotFoundException('Retail listing not found.');
+
+            // Seller acceptance of the dealer's auction bid serializes on the
+            // auction listing ID, not the Retail offer ID. For a converted
+            // SAME-ROW auction, linkedListingId is null; locking only a linked
+            // auction would leave this path entirely unprotected.
+            const auctionLockId = source.linkedListingId || offer.listingId;
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${auctionLockId}, 0))::text`;
+
+            const current = await tx.listing.findUnique({
+                where: { id: offer.listingId },
+                select: { linkedListingId: true, deletedAt: true },
+            });
+            if (!current || current.deletedAt || current.linkedListingId !== source.linkedListingId) {
+                throw new BadRequestException('The Retail listing changed while responding to this offer. Refresh and try again.');
             }
+
+            // A previous ENDED auction can remain on the *same* Retail row
+            // after staff approve it for Retail. That provisional dealer offer
+            // MUST be explicitly resolved by the seller first. The separate
+            // linked-auction path below retains its existing controlled
+            // Retail-win cancellation and bidder notification behaviour.
+            const unresolvedOwnAuction = await tx.auction.findFirst({
+                where: {
+                    listingId: offer.listingId,
+                    deletedAt: null,
+                    OR: [
+                        { provisionalOfferBidId: { not: null } },
+                        { winnerId: { not: null } },
+                        { wonAt: { not: null } },
+                        { status: { in: ['ACTIVE', 'SCHEDULED'] } },
+                    ],
+                },
+                select: { id: true },
+            });
+            if (unresolvedOwnAuction) {
+                throw new BadRequestException(
+                    'An auction or provisional dealer offer is still outstanding for this vehicle. Resolve the auction decision before accepting a Retail offer.',
+                );
+            }
+
             const reserved = await tx.listing.updateMany({
                 where: {
                     id: offer.listingId,

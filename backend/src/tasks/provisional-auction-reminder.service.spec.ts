@@ -23,14 +23,17 @@ describe('ProvisionalAuctionReminderService', () => {
                 findMany: jest.fn().mockResolvedValue([]),
                 findFirst: jest.fn().mockResolvedValue({ id: 'auction-1' }),
             },
-            notification: { findFirst: jest.fn().mockResolvedValue(null) },
+            notification: {
+                findFirst: jest.fn().mockResolvedValue(null),
+                findUnique: jest.fn().mockResolvedValue({ data: { emailAttempts: 1, emailStatus: 'retryable' } }),
+            },
             $queryRaw: jest.fn().mockResolvedValue([{ id: 'notice-1' }]),
             bid: { findUnique: jest.fn().mockResolvedValue({
                 amount: 6165, deletedAt: null, cancelledAt: null, archivedAt: null,
             }) },
             user: { findUnique: jest.fn().mockResolvedValue({
                 email: 'seller@example.com', firstName: 'Seller',
-            }) },
+            }), findMany: jest.fn().mockResolvedValue([]) },
         };
         notifications = {
             create: jest.fn().mockResolvedValue({ id: 'notice-1' }),
@@ -74,6 +77,35 @@ describe('ProvisionalAuctionReminderService', () => {
         prisma.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]); // retry lease expired
         await service.remindSellers(clock);
         expect(email.sendAuctionProvisionalOfferEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('escalates exhausted seller email retries to an administrator', async () => {
+        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
+        prisma.notification.findUnique.mockResolvedValue({
+            data: { emailAttempts: 6, emailStatus: 'retryable' },
+        });
+        prisma.user.findMany.mockResolvedValue([{ id: 'admin-1' }]);
+        prisma.$queryRaw.mockResolvedValue([]);
+        await service.remindSellers(clock);
+        expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
+        expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'admin-1', type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+            actionType: expect.stringMatching(/^PROVISIONAL_REMINDER_EMAIL_FAILED_72H_/),
+        }));
+    });
+
+    it('does not alert admins about resolved provisional bids', async () => {
+        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
+        prisma.notification.findUnique.mockResolvedValue({
+            data: { emailAttempts: 6, emailStatus: 'retryable' },
+        });
+        prisma.auction.findFirst.mockResolvedValue(null);
+        prisma.user.findMany.mockResolvedValue([{ id: 'admin-1' }]);
+        prisma.$queryRaw.mockResolvedValue([]);
+        await service.remindSellers(clock);
+        expect(notifications.create).not.toHaveBeenCalled();
     });
 
     it('does not send stale email if the provisional offer was resolved', async () => {
