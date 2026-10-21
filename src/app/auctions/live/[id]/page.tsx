@@ -2153,12 +2153,14 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                             {acceptError && <p role="alert" className="text-xs text-red-400">{acceptError}</p>}
                             {provisionalOfferPending && (
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Link href={'/dashboard/seller/auctions?listingId=' + auction.listingId}
-                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">Re-list in Auction</Link>
-                                    <Link href={auction.listing.linkedListingId
+                                    <Link href={auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE'
+                                        ? '/dashboard/seller/listings' : '/dashboard/seller/auctions?listingId=' + auction.listingId}
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">
+                                        {auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE' ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Link>
+                                    <Link href={auction.listing.linkedListingId || (auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE')
                                         ? '/dashboard/seller/listings'
                                         : '/sell?editId=' + auction.listingId + '&sellMode=retail'}
-                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">{auction.listing.linkedListingId ? 'Manage Live Retail' : 'List on Retail (£1)'}</Link>
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">{auction.listing.linkedListingId || (auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE') ? 'Manage Live Retail' : 'List on Retail (£1)'}</Link>
                                 </div>
                             )}
                         </div>
