@@ -46,6 +46,7 @@ describe('ListingsService', () => {
                 aggregate: jest.fn(),
                 update: jest.fn(),
                 updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+                findUniqueOrThrow: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'WITHDRAWN' }),
                 create: jest.fn(),
             },
             sale: {
@@ -73,6 +74,7 @@ describe('ListingsService', () => {
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: {
                 create: jest.fn(),
+                findFirst: jest.fn().mockResolvedValue(null),
                 findUnique: jest.fn(),
                 findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn(),
@@ -723,6 +725,39 @@ describe('ListingsService', () => {
     });
 
     describe('controlled sale completion', () => {
+        it('blocks manual Retail sale on the same listing as an outstanding provisional auction', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', price: 12000, linkedListingId: null, deletedAt: null,
+            });
+            prisma.auction.findFirst.mockResolvedValue({
+                id: 'auction-1', provisionalOfferBidId: 'bid-1', status: 'ENDED',
+            });
+            await expect(service.recordSale('listing-1', 'seller-1', { soldPrice: 11000 }))
+                .rejects.toThrow(/auction or provisional dealer offer is still outstanding/i);
+            expect(prisma.auction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({ listingId: { in: ['listing-1'] } }),
+            }));
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+            expect(prisma.sale.upsert).not.toHaveBeenCalled();
+        });
+
+        it('blocks manual Retail sale while a separately linked auction has an outstanding bid', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'retail-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', price: 12000, linkedListingId: 'auction-listing-1', deletedAt: null,
+            });
+            prisma.auction.findFirst.mockResolvedValue({
+                id: 'auction-1', provisionalOfferBidId: 'bid-1', status: 'ENDED',
+            });
+            await expect(service.recordSale('retail-1', 'seller-1', { soldPrice: 11000 }))
+                .rejects.toThrow(/outstanding/i);
+            expect(prisma.auction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({ listingId: { in: ['auction-listing-1', 'retail-1'] } }),
+            }));
+            expect(prisma.sale.upsert).not.toHaveBeenCalled();
+        });
+
         it('routes generic SOLD through recordSale and uses the accepted buyer/price', async () => {
             const active = {
                 id: 'listing-1',
@@ -734,6 +769,7 @@ describe('ListingsService', () => {
             };
             const sold = { ...active, status: 'SOLD' };
             prisma.listing.findUnique
+                .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(sold);
@@ -2162,6 +2198,31 @@ describe('ListingsService', () => {
     });
 
     describe('auction/listing lifecycle synchronization', () => {
+        it('blocks withdrawal of converted Retail listing while provisional auction bid is pending', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', deletedAt: null, price: 12000, linkedListingId: null,
+            });
+            prisma.auction.findFirst.mockResolvedValue({ id: 'auction-1' });
+            await expect(service.updateStatus('listing-1', 'seller-1', 'WITHDRAWN' as any))
+                .rejects.toThrow(/Resolve the outstanding auction/i);
+            expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+        });
+
+        it('allows Retail withdrawal after the seller has explicitly resolved the auction', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-1', sellerId: 'seller-1', type: 'CLASSIFIED',
+                status: 'ACTIVE', deletedAt: null, price: 12000, linkedListingId: null,
+            });
+            prisma.auction.findFirst.mockResolvedValue(null);
+            const result = await service.updateStatus('listing-1', 'seller-1', 'WITHDRAWN' as any);
+            expect(result.status).toBe('WITHDRAWN');
+            expect(prisma.listing.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+                where: expect.objectContaining({ id: 'listing-1', status: 'ACTIVE' }),
+                data: { status: 'WITHDRAWN', linkedListingId: null },
+            }));
+        });
+
         it('blocks generic withdrawal while an auction is already live', async () => {
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-1',

@@ -16,7 +16,8 @@ function setup(auction: any) {
         auction: { findFirst: jest.fn().mockResolvedValue(auction) },
         listing: {
             updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-            findUnique: jest.fn().mockResolvedValue({ ...retail, status: 'SOLD' }),
+            findUnique: jest.fn().mockResolvedValueOnce(retail)
+                .mockResolvedValue({ ...retail, status: 'SOLD' }),
         },
         offer: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
         sale: { upsert: jest.fn().mockResolvedValue({}) },
@@ -38,7 +39,7 @@ describe('manual retail sale while linked to an auction', () => {
     it('does not mark retail sold while the linked auction is active', async () => {
         const { service, tx } = setup({ status: 'ACTIVE', winnerId: null });
         await expect(service.recordSale('retail-1', 'seller-1', { soldPrice: 5000 }))
-            .rejects.toThrow(/still in a linked auction/i);
+            .rejects.toThrow(/auction or provisional dealer offer is still outstanding/i);
         expect(tx.$queryRaw).toHaveBeenCalled();
         expect(tx.listing.updateMany).not.toHaveBeenCalled();
         expect(tx.sale.upsert).not.toHaveBeenCalled();
@@ -53,6 +54,8 @@ describe('manual retail sale while linked to an auction', () => {
 
     it('allows a completed manual sale after its linked auction was cancelled', async () => {
         const { service, tx } = setup({ status: 'CANCELLED', winnerId: null, wonAt: null });
+        // The guarded query only returns ACTIVE/SCHEDULED, winner, or provisional auctions.
+        tx.auction.findFirst.mockResolvedValue(null);
         await service.recordSale('retail-1', 'seller-1', { soldPrice: 5000 });
         expect(tx.listing.updateMany).toHaveBeenCalledWith(expect.objectContaining({
             where: expect.objectContaining({ status: 'ACTIVE' }),

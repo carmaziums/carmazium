@@ -19,15 +19,24 @@ describe('ProvisionalAuctionReminderService', () => {
 
     beforeEach(() => {
         prisma = {
-            auction: { findMany: jest.fn().mockResolvedValue([]) },
-            bid: { findUnique: jest.fn().mockResolvedValue({ amount: 6165 }) },
-            user: { findUnique: jest.fn().mockResolvedValue({ email: 'seller@example.com', firstName: 'Seller' }) },
+            auction: {
+                findMany: jest.fn().mockResolvedValue([]),
+                findFirst: jest.fn().mockResolvedValue({ id: 'auction-1' }),
+            },
+            notification: { findFirst: jest.fn().mockResolvedValue(null) },
+            $queryRaw: jest.fn().mockResolvedValue([{ id: 'notice-1' }]),
+            bid: { findUnique: jest.fn().mockResolvedValue({
+                amount: 6165, deletedAt: null, cancelledAt: null, archivedAt: null,
+            }) },
+            user: { findUnique: jest.fn().mockResolvedValue({
+                email: 'seller@example.com', firstName: 'Seller',
+            }) },
         };
         notifications = {
             create: jest.fn().mockResolvedValue({ id: 'notice-1' }),
             shouldSendEmail: jest.fn().mockResolvedValue(true),
         };
-        email = { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue(undefined) };
+        email = { sendAuctionProvisionalOfferEmail: jest.fn().mockResolvedValue({ id: 'provider-1' }) };
         service = new ProvisionalAuctionReminderService(prisma, notifications, email);
     });
 
@@ -41,22 +50,40 @@ describe('ProvisionalAuctionReminderService', () => {
         expect(email.sendAuctionProvisionalOfferEmail).toHaveBeenCalledWith(expect.objectContaining({
             amount: 6165, ended: true, retailAlreadyLive: true,
         }));
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(2); // claim then mark sent
     });
 
-    it('uses 72h reminder for aged offers and never sends twice after a duplicate claim', async () => {
+    it('does not duplicate an existing notification and still sends its unattempted email', async () => {
         prisma.auction.findMany.mockResolvedValue([auction(4)]);
-        notifications.create.mockRejectedValueOnce({ code: 'P2002' });
+        prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
         await service.remindSellers(clock);
-        expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
-        notifications.create.mockResolvedValue({ id: 'notice-1' });
-        await service.remindSellers(clock);
-        expect(notifications.create).toHaveBeenLastCalledWith(expect.objectContaining({
-            actionType: expect.stringMatching(/^PROVISIONAL_REMINDER_72H_/),
-        }));
+        expect(notifications.create).not.toHaveBeenCalled();
         expect(email.sendAuctionProvisionalOfferEmail).toHaveBeenCalledTimes(1);
     });
 
-    it('does nothing when no pending auctions exist', async () => {
+    it('retries a previously failed provider dispatch but never sends if another machine holds the lease', async () => {
+        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
+        email.sendAuctionProvisionalOfferEmail
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({ id: 'provider-2' });
+        await service.remindSellers(clock);
+        prisma.$queryRaw.mockResolvedValueOnce([]); // another machine currently holds lease
+        await service.remindSellers(clock);
+        expect(email.sendAuctionProvisionalOfferEmail).toHaveBeenCalledTimes(1);
+        prisma.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]); // retry lease expired
+        await service.remindSellers(clock);
+        expect(email.sendAuctionProvisionalOfferEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not send stale email if the provisional offer was resolved', async () => {
+        prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
+        prisma.auction.findFirst.mockResolvedValue(null);
+        await service.remindSellers(clock);
+        expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when there are no pending auctions', async () => {
         await service.remindSellers(clock);
         expect(notifications.create).not.toHaveBeenCalled();
     });
