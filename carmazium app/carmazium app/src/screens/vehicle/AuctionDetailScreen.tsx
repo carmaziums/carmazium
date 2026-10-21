@@ -1025,7 +1025,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const reserveMet = hasRealBids && currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const provisionalPending = isEnded && !auction?.winnerId && !!auction?.provisionalOfferBidId
     && auction.provisionalOfferBidId === bidHistory[0]?.id
-    && auction?.listing?.status === 'DRAFT' && hasRealBids && currentBid > 0 && !reserveMet;
+    && (auction?.listing?.status === 'DRAFT' || (auction?.listing?.status === 'ACTIVE' && auction?.listing?.type === 'CLASSIFIED')) && hasRealBids && currentBid > 0 && !reserveMet;
   const quickBidAmounts = hasRealBids
     ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
     : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
