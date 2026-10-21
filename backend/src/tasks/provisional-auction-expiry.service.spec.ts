@@ -26,7 +26,9 @@ describe('ProvisionalAuctionExpiryService', () => {
                 updateMany: jest.fn().mockResolvedValue({ count: 2 }),
                 findFirst: jest.fn().mockResolvedValue(null),
                 findMany: jest.fn().mockResolvedValue([]),
+                findUnique: jest.fn().mockResolvedValue(null),
             },
+            user: { findMany: jest.fn().mockResolvedValue([]) },
             $queryRaw: jest.fn().mockResolvedValue([]),
             $transaction: jest.fn(async (fn: any) => fn(db)),
         };
@@ -123,6 +125,30 @@ describe('ProvisionalAuctionExpiryService', () => {
             .mockResolvedValueOnce([]);
         await service.expireOffers(now);
         expect(email.sendAuctionProvisionalExpiredEmail).not.toHaveBeenCalled();
+    });
+
+    it('alerts an administrator only when all six email attempts have failed', async () => {
+        db.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]);
+        db.notification.findUnique.mockResolvedValue({
+            entityId: 'auction-1',
+            data: { emailStatus: 'failed', emailAttempts: 6 },
+        });
+        db.user.findMany.mockResolvedValue([{ id: 'admin-1' }]);
+        await (service as any).completeEmailAttempt('notice-1', 'lease-1', 'retryable', 'SMTP failed');
+        expect(notices.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'admin-1', type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+            actionType: 'PROVISIONAL_REMINDER_EXPIRY_EMAIL_FAILED_notice-1',
+        }));
+    });
+
+    it('does not alert an administrator while expiry email retries remain available', async () => {
+        db.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]);
+        db.notification.findUnique.mockResolvedValue({
+            entityId: 'auction-1', data: { emailStatus: 'retryable', emailAttempts: 2 },
+        });
+        await (service as any).completeEmailAttempt('notice-1', 'lease-1', 'retryable', 'SMTP failed');
+        expect(notices.create).not.toHaveBeenCalled();
+        expect(db.user.findMany).not.toHaveBeenCalled();
     });
 
     it('does not duplicate persisted seller or buyer expiry notices', async () => {
