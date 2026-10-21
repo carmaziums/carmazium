@@ -77,6 +77,55 @@ export class WatchlistController {
         return new PaginatedResponse(result.data, result.total, result.page, result.limit);
     }
 
+    @Get('auctions/check/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @ApiOperation({ summary: 'Check auction shortlist status (verified dealers)' })
+    async checkAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ) {
+        const inWatchlist = await this.watchlistService.isInAuctionShortlist(
+            user.id, listingId,
+        );
+        return new StandardResponse({ inWatchlist });
+    }
+
+    /**
+     * Save an auction to the verified-dealer shortlist.
+     * Deliberately separate from generic Saved Cars so a normal buyer cannot
+     * turn a known auction listing ID into trade inventory access.
+     */
+    @Post('auctions/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Save auction to shortlist (verified dealers)' })
+    @ApiParam({ name: 'listingId', description: 'Auction listing ID to shortlist' })
+    async addAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ) {
+        const item = await this.watchlistService.addAuction(user.id, listingId);
+        return new StandardResponse(item);
+    }
+
+    /**
+     * Remove an auction from the verified-dealer shortlist.
+     */
+    @Delete('auctions/:listingId')
+    @UseGuards(SessionAuthGuard, VerifiedDealerGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Remove auction from shortlist (verified dealers)' })
+    @ApiParam({ name: 'listingId', description: 'Auction listing ID to remove' })
+    async removeAuction(
+        @CurrentUser() user: any,
+        @Param('listingId') listingId: string,
+    ): Promise<void> {
+        await this.watchlistService.removeAuction(user.id, listingId);
+    }
+
     /**
      * Add listing to watchlist.
      */

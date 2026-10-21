@@ -10,6 +10,7 @@ const detail = read("src/app/auctions/live/[id]/page.tsx")
 const service = read("backend/src/watchlist/watchlist.service.ts")
 const controller = read("backend/src/watchlist/watchlist.controller.ts")
 const button = read("src/components/features/WishlistButton.tsx")
+const shortlistApi = read("src/lib/auctionShortlistApi.ts")
 
 test("dealer dashboard links to the saved auction tab", () => {
     assert.match(dashboard, /href="\/dashboard\/dealer\/auctions\/shortlisted"/)
@@ -22,11 +23,17 @@ test("live browsing and the auction room offer explicit shortlist controls", () 
     assert.match(button, /Shortlist for later bidding/)
 })
 
-test("shortlists reuse the server-backed account watchlist", () => {
-    assert.match(button, /addToWatchlist\(listingId\)/)
-    assert.match(service, /where:\s*\{?\s*userId/)
-    assert.match(controller, /@Get\('auctions'\)/)
-    assert.match(controller, /@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/)
+test("auction shortlist uses explicit verified-dealer endpoints, never generic retail mutations", () => {
+    assert.match(button, /isShortlist[\s\S]*addAuctionToShortlist\(listingId\)/)
+    assert.match(button, /isShortlist[\s\S]*removeAuctionFromShortlist\(listingId\)/)
+    assert.match(button, /isAuctionShortlisted\(listingId\)/)
+    assert.match(shortlistApi, /\/watchlist\/auctions\/check\//)
+    assert.match(shortlistApi, /\/watchlist\/auctions\/"/)
+    assert.match(controller, /@Get\('auctions\/check\/:listingId'\)[\s\S]*@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/)
+    assert.match(controller, /@Post\('auctions\/:listingId'\)[\s\S]*@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/)
+    assert.match(controller, /@Delete\('auctions\/:listingId'\)[\s\S]*@UseGuards\(SessionAuthGuard, VerifiedDealerGuard\)/)
+    assert.match(service, /type: ListingType\.CLASSIFIED/)
+    assert.match(service, /type: ListingType\.AUCTION/)
 })
 
 test("live saved auctions are filtered by authoritative deadline and publication status", () => {
@@ -38,7 +45,7 @@ test("live saved auctions are filtered by authoritative deadline and publication
 
 test("ended saved vehicles stay removable and never show an active bid CTA", () => {
     assert.match(shortlist, /All Saved/)
-    assert.match(shortlist, /removeFromWatchlist\(listingId\)/)
+    assert.match(shortlist, /removeAuctionFromShortlist\(listingId\)/)
     assert.match(shortlist, /ENDED \/ UNAVAILABLE/)
 })
 
