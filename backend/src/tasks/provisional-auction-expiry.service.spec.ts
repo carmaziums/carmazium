@@ -5,6 +5,7 @@ describe('ProvisionalAuctionExpiryService', () => {
     const offeredAt = new Date(now.getTime() - 72 * 60 * 60 * 1000);
     let db: any;
     let notices: any;
+    let email: any;
     let service: ProvisionalAuctionExpiryService;
     beforeEach(() => {
         db = {
@@ -24,12 +25,14 @@ describe('ProvisionalAuctionExpiryService', () => {
             notification: {
                 updateMany: jest.fn().mockResolvedValue({ count: 2 }),
                 findFirst: jest.fn().mockResolvedValue(null),
+                findMany: jest.fn().mockResolvedValue([]),
             },
-            $queryRaw: jest.fn().mockResolvedValue([{ locked: true }]),
+            $queryRaw: jest.fn().mockResolvedValue([]),
             $transaction: jest.fn(async (fn: any) => fn(db)),
         };
         notices = { create: jest.fn().mockResolvedValue({ id: 'notice-1' }) };
-        service = new ProvisionalAuctionExpiryService(db, notices);
+        email = { sendAuctionProvisionalExpiredEmail: jest.fn().mockResolvedValue({ id: 'provider-1' }) };
+        service = new ProvisionalAuctionExpiryService(db, notices, email);
     });
 
     it('expires offer precisely at 72 hours, retires seller actions and notifies both parties', async () => {
@@ -38,10 +41,12 @@ describe('ProvisionalAuctionExpiryService', () => {
             .mockResolvedValueOnce([{
                 id: 'auction-1', listingId: 'listing-1',
                 provisionalExpiredBidId: 'bid-1', provisionalExpiredAt: now,
+                provisionalExpiryDeadlineAt: offeredAt,
+                provisionalExpiryNotifiedAt: null,
                 listing: { title: 'Ford Kuga', sellerId: 'seller-1' },
             }]);
         await service.expireOffers(now);
-        expect(db.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(db.$queryRaw).toHaveBeenCalledTimes(2);
         expect(db.auction.updateMany).toHaveBeenCalledWith(expect.objectContaining({
             where: expect.objectContaining({ provisionalOfferBidId: 'bid-1', status: 'ENDED', winnerId: null }),
             data: expect.objectContaining({
