@@ -846,7 +846,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     : 'Accepting the current highest offer will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.'}
                             </p>
 
-                            {isEnded && provisionalOfferOlderThan72h && (
+                            {isEnded && (provisionalOfferOlderThan72h || auction.provisionalExpiredAt) && (
                                 <p role="status" className="text-amber-300 text-xs leading-relaxed">
                                     This provisional bid expired after 72 hours. It can no longer be accepted and no sale has occurred.
                                 </p>
