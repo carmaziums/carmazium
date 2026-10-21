@@ -1287,6 +1287,7 @@ export class AuctionsService {
                             sellerId: true,
                             status: true,
                             type: true,
+                            deletedAt: true,
                             linkedListingId: true,
                             year: true,
                             make: true,
@@ -1296,8 +1297,8 @@ export class AuctionsService {
                 },
             });
 
-            if (!auction || auction.deletedAt) {
-                throw new NotFoundException('Auction not found');
+            if (!auction || auction.deletedAt || !auction.listing || auction.listing.deletedAt) {
+                throw new NotFoundException('Auction or listing not found');
             }
             if (auction.listing.sellerId !== businessSellerId) {
                 throw new ForbiddenException('You do not own this auction');
@@ -1362,6 +1363,8 @@ export class AuctionsService {
                     winnerId,
                     winningBidAmount: bid.amount,
                     wonAt,
+                    provisionalOfferBidId: null,
+                    provisionalOfferedAt: null,
                     buyerFeeReminder24SentAt: null,
                     buyerFeeReminder6SentAt: null,
                     buyItNowPendingBuyerId: null,
@@ -1443,12 +1446,26 @@ export class AuctionsService {
             reserveMet: true,
         };
         this.auctionGateway.broadcastAuctionEnd(auctionId, endPayload);
+        await this.retireSellerProvisionalNotifications(accepted.auction.listing.sellerId!, auctionId);
         await this.notifyAuctionEnd(
             accepted.auction,
             accepted.winnerId,
             accepted.winningAmount,
             true,
         );
+    }
+
+    /** Clear outdated seller prompts without erasing notification history. */
+    private async retireSellerProvisionalNotifications(sellerId: string, auctionId: string): Promise<void> {
+        await this.prisma.notification.updateMany({
+            where: { userId: sellerId, entityId: auctionId, isRead: false,
+                OR: [
+                    { actionType: 'ACCEPT_OR_RELIST' },
+                    { type: 'AUCTION_PROVISIONAL_REMINDER' },
+                ],
+            },
+            data: { isRead: true },
+        }).catch(error => this.logger.error('Could not retire seller provisional notifications', error));
     }
 
     /** A seller's explicit rejection retires only the recorded provisional offer.
@@ -1465,12 +1482,14 @@ export class AuctionsService {
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${auctionRef.listingId}, 0))::text`;
             const auction = await tx.auction.findUnique({
                 where: { id: auctionId },
-                include: { listing: { select: { sellerId: true, title: true, deletedAt: true } } },
+                include: { listing: { select: { sellerId: true, title: true, status: true, type: true, deletedAt: true } } },
             });
             if (!auction || auction.deletedAt || auction.listing.deletedAt)
                 throw new NotFoundException('Auction not found');
             if (auction.listing.sellerId !== sellerId) throw new ForbiddenException('You do not own this auction');
-            if (auction.status !== 'ENDED' || auction.winnerId || auction.wonAt || !auction.provisionalOfferBidId)
+            if (auction.status !== 'ENDED' || auction.winnerId || auction.wonAt || !auction.provisionalOfferBidId
+                || !(auction.listing.status === 'DRAFT'
+                    || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')))
                 throw new BadRequestException('There is no pending provisional offer to decline');
             const bid = await tx.bid.findUnique({
                 where: { id: auction.provisionalOfferBidId }, select: { bidderId: true, amount: true },
@@ -1481,10 +1500,7 @@ export class AuctionsService {
             return { bidderId: bid?.bidderId, amount: Number(bid?.amount || 0), title: auction.listing.title };
         });
 
-        await this.prisma.notification.updateMany({
-            where: { userId: sellerId, entityId: auctionId, actionType: 'ACCEPT_OR_RELIST', isRead: false },
-            data: { isRead: true },
-        }).catch(error => this.logger.error('Could not mark seller decision notification read', error));
+        await this.retireSellerProvisionalNotifications(sellerId, auctionId);
         if (declined.bidderId) {
             await this.notificationsService.create({
                 userId: declined.bidderId, type: 'AUCTION_PROVISIONAL_DECLINED',
