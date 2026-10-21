@@ -132,6 +132,14 @@ export function AuctionResultsModal({
                                 <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageLabel(getSellerAuctionStage(auction))}</p>
                             </div>
                         </div>
+                    ) : olderOfferNeedsReview && (auction.provisionalExpiredAt || auction.provisionalOfferBidId) ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-500/10 border border-slate-500/20">
+                            <XCircle size={20} className="text-[var(--text-muted)] shrink-0" />
+                            <div>
+                                <p className="font-bold text-[var(--text-secondary)] text-sm">Provisional offer expired after 72 hours</p>
+                                <p className="text-xs text-[var(--text-muted)]">The earlier offer cannot be accepted. No sale or buyer fee is due.</p>
+                            </div>
+                        </div>
                     ) : provisionalPending ? (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <Gavel size={20} className="text-amber-400 shrink-0" />
