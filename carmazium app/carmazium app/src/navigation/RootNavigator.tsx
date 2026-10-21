@@ -6,7 +6,7 @@ import { AuthNavigator } from './AuthNavigator';
 import { MainStackNavigator, MainStackParamList } from './MainStackNavigator';
 import { PostSignupOnboardingScreen } from '../screens/auth/PostSignupOnboardingScreen';
 import { VerifyEmailScreen } from '../screens/auth/VerifyEmailScreen';
-import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { navigationRef } from '../lib/navigationRef';
 
 export type RootStackParamList = {
@@ -19,6 +19,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
+  const { palette } = useNativeAppearance();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
   const pendingEmailVerification = useAuthStore((s) => s.pendingEmailVerification);
@@ -56,7 +57,7 @@ export const RootNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         animation: 'fade',
-        contentStyle: { backgroundColor: Colors.bgPrimary },
+        contentStyle: { backgroundColor: palette.bgBody },
       }}
     >
       {pendingEmailVerification ? (
