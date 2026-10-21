@@ -68,6 +68,21 @@ export class ProvisionalAuctionReminderService {
             const actionType = 'PROVISIONAL_REMINDER_' + stage + 'H_' +
                 auction.provisionalOfferedAt.getTime();
 
+            // The auction can be resolved between the hourly candidate query
+            // and this loop. Never create a fresh action-needed notification
+            // for an offer that is already accepted, declined or withdrawn.
+            const stillPending = await this.prisma.auction.findFirst({
+                where: { id: auction.id, status: 'ENDED', deletedAt: null,
+                    winnerId: null, wonAt: null,
+                    provisionalOfferBidId: auction.provisionalOfferBidId,
+                    provisionalOfferedAt: auction.provisionalOfferedAt,
+                    listing: { deletedAt: null, sellerId: auction.listing.sellerId,
+                        OR: [{ status: 'DRAFT' }, { status: 'ACTIVE', type: 'CLASSIFIED' }] },
+                },
+                select: { id: true },
+            });
+            if (!stillPending) continue;
+
             // It is possible for the notification row to be persisted and the
             // push service to fail. Look it up again rather than losing email
             // retries just because the push notification could not be sent.
