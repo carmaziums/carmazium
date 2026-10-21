@@ -1290,6 +1290,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
     it('allows a recorded provisional bid to be accepted after the listing moves to Retail', async () => {
         prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
             status: 'ENDED', winnerId: null, wonAt: null, provisionalOfferBidId: 'bid-current',
+            provisionalOfferedAt: new Date(Date.now() - 60 * 60_000),
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
             listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', type: 'CLASSIFIED', linkedListingId: null },
         });
