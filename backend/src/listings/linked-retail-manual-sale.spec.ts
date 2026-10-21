@@ -54,6 +54,8 @@ describe('manual retail sale while linked to an auction', () => {
 
     it('allows a completed manual sale after its linked auction was cancelled', async () => {
         const { service, tx } = setup({ status: 'CANCELLED', winnerId: null, wonAt: null });
+        // The guarded query only returns ACTIVE/SCHEDULED, winner, or provisional auctions.
+        tx.auction.findFirst.mockResolvedValue(null);
         await service.recordSale('retail-1', 'seller-1', { soldPrice: 5000 });
         expect(tx.listing.updateMany).toHaveBeenCalledWith(expect.objectContaining({
             where: expect.objectContaining({ status: 'ACTIVE' }),
