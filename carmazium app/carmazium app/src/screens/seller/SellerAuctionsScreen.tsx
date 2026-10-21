@@ -93,6 +93,7 @@ interface AuctionItem {
   winningBidAmount?: number | null;
   provisionalOfferBidId?: string | null;
   provisionalOfferedAt?: string | null;
+  provisionalExpiredAt?: string | null;
   buyerFeePaid?: boolean;
   sellerFundsConfirmedAt?: string | null;
   buyerRefusedAt?: string | null;
@@ -145,6 +146,8 @@ interface EligibleListing {
 function provisionalPending(item: AuctionItem): boolean {
   const amount = Number(item.listing.bids?.[0]?.amount ?? 0);
   return item.status === 'ENDED' && !item.winnerId && !!item.provisionalOfferBidId
+    && !!item.provisionalOfferedAt
+    && Date.now() < new Date(item.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000
     && (item.listing.status === 'DRAFT' || (item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED')) && amount > 0 && amount < Number(item.reservePrice);
 }
 
@@ -1751,10 +1754,10 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               </View>
             )}
 
-            {provisionalPending(resultsAuction) && resultsAuction.provisionalOfferedAt
-              && Date.now() - new Date(resultsAuction.provisionalOfferedAt).getTime() > 72 * 60 * 60 * 1000 && (
+            {(!!resultsAuction.provisionalExpiredAt || (!!resultsAuction.provisionalOfferedAt
+              && Date.now() >= new Date(resultsAuction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000)) && (
                 <Text style={[styles.resultsBannerSub, { color: Colors.warning }]}>
-                  This offer is over 72 hours old. The buyer may no longer be available. No automatic expiry applies; accepting still confirms the sale.
+                  This provisional offer expired after 72 hours and can no longer be accepted. No auction sale occurred.
                 </Text>
               )}
 
