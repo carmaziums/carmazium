@@ -34,7 +34,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
-import { submitHandoverProof } from '../../lib/auctionApi';
+import { submitHandoverProof, declineProvisionalOffer } from '../../lib/auctionApi';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
 import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
@@ -1825,6 +1825,19 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
               ) : provisionalPending(resultsAuction) ? (
                 <View style={{ flex: 1, gap: 8 }}>
+                  <TouchableOpacity style={styles.resultsPrimaryBtn} onPress={() => Alert.alert(
+                    'Decline provisional offer?',
+                    'The bidder will be notified and no sale will be created.',
+                    [{ text: 'Cancel', style: 'cancel' }, { text: 'Decline', style: 'destructive', onPress: async () => {
+                      try {
+                        await declineProvisionalOffer(resultsAuction.id);
+                        setResultsAuction(null);
+                        await fetchAuctions(true);
+                      } catch (error: any) { Alert.alert('Could not decline', error?.message || 'Please try again.'); }
+                    } }],
+                  )}>
+                    <Text style={styles.resultsPrimaryBtnText}>Decline provisional offer</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
                     onPress={() => { const chosen = resultsAuction; setResultsAuction(null); handleTap(chosen); }}>
                     <Text style={styles.resultsPrimaryBtnText}>Review & Accept Offer</Text>
