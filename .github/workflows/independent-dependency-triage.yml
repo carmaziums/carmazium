@@ -1,0 +1,86 @@
+name: Independent Dependency Security Triage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/independent-dependency-triage.yml'
+      - 'scripts/security-advisory-report.mjs'
+      - 'backend/package*.json'
+      - 'package*.json'
+      - 'carmazium app/carmazium app/package*.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audited-runtime-dependencies:
+    name: Audit ${{ matrix.name }} runtime lockfile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            directory: backend
+          - name: web
+            directory: .
+          - name: native
+            directory: carmazium app/carmazium app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Inventory current production dependency advisories (never modifies lockfiles)
+        shell: bash
+        env:
+          TARGET_DIR: ${{ matrix.directory }}
+          PROJECT: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          temp="$(mktemp)"
+          # audit exits 1 when vulnerabilities exist; malformed/unavailable
+          # results are rejected by the parser below.
+          (cd "$TARGET_DIR" && npm audit --package-lock-only --omit=dev --json > "$temp") || true
+          node scripts/security-advisory-report.mjs "$temp" "$PROJECT"
+          rm -f "$temp"
+      - name: Simulate safe in-range fixes in this disposable runner only
+        shell: bash
+        env:
+          TARGET_DIR: ${{ matrix.directory }}
+          PROJECT: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          # Intentional: no --force, no production changes, no git push.
+          # This identifies the safe subset; the actual fix PR requires
+          # reproducible committed lockfiles and all application tests.
+          (cd "$TARGET_DIR" && npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund > /dev/null 2>&1) || true
+          after="$(mktemp)"
+          (cd "$TARGET_DIR" && npm audit --package-lock-only --omit=dev --json > "$after") || true
+          node "$GITHUB_WORKSPACE/scripts/security-advisory-report.mjs" "$after" "$PROJECT-after-nonbreaking-simulation" \
+            | grep -E '^SECURITY_AUDIT_DETAIL |^::warning::' \
+            | sed -E 's/,"highOrCriticalPackages":\[.*\],"state":/,"highOrCriticalPackages":"OMITTED_IN_SIMULATION","state":/'
+          node -e '
+            const fs = require("fs");
+            const [file, project] = process.argv.slice(1);
+            const report = JSON.parse(fs.readFileSync(file, "utf8"));
+            console.log("SECURITY_SIM_REMAINING_PACKAGE_NAMES " + JSON.stringify({
+              project,
+              remaining: Object.entries(report.vulnerabilities || {})
+                .filter(([, v]) => ["critical","high"].includes(v.severity))
+                .map(([name, v]) => ({name, severity:v.severity, direct: !!v.isDirect,
+                  fix: v.fixAvailable === false ? "NONE"
+                    : v.fixAvailable === true ? "IN_RANGE"
+                    : v.fixAvailable && typeof v.fixAvailable === "object"
+                      ? {target:v.fixAvailable.version, semverMajor:!!v.fixAvailable.isSemVerMajor}
+                      : "REVIEW"}))
+                .sort((a,b) => a.severity.localeCompare(b.severity)||a.name.localeCompare(b.name))
+            }));
+          ' "$after" "$PROJECT"
+          # Only show the count of changed manifests; no modified file is
+          # ever pushed, uploaded or merged by this workflow.
+          echo "SIMULATED_MANIFEST_DIFF for $PROJECT:"
+          git diff --numstat -- "$TARGET_DIR/package.json" "$TARGET_DIR/package-lock.json" | head -n 4 || true
+          rm -f "$after"
