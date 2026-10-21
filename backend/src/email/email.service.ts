@@ -853,6 +853,28 @@ export class EmailService {
     }
 
 
+    /**
+     * A separate transactional expiry email for both parties. Returning an
+     * email-provider ID confirms submission, not delivery to the inbox.
+     * Called by the leased retry worker, never directly by the expiry cron.
+     */
+    async sendAuctionProvisionalExpiredEmail(options: {
+        toEmail: string; subject: string; message: string; auctionId: string;
+    }) {
+        const escape = (value: string) => String(value).replace(/[&<>"']/g, char =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string,string>)[char]);
+        const url = this.frontendUrl + '/auctions/live/' + encodeURIComponent(options.auctionId);
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: options.subject + ' — CarMazium',
+            bodyHtml: '<h1>' + escape(options.subject) + '</h1>'
+                + '<p>' + escape(options.message) + '</p>'
+                + '<p>Expired provisional offers cannot be accepted after 72 hours.'
+                + ' No winning sale or buyer fee is created by an expiry.</p>'
+                + '<p><a href="' + url + '">View the auction outcome</a></p>',
+        });
+    }
+
     /** Notify the provisional bidder that the seller explicitly declined. */
     async sendAuctionProvisionalDeclinedBuyerEmail(options: {
         toEmail: string; vehicleTitle: string; amount: number; auctionId: string;

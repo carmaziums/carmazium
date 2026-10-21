@@ -5,6 +5,7 @@ describe('ProvisionalAuctionExpiryService', () => {
     const offeredAt = new Date(now.getTime() - 72 * 60 * 60 * 1000);
     let db: any;
     let notices: any;
+    let email: any;
     let service: ProvisionalAuctionExpiryService;
     beforeEach(() => {
         db = {
@@ -24,12 +25,17 @@ describe('ProvisionalAuctionExpiryService', () => {
             notification: {
                 updateMany: jest.fn().mockResolvedValue({ count: 2 }),
                 findFirst: jest.fn().mockResolvedValue(null),
+                findMany: jest.fn().mockResolvedValue([]),
+                findUnique: jest.fn().mockResolvedValue(null),
             },
-            $queryRaw: jest.fn().mockResolvedValue([{ locked: true }]),
+            user: { findMany: jest.fn().mockResolvedValue([]) },
+            $queryRaw: jest.fn().mockResolvedValue([]),
             $transaction: jest.fn(async (fn: any) => fn(db)),
         };
-        notices = { create: jest.fn().mockResolvedValue({ id: 'notice-1' }) };
-        service = new ProvisionalAuctionExpiryService(db, notices);
+        notices = { create: jest.fn().mockResolvedValue({ id: 'notice-1' }),
+            shouldSendEmail: jest.fn().mockResolvedValue(true) };
+        email = { sendAuctionProvisionalExpiredEmail: jest.fn().mockResolvedValue({ id: 'provider-1' }) };
+        service = new ProvisionalAuctionExpiryService(db, notices, email);
     });
 
     it('expires offer precisely at 72 hours, retires seller actions and notifies both parties', async () => {
@@ -38,10 +44,12 @@ describe('ProvisionalAuctionExpiryService', () => {
             .mockResolvedValueOnce([{
                 id: 'auction-1', listingId: 'listing-1',
                 provisionalExpiredBidId: 'bid-1', provisionalExpiredAt: now,
+                provisionalExpiryDeadlineAt: now,
+                provisionalExpiryNotifiedAt: null,
                 listing: { title: 'Ford Kuga', sellerId: 'seller-1' },
             }]);
         await service.expireOffers(now);
-        expect(db.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(db.$queryRaw).toHaveBeenCalledTimes(2);
         expect(db.auction.updateMany).toHaveBeenCalledWith(expect.objectContaining({
             where: expect.objectContaining({ provisionalOfferBidId: 'bid-1', status: 'ENDED', winnerId: null }),
             data: expect.objectContaining({
@@ -85,6 +93,62 @@ describe('ProvisionalAuctionExpiryService', () => {
         });
         await service.expireOffers(now);
         expect(db.auction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('sends tracked email to each recipient only after its lease is claimed', async () => {
+        db.notification.findMany.mockResolvedValue([
+            { id: 'notice-seller', userId: 'seller-1', entityId: 'auction-1',
+                title: 'Offer expired', message: 'Seller message',
+                user: { email: 'seller@example.com' } },
+            { id: 'notice-bidder', userId: 'buyer-1', entityId: 'auction-1',
+                title: 'Bid expired', message: 'Bidder message',
+                user: { email: 'buyer@example.com' } },
+        ]);
+        db.$queryRaw.mockResolvedValueOnce([
+            { id: 'notice-seller' }, { id: 'notice-bidder' },
+        ]).mockResolvedValue([{ id: 'claimed' }]);
+        await service.expireOffers(now);
+        expect(email.sendAuctionProvisionalExpiredEmail).toHaveBeenCalledTimes(2);
+        expect(email.sendAuctionProvisionalExpiredEmail).toHaveBeenCalledWith(expect.objectContaining({
+            toEmail: 'buyer@example.com', auctionId: 'auction-1',
+        }));
+        expect(db.$queryRaw).toHaveBeenCalledTimes(5);
+    });
+
+    it('does not send duplicate email when another Fly worker owns the lease', async () => {
+        db.notification.findMany.mockResolvedValue([{
+            id: 'notice-1', userId: 'seller-1', entityId: 'auction-1',
+            title: 'Offer expired', message: 'Seller message',
+            user: { email: 'seller@example.com' },
+        }]);
+        db.$queryRaw.mockResolvedValueOnce([{ id: 'notice-1' }])
+            .mockResolvedValueOnce([]);
+        await service.expireOffers(now);
+        expect(email.sendAuctionProvisionalExpiredEmail).not.toHaveBeenCalled();
+    });
+
+    it('alerts an administrator only when all six email attempts have failed', async () => {
+        db.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]);
+        db.notification.findUnique.mockResolvedValue({
+            entityId: 'auction-1',
+            data: { emailStatus: 'failed', emailAttempts: 6 },
+        });
+        db.user.findMany.mockResolvedValue([{ id: 'admin-1' }]);
+        await (service as any).completeEmailAttempt('notice-1', 'lease-1', 'retryable', 'SMTP failed');
+        expect(notices.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'admin-1', type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+            actionType: 'PROVISIONAL_REMINDER_EXPIRY_EMAIL_FAILED_notice-1',
+        }));
+    });
+
+    it('does not alert an administrator while expiry email retries remain available', async () => {
+        db.$queryRaw.mockResolvedValue([{ id: 'notice-1' }]);
+        db.notification.findUnique.mockResolvedValue({
+            entityId: 'auction-1', data: { emailStatus: 'retryable', emailAttempts: 2 },
+        });
+        await (service as any).completeEmailAttempt('notice-1', 'lease-1', 'retryable', 'SMTP failed');
+        expect(notices.create).not.toHaveBeenCalled();
+        expect(db.user.findMany).not.toHaveBeenCalled();
     });
 
     it('does not duplicate persisted seller or buyer expiry notices', async () => {

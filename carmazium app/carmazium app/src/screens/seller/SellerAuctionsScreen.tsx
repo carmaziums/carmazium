@@ -1746,10 +1746,18 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
               <View style={[styles.resultsBanner, { backgroundColor: Colors.whiteAlpha04, borderColor: Colors.whiteAlpha10 }]}>
                 <Ionicons name="close-circle-outline" size={20} color={Colors.textMuted} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.resultsBannerTitle, { color: provisionalPending(resultsAuction) ? Colors.warning : Colors.textSecondary }]}>{provisionalPending(resultsAuction) ? 'Provisionally Sold — Your Decision' : 'No Winner'}</Text>
+                  <Text style={[styles.resultsBannerTitle, { color: provisionalPending(resultsAuction) ? Colors.warning : Colors.textSecondary }]}>{provisionalPending(resultsAuction)
+                      ? 'Provisionally Sold — Your Decision'
+                      : (resultsAuction.provisionalExpiredAt || (resultsAuction.provisionalOfferedAt
+                          && Date.now() >= new Date(resultsAuction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000))
+                          ? 'Provisional Offer Expired'
+                          : 'No Winner'}</Text>
                   <Text style={styles.resultsBannerSub}>{provisionalPending(resultsAuction)
                     ? `Highest offer £${Number(resultsAuction.listing.bids?.[0]?.amount).toLocaleString('en-GB')}. Accept, re-list in auction or list on Retail.`
-                    : 'Reserve price not met or no bids placed'}</Text>
+                    : (resultsAuction.provisionalExpiredAt || (resultsAuction.provisionalOfferedAt
+                        && Date.now() >= new Date(resultsAuction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000))
+                      ? 'The 72-hour decision window ended without a sale.'
+                      : 'Reserve price not met or no bids placed'}</Text>
                 </View>
               </View>
             )}
