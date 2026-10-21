@@ -1036,6 +1036,10 @@ model Auction {
   // Historical ended auctions remain ineligible.
   provisionalOfferBidId   String?
   provisionalOfferedAt    DateTime?
+  // Retain the expired bidder and outcome for audit and buyer-facing status.
+  // Expiry does not create a winner, Sale or buyer-fee obligation.
+  provisionalExpiredBidId String?
+  provisionalExpiredAt    DateTime?
   buyerFeePaid            Boolean   @default(false)
   buyerFeeTransactionId   String?
   buyerFeeReminder24SentAt DateTime?
