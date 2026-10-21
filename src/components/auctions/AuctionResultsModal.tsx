@@ -7,7 +7,7 @@ import {
     X, BarChart2, Trophy, XCircle, Eye, MessageSquare, Gavel, Loader2,
     Lightbulb, Gauge, Fuel, Cog,
 } from "lucide-react"
-import { getBidCount, getCurrentBid, type Auction } from "@/lib/auctionApi"
+import { getBidCount, getCurrentBid, declineProvisionalOffer, type Auction } from "@/lib/auctionApi"
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from "@/lib/auctionSellerStage"
 
 function formatDate(iso: string) {
@@ -230,6 +230,16 @@ export function AuctionResultsModal({
                             <div className="flex-1 grid grid-cols-1 gap-2">
                                 <Link href={'/auctions/live/' + auction.id} onClick={onClose}
                                     className="text-center rounded-xl bg-emerald-600 text-white text-sm font-bold py-2.5">Review & Accept £{topOffer.toLocaleString('en-GB')}</Link>
+                                <button onClick={async () => {
+                                    if (!window.confirm('Decline the provisional offer? The buyer will be notified and no sale will be created.')) return
+                                    try {
+                                        await declineProvisionalOffer(auction.id)
+                                        onClose()
+                                        window.location.reload()
+                                    } catch (error: any) {
+                                        window.alert(error?.message || 'Could not decline the offer. Please try again.')
+                                    }
+                                }} className="rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm font-bold py-2.5">Decline Offer</button>
                                 <button onClick={() => onReauction(auction)}
                                     className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>
                                 <Link href={listing.linkedListingId ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
