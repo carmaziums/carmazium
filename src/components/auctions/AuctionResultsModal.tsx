@@ -68,7 +68,7 @@ export function AuctionResultsModal({
     const topOffer = getCurrentBid(auction)
     const offerAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
-    const olderOfferNeedsReview = offerAgeMs >= 72 * 60 * 60 * 1000;
+    const olderOfferNeedsReview = offerAgeMs >= 72 * 60 * 60 * 1000 || Boolean(auction.provisionalExpiredAt);
     const provisionalPending = auction.status === 'ENDED' && !auction.winnerId && !olderOfferNeedsReview
         && !!auction.provisionalOfferBidId && (listing.status === 'DRAFT' || (listing.status === 'ACTIVE' && listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0
         && topOffer > 0 && topOffer < Number(auction.reservePrice)
