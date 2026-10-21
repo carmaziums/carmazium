@@ -1006,6 +1006,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             auction: { findUnique: jest.fn(), update: jest.fn() },
             bid: { findUnique: jest.fn(), findFirst: jest.fn() },
             listing: { update: jest.fn() },
+            notification: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             sale: { create: jest.fn() },
             sellerProfile: { upsert: jest.fn() },
             chatRoom: { upsert: jest.fn() },
@@ -1251,7 +1252,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         prisma.bid.findFirst.mockResolvedValue(topBid);
         await service.acceptBid('auction-1', topBid.id, 'seller-1');
         expect(prisma.auction.update).toHaveBeenCalledWith(expect.objectContaining({
-            data: expect.objectContaining({ status: 'ENDED', winnerId: 'dealer-1', winningBidAmount: 8200 }),
+            data: expect.objectContaining({ status: 'ENDED', winnerId: 'dealer-1', winningBidAmount: 8200, provisionalOfferBidId: null }),
         }));
         expect(prisma.listing.update).toHaveBeenCalledWith({
             where: { id: 'listing-1' }, data: { status: 'SOLD' },
@@ -1303,7 +1304,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED',
             deletedAt: null, winnerId: null, wonAt: null,
             provisionalOfferBidId: 'bid-current',
-            listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', deletedAt: null },
+            listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', status: 'DRAFT', type: 'CLASSIFIED', deletedAt: null },
         });
         prisma.bid.findUnique.mockResolvedValue({ bidderId: 'dealer-1', amount: 6165 });
         await expect(service.declineProvisionalOffer('auction-1', 'seller-1')).resolves.toBeUndefined();
@@ -1322,7 +1323,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED',
             deletedAt: null, winnerId: 'dealer-2', wonAt: new Date(),
             provisionalOfferBidId: 'bid-current',
-            listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', deletedAt: null },
+            listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', status: 'DRAFT', type: 'CLASSIFIED', deletedAt: null },
         });
         await expect(service.declineProvisionalOffer('auction-1', 'seller-1'))
             .rejects.toMatchObject({ message: expect.stringMatching(/no pending provisional offer/i) });
