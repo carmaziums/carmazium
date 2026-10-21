@@ -1,0 +1,61 @@
+name: Watchlist Retail/Trade Boundary PostgreSQL
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/src/watchlist/**'
+      - 'backend/src/auth/guards/verified-dealer.guard.ts'
+      - 'backend/scripts/watchlist-boundary-postgres.ts'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/package*.json'
+      - '.github/workflows/watchlist-boundary-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: watchlist-boundary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-watchlist:
+    name: Verify real PostgreSQL retail/trade separation + KYC HTTP guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: watchlist_test
+          POSTGRES_PASSWORD: disposable_only
+          POSTGRES_DB: carmazium_watchlist_boundary_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U watchlist_test -d carmazium_watchlist_boundary_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://watchlist_test:disposable_only@127.0.0.1:5432/carmazium_watchlist_boundary_ci?schema=public
+      DIRECT_URL: postgresql://watchlist_test:disposable_only@127.0.0.1:5432/carmazium_watchlist_boundary_ci?schema=public
+      WATCHLIST_BOUNDARY_CI: disposable-local-only
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Push Prisma schema to EMPTY disposable CI container only
+        run: npx prisma db push --skip-generate
+      - name: Unit guard and watchlist contract
+        run: npm test -- --runInBand src/watchlist/watchlist.access-boundary.spec.ts src/watchlist/watchlist.service.spec.ts
+      - name: Real public HTTP and approved dealer KYC PostgreSQL acceptance
+        run: npx ts-node --transpile-only scripts/watchlist-boundary-postgres.ts

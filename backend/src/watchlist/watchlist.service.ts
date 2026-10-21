@@ -8,30 +8,55 @@ export class WatchlistService {
     /**
      * Add a listing to user's watchlist
      */
+    // Retail and trade rows share the same existing storage, but *never*
+    // share the same access path. A basic buyer knowing an auction listing ID
+    // must not use generic Saved Cars to inspect trade stock.
+    private retailWhere(userId: string) {
+        return { userId, listing: { type: 'CLASSIFIED' as const, deletedAt: null } };
+    }
+
     async add(userId: string, listingId: string) {
-        // Check if listing exists
+        return this.addByType(userId, listingId, 'CLASSIFIED');
+    }
+
+    /** Only call through SessionAuthGuard + VerifiedDealerGuard. */
+    async addAuction(userId: string, listingId: string) {
+        return this.addByType(userId, listingId, 'AUCTION');
+    }
+
+    private async addByType(userId: string, listingId: string, expected: 'CLASSIFIED' | 'AUCTION') {
         const listing = await this.prisma.listing.findUnique({
             where: { id: listingId },
-        });
-
-        if (!listing || listing.deletedAt) {
-            throw new NotFoundException('Listing not found');
-        }
-
-        // Check if already in watchlist
-        const existing = await this.prisma.watchlistItem.findUnique({
-            where: {
-                userId_listingId: { userId, listingId },
+            select: {
+                id: true, type: true, deletedAt: true, status: true,
+                auction: { select: { status: true, deletedAt: true, endTime: true } },
             },
         });
+        // Do not confirm a forbidden trade listing's existence through
+        // the retail endpoint. Only the verified dealer route can reach it.
+        if (!listing || listing.deletedAt || listing.type !== expected) {
+            throw new NotFoundException('Listing not found');
+        }
+        if (expected === 'AUCTION' && (
+            listing.status !== 'ACTIVE' || !listing.auction ||
+            listing.auction.deletedAt || listing.auction.status !== 'ACTIVE' ||
+            listing.auction.endTime <= new Date()
+        )) {
+            throw new NotFoundException('Live auction not found');
+        }
 
+        const existing = await this.prisma.watchlistItem.findUnique({
+            where: { userId_listingId: { userId, listingId } },
+        });
         if (existing) {
             throw new ConflictException('Listing already in watchlist');
         }
-
+        // The generic POST previously included the ENTIRE Prisma listing,
+        // exposing confidential priceMin/priceMax and any future private
+        // columns. Return minimal confirmation on both routes instead.
         return this.prisma.watchlistItem.create({
             data: { userId, listingId },
-            include: { listing: true },
+            select: { id: true, listingId: true, createdAt: true },
         });
     }
 
@@ -64,7 +89,7 @@ export class WatchlistService {
 
         const [items, total] = await Promise.all([
             this.prisma.watchlistItem.findMany({
-                where: { userId },
+                where: this.retailWhere(userId),
                 include: {
                     listing: {
                         select: {
@@ -88,7 +113,7 @@ export class WatchlistService {
                 skip,
                 take: limit,
             }),
-            this.prisma.watchlistItem.count({ where: { userId } }),
+            this.prisma.watchlistItem.count({ where: this.retailWhere(userId) }),
         ]);
 
         return { data: items, total };
@@ -106,6 +131,7 @@ export class WatchlistService {
         const where = {
             userId,
             listing: {
+                type: 'AUCTION' as const,
                 deletedAt: null,
                 ...(liveOnly ? { status: 'ACTIVE' as const } : {}),
                 auction: {
@@ -157,18 +183,34 @@ export class WatchlistService {
      * Check if a listing is in user's watchlist
      */
     async isInWatchlist(userId: string, listingId: string): Promise<boolean> {
-        const item = await this.prisma.watchlistItem.findUnique({
-            where: {
-                userId_listingId: { userId, listingId },
-            },
+        // General Saved Cars checks are retail-only, even if a previously
+        // saved trade auction remains in the user's legacy watchlist.
+        return !!await this.prisma.watchlistItem.findFirst({
+            where: { ...this.retailWhere(userId), listingId },
+            select: { id: true },
         });
-        return !!item;
+    }
+
+    async isInAuctionShortlist(userId: string, listingId: string): Promise<boolean> {
+        return !!await this.prisma.watchlistItem.findFirst({
+            where: { userId, listingId, listing: { type: 'AUCTION', deletedAt: null } },
+            select: { id: true },
+        });
+    }
+
+    async removeAuction(userId: string, listingId: string): Promise<void> {
+        const item = await this.prisma.watchlistItem.findFirst({
+            where: { userId, listingId, listing: { type: 'AUCTION', deletedAt: null } },
+            select: { id: true },
+        });
+        if (!item) throw new NotFoundException('Auction not shortlisted');
+        await this.prisma.watchlistItem.delete({ where: { id: item.id } });
     }
 
     /**
      * Get watchlist count for user
      */
     async getCount(userId: string): Promise<number> {
-        return this.prisma.watchlistItem.count({ where: { userId } });
+        return this.prisma.watchlistItem.count({ where: this.retailWhere(userId) });
     }
 }
