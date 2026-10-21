@@ -678,3 +678,64 @@ test('web guide explains what to enter, why it matters and how to correct errors
   assert.match(source, /focusMissingField\(missing\.field\)/)
   assert.match(source, /Your guide:/)
 })
+
+
+// Exercise the actual Next.js seller-auction pagination function, rather than
+// a duplicate implementation. Extract and transpile its exported function for
+// a lightweight Node test without a browser or Jest dependency.
+const auctionApiSource = readFileSync(new URL("../src/lib/auctionApi.ts", import.meta.url), "utf8")
+const paginationStart = auctionApiSource.indexOf("export async function getMyAuctions():")
+const paginationEnd = auctionApiSource.indexOf("export async function getWonAuctions(", paginationStart)
+assert.ok(paginationStart > 0 && paginationEnd > paginationStart, "seller-auction pagination function should exist")
+const auctionPagerJs = ts.transpileModule(
+    auctionApiSource.slice(paginationStart, paginationEnd),
+    { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
+).outputText
+const auctionPagerExports = {}
+let auctionApiHandler = async () => { throw new Error("unconfigured pagination test response") }
+runInNewContext(auctionPagerJs, {
+    exports: auctionPagerExports,
+    API: "",
+    apiClient: (path) => auctionApiHandler(path),
+})
+const getCompleteSellerAuctions = auctionPagerExports.getMyAuctions
+
+test("seller auction history includes old provisional offers beyond first page", async () => {
+    const records = Array.from({ length: 57 }, (_, i) => ({
+        id: "auction-" + i,
+        provisionalOfferBidId: i === 55 ? "old-pending-bid" : null,
+    }))
+    let requests = []
+    auctionApiHandler = async (path) => {
+        const url = new URL(path, "http://local.test")
+        const page = Number(url.searchParams.get("page"))
+        const limit = Number(url.searchParams.get("limit"))
+        requests.push({ page, limit })
+        const data = records.slice((page - 1) * limit, page * limit)
+        return { data: { data, total: records.length } }
+    }
+    const result = await getCompleteSellerAuctions()
+    assert.equal(result.length, 57)
+    assert.equal(result.find(a => a.id === "auction-55").provisionalOfferBidId, "old-pending-bid")
+    assert.deepEqual(requests.map(r => r.page), [1, 2])
+})
+
+test("seller auctions fail visibly rather than silently omitting missing pages", async () => {
+    auctionApiHandler = async (path) => {
+        const page = Number(new URL(path, "http://local.test").searchParams.get("page"))
+        return { data: { data: page === 1
+            ? Array.from({ length: 50 }, (_, i) => ({ id: "item-" + i }))
+            : [], total: 75 } }
+    }
+    await assert.rejects(getCompleteSellerAuctions(), /Incomplete auction history/)
+})
+
+test("seller auctions fail visibly on changing total or invalid pagination", async () => {
+    auctionApiHandler = async (path) => {
+        const page = Number(new URL(path, "http://local.test").searchParams.get("page"))
+        return { data: { data: Array.from({ length: 50 }, (_, i) => ({
+            id: "item-" + ((page - 1) * 50 + i),
+        })), total: page === 1 ? 75 : 76 } }
+    }
+    await assert.rejects(getCompleteSellerAuctions(), /auctions changed while loading/)
+})
