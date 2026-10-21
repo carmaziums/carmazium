@@ -783,6 +783,9 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const showBin = isBiddingOpen && !isSeller && canPlaceBid && !!auction.buyItNowPrice && !reserveMet && !binPending
     const images = auction.listing.images?.length ? auction.listing.images : ["/assets/images/hero-bg.png"]
     const bidCount = bidHistory.length
+    const provisionalOfferAgeMs = auction.provisionalOfferedAt
+        ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
+    const provisionalOfferOlderThan72h = provisionalOfferAgeMs > 72 * 60 * 60 * 1000;
     const provisionalOfferPending = isEnded && !auction.winnerId
         && !!auction.provisionalOfferBidId && auction.provisionalOfferBidId === bidHistory[0]?.bidId
         && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && topBidAmount !== null
@@ -842,6 +845,13 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     ? 'Accepting this provisional offer makes the dealer the auction winner and starts the normal buyer-fee and handover process. This cannot be undone.'
                                     : 'Accepting the current highest offer will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.'}
                             </p>
+
+                            {isEnded && provisionalOfferOlderThan72h && (
+                                <p role="status" className="text-amber-300 text-xs leading-relaxed">
+                                    This provisional bid is more than 72 hours old. The buyer's circumstances may have changed.
+                                    No automatic expiry is currently applied. Accepting still creates an auction winner.
+                                </p>
+                            )}
 
                             {acceptError && (
                                 <p className="text-red-400 text-xs text-center">{acceptError}</p>
