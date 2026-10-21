@@ -12,6 +12,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BUYER_FEE_GRACE_MS, buyerFeeDeadlineAt } from './buyer-fee-deadline';
+import { provisionalOfferExpired } from './provisional-expiry.policy';
 import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
@@ -604,6 +605,8 @@ export class AuctionsService {
                         wonAt: null,
                         provisionalOfferBidId: null,
                         provisionalOfferedAt: null,
+                        provisionalExpiredBidId: null,
+                        provisionalExpiredAt: null,
                         buyerFeeReminder24SentAt: null,
                         buyerFeeReminder6SentAt: null,
                         buyerFeePaid: false,
@@ -1313,6 +1316,14 @@ export class AuctionsService {
             if (!activeAcceptance && !provisionalAcceptance) {
                 throw new BadRequestException('This auction has no provisional offer available to accept');
             }
+            // Deadline enforcement is independent of the expiry cron. Even if
+            // Fly is down or the cron runs late, an overdue offer cannot be
+            // accepted or turned into a sale.
+            if (provisionalAcceptance && provisionalOfferExpired(auction.provisionalOfferedAt)) {
+                throw new BadRequestException(
+                    'This provisional offer expired after 72 hours. It cannot be accepted. No sale or buyer fee is due.',
+                );
+            }
             if (activeAcceptance && Date.now() >= auction.endTime.getTime()) {
                 throw new BadRequestException(
                     'This auction has ended and is being finalised. Refresh for the seller decision.',
@@ -1365,6 +1376,8 @@ export class AuctionsService {
                     wonAt,
                     provisionalOfferBidId: null,
                     provisionalOfferedAt: null,
+                    provisionalExpiredBidId: null,
+                    provisionalExpiredAt: null,
                     buyerFeeReminder24SentAt: null,
                     buyerFeeReminder6SentAt: null,
                     buyItNowPendingBuyerId: null,
