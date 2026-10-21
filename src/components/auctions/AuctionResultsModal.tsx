@@ -68,8 +68,8 @@ export function AuctionResultsModal({
     const topOffer = getCurrentBid(auction)
     const offerAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
-    const olderOfferNeedsReview = offerAgeMs > 72 * 60 * 60 * 1000;
-    const provisionalPending = auction.status === 'ENDED' && !auction.winnerId
+    const olderOfferNeedsReview = offerAgeMs >= 72 * 60 * 60 * 1000;
+    const provisionalPending = auction.status === 'ENDED' && !auction.winnerId && !olderOfferNeedsReview
         && !!auction.provisionalOfferBidId && (listing.status === 'DRAFT' || (listing.status === 'ACTIVE' && listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0
         && topOffer > 0 && topOffer < Number(auction.reservePrice)
 
@@ -138,8 +138,7 @@ export function AuctionResultsModal({
                             <div><p className="font-bold text-amber-300 text-sm">Provisionally sold — action required</p>
                                 <p className="text-xs text-[var(--text-muted)]">Highest offer £{topOffer.toLocaleString('en-GB')} · Reserve £{Number(auction.reservePrice).toLocaleString('en-GB')}. No sale until you accept.</p>
                                 {olderOfferNeedsReview && <p role="status" className="text-xs text-amber-300 mt-2">
-                                    This provisional offer is over 72 hours old. The buyer may no longer be available.
-                                    No automatic expiry applies; accepting still commits to the auction sale.
+                                    This provisional offer has expired after 72 hours. It can no longer be accepted; no auction sale occurred.
                                 </p>}
                             </div>
                         </div>
