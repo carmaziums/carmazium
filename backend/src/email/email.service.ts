@@ -838,6 +838,9 @@ export class EmailService {
                     + ' A later bid may replace this offer.</p>')
             + '<p><a href="' + auctionUrl + '"><strong>Review offer and accept if you wish</strong></a></p>'
             + (options.ended
+                ? '<p><strong>Decision deadline:</strong> this provisional offer expires automatically 72 hours after it was recorded. After that deadline it cannot be accepted.</p>'
+                : '')
+            + (options.ended
                 ? '<p>Other options: <a href="' + reauctionUrl + '">Re-list in auction</a>'
                     + ' or <a href="' + retailUrl + '">List on Retail</a> (£1 basic listing if not already live).</p>'
                 : '')
@@ -885,6 +888,7 @@ export class EmailService {
             + '<strong>' + vehicle + '</strong>, but the auction ended below reserve.</p>'
             + '<p>The seller can accept your offer, re-list the vehicle in auction or list it on Retail.'
             + ' <strong>You have not won the vehicle yet.</strong></p>'
+            + '<p>This below-reserve provisional offer expires automatically 72 hours after the auction ends unless the seller accepts it first. No purchase or buyer fee exists until acceptance.</p>'
             + '<p>If the seller accepts, we will send a separate winning notification'
             + ' with instructions for the £125 CarMazium buyer fee (unless you have a Free Purchase Grant).'
             + ' Please do not pay anything or arrange collection until your win is confirmed.</p>'
