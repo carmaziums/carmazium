@@ -785,8 +785,8 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const bidCount = bidHistory.length
     const provisionalOfferAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
-    const provisionalOfferOlderThan72h = provisionalOfferAgeMs > 72 * 60 * 60 * 1000;
-    const provisionalOfferPending = isEnded && !auction.winnerId
+    const provisionalOfferOlderThan72h = provisionalOfferAgeMs >= 72 * 60 * 60 * 1000;
+    const provisionalOfferPending = isEnded && !auction.winnerId && !provisionalOfferOlderThan72h
         && !!auction.provisionalOfferBidId && auction.provisionalOfferBidId === bidHistory[0]?.bidId
         && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && topBidAmount !== null
         && topBidAmount > 0 && !reserveMet
@@ -848,8 +848,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
 
                             {isEnded && provisionalOfferOlderThan72h && (
                                 <p role="status" className="text-amber-300 text-xs leading-relaxed">
-                                    This provisional bid is more than 72 hours old. The buyer's circumstances may have changed.
-                                    No automatic expiry is currently applied. Accepting still creates an auction winner.
+                                    This provisional bid expired after 72 hours. It can no longer be accepted and no sale has occurred.
                                 </p>
                             )}
 
