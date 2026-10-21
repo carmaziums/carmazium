@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
 import { Colors } from '@/constants/colors';
+import { useNativeAppearance } from '../../theme/NativeAppearanceProvider';
 import { Elevation, Radius } from '@/constants/spacing';
 
 export type CardVariant =
@@ -61,12 +62,21 @@ export const Card = React.memo<CardProps>(
     children,
     ...rest
   }) => {
+    const { palette } = useNativeAppearance();
+    // Preserve the original dark-only appearance while keeping one semantic
+    // set of surface styles for both platforms and the iOS shadow host.
+    const themedSurface = {
+      backgroundColor: variant === 'outline' ? 'transparent' :
+        variant === 'solid' ? palette.bgDropdown : palette.bgCard,
+      borderColor: active ? palette.accent : palette.borderDefault,
+    };
     const surface = [
       styles.base,
       variantStyles[variant],
+      themedSurface,
       padded && styles.padded,
       clip && styles.clip,
-      active && styles.active,
+      active && [styles.active, { borderColor: palette.accent }],
     ];
 
     // iOS clips a view's shadow to its own `overflow: 'hidden'`, so a card that
@@ -87,9 +97,9 @@ export const Card = React.memo<CardProps>(
       return (
         <View
           {...rest}
-          style={[styles.shadowHost, variantStyles[variant], Elevation.card, style]}
+          style={[styles.shadowHost, variantStyles[variant], themedSurface, Elevation.card, style]}
         >
-          <View style={[styles.base, styles.clip, styles.transparent, padded && styles.padded, active && styles.active]}>
+          <View style={[styles.base, styles.clip, styles.transparent, padded && styles.padded, active && [styles.active, { borderColor: palette.accent }]]}>
             {children}
           </View>
         </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 
 // Real brand asset from the web app (public/assets/images/logo.png) — the
 // mobile app previously rendered a hand-approximated "red circle + CAR/MAZIUM"
@@ -8,7 +9,8 @@ import { Image } from 'expo-image';
 // actual PNG here keeps mobile and web visually identical.
 // Source dimensions: 370 x 82 (aspect ratio ≈ 4.51:1).
 const LOGO_ASPECT = 370 / 82;
-const LOGO_SOURCE = require('../../assets/images/logo.png');
+const DARK_LOGO_SOURCE = require('../../assets/images/logo.png');
+const LIGHT_LOGO_SOURCE = require('../../assets/images/logo-light.png');
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -18,6 +20,9 @@ interface LogoProps {
 }
 
 export const Logo: React.FC<LogoProps> = ({ size = 'md', style, width: overrideWidth }) => {
+  const { resolvedAppearance } = useNativeAppearance();
+  // Same assets and appearance rule as website Header.tsx.
+  const logoSource = resolvedAppearance === 'light' ? LIGHT_LOGO_SOURCE : DARK_LOGO_SOURCE;
   // Widths chosen to preserve the visual footprint of the old hand-drawn
   // component at each preset (which was circleSize + gap + text width).
   const width = overrideWidth ?? (size === 'sm' ? 120 : size === 'lg' ? 260 : 180);
@@ -26,7 +31,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', style, width: overrideW
   return (
     <View style={[styles.container, style]}>
       <Image
-        source={LOGO_SOURCE}
+        source={logoSource}
         style={{ width, height }}
         contentFit="contain"
         accessibilityLabel="Carmazium"

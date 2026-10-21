@@ -1,6 +1,7 @@
 import React, { ComponentType, ReactNode } from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 
 // Every icon-only button in the app used to be a bare TouchableOpacity wrapping
 // an Ionicons/MaterialCommunityIcons element with no accessibilityLabel/Role and
@@ -28,15 +29,17 @@ export const IconButton: React.FC<IconButtonProps> = ({
   accessibilityLabel,
   onPress,
   size = 20,
-  color = Colors.white,
+  color,
   variant = 'ghost',
   disabled = false,
   style,
 }) => {
+  const { palette } = useNativeAppearance();
+  const iconColor = color ?? palette.textPrimary;
   const iconElement = React.isValidElement(icon)
     ? icon
     : icon
-      ? React.createElement(icon as ComponentType<{ size?: number; color?: string }>, { size, color })
+      ? React.createElement(icon as ComponentType<{ size?: number; color?: string }>, { size, color: iconColor })
       : null;
 
   return (
@@ -51,8 +54,8 @@ export const IconButton: React.FC<IconButtonProps> = ({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={[
         styles.base,
-        variant === 'solid' && styles.solid,
-        variant === 'circle' && styles.circle,
+        variant === 'solid' && [styles.solid, { backgroundColor: palette.bgCard }],
+        variant === 'circle' && [styles.circle, { backgroundColor: palette.bgInput, borderColor: palette.borderDefault }],
         disabled && styles.disabled,
         style,
       ]}

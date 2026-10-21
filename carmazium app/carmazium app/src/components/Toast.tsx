@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
 import { FontFamily, FontSize } from '../constants/typography';
 
 import { IconButton } from './IconButton';
@@ -42,6 +43,7 @@ export const Toast: React.FC<ToastProps> = ({
   onHide,
   duration = 2400,
 }) => {
+  const { palette } = useNativeAppearance();
   const translateY = useRef(new RNAnimated.Value(-100)).current;
   const opacity = useRef(new RNAnimated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,14 +95,14 @@ export const Toast: React.FC<ToastProps> = ({
     <RNAnimated.View
       style={[
         styles.container,
-        { transform: [{ translateY }], opacity },
+        { transform: [{ translateY }], opacity, backgroundColor: palette.bgDropdown, borderColor: palette.borderDefault },
       ]}
     >
       <View style={[styles.iconWrapper, { backgroundColor: `${accentColor}20` }]}>
         <Ionicons name={ICON_MAP[type]} size={18} color={accentColor} />
       </View>
-      <Text style={styles.message}>{message}</Text>
-      <IconButton icon={<Ionicons name="close" size={16} color={Colors.textMuted} />} onPress={onHide} accessibilityLabel="Close" />
+      <Text style={[styles.message, { color: palette.textPrimary }]}>{message}</Text>
+      <IconButton icon={<Ionicons name="close" size={16} color={palette.textMuted} />} onPress={onHide} accessibilityLabel="Close" />
     </RNAnimated.View>
   );
 };

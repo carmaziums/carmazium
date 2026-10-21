@@ -10,6 +10,8 @@ import Animated, {
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../constants/colors';
+import { useNativeAppearance } from '../theme/NativeAppearanceProvider';
+import { getNativeChromeColors } from '../theme/nativeNavigationTheme';
 import { getBottomTabItemHeight } from '../lib/nativeLayoutParity';
 import { TextPresets } from '../constants/typography';
 import { useReduceMotionPreference } from '../hooks/useReduceMotionPreference';
@@ -171,6 +173,8 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = React.memo(function Anim
 });
 
 const CustomTabBar = ({ state, descriptors, navigation }: any) => {
+  const { resolvedAppearance, palette } = useNativeAppearance();
+  const chrome = getNativeChromeColors(resolvedAppearance, palette);
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
   const role = useAuthStore((s) => s.role);
@@ -221,10 +225,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
     <View
       style={[
         styles.tabBarOuter,
-        { paddingBottom: insets.bottom },
+        { paddingBottom: insets.bottom, borderTopColor: chrome.border, backgroundColor: chrome.tabBackground },
       ]}
     >
-      <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass]} />
+      <View style={[StyleSheet.absoluteFillObject, styles.tabBarGlass, { backgroundColor: chrome.tabBackground }]} />
       <View style={styles.tabBarInner}>
         {visibleRoutes.map((route: any) => {
           const config = TAB_CONFIG.find((c) => c.name === route.name)!;
@@ -252,7 +256,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                   focused={isFocused}
                   iconName={isMore && isDrawerOpen ? 'close' : isFocused ? config.iconActive : config.icon}
                   iconType={config.iconType}
-                  color={isFocused ? Colors.accent : Colors.tabInactive}
+                  color={isFocused ? chrome.accent : chrome.tabInactive}
                   size={config.iconType === 'material-community' ? 22 : 20}
                 />
               </View>
@@ -260,6 +264,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
                 style={[
                   styles.tabLabel,
                   isFocused ? styles.tabLabelActive : styles.tabLabelInactive,
+                  { color: isFocused ? chrome.accent : chrome.tabInactive },
                 ]}
                 numberOfLines={2}
                 maxFontSizeMultiplier={2}
