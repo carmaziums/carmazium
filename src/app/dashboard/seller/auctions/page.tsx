@@ -66,10 +66,16 @@ function addHours(iso: string, hours: number): string {
 function isPendingProvisionalAuction(auction: Auction): boolean {
     const offer = getCurrentBid(auction)
     return auction.status === 'ENDED' && !auction.winnerId && !!auction.provisionalOfferBidId
+        && !!auction.provisionalOfferedAt
+        && Date.now() < new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000
         && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0 && offer > 0 && offer < Number(auction.reservePrice)
 }
 
 function AuctionStatusBadge({ auction }: { auction: Auction }) {
+    if (auction.provisionalExpiredAt || (auction.provisionalOfferBidId && auction.provisionalOfferedAt
+        && Date.now() >= new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000)) {
+        return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold border border-slate-500/30 bg-slate-500/10 text-[var(--text-muted)]">Provisional offer expired · No sale</span>
+    }
     if (isPendingProvisionalAuction(auction)) {
         return <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold border border-amber-500/25 bg-amber-500/10 text-amber-400">Provisionally Sold · Decide</span>
     }

@@ -627,6 +627,9 @@ export interface Bid {
             endTime: string
             winnerId: string | null
             provisionalOfferBidId?: string | null
+            provisionalOfferedAt?: string | null
+            provisionalExpiredBidId?: string | null
+            provisionalExpiredAt?: string | null
             winningBidAmount: string | number | null
         } | null
     }

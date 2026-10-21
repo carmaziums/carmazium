@@ -57,7 +57,7 @@ describe('ProvisionalAuctionReminderService', () => {
     });
 
     it('does not duplicate an existing notification and still sends its unattempted email', async () => {
-        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
         prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
         await service.remindSellers(clock);
         expect(notifications.create).not.toHaveBeenCalled();
@@ -65,7 +65,7 @@ describe('ProvisionalAuctionReminderService', () => {
     });
 
     it('retries a previously failed provider dispatch but never sends if another machine holds the lease', async () => {
-        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
         prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
         email.sendAuctionProvisionalOfferEmail
             .mockResolvedValueOnce(null)
@@ -80,7 +80,7 @@ describe('ProvisionalAuctionReminderService', () => {
     });
 
     it('escalates exhausted seller email retries to an administrator', async () => {
-        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
         prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
         prisma.notification.findUnique.mockResolvedValue({
             data: { emailAttempts: 6, emailStatus: 'retryable' },
@@ -91,12 +91,12 @@ describe('ProvisionalAuctionReminderService', () => {
         expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
         expect(notifications.create).toHaveBeenCalledWith(expect.objectContaining({
             userId: 'admin-1', type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
-            actionType: expect.stringMatching(/^PROVISIONAL_REMINDER_EMAIL_FAILED_72H_/),
+            actionType: expect.stringMatching(/^PROVISIONAL_REMINDER_EMAIL_FAILED_24H_/),
         }));
     });
 
     it('does not alert admins about resolved provisional bids', async () => {
-        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
         prisma.notification.findFirst.mockResolvedValue({ id: 'notice-1' });
         prisma.notification.findUnique.mockResolvedValue({
             data: { emailAttempts: 6, emailStatus: 'retryable' },
@@ -112,6 +112,13 @@ describe('ProvisionalAuctionReminderService', () => {
         prisma.auction.findMany.mockResolvedValue([auction(1.5)]);
         prisma.auction.findFirst.mockResolvedValue(null);
         await service.remindSellers(clock);
+        expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
+    });
+
+    it('does not email or notify a seller when the provisional offer is over 72 hours old', async () => {
+        prisma.auction.findMany.mockResolvedValue([auction(4)]);
+        await service.remindSellers(clock);
+        expect(notifications.create).not.toHaveBeenCalled();
         expect(email.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
     });
 

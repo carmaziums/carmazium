@@ -149,6 +149,8 @@ export interface Auction {
     winningBidAmount: string | number | null;
     provisionalOfferBidId?: string | null;
     provisionalOfferedAt?: string | null;
+    provisionalExpiredBidId?: string | null;
+    provisionalExpiredAt?: string | null;
     buyerFeePaid: boolean;
     /** Canonical backend deadline: 72h after wonAt, only while £125 fee is outstanding. */
     buyerFeeDeadlineAt?: string | null;

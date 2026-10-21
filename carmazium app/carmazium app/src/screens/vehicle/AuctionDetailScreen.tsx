@@ -928,6 +928,11 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleAcceptBid = useCallback((bid: BidEntry) => {
     if (!auction || !canManageSellerAuction) return;
+    if (auction.status === 'ENDED' && (!auction.provisionalOfferedAt
+      || Date.now() >= new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000)) {
+      Alert.alert('Offer expired', 'The provisional offer expired after 72 hours and can no longer be accepted.');
+      return;
+    }
     if (auction.status === 'ACTIVE' && endTime && Date.now() >= endTime.getTime()) {
       Alert.alert('Auction ended', 'This auction is being finalised. Refresh to review your provisional offer.');
       return;
@@ -935,7 +940,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     Alert.alert(
       'Accept current highest offer?',
       auction.status === 'ENDED'
-        ? `Accepting ${fmt(bid.amount)} confirms the provisional sale. The dealer becomes the winner and must complete the £125 buyer fee process. This cannot be undone.${auction.provisionalOfferedAt && Date.now() - new Date(auction.provisionalOfferedAt).getTime() > 72 * 60 * 60 * 1000 ? ' This offer is over 72 hours old; the buyer may no longer be available. No automatic expiry applies.' : ''}`
+        ? `Accepting ${fmt(bid.amount)} confirms the provisional sale. The dealer becomes the winner and must complete the £125 buyer fee process. This cannot be undone.${auction.provisionalOfferedAt && Date.now() - new Date(auction.provisionalOfferedAt).getTime() > 72 * 60 * 60 * 1000 ? ' This provisional offer has expired and can no longer be accepted.' : ''}`
         : `Accepting ${fmt(bid.amount)} will end the auction immediately, even if it is below your reserve. The bidder becomes the winner and this cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -1024,6 +1029,8 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const displayBidAmount = hasRealBids ? currentBid : startingBidAmount;
   const reserveMet = hasRealBids && currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const provisionalPending = isEnded && !auction?.winnerId && !!auction?.provisionalOfferBidId
+    && !!auction.provisionalOfferedAt
+    && Date.now() < new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000
     && auction.provisionalOfferBidId === bidHistory[0]?.id
     && (auction?.listing?.status === 'DRAFT' || (auction?.listing?.status === 'ACTIVE' && auction?.listing?.type === 'CLASSIFIED')) && hasRealBids && currentBid > 0 && !reserveMet;
   const quickBidAmounts = hasRealBids

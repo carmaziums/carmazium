@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { EmailService } from '../email/email.service';
+import { PROVISIONAL_OFFER_VALIDITY_MS } from '../auctions/provisional-expiry.policy';
 
 /**
  * One persisted in-app notice per auction/run/stage, with separately tracked
@@ -111,7 +112,7 @@ export class ProvisionalAuctionReminderService {
             where: {
                 status: 'ENDED', deletedAt: null, winnerId: null, wonAt: null,
                 provisionalOfferBidId: { not: null },
-                provisionalOfferedAt: { not: null, lte: new Date(nowMs - day) },
+                provisionalOfferedAt: { not: null, lte: new Date(nowMs - day), gt: new Date(nowMs - PROVISIONAL_OFFER_VALIDITY_MS) },
                 listing: {
                     deletedAt: null, sellerId: { not: null },
                     OR: [{ status: 'DRAFT' }, { status: 'ACTIVE', type: 'CLASSIFIED' }],
@@ -127,7 +128,10 @@ export class ProvisionalAuctionReminderService {
             if (!auction.provisionalOfferedAt || !auction.provisionalOfferBidId ||
                 !auction.listing?.sellerId) continue;
             const elapsed = nowMs - auction.provisionalOfferedAt.getTime();
-            const stage = elapsed >= 3 * day ? 72 : elapsed >= day ? 24 : null;
+            // At exactly 72h this is expired, not a seller-decision reminder.
+            // The independent acceptance guard refuses an overdue offer even
+            // before the expiry worker persists the outcome.
+            const stage = elapsed >= day && elapsed < PROVISIONAL_OFFER_VALIDITY_MS ? 24 : null;
             if (!stage) continue;
             const actionType = 'PROVISIONAL_REMINDER_' + stage + 'H_' +
                 auction.provisionalOfferedAt.getTime();
@@ -139,7 +143,8 @@ export class ProvisionalAuctionReminderService {
                 where: { id: auction.id, status: 'ENDED', deletedAt: null,
                     winnerId: null, wonAt: null,
                     provisionalOfferBidId: auction.provisionalOfferBidId,
-                    provisionalOfferedAt: auction.provisionalOfferedAt,
+                    provisionalOfferedAt: { equals: auction.provisionalOfferedAt,
+                        gt: new Date(Date.now() - PROVISIONAL_OFFER_VALIDITY_MS) },
                     listing: { deletedAt: null, sellerId: auction.listing.sellerId,
                         OR: [{ status: 'DRAFT' }, { status: 'ACTIVE', type: 'CLASSIFIED' }] },
                 },
@@ -225,7 +230,8 @@ export class ProvisionalAuctionReminderService {
                     where: { id: auction.id, status: 'ENDED', deletedAt: null,
                         winnerId: null, wonAt: null,
                         provisionalOfferBidId: auction.provisionalOfferBidId,
-                        provisionalOfferedAt: auction.provisionalOfferedAt,
+                        provisionalOfferedAt: { equals: auction.provisionalOfferedAt,
+                            gt: new Date(Date.now() - PROVISIONAL_OFFER_VALIDITY_MS) },
                         listing: { deletedAt: null, sellerId: auction.listing.sellerId,
                             OR: [{ status: 'DRAFT' }, { status: 'ACTIVE', type: 'CLASSIFIED' }] },
                     },

@@ -60,6 +60,9 @@ interface RawBid {
       endTime: string;
       winnerId: string | null;
       provisionalOfferBidId?: string | null;
+      provisionalOfferedAt?: string | null;
+      provisionalExpiredBidId?: string | null;
+      provisionalExpiredAt?: string | null;
       winningBidAmount: number | string | null;
       wonAt?: string | null;
       buyerFeeDeadlineAt?: string | null;
@@ -77,6 +80,7 @@ interface Bid {
   isArchived?: boolean;
   isWinner?: boolean;
   isProvisional?: boolean;
+  isProvisionalExpired?: boolean;
   buyerFeePaid?: boolean;
   winningBidAmount?: number | null;
   paymentDeadline?: string | null;
@@ -126,7 +130,13 @@ const mapRawBid = (b: RawBid, currentUserId?: string): Bid => {
     isArchived: Boolean(b.isArchived),
     isWinner: !b.isArchived && !!auction?.winnerId && auction.winnerId === currentUserId,
     isProvisional: !b.isArchived && auction?.status === 'ENDED' && !auction?.winnerId
-      && auction?.provisionalOfferBidId === b.id,
+      && auction?.provisionalOfferBidId === b.id
+      && !!auction.provisionalOfferedAt
+      && Date.now() < new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000,
+    isProvisionalExpired: !b.isArchived && auction?.status === 'ENDED' && !auction?.winnerId
+      && (auction?.provisionalExpiredBidId === b.id
+        || (auction?.provisionalOfferBidId === b.id && !!auction?.provisionalOfferedAt
+          && Date.now() >= new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000)),
     buyerFeePaid: Boolean(auction?.buyerFeePaid),
     winningBidAmount: auction?.winningBidAmount != null ? Number(auction.winningBidAmount) : null,
     // Use the backend's authoritative win timestamp so the 72-hour payment
@@ -465,6 +475,10 @@ export const BuyerBidsScreen: React.FC<{ navigation?: any }> = ({ navigation }) 
             ) : isWon ? (
               <View style={[styles.statusChip, { backgroundColor: Colors.accentGreenAlpha15, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }]}>
                 <Text style={[styles.statusChipText, { color: Colors.accentGreen }]}>WON</Text>
+              </View>
+            ) : bid.isProvisionalExpired ? (
+              <View style={[styles.statusChip, { backgroundColor: Colors.whiteAlpha06, borderWidth: 1, borderColor: Colors.whiteAlpha10 }]}>
+                <Text style={[styles.statusChipText, { color: Colors.textMuted }]}>OFFER EXPIRED</Text>
               </View>
             ) : bid.isProvisional ? (
               <View style={[styles.statusChip, { backgroundColor: Colors.warningAlpha15, borderWidth: 1, borderColor: Colors.warningAlpha25 }]}>

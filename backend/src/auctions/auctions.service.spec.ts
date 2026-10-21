@@ -1237,10 +1237,27 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.auction.update).not.toHaveBeenCalled();
     });
 
+    it('refuses an overdue provisional offer even if the expiry cron has not yet run', async () => {
+        prisma.auction.findUnique.mockResolvedValue({
+            id: 'auction-expired', listingId: 'listing-1',
+            status: 'ENDED', deletedAt: null, winnerId: null, wonAt: null,
+            provisionalOfferBidId: 'bid-current',
+            provisionalOfferedAt: new Date(Date.now() - 72 * 60 * 60_000 - 1000),
+            endTime: new Date(Date.now() - 73 * 60 * 60_000),
+            reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT', type: 'CLASSIFIED', deletedAt: null },
+        });
+        await expect(service.acceptBid('auction-expired', 'bid-current', 'seller-1'))
+            .rejects.toThrow(/expired after 72 hours/i);
+        expect(prisma.bid.findUnique).not.toHaveBeenCalled();
+        expect(prisma.sale.create).not.toHaveBeenCalled();
+        expect(prisma.auction.update).not.toHaveBeenCalled();
+    });
+
     it('accepts a provisional below-reserve offer after auction closure, but never marks it sold before consent', async () => {
         const ended = {
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED', winnerId: null, wonAt: null,
-            provisionalOfferBidId: 'bid-current',
+            provisionalOfferBidId: 'bid-current', provisionalOfferedAt: new Date(Date.now() - 60 * 60_000),
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
             listing: { id: 'listing-1', sellerId: 'seller-1', status: 'DRAFT',
                 linkedListingId: null, year: 2020, make: 'Test', model: 'Car' },
@@ -1273,6 +1290,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
     it('allows a recorded provisional bid to be accepted after the listing moves to Retail', async () => {
         prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
             status: 'ENDED', winnerId: null, wonAt: null, provisionalOfferBidId: 'bid-current',
+            provisionalOfferedAt: new Date(Date.now() - 60 * 60_000),
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
             listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', type: 'CLASSIFIED', linkedListingId: null },
         });
@@ -1304,6 +1322,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED',
             deletedAt: null, winnerId: null, wonAt: null,
             provisionalOfferBidId: 'bid-current',
+            provisionalOfferedAt: new Date(Date.now() - 60 * 60_000),
             listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', status: 'DRAFT', type: 'CLASSIFIED', deletedAt: null },
         });
         prisma.bid.findUnique.mockResolvedValue({ bidderId: 'dealer-1', amount: 6165 });

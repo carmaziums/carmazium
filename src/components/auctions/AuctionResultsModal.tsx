@@ -68,8 +68,8 @@ export function AuctionResultsModal({
     const topOffer = getCurrentBid(auction)
     const offerAgeMs = auction.provisionalOfferedAt
         ? Date.now() - new Date(auction.provisionalOfferedAt).getTime() : 0;
-    const olderOfferNeedsReview = offerAgeMs > 72 * 60 * 60 * 1000;
-    const provisionalPending = auction.status === 'ENDED' && !auction.winnerId
+    const olderOfferNeedsReview = offerAgeMs >= 72 * 60 * 60 * 1000 || Boolean(auction.provisionalExpiredAt);
+    const provisionalPending = auction.status === 'ENDED' && !auction.winnerId && !olderOfferNeedsReview
         && !!auction.provisionalOfferBidId && (listing.status === 'DRAFT' || (listing.status === 'ACTIVE' && listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0
         && topOffer > 0 && topOffer < Number(auction.reservePrice)
 
@@ -132,14 +132,21 @@ export function AuctionResultsModal({
                                 <p className="text-xs text-[var(--text-muted)] mt-1">{getSellerStageLabel(getSellerAuctionStage(auction))}</p>
                             </div>
                         </div>
+                    ) : olderOfferNeedsReview && (auction.provisionalExpiredAt || auction.provisionalOfferBidId) ? (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-500/10 border border-slate-500/20">
+                            <XCircle size={20} className="text-[var(--text-muted)] shrink-0" />
+                            <div>
+                                <p className="font-bold text-[var(--text-secondary)] text-sm">Provisional offer expired after 72 hours</p>
+                                <p className="text-xs text-[var(--text-muted)]">The earlier offer cannot be accepted. No sale or buyer fee is due.</p>
+                            </div>
+                        </div>
                     ) : provisionalPending ? (
                         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                             <Gavel size={20} className="text-amber-400 shrink-0" />
                             <div><p className="font-bold text-amber-300 text-sm">Provisionally sold — action required</p>
                                 <p className="text-xs text-[var(--text-muted)]">Highest offer £{topOffer.toLocaleString('en-GB')} · Reserve £{Number(auction.reservePrice).toLocaleString('en-GB')}. No sale until you accept.</p>
                                 {olderOfferNeedsReview && <p role="status" className="text-xs text-amber-300 mt-2">
-                                    This provisional offer is over 72 hours old. The buyer may no longer be available.
-                                    No automatic expiry applies; accepting still commits to the auction sale.
+                                    This provisional offer has expired after 72 hours. It can no longer be accepted; no auction sale occurred.
                                 </p>}
                             </div>
                         </div>
