@@ -30,7 +30,8 @@ describe('ProvisionalAuctionExpiryService', () => {
             $queryRaw: jest.fn().mockResolvedValue([]),
             $transaction: jest.fn(async (fn: any) => fn(db)),
         };
-        notices = { create: jest.fn().mockResolvedValue({ id: 'notice-1' }) };
+        notices = { create: jest.fn().mockResolvedValue({ id: 'notice-1' }),
+            shouldSendEmail: jest.fn().mockResolvedValue(true) };
         email = { sendAuctionProvisionalExpiredEmail: jest.fn().mockResolvedValue({ id: 'provider-1' }) };
         service = new ProvisionalAuctionExpiryService(db, notices, email);
     });
