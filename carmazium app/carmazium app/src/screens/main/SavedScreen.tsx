@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {FontFamily, FontSize } from '../../constants/typography';
 import { Radius } from '../../constants/spacing';
@@ -44,6 +44,10 @@ type ViewMode = 'grid' | 'list';
 
 export const SavedScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const route = useRoute();
+  // Direct tab visits remain a tab; Settings opens this same screen as a
+  // nested stack page, preserving a genuine Back-to-Settings history entry.
+  const openedFromSettings = route.name === 'SavedCars';
   const accountRole = useAuthStore(s => s.accountRole);
 
   // Readable website-style list first; a two-column grid remains optional.
@@ -274,6 +278,17 @@ export const SavedScreen: React.FC = () => {
       />
 
       <WebsiteTopBar />
+      {openedFromSettings && (
+        <TouchableOpacity
+          style={styles.savedBackLink}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Back to Account Settings"
+        >
+          <Ionicons name="arrow-back" size={17} color={Colors.accent} />
+          <Text style={styles.savedBackText}>Back to Account Settings</Text>
+        </TouchableOpacity>
+      )}
       {/* Website watchlist header below global navigation. */}
       <View style={[styles.header, { paddingTop: 12 }]}>
         <View>
@@ -351,6 +366,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.bgPrimary,
+  },
+  savedBackLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    marginHorizontal: 24,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  savedBackText: {
+    color: Colors.accent,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.size14,
   },
   header: {
     flexDirection: 'row',

@@ -255,6 +255,8 @@ jobs:
         run: node --test scripts/test-native-app-audit-block7.test.mjs
       - name: Audit easy-to-find unified settings and source-labelled Android QA feedback
         run: node --test scripts/test-native-app-audit-block8.test.mjs
+      - name: Check Saved Cars back route from Account Settings
+        run: node --test scripts/test-native-saved-settings-return.test.mjs
       - name: Audit Android emulator boot and QA artifact provenance
         run: node --test scripts/test-native-app-audit-block9.test.mjs
       - name: Audit native welcome copy against marketplace pricing, dealer permissions and AI features
