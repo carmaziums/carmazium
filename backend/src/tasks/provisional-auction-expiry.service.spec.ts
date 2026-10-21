@@ -41,7 +41,7 @@ describe('ProvisionalAuctionExpiryService', () => {
             .mockResolvedValueOnce([{
                 id: 'auction-1', listingId: 'listing-1',
                 provisionalExpiredBidId: 'bid-1', provisionalExpiredAt: now,
-                provisionalExpiryDeadlineAt: offeredAt,
+                provisionalExpiryDeadlineAt: now,
                 provisionalExpiryNotifiedAt: null,
                 listing: { title: 'Ford Kuga', sellerId: 'seller-1' },
             }]);
