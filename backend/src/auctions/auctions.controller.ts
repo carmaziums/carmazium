@@ -234,6 +234,16 @@ export class AuctionsController {
         return new StandardResponse({ accepted: true });
     }
 
+    @Post(':id/decline-provisional')
+    @UseGuards(SessionAuthGuard)
+    @ApiCookieAuth()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Seller explicitly declines an ended below-reserve provisional offer' })
+    async declineProvisional(@Param('id') id: string, @CurrentUser() user: any) {
+        await this.auctionsService.declineProvisionalOffer(id, user.id);
+        return new StandardResponse({ declined: true });
+    }
+
     // ── Buy It Now Routes ────────────────────────────────────────────────────
 
     @Post(':id/bin-trigger')
