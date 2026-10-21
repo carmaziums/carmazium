@@ -330,6 +330,58 @@ describe('OffersService — private retail negotiations', () => {
         expect(prisma.listing.updateMany).not.toHaveBeenCalled();
     });
 
+    it('rejects seller acceptance of a Retail offer if the linked auction has a winner', async () => {
+        const offer = {
+            id: 'offer-win', listingId: 'retail-1', buyerId: 'retail-buyer',
+            amount: 8200, status: 'PENDING', updatedAt: new Date(),
+            counterAttemptsSeller: 0,
+            listing: { id: 'retail-1', sellerId: 'seller-1', title: 'Ford Kuga',
+                status: 'ACTIVE', price: 10000 },
+        };
+        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.listing.findUnique.mockResolvedValue({
+            linkedListingId: 'auction-listing-1', deletedAt: null,
+        });
+        prisma.auction.findFirst
+            .mockResolvedValueOnce(null) // no SAME-ROW auction
+            .mockResolvedValueOnce({ id: 'auction-won-1' }); // linked auction has a winner
+
+        await expect(service.respondToOffer('offer-win', 'seller-1', OfferResponseStatus.ACCEPTED))
+            .rejects.toThrow(/already has an auction winner/i);
+
+        expect(prisma.auction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({
+                listingId: 'auction-listing-1',
+                OR: expect.arrayContaining([{ winnerId: { not: null } }]),
+            }),
+        }));
+        expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+        expect(auctionsService.cancelLinkedAuctionForRetailDeal).not.toHaveBeenCalled();
+    });
+
+    it('rejects buyer acceptance of a seller counter if a linked auction has a winner', async () => {
+        const offer = {
+            id: 'offer-counter', listingId: 'retail-1', buyerId: 'retail-buyer',
+            amount: 8000, counterAmount: 8500, status: 'COUNTERED',
+            lastCounteredBy: 'SELLER', counterExpiresAt: new Date(Date.now() + 60_000),
+            counterAttemptsBuyer: 0,
+            listing: { id: 'retail-1', sellerId: 'seller-1', title: 'Ford Kuga',
+                status: 'ACTIVE', price: 10000 },
+        };
+        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.listing.findUnique.mockResolvedValue({
+            linkedListingId: 'auction-listing-1', deletedAt: null,
+        });
+        prisma.auction.findFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({ id: 'auction-won-1' });
+
+        await expect(service.respondToCounterOffer('offer-counter', 'retail-buyer', OfferResponseStatus.ACCEPTED))
+            .rejects.toThrow(/already has an auction winner/i);
+        expect(prisma.offer.updateMany).not.toHaveBeenCalled();
+        expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+    });
+
     it('buyer acceptance of a seller counter uses the same exclusive deal close', async () => {
         const offer = {
             id: 'offer-1',
