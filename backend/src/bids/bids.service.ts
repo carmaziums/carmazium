@@ -1066,6 +1066,7 @@ export class BidsService {
                                     status: true,
                                     endTime: true,
                                     winnerId: true,
+                                    provisionalOfferBidId: true,
                                     winningBidAmount: true,
                                     wonAt: true,
                                     buyerFeePaid: true,

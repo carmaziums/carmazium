@@ -34,7 +34,7 @@ import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { alsoListRetail } from '../../lib/listingsApi';
 import { createPaymentSheet } from '../../lib/paymentsApi';
-import { submitHandoverProof } from '../../lib/auctionApi';
+import { submitHandoverProof, declineProvisionalOffer } from '../../lib/auctionApi';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from '../../lib/auctionSellerStage';
 import { formatBuyerFeeRemaining } from '../../lib/auctionFeeDeadline';
@@ -118,6 +118,7 @@ interface AuctionItem {
     images?: string[];
     viewCount?: number;
     sellerId?: string | null;
+    type?: string;
     status?: string;
     linkedListingId?: string | null;
     _count?: { bids?: number };
@@ -143,7 +144,7 @@ interface EligibleListing {
 function provisionalPending(item: AuctionItem): boolean {
   const amount = Number(item.listing.bids?.[0]?.amount ?? 0);
   return item.status === 'ENDED' && !item.winnerId && !!item.provisionalOfferBidId
-    && item.listing.status === 'DRAFT' && amount > 0 && amount < Number(item.reservePrice);
+    && (item.listing.status === 'DRAFT' || (item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED')) && amount > 0 && amount < Number(item.reservePrice);
 }
 
 // ─────────────────────────── Status Config ───────────────────────────
@@ -1825,20 +1826,34 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
               ) : provisionalPending(resultsAuction) ? (
                 <View style={{ flex: 1, gap: 8 }}>
+                  <TouchableOpacity style={styles.resultsPrimaryBtn} onPress={() => Alert.alert(
+                    'Decline provisional offer?',
+                    'The bidder will be notified and no sale will be created.',
+                    [{ text: 'Cancel', style: 'cancel' }, { text: 'Decline', style: 'destructive', onPress: async () => {
+                      try {
+                        await declineProvisionalOffer(resultsAuction.id);
+                        setResultsAuction(null);
+                        await fetchAuctions(true);
+                      } catch (error: any) { Alert.alert('Could not decline', error?.message || 'Please try again.'); }
+                    } }],
+                  )}>
+                    <Text style={styles.resultsPrimaryBtnText}>Decline provisional offer</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
                     onPress={() => { const chosen = resultsAuction; setResultsAuction(null); handleTap(chosen); }}>
                     <Text style={styles.resultsPrimaryBtnText}>Review & Accept Offer</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
-                    onPress={() => { const id = resultsAuction.listing.id; setResultsAuction(null); openCreateModal(id); }}>
-                    <Text style={styles.resultsPrimaryBtnText}>Re-list in Auction</Text>
+                    onPress={() => { const id = resultsAuction.listing.id; const isRetail = resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE';
+                      setResultsAuction(null); isRetail ? navigation?.navigate('SellerListings') : openCreateModal(id); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE' ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
-                    onPress={() => { const id = resultsAuction.listing.id; const alreadyLive = !!resultsAuction.listing.linkedListingId;
+                    onPress={() => { const id = resultsAuction.listing.id; const alreadyLive = !!resultsAuction.listing.linkedListingId || (resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE');
                       setResultsAuction(null); alreadyLive
                         ? navigation?.navigate('SellerListings')
                         : navigation?.navigate('SellCarFlow', { listingId: id }); }}>
-                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.linkedListingId || (resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE') ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (

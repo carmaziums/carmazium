@@ -17,6 +17,7 @@ import { GuardedAuctionExpiryService } from './guarded-auction-expiry.service';
 import { HpiPendingReminderService } from './hpi-pending-reminder.service';
 import { UnverifiedAccountCleanupService } from './unverified-account-cleanup.service';
 import { ValuationQuoteRetentionService } from './valuation-quote-retention.service';
+import { ProvisionalAuctionReminderService } from './provisional-auction-reminder.service';
 
 @Module({
     imports: [
@@ -40,6 +41,7 @@ import { ValuationQuoteRetentionService } from './valuation-quote-retention.serv
         HpiPendingReminderService,
         UnverifiedAccountCleanupService,
         ValuationQuoteRetentionService,
+        ProvisionalAuctionReminderService,
     ],
 })
 export class TasksModule { }

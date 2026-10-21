@@ -7,7 +7,7 @@ import {
     X, BarChart2, Trophy, XCircle, Eye, MessageSquare, Gavel, Loader2,
     Lightbulb, Gauge, Fuel, Cog,
 } from "lucide-react"
-import { getBidCount, getCurrentBid, type Auction } from "@/lib/auctionApi"
+import { getBidCount, getCurrentBid, declineProvisionalOffer, type Auction } from "@/lib/auctionApi"
 import { getSellerAuctionStage, getSellerStageLabel, getSellerStageHint } from "@/lib/auctionSellerStage"
 
 function formatDate(iso: string) {
@@ -33,7 +33,7 @@ function getResultTips(auction: Auction): string[] {
     const reserve = Number(auction.reservePrice)
 
     if (auction.status === 'ENDED' && !auction.winnerId && !!auction.provisionalOfferBidId
-        && auction.listing.status === 'DRAFT' && bidCount > 0 && topBid > 0 && topBid < reserve) {
+        && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && bidCount > 0 && topBid > 0 && topBid < reserve) {
         return ['Your highest offer is provisional. Accept it to declare a winner, or choose a fresh auction or Retail listing.'];
     }
     if (bidCount === 0) {
@@ -67,7 +67,7 @@ export function AuctionResultsModal({
     const tips = getResultTips(auction)
     const topOffer = getCurrentBid(auction)
     const provisionalPending = auction.status === 'ENDED' && !auction.winnerId
-        && !!auction.provisionalOfferBidId && listing.status === 'DRAFT' && getBidCount(auction) > 0
+        && !!auction.provisionalOfferBidId && (listing.status === 'DRAFT' || (listing.status === 'ACTIVE' && listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0
         && topOffer > 0 && topOffer < Number(auction.reservePrice)
 
     return (
@@ -230,11 +230,24 @@ export function AuctionResultsModal({
                             <div className="flex-1 grid grid-cols-1 gap-2">
                                 <Link href={'/auctions/live/' + auction.id} onClick={onClose}
                                     className="text-center rounded-xl bg-emerald-600 text-white text-sm font-bold py-2.5">Review & Accept £{topOffer.toLocaleString('en-GB')}</Link>
-                                <button onClick={() => onReauction(auction)}
-                                    className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>
-                                <Link href={listing.linkedListingId ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
+                                <button onClick={async () => {
+                                    if (!window.confirm('Decline the provisional offer? The buyer will be notified and no sale will be created.')) return
+                                    try {
+                                        await declineProvisionalOffer(auction.id)
+                                        onClose()
+                                        window.location.reload()
+                                    } catch (error: any) {
+                                        window.alert(error?.message || 'Could not decline the offer. Please try again.')
+                                    }
+                                }} className="rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm font-bold py-2.5">Decline Offer</button>
+                                {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE'
+                                    ? <Link href="/dashboard/seller/listings" onClick={onClose}
+                                        className="text-center rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Manage Retail / Put to Auction</Link>
+                                    : <button onClick={() => onReauction(auction)}
+                                        className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>}
+                                <Link href={listing.linkedListingId || (listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE') ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
                                     onClick={onClose} className="text-center rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">
-                                    {listing.linkedListingId ? 'Continue Existing Retail Listing' : 'List on Retail (£1)'}
+                                    {listing.linkedListingId || (listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE') ? 'Manage Existing Retail Listing' : 'List on Retail (£1)'}
                                 </Link>
                             </div>
                         ) : (

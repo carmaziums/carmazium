@@ -27,7 +27,7 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
-  getAuction, placeBid,
+  getAuction, placeBid, declineProvisionalOffer,
   triggerBuyItNow, confirmBuyItNow, declineBuyItNow,
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
 } from '../../lib/auctionApi';
@@ -1025,7 +1025,7 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const reserveMet = hasRealBids && currentBid > 0 && reservePrice > 0 && currentBid >= reservePrice;
   const provisionalPending = isEnded && !auction?.winnerId && !!auction?.provisionalOfferBidId
     && auction.provisionalOfferBidId === bidHistory[0]?.id
-    && auction?.listing?.status === 'DRAFT' && hasRealBids && currentBid > 0 && !reserveMet;
+    && (auction?.listing?.status === 'DRAFT' || (auction?.listing?.status === 'ACTIVE' && auction?.listing?.type === 'CLASSIFIED')) && hasRealBids && currentBid > 0 && !reserveMet;
   const quickBidAmounts = hasRealBids
     ? [minIncrement, minIncrement * 2, minIncrement * 5, minIncrement * 10].map(inc => currentBid + inc)
     : [0, minIncrement, minIncrement * 2, minIncrement * 5].map(inc => minimumAllowedBid + inc);
@@ -1223,15 +1223,30 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
           {provisionalPending && (
             <View style={{ gap: 10, marginTop: 12 }}>
-              <TouchableOpacity style={s.sellerCloseBtn}
-                onPress={() => navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>Re-list in Auction</Text>
+              <TouchableOpacity style={s.sellerCloseBtn} onPress={() => Alert.alert(
+                'Decline provisional offer?',
+                'The bidder will be notified. No sale or buyer fee will be created.',
+                [{ text: 'Cancel', style: 'cancel' }, { text: 'Decline offer', style: 'destructive', onPress: async () => {
+                  try {
+                    await declineProvisionalOffer(auction!.id);
+                    loadAuction({ silent: true });
+                  } catch (error: any) { Alert.alert('Could not decline', error?.message || 'Please try again.'); }
+                } }],
+              )}>
+                <Text style={s.sellerCloseBtnText}>Decline provisional offer</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.sellerCloseBtn}
-                onPress={() => auction?.listing?.linkedListingId
+                onPress={() => auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE'
+                  ? navigation.navigate('SellerListings')
+                  : navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
+                <Text style={s.sellerCloseBtnText}>{auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE'
+                  ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.sellerCloseBtn}
+                onPress={() => auction?.listing?.linkedListingId || (auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE')
                   ? navigation.navigate('SellerListings')
                   : navigation.navigate('SellCarFlow', { listingId: auction!.listingId })}>
-                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+                <Text style={s.sellerCloseBtnText}>{auction?.listing?.linkedListingId || (auction?.listing?.type === 'CLASSIFIED' && auction?.listing?.status === 'ACTIVE') ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -850,6 +850,23 @@ export class EmailService {
     }
 
 
+    /** Notify the provisional bidder that the seller explicitly declined. */
+    async sendAuctionProvisionalDeclinedBuyerEmail(options: {
+        toEmail: string; vehicleTitle: string; amount: number; auctionId: string;
+    }) {
+        const vehicle = String(options.vehicleTitle).replace(/[&<>]/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' } as Record<string, string>)[c]);
+        const link = this.frontendUrl + '/auctions/live/' + encodeURIComponent(options.auctionId);
+        return this.sendBrandedEmail({
+            to: options.toEmail,
+            subject: 'Your provisional auction offer was declined — CarMazium',
+            bodyHtml: '<h1>Seller decision</h1><p>The seller did not accept the provisional £'
+                + options.amount.toLocaleString('en-GB') + ' offer for <strong>' + vehicle
+                + '</strong>. The auction has ended without a sale. No buyer fee is due.</p>'
+                + '<p><a href="' + link + '">View the auction outcome</a></p>',
+        });
+    }
+
     /** The auction has ended below reserve. This buyer has the provisional
      * highest offer, not a win: the seller still has three possible choices. */
     async sendAuctionProvisionalBidBuyerEmail(options: {

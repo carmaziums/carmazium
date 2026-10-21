@@ -626,6 +626,7 @@ export interface Bid {
             status: 'SCHEDULED' | 'ACTIVE' | 'ENDED' | 'CANCELLED'
             endTime: string
             winnerId: string | null
+            provisionalOfferBidId?: string | null
             winningBidAmount: string | number | null
         } | null
     }

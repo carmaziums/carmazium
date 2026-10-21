@@ -183,6 +183,8 @@ export default function MyBidsPage() {
                                                                     <>Outbid</>
                                                                 )}
                                                             </span>
+                                                        ) : isAuction && auctionEnded && !userWon && auction?.provisionalOfferBidId === bid.id ? (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-500/10 text-amber-400 border-amber-500/20">Seller decision pending</span>
                                                         ) : isAuction && auctionEnded && !userWon ? (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-500/10 text-[var(--text-muted)] border-gray-500/20">
                                                                 Auction Ended

@@ -27,7 +27,7 @@ import { ThreeDErrorBoundary } from "@/components/listing/ThreeDErrorBoundary"
 import { HpiReportModal } from "@/components/hpi/HpiReportModal"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getAuction, acceptBidEarly, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
+import { getAuction, acceptBidEarly, declineProvisionalOffer, triggerBuyItNow, confirmBuyItNow, declineBuyItNow, cancelBid, type Auction, type BidBroadcastPayload, type AuctionEndPayload } from "@/lib/auctionApi"
 import { placeBid, getDamageRecords, type Listing } from "@/lib/listingApi"
 import { buildBuyerDamagePins } from "@/lib/damageMarkers"
 import { BuyerVehicleInformation } from "@/components/listing/BuyerVehicleInformation"
@@ -785,7 +785,7 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
     const bidCount = bidHistory.length
     const provisionalOfferPending = isEnded && !auction.winnerId
         && !!auction.provisionalOfferBidId && auction.provisionalOfferBidId === bidHistory[0]?.bidId
-        && auction.listing.status === 'DRAFT' && topBidAmount !== null
+        && (auction.listing.status === 'DRAFT' || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')) && topBidAmount !== null
         && topBidAmount > 0 && !reserveMet
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2137,13 +2137,30 @@ export default function LiveAuctionPage({ params: paramsPromise }: { params: Pro
                                     : 'If you wait, other verified dealers can continue increasing the bid normally.'}
                             </p>
                             {provisionalOfferPending && (
+                                <button type="button" className="w-full rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-red-400 text-xs font-bold"
+                                    onClick={async () => {
+                                        if (!window.confirm('Decline this provisional bid? The buyer will be notified.')) return
+                                        try {
+                                            await declineProvisionalOffer(auction.id)
+                                            setAuction(await getAuction(auction.id))
+                                            setAcceptError(null)
+                                            triggerNotificationRefresh()
+                                        } catch (error: any) {
+                                            setAcceptError(error?.message || 'Could not decline the offer')
+                                        }
+                                    }}>Decline provisional offer</button>
+                            )}
+                            {acceptError && <p role="alert" className="text-xs text-red-400">{acceptError}</p>}
+                            {provisionalOfferPending && (
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Link href={'/dashboard/seller/auctions?listingId=' + auction.listingId}
-                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">Re-list in Auction</Link>
-                                    <Link href={auction.listing.linkedListingId
+                                    <Link href={auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE'
+                                        ? '/dashboard/seller/listings' : '/dashboard/seller/auctions?listingId=' + auction.listingId}
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">
+                                        {auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE' ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Link>
+                                    <Link href={auction.listing.linkedListingId || (auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE')
                                         ? '/dashboard/seller/listings'
                                         : '/sell?editId=' + auction.listingId + '&sellMode=retail'}
-                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">{auction.listing.linkedListingId ? 'Manage Live Retail' : 'List on Retail (£1)'}</Link>
+                                        className="text-center rounded-lg border border-[var(--border-default)] py-2 text-xs font-bold">{auction.listing.linkedListingId || (auction.listing.type === 'CLASSIFIED' && auction.listing.status === 'ACTIVE') ? 'Manage Live Retail' : 'List on Retail (£1)'}</Link>
                                 </div>
                             )}
                         </div>

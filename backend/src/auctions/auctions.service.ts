@@ -1286,6 +1286,7 @@ export class AuctionsService {
                             title: true,
                             sellerId: true,
                             status: true,
+                            type: true,
                             linkedListingId: true,
                             year: true,
                             make: true,
@@ -1305,7 +1306,9 @@ export class AuctionsService {
             const provisionalAcceptance = auction.status === 'ENDED'
                 && !auction.winnerId && !auction.wonAt
                 && !!auction.provisionalOfferBidId
-                && auction.listing.status === 'DRAFT';
+                // A subsequent Retail approval does not revoke an outstanding provisional offer.
+                && (auction.listing.status === 'DRAFT'
+                    || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED'));
             if (!activeAcceptance && !provisionalAcceptance) {
                 throw new BadRequestException('This auction has no provisional offer available to accept');
             }
@@ -1446,6 +1449,68 @@ export class AuctionsService {
             accepted.winningAmount,
             true,
         );
+    }
+
+    /** A seller's explicit rejection retires only the recorded provisional offer.
+     * Existing bids remain as auction history; no fee, sale or payout is created.
+     */
+    async declineProvisionalOffer(auctionId: string, userId: string): Promise<void> {
+        const sellerId = await this.resolveSellerBusinessId(userId, 'MANAGE_INVENTORY');
+        const auctionRef = await this.prisma.auction.findUnique({
+            where: { id: auctionId }, select: { listingId: true, deletedAt: true },
+        });
+        if (!auctionRef || auctionRef.deletedAt) throw new NotFoundException('Auction not found');
+
+        const declined = await this.prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${auctionRef.listingId}, 0))::text`;
+            const auction = await tx.auction.findUnique({
+                where: { id: auctionId },
+                include: { listing: { select: { sellerId: true, title: true, deletedAt: true } } },
+            });
+            if (!auction || auction.deletedAt || auction.listing.deletedAt)
+                throw new NotFoundException('Auction not found');
+            if (auction.listing.sellerId !== sellerId) throw new ForbiddenException('You do not own this auction');
+            if (auction.status !== 'ENDED' || auction.winnerId || auction.wonAt || !auction.provisionalOfferBidId)
+                throw new BadRequestException('There is no pending provisional offer to decline');
+            const bid = await tx.bid.findUnique({
+                where: { id: auction.provisionalOfferBidId }, select: { bidderId: true, amount: true },
+            });
+            await tx.auction.update({ where: { id: auctionId }, data: {
+                provisionalOfferBidId: null, provisionalOfferedAt: null,
+            } });
+            return { bidderId: bid?.bidderId, amount: Number(bid?.amount || 0), title: auction.listing.title };
+        });
+
+        await this.prisma.notification.updateMany({
+            where: { userId: sellerId, entityId: auctionId, actionType: 'ACCEPT_OR_RELIST', isRead: false },
+            data: { isRead: true },
+        }).catch(error => this.logger.error('Could not mark seller decision notification read', error));
+        if (declined.bidderId) {
+            await this.notificationsService.create({
+                userId: declined.bidderId, type: 'AUCTION_PROVISIONAL_DECLINED',
+                title: 'Seller declined your provisional offer',
+                message: 'The seller has not accepted your £' + declined.amount.toLocaleString('en-GB')
+                    + ' offer for ' + declined.title + '. The auction has ended without a sale. No buyer fee is due.',
+                entityType: 'AUCTION', entityId: auctionId,
+                link: '/auctions/live/' + auctionId,
+                data: { auctionId, declined: true, sellerDecisionPending: false },
+            }).catch(error => this.logger.error('Provisional decline buyer notification failed', error));
+            if (await this.notificationsService.shouldSendEmail(declined.bidderId, 'AUCTION_PROVISIONAL_DECLINED').catch(() => false)) {
+                const buyer = await this.prisma.user.findUnique({
+                    where: { id: declined.bidderId }, select: { email: true },
+                });
+                if (buyer?.email) await this.emailService.sendAuctionProvisionalDeclinedBuyerEmail({
+                    toEmail: buyer.email, vehicleTitle: declined.title, amount: declined.amount, auctionId,
+                }).catch(error => this.logger.error('Provisional decline buyer email failed', error));
+            }
+        }
+        this.trackAuctionEvent('auction_outcome', {
+            auction_id: auctionId, listing_id: auctionRef.listingId,
+            outcome: 'SELLER_DECLINED_BELOW_RESERVE', amount: declined.amount,
+        }, sellerId);
+        this.auctionGateway.broadcastAuctionEnd(auctionId, {
+            auctionId, winnerId: null, winningBidAmount: null, reserveMet: false,
+        });
     }
 
     /**
