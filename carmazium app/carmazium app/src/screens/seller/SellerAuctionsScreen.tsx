@@ -1844,15 +1844,16 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                     <Text style={styles.resultsPrimaryBtnText}>Review & Accept Offer</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
-                    onPress={() => { const id = resultsAuction.listing.id; setResultsAuction(null); openCreateModal(id); }}>
-                    <Text style={styles.resultsPrimaryBtnText}>Re-list in Auction</Text>
+                    onPress={() => { const id = resultsAuction.listing.id; const isRetail = resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE';
+                      setResultsAuction(null); isRetail ? navigation?.navigate('SellerListings') : openCreateModal(id); }}>
+                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE' ? 'Manage Retail / Put to Auction' : 'Re-list in Auction'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.resultsPrimaryBtn}
-                    onPress={() => { const id = resultsAuction.listing.id; const alreadyLive = !!resultsAuction.listing.linkedListingId;
+                    onPress={() => { const id = resultsAuction.listing.id; const alreadyLive = !!resultsAuction.listing.linkedListingId || (resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE');
                       setResultsAuction(null); alreadyLive
                         ? navigation?.navigate('SellerListings')
                         : navigation?.navigate('SellCarFlow', { listingId: id }); }}>
-                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.linkedListingId ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
+                    <Text style={styles.resultsPrimaryBtnText}>{resultsAuction.listing.linkedListingId || (resultsAuction.listing.type === 'CLASSIFIED' && resultsAuction.listing.status === 'ACTIVE') ? 'Manage Existing Retail' : 'List on Retail (£1)'}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
