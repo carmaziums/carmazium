@@ -27,7 +27,7 @@ import { Elevation, Radius } from '../../constants/spacing';
 import { Colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/authStore';
 import {
-  getAuction, placeBid,
+  getAuction, placeBid, declineProvisionalOffer,
   triggerBuyItNow, confirmBuyItNow, declineBuyItNow,
   type AuctionDetail, type BidBroadcastPayload, type AuctionEndPayload,
 } from '../../lib/auctionApi';
@@ -1223,6 +1223,18 @@ export const AuctionDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
           {provisionalPending && (
             <View style={{ gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={s.sellerCloseBtn} onPress={() => Alert.alert(
+                'Decline provisional offer?',
+                'The bidder will be notified. No sale or buyer fee will be created.',
+                [{ text: 'Cancel', style: 'cancel' }, { text: 'Decline offer', style: 'destructive', onPress: async () => {
+                  try {
+                    await declineProvisionalOffer(auction!.id);
+                    loadAuction({ silent: true });
+                  } catch (error: any) { Alert.alert('Could not decline', error?.message || 'Please try again.'); }
+                } }],
+              )}>
+                <Text style={s.sellerCloseBtnText}>Decline provisional offer</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={s.sellerCloseBtn}
                 onPress={() => navigation.navigate('SellerAuctions', { preselectListingId: auction!.listingId })}>
                 <Text style={s.sellerCloseBtnText}>Re-list in Auction</Text>
