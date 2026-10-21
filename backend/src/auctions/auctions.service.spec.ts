@@ -1322,6 +1322,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
             id: 'auction-1', listingId: 'listing-1', status: 'ENDED',
             deletedAt: null, winnerId: null, wonAt: null,
             provisionalOfferBidId: 'bid-current',
+            provisionalOfferedAt: new Date(Date.now() - 60 * 60_000),
             listing: { sellerId: 'seller-1', title: '2018 Ford Kuga', status: 'DRAFT', type: 'CLASSIFIED', deletedAt: null },
         });
         prisma.bid.findUnique.mockResolvedValue({ bidderId: 'dealer-1', amount: 6165 });
