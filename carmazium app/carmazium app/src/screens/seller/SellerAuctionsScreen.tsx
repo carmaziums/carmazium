@@ -143,7 +143,7 @@ interface EligibleListing {
 function provisionalPending(item: AuctionItem): boolean {
   const amount = Number(item.listing.bids?.[0]?.amount ?? 0);
   return item.status === 'ENDED' && !item.winnerId && !!item.provisionalOfferBidId
-    && item.listing.status === 'DRAFT' && amount > 0 && amount < Number(item.reservePrice);
+    && (item.listing.status === 'DRAFT' || (item.listing.status === 'ACTIVE' && item.listing.type === 'CLASSIFIED')) && amount > 0 && amount < Number(item.reservePrice);
 }
 
 // ─────────────────────────── Status Config ───────────────────────────
