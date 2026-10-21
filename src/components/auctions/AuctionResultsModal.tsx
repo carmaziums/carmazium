@@ -240,11 +240,14 @@ export function AuctionResultsModal({
                                         window.alert(error?.message || 'Could not decline the offer. Please try again.')
                                     }
                                 }} className="rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm font-bold py-2.5">Decline Offer</button>
-                                <button onClick={() => onReauction(auction)}
-                                    className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>
-                                <Link href={listing.linkedListingId ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
+                                {listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE'
+                                    ? <Link href="/dashboard/seller/listings" onClick={onClose}
+                                        className="text-center rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Manage Retail / Put to Auction</Link>
+                                    : <button onClick={() => onReauction(auction)}
+                                        className="rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">Re-list in Auction</button>}
+                                <Link href={listing.linkedListingId || (listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE') ? '/dashboard/seller/listings' : '/sell?editId=' + listing.id + '&sellMode=retail'}
                                     onClick={onClose} className="text-center rounded-xl bg-[var(--bg-input)] border border-[var(--border-default)] text-sm font-bold py-2.5">
-                                    {listing.linkedListingId ? 'Continue Existing Retail Listing' : 'List on Retail (£1)'}
+                                    {listing.linkedListingId || (listing.type === 'CLASSIFIED' && listing.status === 'ACTIVE') ? 'Manage Existing Retail Listing' : 'List on Retail (£1)'}
                                 </Link>
                             </div>
                         ) : (
