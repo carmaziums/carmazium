@@ -92,6 +92,38 @@ describe('ProvisionalAuctionExpiryService', () => {
         expect(db.auction.updateMany).not.toHaveBeenCalled();
     });
 
+    it('sends tracked email to each recipient only after its lease is claimed', async () => {
+        db.notification.findMany.mockResolvedValue([
+            { id: 'notice-seller', userId: 'seller-1', entityId: 'auction-1',
+                title: 'Offer expired', message: 'Seller message',
+                user: { email: 'seller@example.com' } },
+            { id: 'notice-bidder', userId: 'buyer-1', entityId: 'auction-1',
+                title: 'Bid expired', message: 'Bidder message',
+                user: { email: 'buyer@example.com' } },
+        ]);
+        db.$queryRaw.mockResolvedValueOnce([
+            { id: 'notice-seller' }, { id: 'notice-bidder' },
+        ]).mockResolvedValue([{ id: 'claimed' }]);
+        await service.expireOffers(now);
+        expect(email.sendAuctionProvisionalExpiredEmail).toHaveBeenCalledTimes(2);
+        expect(email.sendAuctionProvisionalExpiredEmail).toHaveBeenCalledWith(expect.objectContaining({
+            toEmail: 'buyer@example.com', auctionId: 'auction-1',
+        }));
+        expect(db.$queryRaw).toHaveBeenCalledTimes(5);
+    });
+
+    it('does not send duplicate email when another Fly worker owns the lease', async () => {
+        db.notification.findMany.mockResolvedValue([{
+            id: 'notice-1', userId: 'seller-1', entityId: 'auction-1',
+            title: 'Offer expired', message: 'Seller message',
+            user: { email: 'seller@example.com' },
+        }]);
+        db.$queryRaw.mockResolvedValueOnce([{ id: 'notice-1' }])
+            .mockResolvedValueOnce([]);
+        await service.expireOffers(now);
+        expect(email.sendAuctionProvisionalExpiredEmail).not.toHaveBeenCalled();
+    });
+
     it('does not duplicate persisted seller or buyer expiry notices', async () => {
         db.auction.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{
             id: 'auction-1', listingId: 'listing-1',
