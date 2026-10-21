@@ -317,6 +317,10 @@ export async function acceptBidEarly(auctionId: string, bidId: string): Promise<
     });
 }
 
+export async function declineProvisionalOffer(auctionId: string): Promise<void> {
+    await apiClient<any>(`${API}/auctions/${auctionId}/decline-provisional`, { method: 'POST' });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getCurrentBid(auction: Auction): number {
