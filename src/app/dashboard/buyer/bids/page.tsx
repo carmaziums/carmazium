@@ -183,6 +183,11 @@ export default function MyBidsPage() {
                                                                     <>Outbid</>
                                                                 )}
                                                             </span>
+                                                        ) : isAuction && auctionEnded && !userWon
+                                                            && (auction?.provisionalExpiredBidId === bid.id
+                                                                || (auction?.provisionalOfferBidId === bid.id && !!auction.provisionalOfferedAt
+                                                                    && Date.now() >= new Date(auction.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000)) ? (
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-slate-500/10 text-[var(--text-muted)] border-slate-500/20">Offer expired — no sale</span>
                                                         ) : isAuction && auctionEnded && !userWon && auction?.provisionalOfferBidId === bid.id ? (
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-amber-500/10 text-amber-400 border-amber-500/20">Seller decision pending</span>
                                                         ) : isAuction && auctionEnded && !userWon ? (
