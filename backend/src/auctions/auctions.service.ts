@@ -1286,6 +1286,7 @@ export class AuctionsService {
                             title: true,
                             sellerId: true,
                             status: true,
+                            type: true,
                             linkedListingId: true,
                             year: true,
                             make: true,
