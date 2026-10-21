@@ -73,6 +73,7 @@ describe('ListingsService', () => {
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
             auction: {
                 create: jest.fn(),
+                findFirst: jest.fn().mockResolvedValue(null),
                 findUnique: jest.fn(),
                 findMany: jest.fn().mockResolvedValue([]),
                 update: jest.fn(),
@@ -734,6 +735,7 @@ describe('ListingsService', () => {
             };
             const sold = { ...active, status: 'SOLD' };
             prisma.listing.findUnique
+                .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(active)
                 .mockResolvedValueOnce(sold);
