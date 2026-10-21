@@ -92,6 +92,7 @@ interface AuctionItem {
   winnerId?: string | null;
   winningBidAmount?: number | null;
   provisionalOfferBidId?: string | null;
+  provisionalOfferedAt?: string | null;
   buyerFeePaid?: boolean;
   sellerFundsConfirmedAt?: string | null;
   buyerRefusedAt?: string | null;
@@ -1749,6 +1750,13 @@ export const SellerAuctionsScreen: React.FC<{ navigation?: any }> = ({ navigatio
                 </View>
               </View>
             )}
+
+            {provisionalPending(resultsAuction) && resultsAuction.provisionalOfferedAt
+              && Date.now() - new Date(resultsAuction.provisionalOfferedAt).getTime() > 72 * 60 * 60 * 1000 && (
+                <Text style={[styles.resultsBannerSub, { color: Colors.warning }]}>
+                  This offer is over 72 hours old. The buyer may no longer be available. No automatic expiry applies; accepting still confirms the sale.
+                </Text>
+              )}
 
             {/* Stats grid */}
             <View style={styles.resultsStatsGrid}>
