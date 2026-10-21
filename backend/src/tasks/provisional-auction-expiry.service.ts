@@ -281,7 +281,7 @@ export class ProvisionalAuctionExpiryService {
         reason: string, providerId: string | null = null,
     ): Promise<void> {
         // "submitted" deliberately does not claim inbox delivery or an open.
-        await this.prisma.$queryRaw`
+        const updated = await this.prisma.$queryRaw<Array<{ id: string }>>`
             UPDATE "notifications"
             SET data = COALESCE(data,'{}'::jsonb) || jsonb_build_object(
                 'emailStatus', CASE WHEN ${status}='retryable'
@@ -297,5 +297,40 @@ export class ProvisionalAuctionExpiryService {
             WHERE id=${id} AND data->>'emailClaimToken'=${token}
             RETURNING id
         `;
+        if (status === 'retryable' && updated.length > 0) {
+            await this.alertAdminsOnPermanentEmailFailure(id);
+        }
+    }
+
+    private async alertAdminsOnPermanentEmailFailure(notificationId: string): Promise<void> {
+        const row = await this.prisma.notification.findUnique({
+            where: { id: notificationId },
+            select: { entityId: true, data: true },
+        });
+        const data = row?.data;
+        if (!row?.entityId || !data || typeof data !== 'object' || Array.isArray(data)
+            || (data as Record<string, unknown>).emailStatus !== 'failed') return;
+        const admins = await this.prisma.user.findMany({
+            where: { role: 'ADMIN' }, select: { id: true },
+        });
+        for (const admin of admins) {
+            try {
+                await this.notifications.create({
+                    userId: admin.id,
+                    type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+                    actionType: 'PROVISIONAL_REMINDER_EXPIRY_EMAIL_FAILED_' + notificationId,
+                    title: 'Expiry email delivery requires attention',
+                    message: 'The auction expiry email failed after six submission attempts. '
+                        + 'The expiry itself is recorded and the recipient has an in-app notice.',
+                    entityType: 'AUCTION', entityId: row.entityId,
+                    link: '/auctions/live/' + row.entityId,
+                    data: { expiryEmailFailed: true, notificationId },
+                });
+            } catch (error: any) {
+                if (error?.code !== 'P2002') {
+                    this.logger.error('Could not escalate permanent expiry email failure', error);
+                }
+            }
+        }
     }
 }
