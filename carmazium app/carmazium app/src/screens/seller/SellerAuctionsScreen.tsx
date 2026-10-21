@@ -118,6 +118,7 @@ interface AuctionItem {
     images?: string[];
     viewCount?: number;
     sellerId?: string | null;
+    type?: string;
     status?: string;
     linkedListingId?: string | null;
     _count?: { bids?: number };
