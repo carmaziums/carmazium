@@ -72,6 +72,7 @@ describe('ListingsService', () => {
             },
             transaction: { findMany: jest.fn(), update: jest.fn() },
             hpiReport: { findUnique: jest.fn().mockResolvedValue({ id: 'hpi-1' }) },
+            notification: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
             auction: {
                 create: jest.fn(),
                 findFirst: jest.fn().mockResolvedValue(null),
@@ -273,6 +274,13 @@ describe('ListingsService', () => {
                 where: { id: 'auction-1' },
                 data: expect.objectContaining({ status: 'CANCELLED' }),
             }));
+            expect(prisma.notification.updateMany).toHaveBeenCalledWith({
+                where: {
+                    userId: sellerId, entityId: 'auction-1', isRead: false,
+                    OR: [{ actionType: 'ACCEPT_OR_RELIST' }, { type: 'AUCTION_PROVISIONAL_REMINDER' }],
+                },
+                data: { isRead: true },
+            });
             expect(prisma.bid.updateMany).toHaveBeenCalledWith(expect.objectContaining({
                 where: expect.objectContaining({ listingId: 'listing-1' }),
                 data: expect.objectContaining({ archivedAt: expect.any(Date) }),
