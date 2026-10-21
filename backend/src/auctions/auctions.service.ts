@@ -1504,6 +1504,9 @@ export class AuctionsService {
                 || !(auction.listing.status === 'DRAFT'
                     || (auction.listing.status === 'ACTIVE' && auction.listing.type === 'CLASSIFIED')))
                 throw new BadRequestException('There is no pending provisional offer to decline');
+            if (provisionalOfferExpired(auction.provisionalOfferedAt)) {
+                throw new BadRequestException('This provisional offer has already expired after 72 hours.');
+            }
             const bid = await tx.bid.findUnique({
                 where: { id: auction.provisionalOfferBidId }, select: { bidderId: true, amount: true },
             });
