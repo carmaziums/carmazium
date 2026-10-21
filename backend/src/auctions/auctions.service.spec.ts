@@ -1269,12 +1269,25 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
         expect(prisma.sale.create).not.toHaveBeenCalled();
     });
 
-    it('rejects an expired provisional offer if the vehicle has been re-listed or moved to Retail', async () => {
+    it('allows a recorded provisional bid to be accepted after the listing moves to Retail', async () => {
         prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
-            status: 'ENDED', winnerId: null, wonAt: null,
-            provisionalOfferBidId: 'bid-current',
+            status: 'ENDED', winnerId: null, wonAt: null, provisionalOfferBidId: 'bid-current',
             endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
-            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', linkedListingId: null },
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', type: 'CLASSIFIED', linkedListingId: null },
+        });
+        const bid = { id: 'bid-current', listingId: 'listing-1', bidderId: 'dealer-1',
+            amount: 8200, deletedAt: null, cancelledAt: null, archivedAt: null };
+        prisma.bid.findUnique.mockResolvedValue(bid);
+        prisma.bid.findFirst.mockResolvedValue(bid);
+        await expect(service.acceptBid('auction-1', 'bid-current', 'seller-1')).resolves.toBeUndefined();
+        expect(prisma.listing.update).toHaveBeenCalledWith({ where: { id: 'listing-1' }, data: { status: 'SOLD' } });
+    });
+
+    it('rejects a provisional bid after a new auction made the listing active', async () => {
+        prisma.auction.findUnique.mockResolvedValue({ id: 'auction-1', listingId: 'listing-1',
+            status: 'ENDED', winnerId: null, wonAt: null, provisionalOfferBidId: 'bid-current',
+            endTime: new Date(Date.now() - 60_000), reservePrice: 10000,
+            listing: { id: 'listing-1', sellerId: 'seller-1', status: 'ACTIVE', type: 'AUCTION', linkedListingId: null },
         });
         await expect(service.acceptBid('auction-1', 'bid-current', 'seller-1'))
             .rejects.toMatchObject({ message: expect.stringMatching(/no provisional offer/i) });
