@@ -105,6 +105,33 @@ export class OffersService {
                 );
             }
 
+            // A separate live Retail advert may be linked to an auction that
+            // ALREADY HAS a winner. That auction is not cancellable by a
+            // subsequent Retail offer: ownership of the deal belongs to the
+            // winning dealer, even when the Retail advert is still ACTIVE due
+            // to an older inconsistent sibling status. Check after taking the
+            // auction lock and before reserving Retail inventory.
+            if (current.linkedListingId) {
+                const wonLinkedAuction = await tx.auction.findFirst({
+                    where: {
+                        listingId: current.linkedListingId,
+                        deletedAt: null,
+                        OR: [
+                            { winnerId: { not: null } },
+                            { wonAt: { not: null } },
+                            { winningBidAmount: { not: null } },
+                            { buyerFeePaid: true },
+                        ],
+                    },
+                    select: { id: true },
+                });
+                if (wonLinkedAuction) {
+                    throw new BadRequestException(
+                        'This vehicle already has an auction winner. Resolve that sale through the controlled auction cancellation workflow before accepting a Retail offer.',
+                    );
+                }
+            }
+
             const reserved = await tx.listing.updateMany({
                 where: {
                     id: offer.listingId,
