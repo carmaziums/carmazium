@@ -1295,6 +1295,7 @@ describe('AuctionsService — seller accepts current highest offer only', () => 
     });
 
     it('declines an ended provisional offer only by explicit seller decision, preserving bid and no buyer fee', async () => {
+        const notificationsService = (service as any).notificationsService;
         prisma.notification = { updateMany: jest.fn().mockResolvedValue({ count: 1 }) };
         notificationsService.shouldSendEmail = jest.fn().mockResolvedValue(false);
         prisma.auction.findUnique.mockResolvedValue({
