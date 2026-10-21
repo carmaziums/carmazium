@@ -38,6 +38,7 @@ describe('OffersService — private retail negotiations', () => {
                 updateMany: jest.fn(),
                 update: jest.fn(),
             },
+            auction: { findFirst: jest.fn().mockResolvedValue(null) },
             offer: {
                 findFirst: jest.fn(),
                 create: jest.fn(),
@@ -202,6 +203,49 @@ describe('OffersService — private retail negotiations', () => {
             }),
         });
         expect(result.amount).toBe(7800);
+    });
+
+    it('blocks accepting a Retail offer while the SAME listing has an outstanding provisional auction bid', async () => {
+        const offer = {
+            id: 'offer-win', listingId: 'listing-1', buyerId: 'buyer-1',
+            amount: 8200, status: 'PENDING', updatedAt: new Date(),
+            counterAttemptsSeller: 0,
+            listing: { id: 'listing-1', sellerId: 'seller-1', title: 'Test',
+                status: 'ACTIVE', price: 10000 },
+        };
+        prisma.offer.findUnique.mockResolvedValue(offer);
+        prisma.listing.findUnique.mockResolvedValue({ linkedListingId: null, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue({
+            id: 'auction-1', provisionalOfferBidId: 'bid-1', status: 'ENDED',
+        });
+        await expect(service.respondToOffer('offer-win', 'seller-1', OfferResponseStatus.ACCEPTED))
+            .rejects.toThrow(/auction or provisional dealer offer is still outstanding/i);
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+        expect(prisma.auction.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+            where: expect.objectContaining({ listingId: 'listing-1' }),
+        }));
+        expect(prisma.listing.updateMany).not.toHaveBeenCalled();
+        expect(prisma.offer.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('allows a Retail offer after its same-row provisional auction has been resolved', async () => {
+        const offer = {
+            id: 'offer-win', listingId: 'listing-1', buyerId: 'buyer-1',
+            amount: 8200, status: 'PENDING', updatedAt: new Date(),
+            counterAttemptsSeller: 0,
+            listing: { id: 'listing-1', sellerId: 'seller-1', title: 'Test',
+                status: 'ACTIVE', price: 10000 },
+        };
+        prisma.offer.findUnique
+            .mockResolvedValueOnce(offer)
+            .mockResolvedValueOnce({ ...offer, status: 'ACCEPTED', finalAmount: 8200 });
+        prisma.listing.findUnique.mockResolvedValue({ linkedListingId: null, deletedAt: null });
+        prisma.auction.findFirst.mockResolvedValue(null);
+        prisma.listing.updateMany.mockResolvedValue({ count: 1 });
+        prisma.offer.updateMany.mockResolvedValue({ count: 1 });
+        const result = await service.respondToOffer('offer-win', 'seller-1', OfferResponseStatus.ACCEPTED);
+        expect(result.status).toBe('ACCEPTED');
+        expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
     });
 
     it('accepting one offer atomically closes every other pending/countered negotiation', async () => {
