@@ -38,6 +38,69 @@ export class ProvisionalAuctionReminderService {
         `;
     }
 
+    /** Surface exhausted email retries to administrators without leaking seller
+     * details publicly. The existing partial unique index on
+     * PROVISIONAL_REMINDER_% guarantees one alert per admin/auction/run/stage,
+     * even when several Fly instances execute the same cron. */
+    private async alertAdminsIfExhausted(
+        auction: { id: string; listingId: string; provisionalOfferBidId: string | null;
+            provisionalOfferedAt: Date | null; listing: { title: string; sellerId: string | null } },
+        notificationId: string,
+        stage: number,
+    ): Promise<void> {
+        const row = await this.prisma.notification.findUnique({
+            where: { id: notificationId }, select: { data: true },
+        });
+        const data = (row?.data && typeof row.data === 'object' && !Array.isArray(row.data))
+            ? row.data as Record<string, any> : {};
+        const attempts = Number(data.emailAttempts ?? 0);
+        const state = String(data.emailStatus || '');
+        const leaseUntil = Date.parse(String(data.emailLeaseUntil || ''));
+        const exhausted = attempts >= ProvisionalAuctionReminderService.MAX_EMAIL_ATTEMPTS
+            && state !== 'sent' && state !== 'skipped'
+            && (state === 'retryable'
+                || (state === 'sending' && Number.isFinite(leaseUntil) && leaseUntil < Date.now()));
+        if (!exhausted) return;
+
+        // Do not alert an admin about an offer the seller has already resolved.
+        const pending = await this.prisma.auction.findFirst({
+            where: { id: auction.id, status: 'ENDED', deletedAt: null, winnerId: null, wonAt: null,
+                provisionalOfferBidId: auction.provisionalOfferBidId,
+                provisionalOfferedAt: auction.provisionalOfferedAt },
+            select: { id: true },
+        });
+        if (!pending) return;
+
+        const admins = await this.prisma.user.findMany({
+            where: { role: 'ADMIN' }, select: { id: true },
+        });
+        const actionType = 'PROVISIONAL_REMINDER_EMAIL_FAILED_' + stage + 'H_'
+            + auction.provisionalOfferedAt!.getTime();
+        for (const admin of admins) {
+            try {
+                await this.notifications.create({
+                    userId: admin.id,
+                    type: 'AUCTION_PROVISIONAL_EMAIL_FAILURE',
+                    actionType,
+                    title: 'Auction reminder email needs attention',
+                    message: 'The seller reminder email for ' + auction.listing.title
+                        + ' was not confirmed by the email provider after '
+                        + attempts + ' attempts. Check email delivery and the outstanding seller decision.',
+                    entityType: 'AUCTION', entityId: auction.id,
+                    link: '/auctions/live/' + auction.id,
+                    data: { auctionId: auction.id, listingId: auction.listingId,
+                        sellerDecisionPending: true, emailAttempts: attempts,
+                        emailReminderFailed: true, hoursStage: stage },
+                });
+            } catch (error: any) {
+                // P2002 means another Fly worker already delivered the alert.
+                if (error?.code !== 'P2002') {
+                    this.logger.error('Could not alert admin of exhausted auction email retries', error);
+                }
+            }
+        }
+    }
+
     @Cron('45 * * * *')
     async remindSellers(now = new Date()): Promise<void> {
         const day = 24 * 60 * 60 * 1000;
@@ -146,7 +209,14 @@ export class ProvisionalAuctionReminderService {
                 this.logger.error('Could not claim seller reminder email for ' + auction.id, error);
                 continue;
             }
-            if (!claim.length) continue;
+            if (!claim.length) {
+                try {
+                    await this.alertAdminsIfExhausted(auction, notice.id, stage);
+                } catch (error) {
+                    this.logger.error('Could not check exhausted email reminder attempts', error);
+                }
+                continue;
+            }
 
             try {
                 // Do not send a stale prompt if another worker accepted or
@@ -190,11 +260,13 @@ export class ProvisionalAuctionReminderService {
                 });
                 await this.finishEmailAttempt(notice.id, token, result?.id ? 'sent' : 'retryable',
                     result?.id ? '' : 'Email provider did not confirm submission');
+                if (!result?.id) await this.alertAdminsIfExhausted(auction, notice.id, stage);
             } catch (error: any) {
                 this.logger.error('Seller reminder email error for ' + auction.id, error);
                 try {
                     await this.finishEmailAttempt(notice.id, token, 'retryable',
                         String(error?.message || error).slice(0, 300));
+                    await this.alertAdminsIfExhausted(auction, notice.id, stage);
                 } catch (statusError) {
                     this.logger.error('Could not save seller reminder email failure', statusError);
                 }
