@@ -67,7 +67,7 @@ export function AuctionResultsModal({
     const tips = getResultTips(auction)
     const topOffer = getCurrentBid(auction)
     const provisionalPending = auction.status === 'ENDED' && !auction.winnerId
-        && !!auction.provisionalOfferBidId && listing.status === 'DRAFT' && getBidCount(auction) > 0
+        && !!auction.provisionalOfferBidId && (listing.status === 'DRAFT' || (listing.status === 'ACTIVE' && listing.type === 'CLASSIFIED')) && getBidCount(auction) > 0
         && topOffer > 0 && topOffer < Number(auction.reservePrice)
 
     return (
