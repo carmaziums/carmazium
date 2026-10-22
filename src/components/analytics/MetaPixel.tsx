@@ -42,8 +42,10 @@ declare global {
 /**
  * Fire a Meta Pixel event from anywhere in the app.
  *
- * Meta standard events use `track`; CarMazium-specific lifecycle events use
- * `trackCustom`. Historic buyer-enquiry Lead calls are normalised to the
+ * Meta standard events use `trackSingle`; CarMazium-specific lifecycle events
+ * use `trackSingleCustom`. These deliberately target only our configured
+ * dataset even if an old GTM tag has initialised another pixel.
+ * Historic buyer-enquiry Lead calls are normalised to the
  * VehicleEnquiry custom event so seller campaigns are not trained on buyer
  * behaviour. The helper also re-checks the persisted consent decision on every
  * call. That matters when a visitor accepts cookies, loads the Pixel, and later
@@ -58,7 +60,7 @@ export function trackMetaEvent(
     params?: Record<string, unknown>,
     options: MetaEventOptions = {},
 ) {
-    if (!hasTrackingConsent()) return
+    if (!META_PIXEL_ID || !hasTrackingConsent()) return
     if (typeof window === "undefined" || typeof window.fbq !== "function") return
 
     const contentCategory = String(params?.content_category ?? "")
@@ -67,7 +69,7 @@ export function trackMetaEvent(
             ? "VehicleEnquiry"
             : eventName
 
-    const command = META_STANDARD_EVENTS.has(normalisedEventName) ? "track" : "trackCustom"
+    const command = META_STANDARD_EVENTS.has(normalisedEventName) ? "trackSingle" : "trackSingleCustom"
     const hasParams = Boolean(params && Object.keys(params).length > 0)
 
     // Meta uses eventID to deduplicate a browser Pixel event against a future
@@ -75,11 +77,11 @@ export function trackMetaEvent(
     // harmless for browser-only tracking and gives us a stable contract for
     // CAPI when the server token is provisioned.
     if (options.eventID) {
-        window.fbq(command, normalisedEventName, hasParams ? params : {}, { eventID: options.eventID })
+        window.fbq(command, META_PIXEL_ID, normalisedEventName, hasParams ? params : {}, { eventID: options.eventID })
     } else if (hasParams) {
-        window.fbq(command, normalisedEventName, params)
+        window.fbq(command, META_PIXEL_ID, normalisedEventName, params)
     } else {
-        window.fbq(command, normalisedEventName)
+        window.fbq(command, META_PIXEL_ID, normalisedEventName)
     }
 }
 
@@ -189,17 +191,20 @@ function MetaPixelPageViewTracker() {
     const lastUrl = useRef<string | null>(null)
 
     useEffect(() => {
-        if (!META_PIXEL_ID || typeof window.fbq !== "function") return
+        if (!META_PIXEL_ID) return
         const url = searchParams.toString() ? `${pathname}?${searchParams}` : pathname
-        // Skip the very first render — the init script below already fires the
-        // initial PageView, same as GoogleAnalytics's send_page_view: false split.
+        // Initialise the route tracker even if the Pixel script is still loading
+        // after consent acceptance. Otherwise the first SPA navigation is
+        // incorrectly treated as the first render and its PageView is lost.
+        // The base init script owns the initial PageView.
         if (lastUrl.current === null) {
             lastUrl.current = url
             return
         }
         if (url === lastUrl.current) return
         lastUrl.current = url
-        window.fbq("track", "PageView")
+        if (typeof window.fbq !== "function") return
+        window.fbq("trackSingle", META_PIXEL_ID, "PageView")
     }, [pathname, searchParams])
 
     return null
@@ -235,7 +240,7 @@ export function MetaPixel() {
                     // campaign optimisation. This must run before fbq('init').
                     fbq('set', 'autoConfig', false, '${META_PIXEL_ID}');
                     fbq('init', '${META_PIXEL_ID}');
-                    fbq('track', 'PageView');
+                    fbq('trackSingle', '${META_PIXEL_ID}', 'PageView');
                 `}
             </Script>
             <noscript>
