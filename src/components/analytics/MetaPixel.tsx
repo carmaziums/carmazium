@@ -44,7 +44,8 @@ declare global {
  *
  * Meta standard events use `trackSingle`; CarMazium-specific lifecycle events
  * use `trackSingleCustom`. These deliberately target only our configured
- * dataset even if an old GTM tag has initialised another pixel. Historic buyer-enquiry Lead calls are normalised to the
+ * dataset even if an old GTM tag has initialised another pixel.
+ * Historic buyer-enquiry Lead calls are normalised to the
  * VehicleEnquiry custom event so seller campaigns are not trained on buyer
  * behaviour. The helper also re-checks the persisted consent decision on every
  * call. That matters when a visitor accepts cookies, loads the Pixel, and later
