@@ -191,16 +191,19 @@ function MetaPixelPageViewTracker() {
     const lastUrl = useRef<string | null>(null)
 
     useEffect(() => {
-        if (!META_PIXEL_ID || typeof window.fbq !== "function") return
+        if (!META_PIXEL_ID) return
         const url = searchParams.toString() ? `${pathname}?${searchParams}` : pathname
-        // Skip the very first render — the init script below already fires the
-        // initial PageView, same as GoogleAnalytics's send_page_view: false split.
+        // Initialise the route tracker even if the Pixel script is still loading
+        // after consent acceptance. Otherwise the first SPA navigation is
+        // incorrectly treated as the first render and its PageView is lost.
+        // The base init script owns the initial PageView.
         if (lastUrl.current === null) {
             lastUrl.current = url
             return
         }
         if (url === lastUrl.current) return
         lastUrl.current = url
+        if (typeof window.fbq !== "function") return
         window.fbq("trackSingle", META_PIXEL_ID, "PageView")
     }, [pathname, searchParams])
 
