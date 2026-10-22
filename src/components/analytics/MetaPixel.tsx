@@ -59,7 +59,7 @@ export function trackMetaEvent(
     params?: Record<string, unknown>,
     options: MetaEventOptions = {},
 ) {
-    if (!hasTrackingConsent()) return
+    if (!META_PIXEL_ID || !hasTrackingConsent()) return
     if (typeof window === "undefined" || typeof window.fbq !== "function") return
 
     const contentCategory = String(params?.content_category ?? "")
