@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/Input"
 import { ArrowLeft, Building2, Car, Eye, EyeOff, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { friendlyAuthError } from "@/lib/authErrors"
+import { trackMetaEvent } from "@/components/analytics/MetaPixel"
+import { hasTrackingConsent } from "@/lib/trackingConsent"
 
 // New business signups use one Partner Account. DEALER remains the internal
 // compatibility role so existing auctions, KYC and staff rules keep working;
@@ -53,6 +55,35 @@ function SignupForm() {
     const [appleLoading, setAppleLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [showPassword, setShowPassword] = React.useState(false)
+    const registrationStartedRef = React.useRef(false)
+
+    // Form interaction creates a retargeting signal, NOT a completed Lead.
+    // Never transmit typed names, email addresses, passwords or other fields.
+    // CompleteRegistration is emitted only after confirmed backend sync.
+    const trackRegistrationStarted = () => {
+        if (registrationStartedRef.current || typeof window === "undefined") return
+        if (!hasTrackingConsent() || typeof window.fbq !== "function") return
+
+        const dedupeKey = "cm_meta_registration_started_v1"
+        try {
+            if (window.sessionStorage.getItem(dedupeKey) === "1") {
+                registrationStartedRef.current = true
+                return
+            }
+        } catch {
+            // Restricted storage must not interrupt signup.
+        }
+
+        trackMetaEvent("RegistrationStarted", {
+            account_type: formData.role === "DEALER" ? "partner" : formData.role ? "personal" : "undecided",
+        })
+        registrationStartedRef.current = true
+        try {
+            window.sessionStorage.setItem(dedupeKey, "1")
+        } catch {
+            // In-memory dedupe still applies when storage is unavailable.
+        }
+    }
 
     const getBaseUrl = () => typeof window !== "undefined"
         ? window.location.origin
@@ -112,6 +143,7 @@ function SignupForm() {
         setAppleLoading(true)
         setError(null)
         try {
+            trackRegistrationStarted()
             const { error: oauthError } = await supabase.auth.signInWithOAuth({
                 provider: "apple",
                 options: {
@@ -160,7 +192,7 @@ function SignupForm() {
 
                 {error && <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm">{error}</div>}
 
-                <form className="space-y-6" onSubmit={handleSignup}>
+                <form className="space-y-6" onSubmit={handleSignup} onFocusCapture={trackRegistrationStarted} onChangeCapture={trackRegistrationStarted}>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label htmlFor="fname" className="text-xs font-bold uppercase tracking-wide block text-gray-200">First Name</label>
@@ -203,7 +235,8 @@ function SignupForm() {
                             <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden hidden peer-checked:block z-50">
                                 {roles.map(role => (
                                     <div key={role.id} onClick={() => {
-                                        setFormData(p => ({ ...p, role: role.id }))
+                                        trackRegistrationStarted()
+                                         setFormData(p => ({ ...p, role: role.id }))
                                         const toggle = document.getElementById("dropdown-toggle") as HTMLInputElement
                                         if (toggle) toggle.checked = false
                                     }} className="flex items-center gap-4 p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0 group">
@@ -230,6 +263,7 @@ function SignupForm() {
                                 setGoogleLoading(false)
                                 return
                             }
+                            trackRegistrationStarted()
                             const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: getRegistrationCallbackUrl(window.location.origin) } })
                             if (oauthError) throw oauthError
                         } catch (err: any) {
