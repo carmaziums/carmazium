@@ -224,10 +224,11 @@ function mirrorToMeta(type: string, payload: Record<string, unknown>): void {
             return
         }
         case "generate_lead":
-            // Buyer vehicle enquiries are automatically normalised by
-            // trackMetaEvent() to the custom VehicleEnquiry event. This keeps
-            // Meta's standard Lead signal reserved for seller acquisition.
-            trackMetaEvent("Lead", compact({
+            // Browser-side buyer enquiries are not seller acquisition leads.
+            // Always use a dedicated custom event, regardless of lead_type,
+            // so an unrecognised category can never contaminate the seller
+            // Lead conversion that active ad sets optimise for.
+            trackMetaEvent("VehicleEnquiry", compact({
                 content_type: "vehicle",
                 content_ids: payload.content_id ? [String(payload.content_id)] : undefined,
                 content_name: payload.content_name,
