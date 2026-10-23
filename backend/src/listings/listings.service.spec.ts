@@ -1052,6 +1052,45 @@ describe('ListingsService', () => {
             expect(prisma.hpiReport.findUnique).not.toHaveBeenCalled();
         });
 
+        it.each(['FREE', 'BASIC', 'PREMIUM'])(
+            'submits a complete AUCTION with old %s badge without charging a listing fee',
+            async (badgeTier) => {
+                prisma.listing.findUnique.mockResolvedValue({
+                    id: 'free-auction-1',
+                    sellerId: 'seller-1',
+                    type: 'AUCTION',
+                    badgeTier,
+                    status: 'DRAFT',
+                    ...submissionReady,
+                    deletedAt: null,
+                });
+                prisma.auction.findUnique.mockResolvedValue({
+                    id: 'auction-1',
+                    listingId: 'free-auction-1',
+                    status: 'SCHEDULED',
+                    deletedAt: null,
+                    startTime: new Date(Date.now() + 60_000),
+                    endTime: new Date(Date.now() + 86_400_000),
+                });
+                prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+
+                const result = await service.publishListing('free-auction-1', 'seller-1');
+
+                expect(result).toEqual({ activated: false, pendingReview: true });
+                expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+                expect(prisma.listing.update).toHaveBeenCalledWith({
+                    where: { id: 'free-auction-1' },
+                    data: { status: 'PENDING_REVIEW', rejectionReason: null },
+                });
+                if (badgeTier !== 'FREE') {
+                    expect(prisma.listing.update).toHaveBeenCalledWith({
+                        where: { id: 'free-auction-1' },
+                        data: { badgeTier: 'FREE' },
+                    });
+                }
+            },
+        );
+
         it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-1',
