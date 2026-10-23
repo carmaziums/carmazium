@@ -86,3 +86,10 @@ test('native retail payment must be verified by the backend before claiming subm
   assert.match(listings, /if \(first\?\.data\?\.paymentConfirmationPending\)/);
   assert.match(listings, /do not pay again/);
 });
+
+test('native free auction is only announced after authoritative review submission', () => {
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  assert.match(wizard, /if \(!response\?\.success \|\| \(!response\?\.data\?\.pendingReview && !response\?\.data\?\.activated\)\)/);
+  assert.match(wizard, /Auction saved, not yet submitted/);
+  assert.match(wizard, /The server-side draft remains available/);
+});
