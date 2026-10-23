@@ -69,6 +69,7 @@ import { SellerListingsScreen } from '../screens/seller/SellerListingsScreen';
 import { SellerAuctionsScreen } from '../screens/seller/SellerAuctionsScreen';
 import { AcceptInviteScreen } from '../screens/main/AcceptInviteScreen';
 import { CarListing } from '../data/listings';
+import type { VehicleValuation } from '../lib/valuationApi';
 import { Colors } from '../constants/colors';
 
 
@@ -165,6 +166,7 @@ export type MainStackParamList = {
   } | undefined;
   SellLanding: undefined;
   SellCarFlow: { listingId?: string; listingType?: 'AUCTION' | 'CLASSIFIED'; prefill?: {
+    valuation?: VehicleValuation;
     vrm?: string; make?: string; model?: string; year?: number; mileage?: number;
     transmission?: string; fuelType?: string; variant?: string; bodyType?: string; driveType?: string;
     doors?: number; seats?: number; bhp?: number; color?: string; engineSize?: number;
