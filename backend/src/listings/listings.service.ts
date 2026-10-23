@@ -3036,7 +3036,7 @@ export class ListingsService {
      *
      * Returns { activated: true } or { activated: false, requiresPayment: true }.
      */
-    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
+    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean }> {
         const listing = await this.findById(id);
 
         if (!listing) {
@@ -3199,16 +3199,24 @@ export class ListingsService {
         // class payment references so an immediate mobile /publish retry can
         // reconcile a successful payment even if the webhook has not arrived yet.
         let verifiedTxId: string | null = null;
+        let paymentConfirmationPending = false;
         try {
             const Stripe = (await import('stripe')).default;
             const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
                 apiVersion: '2026-02-25.clover',
             });
             for (const tx of transactions) {
-                if (!tx.stripePaymentId) continue;
+                if (tx.status !== 'PENDING') continue;
+                if (!tx.stripePaymentId) {
+                    paymentConfirmationPending = true;
+                    continue;
+                }
                 try {
                     if (tx.stripePaymentId.startsWith('pi_')) {
                         const paymentIntent = await stripe.paymentIntents.retrieve(tx.stripePaymentId);
+                        if (paymentIntent.status === 'processing') {
+                            paymentConfirmationPending = true;
+                        }
                         if (paymentIntent.status === 'succeeded') {
                             await (this.prisma as any).transaction.update({
                                 where: { id: tx.id },
@@ -3227,6 +3235,9 @@ export class ListingsService {
                     // Legacy rows without a recognised prefix are still tried as
                     // sessions for backwards compatibility with existing data.
                     const session = await stripe.checkout.sessions.retrieve(tx.stripePaymentId);
+                    if (session.status === 'complete' && session.payment_status !== 'paid') {
+                        paymentConfirmationPending = true;
+                    }
                     if (session.payment_status === 'paid') {
                         // Heal this transaction so future calls are instant.
                         await (this.prisma as any).transaction.update({
@@ -3239,15 +3250,22 @@ export class ListingsService {
                         verifiedTxId = tx.id;
                         break;
                     }
-                } catch {
-                    // This specific reference is invalid/expired — try next.
+                } catch (error) {
+                    // Unknown payment state is not the same as a failed payment.
+                    // Never encourage a second charge while Stripe verification is unavailable.
+                    paymentConfirmationPending = true;
+                    this.logger.warn(`Could not verify a pending listing fee for listing ${id}: ${error instanceof Error ? error.message : 'unknown Stripe error'}`);
                 }
             }
-        } catch {
-            // Stripe SDK init failed — fall through to requiresPayment.
+        } catch (error) {
+            paymentConfirmationPending = true;
+            this.logger.warn(`Stripe listing-fee verification unavailable for listing ${id}: ${error instanceof Error ? error.message : 'unknown error'}`);
         }
 
         if (!verifiedTxId) {
+            if (paymentConfirmationPending) {
+                return { activated: false, paymentConfirmationPending: true };
+            }
             return { activated: false, requiresPayment: true };
         }
 
