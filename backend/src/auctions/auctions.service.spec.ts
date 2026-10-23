@@ -65,6 +65,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 update: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'PENDING_REVIEW' }),
             },
             sale: { create: jest.fn(), deleteMany: jest.fn() },
+            notification: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: {
