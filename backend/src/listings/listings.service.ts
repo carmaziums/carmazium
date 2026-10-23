@@ -1840,9 +1840,12 @@ export class ListingsService {
             };
         }
 
-        // Auctions are free to list; all classified listings require at minimum BASIC (£1)
+        // Auction sellers pay £0 regardless of a stale BASIC tier sent by a
+        // native/web client. Only Retail can carry paid listing tiers.
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
-        const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
+        const badgeTier = listingType === 'AUCTION'
+            ? 'FREE'
+            : rawBadgeTier === 'FREE' ? 'BASIC' : rawBadgeTier;
 
         // Every new listing must pass admin review before it can go live — nothing
         // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
@@ -3093,12 +3096,12 @@ export class ListingsService {
             }
         }
 
-        // FREE is only valid for auctions. Heal legacy/stale retail drafts before
-        // any status/payment decision so retail can never inherit the auction tier.
-        const effectiveBadgeTier =
-            listing.type === 'CLASSIFIED' && listing.badgeTier === 'FREE'
-                ? 'BASIC'
-                : listing.badgeTier;
+        // Auction listing fees are always £0. Repair pre-existing AUCTION/BASIC
+        // drafts from native clients before checking the payment gate.
+        // Retail FREE must conversely be healed to the normal £1 BASIC tier.
+        const effectiveBadgeTier = listing.type === 'AUCTION'
+            ? 'FREE'
+            : listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
 
         if (effectiveBadgeTier !== listing.badgeTier) {
             await this.prisma.listing.update({
@@ -3161,8 +3164,9 @@ export class ListingsService {
             return { activated: true };
         }
 
-        // Only FREE AUCTION listings skip the listing fee.
-        if (listing.type === 'AUCTION' && effectiveBadgeTier === 'FREE') {
+        // The server waives seller listing fees for ALL auctions, regardless
+        // of the badge tier the original client sent.
+        if (listing.type === 'AUCTION') {
             await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
             await this.notifySubmittedForReview(listing);
             return { activated: false, pendingReview: true };
