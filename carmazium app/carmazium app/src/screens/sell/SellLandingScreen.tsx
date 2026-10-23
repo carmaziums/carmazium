@@ -156,6 +156,9 @@ export const SellLandingScreen: React.FC = () => {
     navigation.navigate('SellCarFlow', {
       listingType,
       prefill: {
+        // Carry the exact server quote into the listing form. Avoid a second
+        // valuation call for the same vehicle during this customer journey.
+        valuation: valuation || undefined,
         vrm: vrm || undefined, make: make || undefined, model: model || undefined,
         year: validYear(year) ? Number(year) : undefined,
         mileage: /^\d+(?:,\d{3})*$/.test(mileage.trim())

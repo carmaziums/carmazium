@@ -116,11 +116,33 @@ const RECOMMENDED_PHOTOS = 20;
  *  400 on them (SELL-005). */
 const MIN_PHOTOS = 10;
 
+function nativeQuoteKey(input: {
+  vrm?: string; make?: string; model?: string; year?: string | number;
+  mileage?: string | number; listingId?: string | null;
+}): string {
+  return [
+    (input.vrm ?? '').replace(/\s/g, '').toUpperCase(),
+    (input.make ?? '').trim().toUpperCase(),
+    (input.model ?? '').trim().toUpperCase(),
+    String(input.year ?? ''),
+    String(input.mileage ?? '').replace(/[^0-9]/g, ''),
+    input.listingId ?? '',
+  ].join('|');
+}
+
+function validServerQuote(quote?: VehicleValuation): quote is VehicleValuation {
+  return !!quote
+    && Number.isFinite(quote.auction?.marketValue)
+    && quote.auction.marketValue > 0
+    && Number.isFinite(quote.retail?.suggestedAsking)
+    && quote.retail.suggestedAsking > 0;
+}
+
 /** Shape returned by `POST /listings/:id/publish`
  *  (`backend/src/listings/listings.service.ts:933`). `activated` is only true
  *  when the listing was already ACTIVE — a DRAFT that publishes successfully
  *  comes back as `{ activated: false, pendingReview: true }`. */
-type PublishResult = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean };
+type PublishResult = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean };
 
 const FUEL_TYPES = [
   { v: 'PETROL', l: 'Petrol' }, { v: 'DIESEL', l: 'Diesel' },
@@ -733,13 +755,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [deliveryMaxMiles, setDeliveryMaxMiles] = useState('');
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
-  const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
+  const [badgeTier, setBadgeTier] = useState<BadgeTier>(landingListingType === 'AUCTION' ? 'FREE' : 'BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>(
     landingListingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED',
   );
-  const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(null);
-  const [valuation, setValuation] = useState<VehicleValuation | null>(null);
-  const valuationBaseKeyRef = useRef<string | null>(null);
+  // Reuse the exact server-issued quote from SellLanding for this vehicle.
+  // Revalidate its identity in Step 3 if the seller edits vehicle details.
+  const initialServerQuote = validServerQuote(landingPrefill?.valuation) ? landingPrefill!.valuation! : null;
+  const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(initialServerQuote);
+  const [valuation, setValuation] = useState<VehicleValuation | null>(initialServerQuote);
+  const valuationBaseKeyRef = useRef<string | null>(initialServerQuote ? nativeQuoteKey({
+    vrm: landingPrefill?.vrm,
+    make: landingPrefill?.make,
+    model: landingPrefill?.model,
+    year: landingPrefill?.year,
+    mileage: landingPrefill?.mileage,
+  }) : null);
+  const autoAppliedQuoteRef = useRef<{ key: string; method: 'AUCTION' | 'CLASSIFIED'; price: string } | null>(null);
   const valuationJourneyIdRef = useRef<string | null>(null);
   const valuationJourneyBaseKeyRef = useRef<string | null>(null);
   const [valuationLoading, setValuationLoading] = useState(false);
@@ -792,14 +824,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       return;
     }
 
-    const baseKey = [
-      vrm.replace(/\s/g, '').toUpperCase(),
-      make.trim().toUpperCase(),
-      model.trim().toUpperCase(),
-      String(yearNumber),
-      String(mileageNumber),
-      editListingId || '',
-    ].join('|');
+    const baseKey = nativeQuoteKey({
+      vrm, make, model, year: yearNumber, mileage: mileageNumber, listingId: editListingId,
+    });
 
     if (baseValuation && valuationBaseKeyRef.current === baseKey) return;
 
@@ -874,11 +901,38 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setValuation(baseValuation);
   }, [baseValuation]);
 
+  // Use the saved quotation automatically when Pricing opens. Never overwrite
+  // a manually set price or a resumed/edited existing listing.
+  useEffect(() => {
+    if (step !== 3 || editMode || !valuation || valuationLoading) return;
+    const currentKey = nativeQuoteKey({ vrm, make, model, year, mileage, listingId: editListingId });
+    if (valuationBaseKeyRef.current !== currentKey) return;
+    const suggested = listingType === 'AUCTION'
+      ? valuation.auction.marketValue : valuation.retail.suggestedAsking;
+    if (!Number.isFinite(suggested) || suggested <= 0) return;
+    const previous = autoAppliedQuoteRef.current;
+    const canReplace = !priceAsking.trim()
+      || (!!previous && priceAsking === previous.price
+        && (previous.key !== currentKey || previous.method !== listingType));
+    if (!canReplace) return;
+    const suggestedPrice = String(suggested);
+    if (priceAsking !== suggestedPrice) setPriceAsking(suggestedPrice);
+    autoAppliedQuoteRef.current = { key: currentKey, method: listingType, price: suggestedPrice };
+    if (listingType === 'AUCTION' && !reservePrice.trim()) {
+      setReservePrice(String(valuation.auction.suggestedReserve));
+    }
+  }, [step, editMode, valuation, valuationLoading, vrm, make, model, year,
+      mileage, editListingId, listingType, priceAsking, reservePrice]);
+
   function applyValuationGuide() {
     if (!valuation) return;
-
-    setPriceAsking(String(listingType === 'AUCTION'
-      ? valuation.auction.marketValue : valuation.retail.suggestedAsking));
+    const selectedPrice = String(listingType === 'AUCTION'
+      ? valuation.auction.marketValue : valuation.retail.suggestedAsking);
+    setPriceAsking(selectedPrice);
+    autoAppliedQuoteRef.current = {
+      key: nativeQuoteKey({ vrm, make, model, year, mileage, listingId: editListingId }),
+      method: listingType, price: selectedPrice,
+    };
     if (listingType === 'AUCTION') {
       setReservePrice(String(valuation.auction.suggestedReserve));
       setStartingBid(String(valuation.auction.openingBid));
@@ -2231,9 +2285,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           // here means the auction was never submitted for review — the
           // seller must be told, not congratulated (SELL-006).
           try {
-            await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
+            const response = await apiClient<{ success: boolean; data: PublishResult }>(
+              `/listings/${newListingId}/publish`,
+              { method: 'POST' },
+            );
+            if (!response?.success || (!response?.data?.pendingReview && !response?.data?.activated)) {
+              // A returned HTTP 200 is not proof of review submission.
+              // Keep the draft and show an actionable status instead.
+              Alert.alert(
+                'Auction saved, not yet submitted',
+                'CarMazium could not confirm that this auction entered the review queue. Check My Auctions before trying again.',
+                [{ text: 'View Auctions', onPress: () => navigation?.navigate('SellerAuctions') }],
+              );
+              return;
+            }
           } catch (pubErr: any) {
-            clearDraft();
+            // The server-side draft remains available. Keep the local draft too
+            // until publication is confirmed, including transient network errors.
             Alert.alert(
               'Auction saved, not yet submitted',
               `${pubErr?.message || 'The auction could not be submitted for review.'} Open it from My Auctions to submit it.`,
@@ -2290,6 +2358,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             return;
           }
 
+          if (first?.data?.paymentConfirmationPending) {
+            Alert.alert(
+              'Payment confirmation pending',
+              'CarMazium cannot yet verify an earlier listing payment. Your draft is saved. Please do not pay again until it has been checked.',
+              [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+            );
+            return;
+          }
+
           if (first?.data?.requiresPayment) {
             let paid = false;
             try {
@@ -2306,8 +2383,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               return;
             }
 
+            let second: { success: boolean; data: PublishResult };
             try {
-              await publish();
+              second = await publish();
             } catch (secondErr: any) {
               // Charged but not submitted — this is the one state the seller
               // must never be told is fine.
@@ -2319,6 +2397,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               );
               return;
             }
+            if (!second?.data?.pendingReview && !second?.data?.activated) {
+              // Stripe's Payment Sheet returned successfully, but the server has
+              // not confirmed that the vehicle entered the review queue.
+              // Preserve the saved draft and never suggest paying a second time.
+              Alert.alert(
+                'Payment confirmation pending',
+                'Your payment screen completed, but the listing has not yet been confirmed for review. Open My Listings to check its status. Do not pay again.',
+                [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+              );
+              return;
+            }
+          } else if (!first?.data?.pendingReview && !first?.data?.activated) {
+            Alert.alert(
+              'Listing not submitted',
+              'The server could not confirm submission. Your draft is saved; open My Listings to try again.',
+              [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+            );
+            return;
           }
 
           // Success. Note publishListing never returns activated:true for a

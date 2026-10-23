@@ -365,7 +365,7 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
       // same review gate.
       setActionLoading(true);
       try {
-        type PublishState = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean };
+        type PublishState = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean };
         const publish = () => apiClient<{ success: boolean; data: PublishState }>(
           `/listings/${listing.id}/publish`,
           { method: 'POST' },
@@ -392,6 +392,14 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
 
         const first = await publish();
         if (applyPublishResult(first?.data)) return;
+
+        if (first?.data?.paymentConfirmationPending) {
+          Alert.alert(
+            'Payment confirmation pending',
+            'An earlier checkout for this listing has not been verified yet. Your draft is saved; do not pay again until the payment status is confirmed.',
+          );
+          return;
+        }
 
         if (first?.data?.requiresPayment) {
           const tier = ((listing.badgeTier as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC');
@@ -434,7 +442,13 @@ export const SellerListingsScreen: React.FC<{ navigation?: any }> = ({ navigatio
             'Your payment was successful. CarMazium is confirming the listing submission; pull to refresh My Listings in a moment. You will not be charged again for this listing.',
           );
           await fetchListings(true);
+          return;
         }
+
+        Alert.alert(
+          'Listing not submitted',
+          'The server did not confirm that this listing is under review. Your draft remains saved. Please try again or contact support.',
+        );
       } catch (err: any) {
         Alert.alert('Error', err.message || 'Could not publish listing.');
       } finally {

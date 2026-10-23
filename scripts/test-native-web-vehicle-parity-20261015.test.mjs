@@ -73,3 +73,38 @@ test('seller pricing and minimum-photo safeguards remain intact', () => {
   assert.match(wizard, /id: 'FREE' as const, label: 'Auction', price: 'Free'/);
   assert.match(wizard, /id: 'BASIC' as const, label: 'Basic', price: '£1'/);
 });
+
+test('native retail payment must be verified by the backend before claiming submission', () => {
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  const listings = source('screens/seller/SellerListingsScreen.tsx');
+
+  // A successful Stripe UI return does not prove /publish reached PENDING_REVIEW.
+  assert.match(wizard, /if \(!second\?\.data\?\.pendingReview && !second\?\.data\?\.activated\)/);
+  assert.match(wizard, /if \(first\?\.data\?\.paymentConfirmationPending\)/);
+  assert.match(wizard, /Payment confirmation pending/);
+  // Returning to a draft must not open another PaymentSheet when prior payment is uncertain.
+  assert.match(listings, /if \(first\?\.data\?\.paymentConfirmationPending\)/);
+  assert.match(listings, /do not pay again/);
+});
+
+test('native free auction is only announced after authoritative review submission', () => {
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  assert.match(wizard, /if \(!response\?\.success \|\| \(!response\?\.data\?\.pendingReview && !response\?\.data\?\.activated\)\)/);
+  assert.match(wizard, /Auction saved, not yet submitted/);
+  assert.match(wizard, /The server-side draft remains available/);
+});
+
+test('valuation quote is handed from the registration screen directly to both native listing choices', () => {
+  const landing = source('screens/sell/SellLandingScreen.tsx');
+  const navigator = source('navigation/MainStackNavigator.tsx');
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  assert.match(landing, /valuation:\s*valuation \|\| undefined/);
+  assert.match(navigator, /valuation\?: VehicleValuation/);
+  assert.match(wizard, /initialServerQuote = validServerQuote\(landingPrefill\?\.valuation\)/);
+  assert.match(wizard, /valuationBaseKeyRef = useRef<string \| null>\(initialServerQuote/);
+  assert.match(wizard, /valuationBaseKeyRef\.current !== currentKey/);
+  assert.match(wizard, /const canReplace = !priceAsking\.trim\(\)/);
+  assert.match(wizard, /setPriceAsking\(suggestedPrice\)/);
+  assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : 'BASIC'/);
+  assert.match(wizard, /setBadgeTier\(method === 'AUCTION' \? 'FREE' : 'BASIC'\)/);
+});
