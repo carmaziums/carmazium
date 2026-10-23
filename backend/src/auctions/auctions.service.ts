@@ -17,6 +17,7 @@ import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
 import { HandoverDocumentsService } from './handover-documents.service';
+import { redactBidListIdentities } from './bidder-privacy';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
@@ -793,6 +794,10 @@ export class AuctionsService {
 
         if (!auction || auction.deletedAt) {
             throw new NotFoundException(`Auction not found`);
+        }
+
+        if (auction.listing && Array.isArray(auction.listing.bids)) {
+            auction.listing.bids = redactBidListIdentities(auction.listing.bids);
         }
 
         const seller = auction.listing?.seller as any;
@@ -2985,6 +2990,21 @@ export class AuctionsService {
             const retailUrl = retailAlreadyLive
                 ? '/dashboard/seller/listings'
                 : '/sell?editId=' + auction.listingId + '&sellMode=retail';
+            // When a provisional decision becomes actionable, remove obsolete
+            // unread live-bid notices without hiding the final decision itself.
+            try {
+                await this.prisma.notification.updateMany({
+                    where: {
+                        userId: listing.sellerId,
+                        entityId: auction.id,
+                        isRead: false,
+                        actionType: { in: ['ACCEPT_OR_WAIT', 'BID_CANCELLED'] },
+                    },
+                    data: { isRead: true },
+                });
+            } catch (error) {
+                this.logger.error('Failed to retire stale live offers at auction end', error);
+            }
             await this.notificationsService.create({
                 userId: listing.sellerId,
                 type: 'AUCTION_OFFER_RECEIVED',
