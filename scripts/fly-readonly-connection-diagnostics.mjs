@@ -3,6 +3,7 @@
 // GitHub Actions logs are visible on this public repository.
 import { appendFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { probeFlyHealth, summarizeHealthObservations } from './fly-readonly-health-probes.mjs';
 
 const APP = 'carmazium-hjoh9w';
 const TOKEN = process.env.FLY_API_TOKEN;
@@ -13,8 +14,10 @@ if (!TOKEN) {
   const report = [];
   const say = (line = '') => report.push(line);
   const start = Date.now();
-  const incidentStart = Date.parse('2026-10-11T13:30:00Z');
-  const incidentEnd = Date.parse('2026-10-11T16:00:00Z');
+  // Always inspect the latest 24h rather than the original October 11 incident.
+  // The window is fixed once per diagnostic run for reproducibility.
+  const incidentEnd = Date.now();
+  const incidentStart = incidentEnd - 24 * 60 * 60 * 1000;
 
   async function flyGet(path) {
     try {
@@ -41,24 +44,6 @@ if (!TOKEN) {
     return /^[a-zA-Z0-9_:-]{1,48}$/.test(word) ? word : 'other';
   }
 
-  async function probe(path) {
-    const times = [];
-    const statuses = [];
-    for (let i = 0; i < 3; i += 1) {
-      const started = Date.now();
-      try {
-        const response = await fetch('https://' + APP + '.fly.dev' + path, {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(7000),
-        });
-        statuses.push(String(response.status));
-      } catch {
-        statuses.push('network_error');
-      }
-      times.push(Date.now() - started);
-    }
-    return { statuses, times };
-  }
 
   say('## CarMazium Fly.io connection diagnostics');
   say('**Application:** `' + APP + '` (London primary region).');
@@ -118,10 +103,10 @@ if (!TOKEN) {
     for (const [key, count] of Object.entries(eventTotals).sort((a, b) => b[1] - a[1]).slice(0, 12)) {
       say('- ' + key + ': ' + count);
     }
-    say('**Events during observed failure window (11 October 13:30–16:00 UTC):** ' + incidentEvents);
+    say('**Machine events in latest 24-hour window (' + new Date(incidentStart).toISOString() + ' to ' + new Date(incidentEnd).toISOString() + '):** ' + incidentEvents);
     for (const line of incidentDetails.sort().slice(-15)) say('- ' + line);
     if (!incidentDetails.length) {
-      say('No matching Machine events found in the available recent event history; this does not rule out Fly Proxy or network errors.');
+      say('No recent Machine lifecycle events found in the sampled history for this rolling 24-hour window; this does not rule out Fly Proxy, TLS or network errors.');
     }
 
     // Current health-check statuses only. Check outputs and full machine config
@@ -140,12 +125,19 @@ if (!TOKEN) {
   }
 
   say('');
-  say('### External API probes (three read-only requests each)');
-  for (const path of ['/health/live', '/health/ready']) {
-    const result = await probe(path);
-    say('- ' + path + ': statuses ' + result.statuses.join(', ') +
-      '; latency ' + result.times.join(', ') + ' ms.');
+  say('### External API probes (12 read-only requests per health endpoint)');
+  const probes = await probeFlyHealth({
+    origin: 'https://' + APP + '.fly.dev',
+    attemptsPerPath: 12,
+    delayMs: 250,
+  });
+  for (const [path, samples] of Object.entries(probes)) {
+    const result = summarizeHealthObservations(samples);
+    say('- ' + path + ': ' + result.count + ' probes; HTTP/network category counts ' +
+      JSON.stringify(result.counts) + '; p50 ' + result.p50Ms +
+      ' ms; p95 ' + result.p95Ms + ' ms; maximum ' + result.maxMs + ' ms.');
   }
+  say('**Interpretation:** Healthy probes do not prove that intermittent Vercel-to-Fly TLS or proxy failures are resolved.');
 
   // Read a bounded in-memory Fly log buffer only. It may not cover the entire
   // outage. Never print raw log lines, because they may contain personal data.
