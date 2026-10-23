@@ -129,3 +129,76 @@ describe('AuctionLifecycleService integrity', () => {
         expect(auctionGateway.broadcastAuctionStart).not.toHaveBeenCalled();
     });
 });
+
+describe('AuctionLifecycleService ending-soon persistence', () => {
+    const now = new Date('2026-10-23T10:00:00.000Z');
+    const runStart = new Date('2026-10-22T10:00:00.000Z');
+    const auction = {
+        id: 'auction-9',
+        startTime: runStart,
+        status: 'ACTIVE',
+        endTime: new Date(now.getTime() + 2 * 60 * 1000),
+        listing: { bids: [{ bidderId: 'dealer-a' }, { bidderId: 'dealer-b' }] },
+    };
+
+    function setup() {
+        const prisma: any = {
+            auction: { findMany: jest.fn().mockResolvedValue([auction]) },
+            notification: { findFirst: jest.fn().mockResolvedValue(null) },
+        };
+        const notificationsGateway: any = { sendNotification: jest.fn() };
+        const notificationsService: any = { create: jest.fn().mockResolvedValue({ id: 'n' }) };
+        const service = new AuctionLifecycleService(
+            prisma, {} as any, {} as any, notificationsGateway, notificationsService,
+        );
+        return { prisma, notificationsGateway, notificationsService, service };
+    }
+
+    it('persists warning per bidder rather than just using an online socket', async () => {
+        const { service, notificationsService, notificationsGateway } = setup();
+        await (service as any).sendEndingSoonWarnings(now);
+        expect(notificationsService.create).toHaveBeenCalledTimes(2);
+        expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+            userId: 'dealer-a',
+            type: 'AUCTION_ENDING',
+            entityId: 'auction-9',
+            actionType: `AUCTION_ENDING_SOON_auction-9_${runStart.getTime()}`,
+            id: expect.stringMatching(/^[a-f0-9]{8}-[a-f0-9]{4}-5[a-f0-9]{3}-8[a-f0-9]{3}-[a-f0-9]{12}$/),
+        }));
+        expect(notificationsGateway.sendNotification).not.toHaveBeenCalled();
+    });
+
+    it('does not re-send a stored warning after restart', async () => {
+        const { service, notificationsService, prisma } = setup();
+        prisma.notification.findFirst.mockResolvedValue({ id: 'already' });
+        await (service as any).sendEndingSoonWarnings(now);
+        expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('uses the same deterministic ID across service instances for a given bidder and run', async () => {
+        const first = setup();
+        const second = setup();
+        await (first.service as any).sendEndingSoonWarnings(now);
+        await (second.service as any).sendEndingSoonWarnings(now);
+        expect(first.notificationsService.create.mock.calls[0][0].id)
+            .toBe(second.notificationsService.create.mock.calls[0][0].id);
+        expect(first.notificationsService.create.mock.calls[0][0].id)
+            .not.toBe(first.notificationsService.create.mock.calls[1][0].id);
+    });
+
+    it('handles a competing worker winning the unique-ID insert without raising an error', async () => {
+        const { service, notificationsService } = setup();
+        notificationsService.create.mockRejectedValue({ code: 'P2002' });
+        await expect((service as any).sendEndingSoonWarnings(now)).resolves.toBeUndefined();
+        expect(notificationsService.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('preserves the socket-only fallback in older module wiring', async () => {
+        const { prisma, notificationsGateway } = setup();
+        const service = new AuctionLifecycleService(
+            prisma, {} as any, {} as any, notificationsGateway,
+        );
+        await (service as any).sendEndingSoonWarnings(now);
+        expect(notificationsGateway.sendNotification).toHaveBeenCalledTimes(2);
+    });
+});

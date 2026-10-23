@@ -65,6 +65,7 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
                 update: jest.fn().mockResolvedValue({ id: 'listing-1', status: 'PENDING_REVIEW' }),
             },
             sale: { create: jest.fn(), deleteMany: jest.fn() },
+            notification: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
             sellerProfile: { upsert: jest.fn(), update: jest.fn() },
             chatRoom: { upsert: jest.fn() },
             user: {
@@ -386,6 +387,26 @@ describe('AuctionsService — Buy It Now lifecycle', () => {
         const result = await service.findOne('auction-1');
 
         expect(result.buyItNowResponseDeadline).toBe(auction.endTime.toISOString());
+    });
+
+    it('findOne: never exposes full names or unrelated private bidder fields', async () => {
+        const auction = makeActiveAuction({ endTime: new Date(Date.now() + 45 * 60 * 1000) });
+        auction.listing = {
+            ...(auction.listing ?? {}),
+            bids: [{
+                id: 'bid-1',
+                bidderId: 'dealer-1',
+                amount: 5000,
+                bidder: { id: 'dealer-1', firstName: 'Jonathan', lastName: 'Smith', email: 'private@example.invalid' },
+            }],
+        };
+        prisma.auction.findUnique.mockResolvedValue(auction);
+        prisma.bid.findFirst.mockResolvedValue(null);
+
+        const result = await service.findOne('auction-1');
+        expect(result.listing.bids[0].bidder).toEqual({
+            id: 'dealer-1', firstName: 'J', lastName: 'S',
+        });
     });
 
     // ── bids.service auto-cancel on bid >= BIN price (integration note) ───────

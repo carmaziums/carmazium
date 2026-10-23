@@ -51,6 +51,11 @@ describe('BidsService — incremental bidding', () => {
             },
             dealerStaff: { findFirst: jest.fn().mockResolvedValue(null) },
             auction: { update: jest.fn() },
+            notification: {
+                findMany: jest.fn().mockResolvedValue([]),
+                updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+                update: jest.fn().mockResolvedValue({}),
+            },
             analyticsEvent: { create: jest.fn().mockResolvedValue({}) },
             $queryRaw: jest.fn(),
             $transaction: jest.fn(async (callback: any) => callback(prisma)),
@@ -217,6 +222,28 @@ describe('BidsService — incremental bidding', () => {
         }).compile();
 
         service = module.get<BidsService>(BidsService);
+    });
+
+    it('keeps email independent if creating the live in-app offer fails', async () => {
+        prisma.user.findUnique.mockResolvedValue({ email: 'seller@example.invalid', firstName: 'Seller' });
+        notificationsService.create.mockRejectedValueOnce(new Error('push failed'));
+        await (service as any).notifySellerOfLiveBelowReserveOffer({
+            sellerId: 'seller-1', auctionId: 'auction-1', listingId: 'listing-1',
+            bidId: 'bid-1', bidAmount: 3500, reservePrice: 9000, vehicle: 'BMW M3',
+        });
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail).toHaveBeenCalled();
+    });
+
+    it('limits a live email only when a prior submission marker exists', async () => {
+        prisma.notification.findMany.mockResolvedValue([{
+            data: { emailSubmittedAt: new Date().toISOString() },
+        }]);
+        await (service as any).notifySellerOfLiveBelowReserveOffer({
+            sellerId: 'seller-1', auctionId: 'auction-1', listingId: 'listing-1',
+            bidId: 'bid-2', bidAmount: 3600, reservePrice: 9000, vehicle: 'BMW M3',
+        });
+        expect(notificationsService.create).toHaveBeenCalled();
+        expect((service as any).emailService.sendAuctionProvisionalOfferEmail).not.toHaveBeenCalled();
     });
 
     it('rejects a bid equal to the current highest bid', async () => {
@@ -637,6 +664,8 @@ describe('BidsService — incremental bidding', () => {
         });
 
         await service.create('bidder-A', { listingId: 'listing-1', amount: 7000 } as any);
+        // Notification side effects run outside the committed bid path.
+        for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
 
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
