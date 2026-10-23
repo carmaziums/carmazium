@@ -1,6 +1,6 @@
 const VRM = 'MC21PJJ';
-const DVLA_API_KEY = 'lnOlOZgw0L6t9FLJh1hr4aEK3twDXAAq7h4lflhB';
-const MOT_API_KEY = 'TVwxombXLI1vo4pV11hcCaqfVm4yAxVk24IoQuuP';
+const DVLA_API_KEY = process.env.DVLA_API_KEY;
+const MOT_API_KEY = process.env.MOT_API_KEY;
 
 async function testDVLA() {
     console.log('\n=== DVLA VES API ===');
