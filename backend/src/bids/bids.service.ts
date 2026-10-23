@@ -18,6 +18,7 @@ import {
     calculateFirstOfferFloor,
 } from '../auctions/auction-pricing';
 import { randomUUID } from 'crypto';
+import { redactBidListIdentities } from '../auctions/bidder-privacy';
 import {
     assertDealerPermission,
     resolveBusinessBuyerId,
@@ -1111,7 +1112,7 @@ export class BidsService {
     }
 
     async findByListing(listingId: string): Promise<Bid[]> {
-        return this.prisma.bid.findMany({
+        const bids = await this.prisma.bid.findMany({
             where: { listingId, deletedAt: null, cancelledAt: null, archivedAt: null },
             include: {
                 bidder: {
@@ -1120,6 +1121,7 @@ export class BidsService {
             },
             orderBy: { amount: 'desc' },
         });
+        return redactBidListIdentities(bids);
     }
 
     async getBuyerStats(userId: string): Promise<{
