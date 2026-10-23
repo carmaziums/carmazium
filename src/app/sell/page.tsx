@@ -118,6 +118,7 @@ function valuationHasFigures(valuation: VehicleValuation) {
 }
 
 function valuationQuality(valuation: VehicleValuation) {
+    if (valuation.confidence === "LOW") return "low_confidence"
     if (valuation.source === "CARMAZIUM_MODEL") return "model_fallback"
     if (valuation.source === "CARMAZIUM_MODEL_PROFILE") return "model_profile"
     return "market_backed"
@@ -681,6 +682,24 @@ function QuickValuationForm() {
                         </article>
                     </div>
 
+                    <div className="mt-3 rounded-xl border border-[var(--border-default)] bg-[var(--bg-input)] p-3 text-xs leading-5 text-[var(--text-secondary)]" role="status">
+                        <p className="font-bold text-[var(--text-primary)]">
+                            Valuation confidence: {result.valuation.confidence.toLowerCase()}
+                        </p>
+                        {result.valuation.valuationMethod === "SEPARATE_MARKETS" && (
+                            <p className="mt-1">
+                                Retail evidence: {result.valuation.channelEvidence?.retailComparableCount ?? 0} comparable prices.
+                                {" "}Dealer value: {result.valuation.channelEvidence?.independentlyObservedTrade
+                                    ? "based on observed auction outcomes"
+                                    : "model estimate — not independently confirmed by enough auction results"}.
+                            </p>
+                        )}
+                        {result.valuation.confidence === "LOW" && (
+                            <p className="mt-1 font-semibold text-amber-700 dark:text-amber-300">
+                                Limited comparable evidence. Verify the exact trim, mileage and condition before choosing a price.
+                            </p>
+                        )}
+                    </div>
                     <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
                         These are estimates, not guaranteed sale prices. Condition, specification and market demand affect the final amount. You can edit your price when creating the listing.
                     </p>
