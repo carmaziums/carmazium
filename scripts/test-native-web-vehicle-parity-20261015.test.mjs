@@ -73,3 +73,16 @@ test('seller pricing and minimum-photo safeguards remain intact', () => {
   assert.match(wizard, /id: 'FREE' as const, label: 'Auction', price: 'Free'/);
   assert.match(wizard, /id: 'BASIC' as const, label: 'Basic', price: '£1'/);
 });
+
+test('native retail payment must be verified by the backend before claiming submission', () => {
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  const listings = source('screens/seller/SellerListingsScreen.tsx');
+
+  // A successful Stripe UI return does not prove /publish reached PENDING_REVIEW.
+  assert.match(wizard, /if \(!second\?\.data\?\.pendingReview && !second\?\.data\?\.activated\)/);
+  assert.match(wizard, /if \(first\?\.data\?\.paymentConfirmationPending\)/);
+  assert.match(wizard, /Payment confirmation pending/);
+  // Returning to a draft must not open another PaymentSheet when prior payment is uncertain.
+  assert.match(listings, /if \(first\?\.data\?\.paymentConfirmationPending\)/);
+  assert.match(listings, /do not pay again/);
+});
