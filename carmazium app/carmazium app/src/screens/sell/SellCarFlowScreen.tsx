@@ -116,6 +116,28 @@ const RECOMMENDED_PHOTOS = 20;
  *  400 on them (SELL-005). */
 const MIN_PHOTOS = 10;
 
+function nativeQuoteKey(input: {
+  vrm?: string; make?: string; model?: string; year?: string | number;
+  mileage?: string | number; listingId?: string | null;
+}): string {
+  return [
+    (input.vrm ?? '').replace(/\s/g, '').toUpperCase(),
+    (input.make ?? '').trim().toUpperCase(),
+    (input.model ?? '').trim().toUpperCase(),
+    String(input.year ?? ''),
+    String(input.mileage ?? '').replace(/[^0-9]/g, ''),
+    input.listingId ?? '',
+  ].join('|');
+}
+
+function validServerQuote(quote?: VehicleValuation): quote is VehicleValuation {
+  return !!quote
+    && Number.isFinite(quote.auction?.marketValue)
+    && quote.auction.marketValue > 0
+    && Number.isFinite(quote.retail?.suggestedAsking)
+    && quote.retail.suggestedAsking > 0;
+}
+
 /** Shape returned by `POST /listings/:id/publish`
  *  (`backend/src/listings/listings.service.ts:933`). `activated` is only true
  *  when the listing was already ACTIVE — a DRAFT that publishes successfully
@@ -733,13 +755,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
   const [deliveryAvailable, setDeliveryAvailable] = useState(false);
   const [deliveryMaxMiles, setDeliveryMaxMiles] = useState('');
   const [deliveryPricePerMile, setDeliveryPricePerMile] = useState('');
-  const [badgeTier, setBadgeTier] = useState<BadgeTier>('BASIC');
+  const [badgeTier, setBadgeTier] = useState<BadgeTier>(landingListingType === 'AUCTION' ? 'FREE' : 'BASIC');
   const [listingType, setListingType] = useState<'CLASSIFIED' | 'AUCTION'>(
     landingListingType === 'AUCTION' ? 'AUCTION' : 'CLASSIFIED',
   );
-  const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(null);
-  const [valuation, setValuation] = useState<VehicleValuation | null>(null);
-  const valuationBaseKeyRef = useRef<string | null>(null);
+  // Reuse the exact server-issued quote from SellLanding for this vehicle.
+  // Revalidate its identity in Step 3 if the seller edits vehicle details.
+  const initialServerQuote = validServerQuote(landingPrefill?.valuation) ? landingPrefill!.valuation! : null;
+  const [baseValuation, setBaseValuation] = useState<VehicleValuation | null>(initialServerQuote);
+  const [valuation, setValuation] = useState<VehicleValuation | null>(initialServerQuote);
+  const valuationBaseKeyRef = useRef<string | null>(initialServerQuote ? nativeQuoteKey({
+    vrm: landingPrefill?.vrm,
+    make: landingPrefill?.make,
+    model: landingPrefill?.model,
+    year: landingPrefill?.year,
+    mileage: landingPrefill?.mileage,
+  }) : null);
+  const autoAppliedQuoteRef = useRef<{ key: string; method: 'AUCTION' | 'CLASSIFIED'; price: string } | null>(null);
   const valuationJourneyIdRef = useRef<string | null>(null);
   const valuationJourneyBaseKeyRef = useRef<string | null>(null);
   const [valuationLoading, setValuationLoading] = useState(false);
@@ -792,14 +824,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
       return;
     }
 
-    const baseKey = [
-      vrm.replace(/\s/g, '').toUpperCase(),
-      make.trim().toUpperCase(),
-      model.trim().toUpperCase(),
-      String(yearNumber),
-      String(mileageNumber),
-      editListingId || '',
-    ].join('|');
+    const baseKey = nativeQuoteKey({
+      vrm, make, model, year: yearNumber, mileage: mileageNumber, listingId: editListingId,
+    });
 
     if (baseValuation && valuationBaseKeyRef.current === baseKey) return;
 
@@ -874,11 +901,38 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
     setValuation(baseValuation);
   }, [baseValuation]);
 
+  // Use the saved quotation automatically when Pricing opens. Never overwrite
+  // a manually set price or a resumed/edited existing listing.
+  useEffect(() => {
+    if (step !== 3 || editMode || !valuation || valuationLoading) return;
+    const currentKey = nativeQuoteKey({ vrm, make, model, year, mileage, listingId: editListingId });
+    if (valuationBaseKeyRef.current !== currentKey) return;
+    const suggested = listingType === 'AUCTION'
+      ? valuation.auction.marketValue : valuation.retail.suggestedAsking;
+    if (!Number.isFinite(suggested) || suggested <= 0) return;
+    const previous = autoAppliedQuoteRef.current;
+    const canReplace = !priceAsking.trim()
+      || (!!previous && priceAsking === previous.price
+        && (previous.key !== currentKey || previous.method !== listingType));
+    if (!canReplace) return;
+    const suggestedPrice = String(suggested);
+    if (priceAsking !== suggestedPrice) setPriceAsking(suggestedPrice);
+    autoAppliedQuoteRef.current = { key: currentKey, method: listingType, price: suggestedPrice };
+    if (listingType === 'AUCTION' && !reservePrice.trim()) {
+      setReservePrice(String(valuation.auction.suggestedReserve));
+    }
+  }, [step, editMode, valuation, valuationLoading, vrm, make, model, year,
+      mileage, editListingId, listingType, priceAsking, reservePrice]);
+
   function applyValuationGuide() {
     if (!valuation) return;
-
-    setPriceAsking(String(listingType === 'AUCTION'
-      ? valuation.auction.marketValue : valuation.retail.suggestedAsking));
+    const selectedPrice = String(listingType === 'AUCTION'
+      ? valuation.auction.marketValue : valuation.retail.suggestedAsking);
+    setPriceAsking(selectedPrice);
+    autoAppliedQuoteRef.current = {
+      key: nativeQuoteKey({ vrm, make, model, year, mileage, listingId: editListingId }),
+      method: listingType, price: selectedPrice,
+    };
     if (listingType === 'AUCTION') {
       setReservePrice(String(valuation.auction.suggestedReserve));
       setStartingBid(String(valuation.auction.openingBid));
