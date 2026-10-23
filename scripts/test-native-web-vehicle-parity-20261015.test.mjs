@@ -93,3 +93,18 @@ test('native free auction is only announced after authoritative review submissio
   assert.match(wizard, /Auction saved, not yet submitted/);
   assert.match(wizard, /The server-side draft remains available/);
 });
+
+test('valuation quote is handed from the registration screen directly to both native listing choices', () => {
+  const landing = source('screens/sell/SellLandingScreen.tsx');
+  const navigator = source('navigation/MainStackNavigator.tsx');
+  const wizard = source('screens/sell/SellCarFlowScreen.tsx');
+  assert.match(landing, /valuation:\s*valuation \|\| undefined/);
+  assert.match(navigator, /valuation\?: VehicleValuation/);
+  assert.match(wizard, /initialServerQuote = validServerQuote\(landingPrefill\?\.valuation\)/);
+  assert.match(wizard, /valuationBaseKeyRef = useRef<string \| null>\(initialServerQuote/);
+  assert.match(wizard, /valuationBaseKeyRef\.current !== currentKey/);
+  assert.match(wizard, /const canReplace = !priceAsking\.trim\(\)/);
+  assert.match(wizard, /setPriceAsking\(suggestedPrice\)/);
+  assert.match(wizard, /landingListingType === 'AUCTION' \? 'FREE' : 'BASIC'/);
+  assert.match(wizard, /setBadgeTier\(method === 'AUCTION' \? 'FREE' : 'BASIC'\)/);
+});
