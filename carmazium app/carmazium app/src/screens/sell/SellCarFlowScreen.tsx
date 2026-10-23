@@ -2231,9 +2231,23 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
           // here means the auction was never submitted for review — the
           // seller must be told, not congratulated (SELL-006).
           try {
-            await apiClient(`/listings/${newListingId}/publish`, { method: 'POST' });
+            const response = await apiClient<{ success: boolean; data: PublishResult }>(
+              `/listings/${newListingId}/publish`,
+              { method: 'POST' },
+            );
+            if (!response?.success || (!response?.data?.pendingReview && !response?.data?.activated)) {
+              // A returned HTTP 200 is not proof of review submission.
+              // Keep the draft and show an actionable status instead.
+              Alert.alert(
+                'Auction saved, not yet submitted',
+                'CarMazium could not confirm that this auction entered the review queue. Check My Auctions before trying again.',
+                [{ text: 'View Auctions', onPress: () => navigation?.navigate('SellerAuctions') }],
+              );
+              return;
+            }
           } catch (pubErr: any) {
-            clearDraft();
+            // The server-side draft remains available. Keep the local draft too
+            // until publication is confirmed, including transient network errors.
             Alert.alert(
               'Auction saved, not yet submitted',
               `${pubErr?.message || 'The auction could not be submitted for review.'} Open it from My Auctions to submit it.`,
