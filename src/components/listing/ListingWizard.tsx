@@ -1875,6 +1875,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         return
                     }
                     // No completed payment found — go to Stripe
+                    if (publish.paymentConfirmationPending) {
+                        throw new Error('Your earlier £1 listing payment could not be verified yet. Please do not pay again. Check your payment receipt or contact CarMazium support with this listing.')
+                    }
                     trackListingSubmitted(payload, editId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(editId, payload.badgeTier as string)
                     window.location.href = checkout.url
@@ -1938,6 +1941,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         return
                     }
                     // No completed payment — go to Stripe
+                    if (publish.paymentConfirmationPending) {
+                        throw new Error('Your earlier £1 listing payment could not be verified yet. Please do not pay again. Check your payment receipt or contact CarMazium support with this listing.')
+                    }
                     trackListingSubmitted(payload, finalListingId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(finalListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
@@ -2080,6 +2086,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                         return
                     }
                     // Redirect to Stripe — webhook moves the listing to PENDING_REVIEW on success
+                    if (publish.paymentConfirmationPending) {
+                        throw new Error('Your earlier £1 listing payment could not be verified yet. Please do not pay again. Check your payment receipt or contact CarMazium support with this listing.')
+                    }
                     trackListingSubmitted(payload, newListingId, 'awaiting_payment')
                     const checkout = await createListingCheckoutSession(newListingId, payload.badgeTier as string)
                     window.location.href = checkout.url
@@ -2213,6 +2222,9 @@ export function ListingWizard({ isDashboard = false }: { isDashboard?: boolean }
                 return
             }
 
+            if (publish.paymentConfirmationPending) {
+                throw new Error('Your earlier £1 listing payment could not be verified yet. Please do not pay again. Check your payment receipt or contact CarMazium support with this listing.')
+            }
             trackListingSubmitted(payload, result.listingId, 'awaiting_payment')
             const checkout = await createListingCheckoutSession(
                 result.listingId,

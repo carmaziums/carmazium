@@ -1052,6 +1052,45 @@ describe('ListingsService', () => {
             expect(prisma.hpiReport.findUnique).not.toHaveBeenCalled();
         });
 
+        it.each(['FREE', 'BASIC', 'PREMIUM'])(
+            'submits a complete AUCTION with old %s badge without charging a listing fee',
+            async (badgeTier) => {
+                prisma.listing.findUnique.mockResolvedValue({
+                    id: 'free-auction-1',
+                    sellerId: 'seller-1',
+                    type: 'AUCTION',
+                    badgeTier,
+                    status: 'DRAFT',
+                    ...submissionReady,
+                    deletedAt: null,
+                });
+                prisma.auction.findUnique.mockResolvedValue({
+                    id: 'auction-1',
+                    listingId: 'free-auction-1',
+                    status: 'SCHEDULED',
+                    deletedAt: null,
+                    startTime: new Date(Date.now() + 60_000),
+                    endTime: new Date(Date.now() + 86_400_000),
+                });
+                prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+
+                const result = await service.publishListing('free-auction-1', 'seller-1');
+
+                expect(result).toEqual({ activated: false, pendingReview: true });
+                expect(prisma.transaction.findMany).not.toHaveBeenCalled();
+                expect(prisma.listing.update).toHaveBeenCalledWith({
+                    where: { id: 'free-auction-1' },
+                    data: { status: 'PENDING_REVIEW', rejectionReason: null },
+                });
+                if (badgeTier !== 'FREE') {
+                    expect(prisma.listing.update).toHaveBeenCalledWith({
+                        where: { id: 'free-auction-1' },
+                        data: { badgeTier: 'FREE' },
+                    });
+                }
+            },
+        );
+
         it('heals a legacy FREE retail draft to BASIC and still requires payment', async () => {
             prisma.listing.findUnique.mockResolvedValue({
                 id: 'listing-1',
@@ -1117,6 +1156,62 @@ describe('ListingsService', () => {
                 data: { status: 'PENDING_REVIEW', rejectionReason: null },
             });
             expect(result).toEqual({ activated: false, pendingReview: true });
+        });
+
+        it('does not request a second £1 fee when an earlier Stripe lookup fails', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-pending-fee',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                ...submissionReady,
+                deletedAt: null,
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([{
+                id: 'txn-pending',
+                status: 'PENDING',
+                stripePaymentId: 'cs_live_pending',
+            }]);
+            mockListingCheckoutSessionRetrieve.mockRejectedValue(new Error('Stripe temporarily unavailable'));
+
+            const result = await service.publishListing('listing-pending-fee', 'seller-1');
+
+            expect(result).toEqual({ activated: false, paymentConfirmationPending: true });
+            expect(prisma.transaction.update).not.toHaveBeenCalled();
+            expect(prisma.listing.update).not.toHaveBeenCalledWith(
+                expect.objectContaining({
+                    data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
+                }),
+            );
+        });
+
+        it('does not request a second fee while Stripe confirms delayed settlement', async () => {
+            prisma.listing.findUnique.mockResolvedValue({
+                id: 'listing-processing',
+                sellerId: 'seller-1',
+                type: 'CLASSIFIED',
+                badgeTier: 'BASIC',
+                status: 'DRAFT',
+                ...submissionReady,
+                deletedAt: null,
+            });
+            prisma.user.findUnique.mockResolvedValue({ role: 'USER' });
+            prisma.transaction.findMany.mockResolvedValue([{
+                id: 'txn-processing',
+                status: 'PENDING',
+                stripePaymentId: 'cs_live_processing',
+            }]);
+            mockListingCheckoutSessionRetrieve.mockResolvedValue({
+                status: 'complete',
+                payment_status: 'unpaid',
+            });
+
+            const result = await service.publishListing('listing-processing', 'seller-1');
+
+            expect(result).toEqual({ activated: false, paymentConfirmationPending: true });
+            expect(prisma.transaction.update).not.toHaveBeenCalled();
         });
 
         it('keeps FREE auction listings free and submits them for review', async () => {

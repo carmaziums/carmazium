@@ -1840,9 +1840,12 @@ export class ListingsService {
             };
         }
 
-        // Auctions are free to list; all classified listings require at minimum BASIC (£1)
+        // Auction sellers pay £0 regardless of a stale BASIC tier sent by a
+        // native/web client. Only Retail can carry paid listing tiers.
         const rawBadgeTier = createListingDto.badgeTier ?? 'BASIC';
-        const badgeTier = (rawBadgeTier === 'FREE' && listingType !== 'AUCTION') ? 'BASIC' : rawBadgeTier;
+        const badgeTier = listingType === 'AUCTION'
+            ? 'FREE'
+            : rawBadgeTier === 'FREE' ? 'BASIC' : rawBadgeTier;
 
         // Every new listing must pass admin review before it can go live — nothing
         // is ever created directly as ACTIVE. Retail paid tiers start DRAFT and
@@ -3036,7 +3039,7 @@ export class ListingsService {
      *
      * Returns { activated: true } or { activated: false, requiresPayment: true }.
      */
-    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
+    async publishListing(id: string, userId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean }> {
         const listing = await this.findById(id);
 
         if (!listing) {
@@ -3093,12 +3096,12 @@ export class ListingsService {
             }
         }
 
-        // FREE is only valid for auctions. Heal legacy/stale retail drafts before
-        // any status/payment decision so retail can never inherit the auction tier.
-        const effectiveBadgeTier =
-            listing.type === 'CLASSIFIED' && listing.badgeTier === 'FREE'
-                ? 'BASIC'
-                : listing.badgeTier;
+        // Auction listing fees are always £0. Repair pre-existing AUCTION/BASIC
+        // drafts from native clients before checking the payment gate.
+        // Retail FREE must conversely be healed to the normal £1 BASIC tier.
+        const effectiveBadgeTier = listing.type === 'AUCTION'
+            ? 'FREE'
+            : listing.badgeTier === 'FREE' ? 'BASIC' : listing.badgeTier;
 
         if (effectiveBadgeTier !== listing.badgeTier) {
             await this.prisma.listing.update({
@@ -3161,8 +3164,9 @@ export class ListingsService {
             return { activated: true };
         }
 
-        // Only FREE AUCTION listings skip the listing fee.
-        if (listing.type === 'AUCTION' && effectiveBadgeTier === 'FREE') {
+        // The server waives seller listing fees for ALL auctions, regardless
+        // of the badge tier the original client sent.
+        if (listing.type === 'AUCTION') {
             await this.prisma.listing.update({ where: { id }, data: { status: 'PENDING_REVIEW', rejectionReason: null } });
             await this.notifySubmittedForReview(listing);
             return { activated: false, pendingReview: true };
@@ -3199,16 +3203,24 @@ export class ListingsService {
         // class payment references so an immediate mobile /publish retry can
         // reconcile a successful payment even if the webhook has not arrived yet.
         let verifiedTxId: string | null = null;
+        let paymentConfirmationPending = false;
         try {
             const Stripe = (await import('stripe')).default;
             const stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY')!, {
                 apiVersion: '2026-02-25.clover',
             });
             for (const tx of transactions) {
-                if (!tx.stripePaymentId) continue;
+                if (tx.status !== 'PENDING') continue;
+                if (!tx.stripePaymentId) {
+                    paymentConfirmationPending = true;
+                    continue;
+                }
                 try {
                     if (tx.stripePaymentId.startsWith('pi_')) {
                         const paymentIntent = await stripe.paymentIntents.retrieve(tx.stripePaymentId);
+                        if (paymentIntent.status === 'processing') {
+                            paymentConfirmationPending = true;
+                        }
                         if (paymentIntent.status === 'succeeded') {
                             await (this.prisma as any).transaction.update({
                                 where: { id: tx.id },
@@ -3227,6 +3239,9 @@ export class ListingsService {
                     // Legacy rows without a recognised prefix are still tried as
                     // sessions for backwards compatibility with existing data.
                     const session = await stripe.checkout.sessions.retrieve(tx.stripePaymentId);
+                    if (session.status === 'complete' && session.payment_status !== 'paid') {
+                        paymentConfirmationPending = true;
+                    }
                     if (session.payment_status === 'paid') {
                         // Heal this transaction so future calls are instant.
                         await (this.prisma as any).transaction.update({
@@ -3239,15 +3254,22 @@ export class ListingsService {
                         verifiedTxId = tx.id;
                         break;
                     }
-                } catch {
-                    // This specific reference is invalid/expired — try next.
+                } catch (error) {
+                    // Unknown payment state is not the same as a failed payment.
+                    // Never encourage a second charge while Stripe verification is unavailable.
+                    paymentConfirmationPending = true;
+                    this.logger.warn(`Could not verify a pending listing fee for listing ${id}: ${error instanceof Error ? error.message : 'unknown Stripe error'}`);
                 }
             }
-        } catch {
-            // Stripe SDK init failed — fall through to requiresPayment.
+        } catch (error) {
+            paymentConfirmationPending = true;
+            this.logger.warn(`Stripe listing-fee verification unavailable for listing ${id}: ${error instanceof Error ? error.message : 'unknown error'}`);
         }
 
         if (!verifiedTxId) {
+            if (paymentConfirmationPending) {
+                return { activated: false, paymentConfirmationPending: true };
+            }
             return { activated: false, requiresPayment: true };
         }
 

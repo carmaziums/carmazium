@@ -40,6 +40,7 @@ function CheckoutSuccessContent() {
     const [sessionData, setSessionData] = useState<SessionStatus | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [confirmationPending, setConfirmationPending] = useState(false)
+    const [listingSubmissionError, setListingSubmissionError] = useState(false)
     const trackedSessionId = useRef<string | null>(null)
 
     useEffect(() => {
@@ -59,9 +60,19 @@ function CheckoutSuccessContent() {
                     return
                 }
                 setConfirmationPending(false)
-                // Webhook fallback: activate listing or apply auction fee if webhook was delayed
-                if (data?.metadata?.type === 'LISTING_FEE' && data?.metadata?.listingId) {
-                    publishListing(data.metadata.listingId).catch(() => {})
+                // Webhook fallback: submit a confirmed paid Retail listing for review.
+                // If publication fails, tell the seller instead of silently displaying success.
+                if (data?.metadata?.type === 'LISTING_FEE') {
+                    if (!data.metadata.listingId) {
+                        setListingSubmissionError(true)
+                    } else {
+                        try {
+                            const result = await publishListing(data.metadata.listingId)
+                            setListingSubmissionError(!result.pendingReview && !result.activated)
+                        } catch {
+                            setListingSubmissionError(true)
+                        }
+                    }
                 }
                 if (data?.metadata?.type === 'COMMISSION') {
                     applyAuctionFee(sessionId).catch(() => {})
@@ -208,7 +219,7 @@ function CheckoutSuccessContent() {
                         {confirmationPending
                             ? 'Payment Confirmation Pending'
                             : sessionData?.metadata?.type === 'LISTING_FEE'
-                            ? 'Submitted for Review'
+                            ? (listingSubmissionError ? 'Payment Received — Listing Needs Attention' : 'Submitted for Review')
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Buyer Fee Paid!'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'
@@ -221,7 +232,9 @@ function CheckoutSuccessContent() {
                         {confirmationPending
                             ? 'We have not yet received final confirmation from Stripe. Please refresh this page shortly or check your dashboard before retrying payment.'
                             : sessionData?.metadata?.type === 'LISTING_FEE'
-                            ? "Payment confirmed. Your vehicle details are now under review and will be listed shortly — we'll notify you once it's approved."
+                            ? (listingSubmissionError
+                                ? 'Your payment is confirmed, but the listing could not be submitted for review automatically. Please contact CarMazium support with your payment reference. Do not pay again.'
+                                : "Payment confirmed. Your vehicle details are now under review and will be listed shortly — we'll notify you once it's approved.")
                             : sessionData?.metadata?.type === 'COMMISSION'
                             ? 'Your £125 buyer fee is confirmed. Submit your handover proof to release the seller payout.'
                             : sessionData?.metadata?.type === 'KYC_VERIFICATION'

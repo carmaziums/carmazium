@@ -1107,9 +1107,17 @@ export class PaymentsService {
         }
 
         switch (event.type) {
-            case 'checkout.session.completed': {
+            case 'checkout.session.completed':
+            case 'checkout.session.async_payment_succeeded': {
                 const session = event.data.object;
-                const { transactionId, listingId, type, boostId, kycId } = session.metadata;
+                const { transactionId, listingId, type, boostId, kycId } = session.metadata ?? {};
+
+                // A completed checkout may still be unpaid when using a delayed
+                // payment method. Only Stripe-confirmed funds may unlock Retail.
+                if (type === 'LISTING_FEE' && session.payment_status !== 'paid') {
+                    this.logger.warn('Keeping unpaid retail checkout pending: ' + session.id);
+                    break;
+                }
 
                 // Checkout completion is not always payment settlement.
                 // A delayed/async buyer fee must never unlock an auction before Stripe confirms payment.

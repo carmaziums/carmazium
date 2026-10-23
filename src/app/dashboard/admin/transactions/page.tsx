@@ -33,6 +33,15 @@ const STATUS_STYLES: Record<string, string> = {
     REFUNDED: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
 }
 
+function transactionStatusLabel(transaction: { type: string; status: string }): string {
+    // Checkout creation creates PENDING rows before any card is charged.
+    // Never present these as received fees in the admin ledger.
+    if (transaction.type === "LISTING_FEE" && transaction.status === "PENDING") {
+        return "PAYMENT UNCONFIRMED"
+    }
+    return transaction.status
+}
+
 const HPI_TYPES = ["HPI_REPORT", "HPI_REPORT_EMAIL"]
 const HPI_LISTING_FEE_AMOUNTS = new Set([10, 25])
 
@@ -167,7 +176,7 @@ export default function AdminTransactionsPage() {
                         <ArrowLeft size={16} /> Back to Overview
                     </Link>
 
-                    <PageHeader title="Transaction Ledger" subHeader={`${total} total transactions · financial records are read-only in this view`} />
+                    <PageHeader title="Transaction Ledger" subHeader={`${total} transaction records, including unpaid checkout attempts · only Completed payments are received`} />
 
                     {hpiSuccess && (
                         <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">{hpiSuccess}</div>
@@ -195,10 +204,13 @@ export default function AdminTransactionsPage() {
                                     </div>
                                     <div className="mt-3 flex flex-wrap items-center gap-2">
                                         <span className="inline-flex rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2 py-1 text-xs font-bold text-[var(--text-secondary)]">{TYPE_LABELS[transaction.type] || transaction.type}</span>
-                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transaction.status}</span>
+                                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transactionStatusLabel(transaction)}</span>
                                         <span className="text-xs text-[var(--text-muted)]">{new Date(transaction.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     {transaction.listing && <p className="mt-2 truncate text-xs text-[var(--text-muted)]">{transaction.listing.title}</p>}
+                                    {transaction.type === "LISTING_FEE" && transaction.status === "PENDING" && (
+                                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Checkout started. No successful payment recorded.</p>
+                                    )}
                                     <HpiTransactionActions tx={transaction} onUpload={setHpiUploadTarget} onFillForm={setHpiFormTarget} />
                                 </article>
                             ))}
@@ -254,7 +266,7 @@ export default function AdminTransactionsPage() {
                                                     <span className="inline-flex rounded-lg border border-[var(--border-default)] bg-[var(--bg-input)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)]">{TYPE_LABELS[transaction.type] || transaction.type}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transaction.status}</span>
+                                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-wide ${STATUS_STYLES[transaction.status] || STATUS_STYLES.PENDING}`}>{transactionStatusLabel(transaction)}</span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right text-sm font-black tabular-nums">
                                                     <span className={transaction.type === "REFUND" ? "text-red-600 dark:text-red-400" : ""}>{transaction.type === "REFUND" ? "-" : ""}{formatPrice(Number(transaction.amount))}</span>

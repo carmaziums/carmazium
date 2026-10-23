@@ -1322,10 +1322,11 @@ export async function createListingCheckoutSession(listingId: string, badgeTier:
  * Submit a DRAFT (or previously-REJECTED) listing for admin review after verifying payment.
  * Returns { activated: true } if already live (rare — idempotent re-call),
  * { activated: false, pendingReview: true } once submitted and awaiting an admin decision, or
- * { activated: false, requiresPayment: true } if the listing fee hasn't been paid yet.
+ * { activated: false, requiresPayment: true } if the listing fee hasn't been paid yet, or
+ * { activated: false, paymentConfirmationPending: true } while Stripe verification is unresolved.
  */
-export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean }> {
-    const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean } }>(`/listings/${listingId}/publish`, {
+export async function publishListing(listingId: string): Promise<{ activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean }> {
+    const data = await apiClient<{ data: { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean } }>(`/listings/${listingId}/publish`, {
         method: 'POST',
     })
     return data.data
