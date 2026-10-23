@@ -85,7 +85,9 @@ export class NotificationsService {
             : nowM >= startM || nowM < endM; // wraps midnight, e.g. 22:00 -> 08:00
     }
 
-    async create(dto: CreateNotificationDto) {
+    // Optional server-generated deterministic ID supports idempotent background
+    // notifications. The public notifications controller exposes no create route.
+    async create(dto: CreateNotificationDto & { id?: string }) {
         // 'link' is not a Prisma column — merge it into the JSON 'data' field
         const { link, ...prismaFields } = dto;
         const mergedData = { ...(dto.data || {}), ...(link ? { link } : {}) };
