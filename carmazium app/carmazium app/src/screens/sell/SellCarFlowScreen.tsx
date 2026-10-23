@@ -120,7 +120,7 @@ const MIN_PHOTOS = 10;
  *  (`backend/src/listings/listings.service.ts:933`). `activated` is only true
  *  when the listing was already ACTIVE — a DRAFT that publishes successfully
  *  comes back as `{ activated: false, pendingReview: true }`. */
-type PublishResult = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean };
+type PublishResult = { activated: boolean; requiresPayment?: boolean; pendingReview?: boolean; paymentConfirmationPending?: boolean };
 
 const FUEL_TYPES = [
   { v: 'PETROL', l: 'Petrol' }, { v: 'DIESEL', l: 'Diesel' },
@@ -2290,6 +2290,15 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
             return;
           }
 
+          if (first?.data?.paymentConfirmationPending) {
+            Alert.alert(
+              'Payment confirmation pending',
+              'CarMazium cannot yet verify an earlier listing payment. Your draft is saved. Please do not pay again until it has been checked.',
+              [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+            );
+            return;
+          }
+
           if (first?.data?.requiresPayment) {
             let paid = false;
             try {
@@ -2306,8 +2315,9 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               return;
             }
 
+            let second: { success: boolean; data: PublishResult };
             try {
-              await publish();
+              second = await publish();
             } catch (secondErr: any) {
               // Charged but not submitted — this is the one state the seller
               // must never be told is fine.
@@ -2319,6 +2329,24 @@ export const SellCarFlowScreen: React.FC<{ navigation?: any; route?: any }> = ({
               );
               return;
             }
+            if (!second?.data?.pendingReview && !second?.data?.activated) {
+              // Stripe's Payment Sheet returned successfully, but the server has
+              // not confirmed that the vehicle entered the review queue.
+              // Preserve the saved draft and never suggest paying a second time.
+              Alert.alert(
+                'Payment confirmation pending',
+                'Your payment screen completed, but the listing has not yet been confirmed for review. Open My Listings to check its status. Do not pay again.',
+                [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+              );
+              return;
+            }
+          } else if (!first?.data?.pendingReview && !first?.data?.activated) {
+            Alert.alert(
+              'Listing not submitted',
+              'The server could not confirm submission. Your draft is saved; open My Listings to try again.',
+              [{ text: 'View Listings', onPress: () => navigation?.navigate('SellerListings') }],
+            );
+            return;
           }
 
           // Success. Note publishListing never returns activated:true for a
