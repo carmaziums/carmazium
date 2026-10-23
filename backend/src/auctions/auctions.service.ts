@@ -2990,6 +2990,21 @@ export class AuctionsService {
             const retailUrl = retailAlreadyLive
                 ? '/dashboard/seller/listings'
                 : '/sell?editId=' + auction.listingId + '&sellMode=retail';
+            // When a provisional decision becomes actionable, remove obsolete
+            // unread live-bid notices without hiding the final decision itself.
+            try {
+                await this.prisma.notification.updateMany({
+                    where: {
+                        userId: listing.sellerId,
+                        entityId: auction.id,
+                        isRead: false,
+                        actionType: { in: ['ACCEPT_OR_WAIT', 'BID_CANCELLED'] },
+                    },
+                    data: { isRead: true },
+                });
+            } catch (error) {
+                this.logger.error('Failed to retire stale live offers at auction end', error);
+            }
             await this.notificationsService.create({
                 userId: listing.sellerId,
                 type: 'AUCTION_OFFER_RECEIVED',
