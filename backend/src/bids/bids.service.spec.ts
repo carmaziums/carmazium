@@ -664,6 +664,8 @@ describe('BidsService — incremental bidding', () => {
         });
 
         await service.create('bidder-A', { listingId: 'listing-1', amount: 7000 } as any);
+        // Notification side effects run outside the committed bid path.
+        for (let i = 0; i < 5; i++) await new Promise(resolve => setImmediate(resolve));
 
         expect(notificationsService.create).toHaveBeenCalledWith(
             expect.objectContaining({
