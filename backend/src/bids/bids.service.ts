@@ -67,6 +67,89 @@ export class BidsService {
         });
     }
 
+    // Best-effort live-offer email pacing. The ending-time seller decision
+    // email is sent separately and is NEVER throttled here.
+    static readonly LIVE_OFFER_EMAIL_THROTTLE_MS = 6 * 60 * 60 * 1000;
+
+    private async notifySellerOfLiveBelowReserveOffer(input: {
+        sellerId: string; auctionId: string; listingId: string;
+        bidId: string; bidAmount: number; reservePrice: number; vehicle: string;
+    }): Promise<void> {
+        const { sellerId, auctionId, listingId, bidId, bidAmount, reservePrice, vehicle } = input;
+        let recentlySubmittedEmail = false;
+
+        try {
+            // Check a submission marker, not mere creation of an in-app alert.
+            // A notification may exist even when the email failed or was skipped.
+            const recent = await this.prisma.notification.findMany({
+                where: {
+                    userId: sellerId, entityId: auctionId, actionType: 'ACCEPT_OR_WAIT',
+                    createdAt: { gte: new Date(Date.now() - BidsService.LIVE_OFFER_EMAIL_THROTTLE_MS) },
+                },
+                select: { data: true },
+                orderBy: { createdAt: 'desc' },
+                take: 100,
+            });
+            recentlySubmittedEmail = recent.some(n =>
+                !!n.data && typeof n.data === 'object'
+                && !!(n.data as Record<string, any>).emailSubmittedAt,
+            );
+        } catch (error) {
+            this.logger.warn(`Could not inspect live-offer email submissions for ${auctionId}`);
+        }
+
+        try {
+            await this.prisma.notification.updateMany({
+                where: { userId: sellerId, entityId: auctionId, actionType: 'ACCEPT_OR_WAIT', isRead: false },
+                data: { isRead: true },
+            });
+        } catch (error) {
+            this.logger.warn(`Could not retire stale live-offer alerts for ${auctionId}`);
+        }
+
+        let createdNotice: any = null;
+        try {
+            createdNotice = await this.notificationsService.create({
+                userId: sellerId,
+                type: 'AUCTION_OFFER_RECEIVED',
+                title: 'New auction offer received',
+                message: `Highest offer: £${bidAmount.toLocaleString('en-GB')} on ${vehicle}. Your reserve is £${reservePrice.toLocaleString('en-GB')}. Accept it now or keep the auction running.`,
+                entityType: 'AUCTION', entityId: auctionId,
+                actionType: 'ACCEPT_OR_WAIT',
+                link: `/auctions/live/${auctionId}?sellerOffer=${bidId}`,
+                data: { listingId, bidId, amount: bidAmount, reservePrice, belowReserve: true },
+            });
+        } catch (error) {
+            // Inbox/push failures must not stop the independent email channel.
+            this.logger.error('Could not create live below-reserve offer notification', error);
+        }
+
+        if (recentlySubmittedEmail) return;
+
+        try {
+            const seller = await this.prisma.user.findUnique({
+                where: { id: sellerId }, select: { email: true, firstName: true },
+            });
+            if (!seller?.email) return;
+            await this.emailService.sendAuctionProvisionalOfferEmail({
+                toEmail: seller.email,
+                sellerName: seller.firstName || 'there',
+                vehicleTitle: vehicle, amount: bidAmount, reservePrice,
+                auctionId, listingId, ended: false,
+            });
+            if (createdNotice?.id) {
+                await this.prisma.notification.update({
+                    where: { id: createdNotice.id },
+                    data: { data: { ...(createdNotice.data || {}), emailSubmittedAt: new Date().toISOString() } },
+                }).catch(error => this.logger.warn(
+                    `Could not mark live-offer email submitted for ${auctionId}: ${error}`,
+                ));
+            }
+        } catch (error) {
+            this.logger.error('Below-reserve offer email failed', error);
+        }
+    }
+
     async create(bidderId: string, createBidDto: CreateBidDto): Promise<Bid> {
         const listing = await this.prisma.listing.findUnique({
             where: { id: createBidDto.listingId },
@@ -508,39 +591,13 @@ export class BidsService {
 
         if (lockedListing.sellerId && bidAmount < reservePrice) {
             const vehicle = [lockedListing.year, lockedListing.make, lockedListing.model].filter(Boolean).join(' ') || lockedListing.title;
-            this.notificationsService.create({
-                userId: lockedListing.sellerId,
-                type: 'AUCTION_OFFER_RECEIVED',
-                title: 'New auction offer received',
-                message: `Highest offer: £${bidAmount.toLocaleString('en-GB')} on ${vehicle}. Your reserve is £${reservePrice.toLocaleString('en-GB')}. Accept it now or keep the auction running.`,
-                entityType: 'AUCTION',
-                entityId: lockedAuction.id,
-                actionType: 'ACCEPT_OR_WAIT',
-                link: `/auctions/live/${lockedAuction.id}?sellerOffer=${bid.id}`,
-                data: {
-                    listingId: lockedListing.id,
-                    bidId: bid.id,
-                    amount: bidAmount,
-                    reservePrice,
-                    belowReserve: true,
-                },
+            this.notifySellerOfLiveBelowReserveOffer({
+                sellerId: lockedListing.sellerId,
+                auctionId: lockedAuction.id,
+                listingId: lockedListing.id,
+                bidId: bid.id,
+                bidAmount, reservePrice, vehicle,
             }).catch(error => this.logger.error('Below-reserve offer notification failed', error));
-            this.prisma.user.findUnique({
-                where: { id: lockedListing.sellerId },
-                select: { email: true, firstName: true },
-            }).then(seller => {
-                if (!seller?.email) return;
-                return this.emailService.sendAuctionProvisionalOfferEmail({
-                    toEmail: seller.email,
-                    sellerName: seller.firstName || 'there',
-                    vehicleTitle: vehicle,
-                    amount: bidAmount,
-                    reservePrice,
-                    auctionId: lockedAuction.id,
-                    listingId: lockedListing.id,
-                    ended: false,
-                });
-            }).catch(error => this.logger.error('Below-reserve offer email failed', error));
         }
 
         if (highestBid && highestBid.bidderId !== businessBidderId) {
