@@ -17,6 +17,7 @@ import { AuctionGateway, AuctionEndPayload } from './auction.gateway';
 import { EmailService } from '../email/email.service';
 import { ChatService } from '../chat/chat.service';
 import { HandoverDocumentsService } from './handover-documents.service';
+import { redactBidListIdentities } from './bidder-privacy';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { UpdateAuctionDto } from './dto/update-auction.dto';
 import { UpdateAuctionDigestDto } from './dto/update-auction-digest.dto';
@@ -793,6 +794,10 @@ export class AuctionsService {
 
         if (!auction || auction.deletedAt) {
             throw new NotFoundException(`Auction not found`);
+        }
+
+        if (auction.listing && Array.isArray(auction.listing.bids)) {
+            auction.listing.bids = redactBidListIdentities(auction.listing.bids);
         }
 
         const seller = auction.listing?.seller as any;
