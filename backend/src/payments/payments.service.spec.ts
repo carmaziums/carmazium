@@ -789,6 +789,7 @@ describe('PaymentsService — handleWebhook checkout.session.completed (LISTING_
             data: {
                 object: {
                     id: 'cs_mock',
+                    payment_status: 'paid',
                     payment_intent: 'pi_checkout',
                     metadata: {
                         transactionId: 'txn-1',
@@ -815,6 +816,59 @@ describe('PaymentsService — handleWebhook checkout.session.completed (LISTING_
                 data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
             }),
         );
+    });
+
+    it('keeps a delayed unpaid retail Checkout pending until Stripe confirms payment', async () => {
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    id: 'cs_unpaid',
+                    payment_status: 'unpaid',
+                    metadata: {
+                        transactionId: 'txn-1',
+                        listingId: 'listing-1',
+                        type: 'LISTING_FEE',
+                        badgeTier: 'BASIC',
+                    },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('recognises a later async_payment_succeeded event for a paid Retail checkout', async () => {
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.async_payment_succeeded',
+            data: {
+                object: {
+                    id: 'cs_async_paid',
+                    payment_intent: 'pi_async_paid',
+                    payment_status: 'paid',
+                    metadata: {
+                        transactionId: 'txn-1',
+                        listingId: 'listing-1',
+                        userId: 'user-1',
+                        type: 'LISTING_FEE',
+                        badgeTier: 'BASIC',
+                    },
+                },
+            },
+        });
+
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        expect(prisma.transaction.update).toHaveBeenCalledWith({
+            where: { id: 'txn-1' },
+            data: { status: 'COMPLETED', stripePaymentId: 'pi_async_paid' },
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith({
+            where: { id: 'listing-1' },
+            data: { status: 'PENDING_REVIEW', rejectionReason: null, badgeTier: 'BASIC' },
+        });
     });
 });
 
