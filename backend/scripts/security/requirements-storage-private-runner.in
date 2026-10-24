@@ -1,0 +1,3 @@
+# Security-reviewed isolated private runner dependencies; update lock after resolver smoke.
+boto3==1.43.57
+botocore==1.43.57
