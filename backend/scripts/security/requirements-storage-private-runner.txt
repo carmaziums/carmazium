@@ -1,0 +1,8 @@
+# Fully resolved on 2026-10-03 using isolated Github runner. Approve package hashes/internal mirror before live private execution.
+boto3==1.43.57
+botocore==1.43.57
+jmespath==1.1.0
+python-dateutil==2.9.0.post0
+s3transfer==0.19.2
+six==1.17.0
+urllib3==2.8.0
