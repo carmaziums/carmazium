@@ -25,14 +25,17 @@
 
 ## Work prepared in draft code, not released
 
-### A. Safe backup runner
+### A. Private independent backup + source-independent recovery (preferred implementation)
 
-- \`backend/scripts/backup/independent-storage-snapshot.cjs\` has a default **plan-only** mode and an allowlisted 7-bucket inventory that includes private KYC, handover and all current empty buckets.
-- It requires *all three explicit execution attestations*: \`CM_OFFSITE_OWNER_APPROVED=true\`, \`CM_OFFSITE_POSTPILOT_RELEASE_APPROVED=true\`, \`CM_OFFSITE_INDEPENDENT_DESTINATION_CONFIRMED=true\`, together with \`CM_OFFSITE_MODE=execute\`.
-- The source rclone remote must use **read-only access** to the project's Storage S3-compatible API; the **different** destination remote must be a \`crypt\` remote layered on independently controlled storage. An operator must inspect the physical provider and encryption/key custody—matching different remote names alone is insufficient.
-- Copies use snapshot-versioned paths and \`rclone copy --immutable\`, not sync/deletion. \`rclone check\` verifies source/destination consistency for each bucket; an independent restore drill and strong checksum/sample restoration are still required to establish actual recovery.
-- Source and destination credentials reside solely in a privately operated backup runner or access-controlled secret store, not the web app, repo, ChatGPT, email or logs. Do not attach private data to CI artifacts.
-- \`backend/src/tasks/independent-storage-snapshot.spec.ts\` tests the default non-execution, all seven buckets, crypto remote validation, release tripwire, safe commands and failed-copy stop conditions using fake rclone operations. It does not download private objects.
+- The stronger previously tested [PR #382](https://github.com/carmaziums/carmazium/pull/382) implementation has been ported to this current-main draft to avoid duplicating incompatible backup systems. The earlier exploratory rclone script and Jest tests were **removed** from this branch. Only the private Python runner is the intended reviewed path.
+- `backend/scripts/security/storage_offsite_backup.py` is a **private-runner-only** script, NOT installed into the public web/Node API, NOT a scheduled live cron and NOT run against production by any GitHub Action. It uses the seven explicitly classified live Storage buckets, including all private KYC/handover objects.
+- Its production backup-mode guard requires both `BACKUP_APPROVED_LIVE_RUN=yes` and `BACKUP_POSTPILOT_RELEASE_APPROVED=yes`, plus `BACKUP_ENCRYPTED_PRIVATE_RUNNER=yes`, the exact production Supabase source ref and separate approved AWS destination/UK KMS key. All real credentials remain outside GitHub and CI. Without the explicit post-pilot approval, backup mode fails closed.
+- It requires an independently controlled *existing* private/versioned London AWS S3 vault and confirmed KMS encryption. The script does **not create infrastructure, incur a storage subscription by itself, or accept a public destination**. It confirms the exact seven-bucket inventory and fresh per-bucket minima before copying. It detects source modifications and prevents overwriting an existing snapshot.
+- It stores customer source filenames only in an encrypted private signed manifest and uses secret-keyed HMAC-derived remote object keys. Object bytes are checked by **downloading from the independent vault and verifying SHA-256**. A separately signed `COMPLETE.json` marker is written only after every object is verified.
+- The `verify` path can validate ALL vaulted object bytes and an authenticated manifest **without any Supabase source connection or source keys**. The `restore_sample` path can recover one sample from each populated bucket into a pre-approved private 0700 directory, check it, and erase it. These are independent recovery **implementations and synthetic proofs**, not evidence that any production file has yet been backed up/restored.
+- `backend/scripts/security/test_storage_offsite_backup.py` uses fake providers and no live data to rehearse tampering, missing buckets, corrupted downloads, missing approvals and restricted restore paths. `.github/workflows/carmazium-independent-storage-backup.yml` runs those offline Python tests on the draft PR and verifies pinned Python SDK imports.
+- Original documented deployment procedure: [private-runner recovery runbook in PR #382](https://github.com/carmaziums/carmazium/blob/security/carmazium-independent-storage-backup-20261003/docs/integrations/independent-storage-backup-runbook.md). **Its 3 October baseline counts are stale**; use the refreshed 24 October inventory below and review every source/private bucket before any real run. Do not reuse that old guide's exact example secrets or counts.
+- **Remaining blockers:** independently owned vault and IAM/KMS policies, written owner approval for any real cost/transfer, private isolated runner/key custody, source-specific read credentials, operational alerting and real 10 GB backup + isolated post-pilot restore. Production or paid tasks remain on hold.
 
 ### B. Database backup-service correction
 
@@ -47,6 +50,8 @@
 - Workflow \`.github/workflows/carmazium-five-helper-security-ci.yml\` runs that script against **PostgreSQL 17-alpine** on ephemeral GitHub Actions service.
 - This is a **synthetic regression harness**, not a reviewed live migration; it does not grant permission to revoke live access. Preserve actual \`public\` schemas/functions/policies until a proper dependency inventory, rollback plan and tested production-equivalent replica exist.
 - Before a post-pilot release, add/verify per-object anon/authenticated GraphQL/RLS access checks (including sensitive finance, dealer-KYC and identity tables), genuine PostgREST/JWT tests, privilege-dependent app flows, and a scoped incremental migration with a rollback plan. Do not simply disable GraphQL or revoke schema grants without those tests.
+
+**Consolidation note:** A previous rclone sketch was deliberately superseded by the stricter object-by-object manifest-authenticated implementation; never run both as parallel backup systems.
 
 ## Independent restore acceptance and production release gates
 
