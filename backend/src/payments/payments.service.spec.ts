@@ -57,7 +57,9 @@ function buildPrismaMock() {
             create: jest.fn().mockResolvedValue({ id: 'txn-1' }),
             findUnique: jest.fn(),
             findFirst: jest.fn(),
+            findMany: jest.fn().mockResolvedValue([]),
             update: jest.fn(),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
         sale: {
             findFirst: jest.fn().mockResolvedValue(null),
@@ -1361,3 +1363,131 @@ describe('PaymentsService — seller HPI checkout and Payment Sheet ownership', 
         }));
     });
 });
+
+describe('PaymentsService — confirmed status-only listing fee reconciliation', () => {
+    let service: PaymentsService;
+    let prisma: any;
+
+    beforeEach(async () => {
+        mockConstructEvent.mockReset();
+        mockCheckoutSessionsRetrieve.mockReset();
+        mockPaymentIntentsRetrieve.mockReset();
+        mockHpiCreatePendingReport.mockReset();
+        prisma = buildPrismaMock();
+        const module: TestingModule = await buildModule(prisma);
+        service = module.get<PaymentsService>(PaymentsService);
+    });
+
+    const pending = (reference: string, amount = 1) => ({
+        id: 'txn-1', listingId: 'listing-1', amount, stripePaymentId: reference,
+    });
+
+    it('marks a Stripe-confirmed expired Checkout FAILED without changing listing or touching other payments', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('cs_expired')]);
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_expired', status: 'expired', payment_status: 'unpaid', amount_total: 100,
+            metadata: { transactionId: 'txn-1', listingId: 'listing-1', type: 'LISTING_FEE' },
+        });
+        const report = await service.reconcilePendingListingFees();
+        expect(report).toEqual({ examined: 1, completed: 0, failed: 1, unresolved: 0 });
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: { id: 'txn-1', status: 'PENDING', type: 'LISTING_FEE' },
+            data: { status: 'FAILED' },
+        });
+        expect(prisma.listing.update).not.toHaveBeenCalled();
+    });
+
+    it('heals a genuinely paid older Checkout and submits only a complete listing', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('cs_paid')]);
+        prisma.listing.findUnique.mockResolvedValue(readyRetailListing());
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_paid', status: 'complete', payment_status: 'paid', amount_total: 100,
+            payment_intent: 'pi_paid', metadata: {
+                transactionId: 'txn-1', listingId: 'listing-1', type: 'LISTING_FEE', badgeTier: 'BASIC',
+            },
+        });
+        const report = await service.reconcilePendingListingFees();
+        expect(report).toEqual({ examined: 1, completed: 1, failed: 0, unresolved: 0 });
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: { id: 'txn-1', status: 'PENDING', type: 'LISTING_FEE' },
+            data: { status: 'COMPLETED', stripePaymentId: 'pi_paid' },
+        });
+        expect(prisma.listing.update).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ status: 'PENDING_REVIEW' }),
+        }));
+    });
+
+    it('does not mark an unsettled async Checkout as FAILED', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('cs_processing')]);
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_processing', status: 'complete', payment_status: 'unpaid', amount_total: 100,
+            metadata: { transactionId: 'txn-1', listingId: 'listing-1', type: 'LISTING_FEE' },
+        });
+        const report = await service.reconcilePendingListingFees();
+        expect(report.unresolved).toBe(1);
+        expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('never guesses a failure if a session belongs to another Stripe account or is missing', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('cs_missing')]);
+        mockCheckoutSessionsRetrieve.mockRejectedValue(new Error('No such checkout.session'));
+        const report = await service.reconcilePendingListingFees();
+        expect(report.unresolved).toBe(1);
+        expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a Stripe session associated with the wrong transaction or amount', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('cs_wrong')]);
+        mockCheckoutSessionsRetrieve.mockResolvedValue({
+            id: 'cs_wrong', status: 'complete', payment_status: 'paid', amount_total: 2500,
+            metadata: { transactionId: 'txn-other', listingId: 'listing-1', type: 'LISTING_FEE' },
+        });
+        const report = await service.reconcilePendingListingFees();
+        expect(report.unresolved).toBe(1);
+        expect(prisma.transaction.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('uses terminal canceled PaymentIntent but not retryable requires_payment_method as failure', async () => {
+        prisma.transaction.findMany.mockResolvedValue([pending('pi_cancel'), pending('pi_retry')]);
+        mockPaymentIntentsRetrieve.mockImplementation(async (id) => ({
+            id, status: id === 'pi_cancel' ? 'canceled' : 'requires_payment_method',
+            amount: 100, metadata: { transactionId: 'txn-1', type: 'LISTING_FEE' },
+        }));
+        const report = await service.reconcilePendingListingFees();
+        expect(report.failed).toBe(1);
+        expect(report.unresolved).toBe(1);
+        expect(prisma.transaction.updateMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a late checkout expiration after the fee was completed', async () => {
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.expired', data: { object: {
+                id: 'cs_late', metadata: { transactionId: 'txn-1', type: 'LISTING_FEE' },
+            } },
+        });
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        expect(prisma.transaction.updateMany).toHaveBeenCalledWith({
+            where: { id: 'txn-1', status: 'PENDING', type: 'LISTING_FEE' },
+            data: { status: 'FAILED' },
+        });
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+
+    it('handles delayed Checkout failure and terminal canceled native PaymentIntent', async () => {
+        mockConstructEvent.mockReturnValue({
+            type: 'checkout.session.async_payment_failed', data: { object: {
+                metadata: { transactionId: 'txn-1', type: 'LISTING_FEE' },
+            } },
+        });
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        mockConstructEvent.mockReturnValue({
+            type: 'payment_intent.canceled', data: { object: {
+                metadata: { transactionId: 'txn-1', type: 'LISTING_FEE' },
+            } },
+        });
+        await service.handleWebhook(Buffer.from('{}'), 'sig');
+        expect(prisma.transaction.updateMany).toHaveBeenCalledTimes(2);
+        expect(prisma.transaction.update).not.toHaveBeenCalled();
+    });
+});
+

@@ -33,9 +33,17 @@ const STATUS_STYLES: Record<string, string> = {
     REFUNDED: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
 }
 
-function transactionStatusLabel(transaction: { type: string; status: string }): string {
-    // Checkout creation creates PENDING rows before any card is charged.
-    // Never present these as received fees in the admin ledger.
+function isAgedUnconfirmedListingFee(transaction: { type: string; status: string; createdAt?: string }): boolean {
+    // The Stripe source of truth, not elapsed time, decides FAILED vs COMPLETED.
+    // A 48h unresolved checkout should be flagged for manual verification.
+    return transaction.type === "LISTING_FEE"
+        && transaction.status === "PENDING"
+        && !!transaction.createdAt
+        && Date.now() - new Date(transaction.createdAt).getTime() > 48 * 60 * 60 * 1000
+}
+
+function transactionStatusLabel(transaction: { type: string; status: string; createdAt?: string }): string {
+    if (isAgedUnconfirmedListingFee(transaction)) return "STRIPE REVIEW REQUIRED"
     if (transaction.type === "LISTING_FEE" && transaction.status === "PENDING") {
         return "PAYMENT UNCONFIRMED"
     }
@@ -209,7 +217,9 @@ export default function AdminTransactionsPage() {
                                     </div>
                                     {transaction.listing && <p className="mt-2 truncate text-xs text-[var(--text-muted)]">{transaction.listing.title}</p>}
                                     {transaction.type === "LISTING_FEE" && transaction.status === "PENDING" && (
-                                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">Checkout started. No successful payment recorded.</p>
+                                        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">{isAgedUnconfirmedListingFee(transaction)
+                                            ? "Stripe confirmation is overdue. Verify this checkout with Stripe before treating it as failed or asking the customer to pay again."
+                                            : "Checkout started. No successful payment recorded."}</p>
                                     )}
                                     <HpiTransactionActions tx={transaction} onUpload={setHpiUploadTarget} onFillForm={setHpiFormTarget} />
                                 </article>
