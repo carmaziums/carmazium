@@ -11,7 +11,7 @@ import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 import { apiClient } from '../../lib/apiClient';
 import { getVehicleValuation, type VehicleValuation } from '../../lib/valuationApi';
-import { normalizeNativeRegistration } from '../../lib/sellerVehicleSpecs';
+import { normalizeNativeRegistration, nativeLookupMatchesEditedVehicle } from '../../lib/sellerVehicleSpecs';
 import type { MainStackParamList } from '../../navigation/MainStackNavigator';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
@@ -122,18 +122,20 @@ export const SellLandingScreen: React.FC = () => {
       setError('Enter the make, actual model, valid year and mileage before requesting a valuation.');
       return;
     }
+    const trustedDvlaDetails = nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })
+      ? dvlaDetails : null;
     const id = ++requestId.current;
     setError(null); setValuation(null); setValuing(true);
     try {
       const answer = await getVehicleValuation({
         make: make.trim(), model: model.trim(), year: Number(year),
         mileage: cleanMileage, registration: vrm || undefined,
-        transmission: transmission || undefined,
-        fuelType: dvlaDetails?.fuelType || undefined,
-        variant: dvlaDetails?.variant || undefined,
-        euroStandard: dvlaDetails?.euroStandard || undefined,
-        doors: dvlaDetails?.doors,
-        seats: dvlaDetails?.seats,
+        transmission: trustedDvlaDetails ? transmission || undefined : undefined,
+        fuelType: trustedDvlaDetails?.fuelType || undefined,
+        variant: trustedDvlaDetails?.variant || undefined,
+        euroStandard: trustedDvlaDetails?.euroStandard || undefined,
+        doors: trustedDvlaDetails?.doors,
+        seats: trustedDvlaDetails?.seats,
       });
       if (id !== requestId.current) return;
       if (!answer?.auction || !Number.isFinite(answer.auction.marketValue)
@@ -153,6 +155,8 @@ export const SellLandingScreen: React.FC = () => {
   };
 
   const startListing = (listingType: RouteSellingMode) => {
+    const trustedDvlaDetails = nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })
+      ? dvlaDetails : null;
     navigation.navigate('SellCarFlow', {
       listingType,
       prefill: {
@@ -163,23 +167,23 @@ export const SellLandingScreen: React.FC = () => {
         year: validYear(year) ? Number(year) : undefined,
         mileage: /^\d+(?:,\d{3})*$/.test(mileage.trim())
           ? Number(mileage.replace(/,/g, '')) : undefined,
-        transmission: transmission || undefined,
-        fuelType: dvlaDetails?.fuelType || undefined,
-        variant: dvlaDetails?.variant || undefined,
-        bodyType: dvlaDetails?.bodyType || undefined,
-        driveType: dvlaDetails?.driveType || undefined,
-        doors: dvlaDetails?.doors, seats: dvlaDetails?.seats, bhp: dvlaDetails?.bhp,
-        color: dvlaDetails?.primaryColour || dvlaDetails?.colour || undefined,
-        engineSize: dvlaDetails?.engineSize, euroStandard: dvlaDetails?.euroStandard,
-        co2Emissions: dvlaDetails?.co2Emissions, motStatus: dvlaDetails?.motStatus,
-        motExpiryDate: dvlaDetails?.motExpiryDate, taxStatus: dvlaDetails?.taxStatus,
-        taxDueDate: dvlaDetails?.taxDueDate, markedForExport: dvlaDetails?.markedForExport,
-        monthOfFirstRegistration: dvlaDetails?.monthOfFirstRegistration,
-        firstUsedDate: dvlaDetails?.firstUsedDate,
-        dateOfLastV5CIssued: dvlaDetails?.dateOfLastV5CIssued,
-        wheelplan: dvlaDetails?.wheelplan, typeApproval: dvlaDetails?.typeApproval,
-        motHistory: dvlaDetails?.motHistory,
-        officialVehicleData: dvlaDetails?.officialVehicleData,
+        transmission: trustedDvlaDetails ? transmission || undefined : undefined,
+        fuelType: trustedDvlaDetails?.fuelType || undefined,
+        variant: trustedDvlaDetails?.variant || undefined,
+        bodyType: trustedDvlaDetails?.bodyType || undefined,
+        driveType: trustedDvlaDetails?.driveType || undefined,
+        doors: trustedDvlaDetails?.doors, seats: trustedDvlaDetails?.seats, bhp: trustedDvlaDetails?.bhp,
+        color: trustedDvlaDetails?.primaryColour || trustedDvlaDetails?.colour || undefined,
+        engineSize: trustedDvlaDetails?.engineSize, euroStandard: trustedDvlaDetails?.euroStandard,
+        co2Emissions: trustedDvlaDetails?.co2Emissions, motStatus: trustedDvlaDetails?.motStatus,
+        motExpiryDate: trustedDvlaDetails?.motExpiryDate, taxStatus: trustedDvlaDetails?.taxStatus,
+        taxDueDate: trustedDvlaDetails?.taxDueDate, markedForExport: trustedDvlaDetails?.markedForExport,
+        monthOfFirstRegistration: trustedDvlaDetails?.monthOfFirstRegistration,
+        firstUsedDate: trustedDvlaDetails?.firstUsedDate,
+        dateOfLastV5CIssued: trustedDvlaDetails?.dateOfLastV5CIssued,
+        wheelplan: trustedDvlaDetails?.wheelplan, typeApproval: trustedDvlaDetails?.typeApproval,
+        motHistory: trustedDvlaDetails?.motHistory,
+        officialVehicleData: trustedDvlaDetails?.officialVehicleData,
       },
     });
   };
