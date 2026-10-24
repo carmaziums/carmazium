@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,6 +20,7 @@ import {
 @Injectable()
 export class PaymentsService {
     private readonly logger = new Logger(PaymentsService.name);
+    private pendingListingReconciliationActive = false;
 
     constructor(
         private readonly prisma: PrismaService,
@@ -1093,6 +1095,137 @@ export class PaymentsService {
     }
 
     /**
+     * Reconcile abandoned Checkout sessions and delayed PaymentIntents.
+     *
+     * Age is only a query filter, NEVER evidence that money was not paid.
+     * An old transaction can be marked FAILED only after Stripe confirms that
+     * its specific Checkout Session expired or its PaymentIntent was canceled.
+     * Missing Stripe references, account mismatch and API errors remain pending
+     * for manual finance review: a false failure would invite duplicate charges.
+     *
+     * The conditional status update also guards against late, out-of-order
+     * webhook events and multiple Fly workers.
+     */
+    @Cron('0 */30 * * * *', { name: 'reconcile-pending-listing-fees' })
+    async reconcilePendingListingFees(): Promise<{
+        examined: number; completed: number; failed: number; unresolved: number;
+    }> {
+        const summary = { examined: 0, completed: 0, failed: 0, unresolved: 0 };
+        if (this.pendingListingReconciliationActive) return summary;
+        this.pendingListingReconciliationActive = true;
+        try {
+            // Ignore very fresh checkouts; Stripe webhooks are the primary path.
+            const candidates = await this.prisma.transaction.findMany({
+                where: {
+                    type: 'LISTING_FEE',
+                    status: 'PENDING',
+                    deletedAt: null,
+                    createdAt: { lt: new Date(Date.now() - 60 * 60 * 1000) },
+                },
+                select: {
+                    id: true, listingId: true, amount: true, stripePaymentId: true,
+                },
+                orderBy: { createdAt: 'asc' },
+                take: 75,
+            });
+            if (!candidates.length) return summary;
+            const stripe = await this.getStripe();
+            for (const transaction of candidates) {
+                summary.examined++;
+                const reference = transaction.stripePaymentId;
+                if (!reference || (!reference.startsWith('cs_') && !reference.startsWith('pi_'))) {
+                    summary.unresolved++;
+                    continue;
+                }
+                try {
+                    let paid = false;
+                    let irreversiblyUnpaid = false;
+                    let receipt: string = reference;
+                    let badgeTier: string | undefined;
+                    const amountPence = Math.round(Number(transaction.amount) * 100);
+
+                    if (reference.startsWith('cs_')) {
+                        const session = await stripe.checkout.sessions.retrieve(reference);
+                        const metadata = session.metadata ?? {};
+                        if ((metadata.transactionId && metadata.transactionId !== transaction.id)
+                            || (metadata.listingId && metadata.listingId !== transaction.listingId)
+                            || (metadata.type && metadata.type !== 'LISTING_FEE')
+                            || (typeof session.amount_total === 'number' && session.amount_total !== amountPence)) {
+                            summary.unresolved++;
+                            this.logger.warn('Skipping listing-fee reconciliation: Stripe session identity/amount mismatch.');
+                            continue;
+                        }
+                        paid = session.payment_status === 'paid';
+                        irreversiblyUnpaid = session.status === 'expired' && !paid;
+                        badgeTier = metadata.badgeTier;
+                        receipt = typeof session.payment_intent === 'string' ? session.payment_intent : reference;
+                    } else {
+                        const intent = await stripe.paymentIntents.retrieve(reference);
+                        const metadata = intent.metadata ?? {};
+                        if ((metadata.transactionId && metadata.transactionId !== transaction.id)
+                            || (metadata.listingId && metadata.listingId !== transaction.listingId)
+                            || (metadata.type && metadata.type !== 'LISTING_FEE')
+                            || (typeof intent.amount === 'number' && intent.amount !== amountPence)) {
+                            summary.unresolved++;
+                            this.logger.warn('Skipping listing-fee reconciliation: Stripe intent identity/amount mismatch.');
+                            continue;
+                        }
+                        paid = intent.status === 'succeeded';
+                        irreversiblyUnpaid = intent.status === 'canceled';
+                        badgeTier = metadata.badgeTier;
+                    }
+
+                    if (!paid && !irreversiblyUnpaid) {
+                        // Open Checkout, processing asynchronous payments and
+                        // retryable card failures are not terminal failures.
+                        summary.unresolved++;
+                        continue;
+                    }
+
+                    const changed = await this.prisma.transaction.updateMany({
+                        where: { id: transaction.id, status: 'PENDING', type: 'LISTING_FEE' },
+                        data: paid
+                            ? { status: 'COMPLETED', stripePaymentId: receipt }
+                            : { status: 'FAILED' },
+                    });
+                    if (changed.count !== 1) continue;
+
+                    if (paid) {
+                        summary.completed++;
+                        if (transaction.listingId) {
+                            // A paid fee is valid independently of readiness;
+                            // only completed listing details enter admin review.
+                            try {
+                                await this.submitPaidListingIfReady(transaction.listingId, badgeTier);
+                                await this.ensureIncludedHpiForTier(transaction.listingId, badgeTier, transaction.id);
+                            } catch (error) {
+                                this.logger.warn('Reconciled fee, but listing follow-up must be retried: ' +
+                                    (error instanceof Error ? error.message : 'unknown error'));
+                            }
+                        }
+                    } else {
+                        summary.failed++;
+                    }
+                } catch (error) {
+                    summary.unresolved++;
+                    // Never turn 'No such checkout.session' or a Stripe outage
+                    // into evidence that no money changed hands.
+                    this.logger.warn('Listing checkout verification unavailable: ' +
+                        (error instanceof Error ? error.message : 'unknown Stripe error'));
+                }
+            }
+            this.logger.log('Listing checkout reconciliation: ' + JSON.stringify(summary));
+            return summary;
+        } catch (error) {
+            this.logger.error('Listing checkout reconciliation failed: ' +
+                (error instanceof Error ? error.message : 'unknown error'));
+            return summary;
+        } finally {
+            this.pendingListingReconciliationActive = false;
+        }
+    }
+
+    /**
      * Handle Stripe webhook events with signature verification.
      */
     async handleWebhook(rawBody: Buffer, signature: string) {
@@ -1279,12 +1412,31 @@ export class PaymentsService {
                 break;
             }
 
-            case 'checkout.session.expired': {
+            case 'checkout.session.expired':
+            case 'checkout.session.async_payment_failed': {
                 const session = event.data.object;
-                const { transactionId } = session.metadata ?? {};
+                const { transactionId, type } = session.metadata ?? {};
                 if (transactionId) {
-                    await this.prisma.transaction.update({
-                        where: { id: transactionId },
+                    // A late expiry or async failure must never demote a fee
+                    // already confirmed as COMPLETED, or a refunded payment.
+                    await this.prisma.transaction.updateMany({
+                        where: {
+                            id: transactionId,
+                            status: 'PENDING',
+                            ...(type === 'LISTING_FEE' ? { type: 'LISTING_FEE' } : {}),
+                        },
+                        data: { status: 'FAILED' },
+                    });
+                }
+                break;
+            }
+
+            case 'payment_intent.canceled': {
+                const intent = event.data.object;
+                const { transactionId, type } = intent.metadata ?? {};
+                if (transactionId && type === 'LISTING_FEE') {
+                    await this.prisma.transaction.updateMany({
+                        where: { id: transactionId, type: 'LISTING_FEE', status: 'PENDING' },
                         data: { status: 'FAILED' },
                     });
                 }
