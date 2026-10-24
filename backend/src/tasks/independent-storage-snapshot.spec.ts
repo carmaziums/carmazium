@@ -28,7 +28,7 @@ describe('CarMazium independent Storage recovery preparation', () => {
   });
 
   it('requires owner, post-pilot release and independent-destination confirmations together', () => {
-    const enabled = { ...env, CM_OFFSITE_MODE: 'execute' };
+    const enabled: Record<string, string> = { ...env, CM_OFFSITE_MODE: 'execute' };
     expect(() => makePlan(enabled)).toThrow('POSTPILOT_RELEASE_NOT_APPROVED');
     enabled.CM_OFFSITE_OWNER_APPROVED = 'true';
     enabled.CM_OFFSITE_POSTPILOT_RELEASE_APPROVED = 'true';
