@@ -20,6 +20,7 @@ const STATIC_ROUTES = [
     "/used-car-types",
     "/sell",
     "/pricing",
+    "/pricing/traders",
     "/about",
     "/download-app",
     "/contact",
