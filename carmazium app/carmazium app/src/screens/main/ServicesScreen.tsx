@@ -139,7 +139,7 @@ export const ServicesScreen: React.FC = () => {
         <TouchableOpacity
           style={styles.postJobButton}
           activeOpacity={0.8}
-          onPress={() => void continueOnWeb('/services/jobs/new')}
+          onPress={() => navigation.navigate('CreateServiceJob', { serviceType: 'DELIVERY' })}
           accessibilityRole="button"
           accessibilityLabel="Post a service job on the CarMazium website"
           accessibilityHint="Opens the CarMazium website to complete the request"
@@ -147,7 +147,7 @@ export const ServicesScreen: React.FC = () => {
           <Ionicons name="add-circle-outline" size={22} color={Colors.white} />
           <View style={{ flex: 1 }}>
             <Text style={styles.postJobTitle}>Post a delivery or inspection job</Text>
-            <Text style={styles.postJobHint}>Continue on CarMazium website</Text>
+            <Text style={styles.postJobHint}>Open native posting form</Text>
           </View>
           <Ionicons name="arrow-forward" size={20} color={Colors.white} />
         </TouchableOpacity>
@@ -218,7 +218,7 @@ export const ServicesScreen: React.FC = () => {
                 <View style={{ marginTop: -2, borderWidth: 1, borderColor: Colors.borderSubtle, borderTopWidth: 0, borderBottomLeftRadius: Radius.card, borderBottomRightRadius: Radius.card, overflow: 'hidden' }}>
                   <TouchableOpacity
                     style={[styles.customerJobsCard, { borderWidth: 0, borderRadius: 0, backgroundColor: Colors.bgCardSolid }]}
-                    onPress={() => void continueOnWeb(service.path)}
+                    onPress={() => navigation.navigate('CreateServiceJob', { serviceType: service.title === 'Delivery & Recovery' ? 'DELIVERY' : 'INSPECTION' })}
                     accessibilityRole="button"
                     accessibilityLabel={`Post a Job for ${service.title}`}
                   >
