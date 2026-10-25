@@ -11,6 +11,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ServicesService } from './services.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
     APPROVABLE_EVIDENCE_STATUSES,
     CapabilityEvidenceStatus,
@@ -98,6 +99,7 @@ export class ServiceOperationsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly services: ServicesService,
+        private readonly notifications: NotificationsService,
     ) {
         const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const serviceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -466,6 +468,34 @@ export class ServiceOperationsService {
                     verificationReminder7SentAt: null,
                 },
             });
+        }
+        // Notify once when the provider begins a new evidence-review cycle, not for every file.
+        // This does not approve documents or bypass the existing service-specific KYC gates.
+        if (capability.status !== CapabilityStatus.APPROVED
+            && capability.verificationStatus !== 'IN_REVIEW') {
+            try {
+                const admins = await this.prisma.user.findMany({
+                    where: { role: 'ADMIN', deletedAt: null },
+                    select: { id: true },
+                });
+                for (const admin of admins) {
+                    try {
+                        await this.notifications.create({
+                            userId: admin.id,
+                            type: 'SERVICE_CAPABILITY_EVIDENCE_SUBMITTED',
+                            title: 'Provider KYC documents submitted',
+                            message: `New verification evidence for ${capability.serviceType} is awaiting review.`,
+                            link: `/dashboard/admin/services/providers/${capabilityId}`,
+                            entityType: 'SERVICE_CAPABILITY',
+                            entityId: capabilityId,
+                        } as any);
+                    } catch (error: any) {
+                        this.logger.warn(`Unable to notify admin of provider evidence ${capabilityId}: ${error?.message}`);
+                    }
+                }
+            } catch (error: any) {
+                this.logger.warn(`Unable to list admins for provider evidence ${capabilityId}: ${error?.message}`);
+            }
         }
         return entry;
     }
