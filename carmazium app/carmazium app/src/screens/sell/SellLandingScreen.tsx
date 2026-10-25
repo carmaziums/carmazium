@@ -122,8 +122,14 @@ export const SellLandingScreen: React.FC = () => {
       setError('Enter the make, actual model, valid year and mileage before requesting a valuation.');
       return;
     }
-    const trustedDvlaDetails = nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })
-      ? dvlaDetails : null;
+    // A registration belongs to the DVLA lookup's original vehicle. Simply
+    // omitting stale attributes while retaining that VRM could still send a
+    // contradictory identity to the valuation backend.
+    if (dvlaDetails && !nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })) {
+      setError('The edited vehicle details no longer match this registration. Correct them or enter the registration again.');
+      return;
+    }
+    const trustedDvlaDetails = dvlaDetails;
     const id = ++requestId.current;
     setError(null); setValuation(null); setValuing(true);
     try {
@@ -155,8 +161,11 @@ export const SellLandingScreen: React.FC = () => {
   };
 
   const startListing = (listingType: RouteSellingMode) => {
-    const trustedDvlaDetails = nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })
-      ? dvlaDetails : null;
+    if (dvlaDetails && !nativeLookupMatchesEditedVehicle(dvlaDetails, { make, model, year })) {
+      setError('The edited vehicle details no longer match this registration. Correct them or enter the registration again.');
+      return;
+    }
+    const trustedDvlaDetails = dvlaDetails;
     navigation.navigate('SellCarFlow', {
       listingType,
       prefill: {
