@@ -43,6 +43,7 @@ export function Header() {
     const [isBuyMenuOpen, setIsBuyMenuOpen] = React.useState(false)
     const [isSellMenuOpen, setIsSellMenuOpen] = React.useState(false)
     const [isTradeMenuOpen, setIsTradeMenuOpen] = React.useState(false)
+    const [expandedTradeService, setExpandedTradeService] = React.useState<string | null>(null)
     const [activeLink, setActiveLink] = React.useState("")
     const desktopMenuCloseTimer = React.useRef<number | null>(null)
 
@@ -369,19 +370,17 @@ export function Header() {
                                                 return (
                                                     <React.Fragment key={item.href}>
                                                         {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
-                                                        <Link
-                                                            href={item.href}
-                                                            role="menuitem"
-                                                            className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5"
-                                                            onClick={() => setIsTradeMenuOpen(false)}
-                                                        >
-                                                            <Icon size={18} className="mt-0.5 text-primary shrink-0" />
-                                                            <span className="text-left">
-                                                                <span className="block text-sm font-bold">{item.name}</span>
-                                                                <span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span>
-                                                            </span>
-                                                        </Link>
-                                                        {tradeJobActions(item.href) && (
+                                                        {tradeJobActions(item.href) ? (
+                                                            <button type="button" aria-expanded={expandedTradeService === item.href} onClick={() => setExpandedTradeService(current => current === item.href ? null : item.href)} className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5 w-full text-left">
+                                                                <Icon size={18} className="mt-0.5 text-primary shrink-0" /><span className="text-left flex-1"><span className="block text-sm font-bold">{item.name}</span><span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span></span>
+                                                                <ChevronDown size={17} className={cn("shrink-0 transition-transform", expandedTradeService === item.href && "rotate-180")} />
+                                                            </button>
+                                                        ) : (
+                                                            <Link href={item.href} role="menuitem" className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false) }}>
+                                                                <Icon size={18} className="mt-0.5 text-primary shrink-0" /><span className="text-left flex-1"><span className="block text-sm font-bold">{item.name}</span><span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span></span>
+                                                            </Link>
+                                                        )}
+                                                        {tradeJobActions(item.href) && expandedTradeService === item.href && (
                                                             <div className="border-t border-[var(--border-default)]">
                                                                 <Link href={tradeJobActions(item.href)!.post} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="flex items-start gap-3 px-6 py-3 hover:bg-primary/5">
                                                                     <FileText size={18} className="mt-0.5 text-primary shrink-0" />
@@ -742,18 +741,17 @@ export function Header() {
                                                     return (
                                                         <React.Fragment key={item.href}>
                                                             {index > 0 && <div className="h-px bg-[var(--border-default)]" />}
-                                                            <Link
-                                                                href={item.href}
-                                                                className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 transition-colors"
-                                                                onClick={() => {
-                                                                    setIsTradeMenuOpen(false)
-                                                                    setIsMobileMenuOpen(false)
-                                                                }}
-                                                            >
-                                                                <Icon size={19} className="text-primary shrink-0" />
-                                                                <span className="font-bold">{item.name}</span>
-                                                            </Link>
-                                                            {tradeJobActions(item.href) && (
+                                                            {tradeJobActions(item.href) ? (
+                                                                <button type="button" aria-expanded={expandedTradeService === item.href} onClick={() => setExpandedTradeService(current => current === item.href ? null : item.href)} className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5 w-full text-left">
+                                                                    <Icon size={19} className="text-primary shrink-0" /><span className="font-bold flex-1">{item.name}</span>
+                                                                    <ChevronDown size={17} className={cn("shrink-0 transition-transform", expandedTradeService === item.href && "rotate-180")} />
+                                                                </button>
+                                                            ) : (
+                                                                <Link href={item.href} role="menuitem" className="flex items-center gap-3 px-4 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
+                                                                    <Icon size={19} className="text-primary shrink-0" /><span className="font-bold flex-1">{item.name}</span>
+                                                                </Link>
+                                                            )}
+                                                            {tradeJobActions(item.href) && expandedTradeService === item.href && (
                                                                 <div className="border-t border-[var(--border-default)]">
                                                                     <Link href={tradeJobActions(item.href)!.post} className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
                                                                         <FileText size={19} className="mt-0.5 text-primary shrink-0" />
