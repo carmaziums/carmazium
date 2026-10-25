@@ -483,8 +483,8 @@ export class ServiceOperationsService {
                         await this.notifications.create({
                             userId: admin.id,
                             type: 'SERVICE_CAPABILITY_EVIDENCE_SUBMITTED',
-                            title: 'Provider KYC documents submitted',
-                            message: `New verification evidence for ${capability.serviceType} is awaiting review.`,
+                            title: 'Provider KYC evidence awaiting review',
+                            message: `A provider uploaded verification evidence for ${capability.serviceType}. Check the full document checklist before approval.`,
                             link: `/dashboard/admin/services/providers/${capabilityId}`,
                             entityType: 'SERVICE_CAPABILITY',
                             entityId: capabilityId,
