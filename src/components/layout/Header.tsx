@@ -1,7 +1,3 @@
-const tradeJobActions = (href: string) => href === "/services/delivery" || href === "/services/inspection"
-    ? { post: `${href}/new`, bid: "/dashboard/service/jobs" }
-    : null
-
 "use client"
 
 import * as React from "react"
@@ -23,6 +19,10 @@ type NavLink =
     | { name: "Buy Cars"; kind: "buy-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
     | { name: "Sell Cars"; kind: "sell-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
     | { name: "TradeXchange"; kind: "trade-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
+
+const tradeJobActions = (href: string) => href === "/services/delivery" || href === "/services/inspection"
+    ? { post: `${href}/new`, bid: "/dashboard/service/jobs" }
+    : null
 
 const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
