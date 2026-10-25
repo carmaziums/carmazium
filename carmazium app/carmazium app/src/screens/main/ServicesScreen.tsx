@@ -49,7 +49,7 @@ const SERVICES: ServiceItem[] = [
     bg: Colors.infoBlueAlpha10,
     border: Colors.infoBlueAlpha20,
     path: '/services/delivery/new',
-    cta: 'Post delivery job',
+    cta: 'Post a Job',
     kind: 'Paid service job',
   },
   {
@@ -60,7 +60,7 @@ const SERVICES: ServiceItem[] = [
     bg: Colors.successAlpha10,
     border: Colors.successAlpha25,
     path: '/services/inspection/new',
-    cta: 'Request inspection',
+    cta: 'Post a Job',
     kind: 'Paid service job',
   },
   {
@@ -189,6 +189,7 @@ export const ServicesScreen: React.FC = () => {
 
         <Text style={styles.sectionHeading}>Choose a service</Text>
         {SERVICES.map((service) => (
+          <React.Fragment key={service.title}>
           <TouchableOpacity
             key={service.title}
             style={styles.card}
@@ -212,6 +213,27 @@ export const ServicesScreen: React.FC = () => {
               <Text style={styles.cardWebHint}>Continues on website</Text>
             </View>
           </TouchableOpacity>
+          {service.kind === 'Paid service job' && (
+            <TouchableOpacity
+              key={service.title + '-bidding'}
+              style={[styles.customerJobsCard, { marginTop: -4, marginBottom: 14 }]}
+              activeOpacity={0.85}
+              onPress={() => void continueOnWeb('/dashboard/service/jobs')}
+              accessibilityRole="button"
+              accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
+              accessibilityHint="Opens the verified provider job marketplace on CarMazium website"
+            >
+              <View style={styles.customerJobsIcon}>
+                <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.partnerTitle}>Find Jobs & Bid</Text>
+                <Text style={styles.partnerText}>For approved {service.title.toLowerCase()} providers only. Browse suitable work and submit a quote.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </React.Fragment>
         ))}
 
         <View style={styles.noteCard}>
