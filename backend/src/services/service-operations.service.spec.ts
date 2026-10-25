@@ -8,6 +8,7 @@ import {
 describe('ServiceOperationsService', () => {
     let prisma: any;
     let services: any;
+    let notifications: any;
     let service: ServiceOperationsService;
 
     beforeEach(() => {
@@ -18,7 +19,8 @@ describe('ServiceOperationsService', () => {
             $executeRaw: jest.fn().mockResolvedValue(0),
         };
         services = { adminResolveDispute: jest.fn().mockResolvedValue({ ok: true }) };
-        service = new ServiceOperationsService(prisma, services);
+        notifications = { create: jest.fn().mockResolvedValue({}) };
+        service = new ServiceOperationsService(prisma, services, notifications);
     });
 
     const pdf = {
