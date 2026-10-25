@@ -1184,18 +1184,19 @@ export class AdminService {
                 );
             }
 
-            // Linked auctions must still have a valid, reciprocal ACTIVE retail
-            // source when the admin approves them. The source can change while
-            // this clone waits in review (sold/withdrawn/deleted/unlinked), and
-            // approving after that would put the same vehicle into an invalid
-            // auction state.
+            // A genuinely active linked retail source must remain reciprocal.
+            // A paired but unpublished retail DRAFT may instead be detached
+            // atomically during auction approval: customers are allowed to run
+            // an auction without publishing their unfinished retail advert.
+            // Sold, withdrawn, deleted, unrelated or non-reciprocal sources
+            // remain blocked.
             if (listing.linkedListingId) {
                 const source = listing.linkedListing;
                 if (
                     !source
                     || source.deletedAt
                     || source.type !== 'CLASSIFIED'
-                    || source.status !== 'ACTIVE'
+                    || !['ACTIVE', 'DRAFT'].includes(source.status)
                     || source.sellerId !== listing.sellerId
                     || source.linkedListingId !== listing.id
                 ) {
@@ -1265,6 +1266,29 @@ export class AdminService {
                 }
             }
 
+            // Detach only a reciprocal, same-owner retail DRAFT. Guard both
+            // ends with compare-and-set updates inside this transaction, so an
+            // unrelated or newly activated retail listing is never modified.
+            if (listing.type === 'AUCTION' && listing.linkedListingId
+                && listing.linkedListing?.status === 'DRAFT') {
+                const retailClaim = await tx.listing.updateMany({
+                    where: {
+                        id: listing.linkedListingId,
+                        type: 'CLASSIFIED',
+                        status: 'DRAFT',
+                        sellerId: listing.sellerId,
+                        linkedListingId: id,
+                        deletedAt: null,
+                    },
+                    data: { linkedListingId: null },
+                });
+                if (retailClaim.count !== 1) {
+                    throw new BadRequestException(
+                        'The retail draft changed during auction approval. Refresh and try again.',
+                    );
+                }
+            }
+
             const listingClaim = await tx.listing.updateMany({
                 where: {
                     id,
@@ -1281,7 +1305,12 @@ export class AdminService {
 
             return tx.listing.update({
                 where: { id },
-                data: buildListingActivationData(listing.badgeTier),
+                data: {
+                    ...buildListingActivationData(listing.badgeTier),
+                    ...(listing.type === 'AUCTION' && listing.linkedListing?.status === 'DRAFT'
+                        ? { linkedListingId: null }
+                        : {}),
+                },
             });
         });
 
