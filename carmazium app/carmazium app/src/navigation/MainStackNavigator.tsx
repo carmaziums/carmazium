@@ -26,6 +26,7 @@ import { DealerPurchasesScreen } from '../screens/main/DealerPurchasesScreen';
 import { DealerEarningsScreen } from '../screens/main/DealerEarningsScreen';
 import { DealerFinanceScreen } from '../screens/main/DealerFinanceScreen';
 import { ServicesScreen } from '../screens/main/ServicesScreen';
+import { CreateServiceJobScreen } from '../screens/main/CreateServiceJobScreen';
 import { CustomerServiceJobsScreen } from '../screens/main/CustomerServiceJobsScreen';
 import { CustomerServiceJobDetailScreen } from '../screens/main/CustomerServiceJobDetailScreen';
 import { PartnerDashboardScreen } from '../screens/main/PartnerDashboardScreen';
@@ -121,6 +122,7 @@ export type MainStackParamList = {
   DealerEarnings: undefined;
   DealerFinance: undefined;
   Services: undefined;
+  CreateServiceJob: { serviceType: 'DELIVERY' | 'INSPECTION' };
   CustomerServiceJobs: undefined;
   CustomerServiceJobDetail: { jobId: string };
   PartnerDashboard: undefined;
@@ -304,6 +306,7 @@ export const MainStackNavigator: React.FC = () => {
         options={{ animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="Services" component={ServicesScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CreateServiceJob" component={CreateServiceJobScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobs" component={CustomerServiceJobsScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="CustomerServiceJobDetail" component={CustomerServiceJobDetailScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="PartnerDashboard" component={PartnerDashboardScreen} options={{ animation: 'slide_from_right' }} />
