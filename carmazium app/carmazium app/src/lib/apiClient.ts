@@ -134,5 +134,17 @@ export async function apiClient<T>(
     throw new Error(message);
   }
 
-  return response.json();
+  // Several successful mutation endpoints intentionally return 204 (or an
+  // empty body). Parsing those as JSON would surface a false failure after
+  // the server has already committed the action. Never retry a mutation here.
+  if (response.status === 204 || response.status === 205 || options.method?.toUpperCase() === 'HEAD') {
+    return undefined as T;
+  }
+  const body = await response.text();
+  if (!body.trim()) return undefined as T;
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    throw new Error('INVALID_API_RESPONSE');
+  }
 }
