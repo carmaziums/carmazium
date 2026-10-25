@@ -54,7 +54,12 @@ export default function InspectionLandingPage() {
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Button asChild size="lg">
                                 <Link href="/services/inspection/new">
-                                    Request an inspection <ArrowRight size={16} />
+                                    Post a Job <ArrowRight size={16} />
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline" size="lg">
+                                <Link href="/dashboard/service/jobs">
+                                    Find Jobs &amp; Bid <ArrowRight size={16} />
                                 </Link>
                             </Button>
                             {user && (
