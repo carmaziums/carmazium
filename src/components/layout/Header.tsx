@@ -20,6 +20,10 @@ type NavLink =
     | { name: "Sell Cars"; kind: "sell-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
     | { name: "TradeXchange"; kind: "trade-menu"; href?: undefined; prefetch?: undefined; badge?: undefined }
 
+const tradeJobActions = (href: string) => href === "/services/delivery" || href === "/services/inspection"
+    ? { post: `${href}/new`, bid: "/dashboard/service/jobs" }
+    : null
+
 const navLinks: NavLink[] = [
     { name: "Home", href: "/" },
     { name: "Buy Cars", kind: "buy-menu" },
@@ -377,6 +381,12 @@ export function Header() {
                                                                 <span className="mt-0.5 block text-xs text-[var(--text-muted)]">{item.desc}</span>
                                                             </span>
                                                         </Link>
+                                                        {tradeJobActions(item.href) && (
+                                                            <div className="grid grid-cols-2 gap-2 px-4 pb-3 pl-11">
+                                                                <Link href={tradeJobActions(item.href)!.post} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="rounded-lg border border-[var(--border-default)] px-2 py-2 text-center text-xs font-bold hover:border-primary">Post a Job</Link>
+                                                                <Link href={tradeJobActions(item.href)!.bid} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="rounded-lg border border-[var(--border-default)] px-2 py-2 text-center text-xs font-bold hover:border-primary">Find Jobs &amp; Bid</Link>
+                                                            </div>
+                                                        )}
                                                     </React.Fragment>
                                                 )
                                             })}
@@ -736,6 +746,12 @@ export function Header() {
                                                                 <Icon size={19} className="text-primary shrink-0" />
                                                                 <span className="font-bold">{item.name}</span>
                                                             </Link>
+                                                            {tradeJobActions(item.href) && (
+                                                                <div className="grid grid-cols-2 gap-2 px-4 pb-3 pl-12">
+                                                                    <Link href={tradeJobActions(item.href)!.post} className="rounded-lg border border-[var(--border-default)] px-2 py-3 text-center text-sm font-bold hover:border-primary" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>Post a Job</Link>
+                                                                    <Link href={tradeJobActions(item.href)!.bid} className="rounded-lg border border-[var(--border-default)] px-2 py-3 text-center text-sm font-bold hover:border-primary" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>Find Jobs &amp; Bid</Link>
+                                                                </div>
+                                                            )}
                                                         </React.Fragment>
                                                     )
                                                 })}
