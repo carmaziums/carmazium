@@ -13,7 +13,8 @@ assert.equal(compiled.diagnostics?.filter(d => d.category === ts.DiagnosticCateg
 const helpers = {};
 runInNewContext(compiled.outputText, { exports: helpers }, { filename: 'nativeSellerVehicleSpecs.js' });
 const { normalizeNativeTransmission, normalizeNativeRegistration,
-  normalizeNativeBodyType, preserveNativeLookupSpecs, allowedNativeBodyTypes } = helpers;
+  normalizeNativeBodyType, preserveNativeLookupSpecs, allowedNativeBodyTypes,
+  nativeLookupMatchesEditedVehicle } = helpers;
 
 test('backend enum-compatible gearbox spellings survive lookup and draft hydration', () => {
   for (const value of ['manual', 'MANUAL']) assert.equal(normalizeNativeTransmission(value), 'MANUAL');
@@ -45,6 +46,28 @@ test('a new registration cannot inherit the previous vehicle gearbox/body', () =
   assert.equal(specs.transmission, 'AUTOMATIC');
   assert.equal(specs.bodyType, 'SEDAN');
 });
+test('valuation lookup evidence is used only when make, model and year still match', () => {
+  const dvla = { make: 'Ford', model: 'Focus', year: 2019 };
+  const edited = { make: 'ford', model: 'FOCUS', year: '2019' };
+  assert.equal(nativeLookupMatchesEditedVehicle(dvla, edited), true);
+  assert.equal(nativeLookupMatchesEditedVehicle(dvla, { ...edited, make: 'Honda' }), false);
+  assert.equal(nativeLookupMatchesEditedVehicle(dvla, { ...edited, model: 'Fiesta' }), false);
+  assert.equal(nativeLookupMatchesEditedVehicle(dvla, { ...edited, year: '2018' }), false);
+  assert.equal(nativeLookupMatchesEditedVehicle(null, edited), false);
+  assert.equal(nativeLookupMatchesEditedVehicle({ make: 'Ford', year: '2019' }, edited), true,
+    'Manual model entry remains possible when DVLA provides no model');
+  assert.equal(nativeLookupMatchesEditedVehicle({ make: 'Ford', model: 'Focus', year: undefined }, edited), false);
+});
+test('valuation and listing handoff both discard mismatched DVLA identity', () => {
+  const landing = readFileSync(new URL('../src/screens/sell/SellLandingScreen.tsx', import.meta.url), 'utf8');
+  assert.equal((landing.match(/dvlaDetails && !nativeLookupMatchesEditedVehicle\(dvlaDetails, \{ make, model, year \}\)/g) || []).length, 2);
+  assert.match(landing, /details no longer match this registration/);
+  assert.match(landing, /fuelType: trustedDvlaDetails\?\.fuelType \|\| undefined/);
+  assert.match(landing, /motHistory: trustedDvlaDetails\?\.motHistory/);
+  assert.equal((landing.match(/transmission: trustedDvlaDetails \? transmission \|\| undefined : undefined/g) || []).length, 2);
+  assert.doesNotMatch(landing, /variant: dvlaDetails\?\.variant/);
+});
+
 test('native screen uses request guards, valid edit/draft specs and inline controls', () => {
   const screen = readFileSync(new URL('../src/screens/sell/SellCarFlowScreen.tsx', import.meta.url), 'utf8');
   assert.match(screen, /requestId !== lookupRequestRef\.current \|\| clean !== currentVrmRef\.current/);
