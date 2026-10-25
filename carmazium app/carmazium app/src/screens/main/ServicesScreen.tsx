@@ -90,6 +90,7 @@ const SERVICES: ServiceItem[] = [
 // ═══════════════════════════ COMPONENT ════════════════════════════
 
 export const ServicesScreen: React.FC = () => {
+  const [expandedService, setExpandedService] = React.useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavProp>();
 
@@ -188,53 +189,65 @@ export const ServicesScreen: React.FC = () => {
         </TouchableOpacity>
 
         <Text style={styles.sectionHeading}>Choose a service</Text>
-        {SERVICES.map((service) => (
-          <React.Fragment key={service.title}>
-          <TouchableOpacity
-            key={service.title}
-            style={styles.card}
-            activeOpacity={0.8}
-            onPress={() => void continueOnWeb(service.path)}
-            accessibilityRole="button"
-            accessibilityLabel={`${service.cta} on the CarMazium website`}
-            accessibilityHint="Opens the service form on CarMazium website"
-          >
-            <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
-              <Ionicons name={service.icon} size={22} color={service.color} />
+        {SERVICES.map((service) => {
+          const isJobService = service.kind === 'Paid service job';
+          const expanded = expandedService === service.title;
+          return (
+            <View key={service.title} style={{ marginBottom: 2 }}>
+              <TouchableOpacity
+                style={[styles.card, { minHeight: 76, alignItems: 'center' }]}
+                activeOpacity={0.8}
+                onPress={() => isJobService
+                  ? setExpandedService(current => current === service.title ? null : service.title)
+                  : void continueOnWeb(service.path)}
+                accessibilityRole="button"
+                accessibilityLabel={service.title}
+                accessibilityState={isJobService ? { expanded } : undefined}
+                accessibilityHint={isJobService ? 'Show or hide Post a Job and Find Jobs and Bid' : 'Opens the service form on CarMazium website'}
+              >
+                <View style={[styles.iconWrap, { backgroundColor: service.bg, borderColor: service.border }]}>
+                  <Ionicons name={service.icon} size={22} color={service.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{service.title}</Text>
+                  {!isJobService && <Text style={styles.cardDesc}>{service.desc}</Text>}
+                </View>
+                <Ionicons name={isJobService && expanded ? 'chevron-up' : isJobService ? 'chevron-down' : 'chevron-forward'} size={20} color={Colors.textMuted} />
+              </TouchableOpacity>
+              {isJobService && expanded && (
+                <View style={{ marginTop: -2, borderWidth: 1, borderColor: Colors.borderSubtle, borderTopWidth: 0, borderBottomLeftRadius: Radius.card, borderBottomRightRadius: Radius.card, overflow: 'hidden' }}>
+                  <TouchableOpacity
+                    style={[styles.customerJobsCard, { borderWidth: 0, borderRadius: 0, backgroundColor: Colors.bgCardSolid }]}
+                    onPress={() => void continueOnWeb(service.path)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Post a Job for ${service.title}`}
+                  >
+                    <Ionicons name="document-text-outline" size={22} color={Colors.accent} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.partnerTitle}>Post a Job</Text>
+                      <Text style={styles.partnerText}>Request quotes from approved providers.</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                  <View style={{ height: 1, backgroundColor: Colors.borderSubtle }} />
+                  <TouchableOpacity
+                    style={[styles.customerJobsCard, { borderWidth: 0, borderRadius: 0, backgroundColor: Colors.bgCardSolid }]}
+                    onPress={() => navigation.navigate('ProviderJobs')}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
+                  >
+                    <Ionicons name="briefcase-outline" size={22} color={Colors.accent} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.partnerTitle}>Find Jobs & Bid</Text>
+                      <Text style={styles.partnerText}>For verified service providers.</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardKind}>{service.kind}</Text>
-              <Text style={styles.cardTitle}>{service.title}</Text>
-              <Text style={styles.cardDesc}>{service.desc}</Text>
-              <View style={styles.cardAction}>
-                <Text style={styles.cardActionText}>{service.cta}</Text>
-                <Ionicons name="arrow-forward-outline" size={17} color={Colors.accent} />
-              </View>
-              <Text style={styles.cardWebHint}>Continues on website</Text>
-            </View>
-          </TouchableOpacity>
-          {service.kind === 'Paid service job' && (
-            <TouchableOpacity
-              key={service.title + '-bidding'}
-              style={[styles.customerJobsCard, { marginTop: -4, marginBottom: 14 }]}
-              activeOpacity={0.85}
-              onPress={() => void continueOnWeb('/dashboard/service/jobs')}
-              accessibilityRole="button"
-              accessibilityLabel={`Find Jobs and Bid for ${service.title}`}
-              accessibilityHint="Opens the verified provider job marketplace on CarMazium website"
-            >
-              <View style={styles.customerJobsIcon}>
-                <Ionicons name="briefcase-outline" size={22} color={Colors.infoBlueLight} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.partnerTitle}>Find Jobs & Bid</Text>
-                <Text style={styles.partnerText}>For approved {service.title.toLowerCase()} providers only. Browse suitable work and submit a quote.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </React.Fragment>
-        ))}
+          );
+        })}
 
         <View style={styles.noteCard}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} accessibilityElementsHidden importantForAccessibility="no" />
