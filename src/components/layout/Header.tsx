@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid, Smartphone } from "lucide-react"
+import { Menu, X, LogIn, User as UserIcon, LogOut, ChevronDown, Car, Gavel, ShieldCheck, Truck, Wrench, Banknote, LayoutGrid, Smartphone, FileText, Briefcase } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -382,9 +382,16 @@ export function Header() {
                                                             </span>
                                                         </Link>
                                                         {tradeJobActions(item.href) && (
-                                                            <div className="grid grid-cols-2 gap-2 px-4 pb-3 pl-11">
-                                                                <Link href={tradeJobActions(item.href)!.post} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="rounded-lg border border-[var(--border-default)] px-2 py-2 text-center text-xs font-bold hover:border-primary">Post a Job</Link>
-                                                                <Link href={tradeJobActions(item.href)!.bid} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="rounded-lg border border-[var(--border-default)] px-2 py-2 text-center text-xs font-bold hover:border-primary">Find Jobs &amp; Bid</Link>
+                                                            <div className="border-t border-[var(--border-default)]">
+                                                                <Link href={tradeJobActions(item.href)!.post} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="flex items-start gap-3 px-6 py-3 hover:bg-primary/5">
+                                                                    <FileText size={18} className="mt-0.5 text-primary shrink-0" />
+                                                                    <span className="text-left"><span className="block text-sm font-bold">Post a Job</span><span className="block text-xs text-[var(--text-muted)]">Request quotes from approved providers.</span></span>
+                                                                </Link>
+                                                                <div className="h-px bg-[var(--border-default)]" />
+                                                                <Link href={tradeJobActions(item.href)!.bid} role="menuitem" onClick={() => setIsTradeMenuOpen(false)} className="flex items-start gap-3 px-6 py-3 hover:bg-primary/5">
+                                                                    <Briefcase size={18} className="mt-0.5 text-primary shrink-0" />
+                                                                    <span className="text-left"><span className="block text-sm font-bold">Find Jobs &amp; Bid</span><span className="block text-xs text-[var(--text-muted)]">For verified service providers.</span></span>
+                                                                </Link>
                                                             </div>
                                                         )}
                                                     </React.Fragment>
@@ -747,9 +754,16 @@ export function Header() {
                                                                 <span className="font-bold">{item.name}</span>
                                                             </Link>
                                                             {tradeJobActions(item.href) && (
-                                                                <div className="grid grid-cols-2 gap-2 px-4 pb-3 pl-12">
-                                                                    <Link href={tradeJobActions(item.href)!.post} className="rounded-lg border border-[var(--border-default)] px-2 py-3 text-center text-sm font-bold hover:border-primary" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>Post a Job</Link>
-                                                                    <Link href={tradeJobActions(item.href)!.bid} className="rounded-lg border border-[var(--border-default)] px-2 py-3 text-center text-sm font-bold hover:border-primary" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>Find Jobs &amp; Bid</Link>
+                                                                <div className="border-t border-[var(--border-default)]">
+                                                                    <Link href={tradeJobActions(item.href)!.post} className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
+                                                                        <FileText size={19} className="mt-0.5 text-primary shrink-0" />
+                                                                        <span><span className="block font-bold">Post a Job</span><span className="block text-xs text-[var(--text-muted)] mt-0.5">Request quotes from approved providers.</span></span>
+                                                                    </Link>
+                                                                    <div className="h-px bg-[var(--border-default)]" />
+                                                                    <Link href={tradeJobActions(item.href)!.bid} className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary/5" onClick={() => { setIsTradeMenuOpen(false); setIsMobileMenuOpen(false) }}>
+                                                                        <Briefcase size={19} className="mt-0.5 text-primary shrink-0" />
+                                                                        <span><span className="block font-bold">Find Jobs &amp; Bid</span><span className="block text-xs text-[var(--text-muted)] mt-0.5">For verified service providers.</span></span>
+                                                                    </Link>
                                                                 </div>
                                                             )}
                                                         </React.Fragment>
