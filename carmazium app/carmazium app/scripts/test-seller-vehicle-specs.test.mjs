@@ -60,7 +60,8 @@ test('valuation lookup evidence is used only when make, model and year still mat
 });
 test('valuation and listing handoff both discard mismatched DVLA identity', () => {
   const landing = readFileSync(new URL('../src/screens/sell/SellLandingScreen.tsx', import.meta.url), 'utf8');
-  assert.equal((landing.match(/nativeLookupMatchesEditedVehicle\(dvlaDetails, \{ make, model, year \}\)/g) || []).length, 2);
+  assert.equal((landing.match(/dvlaDetails && !nativeLookupMatchesEditedVehicle\(dvlaDetails, \{ make, model, year \}\)/g) || []).length, 2);
+  assert.match(landing, /details no longer match this registration/);
   assert.match(landing, /fuelType: trustedDvlaDetails\?\.fuelType \|\| undefined/);
   assert.match(landing, /motHistory: trustedDvlaDetails\?\.motHistory/);
   assert.equal((landing.match(/transmission: trustedDvlaDetails \? transmission \|\| undefined : undefined/g) || []).length, 2);
