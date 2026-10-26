@@ -136,6 +136,7 @@ export function VehicleJsonLd({
         description,
         url: canonicalVehicleUrl,
         manufacturer: { "@type": "Organization", name: make },
+        ...(make?.trim() ? { brand: { "@type": "Brand", name: make.trim() } } : {}),
         model,
         vehicleModelDate: String(year),
         offers: {
