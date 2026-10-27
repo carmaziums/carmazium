@@ -197,3 +197,5 @@ jobs:
           path: qa-emulator-results/*
           retention-days: 7
           if-no-files-found: warn
+
+# Manual QA rebuild requested 2026-10-27; source is current main.
