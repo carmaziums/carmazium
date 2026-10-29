@@ -394,7 +394,9 @@ export default function ProfilePage() {
     const currentRole = profile?.role || ""
     const isPersonal = currentRole === "BUYER" || currentRole === "SELLER"
     const isPartner = currentRole === "DEALER" || currentRole === "CONTRACTOR"
-    const canOwnDealershipProfile = currentRole === "DEALER" || !!profile?.dealerProfile
+    // A legacy dealerProfile record does not turn a personal account into a Partner.
+    // Business settings are only available after explicitly switching account type.
+    const canOwnDealershipProfile = isPartner
     const accountLabel = isPersonal ? "Personal Account" : isPartner ? "Partner Account" : currentRole
     const initials = `${profile?.firstName?.[0] || ""}${profile?.lastName?.[0] || ""}` || profile?.email?.[0] || "C"
     const isSellerEligible = isPersonal || canOwnDealershipProfile
@@ -416,7 +418,7 @@ export default function ProfilePage() {
     return (
         <div className="max-w-5xl mx-auto pt-24 pb-12 px-4">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-                <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>One place for your profile, business, notifications, payouts and security.</p></div>
+                <div><h1 className="text-3xl font-bold font-heading">Account Settings</h1><p className="mt-2 text-sm" style={{ color: "var(--text-muted)" }}>{isPartner ? 'One place for your profile, business, notifications, payouts and security.' : 'Manage your personal profile, notifications, payouts and security.'}</p></div>
                 {profile?.id && <Link href={`/profile/${profile.id}`}><Button variant="outline">View Public Profile</Button></Link>}
             </div>
 

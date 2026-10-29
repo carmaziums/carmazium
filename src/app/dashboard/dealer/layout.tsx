@@ -175,6 +175,19 @@ function DealerDashboardLayoutContent({
         )
     }
 
+    // Never display business KYC to a personal buyer/seller, even when a stale
+    // bookmark or old login redirect opens a dealer dashboard URL.
+    if (profile && (profile.role === 'BUYER' || profile.role === 'SELLER')) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-6 text-center">
+                <p className="font-semibold">Dealer tools require a Partner Account.</p>
+                <p className="text-sm text-[var(--text-muted)]">Your personal account is unchanged. You can create a Partner Account in Account Settings.</p>
+                <button type="button" className="rounded-lg bg-primary px-5 py-3 font-semibold text-white" onClick={() => router.replace('/profile?section=account')}>Manage account type</button>
+                <button type="button" className="text-sm underline" onClick={() => router.replace('/dashboard')}>Return to my dashboard</button>
+            </div>
+        )
+    }
+
     const isEmailVerified = !!user?.email_confirmed_at
     const isVerifiedDealer = isStaffMember
         ? access?.isVerified === true
