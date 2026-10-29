@@ -34,6 +34,7 @@ import {
     Loader2,
     Gift,
     Sparkles,
+    Truck,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
@@ -168,27 +169,40 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route)).map(toDealerLink)
         : []
 
+    // activePrefixes: older standalone pages (opened from notifications and
+    // emails) keep the matching menu item highlighted, so buyers and sellers
+    // always see where they are.
     const unifiedLinks: LinkObj[] = [
         { href: "/dashboard/user?tab=overview", label: "Home", icon: LayoutDashboard, section: "Dashboard" },
-        { href: "/services/jobs", label: "TradeXchange Jobs", icon: Briefcase, section: "Services" },
-        { href: "/dashboard/user?tab=inventory", label: "My Listings", icon: Car, section: "Selling" },
-        { href: "/dashboard/user?tab=offers", label: "Offers Received", icon: Tag, badge: pendingOffersCount, section: "Selling" },
-        { href: "/dashboard/user?tab=earnings", label: "Sales & Earnings", icon: DollarSign, section: "Selling" },
-        { href: "/dashboard/user?tab=stats", label: "Listing Performance", icon: BarChart3, section: "Selling" },
-        { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying" },
-        { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying" },
+        { href: "/dashboard/user?tab=inventory", label: "My Listings", icon: Car, section: "Selling", activePrefixes: ["/dashboard/seller/listings", "/dashboard/seller/add-listing"] },
+        { href: "/dashboard/user?tab=offers", label: "Offers Received", icon: Tag, badge: pendingOffersCount, section: "Selling", activePrefixes: ["/dashboard/seller/offers"] },
+        { href: "/dashboard/user?tab=earnings", label: "Sales & Earnings", icon: DollarSign, section: "Selling", activePrefixes: ["/dashboard/seller/earnings"] },
+        { href: "/dashboard/user?tab=stats", label: "Listing Performance", icon: BarChart3, section: "Selling", activePrefixes: ["/dashboard/seller/performance"] },
+        { href: "/dashboard/user?tab=bids", label: "My Offers", icon: Gavel, section: "Buying", activePrefixes: ["/dashboard/buyer/offers", "/dashboard/buyer/bids"] },
+        { href: "/dashboard/user?tab=watchlist", label: "Saved Cars", icon: Heart, section: "Buying", activePrefixes: ["/dashboard/buyer/watchlist"] },
+        { href: "/services/jobs", label: "Delivery & Inspections", icon: Briefcase, section: "Services" },
         { href: "/dashboard/cancellations", label: "Sale Cancellations", icon: ShieldCheck, section: "Account" },
-        { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account" },
+        { href: "/dashboard/user?tab=messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Account", activePrefixes: ["/dashboard/buyer/messages", "/dashboard/seller/messages"] },
         { href: "/profile", label: "Account Settings", icon: Settings, section: "Account" },
     ]
 
     const sellerLinks: LinkObj[] = [
         unifiedLinks[0],
         unifiedLinks[1],
-        unifiedLinks[2],
         { href: "/dashboard/seller/auctions", label: "My Auctions", icon: Gavel, section: "Selling" },
-        ...unifiedLinks.slice(3),
+        ...unifiedLinks.slice(2),
     ]
+
+    // Buyer/seller tools that only exist on the standalone pages. They were not
+    // linked from the dashboard menu at all; listing them under "More tools"
+    // keeps every option reachable without crowding the main menu.
+    const userMoreLinks: LinkObj[] = (role === 'buyer' || role === 'seller') ? [
+        { href: "/dashboard/seller/offers", label: "Offers & Delivery Requests", icon: Truck, section: "Selling" },
+        { href: "/dashboard/seller/earnings", label: "Earnings & Receipts", icon: Receipt, section: "Selling" },
+        { href: "/dashboard/buyer/offers", label: "My Offers & Delivery", icon: Truck, section: "Buying" },
+        { href: "/dashboard/buyer/history", label: "Payments & Receipts", icon: Receipt, section: "Buying" },
+    ] : []
+    const moreLinks: LinkObj[] = role === 'dealer' ? dealerMoreLinks : userMoreLinks
 
     const links: Record<string, LinkObj[]> = {
         buyer: unifiedLinks,
@@ -262,7 +276,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         "/dashboard/user?tab=overview",
         "/dashboard/user?tab=inventory",
         "/dashboard/user?tab=offers",
-        "/dashboard/user?tab=watchlist",
+        "/dashboard/user?tab=messages",
     ]
     const buyerMobileHrefs = [
         "/dashboard/user?tab=overview",
@@ -296,7 +310,10 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     // than a partial overflow list that can look like missing functionality.
     const mobileOverflowLinks = role === 'dealer'
         ? [...currentLinks, ...dealerMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` }))]
-        : currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
+        : [
+            ...currentLinks.filter(link => !primaryMobileHrefs.includes(link.href)),
+            ...userMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` })),
+        ]
 
     const isAdmin = profile?.role === 'ADMIN'
 
@@ -309,7 +326,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         // (e.g. Buy & Bid while on My Bids or Auction Wins).
         return dealerRouteIsActive({ href, activePrefixes }, pathname)
     }
-    const moreToolActive = dealerMoreLinks.some(link => pathname === link.href.split('?')[0])
+    const moreToolActive = moreLinks.some(link => pathname === link.href.split('?')[0])
     const showMoreTools = moreToolsOpen || moreToolActive
 
     return (
@@ -516,7 +533,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                         })}
                     </nav>
 
-                    {dealerMoreLinks.length > 0 && (
+                    {moreLinks.length > 0 && (
                         <div className="mt-3">
                             <button
                                 type="button"
@@ -529,11 +546,11 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                 <ChevronRight size={14} className={`transition-transform ${showMoreTools ? 'rotate-90' : ''}`} />
                             </button>
                             {showMoreTools && (
-                                <nav id="dealer-more-tools" aria-label="More dealer tools" className="space-y-1 mt-1">
-                                    {dealerMoreLinks.map((link, index) => {
+                                <nav id="dealer-more-tools" aria-label="More tools" className="space-y-1 mt-1">
+                                    {moreLinks.map((link, index) => {
                                         const isActive = pathname === link.href.split('?')[0]
                                         const Icon = link.icon
-                                        const previousSection = index > 0 ? dealerMoreLinks[index - 1]?.section : undefined
+                                        const previousSection = index > 0 ? moreLinks[index - 1]?.section : undefined
                                         const showSection = link.section && link.section !== previousSection
                                         return (
                                             <React.Fragment key={link.href}>

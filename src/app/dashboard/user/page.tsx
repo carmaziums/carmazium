@@ -2,11 +2,9 @@
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { 
-    LayoutDashboard, 
     Car, 
     Tag, 
     Gavel, 
-    BarChart3, 
     MessageSquare, 
     DollarSign, 
     Settings,
@@ -100,6 +98,7 @@ import { apiClient } from "@/lib/apiClient"
 import { createChatRoom, type ChatRoom } from "@/lib/chatApi"
 import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
+import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
 
 export default function UnifiedUserDashboard() {
     return (
@@ -172,17 +171,6 @@ function UnifiedUserDashboardContent() {
 
     const userName = profile?.firstName ? `${profile.firstName} ${profile.lastName || ""}` : (user?.email?.split('@')[0] || "User")
     const userRole = profile?.role || "User"
-
-    const tabs = [
-        { id: "overview", label: "Overview", icon: LayoutDashboard },
-        { id: "inventory", label: "Inventory", icon: Car },
-        { id: "offers", label: "Incoming", icon: Tag, badge: dashboardData?.seller.incomingOffers },
-        { id: "bids", label: "My Offers", icon: Gavel },
-        { id: "stats", label: "Performance", icon: BarChart3 },
-        { id: "messages", label: "Messages", icon: MessageSquare, badge: dashboardData?.unreadMessages },
-        { id: "earnings", label: "Earnings", icon: DollarSign },
-        // Account Settings is reached from the global menu / dashboard sidebar.
-    ]
 
     return (
         <div className="min-h-screen pt-20 pb-12">
@@ -267,6 +255,9 @@ function OverviewTab({
                 </div>
             </div>
 
+            {/* What needs doing today, most urgent first */}
+            <UserAttentionPanel data={data} loading={loading} />
+
             {/* Quick Actions */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <Link href="/sell" className="flex items-center gap-3 p-4 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
@@ -340,8 +331,8 @@ function OverviewTab({
                                     <Tag size={18} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm">Incoming Offers</p>
-                                    <p className="text-xs text-[var(--text-muted)]">You have {data?.seller?.incomingOffers || 0} pending offers to review.</p>
+                                    <p className="font-bold text-sm">Offers Received</p>
+                                    <p className="text-xs text-[var(--text-muted)]">{(data?.seller?.incomingOffers || 0) === 1 ? "1 offer is" : `${data?.seller?.incomingOffers || 0} offers are`} waiting for your reply.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => setTab('offers')}>View All</Button>
@@ -352,8 +343,8 @@ function OverviewTab({
                                     <DollarSign size={18} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm">Earnings Status</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Your total realized revenue is {formatPrice(data?.seller?.totalRevenue || 0)}.</p>
+                                    <p className="font-bold text-sm">Sales & Earnings</p>
+                                    <p className="text-xs text-[var(--text-muted)]">You have earned {formatPrice(data?.seller?.totalRevenue || 0)} from cars you sold.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-emerald-400 hover:bg-emerald-500/10" onClick={() => setTab('earnings')}>History</Button>
@@ -372,8 +363,8 @@ function OverviewTab({
                                     <Tag size={18} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm">My Sent Offers</p>
-                                    <p className="text-xs text-[var(--text-muted)]">Track the offers you've made on vehicles.</p>
+                                    <p className="font-bold text-sm">My Offers</p>
+                                    <p className="text-xs text-[var(--text-muted)]">Track the offers you've made on cars.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-blue-400 hover:bg-blue-500/10" onClick={() => setTab('bids')}>Manage</Button>
@@ -384,8 +375,8 @@ function OverviewTab({
                                     <Heart size={18} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-sm">Watchlist</p>
-                                    <p className="text-xs text-[var(--text-muted)]">You are tracking {data?.buyer?.watchlistCount || 0} vehicles.</p>
+                                    <p className="font-bold text-sm">Saved Cars</p>
+                                    <p className="text-xs text-[var(--text-muted)]">You have saved {data?.buyer?.watchlistCount || 0} {(data?.buyer?.watchlistCount || 0) === 1 ? "car" : "cars"}.</p>
                                 </div>
                             </div>
                             <Button variant="ghost" size="sm" className="text-yellow-400 hover:bg-yellow-500/10" onClick={() => setTab('watchlist')}>View Saved</Button>
@@ -626,7 +617,10 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 />
             )}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Inventory</h2>
+                <div>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Listings</h2>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Cars you are selling, waiting for review, in draft or sold.</p>
+                </div>
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
@@ -1060,7 +1054,15 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                     }}
                 />
             )}
-            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Incoming Offers</h2>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+                <div>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Offers Received</h2>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Offers buyers have made on your cars. Accept, decline or counter each one.</p>
+                </div>
+                <Link href="/dashboard/seller/offers" className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline shrink-0">
+                    Delivery requests from buyers <ChevronRight size={14} />
+                </Link>
+            </div>
             
             {loading ? (
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>
@@ -1379,7 +1381,10 @@ function OutgoingOffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
 
             <div>
                 <h2 className="text-2xl font-black font-heading uppercase tracking-tight">My Offers</h2>
-                <p className="text-sm text-[var(--text-muted)] mt-1">Manage current bids separately from completed offer history.</p>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Offers you have made on other people&apos;s cars. Current offers are shown separately from your history.</p>
+                <Link href="/dashboard/buyer/offers" className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                    Ask a seller to arrange delivery <ChevronRight size={14} />
+                </Link>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1730,7 +1735,10 @@ function StatsTab() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Performance Analytics</h2>
+            <div>
+                <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Listing Performance</h2>
+                <p className="text-sm text-[var(--text-muted)] mt-1">How many people are viewing and making offers on your cars.</p>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard label="Conversion Rate" value={`${performance?.conversionRate || 0}%`} icon={Target} color="text-amber-400" bg="bg-amber-500/10" border="border-amber-500/20" loading={loading} />
@@ -1885,8 +1893,11 @@ function EarningsTab() {
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Earnings History</h2>
-                    <p className="text-[var(--text-muted)] text-sm font-medium">Detailed tracking of your sold assets and revenue.</p>
+                    <h2 className="text-2xl font-black font-heading uppercase tracking-tight">Sales & Earnings</h2>
+                    <p className="text-[var(--text-muted)] text-sm font-medium">Cars you have sold and what you earned.</p>
+                    <Link href="/dashboard/seller/earnings" className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-primary hover:underline">
+                        Payment receipts <ChevronRight size={14} />
+                    </Link>
                 </div>
                 <Button
                     className="flex items-center justify-center gap-2 min-h-[44px] sm:h-10 w-full sm:w-auto shadow-neon-small"
