@@ -27,6 +27,7 @@ export function DealerAttentionPanel() {
     const { unreadCount } = useChat()
     const [data, setData] = React.useState<{ pendingOffers: number; won: Auction[]; mine: Auction[] } | null>(null)
     const [failed, setFailed] = React.useState(false)
+    const [checkedAt, setCheckedAt] = React.useState(0)
 
     const canManageOffers = hasPermission("MANAGE_OFFERS")
     const canViewPurchases = hasPermission("VIEW_PURCHASES")
@@ -42,6 +43,7 @@ export function DealerAttentionPanel() {
             canManageInventory ? getMyAuctions() : Promise.resolve([] as Auction[]),
         ]).then(([offers, won, mine]) => {
             if (cancelled) return
+            setCheckedAt(Date.now())
             setFailed([offers, won, mine].every(r => r.status === "rejected"))
             setData({
                 pendingOffers: offers.status === "fulfilled" ? offers.value : 0,
@@ -54,7 +56,7 @@ export function DealerAttentionPanel() {
 
     const items = data
         ? buildAttentionItems({
-            now: Date.now(),
+            now: checkedAt,
             pendingOffers: data.pendingOffers,
             unreadMessages: unreadCount,
             wonAuctions: data.won as unknown as AttentionAuction[],
