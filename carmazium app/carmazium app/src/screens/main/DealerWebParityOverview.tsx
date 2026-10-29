@@ -120,8 +120,9 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   }, [query, refreshToken]);
 
   useEffect(() => {
-    if (!canManageOffers) return;
+    if (!canManageOffers) { setPendingOffers(null); setOffersError(false); return; }
     let cancelled = false;
+    setPendingOffers(null);
     setOffersError(false);
     apiClient<{ data?: { count?: number } }>('/offers/pending-count')
       .then(response => {
@@ -134,8 +135,10 @@ export const DealerWebParityOverview: React.FC<Props> = ({
     return () => { cancelled = true; };
   }, [canManageOffers, refreshToken]);
   useEffect(() => {
-    if (!canManageInventory) return;
+    if (!canManageInventory) { setHandoverCount(null); setProvisionalCount(null); return; }
     let cancelled = false;
+    setHandoverCount(null);
+    setProvisionalCount(null);
     fetchAllMyAuctions<{
       id: string; status: string; winnerId?: string | null; buyerRefusedAt?: string | null;
       sellerBonusReleased?: boolean; sellerFundsConfirmedAt?: string | null;
@@ -151,12 +154,13 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       setHandoverCount(auctions.filter(a => a.status === 'ENDED' && !!a.winnerId
         && !a.buyerRefusedAt && !a.sellerBonusReleased
         && (!a.sellerFundsConfirmedAt || !a.handoverSubmittedAt || !!a.handoverRejectedAt)).length);
-    }).catch(() => { if (!cancelled) setHandoverCount(null); });
+    }).catch(() => { if (!cancelled) { setHandoverCount(null); setProvisionalCount(null); } });
     return () => { cancelled = true; };
   }, [canManageInventory, refreshToken]);
   useEffect(() => {
-    if (!canViewPurchases) return;
+    if (!canViewPurchases) { setFeeDueCount(null); return; }
     let cancelled = false;
+    setFeeDueCount(null);
     apiClient<{ data?: { data?: Array<{
       id: string; status: string; buyerFeePaid?: boolean; buyerRefusedAt?: string | null;
       buyerFeeDeadlineAt?: string | null;
@@ -252,7 +256,8 @@ export const DealerWebParityOverview: React.FC<Props> = ({
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
-        )}        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
+        )}
+        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
           <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')} style={styles.actionCard}>
             <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
             <View style={styles.actionText}>
@@ -294,8 +299,10 @@ export const DealerWebParityOverview: React.FC<Props> = ({
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
         )}
-        {!offersError && (!canManageOffers || pendingOffers === 0) && (
-          <Text style={styles.sectionHint}>No outstanding buyer offers requiring your reply.</Text>
+        {!offersError && (!canManageOffers || pendingOffers === 0)
+          && (!canManageInventory || (provisionalCount === 0 && handoverCount === 0))
+          && (!canViewPurchases || feeDueCount === 0) && unreadCount === 0 && (
+          <Text style={styles.sectionHint}>You're all caught up. Nothing needs your attention right now.</Text>
         )}
       </View>
       <View style={styles.sectionIntro}>
