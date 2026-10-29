@@ -15,6 +15,8 @@ import { Ionicons, MaterialCommunityIcons } from '@/components/BrandIcon';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { apiClient } from '../../lib/apiClient';
+import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
+import { getSellerAuctionStage, type SellerAuctionProgressInput } from '../../lib/auctionSellerStage';
 import { ErrorBanner } from '../../components/ui/ErrorBanner';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
@@ -30,6 +32,12 @@ interface UnifiedDashboardData {
 }
 
 interface UnifiedDashboardResponse { success: boolean; data: UnifiedDashboardData }
+interface SellerAttentionAuction extends SellerAuctionProgressInput {
+  id: string;
+  provisionalOfferBidId?: string | null;
+  provisionalOfferedAt?: string | null;
+  listing?: { title?: string | null; make?: string | null; model?: string | null; year?: number | null };
+}
 
 const EMPTY: UnifiedDashboardData = {
   buyer: { activeBids: 0, watchlistCount: 0, counteredOffersPending: 0 },
@@ -114,6 +122,9 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   // Previously the catch swallowed everything into `/* show zeros */`, so a
   // dead network rendered as a confident, wrong dashboard.
   const [error, setError] = useState<string | null>(null);
+  const [sellerAuctions, setSellerAuctions] = useState<SellerAttentionAuction[]>([]);
+  const [auctionCheckError, setAuctionCheckError] = useState(false);
+  const [auctionChecking, setAuctionChecking] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,6 +145,23 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    if (accountRole !== 'seller' && accountRole !== 'dealer') {
+      setSellerAuctions([]);
+      setAuctionCheckError(false);
+      setAuctionChecking(false);
+      return;
+    }
+    setAuctionChecking(true);
+    setAuctionCheckError(false);
+    void fetchAllMyAuctions<SellerAttentionAuction>('list').then(items => {
+      if (!cancelled) setSellerAuctions(items);
+    }).catch(() => {
+      if (!cancelled) { setSellerAuctions([]); setAuctionCheckError(true); }
+    }).finally(() => { if (!cancelled) setAuctionChecking(false); });
+    return () => { cancelled = true; };
+  }, [accountRole]);
 
   const { buyer, seller, unreadMessages } = data;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User';
@@ -158,9 +186,13 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   const nav = (screen: string) => navigation?.navigate(screen);
   const navTab = (tab: string) => navigation?.navigate('Tabs', { screen: tab });
-  // Only display actions supported by the unified endpoint. Auction and handover
-  // follow-ups need their own verified data; never fabricate an all-clear state.
+  // Use the verified auction list and seller stage rules for auction follow-ups.
+  // Never present a successful all-clear when the auction request failed.
+  const pendingProvisional = sellerAuctions.filter(a => a.status === 'ENDED' && !a.winnerId && !!a.provisionalOfferBidId && !!a.provisionalOfferedAt && Number.isFinite(Date.parse(a.provisionalOfferedAt)) && Date.now() < Date.parse(a.provisionalOfferedAt) + 72 * 60 * 60 * 1000);
+  const pendingHandovers = sellerAuctions.filter(a => ['ARRANGE_INSPECTION_PAYMENT', 'READY_FOR_HANDOVER', 'CORRECT_PROOF'].includes(getSellerAuctionStage(a)));
   const attentionActions = [
+    ...(pendingProvisional.length ? [{ key: 'provisional', title: `${pendingProvisional.length} provisional auction offer${pendingProvisional.length === 1 ? '' : 's'} awaiting your decision`, detail: 'Review before the 72-hour deadline', screen: 'SellerAuctions' }] : []),
+    ...(pendingHandovers.length ? [{ key: 'handover', title: `${pendingHandovers.length} sold car${pendingHandovers.length === 1 ? '' : 's'} need handover steps`, detail: 'Confirm cleared funds and complete handover', screen: 'SellerAuctions' }] : []),
     ...(isSeller && seller.incomingOffers > 0 ? [{ key: 'incoming', title: `${seller.incomingOffers} buyer offer${seller.incomingOffers === 1 ? '' : 's'} awaiting your reply`, detail: 'Review or counter incoming offers', screen: 'SellerOffers' }] : []),
     ...(buyer.counteredOffersPending > 0 ? [{ key: 'countered', title: `${buyer.counteredOffersPending} counter-offer${buyer.counteredOffersPending === 1 ? '' : 's'} awaiting you`, detail: 'Respond to the seller', screen: 'BuyerOffers' }] : []),
     ...(unreadMessages > 0 ? [{ key: 'messages', title: `${unreadMessages} unread message${unreadMessages === 1 ? '' : 's'}`, detail: 'Read your messages', screen: 'Messages' }] : []),
@@ -216,7 +248,7 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
         {/* Prioritised tasks use real unified-dashboard counts, never guessed values. */}
         <View style={{ marginBottom: 16, padding: 16, borderRadius: 14, backgroundColor: Colors.whiteAlpha05 }}>
           <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 18, marginBottom: 6 }}>Needs your attention</Text>
-          {loading ? <Text style={{ color: Colors.textSecondary }}>Checking your account...</Text> : error ? (
+          {loading || auctionChecking ? <Text style={{ color: Colors.textSecondary }}>Checking your account...</Text> : error ? (
             <Text style={{ color: Colors.textSecondary }}>Unable to check your tasks. Retry above.</Text>
           ) : attentionActions.length ? attentionActions.map(item => (
             <TouchableOpacity key={item.key} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => nav(item.screen)} activeOpacity={0.75} style={{ paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha12, flexDirection: 'row', alignItems: 'center' }}>
@@ -226,7 +258,8 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
             </TouchableOpacity>
-          )) : <Text style={{ color: Colors.textSecondary }}>No outstanding offers or unread messages.</Text>}
+          )) : <Text style={{ color: Colors.textSecondary }}>{auctionCheckError ? 'Auction status unavailable. Open My Auctions to check outstanding steps.' : 'No outstanding offers, messages or auction steps found.'}</Text>}
+          {auctionCheckError && attentionActions.length > 0 ? <Text style={{ color: Colors.textSecondary, marginTop: 8 }}>Auction status could not be checked. Open My Auctions for updates.</Text> : null}
         </View>
 
         {/* Primary tasks should be visible before the crowded metrics grid. */}
