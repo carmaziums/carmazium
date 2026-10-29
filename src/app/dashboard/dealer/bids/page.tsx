@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
@@ -132,6 +133,8 @@ export default function DealerAuctionBidsPage() {
                             Refresh
                         </Button>
                     </div>
+
+                    <BuyAndBidTabs />
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <MetricCard

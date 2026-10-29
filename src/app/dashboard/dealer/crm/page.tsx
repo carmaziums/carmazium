@@ -14,7 +14,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 
@@ -399,8 +399,8 @@ export default function DealerCRMPage() {
                         from deep inside a long Kanban column */}
                     <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2">
                         <PageHeader
-                            title={DEALER_ROUTE_CONFIG[2].title}
-                            subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
+                            title={getDealerRoute("/dashboard/dealer/crm").title}
+                            subHeader={getDealerRoute("/dashboard/dealer/crm").subHeader}
                         >
                             <div className="flex items-center gap-2">
                                 <Link

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { AlertCircle, Clock3, Flame, Gavel, Loader2, RefreshCw, Star, Trash2 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { RequireAuth } from "@/components/auth/RequireAuth"
 import { useAuth } from "@/context/AuthContext"
 import { TRADE_EXCHANGE_ROLES } from "@/lib/tradeAccess"
@@ -134,26 +135,7 @@ export default function DealerAuctionShortlistPage() {
                             </Link>
                         </PageHeader>
 
-                        <nav
-                            aria-label="Auction and buying navigation"
-                            className="flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5"
-                        >
-                            <Link href="/dashboard/dealer/auctions" className="min-h-11 shrink-0 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-[var(--text-muted)] hover:text-primary">
-                                <Gavel size={16} /> My Auctions
-                            </Link>
-                            <Link href="/auctions/browse" className="min-h-11 shrink-0 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-[var(--text-muted)] hover:text-primary">
-                                <Flame size={16} /> Live Auctions
-                            </Link>
-                            <span aria-current="page" className="min-h-11 shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-white">
-                                <Star size={16} /> Shortlisted
-                            </span>
-                            <Link href="/dashboard/dealer/bids" className="min-h-11 shrink-0 inline-flex items-center rounded-xl px-4 py-2 text-sm font-bold text-[var(--text-muted)] hover:text-primary">
-                                My Bids
-                            </Link>
-                            <Link href="/dashboard/dealer/auctions/won" className="min-h-11 shrink-0 inline-flex items-center rounded-xl px-4 py-2 text-sm font-bold text-[var(--text-muted)] hover:text-primary">
-                                Purchases
-                            </Link>
-                        </nav>
+                        <BuyAndBidTabs />
 
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="inline-flex rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1">

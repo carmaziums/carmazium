@@ -13,8 +13,10 @@ import {
     Heart,
     Trophy,
     Briefcase,
+    Receipt,
     Wrench,
     ShieldCheck,
+    ShoppingBag,
     LucideIcon
 } from "lucide-react"
 
@@ -27,13 +29,18 @@ export interface DealerRoute {
     hidden?: boolean
     section?: string
     requiredPermission?: DealerPermission
+    /**
+     * Other dealer pages that belong to this menu item. While the dealer is on
+     * one of them, this item stays highlighted so they never lose their place.
+     */
+    activePrefixes?: string[]
 }
 
 /**
  * Keep the persistent dealer navigation intentionally small.
- * Secondary tools stay routable and are exposed from the Dealer Command
- * Centre in job-based groups, instead of forcing dealers through a 15–20
- * item sidebar / mobile More menu.
+ * Routes marked `hidden` are NOT removed: they are listed in the sidebar's
+ * collapsible "More tools" group (desktop) and in the mobile More panel, so
+ * every dealer tool stays reachable from the menu without crowding it.
  */
 export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
@@ -51,7 +58,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Inventory",
         subHeader: "Manage live, draft and sold stock",
         icon: Car,
-        section: "Main"
+        section: "Main",
+        activePrefixes: ["/dashboard/dealer/add-listing", "/dashboard/dealer/put-on-auction"]
     },
     {
         href: "/dashboard/dealer/crm",
@@ -60,17 +68,18 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Customers",
         subHeader: "Enquiries, offers and buyer follow-up",
         icon: Kanban,
-        section: "Main"
+        section: "Main",
+        activePrefixes: ["/dashboard/dealer/offers"]
     },
     {
         href: "/dashboard/dealer/offers",
         requiredPermission: "MANAGE_OFFERS",
-        label: "Offers",
+        label: "Offers Received",
         title: "Offers Received",
-        subHeader: "Review offers on your vehicles",
+        subHeader: "Review offers buyers made on your vehicles",
         icon: Tag,
         hidden: true,
-        section: "Main"
+        section: "Selling"
     },
     {
         href: "/dashboard/dealer/auctions",
@@ -79,7 +88,8 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         title: "Auctions & Buying",
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
-        section: "Main"
+        section: "Main",
+        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]
     },
     {
         href: "/dashboard/dealer/auctions/won",
@@ -89,7 +99,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Auction wins and next handover steps",
         icon: Trophy,
         hidden: true,
-        section: "Business"
+        section: "Buying"
     },
     {
         href: "/dashboard/cancellations",
@@ -182,6 +192,16 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         section: "Buying"
     },
     {
+        href: "/dashboard/dealer/purchases",
+        requiredPermission: "VIEW_PURCHASES",
+        label: "Purchase History",
+        title: "Purchase History",
+        subHeader: "Every vehicle you have bought, retail and auction",
+        icon: ShoppingBag,
+        hidden: true,
+        section: "Buying"
+    },
+    {
         href: "/dashboard/dealer/wishlist",
         label: "Saved Cars",
         title: "Saved Cars",
@@ -192,9 +212,9 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/dealer/finance",
-        label: "Finance",
-        title: "Finance",
-        subHeader: "Dealership finance tools",
+        label: "Finance Applications",
+        title: "Finance Applications",
+        subHeader: "Track customer finance applications",
         icon: DollarSign,
         hidden: true,
         section: "Business"
@@ -215,8 +235,26 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         label: "Earnings",
         title: "Revenue & Earnings",
         subHeader: "Revenue and platform sales history",
-        icon: DollarSign,
+        icon: Receipt,
         hidden: true,
         section: "Performance"
     }
 ]
+
+/** The dealer menu item that owns `pathname` (exact match first, then its related pages). */
+export function dealerRouteIsActive(route: Pick<DealerRoute, "href" | "activePrefixes">, pathname: string): boolean {
+    const path = route.href.split("?")[0]
+    if (pathname === path) return true
+    return (route.activePrefixes ?? []).some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
+/**
+ * Look a dealer route up by its address. Prefer this to DEALER_ROUTE_CONFIG[n]:
+ * positional lookups drift when the list changes (the Messages and Finance
+ * pages were showing the titles of the Cancellations and Auction Wins routes).
+ */
+export function getDealerRoute(href: string): DealerRoute {
+    const route = DEALER_ROUTE_CONFIG.find(r => r.href === href)
+    if (!route) throw new Error(`Unknown dealer route: ${href}`)
+    return route
+}

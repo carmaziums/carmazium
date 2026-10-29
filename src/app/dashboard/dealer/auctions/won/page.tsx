@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { useAuth } from "@/context/AuthContext"
 import { getWonAuctions, type Auction } from "@/lib/auctionApi"
 import { BuyerFeeCountdown } from "@/components/auctions/BuyerFeeCountdown"
@@ -427,6 +428,8 @@ export default function MyBidsPage() {
                         title="Purchased from Auction"
                         subHeader="Every auction you're bidding on or have won, and exactly what to do next"
                     />
+
+                    <BuyAndBidTabs />
 
                     {isLoading ? (
                         <div className="dealer-glass-card p-16 flex items-center justify-center">

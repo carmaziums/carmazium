@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
 import { useSearchParams } from "next/navigation"
 import type { ChatRoom } from "@/lib/chatApi"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 
 function MessagesContent() {
     const { user, profile, loading } = useAuth()
@@ -69,10 +69,10 @@ function MessagesContent() {
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-black font-heading uppercase tracking-tighter metallic-foil">
-                                        {DEALER_ROUTE_CONFIG[6].title}
+                                        {getDealerRoute("/dashboard/dealer/messages").title}
                                     </h2>
                                     <p className="text-xs text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                                        {DEALER_ROUTE_CONFIG[6].subHeader}
+                                        {getDealerRoute("/dashboard/dealer/messages").subHeader}
                                     </p>
                                 </div>
                             </div>

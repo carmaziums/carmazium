@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
 import { useAuth } from "@/context/AuthContext"
@@ -390,43 +391,7 @@ function DealerAuctionsPage() {
                             </Button>
                         </PageHeader>
 
-                        <nav
-                            aria-label="Auction and buying navigation"
-                            className="mt-3 flex w-full items-center gap-1 overflow-x-auto rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-1.5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]"
-                        >
-                            <div
-                                aria-current="page"
-                                className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-white shadow-sm"
-                            >
-                                <Gavel size={16} />
-                                My Auctions
-                            </div>
-                            <Link
-                                href="/auctions/browse"
-                                className="group flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
-                            >
-                                <Flame size={16} className="transition-transform group-hover:scale-110" />
-                                Live Auctions
-                            </Link>
-                            <Link
-                                href="/dashboard/dealer/auctions/shortlisted"
-                                className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
-                            >
-                                <Star size={16} /> Shortlisted
-                            </Link>
-                            <Link
-                                href="/dashboard/dealer/bids"
-                                className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
-                            >
-                                My Bids
-                            </Link>
-                            <Link
-                                href="/dashboard/dealer/auctions/won"
-                                className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-black text-[var(--text-muted)] transition-all hover:bg-red-500/10 hover:text-primary"
-                            >
-                                Purchases
-                            </Link>
-                        </nav>
+                        <BuyAndBidTabs className="mt-3" />
                     </div>
 
                     {/* Action needed — the single most important thing on this page when it applies,

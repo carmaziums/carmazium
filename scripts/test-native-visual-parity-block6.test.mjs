@@ -9,7 +9,8 @@ const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const read=p=>readFileSync(resolve(root,p),'utf8');
 const base='carmazium app/carmazium app/src/';
 const app=p=>read(base+p);
-const web=read('src/app/dashboard/dealer/auctions/page.tsx');
+// The Buy & Bid tab bar is a shared component used on every page in that area.
+const web=read('src/app/dashboard/dealer/auctions/page.tsx')+read('src/components/dealer/BuyAndBidTabs.tsx');
 const routes=read('src/config/dealerRouteConfig.ts');
 const tab=app('navigation/TabNavigator.tsx');
 const hub=app('screens/main/DealerBuyBidScreen.tsx');

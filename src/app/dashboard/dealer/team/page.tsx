@@ -11,7 +11,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { TradeExchangeTeamAccess } from "@/components/dealer/TradeExchangeTeamAccess"
 
@@ -94,8 +94,8 @@ export default function DealerTeamPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader
-                        title={DEALER_ROUTE_CONFIG[8].title}
-                        subHeader={DEALER_ROUTE_CONFIG[8].subHeader}
+                        title={getDealerRoute("/dashboard/dealer/team").title}
+                        subHeader={getDealerRoute("/dashboard/dealer/team").subHeader}
                     >
                         <Button onClick={() => setShowInvite(!showInvite)} className="gap-2 h-11 px-6 rounded-xl shadow-[0_0_20px_rgba(237,28,36,0.3)] bg-gradient-to-r from-red-600 to-red-700 hover:scale-105 transition-all">
                             <PlusCircle size={18} /> Add Personnel
