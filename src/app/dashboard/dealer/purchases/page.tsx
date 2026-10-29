@@ -7,6 +7,7 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import {
     PipelineRow,
@@ -94,8 +95,8 @@ export default function DealerPurchasesPage() {
                 <main className="flex-1 space-y-6 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <PageHeader
-                            title="Purchases"
-                            subHeader="Post-acquisition fulfillment pipeline"
+                            title="Purchase History"
+                            subHeader="Every vehicle you have bought, retail and auction, and its progress"
                         />
 
                         {/* View Toggle */}
@@ -122,6 +123,8 @@ export default function DealerPurchasesPage() {
                             </button>
                         </div>
                     </div>
+
+                    <BuyAndBidTabs />
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

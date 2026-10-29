@@ -18,6 +18,7 @@ import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { useDealerAccess } from "@/context/DealerAccessContext"
 import { getNotifications, markNotificationRead, type AppNotification } from "@/lib/notificationsApi"
+import { DealerAttentionPanel } from "@/components/dealer/DealerAttentionPanel"
 
 export default function DealerDashboard() {
     const { user, profile, loading: authLoading } = useAuth()
@@ -355,13 +356,15 @@ export default function DealerDashboard() {
                         </div>
                     )}
 
+                    {/* ── What needs doing today, most urgent first ── */}
+                    {isEmailVerified && <DealerAttentionPanel />}
+
                     {/* ── Flexible reporting range ── */}
                     <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
                         <div className="max-w-xl">
                             <h2 className="text-2xl font-black font-heading uppercase tracking-tighter">Overview</h2>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                Choose any number of days, months or years, or view everything since this dealer account was created.
-                                Turn on comparison to compare with the immediately preceding period.
+                                Your figures for the period you choose.
                             </p>
                         </div>
                         <FlexiblePeriodControl
@@ -440,7 +443,7 @@ export default function DealerDashboard() {
                         <div>
                             <h2 className="text-lg font-black font-heading uppercase tracking-tight">Main actions</h2>
                             <p className="text-xs text-[var(--text-muted)] mt-1">
-                                One entry point for each job. Related tools now live inside that area instead of repeating across the dashboard.
+                                Go straight to the main parts of your dashboard. Everything else is under More tools in the menu.
                             </p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

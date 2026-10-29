@@ -37,7 +37,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useChat } from "@/context/ChatContext"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { DEALER_ROUTE_CONFIG, dealerRouteIsActive } from "@/config/dealerRouteConfig"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 import { getOrCreateSupportRoom } from "@/lib/chatApi"
 import { useDealerAccess } from "@/context/DealerAccessContext"
@@ -73,6 +73,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
     const [contactingSupport, setContactingSupport] = React.useState(false)
     const { loading: dealerAccessLoading, hasPermission: hasDealerPermission } = useDealerAccess()
+    const [moreToolsOpen, setMoreToolsOpen] = React.useState(false)
 
     React.useEffect(() => {
         if (!user) return
@@ -81,12 +82,16 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                 getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
             } else if (role === 'buyer') {
                 getBuyerActionCount().then(setPendingOffersCount).catch(() => {})
+            } else if (role === 'dealer' && !dealerAccessLoading && hasDealerPermission('MANAGE_OFFERS')) {
+                // Same dealership-aware endpoint the seller badge uses; it
+                // resolves staff to the business owner server-side.
+                getPendingOffersCount().then(setPendingOffersCount).catch(() => {})
             }
         }
         fetchCount()
         const interval = setInterval(fetchCount, 60_000)
         return () => clearInterval(interval)
-    }, [role, user])
+    }, [role, user, dealerAccessLoading, hasDealerPermission])
 
     const handleSignOut = async (e: React.MouseEvent) => {
         e.preventDefault()
@@ -138,7 +143,30 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
         icon: React.ComponentType<{ size?: number; className?: string }>
         badge?: number
         section?: string
+        activePrefixes?: string[]
     }
+
+    const dealerRouteVisible = (route: typeof DEALER_ROUTE_CONFIG[number]) =>
+        !route.requiredPermission
+        || (!dealerAccessLoading && hasDealerPermission(route.requiredPermission))
+    const dealerBadgeFor = (href: string): number | undefined => {
+        if (href === '/dashboard/dealer/messages') return unreadCount
+        if (href === '/dashboard/dealer/crm' || href === '/dashboard/dealer/offers') return pendingOffersCount
+        return undefined
+    }
+    const toDealerLink = (route: typeof DEALER_ROUTE_CONFIG[number]): LinkObj => ({
+        href: route.href,
+        label: route.label,
+        icon: route.icon,
+        section: route.section,
+        activePrefixes: route.activePrefixes,
+        badge: dealerBadgeFor(route.href),
+    })
+    // Secondary dealer tools: kept out of the main list to keep it short, but
+    // always listed under "More tools" so no dealer option is ever unreachable.
+    const dealerMoreLinks: LinkObj[] = role === 'dealer'
+        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route)).map(toDealerLink)
+        : []
 
     const unifiedLinks: LinkObj[] = [
         { href: "/dashboard/user?tab=overview", label: "Home", icon: LayoutDashboard, section: "Dashboard" },
@@ -187,20 +215,8 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             { href: "/profile", label: "Account Settings", icon: Settings },
         ],
         dealer: DEALER_ROUTE_CONFIG
-            .filter(route =>
-                !route.hidden
-                && (
-                    !route.requiredPermission
-                    || (!dealerAccessLoading && hasDealerPermission(route.requiredPermission))
-                )
-            )
-            .map(route => ({
-                href: route.href,
-                label: route.label,
-                icon: route.icon,
-                section: route.section,
-                badge: route.href === '/dashboard/dealer/messages' ? unreadCount : undefined,
-            })),
+            .filter(route => !route.hidden && dealerRouteVisible(route))
+            .map(toDealerLink),
         admin: [
             { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboard, section: "Workspace" },
             { href: "/dashboard/admin/messages", label: "Messages", icon: MessageSquare, badge: unreadCount, section: "Workspace" },
@@ -279,18 +295,22 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     // but repeat them inside More so the panel is a complete dealer menu rather
     // than a partial overflow list that can look like missing functionality.
     const mobileOverflowLinks = role === 'dealer'
-        ? currentLinks
+        ? [...currentLinks, ...dealerMoreLinks.map(link => ({ ...link, section: `More tools · ${link.section ?? 'Other'}` }))]
         : currentLinks.filter(link => !primaryMobileHrefs.includes(link.href))
 
     const isAdmin = profile?.role === 'ADMIN'
 
-    const isLinkActive = (href: string) => {
+    const isLinkActive = (href: string, activePrefixes?: string[]) => {
         const linkPath = href.split('?')[0]
         if (pathname === "/dashboard/user" && linkPath === "/dashboard/user") {
             return searchParams.get("tab") === new URL(href, window.location.origin).searchParams.get("tab")
         }
-        return pathname === linkPath
+        // Dealer menu items also stay highlighted on their related pages
+        // (e.g. Buy & Bid while on My Bids or Auction Wins).
+        return dealerRouteIsActive({ href, activePrefixes }, pathname)
     }
+    const moreToolActive = dealerMoreLinks.some(link => pathname === link.href.split('?')[0])
+    const showMoreTools = moreToolsOpen || moreToolActive
 
     return (
         <>
@@ -298,7 +318,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
             <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t pb-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-dropdown)', borderColor: 'var(--border-default)' }}>
                 <div className="grid grid-cols-5 items-center py-2 px-1">
                     {mobileLinks.map((link) => {
-                        const isActive = isLinkActive(link.href)
+                        const isActive = isLinkActive(link.href, link.activePrefixes)
                         const Icon = link.icon
                         return (
                             <Link
@@ -310,7 +330,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             >
                                 <div className="relative">
                                     <Icon size={20} />
-                                    {link.badge && link.badge > 0 && (
+                                    {!!link.badge && link.badge > 0 && (
                                         link.href.includes('tab=offers') ? (
                                             <span className="absolute -top-2 -right-2">
                                                 <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
@@ -375,7 +395,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
                     <div className="space-y-1">
                         {mobileOverflowLinks.map((link, index) => {
-                            const isActive = isLinkActive(link.href)
+                            const isActive = isLinkActive(link.href, link.activePrefixes)
                             const Icon = link.icon
                             const previousSection = index > 0 ? mobileOverflowLinks[index - 1]?.section : undefined
                             const showSection = link.section && link.section !== previousSection
@@ -399,7 +419,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                         <div className="flex items-center gap-3 min-w-0">
                                             <Icon size={18} className="shrink-0" />
                                             <span className="text-sm font-medium truncate">{link.label}</span>
-                                            {link.badge && link.badge > 0 && (
+                                            {!!link.badge && link.badge > 0 && (
                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
                                                     {link.badge}
                                                 </span>
@@ -452,7 +472,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
 
                     <nav className="space-y-1">
                         {currentLinks.map((link, index) => {
-                            const isActive = isLinkActive(link.href)
+                            const isActive = isLinkActive(link.href, link.activePrefixes)
                             const Icon = link.icon
                             const previousSection = index > 0 ? currentLinks[index - 1]?.section : undefined
                             const showSection = link.section && link.section !== previousSection
@@ -476,7 +496,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                             <Icon size={18} className="shrink-0" />
                                             <span className="truncate">{link.label}</span>
                                         </div>
-                                        {link.badge && link.badge > 0 && (
+                                        {!!link.badge && link.badge > 0 && (
                                             link.href.includes('tab=offers') ? (
                                                 <span className="relative flex items-center justify-center">
                                                     <span className="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-primary opacity-60" />
@@ -495,6 +515,59 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                             )
                         })}
                     </nav>
+
+                    {dealerMoreLinks.length > 0 && (
+                        <div className="mt-3">
+                            <button
+                                type="button"
+                                onClick={() => setMoreToolsOpen(open => !open)}
+                                aria-expanded={showMoreTools}
+                                aria-controls="dealer-more-tools"
+                                className="w-full flex items-center justify-between gap-3 px-3 pt-3 pb-1 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-muted)] hover:text-primary transition-colors"
+                            >
+                                More tools
+                                <ChevronRight size={14} className={`transition-transform ${showMoreTools ? 'rotate-90' : ''}`} />
+                            </button>
+                            {showMoreTools && (
+                                <nav id="dealer-more-tools" aria-label="More dealer tools" className="space-y-1 mt-1">
+                                    {dealerMoreLinks.map((link, index) => {
+                                        const isActive = pathname === link.href.split('?')[0]
+                                        const Icon = link.icon
+                                        const previousSection = index > 0 ? dealerMoreLinks[index - 1]?.section : undefined
+                                        const showSection = link.section && link.section !== previousSection
+                                        return (
+                                            <React.Fragment key={link.href}>
+                                                {showSection && (
+                                                    <p className="px-3 pt-2 pb-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)] opacity-70">
+                                                        {link.section}
+                                                    </p>
+                                                )}
+                                                <Link
+                                                    href={link.href}
+                                                    aria-current={isActive ? "page" : undefined}
+                                                    className={`flex items-center justify-between gap-3 px-4 py-2 rounded-lg text-sm transition-all ${isActive
+                                                        ? "bg-primary text-white font-semibold"
+                                                        : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)] hover:text-primary dark:hover:text-white"
+                                                        }`}
+                                                    style={!isActive ? { color: 'var(--text-muted)' } : undefined}
+                                                >
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <Icon size={16} className="shrink-0" />
+                                                        <span className="truncate">{link.label}</span>
+                                                    </div>
+                                                    {link.badge && link.badge > 0 ? (
+                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-primary/20 text-primary'}`}>
+                                                            {link.badge}
+                                                        </span>
+                                                    ) : null}
+                                                </Link>
+                                            </React.Fragment>
+                                        )
+                                    })}
+                                </nav>
+                            )}
+                        </div>
+                    )}
 
                     {isAdmin && role !== 'admin' && (
                         <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-default)' }}>

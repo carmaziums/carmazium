@@ -7,7 +7,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 
 const STATUS_BADGES: Record<string, string> = {
@@ -77,8 +77,8 @@ export default function DealerFinancePage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader 
-                        title={DEALER_ROUTE_CONFIG[5].title}
-                        subHeader={DEALER_ROUTE_CONFIG[5].subHeader}
+                        title={getDealerRoute("/dashboard/dealer/finance").title}
+                        subHeader={getDealerRoute("/dashboard/dealer/finance").subHeader}
                     />
 
                     {/* Summary Cards */}

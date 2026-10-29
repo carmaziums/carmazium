@@ -14,17 +14,17 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { apiClient } from "@/lib/apiClient"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { DEALER_ROUTE_CONFIG } from "@/config/dealerRouteConfig"
+import { getDealerRoute } from "@/config/dealerRouteConfig"
 import { createChatRoom } from "@/lib/chatApi"
 import { useRouter } from "next/navigation"
 
 const COLUMNS = [
-    { key: "NEW", label: "New Leads", color: "border-blue-500/40", dotColor: "bg-blue-400", bg: "from-blue-500/5" },
-    { key: "CONTACTED", label: "Contacted", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
-    { key: "QUALIFIED", label: "Viewing / Qualified", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
-    { key: "NEGOTIATING", label: "Negotiating", color: "border-cyan-500/40", dotColor: "bg-cyan-400", bg: "from-cyan-500/5" },
-    { key: "WON", label: "Closed Won", color: "border-emerald-500/40", dotColor: "bg-emerald-400", bg: "from-emerald-500/5" },
-    { key: "LOST", label: "Lost", color: "border-red-500/40", dotColor: "bg-red-400", bg: "from-red-500/5" },
+    { key: "NEW", label: "New Leads", hint: "Just enquired, not yet contacted", color: "border-blue-500/40", dotColor: "bg-blue-400", bg: "from-blue-500/5" },
+    { key: "CONTACTED", label: "Contacted", hint: "You've replied or called", color: "border-amber-500/40", dotColor: "bg-amber-400", bg: "from-amber-500/5" },
+    { key: "QUALIFIED", label: "Viewing / Qualified", hint: "Viewed or test-drove the car", color: "border-purple-500/40", dotColor: "bg-purple-400", bg: "from-purple-500/5" },
+    { key: "NEGOTIATING", label: "Negotiating", hint: "Agreeing price or terms", color: "border-cyan-500/40", dotColor: "bg-cyan-400", bg: "from-cyan-500/5" },
+    { key: "WON", label: "Closed Won", hint: "Sale agreed", color: "border-emerald-500/40", dotColor: "bg-emerald-400", bg: "from-emerald-500/5" },
+    { key: "LOST", label: "Lost", hint: "No longer buying", color: "border-red-500/40", dotColor: "bg-red-400", bg: "from-red-500/5" },
 ]
 
 // Was ["direct", "chat", "walk-in", "referral", "online-ad", "phone"] — a
@@ -399,8 +399,8 @@ export default function DealerCRMPage() {
                         from deep inside a long Kanban column */}
                     <div className="sticky top-20 z-20 bg-[var(--bg-body)]/95 backdrop-blur-md pt-2 -mt-2">
                         <PageHeader
-                            title={DEALER_ROUTE_CONFIG[2].title}
-                            subHeader={DEALER_ROUTE_CONFIG[2].subHeader}
+                            title={getDealerRoute("/dashboard/dealer/crm").title}
+                            subHeader={getDealerRoute("/dashboard/dealer/crm").subHeader}
                         >
                             <div className="flex items-center gap-2">
                                 <Link
@@ -473,6 +473,9 @@ export default function DealerCRMPage() {
                             </button>
                         ))}
                     </div>
+                    <p className="lg:hidden -mt-2 text-xs text-[var(--text-muted)]">
+                        {COLUMNS.find(col => col.key === mobileStatus)?.hint}
+                    </p>
 
                     {/* Sales pipeline */}
                     {loading ? (
@@ -498,7 +501,10 @@ export default function DealerCRMPage() {
                                     <div className={`border-t-4 ${col.color} rounded-t-2xl shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.5)]`}>
                                         <div className={`flex items-center gap-2 px-5 py-4 bg-gradient-to-b ${col.bg} to-transparent rounded-t-2xl border-x border-[var(--border-default)]`}>
                                             <div className={`w-2.5 h-2.5 rounded-full ${col.dotColor} animate-pulse shadow-[0_0_8px_currentColor]`} />
-                                            <span className="text-xs font-black uppercase tracking-widest">{col.label}</span>
+                                            <span className="min-w-0">
+                                                <span className="block text-xs font-black uppercase tracking-widest">{col.label}</span>
+                                                <span className="block text-[11px] font-medium normal-case tracking-normal text-[var(--text-muted)]">{col.hint}</span>
+                                            </span>
                                             <span className="ml-auto bg-[var(--bg-card)] px-2.5 py-1 rounded-full text-xs font-black text-[var(--text-muted)] border border-[var(--border-default)]">
                                                 {leadsByStatus(col.key).length}
                                             </span>
