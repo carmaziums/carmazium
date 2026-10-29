@@ -25,6 +25,9 @@ const CORE_ORIGINS = [
     'https://carmazium.vercel.app',
     'https://carmazium.fly.dev',
     'https://carmazium-hjoh9w.fly.dev',
+    'https://carmazium-a9lm9uuky-carmazium1.vercel.app',
+    'https://carmazium-git-claude-dealer-dashboard-ux-carmazium1.vercel.app',
+    'https://carmazium-final-unified-review-4fvxyzfac-carmazium1.vercel.app',
 ];
 
 /**
