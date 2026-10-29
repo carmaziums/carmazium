@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-    Gavel, PlusCircle, Loader2, Eye, XCircle, Clock, Flame,
+    Gavel, PlusCircle, Loader2, Eye, XCircle, Clock,
     ChevronRight, AlertCircle, CheckCircle2, Calendar, X, Tags, Star,
     Upload, Handshake, Info, CheckCircle, ImageIcon, BarChart2,
 } from "lucide-react"
@@ -983,7 +983,7 @@ function DealerAuctionsPage() {
                                         <p className="font-bold mb-0.5">Payout method not set up</p>
                                         <p className="text-amber-300/70">
                                             Connect your bank account in{" "}
-                                            <a href="/dashboard/dealer/settings" className="underline hover:text-amber-200">Settings → Payouts</a>
+                                            <a href="/profile?section=payouts" className="underline hover:text-amber-200">Settings → Payouts</a>
                                             {" "}to receive your £100 automatically after handover approval.
                                         </p>
                                     </div>
