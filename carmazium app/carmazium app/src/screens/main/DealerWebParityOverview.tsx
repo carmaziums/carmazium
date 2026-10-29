@@ -15,7 +15,7 @@ type RangeUnit = 'days' | 'months' | 'years';
 type Range = { allTime: boolean; value: number; unit: RangeUnit; compare: boolean };
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock';
+  | 'partner-services' | 'performance' | 'stock' | 'offers';
 
 interface Comparison {
   previous: number;
@@ -39,6 +39,7 @@ interface Props {
   userName: string;
   canManageInventory: boolean;
   canManageCrm: boolean;
+  canManageOffers: boolean;
   canViewTrade: boolean;
   canViewAnalytics: boolean;
   onNavigate: (destination: DealerHomeDestination) => void;
@@ -64,7 +65,7 @@ const comparisonLabel = (comparison: Comparison | undefined, enabled: boolean): 
 };
 
 export const DealerWebParityOverview: React.FC<Props> = ({
-  userName, canManageInventory, canManageCrm, canViewTrade, canViewAnalytics,
+  userName, canManageInventory, canManageCrm, canManageOffers, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
   const [range, setRange] = useState<Range>(initialRange);
@@ -73,6 +74,8 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [pendingOffers, setPendingOffers] = useState<number | null>(null);
+  const [offersError, setOffersError] = useState(false);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -109,6 +112,20 @@ export const DealerWebParityOverview: React.FC<Props> = ({
     return () => { cancelled = true; };
   }, [query, refreshToken]);
 
+  useEffect(() => {
+    if (!canManageOffers) return;
+    let cancelled = false;
+    setOffersError(false);
+    apiClient<{ data?: { count?: number } }>('/offers/pending-count')
+      .then(response => {
+        if (cancelled) return;
+        const count = response?.data?.count;
+        if (typeof count !== 'number' || !Number.isFinite(count)) throw new Error('Pending offers unavailable');
+        setPendingOffers(count);
+      })
+      .catch(() => { if (!cancelled) setOffersError(true); });
+    return () => { cancelled = true; };
+  }, [canManageOffers, refreshToken]);
   const rangeLabel = summary?.range?.label ?? (
     range.allTime ? 'All time' : `Last ${range.value} ${range.unit}`
   );
@@ -174,6 +191,26 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         </View>
       </View>
 
+      <View style={styles.actionSection}>
+        <Text style={styles.actionsTitle}>Needs your attention</Text>
+        <Text style={styles.sectionHint}>Your to-do list, most urgent first.</Text>
+        {canManageOffers && pendingOffers === null && !offersError && <ActivityIndicator color={Colors.accent} />}
+        {offersError && <Text style={styles.sectionHint}>We couldn't check your offers just now. Your offers are still available from the menu.</Text>}
+        {canManageOffers && pendingOffers !== null && pendingOffers > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('offers')}
+            style={styles.actionCard}>
+            <Ionicons name="pricetag-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{pendingOffers} buyer {pendingOffers === 1 ? 'offer is' : 'offers are'} waiting for your reply</Text>
+              <Text style={styles.actionDescription}>Accept, decline or counter each offer.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {!offersError && (!canManageOffers || pendingOffers === 0) && (
+          <Text style={styles.sectionHint}>No outstanding buyer offers requiring your reply.</Text>
+        )}
+      </View>
       <View style={styles.sectionIntro}>
         <Text style={styles.sectionTitle}>Overview</Text>
         <Text style={styles.sectionHint}>
