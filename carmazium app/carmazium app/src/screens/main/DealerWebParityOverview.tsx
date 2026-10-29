@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
 import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
+import { useChat } from '../../context/ChatContext';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 
@@ -16,7 +17,7 @@ type RangeUnit = 'days' | 'months' | 'years';
 type Range = { allTime: boolean; value: number; unit: RangeUnit; compare: boolean };
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions';
+  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages';
 
 interface Comparison {
   previous: number;
@@ -78,6 +79,8 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   const [pendingOffers, setPendingOffers] = useState<number | null>(null);
   const [offersError, setOffersError] = useState(false);
   const [handoverCount, setHandoverCount] = useState<number | null>(null);
+  const [provisionalCount, setProvisionalCount] = useState<number | null>(null);
+  const { unreadCount } = useChat();
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -135,8 +138,14 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       id: string; status: string; winnerId?: string | null; buyerRefusedAt?: string | null;
       sellerBonusReleased?: boolean; sellerFundsConfirmedAt?: string | null;
       handoverSubmittedAt?: string | null; handoverRejectedAt?: string | null;
+      provisionalOfferBidId?: string | null; provisionalOfferedAt?: string | null;
     }>('list').then(auctions => {
       if (cancelled) return;
+      const now = Date.now();
+      setProvisionalCount(auctions.filter(a => a.status === 'ENDED' && !a.winnerId
+        && !!a.provisionalOfferBidId && !!a.provisionalOfferedAt
+        && Number.isFinite(new Date(a.provisionalOfferedAt).getTime())
+        && now < new Date(a.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000).length);
       setHandoverCount(auctions.filter(a => a.status === 'ENDED' && !!a.winnerId
         && !a.buyerRefusedAt && !a.sellerBonusReleased
         && (!a.sellerFundsConfirmedAt || !a.handoverSubmittedAt || !!a.handoverRejectedAt)).length);
@@ -213,6 +222,16 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         <Text style={styles.sectionHint}>Your to-do list, most urgent first.</Text>
         {canManageOffers && pendingOffers === null && !offersError && <ActivityIndicator color={Colors.accent} />}
         {offersError && <Text style={styles.sectionHint}>We couldn't check your offers just now. Your offers are still available from the menu.</Text>}
+        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')} style={styles.actionCard}>
+            <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{provisionalCount} provisional {provisionalCount === 1 ? 'offer needs' : 'offers need'} a decision</Text>
+              <Text style={styles.actionDescription}>Review the highest below-reserve bids before their 72-hour deadlines.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
         {canManageOffers && pendingOffers !== null && pendingOffers > 0 && (
           <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('offers')}
             style={styles.actionCard}>
@@ -234,7 +253,18 @@ export const DealerWebParityOverview: React.FC<Props> = ({
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
-        )}        {!offersError && (!canManageOffers || pendingOffers === 0) && (
+        )}
+        {unreadCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('messages')} style={styles.actionCard}>
+            <Ionicons name="chatbubble-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}</Text>
+              <Text style={styles.actionDescription}>Customers and CarMazium support.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {!offersError && (!canManageOffers || pendingOffers === 0) && (
           <Text style={styles.sectionHint}>No outstanding buyer offers requiring your reply.</Text>
         )}
       </View>
