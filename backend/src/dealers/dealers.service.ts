@@ -1841,6 +1841,15 @@ export class DealersService {
             this.prisma.sale.count({ where: { buyerId } }),
         ]);
 
+        // A sale is created when an auction offer is accepted, but the separate
+        // purchase pipeline defaults to AWAITING_CONFIRMATION. Return the auction
+        // acceptance and buyer-fee facts independently; do not mutate pipeline state.
+        const auctions = await this.prisma.auction.findMany({
+            where: { listingId: { in: sales.map((sale) => sale.listingId) } },
+            select: { listingId: true, winnerId: true, buyerFeePaid: true, buyerFeeTransactionId: true },
+        });
+        const auctionByListing = new Map(auctions.map((auction) => [auction.listingId, auction]));
+
         const data = sales.map((sale) => {
             const l = sale.listing;
             const subtitle = [
@@ -1863,6 +1872,9 @@ export class DealersService {
                 sellerEmail: sale.seller?.email ?? undefined,
                 sellerPhone: sale.seller?.phone ?? undefined,
                 status: sale.purchaseStatus,
+                offerAccepted: auctionByListing.get(sale.listingId)?.winnerId === buyerId,
+                buyerFeeSettled: !!auctionByListing.get(sale.listingId)?.buyerFeePaid
+                    && !!auctionByListing.get(sale.listingId)?.buyerFeeTransactionId,
             };
         });
 

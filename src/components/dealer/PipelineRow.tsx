@@ -29,6 +29,8 @@ export interface PurchaseItem {
     sellerEmail?: string
     sellerPhone?: string
     status: PurchaseStatus
+    offerAccepted?: boolean
+    buyerFeeSettled?: boolean
     estimatedDelivery?: string
     documentsReceived?: number
     documentsTotal?: number
@@ -114,6 +116,11 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
+                    {item.offerAccepted && (
+                        <p className="mt-2 text-xs font-semibold text-emerald-400">
+                            Offer accepted{item.buyerFeeSettled ? ' · Buyer fee settled' : ' · Buyer fee pending'}
+                        </p>
+                    )}
                 </div>
 
                 {/* Price */}
