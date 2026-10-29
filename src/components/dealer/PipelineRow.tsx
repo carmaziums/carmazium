@@ -91,7 +91,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
 
     return (
         <div className="dealer-glass-card p-0 group hover:border-white/8">
-            <div className="flex items-center gap-4 p-4 md:p-5">
+            <div className="flex flex-wrap items-start gap-3 p-4 md:flex-nowrap md:items-center md:gap-4 md:p-5">
                 {/* Vehicle Thumbnail */}
                 <div className="w-16 h-16 md:w-20 md:h-16 rounded-xl overflow-hidden bg-[var(--bg-input)] shrink-0 border border-[var(--border-default)] relative">
                     {item.imageUrl ? (
@@ -104,12 +104,12 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 </div>
 
                 {/* Vehicle Info */}
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black  tracking-tight truncate group-hover:text-primary transition-colors">
+                <div className="min-w-0 flex-1 basis-[calc(100%-6rem)] md:basis-auto">
+                    <h3 className="text-sm font-black  tracking-tight break-words md:truncate group-hover:text-primary transition-colors">
                         {item.vehicleTitle}
                     </h3>
                     {item.vehicleSubtitle && (
-                        <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 truncate">{item.vehicleSubtitle}</p>
+                        <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 break-words md:truncate">{item.vehicleSubtitle}</p>
                     )}
                     <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
@@ -117,7 +117,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 </div>
 
                 {/* Price */}
-                <div className="hidden md:block text-right shrink-0">
+                <div className="order-2 w-full md:order-none md:block md:w-auto text-left md:text-right shrink-0">
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block">Price</span>
                     <span className="text-lg font-black  tabular-nums">£{item.purchasePrice.toLocaleString()}</span>
                 </div>
@@ -151,22 +151,24 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 )}
 
                 {/* Status Badge */}
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border shrink-0 ${config.bg} ${config.color} ${config.border}`}>
+                <div className={`order-3 md:order-none flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest border shrink-0 ${config.bg} ${config.color} ${config.border}`}>
                     <StatusIcon size={12} />
-                    <span className="hidden md:inline">{config.label}</span>
+                    <span>{config.label}</span>
                 </div>
 
                 {/* Context Menu */}
-                <div className="relative shrink-0" ref={menuRef}>
+                <div className="relative order-4 ml-auto shrink-0 md:order-none md:ml-0" ref={menuRef}>
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-card)] transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white"
+                        aria-label={`Purchase actions for ${item.vehicleTitle}`}
+                        aria-expanded={menuOpen}
+                        className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[var(--bg-card)] transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white"
                     >
                         <MoreHorizontal size={16} />
                     </button>
 
                     {menuOpen && (
-                        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
+                        <div className="fixed inset-x-4 bottom-20 z-[90] md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-full md:mt-1 w-auto md:w-52 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
                             <div className="py-1">
                                 <button
                                     onClick={() => { onViewSummary?.(item); setMenuOpen(false) }}
