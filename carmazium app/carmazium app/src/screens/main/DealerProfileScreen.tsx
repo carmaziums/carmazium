@@ -666,6 +666,7 @@ export const DealerProfileScreen: React.FC = () => {
           canManageInventory={canManageInventory}
           canManageCrm={canManageCrm}
           canManageOffers={hasPermission('MANAGE_OFFERS')}
+          canViewPurchases={hasPermission('VIEW_PURCHASES')}
           canViewTrade={canViewTrade}
           canViewAnalytics={canViewAnalytics}
           onNavigate={openMainAction}

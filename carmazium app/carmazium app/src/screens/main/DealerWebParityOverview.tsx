@@ -17,7 +17,7 @@ type RangeUnit = 'days' | 'months' | 'years';
 type Range = { allTime: boolean; value: number; unit: RangeUnit; compare: boolean };
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages';
+  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages' | 'won-auctions';
 
 interface Comparison {
   previous: number;
@@ -42,6 +42,7 @@ interface Props {
   canManageInventory: boolean;
   canManageCrm: boolean;
   canManageOffers: boolean;
+  canViewPurchases: boolean;
   canViewTrade: boolean;
   canViewAnalytics: boolean;
   onNavigate: (destination: DealerHomeDestination) => void;
@@ -67,7 +68,7 @@ const comparisonLabel = (comparison: Comparison | undefined, enabled: boolean): 
 };
 
 export const DealerWebParityOverview: React.FC<Props> = ({
-  userName, canManageInventory, canManageCrm, canManageOffers, canViewTrade, canViewAnalytics,
+  userName, canManageInventory, canManageCrm, canManageOffers, canViewPurchases, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
   const [range, setRange] = useState<Range>(initialRange);
@@ -80,6 +81,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   const [offersError, setOffersError] = useState(false);
   const [handoverCount, setHandoverCount] = useState<number | null>(null);
   const [provisionalCount, setProvisionalCount] = useState<number | null>(null);
+  const [feeDueCount, setFeeDueCount] = useState<number | null>(null);
   const { unreadCount } = useChat();
 
   const query = useMemo(() => {
@@ -152,6 +154,25 @@ export const DealerWebParityOverview: React.FC<Props> = ({
     }).catch(() => { if (!cancelled) setHandoverCount(null); });
     return () => { cancelled = true; };
   }, [canManageInventory, refreshToken]);
+  useEffect(() => {
+    if (!canViewPurchases) return;
+    let cancelled = false;
+    apiClient<{ data?: { data?: Array<{
+      id: string; status: string; buyerFeePaid?: boolean; buyerRefusedAt?: string | null;
+      buyerFeeDeadlineAt?: string | null;
+    }> } | Array<{
+      id: string; status: string; buyerFeePaid?: boolean; buyerRefusedAt?: string | null;
+      buyerFeeDeadlineAt?: string | null;
+    }> } >('/auctions/my/won?page=1&limit=50').then(response => {
+      if (cancelled) return;
+      const payload = response?.data;
+      const auctions = Array.isArray(payload) ? payload : payload?.data;
+      if (!Array.isArray(auctions)) throw new Error('Won auctions unavailable');
+      setFeeDueCount(auctions.filter(a => a.status === 'ENDED' && !a.buyerFeePaid
+        && !a.buyerRefusedAt && !!a.buyerFeeDeadlineAt).length);
+    }).catch(() => { if (!cancelled) setFeeDueCount(null); });
+    return () => { cancelled = true; };
+  }, [canViewPurchases, refreshToken]);
   const rangeLabel = summary?.range?.label ?? (
     range.allTime ? 'All time' : `Last ${range.value} ${range.unit}`
   );
@@ -222,7 +243,16 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         <Text style={styles.sectionHint}>Your to-do list, most urgent first.</Text>
         {canManageOffers && pendingOffers === null && !offersError && <ActivityIndicator color={Colors.accent} />}
         {offersError && <Text style={styles.sectionHint}>We couldn't check your offers just now. Your offers are still available from the menu.</Text>}
-        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
+        {canViewPurchases && feeDueCount !== null && feeDueCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('won-auctions')} style={styles.actionCard}>
+            <Ionicons name="receipt-outline" size={22} color={Colors.warning} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{feeDueCount} won {feeDueCount === 1 ? 'auction has' : 'auctions have'} a buyer fee due</Text>
+              <Text style={styles.actionDescription}>Review your £125 auction buyer fee and payment deadline.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
           <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')} style={styles.actionCard}>
             <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
             <View style={styles.actionText}>
