@@ -158,6 +158,13 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
 
   const nav = (screen: string) => navigation?.navigate(screen);
   const navTab = (tab: string) => navigation?.navigate('Tabs', { screen: tab });
+  // Only display actions supported by the unified endpoint. Auction and handover
+  // follow-ups need their own verified data; never fabricate an all-clear state.
+  const attentionActions = [
+    ...(isSeller && seller.incomingOffers > 0 ? [{ key: 'incoming', title: `${seller.incomingOffers} buyer offer${seller.incomingOffers === 1 ? '' : 's'} awaiting your reply`, detail: 'Review or counter incoming offers', screen: 'SellerOffers' }] : []),
+    ...(buyer.counteredOffersPending > 0 ? [{ key: 'countered', title: `${buyer.counteredOffersPending} counter-offer${buyer.counteredOffersPending === 1 ? '' : 's'} awaiting you`, detail: 'Respond to the seller', screen: 'BuyerOffers' }] : []),
+    ...(unreadMessages > 0 ? [{ key: 'messages', title: `${unreadMessages} unread message${unreadMessages === 1 ? '' : 's'}`, detail: 'Read your messages', screen: 'Messages' }] : []),
+  ];
 
   return (
     <View style={styles.container}>
@@ -204,6 +211,22 @@ export const UnifiedDashboardScreen: React.FC<{ navigation?: any }> = ({ navigat
               {isDealer ? 'DEALER' : isSeller ? 'SELLER' : 'BUYER'}
             </Text>
           </View>
+        </View>
+
+        {/* Prioritised tasks use real unified-dashboard counts, never guessed values. */}
+        <View style={{ marginBottom: 16, padding: 16, borderRadius: 14, backgroundColor: Colors.whiteAlpha05 }}>
+          <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.bold, fontSize: 18, marginBottom: 6 }}>Needs your attention</Text>
+          {loading ? <Text style={{ color: Colors.textSecondary }}>Checking your account...</Text> : error ? (
+            <Text style={{ color: Colors.textSecondary }}>Unable to check your tasks. Retry above.</Text>
+          ) : attentionActions.length ? attentionActions.map(item => (
+            <TouchableOpacity key={item.key} accessibilityRole="button" accessibilityLabel={item.title} onPress={() => nav(item.screen)} activeOpacity={0.75} style={{ paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.whiteAlpha12, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: Colors.textPrimary, fontFamily: FontFamily.bold }}>{item.title}</Text>
+                <Text style={{ color: Colors.textSecondary, marginTop: 3 }}>{item.detail}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.accent} />
+            </TouchableOpacity>
+          )) : <Text style={{ color: Colors.textSecondary }}>No outstanding offers or unread messages.</Text>}
         </View>
 
         {/* Primary tasks should be visible before the crowded metrics grid. */}
