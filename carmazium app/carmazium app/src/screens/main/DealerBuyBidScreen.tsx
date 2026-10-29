@@ -95,7 +95,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     if (canManageInventory) navigation?.navigate('SellerAuctions', { openCreate: true });
   };
   const openWon = () => {
-    if (canViewPurchases) navigation?.navigate('SellerAuctions', { initialTab: 'WON' });
+    if (canViewPurchases) navigation?.navigate('DealerPurchases');
   };
 
   const auctionLinks: {

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
+import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 
@@ -15,7 +16,7 @@ type RangeUnit = 'days' | 'months' | 'years';
 type Range = { allTime: boolean; value: number; unit: RangeUnit; compare: boolean };
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock' | 'offers';
+  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions';
 
 interface Comparison {
   previous: number;
@@ -76,6 +77,7 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   const [error, setError] = useState(false);
   const [pendingOffers, setPendingOffers] = useState<number | null>(null);
   const [offersError, setOffersError] = useState(false);
+  const [handoverCount, setHandoverCount] = useState<number | null>(null);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -126,6 +128,21 @@ export const DealerWebParityOverview: React.FC<Props> = ({
       .catch(() => { if (!cancelled) setOffersError(true); });
     return () => { cancelled = true; };
   }, [canManageOffers, refreshToken]);
+  useEffect(() => {
+    if (!canManageInventory) return;
+    let cancelled = false;
+    fetchAllMyAuctions<{
+      id: string; status: string; winnerId?: string | null; buyerRefusedAt?: string | null;
+      sellerBonusReleased?: boolean; sellerFundsConfirmedAt?: string | null;
+      handoverSubmittedAt?: string | null; handoverRejectedAt?: string | null;
+    }>('list').then(auctions => {
+      if (cancelled) return;
+      setHandoverCount(auctions.filter(a => a.status === 'ENDED' && !!a.winnerId
+        && !a.buyerRefusedAt && !a.sellerBonusReleased
+        && (!a.sellerFundsConfirmedAt || !a.handoverSubmittedAt || !!a.handoverRejectedAt)).length);
+    }).catch(() => { if (!cancelled) setHandoverCount(null); });
+    return () => { cancelled = true; };
+  }, [canManageInventory, refreshToken]);
   const rangeLabel = summary?.range?.label ?? (
     range.allTime ? 'All time' : `Last ${range.value} ${range.unit}`
   );
@@ -207,7 +224,17 @@ export const DealerWebParityOverview: React.FC<Props> = ({
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </TouchableOpacity>
         )}
-        {!offersError && (!canManageOffers || pendingOffers === 0) && (
+        {canManageInventory && handoverCount !== null && handoverCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')}
+            style={styles.actionCard}>
+            <Ionicons name="car-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{handoverCount} sold {handoverCount === 1 ? 'auction may' : 'auctions may'} need your next step</Text>
+              <Text style={styles.actionDescription}>Review payment confirmation and handover proof in My Auctions.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}        {!offersError && (!canManageOffers || pendingOffers === 0) && (
           <Text style={styles.sectionHint}>No outstanding buyer offers requiring your reply.</Text>
         )}
       </View>
