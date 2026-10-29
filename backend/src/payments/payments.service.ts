@@ -11,6 +11,7 @@ import { EmailService } from '../email/email.service';
 import { resolveFrontendUrl } from '../core/frontend-url';
 import { getListingSubmissionReadiness } from '../listings/listing-readiness';
 import { isAdminGrantedFreePurchaseTransaction } from '../free-listings/free-purchase-grant.constants';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 import {
     assertDealerPermission,
     DealerPermission,
@@ -314,6 +315,17 @@ export class PaymentsService {
         return { auction, buyerId };
     }
 
+    /** Apply a prospective admin grant before either payment entry point creates a charge. */
+    private async applyEligibleBuyerFeeWaiver(auctionId: string, buyerId: string): Promise<void> {
+        const grants = this.moduleRef.get(FreeListingGrantsService, { strict: false });
+        const waived = await grants.applyPurchaseGrantToAuctionIfEligible(auctionId, buyerId);
+        if (waived) {
+            throw new ConflictException(
+                'Your auction buyer fee has been waived by your admin grant. Refresh your auction to continue without payment.',
+            );
+        }
+    }
+
     private async markAuctionBuyerFeePaid(
         transactionId: string,
         listingId: string | null | undefined,
@@ -485,6 +497,7 @@ export class PaymentsService {
             const payable = await this.getPayableAuctionForWinner(listingId, userId);
             transactionUserId = payable.buyerId;
             payableAuctionId = payable.auction.id;
+            await this.applyEligibleBuyerFeeWaiver(payable.auction.id, payable.buyerId);
         }
 
         // Re-derive the real charge amount server-side instead of trusting the
@@ -869,6 +882,7 @@ export class PaymentsService {
             const payable = await this.getPayableAuctionForWinner(listingId, userId);
             transactionUserId = payable.buyerId;
             payableAuctionId = payable.auction.id;
+            await this.applyEligibleBuyerFeeWaiver(payable.auction.id, payable.buyerId);
         }
 
         // Re-derive the real charge amount server-side instead of trusting the

@@ -7,9 +7,10 @@ import { AuthModule } from '../auth/auth.module';
 import { HpiModule } from '../hpi/hpi.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
+import { FreeListingsModule } from '../free-listings/free-listings.module';
 
 @Module({
-    imports: [PrismaModule, AuthModule, ConfigModule, HpiModule, NotificationsModule, EmailModule],
+    imports: [PrismaModule, AuthModule, ConfigModule, HpiModule, NotificationsModule, EmailModule, FreeListingsModule],
     controllers: [PaymentsController],
     providers: [PaymentsService],
     exports: [PaymentsService],
