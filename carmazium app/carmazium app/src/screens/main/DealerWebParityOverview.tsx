@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@/components/BrandIcon';
 import { apiClient } from '../../lib/apiClient';
+import { fetchAllMyAuctions } from '../../lib/myAuctionsApi';
+import { useChat } from '../../context/ChatContext';
 import { Colors } from '../../constants/colors';
 import { FontFamily } from '../../constants/typography';
 
@@ -15,7 +17,7 @@ type RangeUnit = 'days' | 'months' | 'years';
 type Range = { allTime: boolean; value: number; unit: RangeUnit; compare: boolean };
 export type DealerHomeDestination =
   | 'add-vehicle' | 'customers' | 'buy-and-bid'
-  | 'partner-services' | 'performance' | 'stock';
+  | 'partner-services' | 'performance' | 'stock' | 'offers' | 'manage-auctions' | 'messages' | 'won-auctions';
 
 interface Comparison {
   previous: number;
@@ -39,6 +41,8 @@ interface Props {
   userName: string;
   canManageInventory: boolean;
   canManageCrm: boolean;
+  canManageOffers: boolean;
+  canViewPurchases: boolean;
   canViewTrade: boolean;
   canViewAnalytics: boolean;
   onNavigate: (destination: DealerHomeDestination) => void;
@@ -64,7 +68,7 @@ const comparisonLabel = (comparison: Comparison | undefined, enabled: boolean): 
 };
 
 export const DealerWebParityOverview: React.FC<Props> = ({
-  userName, canManageInventory, canManageCrm, canViewTrade, canViewAnalytics,
+  userName, canManageInventory, canManageCrm, canManageOffers, canViewPurchases, canViewTrade, canViewAnalytics,
   onNavigate, refreshToken = 0,
 }) => {
   const [range, setRange] = useState<Range>(initialRange);
@@ -73,6 +77,12 @@ export const DealerWebParityOverview: React.FC<Props> = ({
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [pendingOffers, setPendingOffers] = useState<number | null>(null);
+  const [offersError, setOffersError] = useState(false);
+  const [handoverCount, setHandoverCount] = useState<number | null>(null);
+  const [provisionalCount, setProvisionalCount] = useState<number | null>(null);
+  const [feeDueCount, setFeeDueCount] = useState<number | null>(null);
+  const { unreadCount } = useChat();
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -109,6 +119,64 @@ export const DealerWebParityOverview: React.FC<Props> = ({
     return () => { cancelled = true; };
   }, [query, refreshToken]);
 
+  useEffect(() => {
+    if (!canManageOffers) { setPendingOffers(null); setOffersError(false); return; }
+    let cancelled = false;
+    setPendingOffers(null);
+    setOffersError(false);
+    apiClient<{ data?: { count?: number } }>('/offers/pending-count')
+      .then(response => {
+        if (cancelled) return;
+        const count = response?.data?.count;
+        if (typeof count !== 'number' || !Number.isFinite(count)) throw new Error('Pending offers unavailable');
+        setPendingOffers(count);
+      })
+      .catch(() => { if (!cancelled) setOffersError(true); });
+    return () => { cancelled = true; };
+  }, [canManageOffers, refreshToken]);
+  useEffect(() => {
+    if (!canManageInventory) { setHandoverCount(null); setProvisionalCount(null); return; }
+    let cancelled = false;
+    setHandoverCount(null);
+    setProvisionalCount(null);
+    fetchAllMyAuctions<{
+      id: string; status: string; winnerId?: string | null; buyerRefusedAt?: string | null;
+      sellerBonusReleased?: boolean; sellerFundsConfirmedAt?: string | null;
+      handoverSubmittedAt?: string | null; handoverRejectedAt?: string | null;
+      provisionalOfferBidId?: string | null; provisionalOfferedAt?: string | null;
+    }>('list').then(auctions => {
+      if (cancelled) return;
+      const now = Date.now();
+      setProvisionalCount(auctions.filter(a => a.status === 'ENDED' && !a.winnerId
+        && !!a.provisionalOfferBidId && !!a.provisionalOfferedAt
+        && Number.isFinite(new Date(a.provisionalOfferedAt).getTime())
+        && now < new Date(a.provisionalOfferedAt).getTime() + 72 * 60 * 60 * 1000).length);
+      setHandoverCount(auctions.filter(a => a.status === 'ENDED' && !!a.winnerId
+        && !a.buyerRefusedAt && !a.sellerBonusReleased
+        && (!a.sellerFundsConfirmedAt || !a.handoverSubmittedAt || !!a.handoverRejectedAt)).length);
+    }).catch(() => { if (!cancelled) { setHandoverCount(null); setProvisionalCount(null); } });
+    return () => { cancelled = true; };
+  }, [canManageInventory, refreshToken]);
+  useEffect(() => {
+    if (!canViewPurchases) { setFeeDueCount(null); return; }
+    let cancelled = false;
+    setFeeDueCount(null);
+    apiClient<{ data?: { data?: Array<{
+      id: string; status: string; buyerFeePaid?: boolean; buyerRefusedAt?: string | null;
+      buyerFeeDeadlineAt?: string | null;
+    }> } | Array<{
+      id: string; status: string; buyerFeePaid?: boolean; buyerRefusedAt?: string | null;
+      buyerFeeDeadlineAt?: string | null;
+    }> } >('/auctions/my/won?page=1&limit=50').then(response => {
+      if (cancelled) return;
+      const payload = response?.data;
+      const auctions = Array.isArray(payload) ? payload : payload?.data;
+      if (!Array.isArray(auctions)) throw new Error('Won auctions unavailable');
+      setFeeDueCount(auctions.filter(a => a.status === 'ENDED' && !a.buyerFeePaid
+        && !a.buyerRefusedAt && !!a.buyerFeeDeadlineAt).length);
+    }).catch(() => { if (!cancelled) setFeeDueCount(null); });
+    return () => { cancelled = true; };
+  }, [canViewPurchases, refreshToken]);
   const rangeLabel = summary?.range?.label ?? (
     range.allTime ? 'All time' : `Last ${range.value} ${range.unit}`
   );
@@ -174,6 +242,69 @@ export const DealerWebParityOverview: React.FC<Props> = ({
         </View>
       </View>
 
+      <View style={styles.actionSection}>
+        <Text style={styles.actionsTitle}>Needs your attention</Text>
+        <Text style={styles.sectionHint}>Your to-do list, most urgent first.</Text>
+        {canManageOffers && pendingOffers === null && !offersError && <ActivityIndicator color={Colors.accent} />}
+        {offersError && <Text style={styles.sectionHint}>We couldn't check your offers just now. Your offers are still available from the menu.</Text>}
+        {canViewPurchases && feeDueCount !== null && feeDueCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('won-auctions')} style={styles.actionCard}>
+            <Ionicons name="receipt-outline" size={22} color={Colors.warning} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{feeDueCount} won {feeDueCount === 1 ? 'auction has' : 'auctions have'} a buyer fee due</Text>
+              <Text style={styles.actionDescription}>Review your £125 auction buyer fee and payment deadline.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {canManageInventory && provisionalCount !== null && provisionalCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')} style={styles.actionCard}>
+            <Ionicons name="alert-circle-outline" size={22} color={Colors.warning} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{provisionalCount} provisional {provisionalCount === 1 ? 'offer needs' : 'offers need'} a decision</Text>
+              <Text style={styles.actionDescription}>Review the highest below-reserve bids before their 72-hour deadlines.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {canManageOffers && pendingOffers !== null && pendingOffers > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('offers')}
+            style={styles.actionCard}>
+            <Ionicons name="pricetag-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{pendingOffers} buyer {pendingOffers === 1 ? 'offer is' : 'offers are'} waiting for your reply</Text>
+              <Text style={styles.actionDescription}>Accept, decline or counter each offer.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {canManageInventory && handoverCount !== null && handoverCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('manage-auctions')}
+            style={styles.actionCard}>
+            <Ionicons name="car-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{handoverCount} sold {handoverCount === 1 ? 'auction may' : 'auctions may'} need your next step</Text>
+              <Text style={styles.actionDescription}>Review payment confirmation and handover proof in My Auctions.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {unreadCount > 0 && (
+          <TouchableOpacity accessibilityRole="button" onPress={() => onNavigate('messages')} style={styles.actionCard}>
+            <Ionicons name="chatbubble-outline" size={22} color={Colors.accent} />
+            <View style={styles.actionText}>
+              <Text style={styles.actionTitle}>{unreadCount} unread {unreadCount === 1 ? 'message' : 'messages'}</Text>
+              <Text style={styles.actionDescription}>Customers and CarMazium support.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        )}
+        {!offersError && (!canManageOffers || pendingOffers === 0)
+          && (!canManageInventory || (provisionalCount === 0 && handoverCount === 0))
+          && (!canViewPurchases || feeDueCount === 0) && unreadCount === 0 && (
+          <Text style={styles.sectionHint}>You're all caught up. Nothing needs your attention right now.</Text>
+        )}
+      </View>
       <View style={styles.sectionIntro}>
         <Text style={styles.sectionTitle}>Overview</Text>
         <Text style={styles.sectionHint}>

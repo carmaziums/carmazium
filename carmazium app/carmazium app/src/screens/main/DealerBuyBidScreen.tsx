@@ -103,7 +103,7 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     active?: boolean; allowed: boolean; onPress: () => void;
   }[] = [
     { id: 'mine', label: 'My Auctions', icon: 'hammer-outline',
-      active: section === 'mine', allowed: true, onPress: () => setSection('mine') },
+      active: section === 'mine', allowed: canManageInventory, onPress: () => setSection('mine') },
     { id: 'live', label: 'Live Auctions', icon: 'flame-outline',
       active: section === 'live', allowed: true, onPress: () => setSection('live') },
     { id: 'shortlisted', label: 'Shortlisted', icon: 'star-outline',
@@ -113,6 +113,10 @@ export const DealerBuyBidScreen: React.FC<{ navigation?: Nav }> = ({ navigation 
     { id: 'purchases', label: 'Purchases', icon: 'trophy-outline',
       allowed: canViewPurchases, onPress: openWon },
   ];
+
+  React.useEffect(() => {
+    if (!accessLoading && !canManageInventory && section === 'mine') setSection('live');
+  }, [accessLoading, canManageInventory, section]);
 
   const active = auctions.filter(a => a.status === 'ACTIVE').length;
   const scheduled = auctions.filter(a => a.status === 'SCHEDULED').length;
