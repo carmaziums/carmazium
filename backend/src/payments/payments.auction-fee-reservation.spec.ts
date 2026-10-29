@@ -69,6 +69,8 @@ function makeHarness() {
     service.AUCTION_SELLER_BONUS = 100;
     service.AUCTION_PLATFORM_FEE = 25;
     service.getStripe = jest.fn().mockResolvedValue(stripe);
+    // Grant eligibility is tested separately; these cases exercise reservation races.
+    service.applyEligibleBuyerFeeWaiver = jest.fn().mockResolvedValue(undefined);
     // Simulate the already-authorised actor pre-check returning its earlier
     // snapshot; the reservation must independently verify the current row.
     service.getPayableAuctionForWinner = jest.fn().mockImplementation(async () => ({

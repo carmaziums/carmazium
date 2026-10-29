@@ -36,6 +36,7 @@ import { HpiService } from '../hpi/hpi.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { EmailService } from '../email/email.service';
+import { FreeListingGrantsService } from '../free-listings/free-listing-grants.service';
 
 function buildPrismaMock() {
     return {
@@ -99,6 +100,9 @@ function buildModule(prisma: any) {
             { provide: NotificationsService, useValue: { create: jest.fn().mockResolvedValue(null) } },
             { provide: NotificationsGateway, useValue: { sendNotification: jest.fn() } },
             { provide: EmailService, useValue: {} },
+            { provide: FreeListingGrantsService, useValue: {
+                applyPurchaseGrantToAuctionIfEligible: jest.fn().mockResolvedValue(false),
+            } },
         ],
     }).compile();
 }
