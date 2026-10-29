@@ -67,7 +67,7 @@ export default function BuyerHistoryPage() {
         <div className="min-h-screen pt-20 pb-12">
             <div className="container mx-auto px-5 flex flex-col lg:flex-row gap-8">
                 <DashboardSidebar role="buyer" userName={userName} userType="Buyer" />
-                <main className="flex-1 space-y-6">
+                <main className="min-w-0 flex-1 space-y-6">
                     <h1 className="text-3xl font-bold font-heading mb-6">Purchase History</h1>
 
                     {error && (
@@ -76,7 +76,7 @@ export default function BuyerHistoryPage() {
                         </div>
                     )}
 
-                    <div className="glass-card p-6">
+                    <div className="glass-card min-w-0 p-4 sm:p-6">
                         {transactions.length === 0 ? (
                             <div className="text-center py-16 text-[var(--text-muted)]">
                                 <ShoppingBag size={56} className="mx-auto mb-4 opacity-30" />
@@ -84,8 +84,29 @@ export default function BuyerHistoryPage() {
                                 <p className="text-sm mt-2 max-w-md mx-auto">When you win an auction or complete a purchase, your order history will appear here.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
+                            <>
+                            <div className="space-y-3 md:hidden" aria-label="Purchase history">
+                                {transactions.map(tx => (
+                                    <article key={tx.id} className="min-w-0 rounded-xl border border-[var(--border-default)] p-4 space-y-3">
+                                        <div className="flex min-w-0 items-start gap-3">
+                                            {tx.listing?.images?.[0] && <Image src={tx.listing.images[0]} alt="" width={64} height={48} className="h-12 w-16 shrink-0 rounded object-cover bg-[var(--bg-input)]" />}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="break-words font-semibold leading-snug">{tx.listing?.title || 'Vehicle'}</p>
+                                                <p className="mt-1 text-xs text-[var(--text-muted)]">Order <span className="font-mono">{tx.id.slice(0, 8)}</span></p>
+                                            </div>
+                                        </div>
+                                        <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 text-sm">
+                                            <dt className="text-[var(--text-muted)]">Type</dt><dd className="max-w-44 break-words text-right">{TX_TYPE_LABEL[tx.type] || tx.type}</dd>
+                                            <dt className="text-[var(--text-muted)]">Date</dt><dd className="text-right">{new Date(tx.createdAt).toLocaleDateString('en-GB')}</dd>
+                                            <dt className="text-[var(--text-muted)]">Amount</dt><dd className="text-right font-semibold tabular-nums">{formatPrice(Number(tx.amount))}</dd>
+                                            <dt className="text-[var(--text-muted)]">Status</dt><dd className="text-right font-medium">{tx.status}</dd>
+                                        </dl>
+                                        <button type="button" onClick={() => downloadReceipt(tx.id)} className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-primary" aria-label={`Download PDF receipt for order ${tx.id.slice(0, 8)}`}><Download size={16} /> Download PDF receipt</button>
+                                    </article>
+                                ))}
+                            </div>
+                            <div className="hidden max-w-full overflow-x-auto md:block">
+                                <table className="w-full min-w-[780px] text-left">
                                     <thead className="border-b border-[var(--border-default)]">
                                         <tr>
                                             <th className="pb-3 text-[var(--text-muted)] font-medium text-sm">Order</th>
@@ -134,6 +155,7 @@ export default function BuyerHistoryPage() {
                                     </tbody>
                                 </table>
                             </div>
+                            </>
                         )}
                     </div>
                 </main>
