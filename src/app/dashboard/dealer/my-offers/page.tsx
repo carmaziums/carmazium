@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/Button"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { PageHeader } from "@/components/dashboard/PageHeader"
+import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
+import { BidsOffersSwitch } from "@/components/dealer/BidsOffersSwitch"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { AmendOfferModal } from "@/components/offers/AmendOfferModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
@@ -125,9 +127,11 @@ export default function DealerMyOffersPage() {
 
                 <main className="flex-1 space-y-6 min-w-0">
                     <PageHeader
-                        title="My Offers"
-                        subHeader="Manage retail offers separately from your live auction bids"
+                        title="Bids & offers"
+                        subHeader="Retail offers you have sent on marketplace vehicles"
                     />
+                    <BuyAndBidTabs />
+                    <BidsOffersSwitch />
 
                     {amendingOffer && (
                         <AmendOfferModal

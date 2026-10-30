@@ -29,7 +29,7 @@ test('dealer Buy & Bid opens the real website Auctions & Buying hub, not public 
   assert.ok(hub.includes("useState<Section>('mine')"));
   assert.ok(hub.includes('Auctions & Buying'));
   assert.ok(hub.includes('Live auctions, bids and purchases'));
-  for(const x of ['My Auctions','Live Auctions','Shortlisted','My Bids','Purchases']){
+  for(const x of ['My Auctions','Live Auctions','Shortlisted','Bids & offers','Purchases']){
     assert.ok(web.includes(x),'web '+x);
     assert.ok(hub.includes(x),'native '+x);
   }

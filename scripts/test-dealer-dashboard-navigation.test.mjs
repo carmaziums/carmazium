@@ -79,7 +79,7 @@ test("pages read their own titles, not a neighbour's", () => {
 })
 
 test("Buy & Bid tabs appear on every page in that area and keep all previous tabs", () => {
-    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "My Bids", "Auction Wins", "All Purchases"]) {
+    for (const label of ["My Auctions", "Live Auctions", "Shortlisted", "Bids & offers", "Auction Wins", "All Purchases"]) {
         assert.ok(tabs.includes(`label: "${label}"`), label)
     }
     // Purchase History became its own menu item in PR #697 and no longer repeats this bar.
@@ -178,3 +178,21 @@ test("purchase-only staff retain a link to Auction Wins even without VIEW_TRADE"
     assert.match(sidebar, /BUY_AND_BID_TABS\.some\(tab => tab\.href === route\.href\)/)
 })
 
+
+test("Bids & offers: one destination with auction-bid and retail-offer views on web and app", () => {
+    const sw = read("src/components/dealer/BidsOffersSwitch.tsx")
+    // Each view keeps its own permission; the switch only links them.
+    assert.match(sw, /href: "\/dashboard\/dealer\/bids", label: "Auction bids", icon: Gavel, permission: "VIEW_TRADE"/)
+    assert.match(sw, /href: "\/dashboard\/dealer\/my-offers", label: "Retail offers", icon: Send, permission: "MANAGE_OFFERS"/)
+    assert.match(sw, /!loading && hasPermission\(v\.permission\)/)
+    for (const page of ["bids/page.tsx", "my-offers/page.tsx"]) {
+        const src = read("src/app/dashboard/dealer/" + page)
+        assert.match(src, /<BidsOffersSwitch \/>/, page)
+        assert.match(src, /title="Bids & offers"/, page)
+    }
+    assert.ok(tabs.includes('activePaths: ["/dashboard/dealer/my-offers"]'))
+    const hub = read("carmazium app/carmazium app/src/screens/main/DealerBuyBidScreen.tsx")
+    assert.ok(hub.includes("label: 'Bids & offers'"))
+    assert.ok(hub.includes("hasPermission('MANAGE_OFFERS')"))
+    assert.ok(hub.includes("navigation?.navigate('DealerMyOffers')"))
+})

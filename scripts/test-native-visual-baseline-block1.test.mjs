@@ -56,7 +56,7 @@ test('retain historical discrepancy evidence while verifying the fixed canonical
   assert.ok(doc.includes('own auctions'));
   const hub = read('carmazium app/carmazium app/src/screens/main/DealerBuyBidScreen.tsx');
   assert.ok(hub.includes('My Auctions') && hub.includes('Live Auctions'));
-  assert.ok(hub.includes('Shortlisted') && hub.includes('My Bids') && hub.includes('Purchases'));
+  assert.ok(hub.includes('Shortlisted') && hub.includes('Bids & offers') && hub.includes('Purchases'));
   assert.ok(hub.includes("fetchAllMyAuctions<OwnedAuction>('list')"));
 });
 

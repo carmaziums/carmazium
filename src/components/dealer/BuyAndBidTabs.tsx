@@ -12,6 +12,8 @@ type BuyAndBidTab = {
     label: string
     icon: ComponentType<{ size?: number; className?: string }>
     permission?: DealerPermission
+    /** Other pages that belong to this tab (kept highlighted there). */
+    activePaths?: string[]
 }
 
 /**
@@ -27,7 +29,7 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
     { href: "/dashboard/dealer/auctions", label: "My Auctions", icon: Gavel, permission: "VIEW_TRADE" },
     { href: "/auctions/browse", label: "Live Auctions", icon: Flame, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/auctions/shortlisted", label: "Shortlisted", icon: Star, permission: "VIEW_TRADE" },
-    { href: "/dashboard/dealer/bids", label: "My Bids", icon: Tag, permission: "VIEW_TRADE" },
+    { href: "/dashboard/dealer/bids", label: "Bids & offers", icon: Tag, permission: "VIEW_TRADE", activePaths: ["/dashboard/dealer/my-offers"] },
     { href: "/dashboard/dealer/auctions/won", label: "Auction Wins", icon: Trophy, permission: "VIEW_PURCHASES" },
     { href: "/dashboard/dealer/purchases", label: "All Purchases", icon: ShoppingBag, permission: "VIEW_PURCHASES" },
 ]
@@ -44,7 +46,7 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
         >
             {tabs.map(tab => {
                 const Icon = tab.icon
-                const active = pathname === tab.href
+                const active = pathname === tab.href || !!tab.activePaths?.includes(pathname)
                 return active ? (
                     <span
                         key={tab.href}
