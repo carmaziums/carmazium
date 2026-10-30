@@ -152,6 +152,23 @@ describe('DealersService purchase seller details', () => {
         });
     });
 
+    it('keeps the fee gate for a converted listing that still has a real auction winner', async () => {
+        prisma.sale.findFirst.mockResolvedValue(sale({
+            winnerId: 'dealer-owner',
+            buyerFeePaid: false,
+            buyerFeeTransactionId: null,
+        }, 'CLASSIFIED'));
+        const details = await service.getPurchaseSellerDetails('dealer-owner', 'sale-1');
+
+        expect(details).toMatchObject({
+            contactUnlocked: false,
+            buyerFeeRequired: true,
+            sellerEmail: null,
+            sellerPhone: null,
+            sellerAddress: null,
+        });
+    });
+
     it('does not impose an auction buyer fee on a recorded retail sale', async () => {
         prisma.sale.findMany.mockResolvedValue([{
             id: 'retail-sale',
