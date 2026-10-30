@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import {
     ArrowLeft,
     ArrowRight,
@@ -79,6 +80,20 @@ export default function ServicesPage() {
 
     return (
         <main className="min-h-screen pb-20 pt-20">
+            <PageJsonLd
+                path="/services"
+                type="CollectionPage"
+                title="Vehicle Delivery, Inspection, Finance & Warranty Services UK | CarMazium"
+                about={SEO_TRADEXCHANGE}
+                mainEntity={{
+                    "@type": "ItemList", "@id": SEO_SITE + "/services#services",
+                    name: "TradeXchange automotive services",
+                    itemListElement: ["delivery", "inspection", "finance", "warranty"].map((name, i) => ({
+                        "@type": "ListItem", position: i + 1,
+                        item: { "@id": SEO_SITE + "/services/" + name + "#service" },
+                    })),
+                }}
+            />
             <div className="container mx-auto px-5 pt-7">
                 <Link
                     href="/auctions"
