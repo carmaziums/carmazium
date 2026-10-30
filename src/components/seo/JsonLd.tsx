@@ -32,17 +32,18 @@ export function MarketplaceJsonLd({
         "@context": "https://schema.org",
         "@graph": [
             {
-                "@type": "Organization",
+                "@type": "OnlineBusiness",
                 "@id": organizationId,
                 name,
                 url: canonicalUrl,
                 logo: {
                     "@type": "ImageObject",
+                    "@id": `${canonicalUrl}/#logo`,
                     url: logoUrl,
                     width: 192,
                     height: 192,
                 },
-                image: logoUrl,
+                image: { "@id": `${canonicalUrl}/#logo` },
                 email: "info@carmazium.com",
                 telephone: "+441218385040",
                 address: {
@@ -58,20 +59,39 @@ export function MarketplaceJsonLd({
                     telephone: "+441218385040",
                     email: "info@carmazium.com",
                     areaServed: "GB",
-                    availableLanguage: ["en"],
+                    availableLanguage: ["en-GB"],
+                    hoursAvailable: {
+                        "@type": "OpeningHoursSpecification",
+                        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+                        opens: "09:00", closes: "18:00",
+                    },
                 }],
                 description:
-                    "CarMazium is a UK online car marketplace for buying, selling and auctioning vehicles.",
+                    "CarMazium is a UK online marketplace for selling vehicles via dealer auction or retail adverts; buyers pay sellers directly.",
+                brand: { "@id": `${canonicalUrl}/#tradexchange` },
                 areaServed: {
                     "@type": "Country",
                     name: "United Kingdom",
                 },
             },
             {
+                "@type": "Brand",
+                "@id": `${canonicalUrl}/#tradexchange`,
+                name: "TradeXchange",
+                url: `${canonicalUrl}/auctions`,
+                description: "CarMazium dealer auctions and approved-provider automotive services.",
+            },
+            {
                 "@type": "WebSite",
                 "@id": websiteId,
                 url: canonicalUrl,
                 name,
+                alternateName: ["Car Mazium", "carmazium.com"],
+                potentialAction: {
+                    "@type": "SearchAction",
+                    target: { "@type": "EntryPoint", urlTemplate: `${canonicalUrl}/search?search={search_term_string}` },
+                    "query-input": "required name=search_term_string",
+                },
                 publisher: {
                     "@id": organizationId,
                 },
@@ -83,7 +103,7 @@ export function MarketplaceJsonLd({
     return (
         <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema).replace(/</g, "\\u003c") }}
         />
     )
 }
