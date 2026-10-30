@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Poppins, Montserrat, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { StagingBanner } from "@/components/layout/StagingBanner";
@@ -28,21 +27,9 @@ import { ConsentProvider } from "@/context/ConsentContext";
 // Canonical SEO origin. The apex domain permanently redirects to this host.
 const SITE_URL = "https://www.carmazium.com";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
-const montserrat = Montserrat({
-  variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const inter = Inter({ subsets: ["latin"], display: "swap" })
+// Load the existing brand font families in the browser, not at build time.
+// Next's Google font CSS parser currently fails unpredictably in CI and Vercel.
+// System fallback remains available if the stylesheet cannot load.
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -103,9 +90,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth overflow-x-hidden" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" />
+      </head>
       <body
         suppressHydrationWarning
-        className={`${inter.className} selection:bg-red-500/30 selection:text-red-200`}
+        className="selection:bg-red-500/30 selection:text-red-200"
       >
         <a
           href="#main-content"
