@@ -140,7 +140,7 @@ export default function BuyerDashboard() {
                                 </div>
                             ) : recentBids.length === 0 ? (
                                 <div className="glass-card p-8 text-center text-[var(--text-muted)]">
-                                    No active bids yet. {/* <Link href="/cars" className="text-primary hover:underline">Browse auctions</Link> */}
+                                    No active bids yet. {/* <Link href="/search" className="text-primary hover:underline">Browse auctions</Link> */}
                                 </div>
                             ) : (
                                 recentBids.map((bid) => (
@@ -190,7 +190,7 @@ export default function BuyerDashboard() {
                                 </div>
                             ) : watchlist.length === 0 ? (
                                 <div className="col-span-3 glass-card p-8 text-center text-[var(--text-muted)]">
-                                    Your watchlist is empty. <Link href="/cars" className="text-primary hover:underline">Browse cars</Link>
+                                    Your watchlist is empty. <Link href="/search" className="text-primary hover:underline">Browse cars</Link>
                                 </div>
                             ) : (
                                 watchlist.map((item) => (
