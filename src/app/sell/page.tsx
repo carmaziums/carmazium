@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { SELL_FAQS } from "@/lib/sellFaqs"
 import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
@@ -772,32 +773,7 @@ function SellerLanding() {
 }
 
 function SellerEducation() {
-    const faqs = [
-        {
-            question: "How much does it cost to sell my car on CarMazium?",
-            answer: "Auction listings are £0 for sellers. Retail listings cost £1. Optional services, if selected, can have their own separate charges.",
-        },
-        {
-            question: "Who pays me for my car?",
-            answer: "The buyer pays you directly for the vehicle after the agreed inspection and handover process. CarMazium does not hold the vehicle purchase price between buyer and seller.",
-        },
-        {
-            question: "How does the £100 seller incentive work?",
-            answer: "The £100 is a separate CarMazium promotional incentive for qualifying successful auction sales after the required handover evidence is approved. Eligibility is subject to the current platform terms.",
-        },
-        {
-            question: "Can I sell a car with outstanding finance?",
-            answer: "Yes. You can list a vehicle with outstanding finance as long as you disclose it accurately. The buyer can clear the agreed settlement with the finance company as part of collection and handover.",
-        },
-        {
-            question: "How does the free car valuation work?",
-            answer: "CarMazium uses your vehicle details, mileage, transmission and available marketplace evidence to produce an estimated guide value. It is not a guaranteed purchase offer and the final sale price can change after condition checks and buyer inspection.",
-        },
-        {
-            question: "What should I disclose about my vehicle?",
-            answer: "Describe the vehicle accurately, including condition, known faults, history and any insurance write-off status where applicable. Accurate listings help buyers bid and inspect with confidence.",
-        },
-    ]
+
 
     return (
         <section id="how-selling-works" className="scroll-mt-24 border-t border-[var(--border-default)] bg-[var(--bg-body)] py-14 md:py-20">
@@ -837,7 +813,7 @@ function SellerEducation() {
                 <div className="mx-auto max-w-3xl">
                     <h2 className="mb-6 text-center text-2xl font-black text-[var(--text-primary)] md:text-3xl">Selling your car: common questions</h2>
                     <div className="space-y-3">
-                        {faqs.map((faq) => (
+                        {SELL_FAQS.map((faq) => (
                             <details key={faq.question} className="group rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-5 py-4">
                                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                                     {faq.question}
