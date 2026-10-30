@@ -10,6 +10,7 @@ import {
     Sparkles,
 } from "lucide-react"
 import { PRICING } from "@/lib/pricingConfig"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import { DealerCtaButton } from "@/components/features/DealerCtaButton"
 import { Button } from "@/components/ui/Button"
 import { PageHero } from "@/components/layout/PageHero"
@@ -26,6 +27,27 @@ export default function TraderPricingPage() {
 
     return (
         <main className="min-h-screen pb-24 pt-20">
+            <PageJsonLd
+                path="/pricing/traders"
+                title="CarMazium Trader & Partner Pricing"
+                crumbs={[
+                    { label: "Home", path: "/" },
+                    { label: "Pricing", path: "/pricing" },
+                    { label: "Trader Pricing", path: "/pricing/traders" },
+                ]}
+                mainEntity={{
+                    "@type": "Service", "@id": SEO_SITE + "/pricing/traders#service",
+                    name: "Verified motor trader auction access",
+                    provider: { "@id": SEO_SITE + "/#organization" },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                    offers: {
+                        "@type": "Offer", name: "Winning dealer auction fee",
+                        price: PRICING.marketplace.auction.buyerFee.toFixed(2),
+                        priceCurrency: "GBP",
+                        description: "Charged to a verified dealer only when winning an auction, subject to any applicable account grants.",
+                    },
+                }}
+            />
             <PageHero
                 eyebrow={<><BadgeCheck size={14} /> Motor Trade & Partner Accounts</>}
                 title="Trader pricing, kept separate from customer pricing."
