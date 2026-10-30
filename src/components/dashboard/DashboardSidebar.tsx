@@ -170,7 +170,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     // Secondary dealer tools: kept out of the main list to keep it short, but
     // always listed under "More tools" so no dealer option is ever unreachable.
     const dealerMoreLinks: LinkObj[] = role === 'dealer'
-        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route)).map(toDealerLink)
+        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route) && !BUY_AND_BID_TABS.some(tab => tab.href === route.href)).map(toDealerLink)
         : []
 
     // activePrefixes: older standalone pages (opened from notifications and
