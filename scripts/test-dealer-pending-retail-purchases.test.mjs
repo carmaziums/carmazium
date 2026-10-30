@@ -76,7 +76,7 @@ test("recorded retail sales display SOLD, not awaiting confirmation", () => {
 
 test("retail seller contact is not locked by an old ended auction record", () => {
     const service = read("../backend/src/dealers/dealers.service.ts")
-    assert.match(service, /const isAuctionPurchase = listing\.type === 'AUCTION';/)
-    assert.match(service, /const isAuctionPurchase = l\?\.type === 'AUCTION';/)
+    assert.match(service, /const isAuctionPurchase = listing\.type === 'AUCTION' \|\| !!auction\?\.winnerId;/)
+    assert.match(service, /const isAuctionPurchase = l\?\.type === 'AUCTION' \|\| !!auction\?\.winnerId;/)
     assert.match(service, /retailSold: l\?\.type === 'CLASSIFIED' && l\?\.status === 'SOLD'/)
 })
