@@ -23,6 +23,10 @@ on:
       - "src/app/dashboard/dealer/inventory/**"
       - "src/lib/listingApi.ts"
       - "src/app/HomeClient.tsx"
+      - "src/app/dashboard/dealer/purchases/**"
+      - "src/components/dealer/BuyAndBidTabs.tsx"
+      - "src/lib/pendingRetailPurchases.ts"
+      - "scripts/test-dealer-pending-retail-purchases.test.mjs"
       - "src/app/page.tsx"
       - "src/components/features/CarCard.tsx"
       - "src/lib/vehicleLabels.ts"
@@ -93,6 +97,9 @@ jobs:
 
       - name: Verify retail transmission badges and all card data paths
         run: node --test scripts/test-retail-card-transmission.test.mjs
+
+      - name: Verify accepted retail purchases appear without premature completed-sale records
+        run: node --test scripts/test-dealer-pending-retail-purchases.test.mjs
 
       - name: Verify homepage live inventory and honest photo/payment presentation
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs

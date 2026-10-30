@@ -1816,6 +1816,7 @@ export class DealersService {
                             title: true,
                             slug: true,
                             type: true,
+                            status: true,
                             images: true,
                             make: true,
                             model: true,
@@ -1842,9 +1843,9 @@ export class DealersService {
             this.prisma.sale.count({ where: { buyerId } }),
         ]);
 
-        // A sale is created when an auction offer is accepted, but the separate
-        // purchase pipeline defaults to AWAITING_CONFIRMATION. Return the auction
-        // acceptance and buyer-fee facts independently; do not mutate pipeline state.
+        // Purchase pipeline progress (inspection, documents, delivery) is
+        // distinct from a retail listing's SOLD status. Return both rather
+        // than showing a recorded retail sale as awaiting agreement.
         const auctions = await this.prisma.auction.findMany({
             where: { listingId: { in: sales.map((sale) => sale.listingId) } },
             select: { listingId: true, winnerId: true, buyerFeePaid: true, buyerFeeTransactionId: true },
@@ -1856,7 +1857,11 @@ export class DealersService {
             const auction = auctionByListing.get(sale.listingId);
             // Purchase-history results must enforce the same auction buyer-fee
             // gate as the individual won-auction endpoint.
-            const contactUnlocked = (l?.type === 'CLASSIFIED' && !auction)
+            // A previously ended auction may still share a listing row after
+            // conversion to Retail. It must NOT impose an auction buyer fee
+            // or suppress seller contact on a valid Retail purchase.
+            const isAuctionPurchase = l?.type === 'AUCTION' || !!auction?.winnerId;
+            const contactUnlocked = !isAuctionPurchase
                 || !!(auction && auction.winnerId === buyerId
                     && auction.buyerFeePaid && auction.buyerFeeTransactionId);
             const subtitle = [
@@ -1880,9 +1885,12 @@ export class DealersService {
                 sellerEmail: contactUnlocked ? (sale.seller?.email ?? undefined) : undefined,
                 sellerPhone: contactUnlocked ? (sale.seller?.phone ?? undefined) : undefined,
                 status: sale.purchaseStatus,
-                offerAccepted: auctionByListing.get(sale.listingId)?.winnerId === buyerId,
-                buyerFeeSettled: !!auctionByListing.get(sale.listingId)?.buyerFeePaid
-                    && !!auctionByListing.get(sale.listingId)?.buyerFeeTransactionId,
+                // The recorded sale is SOLD even when optional post-sale
+                // documentation or collection is not yet complete.
+                retailSold: l?.type === 'CLASSIFIED' && l?.status === 'SOLD',
+                offerAccepted: isAuctionPurchase && auction?.winnerId === buyerId,
+                buyerFeeSettled: isAuctionPurchase && !!auction?.buyerFeePaid
+                    && !!auction?.buyerFeeTransactionId,
             };
         });
 
@@ -1949,7 +1957,9 @@ export class DealersService {
 
         const { listing, seller } = sale;
         const auction = listing.auction;
-        const isAuctionPurchase = listing.type === 'AUCTION' || !!auction;
+        // Do not confuse a historic ENDED auction attached to a converted
+        // retail listing with the channel through which this sale occurred.
+        const isAuctionPurchase = listing.type === 'AUCTION' || !!auction?.winnerId;
         const contactUnlocked = !isAuctionPurchase || !!(
             auction && auction.winnerId === buyerId
             && auction.buyerFeePaid && auction.buyerFeeTransactionId
@@ -1970,6 +1980,7 @@ export class DealersService {
             sellerName,
             sellerCompany: seller.dealerProfile?.companyName || null,
             contactUnlocked,
+            buyerFeeRequired: isAuctionPurchase,
             sellerEmail: contactUnlocked ? seller.email : null,
             sellerPhone: contactUnlocked
                 ? (seller.phone || seller.dealerProfile?.phone || null) : null,
