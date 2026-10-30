@@ -228,14 +228,14 @@ export default function DealerPurchasesPage() {
 
                     {/* Kanban View */}
                     {!loading && viewMode === "kanban" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+                        <div className="flex gap-4 items-start overflow-x-auto pb-4 snap-x snap-mandatory">
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]
                                 const config = STATUS_LABELS[status]
                                 const Icon = config.icon
 
                                 return (
-                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-4 min-h-[200px]">
+                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] min-w-[min(85vw,340px)] w-[min(85vw,340px)] shrink-0 snap-start">
                                         {/* Column Header */}
                                         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
                                             <Icon size={14} className={config.color} />
@@ -250,63 +250,14 @@ export default function DealerPurchasesPage() {
                                         {/* Cards */}
                                         <div className="space-y-3">
                                             {items.map((item) => (
-                                                <div key={item.id} className="dealer-glass-card p-4 group">
-                                                    <h4 className="text-sm font-bold text-[var(--text-primary)] truncate group-hover:text-primary transition-colors">
-                                                        {item.vehicleTitle}
-                                                    </h4>
-                                                    {item.vehicleSubtitle && (
-                                                        <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">{item.vehicleSubtitle}</p>
-                                                    )}
-                                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--border-default)]">
-                                                        <span className="text-sm font-black text-[var(--text-primary)] tabular-nums">
-                                                            £{item.purchasePrice.toLocaleString()}
-                                                        </span>
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                onClick={() => setCancelItem(item)}
-                                                                className="text-xs font-bold uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-colors px-2 py-1 rounded"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setSummaryItem(item)}
-                                                                className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-primary transition-colors px-2 py-1 rounded hover:bg-[var(--bg-card)]"
-                                                            >
-                                                                Details
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Docs progress for reviewing */}
-                                                    {item.status === "reviewing_docs" && item.documentsReceived !== undefined && item.documentsTotal !== undefined && (
-                                                        <div className="mt-2.5 pt-2.5 border-t border-[var(--border-default)]">
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Documents</span>
-                                                                <span className="text-xs font-bold text-blue-400 tabular-nums">{item.documentsReceived}/{item.documentsTotal}</span>
-                                                            </div>
-                                                            <div className="w-full h-1 bg-black/40 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full bg-blue-400 rounded-full transition-all"
-                                                                    style={{ width: `${(item.documentsReceived / item.documentsTotal) * 100}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* ETA for delivery */}
-                                                    {item.status === "delivery_requested" && item.estimatedDelivery && (
-                                                        <div className="mt-2.5 pt-2.5 border-t border-[var(--border-default)]">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Truck size={10} className="text-violet-400" />
-                                                                <span className="text-xs font-bold text-violet-400">
-                                                                    ETA: {new Date(item.estimatedDelivery).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <PipelineRow
+                                                    key={item.id}
+                                                    item={item}
+                                                    onViewSummary={setSummaryItem}
+                                                    onViewSeller={setSellerItem}
+                                                    onRequestCancellation={setCancelItem}
+                                                />
                                             ))}
-
                                             {items.length === 0 && (
                                                 <div className="py-8 text-center">
                                                     <p className="text-gray-600 text-xs font-bold uppercase tracking-widest">Empty</p>
