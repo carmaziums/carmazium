@@ -15,3 +15,11 @@ export const FUEL_TYPE_LABELS: Record<string, string> = {
     PETROL_PLUGIN_HYBRID: 'Petrol Plug-in Hybrid', DIESEL_PLUGIN_HYBRID: 'Diesel Plug-in Hybrid',
     UNLISTED: 'Unlisted',
 }
+
+/** Public-facing gearbox labels for the values persisted in Listing.transmission. */
+export const TRANSMISSION_LABELS: Record<string, string> = {
+    MANUAL: 'Manual',
+    AUTOMATIC: 'Automatic',
+    SEMI_AUTOMATIC: 'Semi-Automatic',
+    CVT: 'CVT',
+}
