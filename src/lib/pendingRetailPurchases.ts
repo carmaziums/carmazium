@@ -13,7 +13,7 @@ export function pendingRetailPurchases(
     recordedSaleListingIds: Iterable<string>,
 ): Offer[] {
     const recorded = new Set(recordedSaleListingIds)
-    return offers
+    const eligible = offers
         .filter(offer =>
             offer.status === "ACCEPTED"
             && offer.listing?.status === "OFFER_ACCEPTED"
@@ -22,4 +22,13 @@ export function pendingRetailPurchases(
         .sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )
+
+    // Prefer the latest record if an older inconsistency left two accepted
+    // offers against the same vehicle. A listing is one pending purchase.
+    const seen = new Set<string>()
+    return eligible.filter(offer => {
+        if (seen.has(offer.listingId)) return false
+        seen.add(offer.listingId)
+        return true
+    })
 }
