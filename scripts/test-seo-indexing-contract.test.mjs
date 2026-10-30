@@ -23,8 +23,10 @@ test('published blog articles marked noindex are excluded from XML sitemap', () 
 test('sitemap vehicle eligibility matches active classified indexing policy', () => {
   const sitemap = read('src/app/sitemap.ts');
   const vehicle = read('src/app/buy-cars/[slug]/page.tsx');
+  const retailSeo = read('src/components/seo/RetailVehicleJsonLd.tsx');
   assert.match(sitemap, /row\.type !== "CLASSIFIED" \|\| row\.status !== "ACTIVE"/);
-  assert.match(vehicle, /listing\.type === 'CLASSIFIED'\s*&&\s*listing\.status === 'ACTIVE'/);
+  assert.match(vehicle, /const indexable = indexableRetail\(listing as Listing\)/);
+  assert.match(retailSeo, /l\.type === "CLASSIFIED" && l\.status === "ACTIVE"/);
   assert.match(vehicle, /robots:\s*\{\s*index:\s*indexable,\s*follow:\s*indexable\s*\}/);
 });
 
