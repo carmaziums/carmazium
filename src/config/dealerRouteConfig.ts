@@ -89,7 +89,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
         section: "Main",
-        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]
+        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids"]
     },
     {
         href: "/dashboard/dealer/auctions/won",
