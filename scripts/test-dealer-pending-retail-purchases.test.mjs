@@ -69,8 +69,8 @@ test("recorded retail sales display SOLD, not awaiting confirmation", () => {
     const row = read("../src/components/dealer/PipelineRow.tsx")
     assert.match(dealerPurchases, /item\.status === "AWAITING_CONFIRMATION" && item\.retailSold/)
     assert.match(dealerPurchases, /\? "sold"/)
-    assert.match(dealerPurchases, /sold: \{ label: "Sold"/)
-    assert.match(row, /sold: \{\s*label: "Sold"/)
+    assert.match(dealerPurchases, /sold: \{ label: "Purchased"/)
+    assert.match(row, /sold: \{\s*label: "Purchased"/)
     assert.match(row, /Retail sale recorded · No buyer fee/)
 })
 
