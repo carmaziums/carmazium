@@ -4,6 +4,7 @@ import Image from "next/image"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Clock, Gavel, Search, User } from "lucide-react"
 import type { BlogPost } from "@/lib/blogApi"
+import { JsonLdScript, SEO_ORG, SEO_SITE, SEO_WEBSITE } from "@/components/seo/PageJsonLd"
 import type { Listing } from "@/lib/listingApi"
 import { formatPrice } from "@/lib/listingApi"
 import { BlogContent, blogHeadingId } from "@/components/blog/BlogContent"
@@ -215,37 +216,54 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         post.publishedAt && new Date(post.updatedAt).getTime() - new Date(post.publishedAt).getTime() > 24 * 60 * 60 * 1000,
     )
 
-    const blogPostingJsonLd = {
-        "@context": "https://schema.org",
-        "@type": "BlogPosting",
-        headline: post.title,
-        description: post.metaDescription || post.excerpt,
-        image: cover ? [cover] : undefined,
-        datePublished: post.publishedAt ?? post.createdAt,
-        dateModified: post.updatedAt,
-        author: { "@type": "Organization", name: post.authorName },
-        publisher: { "@type": "Organization", name: "CarMazium", url: SITE_URL },
-        mainEntityOfPage: { "@type": "WebPage", "@id": url },
-        keywords: tags.join(", ") || undefined,
-        wordCount: words,
-        isAccessibleForFree: true,
-        inLanguage: "en-GB",
-    }
-
-    const breadcrumbJsonLd = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-            { "@type": "ListItem", position: 2, name: "Automotive Insights", item: `${SITE_URL}/blog` },
-            { "@type": "ListItem", position: 3, name: post.title, item: url },
-        ],
-    }
+    const articleId = url + "#article"
+    const pageId = url + "#webpage"
+    const breadcrumbId = url + "#breadcrumb"
+    // Never invent an individual human author; the editorial team's own
+    // name remains an Organization until a real author profile is available.
+    const byline = post.authorName?.trim() || "CarMazium Team"
+    const editorialTeam = /^(carmazium|carmazium team|editorial team)$/i.test(byline)
+    const graph = [
+        {
+            "@type": "WebPage", "@id": pageId, url,
+            name: post.metaTitle || post.title,
+            isPartOf: { "@id": SEO_WEBSITE },
+            breadcrumb: { "@id": breadcrumbId },
+            mainEntity: { "@id": articleId },
+            inLanguage: "en-GB",
+        },
+        {
+            "@type": "BlogPosting", "@id": articleId,
+            headline: post.title,
+            description: post.metaDescription || post.excerpt,
+            ...(cover ? { image: [cover.split("#")[0]] } : {}),
+            datePublished: post.publishedAt || post.createdAt,
+            dateModified: post.updatedAt,
+            author: editorialTeam
+                ? { "@type": "Organization", "@id": SEO_SITE + "/#editorial-team",
+                    name: "CarMazium Team", url: SEO_SITE + "/about",
+                    parentOrganization: { "@id": SEO_ORG } }
+                : { "@type": "Person", name: byline },
+            publisher: { "@id": SEO_ORG },
+            mainEntityOfPage: { "@id": pageId },
+            isPartOf: { "@id": SEO_SITE + "/blog#blog" },
+            ...(tags.length ? { keywords: tags.join(", ") } : {}),
+            wordCount: words, isAccessibleForFree: true,
+            inLanguage: "en-GB",
+        },
+        {
+            "@type": "BreadcrumbList", "@id": breadcrumbId,
+            itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Home", item: SEO_SITE },
+                { "@type": "ListItem", position: 2, name: "Automotive Insights", item: SEO_SITE + "/blog" },
+                { "@type": "ListItem", position: 3, name: post.title, item: url },
+            ],
+        },
+    ]
 
     return (
         <div className="min-h-screen pt-24 md:pt-28 pb-24">
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }} />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+            {!post.noIndex && <JsonLdScript graph={graph} />}
 
             <article>
                 <header className="container mx-auto px-5 max-w-6xl">
