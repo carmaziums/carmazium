@@ -28,8 +28,10 @@ test("backend errors and malformed responses must not fake confirmed notFound", 
 test("retail-only indexing and existing sold/auction detail display are preserved", () => {
     const page = read("src/app/buy-cars/[slug]/page.tsx")
     const client = read("src/app/buy-cars/[slug]/VehicleDetailsPageClient.tsx")
-    assert.match(page, /listing\.type === 'CLASSIFIED'\s*&&\s*listing\.status === 'ACTIVE'/)
-    assert.match(page, /!isLikelyTestListingSlug\(listing\.slug \|\| slug\)/)
+    const retailEligibility = read("src/components/seo/RetailVehicleJsonLd.tsx")
+    assert.match(page, /const indexable = indexableRetail\(listing as Listing\)/)
+    assert.match(retailEligibility, /l\.type === "CLASSIFIED" && l\.status === "ACTIVE"/)
+    assert.match(retailEligibility, /!\/\(\^\|-\)\(undefined\|test\\d\*\|aaa\|qqq\|www\)\(-\|\$\)\/i\.test\(l\.slug \|\| ""\)/)
     assert.match(page, /robots: \{ index: indexable, follow: indexable \}/)
     assert.match(page, /<VehicleDetailsPageClient params=\{params\} initialListing=\{initialListing\} \/>/)
     assert.match(client, /String\(listing\.status\) === 'SOLD'/)
