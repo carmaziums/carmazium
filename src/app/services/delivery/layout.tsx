@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "Vehicle Delivery & Recovery UK",
@@ -17,5 +18,30 @@ export const metadata: Metadata = {
 }
 
 export default function DeliveryLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return (
+        <>
+            <PageJsonLd
+                path="/services/delivery"
+                title="Vehicle Delivery & Recovery UK | CarMazium"
+                description={metadata.description as string}
+                crumbs={[
+                    { label: "Home", path: "/" },
+                    { label: "Services", path: "/services" },
+                    { label: "Vehicle delivery and recovery", path: "/services/delivery" },
+                ]}
+                mainEntity={{
+                    "@type": "Service",
+                    "@id": SEO_SITE + "/services/delivery#service",
+                    name: "Vehicle delivery and recovery",
+                    serviceType: "Vehicle transport",
+                    description: metadata.description,
+                    url: SEO_SITE + "/services/delivery",
+                    broker: { "@id": SEO_SITE + "/#organization" },
+                    brand: { "@id": SEO_TRADEXCHANGE },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                }}
+            />
+            {children}
+        </>
+    )
 }
