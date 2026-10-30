@@ -973,6 +973,21 @@ if (
   ok('Native onboarding virtualization and Android release shrinking are guarded');
 }
 
+// Dealer menu groups: the website sidebar and the app drawer show the same
+// groups in the same order (Sell, Buy, Business).
+{
+  const webOrder = (webDealerRoutes.match(/DEALER_SECTION_ORDER = \[([^\]]*)\]/)?.[1] || '')
+    .match(/"([^"]+)"/g)?.map(x => x.slice(1, -1)).filter(x => ['Sell', 'Buy', 'Business'].includes(x)) || [];
+  const nativeSections = [...(mobileDealerDrawer.split('const DEALER_ITEMS')[1] || '').split('];')[0]
+    .matchAll(/section: '([A-Za-z]+)'/g)].map(m => m[1]);
+  const nativeOrder = nativeSections.filter((x, i) => x !== nativeSections[i - 1]);
+  if (webOrder.join(',') !== 'Sell,Buy,Business' || nativeOrder.join(',') !== webOrder.join(',')) {
+    fail(`Dealer menu groups differ between web (${webOrder.join(', ')}) and app (${nativeOrder.join(', ')})`);
+  } else {
+    ok('Dealer menu groups match on web and app: Sell, Buy, Business');
+  }
+}
+
 // Block 9 — shared visible terminology. Internal model/API names may stay
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.

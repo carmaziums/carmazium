@@ -27,7 +27,7 @@ function load(path, modules = {}) {
 }
 
 const stage = load("src/lib/auctionSellerStage.ts")
-const { DEALER_ROUTE_CONFIG, dealerRouteIsActive, getDealerRoute } = load("src/config/dealerRouteConfig.ts")
+const { DEALER_ROUTE_CONFIG, DEALER_SECTION_ORDER, dealerRouteIsActive, getDealerRoute, sortBySection } = load("src/config/dealerRouteConfig.ts")
 const { buildAttentionItems, PROVISIONAL_WINDOW_MS } = load("src/lib/dealerAttention.ts", { "@/lib/auctionSellerStage": stage })
 const sidebar = read("src/components/dashboard/DashboardSidebar.tsx")
 const tabs = read("src/components/dealer/BuyAndBidTabs.tsx")
@@ -152,10 +152,14 @@ test("dealer menu and bottom bar use the same names as the phone app", () => {
     assert.ok(!sidebar.includes('font-medium">Buy &amp; Bid<'))
 })
 
-test("Purchases sits with the other Main items, so the phone menu has one Main heading", () => {
-    const main = DEALER_ROUTE_CONFIG.filter(r => !r.hidden).map(r => r.section)
-    const firstOther = main.findIndex(s => s !== "Main")
-    assert.ok(firstOther > 0 && main.slice(firstOther).every(s => s !== "Main"), main.join(","))
+test("dealer menu groups are Sell, Buy, Business, Services, each heading shown once", () => {
+    assert.deepEqual([...DEALER_SECTION_ORDER], ["Dashboard", "Sell", "Buy", "Business", "Services"])
+    const sections = sortBySection([...DEALER_ROUTE_CONFIG]).map(r => r.section)
+    const runs = sections.filter((s, i) => s !== sections[i - 1])
+    assert.deepEqual(runs, [...DEALER_SECTION_ORDER], runs.join(","))
+    assert.ok(DEALER_ROUTE_CONFIG.every(r => DEALER_SECTION_ORDER.includes(r.section)))
+    assert.match(sidebar, /sortBySection\(\[\.\.\.currentLinks, \.\.\.dealerMoreLinks\]\)/)
+    assert.ok(!/dealerMoreLinks\.map\(link => \(\{ \.\.\.link, section: `More tools/.test(sidebar))
 })
 
 test("dealer sidebar loads team permissions on pages outside the dealer layout", () => {
