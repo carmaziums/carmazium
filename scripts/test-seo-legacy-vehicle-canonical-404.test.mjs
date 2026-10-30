@@ -37,8 +37,9 @@ test('legacy URL is noindex and canonical to actual published listing slug', () 
 
 test('new canonical vehicle routes remain indexable only for active classifieds', () => {
     const modern = read('src/app/buy-cars/[slug]/page.tsx')
-    assert.match(modern, /listing\.type === 'CLASSIFIED'/)
-    assert.match(modern, /listing\.status === 'ACTIVE'/)
+    const retailEligibility = read('src/components/seo/RetailVehicleJsonLd.tsx')
+    assert.match(modern, /const indexable = indexableRetail\(listing as Listing\)/)
+    assert.match(retailEligibility, /l\.type === "CLASSIFIED" && l\.status === "ACTIVE"/)
     assert.match(modern, /robots: \{ index: indexable, follow: indexable \}/)
     assert.match(modern, /listing\.slug \|\| slug/)
 })
