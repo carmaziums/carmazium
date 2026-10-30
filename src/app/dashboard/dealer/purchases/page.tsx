@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
-    Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight,
+    Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight, RefreshCw,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -16,6 +17,8 @@ import {
 } from "@/components/dealer/PipelineRow"
 import type { PurchaseItem, PurchaseStatus } from "@/components/dealer/PipelineRow"
 import { apiClient } from "@/lib/apiClient"
+import { getMyOffers, type Offer } from "@/lib/listingApi"
+import { pendingRetailPurchases } from "@/lib/pendingRetailPurchases"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 
 const DB_STATUS_MAP: Record<string, PurchaseStatus> = {
@@ -57,22 +60,50 @@ export default function DealerPurchasesPage() {
         board.scrollBy({ left: direction * distance, behavior: "smooth" })
     }
     const [purchases, setPurchases] = React.useState<PurchaseItem[]>([])
+    const [acceptedOffers, setAcceptedOffers] = React.useState<Offer[]>([])
+    const [loadError, setLoadError] = React.useState<string | null>(null)
+    const [offerLoadError, setOfferLoadError] = React.useState(false)
+    const [refreshVersion, setRefreshVersion] = React.useState(0)
 
     React.useEffect(() => {
         if (authLoading || !user) return
+        let mounted = true
         setLoading(true)
-        apiClient<{ data: any[]; total: number }>("/dealers/purchases?limit=100")
-            .then((res) => {
-                setPurchases(
-                    res.data.map((item) => ({
-                        ...item,
-                        status: item.status === "AWAITING_CONFIRMATION" && item.offerAccepted ? "sale_confirmed" : (DB_STATUS_MAP[item.status] ?? "awaiting_confirmation"),
-                    }))
-                )
-            })
-            .catch(() => {})
-            .finally(() => setLoading(false))
-    }, [authLoading, user])
+        setLoadError(null)
+        setOfferLoadError(false)
+
+        // A retail counter-offer creates an accepted Offer before the seller
+        // completes the transaction and creates a Sale. Both sources are needed
+        // to show pending purchases without misclassifying them as sold.
+        Promise.allSettled([
+            apiClient<{ data: PurchaseItem[]; total: number }>("/dealers/purchases?limit=100", {
+                cache: "no-store",
+            }),
+            getMyOffers(),
+        ]).then(([salesResult, offersResult]) => {
+            if (!mounted) return
+            if (salesResult.status === "fulfilled") {
+                setPurchases(salesResult.value.data.map(item => ({
+                    ...item,
+                    status: item.status === "AWAITING_CONFIRMATION" && item.offerAccepted
+                        ? "sale_confirmed"
+                        : (DB_STATUS_MAP[item.status] ?? "awaiting_confirmation"),
+                })))
+            } else {
+                setLoadError("Purchase records could not be loaded. Please retry.")
+            }
+
+            if (offersResult.status === "fulfilled") {
+                setAcceptedOffers(offersResult.value)
+            } else {
+                setOfferLoadError(true)
+            }
+        }).finally(() => {
+            if (mounted) setLoading(false)
+        })
+
+        return () => { mounted = false }
+    }, [authLoading, user?.id, refreshVersion])
 
     // Modal state
     const [summaryItem, setSummaryItem] = React.useState<PurchaseItem | null>(null)
@@ -101,6 +132,10 @@ export default function DealerPurchasesPage() {
         return groups
     }, [purchases])
 
+    const pendingRetail = React.useMemo(
+        () => pendingRetailPurchases(acceptedOffers, purchases.map(p => p.listingId)),
+        [acceptedOffers, purchases],
+    )
     const totalValue = purchases.reduce((sum, p) => sum + p.purchasePrice, 0)
 
     return (
@@ -140,12 +175,27 @@ export default function DealerPurchasesPage() {
                         </div>
                     </div>
 
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Accepted retail offers appear below as sale pending until the seller completes the transaction.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setRefreshVersion(v => v + 1)}
+                            disabled={loading}
+                            className="inline-flex items-center gap-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2.5 text-sm font-semibold hover:border-primary/50 disabled:opacity-50"
+                        >
+                            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+                            Refresh purchases
+                        </button>
+                    </div>
+
                     <BuyAndBidTabs />
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <MetricCard
-                            label="Total Purchases"
+                            label="Recorded Purchases"
                             value={purchases.length}
                             icon={Package}
                             color="text-primary"
@@ -190,6 +240,56 @@ export default function DealerPurchasesPage() {
                         <div className="flex items-center justify-center py-24">
                             <Loader2 className="w-8 h-8 animate-spin text-primary" />
                         </div>
+                    )}
+
+                    {(loadError || offerLoadError) && !loading && (
+                        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-300">
+                            {loadError || "Pending retail offers could not be loaded. Please retry."}
+                        </div>
+                    )}
+
+                    {!loading && pendingRetail.length > 0 && (
+                        <section aria-labelledby="pending-retail-heading" className="space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Clock size={17} className="text-amber-400" />
+                                <h2 id="pending-retail-heading" className="text-base font-black">
+                                    Retail purchases — Sale Pending
+                                </h2>
+                                <span className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-300">
+                                    {pendingRetail.length}
+                                </span>
+                            </div>
+                            <p className="text-sm text-[var(--text-muted)]">
+                                Your accepted offers appear here immediately. These are agreed deals, not completed sales.
+                                Contact the seller to arrange inspection, payment and collection.
+                            </p>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                {pendingRetail.map(offer => (
+                                    <article key={offer.id} className="dealer-glass-card p-4 md:p-5 space-y-3">
+                                        <div className="flex flex-wrap items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <h3 className="font-bold break-words">{offer.listing?.title || "Retail vehicle"}</h3>
+                                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                                    Accepted {new Date(offer.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                                </p>
+                                            </div>
+                                            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-bold text-amber-300">
+                                                Sale Pending
+                                            </span>
+                                        </div>
+                                        <p className="text-lg font-black tabular-nums">
+                                            £{Number(offer.finalAmount ?? offer.counterAmount ?? offer.amount).toLocaleString("en-GB")}
+                                        </p>
+                                        <Link
+                                            href="/dashboard/buyer/offers"
+                                            className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                                        >
+                                            View accepted offer and contact seller
+                                        </Link>
+                                    </article>
+                                ))}
+                            </div>
+                        </section>
                     )}
 
                     {/* List View */}
