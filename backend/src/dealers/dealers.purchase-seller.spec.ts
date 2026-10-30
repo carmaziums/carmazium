@@ -135,6 +135,59 @@ describe('DealersService purchase seller details', () => {
         expect(details.sellerAddressSource).toBeNull();
     });
 
+    it('unlocks a sold retail purchase despite an old ended auction on the same listing', async () => {
+        prisma.sale.findFirst.mockResolvedValue(sale({
+            winnerId: null,
+            buyerFeePaid: false,
+            buyerFeeTransactionId: null,
+        }, 'CLASSIFIED'));
+        const details = await service.getPurchaseSellerDetails('dealer-owner', 'sale-1');
+
+        expect(details).toMatchObject({
+            contactUnlocked: true,
+            buyerFeeRequired: false,
+            sellerEmail: 'seller@example.test',
+            sellerPhone: '07123456789',
+            sellerAddressSource: 'VERIFIED_POSTAL',
+        });
+    });
+
+    it('does not impose an auction buyer fee on a recorded retail sale', async () => {
+        prisma.sale.findMany.mockResolvedValue([{
+            id: 'retail-sale',
+            listingId: 'retail-listing',
+            listing: {
+                id: 'retail-listing', title: 'Volvo XC60 2017',
+                type: 'CLASSIFIED', status: 'SOLD',
+                images: [], make: 'Volvo', model: 'XC60', year: 2017,
+                mileage: 87230, color: 'SILVER', engineSize: 2000,
+            },
+            seller: {
+                firstName: 'Scott', lastName: 'Example',
+                email: 'seller@example.test', phone: '07123456789',
+            },
+            soldPrice: 7500,
+            createdAt: new Date('2026-10-30T16:46:35Z'),
+            purchaseStatus: 'AWAITING_CONFIRMATION',
+        }]);
+        prisma.sale.count.mockResolvedValue(1);
+        // This is historical auction metadata, not a winning-bid purchase.
+        prisma.auction.findMany.mockResolvedValue([{
+            listingId: 'retail-listing', winnerId: null,
+            buyerFeePaid: false, buyerFeeTransactionId: null,
+        }]);
+
+        const result = await service.getDealerPurchases('dealer-owner');
+
+        expect(result.data[0]).toMatchObject({
+            retailSold: true,
+            offerAccepted: false,
+            buyerFeeSettled: false,
+            sellerEmail: 'seller@example.test',
+            sellerPhone: '07123456789',
+        });
+    });
+
     it('keeps seller phone and email out of unpaid auction purchase-history results', async () => {
         prisma.sale.findMany.mockResolvedValue([{
             id: 'sale-1',
