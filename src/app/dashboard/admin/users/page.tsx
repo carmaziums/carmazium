@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Link from "next/link"
@@ -64,6 +64,12 @@ export default function AdminUsersPage() {
     }, [])
 
     const handleRoleChange = async (userId: string, newRole: string) => {
+        const target = users.find(u => u.id === userId)
+        const who = target?.firstName || target?.email || 'this user'
+        const message = newRole === 'ADMIN'
+            ? `Give ${who} FULL ADMIN access? They will be able to manage every account, listing and payment.`
+            : `Change ${who}'s account role from ${target?.role ?? 'its current role'} to ${newRole}?`
+        if (!window.confirm(message)) return
         try {
             setUpdating(userId)
             await updateUserRole(userId, newRole)

@@ -680,3 +680,46 @@ describe('AdminService dealer KYC review', () => {
         });
     });
 });
+
+describe('AdminService role changes', () => {
+    const makeService = (prisma: any) =>
+        new AdminService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    it('rejects unknown roles', async () => {
+        const prisma: any = { user: { findUnique: jest.fn(), count: jest.fn(), update: jest.fn() } };
+        await expect(makeService(prisma).updateUserRole('u1', 'SUPERUSER' as any, 'admin-1')).rejects.toThrow('Unknown account role.');
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+    it('rejects self demotion', async () => {
+        const prisma: any = { user: { findUnique: jest.fn(), count: jest.fn(), update: jest.fn() } };
+        await expect(makeService(prisma).updateUserRole('admin-1', 'BUYER' as any, 'admin-1')).rejects.toThrow('You cannot change your own account role.');
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+    it('protects the only active admin', async () => {
+        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValue({ id: 'admin-2', role: 'ADMIN' }), count: jest.fn().mockResolvedValue(0), update: jest.fn() } };
+        await expect(makeService(prisma).updateUserRole('admin-2', 'BUYER' as any, 'admin-1')).rejects.toThrow(/only active admin/);
+        expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+    it('allows demotion when another active admin exists', async () => {
+        const prisma: any = { user: { findUnique: jest.fn().mockResolvedValue({ id: 'admin-2', role: 'ADMIN' }), count: jest.fn().mockResolvedValue(1), update: jest.fn().mockResolvedValue({ id: 'admin-2', role: 'BUYER' }) } };
+        await makeService(prisma).updateUserRole('admin-2', 'BUYER' as any, 'admin-1');
+        expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'admin-2' }, data: { role: 'BUYER' } });
+    });
+});
+
+describe('AdminService revenue excludes zero-value commission grants', () => {
+    it('counts only positive-value completed commission rows', async () => {
+        const prisma: any = {
+            user: { count: jest.fn().mockResolvedValue(0) },
+            listing: { count: jest.fn().mockResolvedValue(0) },
+            sale: { count: jest.fn().mockResolvedValue(0) },
+            auction: { count: jest.fn().mockResolvedValue(0) },
+            bid: { count: jest.fn().mockResolvedValue(0) },
+            transaction: { aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }), count: jest.fn().mockResolvedValue(8) },
+        };
+        const service = new AdminService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+        await service.getPlatformStats();
+        expect(prisma.transaction.count).toHaveBeenCalledWith({
+            where: expect.objectContaining({ status: 'COMPLETED', type: 'COMMISSION', amount: { gt: 0 } }),
+        });
+    });
+});
