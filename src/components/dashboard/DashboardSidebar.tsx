@@ -43,7 +43,7 @@ import { DEALER_ROUTE_CONFIG, dealerRouteIsActive } from "@/config/dealerRouteCo
 import { BUY_AND_BID_TABS } from "@/components/dealer/BuyAndBidTabs"
 import { getPendingOffersCount, getBuyerActionCount } from "@/lib/listingApi"
 import { getOrCreateSupportRoom } from "@/lib/chatApi"
-import { useDealerAccess } from "@/context/DealerAccessContext"
+import { DealerAccessProvider, useDealerAccess } from "@/context/DealerAccessContext"
 
 /** Where each role's messages inbox lives, so "Contact Support" can land the
  *  new/existing room straight in view via the same `?room=` auto-select
@@ -66,7 +66,26 @@ interface SidebarProps {
     myOffersCounterBadge?: number
 }
 
-export function DashboardSidebar({ role, userName: initialUserName, userType: initialUserType, children, myOffersCounterBadge }: SidebarProps) {
+/**
+ * Dealer menu items are permission-gated. Pages outside /dashboard/dealer
+ * (Cancellations, Account Settings, Services, Partner) render this sidebar
+ * without the dealer layout's DealerAccessProvider, which made every gated
+ * item - and most of the phone bottom bar - disappear. Load the dealer's
+ * permissions here whenever no provider is already mounted.
+ */
+export function DashboardSidebar(props: SidebarProps) {
+    const { provided } = useDealerAccess()
+    if (props.role === "dealer" && !provided) {
+        return (
+            <DealerAccessProvider>
+                <DashboardSidebarInner {...props} />
+            </DealerAccessProvider>
+        )
+    }
+    return <DashboardSidebarInner {...props} />
+}
+
+function DashboardSidebarInner({ role, userName: initialUserName, userType: initialUserType, children, myOffersCounterBadge }: SidebarProps) {
     const pathname = usePathname()
     const { profile, user, signOut } = useAuth()
     const { unreadCount } = useChat()
@@ -436,7 +455,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? "bg-primary text-white" : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"}`}
                                                 style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
                                             >
-                                                <span className="flex items-center gap-3"><Icon size={18} /><span className="text-sm font-medium">Stock</span></span>
+                                                <span className="flex items-center gap-3"><Icon size={18} /><span className="text-sm font-medium">{link.label}</span></span>
                                                 {mobileStockExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                                             </button>
                                             {mobileStockExpanded && (
@@ -468,7 +487,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                                 className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? "bg-primary text-white" : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"}`}
                                                 style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
                                             >
-                                                <span className="flex items-center gap-3"><Icon size={18} /> <span className="text-sm font-medium">Buy &amp; Bid</span></span>
+                                                <span className="flex items-center gap-3"><Icon size={18} /> <span className="text-sm font-medium">{link.label}</span></span>
                                                 {mobileBuyBidExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                                             </button>
                                             {mobileBuyBidExpanded && (

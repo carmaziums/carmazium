@@ -998,6 +998,16 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
         return () => clearInterval(id)
     }, [])
 
+    // Only cars that actually have offers belong on this list (cars with
+    // "0 total offers" were crowding it out). A car whose offers failed to
+    // load stays visible so nothing is hidden by a network error. Cars with
+    // offers waiting for a reply come first.
+    const listingsWithOffers = listings
+        .filter(l => !(l.id in offersMap) || (offersMap[l.id]?.length ?? 0) > 0)
+        .sort((a, b) =>
+            (offersMap[b.id] || []).filter(o => o.status === 'PENDING').length
+            - (offersMap[a.id] || []).filter(o => o.status === 'PENDING').length)
+
     const toggleExpand = (id: string) => {
         setExpanded(prev => {
             const next = new Set(prev)
@@ -1068,9 +1078,14 @@ function OffersTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary w-10 h-10" /></div>
             ) : listings.length === 0 ? (
                 <div className="text-center py-20 text-[var(--text-muted)] italic">No listings to receive offers for.</div>
+            ) : listingsWithOffers.length === 0 ? (
+                <div className="text-center py-20 text-[var(--text-muted)]">
+                    <p className="font-bold text-[var(--text-primary)]">No offers yet</p>
+                    <p className="text-sm mt-1">When a buyer makes an offer on one of your cars, it will appear here.</p>
+                </div>
             ) : (
                 <div className="space-y-4">
-                    {listings.map(listing => {
+                    {listingsWithOffers.map(listing => {
                         const listingOffers = offersMap[listing.id] || []
                         const pending = listingOffers.filter(o => o.status === 'PENDING').length
                         const isExpanded = expanded.has(listing.id)

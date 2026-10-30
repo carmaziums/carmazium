@@ -458,7 +458,10 @@ export default function DealerPurchasesPage() {
 
                         <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
                             <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Reference</span>
-                            <span className="text-sm text-[var(--text-secondary)] font-mono">{summaryItem.id}</span>
+                            {/* Short, readable reference; the full record ID stays in the tooltip for support. */}
+                            <span className="text-sm text-[var(--text-secondary)] font-mono" title={summaryItem.id}>
+                                {summaryItem.id.replace(/-/g, "").slice(0, 8).toUpperCase()}
+                            </span>
                         </div>
 
                         {summaryItem.estimatedDelivery && (

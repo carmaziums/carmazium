@@ -13,7 +13,10 @@ export default function DashboardLayout({
     children: React.ReactNode
 }) {
     return (
-        <div className="pb-24 lg:pb-0">
+        // Phones: leave room for the bottom tab bar plus the assistant
+        // launcher above it, so the last card on a page can always be
+        // scrolled clear of both instead of sitting underneath them.
+        <div className="pb-40 lg:pb-0">
             <Suspense fallback={null}>
                 <ProfileCompletionGate>
                     {children}
