@@ -977,8 +977,8 @@ if (
 // technical (Lead, DealerProfile, ServiceJob), but the navigation and page
 // labels for equivalent web/native product surfaces must not drift.
 if (
-  !webDealerRoutes.includes('label: "Stock"') ||
-  !webDealerRoutes.includes('label: "Customers"') ||
+  !webDealerRoutes.includes('label: "Sell Cars"') ||
+  !webDealerRoutes.includes('label: "Customers & Enquiries"') ||
   !webDealerRoutes.includes('label: "Offers"') ||
   !webDealerRoutes.includes('label: "Partner Account"') ||
   !webDealerRoutes.includes('label: "Service Jobs"') ||
