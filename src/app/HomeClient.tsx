@@ -351,7 +351,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                   price={formatPrice(listing.price)}
                   image={listing.images?.[0] || ""}
                   images={listing.images ?? []}
-                  href={`/vehicle/${listing.slug}`}
+                  href={`/buy-cars/${listing.slug}`}
                   year={listing.year ?? undefined}
                   mileage={listing.mileage ?? undefined}
                   fuelType={listing.fuelType ?? undefined}
@@ -401,7 +401,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 price={formatPrice(listing.price)}
                 image={listing.images?.[0] || ""}
                 images={listing.images ?? []}
-                href={`/vehicle/${listing.slug}`}
+                href={`/buy-cars/${listing.slug}`}
                 year={listing.year ?? undefined}
                 mileage={listing.mileage ?? undefined}
                 fuelType={listing.fuelType ?? undefined}

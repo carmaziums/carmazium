@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
@@ -120,6 +121,22 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: Pr
 
     return (
         <div className="min-h-screen pt-24 md:pt-28 pb-24">
+            {page === 1 && <PageJsonLd
+                path="/blog"
+                title="CarMazium Automotive Insights & Guides"
+                type="CollectionPage"
+                mainEntity={{
+                    "@type": "Blog", "@id": SEO_SITE + "/blog#blog",
+                    url: SEO_SITE + "/blog",
+                    name: "CarMazium Automotive Insights & Guides",
+                    publisher: { "@id": SEO_SITE + "/#organization" },
+                    isPartOf: { "@id": SEO_SITE + "/#website" },
+                    inLanguage: "en-GB",
+                    blogPost: posts.filter(p => !p.noIndex).map(p => ({
+                        "@id": SEO_SITE + "/blog/" + encodeURIComponent(p.slug) + "#article",
+                    })),
+                }}
+            />}
             <div className="container mx-auto px-5 max-w-7xl">
                 <section className="relative overflow-hidden rounded-3xl border border-[var(--border-default)] bg-gradient-to-br from-primary/10 via-[var(--bg-card)] to-[var(--bg-card)] px-6 py-10 md:px-10 md:py-14 mb-10 md:mb-14">
                     <div className="relative z-10 max-w-3xl">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "How CarMazium Vehicle Auctions Work",
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 }
 
 export default function AuctionHowItWorksLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return <><PageJsonLd path="/auctions/how-it-works" title="How CarMazium Vehicle Auctions Work" description={metadata.description as string} about={SEO_TRADEXCHANGE} />{children}</>
 }

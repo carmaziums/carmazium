@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { SELL_FAQS } from "@/lib/sellFaqs"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "Sell My Car Online UK | Free Car Valuation",
@@ -36,60 +38,33 @@ export const metadata: Metadata = {
     },
 }
 
-const sellPageJsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-        {
-            "@type": "WebPage",
-            "@id": "https://www.carmazium.com/sell#webpage",
-            url: "https://www.carmazium.com/sell",
-            name: "Sell My Car Online UK | Free Car Valuation | CarMazium",
-            description:
-                "Sell your car online in the UK. Get a free car valuation, choose a £0 verified-dealer auction or £1 retail listing, and get paid directly by the buyer.",
-            inLanguage: "en-GB",
-            isPartOf: { "@id": "https://www.carmazium.com/#website" },
-        },
-        {
-            "@type": "FAQPage",
-            "@id": "https://www.carmazium.com/sell#faq",
-            mainEntity: [
-                {
-                    "@type": "Question",
-                    name: "How much does it cost to sell my car on CarMazium?",
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "Auction listings are £0 for sellers. Retail listings cost £1. Optional services, if selected, can have their own separate charges.",
-                    },
-                },
-                {
-                    "@type": "Question",
-                    name: "Can I sell a car with outstanding finance?",
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "Yes. You can list a vehicle with outstanding finance as long as you disclose it accurately. The buyer can clear the agreed settlement with the finance company as part of collection and handover.",
-                    },
-                },
-                {
-                    "@type": "Question",
-                    name: "Who pays me for my car?",
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "The buyer pays you directly for the vehicle after the agreed inspection and handover process. CarMazium does not hold the vehicle purchase price between buyer and seller.",
-                    },
-                },
-            ],
-        },
-    ],
-}
-
 export default function SellLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                    __html: JSON.stringify(sellPageJsonLd).replace(/</g, "\\u003c"),
+            <PageJsonLd
+                path="/sell"
+                title="Sell My Car Online UK | Free Car Valuation | CarMazium"
+                description={metadata.description as string}
+                mainEntity={{
+                    "@type": "Service",
+                    "@id": SEO_SITE + "/sell#service",
+                    name: "Sell your car online",
+                    serviceType: "Online car selling marketplace",
+                    provider: { "@id": SEO_SITE + "/#organization" },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                    offers: [
+                        { "@type": "Offer", name: "Dealer auction listing", price: "0", priceCurrency: "GBP" },
+                        { "@type": "Offer", name: "Basic retail listing", price: "1.00", priceCurrency: "GBP" },
+                    ],
                 }}
+                nodes={[{
+                    "@type": "FAQPage", "@id": SEO_SITE + "/sell#faq",
+                    isPartOf: { "@id": SEO_SITE + "/sell#webpage" },
+                    mainEntity: SELL_FAQS.map(faq => ({
+                        "@type": "Question", name: faq.question,
+                        acceptedAnswer: { "@type": "Answer", text: faq.answer },
+                    })),
+                }]}
             />
             {children}
         </>

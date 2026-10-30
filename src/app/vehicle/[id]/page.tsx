@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { notFound, permanentRedirect } from "next/navigation"
 import { VehicleDetailPageClient } from "./VehicleDetailPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
@@ -38,7 +38,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
 
     // The requested param can be a UUID or old alias: canonicalise to the published slug.
-    const canonicalUrl = `${SITE_URL}/buy-cars/${listing.slug || id}`
+    const canonicalUrl = listing.type === "CLASSIFIED"
+        ? `${SITE_URL}/buy-cars/${listing.slug || id}`
+        : `${SITE_URL}/vehicle/${id}`
     const title = `${listing.title} — ${formatPrice(listing.price)}`
     const description = listing.description
         ? `${listing.description.slice(0, 155).trim()}${listing.description.length > 155 ? '…' : ''}`
@@ -60,6 +62,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     // uncached network hit before content ever appeared).
     const { listing: initialListing, missing } = await getListingBySlug(id)
     if (missing) notFound()
+    // Trade-only auction vehicles keep their existing detail route and access logic.
+    if (initialListing?.type === "CLASSIFIED") {
+        permanentRedirect(`${SITE_URL}/buy-cars/${initialListing.slug || id}`)
+    }
     return (
         <>
             {initialListing && (

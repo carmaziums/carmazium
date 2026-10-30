@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd } from "@/components/seo/PageJsonLd"
 import styles from "./compare-responsive.module.css"
 
 export const metadata: Metadata = {
@@ -26,5 +27,5 @@ export const metadata: Metadata = {
 }
 
 export default function CompareLayout({ children }: { children: React.ReactNode }) {
-    return <div className={styles.compareRoute}>{children}</div>
+    return <><PageJsonLd path="/compare" title="Compare Used Cars Side by Side UK" description={metadata.description as string} /><div className={styles.compareRoute}>{children}</div></>
 }

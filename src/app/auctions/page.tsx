@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import {
@@ -218,6 +219,22 @@ export default function TradeXchangePage() {
 
     return (
         <div className="min-h-screen" style={{ background: "var(--bg-body)" }}>
+            <PageJsonLd
+                path="/auctions"
+                title="TradeXchange Car Auctions & Vehicle Services UK | CarMazium"
+                about={SEO_TRADEXCHANGE}
+                mainEntity={{
+                    "@type": "Service", "@id": SEO_SITE + "/auctions#service",
+                    name: "TradeXchange dealer car auctions",
+                    serviceType: "Online trade vehicle auction",
+                    description: "24-hour online auctions where verified UK motor traders bid on seller-listed vehicles.",
+                    provider: { "@id": SEO_SITE + "/#organization" },
+                    brand: { "@id": SEO_TRADEXCHANGE },
+                    audience: { "@type": "BusinessAudience", name: "Verified UK motor traders" },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                    offers: { "@type": "Offer", name: "Auction seller listing", price: "0", priceCurrency: "GBP" },
+                }}
+            />
             <section className="relative overflow-hidden text-white" style={{ marginTop: "-80px", paddingTop: "80px" }}>
                 <Image
                     src="/assets/images/live-auction-hero.jpg"

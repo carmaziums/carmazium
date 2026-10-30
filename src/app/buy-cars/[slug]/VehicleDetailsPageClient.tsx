@@ -18,7 +18,6 @@ import { triggerBuyItNow } from "@/lib/auctionApi"
 import { createChatRoom } from "@/lib/chatApi"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter, useSearchParams } from "next/navigation"
-import { VehicleJsonLd } from "@/components/seo/JsonLd"
 import { Input } from "@/components/ui/Input"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
@@ -621,31 +620,6 @@ function VehicleDetailsContent({ params, initialListing }: { params: Promise<{ s
             {showHpiModal && listing && (
                 <HpiReportModal listingId={listing.id} onClose={() => setShowHpiModal(false)} />
             )}
-            {/* Match the listing's robots metadata and the public sitemap:
-                 a sold, offer-accepted, auction or seeded/test vehicle must
-                 never advertise an available retail offer to search engines. */}
-            {listing.type === 'CLASSIFIED' &&
-                listing.status === 'ACTIVE' &&
-                !/(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(listing.slug) && (
-                <VehicleJsonLd
-                name={listing.title}
-                description={`${listing.year} ${listing.make} ${listing.model} — ${formatPrice(listing.price)}. ${listing.mileage?.toLocaleString() || 0} miles, ${listing.fuelType || 'N/A'}, ${listing.transmission || 'N/A'}.`}
-                image={validImages[0]}
-                url={`${process.env.NEXT_PUBLIC_APP_URL || "https://carmazium.com"}/buy-cars/${listing.slug}`}
-                make={listing.make || 'Unknown'}
-                model={listing.model || 'Unknown'}
-                year={listing.year ?? 0}
-                mileage={listing.mileage ?? undefined}
-                fuelType={listing.fuelType ?? undefined}
-                transmission={listing.transmission ?? undefined}
-                color={listing.color ?? undefined}
-                price={Number(listing.price)}
-                condition={listing.condition ?? undefined}
-                vin={listing.vin ?? undefined}
-                engineSize={listing.engineSize ?? undefined}
-                />
-            )}
-
             <div className="container mx-auto px-5">
                 {/* Breadcrumb & Header */}
                 <div className="mb-8">

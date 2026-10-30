@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "Vehicle Warranty Providers UK",
@@ -17,5 +18,30 @@ export const metadata: Metadata = {
 }
 
 export default function WarrantyLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return (
+        <>
+            <PageJsonLd
+                path="/services/warranty"
+                title="Vehicle Warranty Providers UK | CarMazium"
+                description={metadata.description as string}
+                crumbs={[
+                    { label: "Home", path: "/" },
+                    { label: "Services", path: "/services" },
+                    { label: "Vehicle warranty options", path: "/services/warranty" },
+                ]}
+                mainEntity={{
+                    "@type": "Service",
+                    "@id": SEO_SITE + "/services/warranty#service",
+                    name: "Vehicle warranty options",
+                    serviceType: "Used vehicle warranty introduction",
+                    description: metadata.description,
+                    url: SEO_SITE + "/services/warranty",
+                    broker: { "@id": SEO_SITE + "/#organization" },
+                    brand: { "@id": SEO_TRADEXCHANGE },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                }}
+            />
+            {children}
+        </>
+    )
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "Used Cars for Sale Across the UK",
@@ -25,5 +26,5 @@ export const metadata: Metadata = {
 }
 
 export default function SearchLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return <><PageJsonLd path="/search" title="Used Cars for Sale Across the UK | CarMazium" type="CollectionPage" description={metadata.description as string} />{children}</>
 }
