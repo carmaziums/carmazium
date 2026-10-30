@@ -25,6 +25,9 @@ test("card carousels render photos near the current slide, not the whole gallery
     const carousel = read("src/components/features/CardImageCarousel.tsx")
     assert.match(carousel, /i <= maxReached \+ 1 &&/)
     assert.match(carousel, /src=\{cardImageUrl\(photo\.src\)\}/)
+    // Arrow / keyboard navigation must mount the target image before scrolling.
+    assert.match(carousel, /setMaxReached\(\(prev\) => Math\.max\(prev, clamped \+ 1\)\)/)
+    assert.match(carousel, /requestAnimationFrame\(\(\) => \{/)
 })
 
 test("card photo resizing is opt-in (it is a billed Supabase feature)", () => {
