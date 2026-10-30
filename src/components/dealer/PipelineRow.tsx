@@ -15,7 +15,7 @@ import {
     Ban,
 } from "lucide-react"
 
-export type PurchaseStatus = "awaiting_confirmation" | "sale_confirmed" | "reviewing_docs" | "checks_complete" | "delivery_requested"
+export type PurchaseStatus = "awaiting_confirmation" | "sale_confirmed" | "sold" | "reviewing_docs" | "checks_complete" | "delivery_requested"
 
 export interface PurchaseItem {
     id: string
@@ -31,6 +31,7 @@ export interface PurchaseItem {
     status: PurchaseStatus
     offerAccepted?: boolean
     buyerFeeSettled?: boolean
+    retailSold?: boolean
     estimatedDelivery?: string
     documentsReceived?: number
     documentsTotal?: number
@@ -46,6 +47,13 @@ const STATUS_CONFIG: Record<PurchaseStatus, { label: string; icon: React.Compone
     },
     sale_confirmed: {
         label: "Sale Confirmed",
+        icon: CheckCircle2,
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
+    },
+    sold: {
+        label: "Sold",
         icon: CheckCircle2,
         color: "text-emerald-400",
         bg: "bg-emerald-500/10",
@@ -134,11 +142,15 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                             <ChevronRight size={13} aria-hidden="true" />
                         </button>
                     )}
-                    {item.offerAccepted && (
+                    {item.retailSold ? (
+                        <p className="mt-2 text-xs font-semibold text-emerald-400">
+                            Retail sale recorded · No buyer fee
+                        </p>
+                    ) : item.offerAccepted ? (
                         <p className="mt-2 text-xs font-semibold text-emerald-400">
                             Offer accepted{item.buyerFeeSettled ? ' · Buyer fee settled' : ' · Buyer fee pending'}
                         </p>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* Price */}
