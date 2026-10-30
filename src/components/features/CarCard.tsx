@@ -1,12 +1,12 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/Button"
-import { Calendar, Gauge, Fuel, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck, Globe } from "lucide-react"
+import { Calendar, Gauge, Fuel, Cog, Car, BadgeCheck, ShieldCheck, Star, MapPin, Gavel, Truck, Globe } from "lucide-react"
 import { SellerBadge } from "@/components/ui/SellerBadge"
 import { FeaturedBadge } from "@/components/features/FeaturedBadge"
 import { WriteOffCategoryBadge } from "@/components/ui/WriteOffCategoryBadge"
 import { CardImageCarousel } from "@/components/features/CardImageCarousel"
 import { SaveCarButton } from "@/components/features/SaveCarButton"
-import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS } from "@/lib/vehicleLabels"
+import { BODY_TYPE_LABELS, FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from "@/lib/vehicleLabels"
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,7 @@ interface CarCardProps {
     year?: number
     mileage?: number
     fuelType?: string
+    transmission?: string | null
     bodyType?: string
     location?: string | null
     distanceMi?: number | null
@@ -67,14 +68,15 @@ const DEFAULT_BANNER_COLOR = 'bg-primary'
 
 export function CarCard({
     title, listingId, make, model, price, image, images, href = "#",
-    year, mileage, fuelType, bodyType, location, distanceMi,
+    year, mileage, fuelType, transmission, bodyType, location, distanceMi,
     sellerId, sellerScore, isFeatured = false, badgeTier, status, bannerLabel, hasLinkedAuction,
     isDepartedSale, deliveryAvailable, exteriorGrade, writeOffCategory, isImported
 }: CarCardProps) {
     const makeModelLine = [make, model].filter(Boolean).join(" ").trim()
     const gradeStyle = exteriorGrade && exteriorGrade >= 1 && exteriorGrade <= 5 ? GRADE_STYLES[exteriorGrade] : null
     const gallery = (images && images.length > 0 ? images : image ? [image] : []).filter(Boolean)
-    const hasSpecs = year || mileage || fuelType || bodyType
+    const transmissionLabel = transmission ? TRANSMISSION_LABELS[transmission] : undefined
+    const hasSpecs = year || mileage !== undefined && mileage !== null || fuelType || transmissionLabel || bodyType
 
     // Tier-based styling
     const tierBorder =
@@ -293,6 +295,11 @@ export function CarCard({
                         {fuelType && FUEL_TYPE_LABELS[fuelType] && (
                             <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
                                 <Fuel size={10} /> {FUEL_TYPE_LABELS[fuelType]}
+                            </span>
+                        )}
+                        {transmissionLabel && (
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 dark:bg-[var(--bg-card)] border border-slate-500/20 dark:border-[var(--border-default)] text-slate-600 dark:text-[var(--text-muted)] text-[10px] font-semibold px-2 py-1 rounded-md">
+                                <Cog size={10} /> {transmissionLabel}
                             </span>
                         )}
                         {bodyType && BODY_TYPE_LABELS[bodyType] && (
