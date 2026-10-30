@@ -197,6 +197,10 @@ export default function DealerPurchasesPage() {
                         </button>
                     </div>
 
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Link href="/dashboard/cancellations" className="inline-flex min-h-11 items-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2 text-sm font-semibold hover:border-primary/50">Cancelled Sales</Link>
+                    </div>
+
                     <BuyAndBidTabs />
 
                     {/* Summary Cards */}
