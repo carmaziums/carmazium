@@ -141,11 +141,12 @@ test("attention list respects team permissions", () => {
     assert.equal(items.length, 0)
 })
 
-test("each dealer area has one name in the menu, bottom bar and page title", () => {
+test("dealer menu and bottom bar use the same names as the phone app", () => {
     assert.equal(getDealerRoute("/dashboard/dealer/inventory").label, "Stock")
     assert.equal(getDealerRoute("/dashboard/dealer/inventory").title, "Stock")
     assert.equal(getDealerRoute("/dashboard/dealer/auctions").label, "Buy & Bid")
-    assert.equal(getDealerRoute("/dashboard/dealer/auctions").title, "Buy & Bid")
+    // Page title matches the phone app's Buy & Bid hub ("Auctions & Buying").
+    assert.equal(getDealerRoute("/dashboard/dealer/auctions").title, "Auctions & Buying")
     // Expandable phone-menu rows read the label from config, not a hard-coded copy.
     assert.ok(!sidebar.includes('font-medium">Stock<'))
     assert.ok(!sidebar.includes('font-medium">Buy &amp; Bid<'))
