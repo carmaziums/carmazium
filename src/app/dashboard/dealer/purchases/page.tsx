@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
     Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3,
 } from "lucide-react"
@@ -44,6 +45,7 @@ type ViewMode = "list" | "kanban"
 
 export default function DealerPurchasesPage() {
     const { user, profile, loading: authLoading } = useAuth()
+    const router = useRouter()
     const [loading, setLoading] = React.useState(true)
     const [viewMode, setViewMode] = React.useState<ViewMode>("list")
     const [purchases, setPurchases] = React.useState<PurchaseItem[]>([])
@@ -66,8 +68,11 @@ export default function DealerPurchasesPage() {
 
     // Modal state
     const [summaryItem, setSummaryItem] = React.useState<PurchaseItem | null>(null)
-    const [sellerItem, setSellerItem] = React.useState<PurchaseItem | null>(null)
     const [cancelItem, setCancelItem] = React.useState<PurchaseItem | null>(null)
+
+    const openSellerDetails = (item: PurchaseItem) => {
+        router.push(`/dashboard/dealer/purchases/${encodeURIComponent(item.id)}/seller`)
+    }
 
     const userName = profile?.firstName
         ? `${profile.firstName} ${profile.lastName || ""}`
@@ -214,7 +219,7 @@ export default function DealerPurchasesPage() {
                                                         key={item.id}
                                                         item={item}
                                                         onViewSummary={setSummaryItem}
-                                                        onViewSeller={setSellerItem}
+                                                        onViewSeller={openSellerDetails}
                                                         onRequestCancellation={setCancelItem}
                                                     />
                                                 ))}
@@ -254,7 +259,7 @@ export default function DealerPurchasesPage() {
                                                     key={item.id}
                                                     item={item}
                                                     onViewSummary={setSummaryItem}
-                                                    onViewSeller={setSellerItem}
+                                                    onViewSeller={openSellerDetails}
                                                     onRequestCancellation={setCancelItem}
                                                 />
                                             ))}
@@ -341,49 +346,6 @@ export default function DealerPurchasesPage() {
                 )}
             </ModalOverlay>
 
-            {/* Seller Details Modal */}
-            <ModalOverlay
-                open={!!sellerItem}
-                onClose={() => setSellerItem(null)}
-                title="Seller Details"
-            >
-                {sellerItem && (
-                    <div className="space-y-5">
-                        <div className="bg-black/20 rounded-xl p-5 border border-[var(--border-default)]">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-lg">
-                                    {sellerItem.sellerName?.charAt(0) || "S"}
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-black">{sellerItem.sellerName}</h3>
-                                    <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Verified Seller</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Email</span>
-                                <a href={`mailto:${sellerItem.sellerEmail}`} className="text-sm text-primary hover:text-red-600 dark:hover:text-white transition-colors font-medium">
-                                    {sellerItem.sellerEmail}
-                                </a>
-                            </div>
-                            <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Phone</span>
-                                <a href={`tel:${sellerItem.sellerPhone}`} className="text-sm text-primary hover:text-red-600 dark:hover:text-white transition-colors font-medium">
-                                    {sellerItem.sellerPhone}
-                                </a>
-                            </div>
-                        </div>
-
-                        <div className="bg-black/20 rounded-xl p-4 border border-[var(--border-default)]">
-                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] block mb-1">Vehicle</span>
-                            <span className="text-sm font-bold">{sellerItem.vehicleTitle}</span>
-                            <span className="text-xs text-[var(--text-muted)] block mt-0.5">{sellerItem.vehicleSubtitle}</span>
-                        </div>
-                    </div>
-                )}
-            </ModalOverlay>
         </div>
     )
 }
