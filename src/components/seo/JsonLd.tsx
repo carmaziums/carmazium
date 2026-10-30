@@ -35,6 +35,13 @@ export function MarketplaceJsonLd({
                 "@type": "OnlineBusiness",
                 "@id": organizationId,
                 name,
+                legalName: "CARMAZIUM LTD",
+                identifier: {
+                    "@type": "PropertyValue",
+                    propertyID: "UK Companies House company number",
+                    value: "17053307",
+                },
+                sameAs: ["https://find-and-update.company-information.service.gov.uk/company/17053307"],
                 url: canonicalUrl,
                 logo: {
                     "@type": "ImageObject",
