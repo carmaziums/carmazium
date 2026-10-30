@@ -9,7 +9,6 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import {
     PipelineRow,
@@ -40,7 +39,7 @@ const STATUS_ORDER: PurchaseStatus[] = [
 const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }> = {
     awaiting_confirmation: { label: "Awaiting Confirmation", icon: Clock, color: "text-amber-400" },
     sale_confirmed: { label: "Sale Confirmed", icon: CheckCircle2, color: "text-emerald-400" },
-    sold: { label: "Sold", icon: CheckCircle2, color: "text-emerald-400" },
+    sold: { label: "Purchased", icon: CheckCircle2, color: "text-emerald-400" },
     reviewing_docs: { label: "Reviewing Docs", icon: FileSearch, color: "text-blue-400" },
     checks_complete: { label: "Checks Complete", icon: CheckCircle2, color: "text-emerald-400" },
     delivery_requested: { label: "Delivery Requested", icon: Truck, color: "text-violet-400" },
@@ -197,7 +196,10 @@ export default function DealerPurchasesPage() {
                         </button>
                     </div>
 
-                    <BuyAndBidTabs />
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Link href="/dashboard/cancellations" className="inline-flex min-h-11 items-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2 text-sm font-semibold hover:border-primary/50">Cancelled Sales</Link>
+                    </div>
+
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
+import { createPortal } from "react-dom"
 import {
     MoreHorizontal,
     FileText,
@@ -53,7 +54,7 @@ const STATUS_CONFIG: Record<PurchaseStatus, { label: string; icon: React.Compone
         border: "border-emerald-500/20",
     },
     sold: {
-        label: "Sold",
+        label: "Purchased",
         icon: CheckCircle2,
         color: "text-emerald-400",
         bg: "bg-emerald-500/10",
@@ -92,13 +93,35 @@ interface PipelineRowProps {
 export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancellation }: PipelineRowProps) {
     const [menuOpen, setMenuOpen] = React.useState(false)
     const menuRef = React.useRef<HTMLDivElement>(null)
+    const popupRef = React.useRef<HTMLDivElement>(null)
+    const [menuPosition, setMenuPosition] = React.useState({ top: 0, left: 0 })
+    const updateMenuPosition = React.useCallback(() => {
+        const anchor = menuRef.current?.getBoundingClientRect()
+        if (!anchor) return
+        const width = Math.min(256, window.innerWidth - 24)
+        const height = 152
+        const top = anchor.bottom + height + 8 <= window.innerHeight
+            ? anchor.bottom + 4
+            : Math.max(12, anchor.top - height - 4)
+        setMenuPosition({ top: Math.max(12, Math.min(top, window.innerHeight - height - 12)), left: Math.max(12, Math.min(anchor.right - width, window.innerWidth - width - 12)) })
+    }, [])
+    React.useEffect(() => {
+        if (!menuOpen) return
+        updateMenuPosition()
+        window.addEventListener("resize", updateMenuPosition)
+        window.addEventListener("scroll", updateMenuPosition, true)
+        return () => {
+            window.removeEventListener("resize", updateMenuPosition)
+            window.removeEventListener("scroll", updateMenuPosition, true)
+        }
+    }, [menuOpen, updateMenuPosition])
 
     const config = STATUS_CONFIG[item.status]
     const StatusIcon = config.icon
 
     React.useEffect(() => {
         function handleClick(e: MouseEvent) {
-            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node) && !popupRef.current?.contains(e.target as Node)) {
                 setMenuOpen(false)
             }
         }
@@ -196,7 +219,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                 {/* Context Menu */}
                 <div className="relative order-4 ml-auto shrink-0 md:order-none md:ml-0" ref={menuRef}>
                     <button
-                        onClick={() => setMenuOpen(!menuOpen)}
+                        onClick={() => { updateMenuPosition(); setMenuOpen(!menuOpen) }}
                         aria-label={`Purchase actions for ${item.vehicleTitle}`}
                         aria-expanded={menuOpen}
                         className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-[var(--bg-card)] transition-colors text-[var(--text-muted)] hover:text-primary dark:hover:text-white"
@@ -204,8 +227,8 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                         <MoreHorizontal size={16} />
                     </button>
 
-                    {menuOpen && (
-                        <div className="fixed inset-x-4 bottom-20 z-[90] md:absolute md:inset-x-auto md:bottom-auto md:right-0 md:top-full md:mt-1 w-auto md:w-52 bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
+                    {menuOpen && createPortal(
+                        <div ref={popupRef} role="menu" style={{ top: menuPosition.top, left: menuPosition.left, width: Math.min(256, typeof window !== "undefined" ? window.innerWidth - 24 : 256) }} className="fixed z-[200] bg-[var(--bg-dropdown)] backdrop-blur-xl border border-[var(--border-default)] rounded-xl shadow-2xl shadow-black/60 overflow-hidden">
                             <div className="py-1">
                                 <button
                                     onClick={() => { onViewSummary?.(item); setMenuOpen(false) }}
@@ -233,7 +256,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                                     </button>
                                 )}
                             </div>
-                        </div>
+                        </div>, document.body
                     )}
                 </div>
             </div>

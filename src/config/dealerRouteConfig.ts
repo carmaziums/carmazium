@@ -54,7 +54,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/inventory",
         requiredPermission: "VIEW_INVENTORY",
-        label: "Stock",
+        label: "Sell Cars",
         title: "Inventory",
         subHeader: "Manage live, draft and sold stock",
         icon: Car,
@@ -64,7 +64,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/crm",
         requiredPermission: "MANAGE_CRM",
-        label: "Customers",
+        label: "Customers & Enquiries",
         title: "Customers",
         subHeader: "Enquiries, offers and buyer follow-up",
         icon: Kanban,
@@ -84,12 +84,12 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
-        label: "Buy & Bid",
+        label: "Buy Cars",
         title: "Auctions & Buying",
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
         section: "Main",
-        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids", "/dashboard/dealer/purchases"]
+        activePrefixes: ["/dashboard/dealer/auctions", "/dashboard/dealer/bids"]
     },
     {
         href: "/dashboard/dealer/auctions/won",
@@ -103,11 +103,12 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     },
     {
         href: "/dashboard/cancellations",
-        label: "Cancellations",
+        label: "Cancelled Sales",
         title: "Sale Cancellations",
         subHeader: "Review buyer and seller cancellation requests",
         icon: ShieldCheck,
-        section: "Business"
+        section: "Purchases",
+        hidden: true
     },
     {
         href: "/dashboard/dealer/messages",
@@ -194,12 +195,11 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
     {
         href: "/dashboard/dealer/purchases",
         requiredPermission: "VIEW_PURCHASES",
-        label: "Purchase History",
+        label: "Purchases",
         title: "Purchase History",
         subHeader: "Every vehicle you have bought, retail and auction",
         icon: ShoppingBag,
-        hidden: true,
-        section: "Buying"
+        section: "Main"
     },
     {
         href: "/dashboard/dealer/wishlist",
