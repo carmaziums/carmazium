@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Flame, Gavel, ShoppingBag, Star, Tag, Trophy } from "lucide-react"
 import type { DealerPermission } from "@/lib/dealerAccess"
 import { useDealerAccess } from "@/context/DealerAccessContext"
+import { bidsOffersTabHref } from "@/lib/dealerBidsOffersNavigation"
 
 type BuyAndBidTab = {
     href: string
@@ -37,7 +38,19 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
 export function BuyAndBidTabs({ className = "" }: { className?: string }) {
     const pathname = usePathname()
     const { loading, hasPermission } = useDealerAccess()
-    const tabs = BUY_AND_BID_TABS.filter(tab => !tab.permission || loading || hasPermission(tab.permission))
+    // The shared tab must stay reachable to MANAGE_OFFERS-only staff, without
+    // linking them to the VIEW_TRADE-gated auction bids page.
+    const bidsOffersHref = bidsOffersTabHref(
+        loading || hasPermission("VIEW_TRADE"),
+        loading || hasPermission("MANAGE_OFFERS"),
+    )
+    const tabs = BUY_AND_BID_TABS
+        .filter(tab => tab.href === "/dashboard/dealer/bids"
+            ? bidsOffersHref !== null
+            : !tab.permission || loading || hasPermission(tab.permission))
+        .map(tab => tab.href === "/dashboard/dealer/bids" && bidsOffersHref
+            ? { ...tab, href: bidsOffersHref }
+            : tab)
 
     return (
         <nav
