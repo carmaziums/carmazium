@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, BookOpen, Search, ShieldCheck } from "lucide-react"
@@ -120,6 +121,20 @@ export default async function UsedCarTypesPage() {
 
     return (
         <main className="min-h-screen pb-24 pt-24 md:pt-28">
+            <PageJsonLd
+                path="/used-car-types"
+                title="Used Car Body Types: Hatchbacks, SUVs, Estates & More | CarMazium"
+                type="CollectionPage"
+                mainEntity={{
+                    "@type": "ItemList", "@id": SEO_SITE + "/used-car-types#types",
+                    name: "Used car body type guide",
+                    itemListElement: BODY_TYPES.map((type, i) => ({
+                        "@type": "ListItem", position: i + 1,
+                        name: type.name,
+                        url: SEO_SITE + "/search?bodyType=" + encodeURIComponent(type.key),
+                    })),
+                }}
+            />}
             <div className="container mx-auto max-w-7xl px-5">
                 <nav aria-label="Breadcrumb" className="mb-5 text-sm text-[var(--text-muted)]">
                     <Link href="/" className="hover:text-primary">Home</Link>
