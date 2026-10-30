@@ -156,6 +156,10 @@ if (!TOKEN) {
     shutdown: /SIGTERM|shutting down|graceful shutdown|received signal/i,
     database: /P1001|P2024|database.*unavailable|connection pool.*timeout/i,
     proxy: /proxy error|could not find a good candidate|connection refused|no instances/i,
+    auction_activated: /Activated auction [a-z0-9-]+/i,
+    auction_closed: /Closed auction [a-z0-9-]+/i,
+    auction_close_failed: /Failed to close auction [a-z0-9-]+/i,
+    auction_lifecycle_error: /AuctionLifecycleService.*(error|failed)|(?:error|failed).*AuctionLifecycleService/i,
   };
   const logs = spawnSync('flyctl', ['logs', '--app', APP, '--no-tail', '--json'], {
     encoding: 'utf8',
@@ -169,7 +173,7 @@ if (!TOKEN) {
     say('Fly log buffer unavailable (CLI status ' + (logs.status ?? 'unknown') + '). No raw stderr printed.');
   } else {
     const lines = logs.stdout.split(/\r?\n/).filter(Boolean);
-    say('Sampled lines: ' + lines.length + ' (this buffer may not contain historical failures).');
+    say('Sampled lines: ' + lines.length + ' (bounded recent Fly log buffer; no guaranteed time range or complete scheduler coverage).');
     for (const [category, pattern] of Object.entries(logPatterns)) {
       say('- ' + category + ': ' + lines.filter(line => pattern.test(line)).length);
     }
