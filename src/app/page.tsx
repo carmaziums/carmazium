@@ -18,6 +18,7 @@ import HomeClient from "./HomeClient"
 import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import { indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
 import { type Listing } from "@/lib/listingApi"
+import { toHomeCard } from "@/lib/homeCardListing"
 import { type BlogPost, type BlogPostSummary } from "@/lib/blogApi"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
 
@@ -208,7 +209,7 @@ export default async function Home() {
                 }
             `}</style>
 
-            <HomeClient initialListings={featuredListings} latestRetailListings={latestRetailListings} latestBlogPosts={latestBlogPosts} />
+            <HomeClient initialListings={featuredListings.map(toHomeCard)} latestRetailListings={latestRetailListings.map(toHomeCard)} latestBlogPosts={latestBlogPosts} />
 
             {/* Search-engine-readable marketplace context, structured for human scanning. */}
             <section

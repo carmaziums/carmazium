@@ -16,7 +16,7 @@ test('homepage previews active public retail listings beyond boosted inventory',
   assert.match(page, /listing\.status === "ACTIVE"/);
   assert.match(page, /getRecentRetailListings\(\)/);
   assert.match(page, /getFeaturedListings\(\)/);
-  assert.match(page, /latestRetailListings=\{latestRetailListings\}/);
+  assert.match(page, /latestRetailListings=\{latestRetailListings(\.map\(toHomeCard\))?\}/);
   assert.match(backend, /filterDto\.listingType === 'AUCTION'/);
   assert.match(home, /featuredIds\.has\(listing\.id\)/);
   assert.match(home, /moreRetailCars\.map\(\(listing\)/);
