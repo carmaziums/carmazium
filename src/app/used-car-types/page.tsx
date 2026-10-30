@@ -134,7 +134,7 @@ export default async function UsedCarTypesPage() {
                         url: SEO_SITE + "/search?bodyType=" + encodeURIComponent(type.key),
                     })),
                 }}
-            />}
+            />
             <div className="container mx-auto max-w-7xl px-5">
                 <nav aria-label="Breadcrumb" className="mb-5 text-sm text-[var(--text-muted)]">
                     <Link href="/" className="hover:text-primary">Home</Link>
