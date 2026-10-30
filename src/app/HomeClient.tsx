@@ -355,6 +355,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                   year={listing.year ?? undefined}
                   mileage={listing.mileage ?? undefined}
                   fuelType={listing.fuelType ?? undefined}
+                  transmission={listing.transmission ?? undefined}
                   bodyType={listing.bodyType ?? undefined}
                   isFeatured={true}
                   badgeTier={listing.badgeTier}
@@ -405,6 +406,7 @@ export default function HomeClient({ initialListings, latestRetailListings, late
                 year={listing.year ?? undefined}
                 mileage={listing.mileage ?? undefined}
                 fuelType={listing.fuelType ?? undefined}
+                transmission={listing.transmission ?? undefined}
                 bodyType={listing.bodyType ?? undefined}
                 isFeatured={false}
                 badgeTier={listing.badgeTier}
