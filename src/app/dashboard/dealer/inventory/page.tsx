@@ -70,7 +70,14 @@ export default function DealerInventoryPage() {
     const [loading,           setLoading]           = React.useState(true)
     const [loadError,         setLoadError]         = React.useState<string | null>(null)
     const [searchQuery,       setSearchQuery]       = React.useState("")
-    const [statusFilter,      setStatusFilter]      = React.useState("ALL")
+    const [statusFilter,      setStatusFilter]      = React.useState(() => {
+        const requested = searchParams.get('status')
+        return requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL"
+    })
+    React.useEffect(() => {
+        const requested = searchParams.get('status')
+        setStatusFilter(requested && ["ALL", "ACTIVE", "PENDING_REVIEW", "REJECTED", "DRAFT", "SOLD"].includes(requested) ? requested : "ALL")
+    }, [searchParams])
     const [isBulkImportOpen,  setIsBulkImportOpen]  = React.useState(false)
     const [isImportModalOpen, setIsImportModalOpen] = React.useState(false)
     const [activeDropdown,    setActiveDropdown]    = React.useState<string | null>(null)
