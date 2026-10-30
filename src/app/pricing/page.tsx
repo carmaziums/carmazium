@@ -21,6 +21,7 @@ import {
     Zap,
 } from "lucide-react"
 import { PRICING } from "@/lib/pricingConfig"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
 import { DealerCtaButton } from "@/components/features/DealerCtaButton"
 import { Button } from "@/components/ui/Button"
 
@@ -78,6 +79,38 @@ export default function PricingPage() {
 
     return (
         <main className="min-h-screen overflow-hidden pb-24 pt-20">
+            <PageJsonLd
+                path="/pricing"
+                title="Car Selling Fees & Listing Prices UK | CarMazium"
+                description={metadata.description as string}
+                mainEntity={{
+                    "@type": "Service",
+                    "@id": SEO_SITE + "/pricing#service",
+                    name: "CarMazium seller listings",
+                    provider: { "@id": SEO_SITE + "/#organization" },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                    hasOfferCatalog: {
+                        "@type": "OfferCatalog", name: "Seller fees",
+                        itemListElement: [
+                            { "@type": "Offer", name: "Dealer auction listing", price: String(PRICING.marketplace.auction.sellerListingFee), priceCurrency: "GBP" },
+                            { "@type": "Offer", name: "Basic retail listing", price: PRICING.listing.basic.price.toFixed(2), priceCurrency: "GBP" },
+                            { "@type": "Offer", name: "Standard retail listing", price: PRICING.listing.standard.price.toFixed(2), priceCurrency: "GBP",
+                                description: PRICING.listing.standard.description },
+                            { "@type": "Offer", name: "Premium retail listing", price: PRICING.listing.premium.price.toFixed(2), priceCurrency: "GBP",
+                                description: PRICING.listing.premium.description },
+                            { "@type": "Offer", name: "Optional vehicle history check", price: PRICING.hpiReport.price.toFixed(2), priceCurrency: "GBP" },
+                        ],
+                    },
+                }}
+                nodes={[{
+                    "@type": "FAQPage", "@id": SEO_SITE + "/pricing#faq",
+                    isPartOf: { "@id": SEO_SITE + "/pricing#webpage" },
+                    mainEntity: FAQS.map(f => ({
+                        "@type": "Question", name: f.q,
+                        acceptedAnswer: { "@type": "Answer", text: f.a },
+                    })),
+                }]}
+            />
             <section className="relative border-b border-[var(--border-default)] bg-gradient-to-b from-primary/[0.04] via-[var(--bg-primary)] to-[var(--bg-primary)]">
                 <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-primary/[0.06] blur-3xl" />
                 <div className="pointer-events-none absolute -right-24 top-8 h-80 w-80 rounded-full bg-amber-400/[0.05] blur-3xl" />
