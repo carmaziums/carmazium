@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import {
@@ -26,6 +26,7 @@ const DB_STATUS_MAP: Record<string, PurchaseStatus> = {
 
 const STATUS_ORDER: PurchaseStatus[] = [
     "awaiting_confirmation",
+    "sale_confirmed",
     "reviewing_docs",
     "checks_complete",
     "delivery_requested",
@@ -33,6 +34,7 @@ const STATUS_ORDER: PurchaseStatus[] = [
 
 const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }> = {
     awaiting_confirmation: { label: "Awaiting Confirmation", icon: Clock, color: "text-amber-400" },
+    sale_confirmed: { label: "Sale Confirmed", icon: CheckCircle2, color: "text-emerald-400" },
     reviewing_docs: { label: "Reviewing Docs", icon: FileSearch, color: "text-blue-400" },
     checks_complete: { label: "Checks Complete", icon: CheckCircle2, color: "text-emerald-400" },
     delivery_requested: { label: "Delivery Requested", icon: Truck, color: "text-violet-400" },
@@ -54,7 +56,7 @@ export default function DealerPurchasesPage() {
                 setPurchases(
                     res.data.map((item) => ({
                         ...item,
-                        status: DB_STATUS_MAP[item.status] ?? "awaiting_confirmation",
+                        status: item.status === "AWAITING_CONFIRMATION" && item.offerAccepted ? "sale_confirmed" : (DB_STATUS_MAP[item.status] ?? "awaiting_confirmation"),
                     }))
                 )
             })
@@ -75,6 +77,7 @@ export default function DealerPurchasesPage() {
     const grouped = React.useMemo(() => {
         const groups: Record<PurchaseStatus, PurchaseItem[]> = {
             awaiting_confirmation: [],
+            sale_confirmed: [],
             reviewing_docs: [],
             checks_complete: [],
             delivery_requested: [],

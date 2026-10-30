@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import * as React from "react"
 import Image from "next/image"
@@ -15,7 +15,7 @@ import {
     Ban,
 } from "lucide-react"
 
-export type PurchaseStatus = "awaiting_confirmation" | "reviewing_docs" | "checks_complete" | "delivery_requested"
+export type PurchaseStatus = "awaiting_confirmation" | "sale_confirmed" | "reviewing_docs" | "checks_complete" | "delivery_requested"
 
 export interface PurchaseItem {
     id: string
@@ -43,6 +43,13 @@ const STATUS_CONFIG: Record<PurchaseStatus, { label: string; icon: React.Compone
         color: "text-amber-400",
         bg: "bg-amber-500/10",
         border: "border-amber-500/20",
+    },
+    sale_confirmed: {
+        label: "Sale Confirmed",
+        icon: CheckCircle2,
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/10",
+        border: "border-emerald-500/20",
     },
     reviewing_docs: {
         label: "Reviewing Docs",
