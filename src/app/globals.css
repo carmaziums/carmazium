@@ -50,6 +50,9 @@
 /* ─── Theme Variables ──────────────────────────────────────────────────────── */
 
 :root {
+  /* Match the existing brand typography without requiring a font download in CI. */
+  --font-poppins: "Poppins", Arial, sans-serif;
+  --font-montserrat: "Montserrat", Arial, sans-serif;
   /* Light mode (default root) — Cool Sky */
   --bg-body: #eef5fb;
   --bg-card: #ffffff;
@@ -102,7 +105,7 @@
 
 @layer base {
   body {
-    font-family: var(--font-sans);
+    font-family: "Inter", var(--font-sans);
     background-color: var(--bg-body);
     color: var(--text-primary);
     @apply selection:bg-primary selection:text-white antialiased;
