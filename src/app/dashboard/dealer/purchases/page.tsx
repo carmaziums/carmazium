@@ -231,16 +231,16 @@ export default function DealerPurchasesPage() {
                         </div>
                     )}
 
-                    {/* Kanban View */}
+                    {/* Kanban View: swipeable status columns on mobile, grid on desktop. */}
                     {!loading && viewMode === "kanban" && (
-                        <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2 2xl:grid-cols-3">
+                        <div className="flex gap-4 items-start overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-4 -mx-5 px-5 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:overflow-visible" role="region" aria-label="Purchase pipeline board" tabIndex={0}>
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]
                                 const config = STATUS_LABELS[status]
                                 const Icon = config.icon
 
                                 return (
-                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-full min-w-0">
+                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-[min(85vw,340px)] shrink-0 snap-start lg:w-full lg:min-w-0">
                                         {/* Column Header */}
                                         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
                                             <Icon size={14} className={config.color} />
