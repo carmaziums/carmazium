@@ -44,6 +44,8 @@ const STATUS_LABELS: Record<PurchaseStatus, { label: string; icon: React.Compone
     delivery_requested: { label: "Delivery Requested", icon: Truck, color: "text-violet-400" },
 }
 
+type RawPurchaseItem = Omit<PurchaseItem, "status"> & { status: string }
+
 type ViewMode = "list" | "kanban"
 
 export default function DealerPurchasesPage() {
@@ -76,7 +78,7 @@ export default function DealerPurchasesPage() {
         // completes the transaction and creates a Sale. Both sources are needed
         // to show pending purchases without misclassifying them as sold.
         Promise.allSettled([
-            apiClient<{ data: PurchaseItem[]; total: number }>("/dealers/purchases?limit=100", {
+            apiClient<{ data: RawPurchaseItem[]; total: number }>("/dealers/purchases?limit=100", {
                 cache: "no-store",
             }),
             getMyOffers(),
