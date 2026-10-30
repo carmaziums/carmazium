@@ -213,6 +213,8 @@ test("Bids & offers destination respects VIEW_TRADE-only and MANAGE_OFFERS-only 
     const tabBar = read("src/components/dealer/BuyAndBidTabs.tsx")
     assert.match(tabBar, /bidsOffersTabHref\(/)
     assert.match(tabBar, /bidsOffersHref !== null/)
+    assert.match(tabBar, /!loading && hasPermission\("VIEW_TRADE"\)/)
+    assert.match(tabBar, /!loading && hasPermission\("MANAGE_OFFERS"\)/)
 })
 
 test("retail-only team staff do not load auction positions via retail offers", () => {
