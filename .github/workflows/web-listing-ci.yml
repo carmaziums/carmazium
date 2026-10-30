@@ -25,6 +25,9 @@ on:
       - "src/app/HomeClient.tsx"
       - "src/app/page.tsx"
       - "src/components/features/CarCard.tsx"
+      - "src/lib/vehicleLabels.ts"
+      - "src/app/search/page.tsx"
+      - "scripts/test-retail-card-transmission.test.mjs"
       - "scripts/test-home-retail-inventory-truth.test.mjs"
       - "src/lib/googleAds.ts"
       - "src/lib/gtm.ts"
@@ -87,6 +90,9 @@ jobs:
 
       - name: Verify buyer DVLA and MOT information for both auction and retail
         run: node --test scripts/test-buyer-mot-display.test.mjs
+
+      - name: Verify retail transmission badges and all card data paths
+        run: node --test scripts/test-retail-card-transmission.test.mjs
 
       - name: Verify homepage live inventory and honest photo/payment presentation
         run: node --test scripts/test-home-retail-inventory-truth.test.mjs
