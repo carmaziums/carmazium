@@ -4,6 +4,8 @@ import { VehicleDetailsPageClient } from "./VehicleDetailsPageClient"
 import { formatPrice } from "@/lib/listingApi"
 import { VehicleViewTracker } from "@/components/analytics/VehicleViewTracker"
 import { serverBackendFetch } from "@/lib/serverBackendFetch"
+import { RetailVehicleJsonLd, retailDescription, indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
+import type { Listing } from "@/lib/listingApi"
 
 const SITE_URL = "https://www.carmazium.com"
 
@@ -11,9 +13,6 @@ const SITE_URL = "https://www.carmazium.com"
  * Keep obvious seeded/test records out of search results while leaving the
  * listing itself fully accessible and unchanged inside the application.
  */
-function isLikelyTestListingSlug(slug: string): boolean {
-    return /(^|-)(undefined|test\d*|aaa|qqq|www)(-|$)/i.test(slug)
-}
 
 /**
  * Distinguish a confirmed missing vehicle from an upstream outage.
@@ -44,12 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         return { title: "Vehicle Not Found", robots: { index: false, follow: false } }
     }
 
-    const specs = [listing.year, listing.mileage ? `${Number(listing.mileage).toLocaleString('en-GB')} miles` : null, listing.fuelType, listing.transmission]
-        .filter(Boolean)
-        .join(' · ')
-    const description = listing.description
-        ? `${listing.description.slice(0, 155).trim()}${listing.description.length > 155 ? '…' : ''}`
-        : `${listing.title} — ${specs}. ${formatPrice(listing.price)} in ${listing.location || 'the UK'}. Vehicle listing on CarMazium.`
+    const description = retailDescription(listing as Listing)
 
     // The root layout's title template ("%s | CarMazium") applies automatically
     // to the <title> tag, but NOT to openGraph/twitter titles — those need the
@@ -58,16 +52,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const socialTitle = `${title} | CarMazium`
     // Canonicalise direct UUID/legacy detail links to the published listing slug.
     const url = `${SITE_URL}/buy-cars/${listing.slug || slug}`
-    const image = listing.images?.find((img: string) => !img.includes('example.com'))
+    const image = listing.images?.find((img: string) => img && !img.includes('example.com'))?.split('#')[0]
 
     // Only ACTIVE publicly offered retail vehicles belong in organic search.
     // SOLD and OFFER_ACCEPTED pages remain reachable by direct links for deal
     // history, but must not be advertised as cars for sale in Google. Auction
     // and private/draft listings also must not enter the retail index.
-    const indexable =
-        listing.type === 'CLASSIFIED' &&
-        listing.status === 'ACTIVE' &&
-        !isLikelyTestListingSlug(listing.slug || slug)
+    const indexable = indexableRetail(listing as Listing)
 
     return {
         title,
@@ -103,6 +94,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
         <>
             {initialListing && (
                 <>
+                    <RetailVehicleJsonLd listing={initialListing as Listing} />
                     <VehicleViewTracker
                         id={initialListing.id}
                         title={initialListing.title}
