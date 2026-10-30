@@ -123,6 +123,17 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
                         Purchased {new Date(item.purchaseDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
+                    {item.sellerName && (
+                        <button
+                            type="button"
+                            onClick={() => onViewSeller?.(item)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+                            aria-label={`View full seller details for ${item.sellerName}`}
+                        >
+                            Seller: {item.sellerName}
+                            <ChevronRight size={13} aria-hidden="true" />
+                        </button>
+                    )}
                     {item.offerAccepted && (
                         <p className="mt-2 text-xs font-semibold text-emerald-400">
                             Offer accepted{item.buyerFeeSettled ? ' · Buyer fee settled' : ' · Buyer fee pending'}
@@ -197,7 +208,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] hover:text-primary dark:hover:text-white hover:bg-[var(--bg-card)] transition-colors"
                                 >
                                     <User size={14} className="text-[var(--text-muted)]" />
-                                    Seller Details
+                                    Full Seller Details
                                     <ChevronRight size={12} className="ml-auto text-[var(--text-muted)]" />
                                 </button>
                                 {onRequestCancellation && (
