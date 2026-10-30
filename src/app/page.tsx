@@ -15,6 +15,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import HomeClient from "./HomeClient"
+import { PageJsonLd, SEO_SITE } from "@/components/seo/PageJsonLd"
+import { indexableRetail } from "@/components/seo/RetailVehicleJsonLd"
 import { type Listing } from "@/lib/listingApi"
 import { type BlogPost, type BlogPostSummary } from "@/lib/blogApi"
 import { fetchWithRetry } from "@/lib/fetchWithRetry"
@@ -148,6 +150,23 @@ export default async function Home() {
 
     return (
         <>
+            <PageJsonLd
+                path="/"
+                title="CarMazium | Sell Your Car or Buy Used Cars in the UK"
+                description={metadata.description as string}
+                mainEntity={(() => {
+                    const published = featuredListings.filter(indexableRetail)
+                    if (!published.length) return undefined
+                    return {
+                        "@type": "ItemList", "@id": SEO_SITE + "/#featured",
+                        name: "Featured used cars for sale",
+                        itemListElement: published.map((l, i) => ({
+                            "@type": "ListItem", position: i + 1,
+                            url: SEO_SITE + "/buy-cars/" + encodeURIComponent(l.slug),
+                        })),
+                    }
+                })()}
+            />
             {/*
              * HomeClient intentionally shows only the three newest articles.
              * Its archive link is a desktop-only Tailwind control (`hidden sm:inline-flex`).
