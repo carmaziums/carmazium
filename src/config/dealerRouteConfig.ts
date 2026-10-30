@@ -85,7 +85,7 @@ export const DEALER_ROUTE_CONFIG: DealerRoute[] = [
         href: "/dashboard/dealer/auctions",
         requiredPermission: "VIEW_TRADE",
         label: "Buy & Bid",
-        title: "Auctions & Buying",
+        title: "Buy & Bid",
         subHeader: "Live auctions, bids and purchases",
         icon: Gavel,
         section: "Main",
