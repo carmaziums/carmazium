@@ -28,8 +28,8 @@ export const BUY_AND_BID_TABS: BuyAndBidTab[] = [
     { href: "/auctions/browse", label: "Live Auctions", icon: Flame, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/auctions/shortlisted", label: "Shortlisted", icon: Star, permission: "VIEW_TRADE" },
     { href: "/dashboard/dealer/bids", label: "My Bids", icon: Tag, permission: "VIEW_TRADE" },
-    { href: "/dashboard/dealer/auctions/won", label: "Purchases", icon: Trophy, permission: "VIEW_PURCHASES" },
-    { href: "/dashboard/dealer/purchases", label: "Purchase History", icon: ShoppingBag, permission: "VIEW_PURCHASES" },
+    { href: "/dashboard/dealer/auctions/won", label: "Auction Wins", icon: Trophy, permission: "VIEW_PURCHASES" },
+    { href: "/dashboard/dealer/purchases", label: "All Purchases", icon: ShoppingBag, permission: "VIEW_PURCHASES" },
 ]
 
 export function BuyAndBidTabs({ className = "" }: { className?: string }) {
