@@ -50,7 +50,7 @@ test("no dealer menu destination was removed", () => {
 })
 
 test("hidden routes are listed under More tools on desktop and mobile, not dropped", () => {
-    assert.match(sidebar, /DEALER_ROUTE_CONFIG\.filter\(route => route\.hidden && dealerRouteVisible\(route\)/)
+    assert.match(sidebar, /DEALER_ROUTE_CONFIG\.filter\(route =>\s*route\.hidden && dealerRouteVisible\(route\)/)
     assert.match(sidebar, /More tools/)
     assert.match(sidebar, /\.\.\.currentLinks, \.\.\.dealerMoreLinks/)
     assert.ok(DEALER_ROUTE_CONFIG.filter(r => r.hidden).length >= 10)
@@ -166,3 +166,15 @@ test("dealer sidebar loads team permissions on pages outside the dealer layout",
     assert.match(sidebar, /props\.role === "dealer" && !provided/)
     assert.match(sidebar, /<DealerAccessProvider>\s*<DashboardSidebarInner/)
 })
+
+test("purchase-only staff retain a link to Auction Wins even without VIEW_TRADE", () => {
+    const won = getDealerRoute("/dashboard/dealer/auctions/won")
+    const hub = getDealerRoute("/dashboard/dealer/auctions")
+    assert.equal(won.requiredPermission, "VIEW_PURCHASES")
+    assert.equal(hub.requiredPermission, "VIEW_TRADE")
+    // The Buy & Bid hub disappears without VIEW_TRADE; its hidden purchase
+    // destination must therefore stay inside More tools for purchase staff.
+    assert.match(sidebar, /!hasDealerPermission\('VIEW_TRADE'\)/)
+    assert.match(sidebar, /BUY_AND_BID_TABS\.some\(tab => tab\.href === route\.href\)/)
+})
+
