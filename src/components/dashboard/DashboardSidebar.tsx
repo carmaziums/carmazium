@@ -458,7 +458,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                                 </nav>
                                             )}
                                         </div>
-                                    ) : {role === 'dealer' && link.href === '/dashboard/dealer/auctions' ? (
+                                    ) : role === 'dealer' && link.href === '/dashboard/dealer/auctions' ? (
                                         <div>
                                             <button
                                                 type="button"
