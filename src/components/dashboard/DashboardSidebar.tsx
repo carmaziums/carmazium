@@ -189,7 +189,14 @@ function DashboardSidebarInner({ role, userName: initialUserName, userType: init
     // Secondary dealer tools: kept out of the main list to keep it short, but
     // always listed under "More tools" so no dealer option is ever unreachable.
     const dealerMoreLinks: LinkObj[] = role === 'dealer'
-        ? sortBySection(DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route) && !BUY_AND_BID_TABS.some(tab => tab.href === route.href)).map(toDealerLink))
+        ? sortBySection(DEALER_ROUTE_CONFIG.filter(route =>
+            route.hidden && dealerRouteVisible(route)
+            // Tabs are reachable through the Buy & Bid hub only when the staff
+            // member can VIEW_TRADE. VIEW_PURCHASES-only staff must still have
+            // an Auction Wins link in More tools (desktop and mobile).
+            && (!BUY_AND_BID_TABS.some(tab => tab.href === route.href)
+                || !hasDealerPermission('VIEW_TRADE'))
+        ).map(toDealerLink))
         : []
 
     // activePrefixes: older standalone pages (opened from notifications and
