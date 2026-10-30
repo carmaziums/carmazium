@@ -1874,7 +1874,8 @@ export class DealersService {
                 purchasePrice: Number(sale.soldPrice),
                 purchaseDate: sale.createdAt.toISOString(),
                 sellerName: sale.seller
-                    ? `${sale.seller.firstName ?? ''} ${sale.seller.lastName ?? ''}`.trim() || sale.seller.email
+                    ? `${sale.seller.firstName ?? ''} ${sale.seller.lastName ?? ''}`.trim()
+                        || (contactUnlocked ? sale.seller.email : 'Seller')
                     : undefined,
                 sellerEmail: contactUnlocked ? (sale.seller?.email ?? undefined) : undefined,
                 sellerPhone: contactUnlocked ? (sale.seller?.phone ?? undefined) : undefined,
