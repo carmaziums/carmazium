@@ -97,7 +97,7 @@ export function JobVehicles({ vehicles, compact = false }: { vehicles: JobVehicl
                             {v.notes ? <span className="font-sans"> · {v.notes}</span> : null}
                         </p>
                         {v.listing && (
-                            <Link href={`/vehicle/${v.listing.slug}`} className="text-xs text-primary hover:underline">View listing</Link>
+                            <Link href={`/buy-cars/${v.listing.slug}`} className="text-xs text-primary hover:underline">View listing</Link>
                         )}
                     </div>
                 </li>

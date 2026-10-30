@@ -251,7 +251,7 @@ function CompareContent() {
                                                             {car.year || "Year n/a"}{car.mileage != null ? ` · ${car.mileage.toLocaleString()} mi` : ""}{car.fuelType ? ` · ${car.fuelType.toLowerCase()}` : ""}
                                                         </p>
                                                         <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                                                            <Link href={`/vehicle/${car.slug}`}>View details <ArrowRight size={12} /></Link>
+                                                            <Link href={`/buy-cars/${car.slug}`}>View details <ArrowRight size={12} /></Link>
                                                         </Button>
                                                     </div>
                                                 </article>
