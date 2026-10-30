@@ -228,14 +228,14 @@ export default function DealerPurchasesPage() {
 
                     {/* Kanban View */}
                     {!loading && viewMode === "kanban" && (
-                        <div className="flex gap-4 items-start overflow-x-auto pb-4 snap-x snap-mandatory">
+                        <div className="grid grid-cols-1 gap-4 items-start lg:grid-cols-2 2xl:grid-cols-3">
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]
                                 const config = STATUS_LABELS[status]
                                 const Icon = config.icon
 
                                 return (
-                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] min-w-[min(85vw,340px)] w-[min(85vw,340px)] shrink-0 snap-start">
+                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-full min-w-0">
                                         {/* Column Header */}
                                         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
                                             <Icon size={14} className={config.color} />
