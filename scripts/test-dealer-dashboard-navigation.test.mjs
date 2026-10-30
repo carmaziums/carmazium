@@ -196,3 +196,28 @@ test("Bids & offers: one destination with auction-bid and retail-offer views on 
     assert.ok(hub.includes("hasPermission('MANAGE_OFFERS')"))
     assert.ok(hub.includes("navigation?.navigate('DealerMyOffers')"))
 })
+
+test("Bids & offers destination respects VIEW_TRADE-only and MANAGE_OFFERS-only dealer staff", () => {
+    const { bidsOffersTabHref } = load("src/lib/dealerBidsOffersNavigation.ts")
+
+    assert.equal(bidsOffersTabHref(true, true), "/dashboard/dealer/bids")
+    assert.equal(bidsOffersTabHref(true, false), "/dashboard/dealer/bids")
+    assert.equal(bidsOffersTabHref(false, true), "/dashboard/dealer/my-offers")
+    assert.equal(bidsOffersTabHref(false, false), null)
+
+    // Both destinations remain accessible only through their own permission
+    // boundary, even if the URL is typed directly.
+    const dealerLayout = read("src/app/dashboard/dealer/layout.tsx")
+    assert.ok(dealerLayout.includes('["/dashboard/dealer/bids", "VIEW_TRADE"]'))
+    assert.ok(dealerLayout.includes('["/dashboard/dealer/my-offers", "MANAGE_OFFERS"]'))
+    const tabBar = read("src/components/dealer/BuyAndBidTabs.tsx")
+    assert.match(tabBar, /bidsOffersTabHref\(/)
+    assert.match(tabBar, /bidsOffersHref !== null/)
+})
+
+test("retail-only team staff do not load auction positions via retail offers", () => {
+    const retail = read("src/app/dashboard/dealer/my-offers/page.tsx")
+    assert.match(retail, /canViewTrade \? getMyActiveAuctionBids\(\)/)
+    assert.match(retail, /\{canViewTrade && \(/)
+    assert.match(retail, /label="Accepted Offers"/)
+})
