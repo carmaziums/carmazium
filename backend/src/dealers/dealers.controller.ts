@@ -195,6 +195,17 @@ export class DealersController {
         return new PaginatedResponse(data, total, page!, limit!);
     }
 
+    @Get('purchases/:id/seller')
+    @ApiOperation({ summary: 'Seller contact and address for a purchased vehicle (fee-gated for auction winners)' })
+    @ApiParam({ name: 'id', description: 'Sale ID from the dealer purchase history' })
+    async getPurchaseSellerDetails(
+        @CurrentUser() user: any,
+        @Param('id') id: string,
+    ): Promise<StandardResponse<any>> {
+        const details = await this.dealersService.getPurchaseSellerDetails(user.id, id);
+        return new StandardResponse(details);
+    }
+
     // ─── KYC (Business Verification) ───────────────────────────────
 
     @Get('kyc')
