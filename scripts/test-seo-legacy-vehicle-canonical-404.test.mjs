@@ -13,7 +13,7 @@ test('legacy vehicle route gives real 404 only for definitive missing responses'
     const legacy = read('src/app/vehicle/[id]/page.tsx')
     const modern = read('src/app/buy-cars/[slug]/page.tsx')
     for (const page of [legacy, modern]) {
-        assert.match(page, /import \{ notFound \} from "next\/navigation"/)
+        assert.match(page, /import \{ notFound(?:, permanentRedirect)? \} from "next\/navigation"/)
         assert.match(page, /if \(res\.status === 404 \|\| res\.status === 410\) return \{ listing: null, missing: true \} as const/)
         assert.match(page, /if \(!res\.ok\) return \{ listing: null, missing: false \} as const/)
         assert.match(page, /return \{ listing: json\.data \?\? null, missing: false \} as const/)
