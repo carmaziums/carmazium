@@ -41,13 +41,13 @@ export function BuyAndBidTabs({ className = "" }: { className?: string }) {
     // The shared tab must stay reachable to MANAGE_OFFERS-only staff, without
     // linking them to the VIEW_TRADE-gated auction bids page.
     const bidsOffersHref = bidsOffersTabHref(
-        loading || hasPermission("VIEW_TRADE"),
-        loading || hasPermission("MANAGE_OFFERS"),
+        !loading && hasPermission("VIEW_TRADE"),
+        !loading && hasPermission("MANAGE_OFFERS"),
     )
     const tabs = BUY_AND_BID_TABS
         .filter(tab => tab.href === "/dashboard/dealer/bids"
             ? bidsOffersHref !== null
-            : !tab.permission || loading || hasPermission(tab.permission))
+            : !tab.permission || (!loading && hasPermission(tab.permission)))
         .map(tab => tab.href === "/dashboard/dealer/bids" && bidsOffersHref
             ? { ...tab, href: bidsOffersHref }
             : tab)
