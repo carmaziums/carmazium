@@ -139,7 +139,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
                             <FileText size={20} className="text-gray-700" />
-                        </div>, document.body
+                        </div>
                     )}
                 </div>
 
@@ -256,7 +256,7 @@ export function PipelineRow({ item, onViewSummary, onViewSeller, onRequestCancel
                                     </button>
                                 )}
                             </div>
-                        </div>
+                        </div>, document.body
                     )}
                 </div>
             </div>
