@@ -1305,6 +1305,7 @@ function SearchPageContent() {
                                         year={listing.year ?? undefined}
                                         mileage={listing.mileage ?? undefined}
                                         fuelType={listing.fuelType ?? undefined}
+                                        transmission={listing.transmission ?? undefined}
                                         bodyType={listing.bodyType ?? undefined}
                                         location={listing.location ?? undefined}
                                         distanceMi={userLocation?.lat && userLocation?.lng && listing.latitude && listing.longitude
@@ -1345,6 +1346,7 @@ function SearchPageContent() {
                                     year={listing.year ?? undefined}
                                     mileage={listing.mileage ?? undefined}
                                     fuelType={listing.fuelType ?? undefined}
+                                    transmission={listing.transmission ?? undefined}
                                     bodyType={listing.bodyType ?? undefined}
                                     location={listing.location ?? undefined}
                                     distanceMi={userLocation?.lat && userLocation?.lng && listing.latitude && listing.longitude
