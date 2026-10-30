@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { PageJsonLd, SEO_SITE, SEO_TRADEXCHANGE } from "@/components/seo/PageJsonLd"
 
 export const metadata: Metadata = {
     title: "Vehicle Finance Enquiries UK",
@@ -17,5 +18,30 @@ export const metadata: Metadata = {
 }
 
 export default function FinanceLayout({ children }: { children: React.ReactNode }) {
-    return children
+    return (
+        <>
+            <PageJsonLd
+                path="/services/finance"
+                title="Vehicle Finance Enquiries UK | CarMazium"
+                description={metadata.description as string}
+                crumbs={[
+                    { label: "Home", path: "/" },
+                    { label: "Services", path: "/services" },
+                    { label: "Vehicle finance enquiries", path: "/services/finance" },
+                ]}
+                mainEntity={{
+                    "@type": "Service",
+                    "@id": SEO_SITE + "/services/finance#service",
+                    name: "Vehicle finance enquiries",
+                    serviceType: "Vehicle finance introduction",
+                    description: metadata.description,
+                    url: SEO_SITE + "/services/finance",
+                    broker: { "@id": SEO_SITE + "/#organization" },
+                    brand: { "@id": SEO_TRADEXCHANGE },
+                    areaServed: { "@type": "Country", name: "United Kingdom" },
+                }}
+            />
+            {children}
+        </>
+    )
 }
