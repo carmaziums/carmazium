@@ -9,7 +9,6 @@ import {
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
 import { PageHeader } from "@/components/dashboard/PageHeader"
-import { BuyAndBidTabs } from "@/components/dealer/BuyAndBidTabs"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import {
     PipelineRow,
@@ -201,7 +200,6 @@ export default function DealerPurchasesPage() {
                         <Link href="/dashboard/cancellations" className="inline-flex min-h-11 items-center rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] px-4 py-2 text-sm font-semibold hover:border-primary/50">Cancelled Sales</Link>
                     </div>
 
-                    <BuyAndBidTabs />
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
