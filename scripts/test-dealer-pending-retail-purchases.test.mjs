@@ -63,3 +63,20 @@ test("dealer navigation distinguishes auction wins from all purchases without re
     assert.match(nav, /\/dashboard\/dealer\/auctions\/won", label: "Auction Wins"/)
     assert.match(nav, /\/dashboard\/dealer\/purchases", label: "All Purchases"/)
 })
+
+test("recorded retail sales display SOLD, not awaiting confirmation", () => {
+    const dealerPurchases = read("../src/app/dashboard/dealer/purchases/page.tsx")
+    const row = read("../src/components/dealer/PipelineRow.tsx")
+    assert.match(dealerPurchases, /item\.status === "AWAITING_CONFIRMATION" && item\.retailSold/)
+    assert.match(dealerPurchases, /\? "sold"/)
+    assert.match(dealerPurchases, /sold: \{ label: "Sold"/)
+    assert.match(row, /sold: \{\s*label: "Sold"/)
+    assert.match(row, /Retail sale recorded · No buyer fee/)
+})
+
+test("retail seller contact is not locked by an old ended auction record", () => {
+    const service = read("../backend/src/dealers/dealers.service.ts")
+    assert.match(service, /const isAuctionPurchase = listing\.type === 'AUCTION';/)
+    assert.match(service, /const isAuctionPurchase = l\?\.type === 'AUCTION';/)
+    assert.match(service, /retailSold: l\?\.type === 'CLASSIFIED' && l\?\.status === 'SOLD'/)
+})
