@@ -1815,6 +1815,7 @@ export class DealersService {
                             id: true,
                             title: true,
                             slug: true,
+                            type: true,
                             images: true,
                             make: true,
                             model: true,
@@ -1852,6 +1853,12 @@ export class DealersService {
 
         const data = sales.map((sale) => {
             const l = sale.listing;
+            const auction = auctionByListing.get(sale.listingId);
+            // Purchase-history results must enforce the same auction buyer-fee
+            // gate as the individual won-auction endpoint.
+            const contactUnlocked = (l?.type === 'CLASSIFIED' && !auction)
+                || !!(auction && auction.winnerId === buyerId
+                    && auction.buyerFeePaid && auction.buyerFeeTransactionId);
             const subtitle = [
                 l?.engineSize ? `${(l.engineSize / 1000).toFixed(1)}L` : null,
                 l?.mileage != null ? `${l.mileage.toLocaleString()} mi` : null,
@@ -1869,8 +1876,8 @@ export class DealersService {
                 sellerName: sale.seller
                     ? `${sale.seller.firstName ?? ''} ${sale.seller.lastName ?? ''}`.trim() || sale.seller.email
                     : undefined,
-                sellerEmail: sale.seller?.email ?? undefined,
-                sellerPhone: sale.seller?.phone ?? undefined,
+                sellerEmail: contactUnlocked ? (sale.seller?.email ?? undefined) : undefined,
+                sellerPhone: contactUnlocked ? (sale.seller?.phone ?? undefined) : undefined,
                 status: sale.purchaseStatus,
                 offerAccepted: auctionByListing.get(sale.listingId)?.winnerId === buyerId,
                 buyerFeeSettled: !!auctionByListing.get(sale.listingId)?.buyerFeePaid
@@ -1879,5 +1886,97 @@ export class DealersService {
         });
 
         return { data, total };
+    }
+
+    /**
+     * Purchased seller details are not a public profile endpoint.
+     * Only the buyer's dealership (or its authorised VIEW_PURCHASES staff)
+     * may read the record. Auction contact information stays locked until
+     * the winning buyer has paid their buyer fee. KYC identity documents
+     * must never be used as a collection-address source.
+     */
+    async getPurchaseSellerDetails(userId: string, saleId: string) {
+        const actor = await resolveDealerActor(this.prisma, userId);
+        assertDealerPermission(actor, 'VIEW_PURCHASES');
+        const buyerId = actor.ownerUserId;
+
+        const sale = await this.prisma.sale.findFirst({
+            where: { id: saleId, buyerId },
+            select: {
+                id: true,
+                listing: {
+                    select: {
+                        title: true,
+                        type: true,
+                        location: true,
+                        auction: {
+                            select: {
+                                winnerId: true,
+                                buyerFeePaid: true,
+                                buyerFeeTransactionId: true,
+                            },
+                        },
+                    },
+                },
+                seller: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phone: true,
+                        isAddressVerified: true,
+                        dealerProfile: {
+                            select: {
+                                companyName: true,
+                                businessAddress: true,
+                                phone: true,
+                            },
+                        },
+                        addressVerifications: {
+                            where: { consumedAt: { not: null } },
+                            orderBy: { consumedAt: 'desc' },
+                            take: 1,
+                            select: { address: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Identical not-found response for unknown sales and other buyers' sales.
+        if (!sale) throw new NotFoundException('Purchase not found');
+
+        const { listing, seller } = sale;
+        const auction = listing.auction;
+        const isAuctionPurchase = listing.type === 'AUCTION' || !!auction;
+        const contactUnlocked = !isAuctionPurchase || !!(
+            auction && auction.winnerId === buyerId
+            && auction.buyerFeePaid && auction.buyerFeeTransactionId
+        );
+
+        const sellerName = [seller.firstName, seller.lastName].filter(Boolean).join(' ')
+            || seller.dealerProfile?.companyName || 'Seller';
+        const businessAddress = seller.dealerProfile?.businessAddress?.trim() || null;
+        const verifiedPostalAddress = seller.isAddressVerified
+            ? (seller.addressVerifications[0]?.address?.trim() || null)
+            : null;
+        const address = businessAddress || verifiedPostalAddress;
+
+        return {
+            saleId: sale.id,
+            vehicleTitle: listing.title,
+            vehicleLocation: listing.location,
+            sellerName,
+            sellerCompany: seller.dealerProfile?.companyName || null,
+            contactUnlocked,
+            sellerEmail: contactUnlocked ? seller.email : null,
+            sellerPhone: contactUnlocked
+                ? (seller.phone || seller.dealerProfile?.phone || null) : null,
+            // Address on file is NOT necessarily the vehicle's collection point.
+            // The buyer must confirm where to collect before travelling.
+            sellerAddress: contactUnlocked ? address : null,
+            sellerAddressSource: contactUnlocked && address
+                ? (businessAddress ? 'BUSINESS' : 'VERIFIED_POSTAL') : null,
+        };
     }
 }
