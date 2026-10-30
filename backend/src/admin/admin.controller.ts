@@ -72,8 +72,9 @@ export class AdminController {
     async updateUserRole(
         @Param('id') id: string,
         @Body('role') role: UserRole,
+        @CurrentUser() admin: any,
     ): Promise<StandardResponse<any>> {
-        const user = await this.adminService.updateUserRole(id, role);
+        const user = await this.adminService.updateUserRole(id, role, admin?.id);
         return new StandardResponse(user);
     }
 

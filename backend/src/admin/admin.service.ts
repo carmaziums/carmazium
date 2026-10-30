@@ -251,7 +251,26 @@ export class AdminService {
         return { ...user, authActivity, recentListings, recentTransactions };
     }
 
-    async updateUserRole(userId: string, role: UserRole) {
+    async updateUserRole(userId: string, role: UserRole, actingAdminId?: string) {
+        if (!Object.values(UserRole).includes(role)) {
+            throw new BadRequestException('Unknown account role.');
+        }
+        if (actingAdminId && actingAdminId === userId) {
+            throw new BadRequestException('You cannot change your own account role.');
+        }
+        const target = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true },
+        });
+        if (!target) throw new NotFoundException('User not found');
+        if (target.role === UserRole.ADMIN && role !== UserRole.ADMIN) {
+            const otherAdmins = await this.prisma.user.count({
+                where: { role: UserRole.ADMIN, deletedAt: null, id: { not: userId } },
+            });
+            if (otherAdmins === 0) {
+                throw new BadRequestException('This is the only active admin account. Make another account an admin first.');
+            }
+        }
         return this.prisma.user.update({
             where: { id: userId },
             data: { role },
@@ -2603,7 +2622,7 @@ export class AdminService {
                 _sum: { amount: true },
             }),
             this.prisma.transaction.count({
-                where: { status: 'COMPLETED', deletedAt: null, type: 'COMMISSION', ...createdAt },
+                where: { status: 'COMPLETED', deletedAt: null, type: 'COMMISSION', amount: { gt: 0 }, ...createdAt },
             }),
         ]);
         return Math.round(
