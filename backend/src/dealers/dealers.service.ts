@@ -1860,7 +1860,7 @@ export class DealersService {
             // A previously ended auction may still share a listing row after
             // conversion to Retail. It must NOT impose an auction buyer fee
             // or suppress seller contact on a valid Retail purchase.
-            const isAuctionPurchase = l?.type === 'AUCTION';
+            const isAuctionPurchase = l?.type === 'AUCTION' || !!auction?.winnerId;
             const contactUnlocked = !isAuctionPurchase
                 || !!(auction && auction.winnerId === buyerId
                     && auction.buyerFeePaid && auction.buyerFeeTransactionId);
@@ -1959,7 +1959,7 @@ export class DealersService {
         const auction = listing.auction;
         // Do not confuse a historic ENDED auction attached to a converted
         // retail listing with the channel through which this sale occurred.
-        const isAuctionPurchase = listing.type === 'AUCTION';
+        const isAuctionPurchase = listing.type === 'AUCTION' || !!auction?.winnerId;
         const contactUnlocked = !isAuctionPurchase || !!(
             auction && auction.winnerId === buyerId
             && auction.buyerFeePaid && auction.buyerFeeTransactionId
