@@ -74,6 +74,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     const searchParams = useSearchParams()
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [mobileBuyBidExpanded, setMobileBuyBidExpanded] = React.useState(false)
+    const [mobileStockExpanded, setMobileStockExpanded] = React.useState(false)
     const [pendingOffersCount, setPendingOffersCount] = React.useState(0)
     const [contactingSupport, setContactingSupport] = React.useState(false)
     const { loading: dealerAccessLoading, hasPermission: hasDealerPermission } = useDealerAccess()
@@ -169,7 +170,7 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
     // Secondary dealer tools: kept out of the main list to keep it short, but
     // always listed under "More tools" so no dealer option is ever unreachable.
     const dealerMoreLinks: LinkObj[] = role === 'dealer'
-        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route)).map(toDealerLink)
+        ? DEALER_ROUTE_CONFIG.filter(route => route.hidden && dealerRouteVisible(route) && !BUY_AND_BID_TABS.some(tab => tab.href === route.href)).map(toDealerLink)
         : []
 
     // activePrefixes: older standalone pages (opened from notifications and
@@ -426,7 +427,38 @@ export function DashboardSidebar({ role, userName: initialUserName, userType: in
                                             {link.section}
                                         </p>
                                     )}
-                                    {role === 'dealer' && link.href === '/dashboard/dealer/auctions' ? (
+                                    {role === 'dealer' && link.href === '/dashboard/dealer/inventory' ? (
+                                        <div>
+                                            <button type="button"
+                                                onClick={() => setMobileStockExpanded(open => !open)}
+                                                aria-expanded={mobileStockExpanded}
+                                                aria-controls="dealer-stock-submenu"
+                                                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? "bg-primary text-white" : "hover:bg-primary/5 dark:hover:bg-[var(--bg-card)]"}`}
+                                                style={!isActive ? { color: 'var(--text-secondary)' } : undefined}
+                                            >
+                                                <span className="flex items-center gap-3"><Icon size={18} /><span className="text-sm font-medium">Stock</span></span>
+                                                {mobileStockExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                                            </button>
+                                            {mobileStockExpanded && (
+                                                <nav id="dealer-stock-submenu" aria-label="Stock pages" className="ml-5 mt-1 space-y-1 border-l border-[var(--border-default)] pl-3">
+                                                    {[
+                                                        { label: 'All Inventory', href: '/dashboard/dealer/inventory' },
+                                                        { label: 'Live', href: '/dashboard/dealer/inventory?status=ACTIVE' },
+                                                        { label: 'Under Review', href: '/dashboard/dealer/inventory?status=PENDING_REVIEW' },
+                                                        { label: 'Rejected', href: '/dashboard/dealer/inventory?status=REJECTED' },
+                                                        { label: 'Drafts', href: '/dashboard/dealer/inventory?status=DRAFT' },
+                                                        { label: 'Sold', href: '/dashboard/dealer/inventory?status=SOLD' },
+                                                        ...(hasDealerPermission('MANAGE_INVENTORY') ? [{ label: 'Add Vehicle', href: '/dashboard/dealer/add-listing' }] : []),
+                                                    ].map(item => (
+                                                        <Link key={item.href} href={item.href}
+                                                            onClick={() => setIsMobileMenuOpen(false)}
+                                                            className="flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-primary/5"
+                                                        >{item.label}</Link>
+                                                    ))}
+                                                </nav>
+                                            )}
+                                        </div>
+                                    ) : role === 'dealer' && link.href === '/dashboard/dealer/auctions' ? (
                                         <div>
                                             <button
                                                 type="button"
