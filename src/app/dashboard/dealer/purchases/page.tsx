@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import {
-    Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3,
+    Loader2, Package, Clock, FileSearch, CheckCircle2, Truck, LayoutList, Columns3, ChevronLeft, ChevronRight,
 } from "lucide-react"
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar"
 import { useAuth } from "@/context/AuthContext"
@@ -48,6 +48,14 @@ export default function DealerPurchasesPage() {
     const router = useRouter()
     const [loading, setLoading] = React.useState(true)
     const [viewMode, setViewMode] = React.useState<ViewMode>("list")
+    const kanbanScrollRef = React.useRef<HTMLDivElement>(null)
+    const scrollKanban = (direction: -1 | 1) => {
+        const board = kanbanScrollRef.current
+        if (!board) return
+        const column = board.querySelector<HTMLElement>("[data-kanban-column]")
+        const distance = (column?.getBoundingClientRect().width ?? board.clientWidth * 0.85) + 16
+        board.scrollBy({ left: direction * distance, behavior: "smooth" })
+    }
     const [purchases, setPurchases] = React.useState<PurchaseItem[]>([])
 
     React.useEffect(() => {
@@ -231,16 +239,26 @@ export default function DealerPurchasesPage() {
                         </div>
                     )}
 
+                    {/* Visible navigation hints on mobile, in addition to touch swiping. */}
+                    {!loading && viewMode === "kanban" && (
+                        <div className="flex items-center justify-between gap-3 lg:hidden" aria-label="Kanban column navigation">
+                            <span className="text-xs font-semibold text-[var(--text-muted)]">Swipe left or right to see all purchase stages</span>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <button type="button" aria-label="Previous purchase stage" onClick={() => scrollKanban(-1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-primary)]"><ChevronLeft size={20} /></button>
+                                <button type="button" aria-label="Next purchase stage" onClick={() => scrollKanban(1)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] text-[var(--text-primary)]"><ChevronRight size={20} /></button>
+                            </div>
+                        </div>
+                    )}
                     {/* Kanban View: swipeable status columns on mobile, grid on desktop. */}
                     {!loading && viewMode === "kanban" && (
-                        <div className="flex gap-4 items-start overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-4 -mx-5 px-5 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:overflow-visible" role="region" aria-label="Purchase pipeline board" tabIndex={0}>
+                        <div ref={kanbanScrollRef} className="flex gap-4 items-start overflow-x-auto overscroll-x-contain snap-x snap-mandatory pb-4 -mx-5 px-5 lg:mx-0 lg:px-0 lg:grid lg:grid-cols-2 2xl:grid-cols-3 lg:overflow-visible" role="region" aria-label="Purchase pipeline board" tabIndex={0}>
                             {STATUS_ORDER.map((status) => {
                                 const items = grouped[status]
                                 const config = STATUS_LABELS[status]
                                 const Icon = config.icon
 
                                 return (
-                                    <div key={status} className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-[min(85vw,340px)] shrink-0 snap-start lg:w-full lg:min-w-0">
+                                    <div key={status} data-kanban-column className="bg-[var(--bg-input)] border border-[var(--border-default)] rounded-2xl p-3 min-h-[200px] w-[min(85vw,340px)] shrink-0 snap-start lg:w-full lg:min-w-0">
                                         {/* Column Header */}
                                         <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-default)]">
                                             <Icon size={14} className={config.color} />
