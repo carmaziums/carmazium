@@ -31,7 +31,9 @@ function DashboardAddListingPage() {
 /** Route legacy access via the canonical private dashboard. */
 export default function CanonicalDashboardAddListingPage() {
     return <React.Suspense fallback={<div className="min-h-[40vh]"/>}>
-        <LegacyDashboardRedirect target="/sell">
+        {/* Editing (editId/editSlug) and prefilled sells (sellMode, v, vrm) need
+            the dashboard editor itself; only a bare visit goes to /sell. */}
+        <LegacyDashboardRedirect target="/sell" preserveWhen={["editId", "editSlug", "sellMode", "v", "vrm"]}>
             <DashboardAddListingPage/>
         </LegacyDashboardRedirect>
     </React.Suspense>

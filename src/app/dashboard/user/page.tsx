@@ -100,6 +100,7 @@ import { ImportListingModal } from "@/components/features/ImportListingModal"
 import { SaleCancellationModal } from "@/components/sales/SaleCancellationModal"
 import { UserAttentionPanel } from "@/components/dashboard/UserAttentionPanel"
 import { MyCarsAuctionPanel } from "@/components/dashboard/MyCarsAuctionPanel"
+import { getCompletePrivateListings } from "@/lib/privateCarsListings"
 import { PrivatePurchasesTab } from "@/components/dashboard/PrivatePurchasesTab"
 
 export default function UnifiedUserDashboard() {
@@ -569,8 +570,9 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [listings, setListings] = React.useState<Listing[]>([])
     const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
     const [loading, setLoading] = React.useState(true)
+    const [loadError, setLoadError] = React.useState<string | null>(null)
     const [page, setPage] = React.useState(1)
-    const [totalPages, setTotalPages] = React.useState(1)
+
     const [deleting, setDeleting] = React.useState<string | null>(null)
     const [boosting, setBoosting] = React.useState<string | null>(null)
     const [saleListing, setSaleListing] = React.useState<Listing | null>(null)
@@ -580,21 +582,26 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
     const [openMenuId, setOpenMenuId] = React.useState<string | null>(null)
 
     const auctionDashPath = profile?.role === 'DEALER' ? '/dashboard/dealer/auctions' : '/dashboard/seller/auctions?manage=1'
-    const visibleListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
+    const matchingListings = statusFilter === "ALL" ? listings : listings.filter(listing => listing.status === statusFilter)
+    const totalPages = Math.max(1, Math.ceil(matchingListings.length / 10))
+    const visibleListings = matchingListings.slice((page - 1) * 10, page * 10)
 
     const fetchListings = React.useCallback(async () => {
         try {
             setLoading(true)
-            // Phase 10: includeSold=true so SOLD listings appear in history and contribute to analytics
-            const data = await getMyListings({ page, limit: 10, includeSold: true })
-            setListings(data.data || [])
-            setTotalPages(data.pagination?.totalPages || 1)
+            // Load the complete authoritative owned inventory before status
+            // filtering, instead of hiding matching cars on later API pages.
+            const data = await getCompletePrivateListings()
+            setListings(data)
+            setLoadError(null)
         } catch (err) {
             console.error('Failed to fetch listings:', err)
+            // Never present a failed load as "no cars": say so and offer a retry.
+            setLoadError(err instanceof Error && err.message ? err.message : "We couldn't load your cars.")
         } finally {
             setLoading(false)
         }
-    }, [page])
+    }, [])
 
     React.useEffect(() => {
         fetchListings()
@@ -683,7 +690,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 {/* ── Simple mobile cards (< sm) ── */}
                 <div className="flex flex-wrap gap-2" role="group" aria-label="Filter your listing status">
                 {(["ALL", "ACTIVE", "DRAFT", "PENDING_REVIEW", "OFFER_ACCEPTED", "SOLD", "WITHDRAWN", "REJECTED"] as const).map(value => (
-                    <button type="button" key={value} onClick={() => setStatusFilter(value)}
+                    <button type="button" key={value} onClick={() => { setStatusFilter(value); setPage(1) }}
                         aria-pressed={statusFilter === value}
                         className={`rounded-xl border px-3 py-2 text-xs font-bold ${statusFilter === value
                             ? "bg-primary text-white border-primary" : "border-[var(--border-default)] text-[var(--text-secondary)]"}`}>
@@ -692,12 +699,22 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                 ))}
             </div>
 
+            {loadError && !loading && (
+                <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                    <span className="text-[var(--text-primary)]">{loadError}</span>
+                    <button type="button" onClick={() => { setLoading(true); void fetchListings() }}
+                        className="min-h-[44px] rounded-lg border border-[var(--border-default)] px-4 font-bold text-primary">
+                        Retry
+                    </button>
+                </div>
+            )}
+
             <div className="sm:hidden divide-y divide-[var(--border-default)]">
                     {loading ? (
                         <div className="py-16 text-center">
                             <Loader2 className="h-9 w-9 animate-spin text-primary mx-auto" />
                         </div>
-                    ) : visibleListings.length === 0 ? (
+                    ) : visibleListings.length === 0 && !loadError ? (
                         <div className="py-16 text-center text-[var(--text-muted)] italic px-6">
                             No listings found. Start selling today!
                         </div>
@@ -786,7 +803,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                     <div className="mt-1 space-y-1.5 border-t border-[var(--border-default)] pt-3">
                                         {listing.status === 'ACTIVE' && (
                                             <Link
-                                                href={`${auctionDashPath}?listingId=${listing.id}`}
+                                                href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`}
                                                 className="min-h-[46px] flex items-center gap-2.5 px-3 rounded-xl text-orange-400 bg-orange-500/5 font-bold text-sm"
                                             >
                                                 <Gavel size={16} /> Put to Auction
@@ -827,7 +844,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                                     </td>
                                 </tr>
-                            ) : visibleListings.length === 0 ? (
+                            ) : visibleListings.length === 0 && !loadError ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-20 text-center text-[var(--text-muted)] italic">
                                         No listings found. Start selling today!
@@ -926,7 +943,7 @@ function InventoryTab({ onRefreshStats }: { onRefreshStats: () => void }) {
                                                             <Pencil size={14} /> Edit
                                                         </Link>
                                                         {listing.status === 'ACTIVE' && (
-                                                            <Link href={`${auctionDashPath}?listingId=${listing.id}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
+                                                            <Link href={`${auctionDashPath}${auctionDashPath.includes('?') ? '&' : '?'}listingId=${encodeURIComponent(listing.id)}`} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-orange-500/10 text-orange-400 w-full">
                                                                 <Gavel size={14} /> Put to Auction
                                                             </Link>
                                                         )}

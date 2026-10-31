@@ -186,9 +186,10 @@ export type MainStackParamList = {
     wheelplan?: string; typeApproval?: string; motHistory?: import('../data/listings').NativeMotTest[];
     officialVehicleData?: import('../data/listings').OfficialVehicleData;
   } } | undefined;
-  SellerListings: undefined;
+  /** focusListingId: open that car's action menu once loaded (from My cars). */
+  SellerListings: { focusListingId?: string } | undefined;
   MyCars: undefined;
-  SellerAuctions: { preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
+  SellerAuctions: { focusListingId?: string; preselectListingId?: string; initialTab?: 'WON'; openCreate?: boolean; alsoRetailListingId?: string; alsoRetailPrice?: string; alsoRetailTier?: 'BASIC' | 'STANDARD' | 'PREMIUM' } | undefined;
   BuyerDashboard: undefined;
   SellerDashboard: undefined;
   UnifiedDashboard: undefined;

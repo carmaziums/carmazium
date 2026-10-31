@@ -22,7 +22,7 @@ const purchase = {
 }
 
 test("retail SOLD is never shown as awaiting purchase confirmation", () => {
-    assert.equal(exports.recordedPurchaseLabel(purchase), "Sold")
+    assert.equal(exports.recordedPurchaseLabel(purchase), "Purchased")
     assert.equal(exports.recordedPurchaseLabel({
         ...purchase, channel: "AUCTION", retailSold: false,
     }), "Auction won")
@@ -93,4 +93,15 @@ test("native purchase detail is gated and routes booking to typed delivery form"
     assert.match(nativeWins, /purchases\/listing-lookup\?listingIds=/)
     assert.match(nativeWins, /navigate\('DealerPurchaseDetail', \{ saleId: purchaseId \}\)/)
     assert.match(nativeWins, /canViewPurchases/)
+})
+
+test("review fixes: existing delivery job is opened, not duplicated; app honours the delivery switch", () => {
+    const web = readFileSync(new URL("../src/app/dashboard/dealer/purchases/[id]/page.tsx", import.meta.url), "utf8")
+    assert.match(web, /\{purchase\.delivery \? \(/)
+    assert.match(web, /href=\{`\/services\/jobs\/\$\{encodeURIComponent\(purchase\.delivery\.jobId\)\}`\}/)
+    assert.ok(!web.includes("Reference ${"), "no stray $ before the reference")
+    const app = readFileSync(new URL("../carmazium app/carmazium app/src/screens/main/DealerPurchaseDetailScreen.tsx", import.meta.url), "utf8")
+    assert.match(app, /s\.availability\?\.DELIVERY !== false/)
+    assert.match(app, /if \(!deliveryAvailable\) \{/)
+    assert.ok(app.includes("detail.retailSold ? 'Purchased'"))
 })

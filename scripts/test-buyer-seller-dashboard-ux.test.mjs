@@ -36,22 +36,30 @@ const dashboard = read("src/app/dashboard/user/page.tsx")
 
 // Every buyer/seller menu destination before this change (main @ 238b930).
 const EVERY_USER_MENU_HREF = [
-    "/dashboard/user?tab=overview", "/services/jobs", "/dashboard/user?tab=inventory",
-    "/dashboard/seller/auctions", "/dashboard/user?tab=offers", "/dashboard/user?tab=earnings",
+    // #704 merged My Listings + My Auctions into My cars (tab=cars); old
+    // tab=inventory links are mapped to it and /dashboard/seller/auctions stays
+    // reachable (highlighted under My cars, and via ?manage=1 for the manager).
+    "/dashboard/user?tab=overview", "/services/jobs", "/dashboard/user?tab=cars",
+    "/dashboard/user?tab=offers", "/dashboard/user?tab=earnings",
     "/dashboard/user?tab=stats", "/dashboard/user?tab=bids", "/dashboard/user?tab=watchlist",
     "/dashboard/cancellations", "/dashboard/user?tab=messages", "/profile",
 ]
 
 test("no buyer/seller menu destination was removed", () => {
     for (const href of EVERY_USER_MENU_HREF) assert.ok(sidebar.includes(`href: "${href}"`), "missing " + href)
+    assert.ok(sidebar.includes('"/dashboard/seller/auctions"'), "auctions still highlighted under My cars")
+    assert.match(dashboard, /rawTab === "inventory" \? "cars"/)
+    assert.ok(read("src/components/dashboard/MyCarsAuctionPanel.tsx").includes("/dashboard/seller/auctions?manage=1"))
 })
 
-test("tools that only existed on standalone pages are now in More tools", () => {
-    for (const href of ["/dashboard/seller/offers", "/dashboard/seller/earnings", "/dashboard/buyer/offers", "/dashboard/buyer/history"]) {
-        assert.ok(sidebar.includes(`{ href: "${href}"`), href)
+test("tools that only existed on standalone pages stay reachable (now via ?legacy=1 links)", () => {
+    // #704 removed the duplicate "More tools" links; each specialist page is
+    // linked from the matching dashboard tab and kept by LegacyDashboardRedirect.
+    for (const href of ["/dashboard/seller/offers?legacy=1", "/dashboard/seller/earnings?legacy=1", "/dashboard/buyer/offers?legacy=1"]) {
+        assert.ok(dashboard.includes(`href="${href}"`), href)
     }
-    assert.match(sidebar, /const moreLinks: LinkObj\[\] = role === 'dealer' \? dealerMoreLinks : userMoreLinks/)
-    assert.match(sidebar, /\.\.\.userMoreLinks\.map\(link => \(\{ \.\.\.link, section: `More tools/)
+    assert.ok(sidebar.includes('href: "/dashboard/user?tab=purchases"'), "buyer history lives under Purchases")
+    assert.match(read("src/components/dashboard/LegacyDashboardRedirect.tsx"), /search\.get\("legacy"\) === "1"/)
 })
 
 test("standalone pages opened from notifications keep the right menu item highlighted", () => {
@@ -70,12 +78,12 @@ test("mobile bottom bar includes Messages; Saved Cars stays reachable from More"
 })
 
 test("page headings match the menu and offer links to delivery requests and receipts", () => {
-    for (const heading of [">My Listings<", ">Offers Received<", ">My Offers<", ">Listing Performance<", ">Sales & Earnings<", ">Saved Cars<"]) {
+    for (const heading of [">My cars<", ">Offers Received<", ">My Offers<", ">Listing Performance<", ">Sales & Earnings<", ">Saved Cars<"]) {
         assert.ok(dashboard.includes(heading), heading)
     }
-    assert.ok(dashboard.includes('href="/dashboard/seller/offers"'))
-    assert.ok(dashboard.includes('href="/dashboard/buyer/offers"'))
-    assert.ok(dashboard.includes('href="/dashboard/seller/earnings"'))
+    assert.ok(dashboard.includes('href="/dashboard/seller/offers?legacy=1"'))
+    assert.ok(dashboard.includes('href="/dashboard/buyer/offers?legacy=1"'))
+    assert.ok(dashboard.includes('href="/dashboard/seller/earnings?legacy=1"'))
     assert.match(dashboard, /<UserAttentionPanel data=\{data\} loading=\{loading\} \/>/)
     // Existing overview actions are all still there.
     for (const kept of ['href="/sell"', 'href="/search"', "setTab('bids')", "setTab('messages')", "setTab('offers')", "setTab('earnings')", "setTab('watchlist')"]) {

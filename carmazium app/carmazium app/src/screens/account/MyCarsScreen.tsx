@@ -10,8 +10,8 @@ import { FontFamily } from '../../constants/typography';
 
 type Vehicle = {
   id: string; title?: string; make?: string; model?: string; year?: number;
-  status?: string; images?: string[]; type?: string;
-  listing?: { id: string; title?: string; images?: string[] };
+  status?: string; images?: string[]; type?: string; listingId?: string;
+  listing?: { id: string; title?: string; images?: string[]; year?: number; make?: string; model?: string };
 };
 type Channel = 'Listings' | 'Auctions';
 type Filter = 'ALL' | 'ACTIVE' | 'DRAFT' | 'SCHEDULED' | 'PENDING_REVIEW' | 'OFFER_ACCEPTED' | 'SOLD' | 'ENDED' | 'CANCELLED';
@@ -82,7 +82,9 @@ export const MyCarsScreen: React.FC = () => {
             const vehicle = item.listing || item;
             return (
               <TouchableOpacity style={styles.card} accessibilityRole="button"
-                onPress={() => navigation.navigate(channel === 'Listings' ? 'SellerListings' : 'SellerAuctions')}
+                // Open this car's own actions, not just the generic list.
+                onPress={() => navigation.navigate(channel === 'Listings' ? 'SellerListings' : 'SellerAuctions',
+                  { focusListingId: channel === 'Listings' ? item.id : (item.listingId || item.listing?.id) })}
               >
                 {vehicle.images?.[0]
                   ? <Image source={{ uri: vehicle.images[0] }} style={styles.image} contentFit="cover" />

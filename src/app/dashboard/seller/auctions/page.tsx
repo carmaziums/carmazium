@@ -1460,7 +1460,7 @@ function SellerAuctionsPage() {
 export default function CanonicalSellerAuctionsPageWrapper() {
     return (
         <React.Suspense fallback={<div className="min-h-[40vh]" />}>
-            <LegacyDashboardRedirect target="/dashboard/user?tab=cars&view=auctions" preserveWhen={["listingId"]}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=cars&view=auctions" preserveWhen={["listingId", "manage"]}>
                 <SellerAuctionsPageWrapper />
             </LegacyDashboardRedirect>
         </React.Suspense>
