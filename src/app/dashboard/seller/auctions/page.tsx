@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import * as React from "react"
+import { LegacyDashboardRedirect } from "@/components/dashboard/LegacyDashboardRedirect"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -105,7 +106,7 @@ function AuctionStatusBadge({ auction }: { auction: Auction }) {
     )
 }
 
-export default function SellerAuctionsPageWrapper() {
+function SellerAuctionsPageWrapper() {
     return (
         <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
             <SellerAuctionsPage />
@@ -1452,5 +1453,16 @@ function SellerAuctionsPage() {
             </div>
         )}
         </>
+    )
+}
+
+/** Private dashboard canonicalisation; ?legacy=1 preserves specialist actions. */
+export default function CanonicalSellerAuctionsPageWrapper() {
+    return (
+        <React.Suspense fallback={<div className="min-h-[40vh]" />}>
+            <LegacyDashboardRedirect target="/dashboard/user?tab=cars&view=auctions" preserveWhen={["listingId"]}>
+                <SellerAuctionsPageWrapper />
+            </LegacyDashboardRedirect>
+        </React.Suspense>
     )
 }
