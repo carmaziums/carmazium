@@ -2623,8 +2623,12 @@ describe('ListingsService', () => {
                     : where.userId === 'staff-other' ? { role: 'ADMIN', dealerProfile: { id: 'dp-2', userId: 'other-dealer', isVerified: true } }
                         : null
             ));
-            expect((await load('staff-own')).rejectionReason).toBe('Old moderation note');
-            expect(await load('staff-other')).not.toHaveProperty('rejectionReason');
+            const own = await load('staff-own');
+            expect(own.rejectionReason).toBe('Old moderation note');
+            expect(own.priceMin).toBe(6000);
+            const other = await load('staff-other');
+            expect(other).not.toHaveProperty('rejectionReason');
+            expect(other).not.toHaveProperty('priceMin');
         });
     });
 
